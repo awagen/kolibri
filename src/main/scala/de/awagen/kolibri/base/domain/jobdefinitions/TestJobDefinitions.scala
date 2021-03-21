@@ -1,0 +1,109 @@
+/**
+  * Copyright 2021 Andreas Wagenmann
+  *
+  * Licensed under the Apache License, Version 2.0 (the "License");
+  * you may not use this file except in compliance with the License.
+  * You may obtain a copy of the License at
+  *
+  * http://www.apache.org/licenses/LICENSE-2.0
+  *
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  */
+
+
+package de.awagen.kolibri.base.domain.jobdefinitions
+
+import akka.stream.scaladsl.Flow
+import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor
+import de.awagen.kolibri.base.actors.work.worker.JobPartIdentifiers.BaseJobPartIdentifier
+import de.awagen.kolibri.base.actors.work.worker.ResultMessages.ResultEvent
+import de.awagen.kolibri.base.domain.jobdefinitions.provider.data.BatchGenerators.{IntNumberBatchGenerator, TaggedWrapper}
+import de.awagen.kolibri.base.http.server.BaseRoutes.logger
+import de.awagen.kolibri.base.io.writer.base.LocalDirectoryFileFileWriter
+import de.awagen.kolibri.base.processing.execution.expectation._
+import de.awagen.kolibri.base.processing.execution.job.ActorRunnableSinkType
+import de.awagen.kolibri.datatypes.collections.IndexedGenerator
+import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}
+import de.awagen.kolibri.datatypes.types.SerializableCallable.{SerializableFunction1, SerializableSupplier}
+import de.awagen.kolibri.datatypes.values.AggregateValue
+import de.awagen.kolibri.datatypes.values.RunningValue.doubleAvgRunningValue
+import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.{Aggregator, BaseAnyAggregator}
+
+import scala.collection.mutable
+import scala.concurrent.duration.DurationInt
+
+object TestJobDefinitions {
+
+  class RunningDoubleAvgPerTagAggregator() extends BaseAnyAggregator[Double, Map[Tag, AggregateValue[Double]]](new Aggregator[Tag, Double, Map[Tag, AggregateValue[Double]]] {
+    val map: mutable.Map[Tag, AggregateValue[Double]] = mutable.Map.empty
+
+    override def add(keys: Set[Tag], sample: Double): Unit = {
+      keys.foreach(key => {
+        map(key) = map.getOrElse(key, doubleAvgRunningValue(count = 0, value = 0.0)).add(sample)
+      })
+    }
+
+    override def aggregation: Map[Tag, AggregateValue[Double]] = Map(map.toSeq: _*)
+
+    override def add(aggregatedValue: Map[Tag, AggregateValue[Double]]): Unit = {
+      aggregatedValue.keys.foreach(key => {
+        map(key) = map.getOrElse(key, doubleAvgRunningValue(count = 0, value = 0.0)).add(aggregatedValue(key))
+      })
+    }
+  })
+
+  def piEstimationJob(jobName: String, nrThrows: Int, batchSize: Int, resultDir: String): SupervisorActor.ProcessActorRunnableJobCmd[TaggedWrapper[Int], Map[Tag, AggregateValue[Double]]] = {
+    assert(batchSize <= nrThrows)
+    val flowFunct: SerializableFunction1[TaggedWrapper[Int], ResultEvent[Double]] = taggedWrapper => {
+      val sq_rad = math.pow(math.random(), 2) + math.pow(math.random(), 2)
+      if (sq_rad <= 1) {
+        ResultEvent(1.0, BaseJobPartIdentifier(jobName, taggedWrapper.batch), Set(StringTag("ALL"), StringTag("1")))
+      }
+      else {
+        ResultEvent(0.0, BaseJobPartIdentifier(jobName, taggedWrapper.batch), Set(StringTag("ALL"), StringTag("0")))
+      }
+    }
+    val batchGenerator: SerializableFunction1[Int, IndexedGenerator[Batch[TaggedWrapper[Int]]]] = new SerializableFunction1[Int, IndexedGenerator[Batch[TaggedWrapper[Int]]]] {
+      override def apply(v1: Int): IndexedGenerator[Batch[TaggedWrapper[Int]]] = IntNumberBatchGenerator(batchSize).batchFunc.apply(v1)
+    }
+    val expectationGen: SerializableFunction1[Int, ExecutionExpectation] = new SerializableFunction1[Int, ExecutionExpectation] {
+      override def apply(v1: Int): ExecutionExpectation = BaseExecutionExpectation(
+        fulfillAllForSuccess = Seq(ClassifyingCountExpectation(classifier = Map("finishResponse" -> {
+          case ResultEvent(e, _, _) if e.isInstanceOf[Double] => true
+          case _ => false
+        }), expectedClassCounts = Map("finishResponse" -> v1))),
+        fulfillAnyForFail = Seq(StopExpectation(v1, {
+          _ => false
+        }, x => x._2 > 0),
+          TimeExpectation(10 seconds))
+      )
+    }
+    JobMsgFactory.createActorRunnableJobCmd[Int, TaggedWrapper[Int], Map[Tag, AggregateValue[Double]]](
+      jobId = jobName,
+      nrThrows.toInt,
+      dataBatchGenerator = batchGenerator,
+      transformerFlow = Flow.fromFunction[TaggedWrapper[Int], ResultEvent[Double]](flowFunct),
+      processingActorProps = None,
+      expectationGenerator = expectationGen,
+      aggregatorSupplier = new SerializableSupplier[Aggregator[Tag, Any, Map[Tag, AggregateValue[Double]]]] {
+        override def get(): Aggregator[Tag, Any, Map[Tag, AggregateValue[Double]]] = BaseAnyAggregator(new RunningDoubleAvgPerTagAggregator())
+      },
+      writer = (data: Map[Tag, AggregateValue[Double]], _: Tag) => {
+        logger.info("writing result: {}", data)
+        logger.info("result is '{}' on '{}' samples; writing result", data, data(StringTag("ALL")).count)
+        val fileWriter = LocalDirectoryFileFileWriter(resultDir)
+        val resultString = data.keys.map(x => s"$x\t${data(x).count}\t${data(x).value.toString}").toSeq.mkString("\n")
+        fileWriter.write(resultString, "dartThrowResult.txt")
+      },
+      returnType = ActorRunnableSinkType.REPORT_TO_ACTOR_SINK,
+      allowedTimeForJobInSeconds = 600,
+      // TODO: time per batch effectively not used. This goes into the above expectation
+      allowedTimePerBatchInSeconds = 60
+    )
+  }
+
+}
