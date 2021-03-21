@@ -1,0 +1,43 @@
+/**
+  * Copyright 2021 Andreas Wagenmann
+  *
+  * Licensed under the Apache License, Version 2.0 (the "License");
+  * you may not use this file except in compliance with the License.
+  * You may obtain a copy of the License at
+  *
+  * http://www.apache.org/licenses/LICENSE-2.0
+  *
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  */
+
+package de.awagen.kolibri.datatypes.io.json
+
+import spray.json.{DefaultJsonProtocol, JsFalse, JsNumber, JsString, JsTrue, JsValue, JsonFormat}
+
+
+object AnyJsonProtocol extends DefaultJsonProtocol {
+
+  implicit object AnyJsonFormat extends JsonFormat[Any] {
+    def write(x: Any): JsValue = x match {
+      case n: Int => JsNumber(n)
+      case s: String => JsString(s)
+      case b: Boolean if b => JsTrue
+      case b: Boolean if !b => JsFalse
+    }
+
+    def read(value: JsValue): Any = value match {
+      case JsNumber(n) if n.isDecimalDouble => n.doubleValue
+      case JsNumber(n) if n.isDecimalFloat => n.floatValue
+      case JsNumber(n) if n.isValidLong => n.longValue
+      case JsNumber(n) if n.isValidInt => n.intValue
+      case JsString(s) => s
+      case JsTrue => true
+      case JsFalse => false
+    }
+  }
+
+}
