@@ -6,7 +6,6 @@ val playVersion = "2.9.1"
 val playLogbackVersion = "2.8.2"
 val sprayVersion = "1.3.5"
 
-ThisBuild / organization := "de.awagen.kolibri"
 ThisBuild / scalaVersion := "2.13.2"
 ThisBuild / version := "0.1.0-alpha1"
 
@@ -22,6 +21,7 @@ test in assembly := {} //causes no tests to be executed when calling "sbt assemb
 assemblyJarName in assembly := s"kolibri-datatypes.${version.value}.jar" //jar name
 //sbt-assembly settings. If it should only hold for specific subproject build, place the 'assemblyMergeStrategy in assembly' within subproject settings
 assemblyMergeStrategy in assembly := {
+  case "module-info.class" => MergeStrategy.discard
   case PathList("META-INF", xs@_*) => MergeStrategy.discard
   case manifest if manifest.contains("MANIFEST.MF") =>
     // We don't need manifest files since sbt-assembly will create
@@ -47,9 +47,9 @@ ThisBuild / scalacOptions ++= Seq(
   "-feature", // warning and location for usages of features that should be imported explicitly
   "-unchecked", // additional warnings where generated code depends on assumptions
   "-Xlint", // recommended additional warnings
-//  "-Ywarn-adapted-args", // Warn if an argument list is modified to match the receiver
+  //  "-Ywarn-adapted-args", // Warn if an argument list is modified to match the receiver
   "-Ywarn-value-discard", // Warn when non-Unit expression results are unused
-//  "-Ywarn-inaccessible",
+  //  "-Ywarn-inaccessible",
   "-Ywarn-dead-code",
   //  "-Xfatal-warnings" //turn warnings into errors
 )
@@ -100,3 +100,35 @@ lazy val `kolibri-datatypes` = (project in file("."))
     )
   )
   .enablePlugins(JvmPlugin)
+
+// settings for publishing
+ThisBuild / organization := "de.awagen.kolibri"
+ThisBuild / organizationName := "awagen"
+ThisBuild / organizationHomepage := Some(url("http://awagen.de"))
+ThisBuild / scmInfo := Some(
+  ScmInfo(
+    url("https://github.com/awagen/kolibri-datatypes"),
+    "scm:git@github.com:awagen/kolibri-datatypes.git"
+  )
+)
+ThisBuild / developers := List(
+  Developer(
+    id    = "awagen",
+    name  = "Andreas Wagenmann",
+    email = "awagen@posteo.net",
+    url   = url("https://github.com/awagen")
+  )
+)
+
+ThisBuild / description := "kolibri-datatypes provides the datatypes used within the kolibri project. Kolibri provides a clusterable job execution framework based on Akka."
+ThisBuild / licenses := List("Apache 2" -> new URL("http://www.apache.org/licenses/LICENSE-2.0.txt"))
+ThisBuild / homepage := Some(url("https://github.com/awagen/kolibri-datatypes"))
+
+// Remove all additional repository other than Maven Central from POM
+ThisBuild / pomIncludeRepository := { _ => false }
+ThisBuild / publishTo := {
+  val nexus = "https://s01.oss.sonatype.org/"
+  if (isSnapshot.value) Some("snapshots" at nexus + "content/repositories/snapshots")
+  else Some("releases" at nexus + "service/local/staging/deploy/maven2")
+}
+ThisBuild / publishMavenStyle := true
