@@ -1,4 +1,5 @@
 import sbt.Keys._
+import sbt.url
 
 val sl4jApiVersion = "1.7.30"
 val scalaTestVersion = "3.2.2"
@@ -15,11 +16,8 @@ val awsSdkVersion = "1.11.713"
 val apacheCommonsIOVersion = "2.8.0"
 val macWireVersion = "2.3.7"
 
-
-ThisBuild / organization := "de.awagen.kolibri"
 ThisBuild / scalaVersion := "2.13.2"
 ThisBuild / version := "0.1.0-alpha1"
-
 
 lazy val jvmOptions = Seq(
   "-Xms1G",
@@ -158,3 +156,35 @@ lazy val `kolibri-base` = (project in file("."))
     mainClass in assembly := Some("de.awagen.kolibri.base.cluster.ClusterNode"),
   )
   .enablePlugins(JvmPlugin)
+
+// settings for publishing
+ThisBuild / organization := "de.awagen.kolibri"
+ThisBuild / organizationName := "awagen"
+ThisBuild / organizationHomepage := Some(url("http://awagen.de"))
+ThisBuild / scmInfo := Some(
+  ScmInfo(
+    url("https://github.com/awagen/kolibri-base"),
+    "scm:git@github.com:awagen/kolibri-base.git"
+  )
+)
+ThisBuild / developers := List(
+  Developer(
+    id    = "awagen",
+    name  = "Andreas Wagenmann",
+    email = "awagen@posteo.net",
+    url   = url("https://github.com/awagen")
+  )
+)
+
+ThisBuild / description := "kolibri-base provides the execution mechanicsm for the the kolibri project. Kolibri provides a clusterable job execution framework based on Akka."
+ThisBuild / licenses := List("Apache 2" -> new URL("http://www.apache.org/licenses/LICENSE-2.0.txt"))
+ThisBuild / homepage := Some(url("https://github.com/awagen/kolibri-base"))
+
+// Remove all additional repository other than Maven Central from POM
+ThisBuild / pomIncludeRepository := { _ => false }
+ThisBuild / publishTo := {
+  val nexus = "https://s01.oss.sonatype.org/"
+  if (isSnapshot.value) Some("snapshots" at nexus + "content/repositories/snapshots")
+  else Some("releases" at nexus + "service/local/staging/deploy/maven2")
+}
+ThisBuild / publishMavenStyle := true
