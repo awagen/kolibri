@@ -24,6 +24,12 @@ trait TaggedWithType[T <: Tag] extends KolibriSerializable {
 
   private[this] var tags: Map[TagType, Set[T]] = Map.empty[TagType, Set[T]]
 
+  /**
+    * add single tag for given type
+    *
+    * @param tagType
+    * @param tag
+    */
   def addTag(tagType: TagType, tag: T): Unit = {
     if (!tags.contains(tagType)) {
       tags = tags + (tagType -> Set(tag))
@@ -34,8 +40,29 @@ trait TaggedWithType[T <: Tag] extends KolibriSerializable {
     }
   }
 
+  /**
+    * Add multiple tags for given type
+    *
+    * @param tagType
+    * @param tags
+    */
+  def addTags(tagType: TagType, tags: Set[T]): Unit = {
+    tags.foreach(tag => addTag(tagType, tag))
+  }
+
+  /**
+    * get all tags (all types)
+    *
+    * @return
+    */
   def getTags: Map[TagType, Set[T]] = tags
 
+  /**
+    * get tags for specific type
+    *
+    * @param tagType
+    * @return
+    */
   def getTagsForType(tagType: TagType): Set[T] = tags.getOrElse(tagType, Set.empty)
 
 }
