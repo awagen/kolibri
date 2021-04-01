@@ -7,7 +7,7 @@ RUN mkdir -p /app/logs
 RUN mkdir -p /app/data
 WORKDIR /app
 
-COPY target/scala-2.13/kolibri-base.0.1.0-alpha1.jar app.jar
+COPY target/scala-2.13/kolibri-base.0.1.0-alpha2.jar app.jar
 
 RUN addgroup -g ${KOLIBRI_USER_ID} ${KOLIBRI_USER} && \
     adduser -H -D  -u ${KOLIBRI_USER_ID} -G ${KOLIBRI_USER} ${KOLIBRI_USER} && \

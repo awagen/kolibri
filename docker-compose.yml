@@ -9,7 +9,7 @@ networks:
 
 services:
   kolibri1:
-    image: awagen/kolibri-base:0.1.0-alpha1
+    image: kolibri-base:0.1.0-alpha2
     ports:
       - "8000:8000"
     environment:
@@ -30,7 +30,7 @@ services:
         ipv4_address: 172.33.1.1
 
   kolibri2:
-    image: awagen/kolibri-base:0.1.0-alpha1
+    image: kolibri-base:0.1.0-alpha2
     environment:
       PROFILE: prod
       ROLES: compute
@@ -48,7 +48,7 @@ services:
 
 
   kolibri3:
-    image: awagen/kolibri-base:0.1.0-alpha1
+    image: kolibri-base:0.1.0-alpha2
     environment:
       PROFILE: prod
       ROLES: compute

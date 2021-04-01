@@ -17,7 +17,7 @@ val apacheCommonsIOVersion = "2.8.0"
 val macWireVersion = "2.3.7"
 
 ThisBuild / scalaVersion := "2.13.2"
-ThisBuild / version := "0.1.0-alpha1"
+ThisBuild / version := "0.1.0-alpha2"
 
 lazy val jvmOptions = Seq(
   "-Xms1G",
