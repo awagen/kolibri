@@ -18,7 +18,7 @@ package de.awagen.kolibri.base.actors.work.worker
 
 import akka.actor.ActorRef
 import akka.testkit.{ImplicitSender, TestKit, TestProbe}
-import de.awagen.kolibri.base.actors.work.worker.AggregatingActor.AggregationState
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.AggregationState
 import de.awagen.kolibri.base.actors.{KolibriTestKitNoCluster, TestMessages}
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import org.scalatest.BeforeAndAfterAll

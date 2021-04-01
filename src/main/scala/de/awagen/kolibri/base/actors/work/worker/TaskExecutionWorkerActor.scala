@@ -18,7 +18,7 @@ package de.awagen.kolibri.base.actors.work.worker
 
 import akka.actor.{Actor, ActorLogging, ActorRef, PoisonPill, Props}
 import de.awagen.kolibri.base.actors.work.worker.JobPartIdentifiers.JobPartIdentifier
-import de.awagen.kolibri.base.actors.work.worker.ResultMessages.ResultEvent
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{BadCorn, Corn}
 import de.awagen.kolibri.base.actors.work.worker.TaskExecutionWorkerActor.{ContinueExecution, ProcessTaskExecution}
 import de.awagen.kolibri.base.processing.execution.TaskExecution
 import de.awagen.kolibri.base.processing.execution.task.TaskStates.{Done, NoState, Running, TaskState}
@@ -63,13 +63,21 @@ class TaskExecutionWorkerActor[T] extends Actor with ActorLogging {
       result match {
         case Done(Left(failType: TaskFailType)) =>
           log.warning("failed task execution, failType: '{}'", failType)
-          sendingActor ! ResultEvent(Left(failType), this.partIdentifier, this.execution.currentData.getTagsForType(AGGREGATION))
+          val response = BadCorn(failType)
+          response.addTags(AGGREGATION, this.execution.currentData.getTagsForType(AGGREGATION))
+          sendingActor ! response
           self ! PoisonPill
         case Done(Right(_)) =>
           val result: Option[T] = execution.currentData.get(execution.resultKey)
           result match {
-            case Some(value) => sendingActor ! ResultEvent(Right(value), this.partIdentifier, this.execution.currentData.getTagsForType(AGGREGATION))
-            case None => sendingActor ! ResultEvent(Left(EmptyMetrics), this.partIdentifier, this.execution.currentData.getTagsForType(AGGREGATION))
+            case Some(value) =>
+              val response = Corn(value)
+              response.addTags(AGGREGATION, this.execution.currentData.getTagsForType(AGGREGATION))
+              sendingActor ! response
+            case None =>
+              val response = BadCorn(EmptyMetrics)
+              response.addTags(AGGREGATION, this.execution.currentData.getTagsForType(AGGREGATION))
+              sendingActor ! response
           }
           self ! PoisonPill
         case Running(future) =>
@@ -77,11 +85,15 @@ class TaskExecutionWorkerActor[T] extends Actor with ActorLogging {
             case Success(_) =>
               self.tell(ContinueExecution, sendingActor)
             case Failure(value) =>
-              self.tell(ResultEvent(Left(FailedByException(value)), this.partIdentifier, this.execution.currentData.getTagsForType(AGGREGATION)), sendingActor)
+              val response = BadCorn(FailedByException(value))
+              response.addTags(AGGREGATION, this.execution.currentData.getTagsForType(AGGREGATION))
+              self.tell(response, sendingActor)
           })
         case NoState =>
           log.warning(s"Process context seems to contain no tasks, no processing - tasks: ${execution.tasks}")
-          sendingActor ! ResultEvent(Left(NotExistingTask), this.partIdentifier, this.execution.currentData.getTagsForType(AGGREGATION))
+          val response = BadCorn(NotExistingTask)
+          response.addTags(AGGREGATION, this.execution.currentData.getTagsForType(AGGREGATION))
+          sendingActor ! response
           self ! PoisonPill
       }
   }

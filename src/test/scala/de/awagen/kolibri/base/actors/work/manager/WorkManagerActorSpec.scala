@@ -20,9 +20,8 @@ import akka.actor.ActorRef
 import akka.testkit.{TestKit, TestProbe}
 import de.awagen.kolibri.base.actors.work.manager.JobManagerActor.ACK
 import de.awagen.kolibri.base.actors.work.manager.WorkManagerActor.{TaskExecutionWithTypedResult, TasksWithTypedResult}
-import de.awagen.kolibri.base.actors.work.worker.AggregatingActor.AggregationState
 import de.awagen.kolibri.base.actors.work.worker.JobPartIdentifiers.BaseJobPartIdentifier
-import de.awagen.kolibri.base.actors.work.worker.ResultMessages.ResultEvent
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationState, Corn}
 import de.awagen.kolibri.base.actors.{KolibriTestKitNoCluster, TestMessages}
 import de.awagen.kolibri.base.processing.TestTaskHelper.{concatIdsTask, productIdResult, reverseIdsTask, reversedIdKey}
 import de.awagen.kolibri.base.processing.execution.SimpleTaskExecution
@@ -65,7 +64,7 @@ class WorkManagerActorSpec extends KolibriTestKitNoCluster
         case e => fail(s"instead of expected received: $e")
       }
       testProbe.expectMsgPF(2 second) {
-        case AggregationState(_, _, _) =>
+        case AggregationState(_, _, _, _) =>
           true
         case e => fail(s"instead of expected received: $e")
       }
@@ -85,8 +84,8 @@ class WorkManagerActorSpec extends KolibriTestKitNoCluster
       workManager.tell(msg, testProbe.ref)
       // then
       testProbe.expectMsgPF(2 seconds) {
-        case ResultEvent(Right(value), _, _) =>
-          value mustBe Right("12p,4p,3p")
+        case Corn(value) =>
+          value mustBe "12p,4p,3p"
         case other => fail(s"received message $other instead of expected success msg")
       }
     }
@@ -109,7 +108,7 @@ class WorkManagerActorSpec extends KolibriTestKitNoCluster
         BaseJobPartIdentifier(jobId = "testJob", batchNr = 1)), testProbe.ref)
       // then
       testProbe.expectMsgPF(2 seconds) {
-        case ResultEvent(Right(result), _, _) =>
+        case Corn(result) =>
           result mustBe "12p,4p,3p"
         case other => fail(s"received message $other instead of expected success msg")
       }

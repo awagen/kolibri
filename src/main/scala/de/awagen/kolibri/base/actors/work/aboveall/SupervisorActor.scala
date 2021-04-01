@@ -23,7 +23,7 @@ import akka.util.Timeout
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor._
 import de.awagen.kolibri.base.actors.work.manager.JobManagerActor
 import de.awagen.kolibri.base.actors.work.manager.JobManagerActor._
-import de.awagen.kolibri.base.actors.work.worker.ResultMessages.ResultSummary
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.ResultSummary
 import de.awagen.kolibri.base.actors.work.worker.TaskExecutionWorkerActor
 import de.awagen.kolibri.base.config.AppConfig._
 import de.awagen.kolibri.base.domain.jobdefinitions.Batch

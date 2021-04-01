@@ -19,14 +19,14 @@ package de.awagen.kolibri.base.domain.jobdefinitions
 
 import akka.stream.scaladsl.Flow
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor
-import de.awagen.kolibri.base.actors.work.worker.JobPartIdentifiers.BaseJobPartIdentifier
-import de.awagen.kolibri.base.actors.work.worker.ResultMessages.ResultEvent
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.Corn
 import de.awagen.kolibri.base.domain.jobdefinitions.provider.data.BatchGenerators.{IntNumberBatchGenerator, TaggedWrapper}
 import de.awagen.kolibri.base.http.server.BaseRoutes.logger
 import de.awagen.kolibri.base.io.writer.base.LocalDirectoryFileFileWriter
 import de.awagen.kolibri.base.processing.execution.expectation._
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnableSinkType
 import de.awagen.kolibri.datatypes.collections.IndexedGenerator
+import de.awagen.kolibri.datatypes.tagging.TagType.AGGREGATION
 import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}
 import de.awagen.kolibri.datatypes.types.SerializableCallable.{SerializableFunction1, SerializableSupplier}
 import de.awagen.kolibri.datatypes.values.AggregateValue
@@ -58,13 +58,17 @@ object TestJobDefinitions {
 
   def piEstimationJob(jobName: String, nrThrows: Int, batchSize: Int, resultDir: String): SupervisorActor.ProcessActorRunnableJobCmd[TaggedWrapper[Int], Map[Tag, AggregateValue[Double]]] = {
     assert(batchSize <= nrThrows)
-    val flowFunct: SerializableFunction1[TaggedWrapper[Int], ResultEvent[Double]] = taggedWrapper => {
+    val flowFunct: SerializableFunction1[TaggedWrapper[Int], Corn[Double]] = taggedWrapper => {
       val sq_rad = math.pow(math.random(), 2) + math.pow(math.random(), 2)
       if (sq_rad <= 1) {
-        ResultEvent(1.0, BaseJobPartIdentifier(jobName, taggedWrapper.batch), Set(StringTag("ALL"), StringTag("1")))
+        val corn = Corn(1.0)
+        corn.addTags(AGGREGATION, Set(StringTag("ALL"), StringTag("1")))
+        corn
       }
       else {
-        ResultEvent(0.0, BaseJobPartIdentifier(jobName, taggedWrapper.batch), Set(StringTag("ALL"), StringTag("0")))
+        val corn = Corn(0.0)
+        corn.addTags(AGGREGATION, Set(StringTag("ALL"), StringTag("0")))
+        corn
       }
     }
     val batchGenerator: SerializableFunction1[Int, IndexedGenerator[Batch[TaggedWrapper[Int]]]] = new SerializableFunction1[Int, IndexedGenerator[Batch[TaggedWrapper[Int]]]] {
@@ -73,7 +77,7 @@ object TestJobDefinitions {
     val expectationGen: SerializableFunction1[Int, ExecutionExpectation] = new SerializableFunction1[Int, ExecutionExpectation] {
       override def apply(v1: Int): ExecutionExpectation = BaseExecutionExpectation(
         fulfillAllForSuccess = Seq(ClassifyingCountExpectation(classifier = Map("finishResponse" -> {
-          case ResultEvent(e, _, _) if e.isInstanceOf[Double] => true
+          case Corn(e) if e.isInstanceOf[Double] => true
           case _ => false
         }), expectedClassCounts = Map("finishResponse" -> v1))),
         fulfillAnyForFail = Seq(StopExpectation(v1, {
@@ -86,7 +90,7 @@ object TestJobDefinitions {
       jobId = jobName,
       nrThrows.toInt,
       dataBatchGenerator = batchGenerator,
-      transformerFlow = Flow.fromFunction[TaggedWrapper[Int], ResultEvent[Double]](flowFunct),
+      transformerFlow = Flow.fromFunction[TaggedWrapper[Int], Corn[Double]](flowFunct),
       processingActorProps = None,
       expectationGenerator = expectationGen,
       aggregatorSupplier = new SerializableSupplier[Aggregator[Tag, Any, Map[Tag, AggregateValue[Double]]]] {

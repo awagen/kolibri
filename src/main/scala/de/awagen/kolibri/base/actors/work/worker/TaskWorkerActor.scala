@@ -18,7 +18,7 @@ package de.awagen.kolibri.base.actors.work.worker
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, PoisonPill, Props}
 import de.awagen.kolibri.base.actors.work.worker.JobPartIdentifiers.JobPartIdentifier
-import de.awagen.kolibri.base.actors.work.worker.ResultMessages.ResultEvent
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{BadCorn, Corn, ProcessingMessage}
 import de.awagen.kolibri.base.actors.work.worker.TaskWorkerActor._
 import de.awagen.kolibri.base.processing.execution.task.Task
 import de.awagen.kolibri.base.processing.execution.task.TaskStates.{Done, Running, TaskState}
@@ -107,11 +107,14 @@ class TaskWorkerActor[T] extends Actor with ActorLogging {
       taskStates = taskStates.updated(taskStates.size - 1, Done(Right(value)))
       currentTaskIndex += 1
       if (currentTaskIndex >= tasks.size) {
-        val result: Either[TaskFailType, T] = data.get(resultKey) match {
-          case Some(value) => Right(value)
-          case None => Left(MissingResultKey(resultKey))
+        val result: ProcessingMessage[Any] = data.get(resultKey) match {
+          case Some(value) =>
+            Corn(value)
+          case None =>
+            BadCorn(MissingResultKey(resultKey))
         }
-        executionRequestor ! ResultEvent(Right(result), this.partIdentifier, this.data.getTagsForType(AGGREGATION))
+        result.addTags(AGGREGATION, this.data.getTagsForType(AGGREGATION))
+        executionRequestor ! result
         self ! PoisonPill
       }
       else {
@@ -119,11 +122,15 @@ class TaskWorkerActor[T] extends Actor with ActorLogging {
       }
     case ProcessingFailed(throwable) =>
       taskStates = taskStates.updated(taskStates.size - 1, Done(Left(FailedByException(throwable))))
-      executionRequestor ! ResultEvent(Left(FailedByException(throwable)), this.partIdentifier, this.data.getTagsForType(AGGREGATION))
+      val response = BadCorn(FailedByException(throwable))
+      response.addTags(AGGREGATION, this.data.getTagsForType(AGGREGATION))
+      executionRequestor ! response
       self ! PoisonPill
     case TaskFailed(failType) =>
       taskStates = taskStates.updated(taskStates.size - 1, Done(Left(failType)))
-      executionRequestor ! ResultEvent(Left(failType), this.partIdentifier, this.data.getTagsForType(AGGREGATION))
+      val response = BadCorn(failType)
+      response.addTags(AGGREGATION, this.data.getTagsForType(AGGREGATION))
+      executionRequestor ! response
       self ! PoisonPill
     case other =>
       log.warning(s"waiting to continue processing, but received message $other, ignoring")

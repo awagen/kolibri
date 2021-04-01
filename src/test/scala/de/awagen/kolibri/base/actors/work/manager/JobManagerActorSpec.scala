@@ -21,10 +21,10 @@ import akka.cluster.Cluster
 import akka.management.cluster.bootstrap.ClusterBootstrap
 import akka.management.scaladsl.AkkaManagement
 import akka.testkit.{TestKit, TestProbe}
-import de.awagen.kolibri.base.actors.TestMessages.{TaggedInt, TestMsg, messagesToActorRefRunnableGenFunc}
+import de.awagen.kolibri.base.actors.TestMessages.{TaggedInt, messagesToActorRefRunnableGenFunc}
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.{FinishedJobEvent, ProcessingResult}
 import de.awagen.kolibri.base.actors.work.manager.JobManagerActor.ProcessJobCmd
-import de.awagen.kolibri.base.actors.work.worker.ResultMessages.ResultSummary
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{Corn, ResultSummary}
 import de.awagen.kolibri.base.actors.{KolibriTestKit, TestMessages}
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnable
 import de.awagen.kolibri.datatypes.collections.{BaseIndexedGenerator, IndexedGenerator}
@@ -66,12 +66,12 @@ class JobManagerActorSpec extends KolibriTestKit
       val testProbe: TestProbe = TestProbe()
       val managerProps = JobManagerActor.props(experimentId = "testId", runningTaskBaselineCount = 10, aggregatorSupplier = new SerializableSupplier[Aggregator[Tag, Any, Map[Tag, Double]]] {
         override def get(): Aggregator[Tag, Any, Map[Tag, Double]] = BaseAnyAggregator(
-          new Aggregator[Tag, TestMsg, Map[Tag, Double]]() {
+          new Aggregator[Tag, Corn[Int], Map[Tag, Double]]() {
             val map: mutable.Map[Tag, Double] = mutable.Map.empty
 
-            override def add(keys: Set[Tag], sample: TestMsg): Unit = {
+            override def add(keys: Set[Tag], sample: Corn[Int]): Unit = {
               keys.foreach(x => {
-                map(x) = map.getOrElse(x, 0.0) + sample.nr
+                map(x) = map.getOrElse(x, 0.0) + sample.data
               })
             }
 
@@ -86,12 +86,12 @@ class JobManagerActorSpec extends KolibriTestKit
         )
       }, writer = (_: Map[Tag, Double], _: Tag) => Right(()), maxProcessDuration = 10 minutes, maxBatchDuration = 1 minute)
       val jobManagerActor: ActorRef = system.actorOf(managerProps)
-      val jobGenerator: IndexedGenerator[ActorRunnable[TaggedInt, TestMessages.TestMsg, Map[Tag, Double]]] = BaseIndexedGenerator(
+      val jobGenerator: IndexedGenerator[ActorRunnable[TaggedInt, Corn[Int], Map[Tag, Double]]] = BaseIndexedGenerator(
         nrOfElements = 4,
         genFunc = x => Some(messagesToActorRefRunnableGenFunc.apply(x))
       )
       // when
-      val msg: ProcessJobCmd[TaggedInt, TestMsg, Map[Tag, Double]] = ProcessJobCmd(job = jobGenerator)
+      val msg: ProcessJobCmd[TaggedInt, Corn[Int], Map[Tag, Double]] = ProcessJobCmd(job = jobGenerator)
       jobManagerActor.tell(msg, testProbe.ref)
       val expectedResult = ResultSummary(
         result = ProcessingResult.SUCCESS,

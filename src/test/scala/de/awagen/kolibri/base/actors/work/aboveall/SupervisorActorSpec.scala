@@ -24,7 +24,7 @@ import akka.testkit.{ImplicitSender, TestKit}
 import de.awagen.kolibri.base.actors.KolibriTestKit
 import de.awagen.kolibri.base.actors.TestMessages.{generateProcessActorRunnableJobCmd, generateProcessActorRunnableTaskJobCmd}
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.{FinishedJobEvent, ProcessingResult}
-import de.awagen.kolibri.base.actors.work.worker.ResultMessages.ResultSummary
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.ResultSummary
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike

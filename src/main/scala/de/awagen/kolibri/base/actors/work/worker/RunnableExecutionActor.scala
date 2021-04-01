@@ -20,8 +20,9 @@ import akka.Done
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, PoisonPill, Props}
 import akka.stream.UniqueKillSwitch
 import akka.stream.scaladsl.RunnableGraph
-import de.awagen.kolibri.base.actors.work.worker.AggregatingActor.{AggregationState, ProvideStateAndStop, ReportResults}
+import de.awagen.kolibri.base.actors.work.worker.AggregatingActor.{ProvideStateAndStop, ReportResults}
 import de.awagen.kolibri.base.actors.work.worker.JobPartIdentifiers.BaseJobPartIdentifier
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.AggregationState
 import de.awagen.kolibri.base.actors.work.worker.RunnableExecutionActor.{ProvideAggregationState, RunnableHousekeeping}
 import de.awagen.kolibri.base.config.AppConfig.config
 import de.awagen.kolibri.base.processing.execution.expectation.{BaseExecutionExpectation, ExecutionExpectation, Expectation, ReceiveCountExpectation, TimeExpectation}

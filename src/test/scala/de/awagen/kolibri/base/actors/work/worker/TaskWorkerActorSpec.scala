@@ -20,7 +20,7 @@ import akka.actor.ActorRef
 import akka.testkit.{ImplicitSender, TestKit}
 import de.awagen.kolibri.base.actors.KolibriTestKitNoCluster
 import de.awagen.kolibri.base.actors.work.worker.JobPartIdentifiers.BaseJobPartIdentifier
-import de.awagen.kolibri.base.actors.work.worker.ResultMessages.ResultEvent
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.Corn
 import de.awagen.kolibri.base.actors.work.worker.TaskWorkerActor.ProcessTasks
 import de.awagen.kolibri.base.domain.TaskDataKeys
 import de.awagen.kolibri.base.processing.TestTaskHelper.{concatIdsTask, productIdResult, reverseIdsTask, reversedIdKey}
@@ -64,8 +64,8 @@ class TaskWorkerActorSpec extends KolibriTestKitNoCluster
       workerActor ! msg
       // then
       expectMsgPF(2 seconds) {
-        case ResultEvent(Right(result), _, _) =>
-          result mustBe Right("12p,4p,3p")
+        case Corn(result) =>
+          result mustBe "12p,4p,3p"
         case other => fail(s"received message $other instead of expected success msg")
       }
     }

@@ -17,18 +17,28 @@
 package de.awagen.kolibri.base.actors.work.worker
 
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.ProcessingResult
-import de.awagen.kolibri.base.actors.work.worker.JobPartIdentifiers.JobPartIdentifier
 import de.awagen.kolibri.base.processing.execution.expectation.ExecutionExpectation
+import de.awagen.kolibri.base.processing.failure.TaskFailType.TaskFailType
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
+import de.awagen.kolibri.datatypes.tagging.TaggedWithType
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 
-object ResultMessages {
+object ProcessingMessages {
 
-  trait ResultMessage extends KolibriSerializable {
-    val partIdentifier: JobPartIdentifier
+  trait ProcessingMessage[+T] extends KolibriSerializable with TaggedWithType[Tag] {
+    val data: T
   }
 
-  case class ResultEvent[T](result: T, partIdentifier: JobPartIdentifier, tags: Set[Tag]) extends ResultMessage
+  trait BatchProcessingMessage[+T] extends KolibriSerializable with ProcessingMessage[T] {
+    val jobID: String
+    val batchNr: Int
+  }
+
+  case class Corn[+T](data: T) extends ProcessingMessage[T]
+
+  case class BadCorn(data: TaskFailType) extends ProcessingMessage[TaskFailType]
+
+  case class AggregationState[+V](data: V, jobID: String, batchNr: Int, executionExpectation: ExecutionExpectation) extends BatchProcessingMessage[V]
 
   case class ResultSummary(result: ProcessingResult.Value,
                            nrOfBatchesTotal: Int,

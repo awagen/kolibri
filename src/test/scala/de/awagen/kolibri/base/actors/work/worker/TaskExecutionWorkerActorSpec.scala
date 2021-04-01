@@ -20,7 +20,7 @@ import akka.actor.ActorRef
 import akka.testkit.{ImplicitSender, TestKit}
 import de.awagen.kolibri.base.actors.KolibriTestKitNoCluster
 import de.awagen.kolibri.base.actors.work.worker.JobPartIdentifiers.BaseJobPartIdentifier
-import de.awagen.kolibri.base.actors.work.worker.ResultMessages.ResultEvent
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.Corn
 import de.awagen.kolibri.base.actors.work.worker.TaskExecutionWorkerActor.ProcessTaskExecution
 import de.awagen.kolibri.base.processing.TestTaskHelper._
 import de.awagen.kolibri.base.processing.execution.task.Task
@@ -70,7 +70,7 @@ class TaskExecutionWorkerActorSpec extends KolibriTestKitNoCluster
       executionWorker ! msg
       // then
       expectMsgPF(2 seconds) {
-        case ResultEvent(Right(result), _, _) =>
+        case Corn(result) =>
           result mustBe "12p,4p,3p"
         case other => fail(s"received message $other instead of expected success msg")
       }
@@ -94,7 +94,7 @@ class TaskExecutionWorkerActorSpec extends KolibriTestKitNoCluster
       ExecutionWorker ! msg
       // then
       expectMsgPF(2 seconds) {
-        case ResultEvent(Right(result), _, _) =>
+        case Corn(result) =>
           result mustBe "12p,4p,3p"
         case other => fail(s"received message $other instead of expected success msg")
       }

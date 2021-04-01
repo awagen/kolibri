@@ -3,7 +3,7 @@ import sbt.url
 
 val sl4jApiVersion = "1.7.30"
 val scalaTestVersion = "3.2.2"
-val kolibriDatatypesVersion = "0.1.0-alpha1"
+val kolibriDatatypesVersion = "0.1.0-alpha2"
 
 val akkaVersion = "2.6.12"
 val akkaContribVersion = "2.5.31"
