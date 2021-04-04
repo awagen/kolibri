@@ -18,24 +18,41 @@ package de.awagen.kolibri.datatypes.values.aggregation
 
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricsHelper.{metricRecord1, metricRecord2, metricRecord3, metricRecord4}
 import de.awagen.kolibri.datatypes.stores.{MetricDocument, MetricRow}
-import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}
+import de.awagen.kolibri.datatypes.tagging.TagType.AGGREGATION
+import de.awagen.kolibri.datatypes.tagging.{TaggedWithType, Tags}
+import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.testclasses.UnitTestSpec
+import de.awagen.kolibri.datatypes.types.DataStore
 import de.awagen.kolibri.datatypes.utils.MathUtils
 import de.awagen.kolibri.datatypes.values.AggregateValue
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.{Aggregator, TagKeyMetricDocumentPerClassAggregator, TagKeyRunningDoubleAvgPerClassAggregator}
+import de.awagen.kolibri.datatypes.tagging.Tags.StringTag
 
 class AggregatorsSpec extends UnitTestSpec {
+
+  case class TaggedData[T](data: T) extends TaggedWithType[Tag] with DataStore[T] {
+
+    def withAggregationTags(tags: Set[Tag]): TaggedData[T] = {
+      this.addTags(AGGREGATION, tags)
+      this
+    }
+
+  }
 
   "TagKeyRunningDoubleAvgAggregator" must {
 
     "correctly add values" in {
       // given
-      val aggregator: Aggregator[Tag, Double, Map[Tag, AggregateValue[Double]]] = new TagKeyRunningDoubleAvgPerClassAggregator()
+      val aggregator: Aggregator[TaggedWithType[Tag] with DataStore[Double], Map[Tag, AggregateValue[Double]]] = new TagKeyRunningDoubleAvgPerClassAggregator()
       // when
-      aggregator.add(Set(StringTag("t1"), StringTag("t2")), 1)
-      aggregator.add(Set(StringTag("t1"), StringTag("t2")), 3)
-      aggregator.add(Set(StringTag("t2")), 2)
-      aggregator.add(Set(StringTag("t1")), 0)
+      val v1 = TaggedData[Double](1).withAggregationTags(Set(StringTag("t1"), StringTag("t2")))
+      val v2 = TaggedData[Double](3).withAggregationTags(Set(StringTag("t1"), StringTag("t2")))
+      val v3 = TaggedData[Double](2).withAggregationTags(Set(StringTag("t2")))
+      val v4 = TaggedData[Double](0).withAggregationTags(Set(StringTag("t1")))
+      aggregator.add(v1)
+      aggregator.add(v2)
+      aggregator.add(v3)
+      aggregator.add(v4)
       // then
       val value1: AggregateValue[Double] = aggregator.aggregation(StringTag("t1"))
       val value2: AggregateValue[Double] = aggregator.aggregation(StringTag("t2"))
@@ -48,18 +65,26 @@ class AggregatorsSpec extends UnitTestSpec {
 
     "correctly add other AggregateValues" in {
       // given
-      val aggregator1: Aggregator[Tag, Double, Map[Tag, AggregateValue[Double]]] = new TagKeyRunningDoubleAvgPerClassAggregator()
-      val aggregator2: Aggregator[Tag, Double, Map[Tag, AggregateValue[Double]]] = new TagKeyRunningDoubleAvgPerClassAggregator()
+      val aggregator1: Aggregator[TaggedWithType[Tag] with DataStore[Double], Map[Tag, AggregateValue[Double]]] = new TagKeyRunningDoubleAvgPerClassAggregator()
+      val aggregator2: Aggregator[TaggedWithType[Tag] with DataStore[Double], Map[Tag, AggregateValue[Double]]] = new TagKeyRunningDoubleAvgPerClassAggregator()
       // when
-      aggregator1.add(Set(StringTag("t1"), StringTag("t2")), 1)
-      aggregator1.add(Set(StringTag("t1"), StringTag("t2")), 3)
-      aggregator1.add(Set(StringTag("t2")), 2)
-      aggregator1.add(Set(StringTag("t1")), 0)
-      aggregator2.add(Set(StringTag("t1"), StringTag("t2")), 4)
-      aggregator2.add(Set(StringTag("t1"), StringTag("t2")), 0)
-      aggregator2.add(Set(StringTag("t2")), 1)
-      aggregator2.add(Set(StringTag("t1")), 1)
-      aggregator1.add(aggregator2.aggregation)
+      val v1 = TaggedData[Double](1).withAggregationTags(Set(StringTag("t1"), StringTag("t2")))
+      val v2 = TaggedData[Double](3).withAggregationTags(Set(StringTag("t1"), StringTag("t2")))
+      val v3 = TaggedData[Double](2).withAggregationTags(Set(StringTag("t2")))
+      val v4 = TaggedData[Double](0).withAggregationTags(Set(StringTag("t1")))
+      val v5 = TaggedData[Double](4).withAggregationTags(Set(StringTag("t1"), StringTag("t2")))
+      val v6 = TaggedData[Double](0).withAggregationTags(Set(StringTag("t1"), StringTag("t2")))
+      val v7 = TaggedData[Double](1).withAggregationTags(Set(StringTag("t2")))
+      val v8 = TaggedData[Double](1).withAggregationTags(Set(StringTag("t1")))
+      aggregator1.add(v1)
+      aggregator1.add(v2)
+      aggregator1.add(v3)
+      aggregator1.add(v4)
+      aggregator2.add(v5)
+      aggregator2.add(v6)
+      aggregator2.add(v7)
+      aggregator2.add(v8)
+      aggregator1.addAggregate(aggregator2.aggregation)
       // then
       val value1: AggregateValue[Double] = aggregator1.aggregation(StringTag("t1"))
       val value2: AggregateValue[Double] = aggregator1.aggregation(StringTag("t2"))
@@ -78,10 +103,14 @@ class AggregatorsSpec extends UnitTestSpec {
       // given
       val aggregator = new TagKeyMetricDocumentPerClassAggregator()
       // when
-      aggregator.add(Set(StringTag("test1")), metricRecord1)
-      aggregator.add(Set(StringTag("test2")), metricRecord2)
-      aggregator.add(Set(StringTag("test2")), metricRecord3)
-      aggregator.add(Set(StringTag("test3")), metricRecord4)
+      val v1 = TaggedData[MetricRow](metricRecord1).withAggregationTags(Set(StringTag("test1")))
+      val v2 = TaggedData[MetricRow](metricRecord2).withAggregationTags(Set(StringTag("test2")))
+      val v3 = TaggedData[MetricRow](metricRecord3).withAggregationTags(Set(StringTag("test2")))
+      val v4 = TaggedData[MetricRow](metricRecord4).withAggregationTags(Set(StringTag("test3")))
+      aggregator.add(v1)
+      aggregator.add(v2)
+      aggregator.add(v3)
+      aggregator.add(v4)
       val r1: MetricRow = aggregator.aggregation(StringTag("test1")).rows(Map.empty)
       val r2: MetricRow = aggregator.aggregation(StringTag("test2")).rows(Map.empty)
       val r3: MetricRow = aggregator.aggregation(StringTag("test3")).rows(Map.empty)
@@ -103,11 +132,13 @@ class AggregatorsSpec extends UnitTestSpec {
       val aggregator1 = new TagKeyMetricDocumentPerClassAggregator()
       val aggregator2 = new TagKeyMetricDocumentPerClassAggregator()
       // when
-      aggregator1.add(Set(StringTag("test1")), metricRecord1)
-      aggregator2.add(Set(StringTag("test2")), metricRecord2)
-      aggregator2.add(Set(StringTag("test2")), metricRecord3)
-      aggregator1.add(aggregator2.aggregation)
-
+      val v1 = TaggedData[MetricRow](metricRecord1).withAggregationTags(Set(StringTag("test1")))
+      val v2 = TaggedData[MetricRow](metricRecord2).withAggregationTags(Set(StringTag("test2")))
+      val v3 = TaggedData[MetricRow](metricRecord3).withAggregationTags(Set(StringTag("test2")))
+      aggregator1.add(v1)
+      aggregator2.add(v2)
+      aggregator2.add(v3)
+      aggregator1.addAggregate(aggregator2.aggregation)
       val r1: MetricDocument[Tag] = aggregator1.aggregation(StringTag("test1"))
       val r2: MetricDocument[Tag] = aggregator1.aggregation(StringTag("test2"))
       val expectedR1: MetricDocument[Tag] = MetricDocument.empty[Tag](StringTag("test1"))
