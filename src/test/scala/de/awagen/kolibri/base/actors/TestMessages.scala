@@ -47,9 +47,7 @@ object TestMessages {
   val log: Logger = LoggerFactory.getLogger(TestMessages.getClass)
 
   def messagesToActorRefRunnable(): ActorRunnable[Int, Int, Int, Map[Tag, Double]] = ActorRunnable(jobId = "test", batchNr = 1, supplier = BaseIndexedGenerator(11, x => Some(x)), transformer = Flow.fromFunction[Int, Corn[Int]](x => Corn(x + 10)), processingActorProps = Some(Props(TestTransformActor(m => {
-    val corn = Corn(m.data)
-    corn.addTags(AGGREGATION, Set(StringTag("ALL")))
-    corn
+    Corn(m.data).withTags(AGGREGATION, Set(StringTag("ALL")))
   }))), expectationGenerator = _ => BaseExecutionExpectation(
     fulfillAllForSuccess = Seq(ReceiveCountExpectation(Map(
       Range(0, 11, 1).map(x => Corn(x + 10) -> 1): _*
@@ -68,16 +66,13 @@ object TestMessages {
 
   val expectedValuesForMessagesToActorRefRunnable: immutable.Seq[Corn[Int]] = Range(0, 11, 1).map(x => Corn(x + 11))
 
-  val msg1: ActorRunnable[Int, Int, Int, Map[Tag, Double]] = ActorRunnable(jobId = "test", batchNr = 1, supplier = BaseIndexedGenerator(11, x => Some(x)), transformer = Flow.fromFunction[Int, Corn[Int]](x => {
-    val corn = Corn(x + 10)
-    corn.addTags(AGGREGATION, Set(StringTag("ALL")))
-    corn
+  val msg1: ActorRunnable[Int, Int, Int, Map[Tag, Double]] = ActorRunnable(jobId = "test", batchNr = 1, supplier = BaseIndexedGenerator(11, x => Some(x)), transformer = Flow.fromFunction[Int, ProcessingMessage[Int]](x => {
+    Corn(x + 10).withTags(AGGREGATION, Set(StringTag("ALL")))
   }),
     processingActorProps = None, expectationGenerator = _ => BaseExecutionExpectation(
       fulfillAllForSuccess = Seq(ReceiveCountExpectation(Map(
         Range(0, 11, 1).map(x => {
-          val corn = Corn(x + 10)
-          corn.addTags(AGGREGATION, Set(StringTag("ALL")))
+          val corn = Corn(x + 10).withTags(AGGREGATION, Set(StringTag("ALL")))
           corn -> 1
         }): _*
       ))),
@@ -101,14 +96,10 @@ object TestMessages {
     ActorRunnable(jobId = "test", batchNr = x,
       supplier = BaseIndexedGenerator(3, y => Some(TaggedInt(y + x))),
       transformer = Flow.fromFunction[TaggedInt, ProcessingMessage[Int]](z => {
-        val corn = Corn(z.value)
-        corn.addTags(AGGREGATION, z.getTagsForType(AGGREGATION))
-        corn
+        Corn(z.value).withTags(AGGREGATION, z.getTagsForType(AGGREGATION))
       }),
       processingActorProps = Some(Props(TestTransformActor(m => {
-        val corn = Corn(m.data + 1)
-        corn.addTags(AGGREGATION, Set(StringTag("ALL")))
-        corn
+        Corn(m.data + 1).withTags(AGGREGATION, Set(StringTag("ALL")))
       }))),
       expectationGenerator = _ => BaseExecutionExpectation(
         fulfillAllForSuccess = Seq(ReceiveCountExpectation(Map(

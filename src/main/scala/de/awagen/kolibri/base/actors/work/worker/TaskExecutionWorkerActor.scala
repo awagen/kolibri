@@ -71,8 +71,7 @@ class TaskExecutionWorkerActor[T] extends Actor with ActorLogging {
       result match {
         case Done(Left(failType: TaskFailType)) =>
           log.warning("failed task execution, failType: '{}'", failType)
-          val response = BadCorn(failType)
-          response.addTags(AGGREGATION, this.execution.currentData.getTagsForType(AGGREGATION))
+          val response = BadCorn(failType).withTags(AGGREGATION, this.execution.currentData.getTagsForType(AGGREGATION))
           sendingActor ! response
           self ! PoisonPill
         case Done(Right(_)) =>
@@ -92,14 +91,12 @@ class TaskExecutionWorkerActor[T] extends Actor with ActorLogging {
             case Success(_) =>
               self.tell(ContinueExecution, sendingActor)
             case Failure(value) =>
-              val response = BadCorn(FailedByException(value))
-              response.addTags(AGGREGATION, this.execution.currentData.getTagsForType(AGGREGATION))
+              val response = BadCorn(FailedByException(value)).withTags(AGGREGATION, this.execution.currentData.getTagsForType(AGGREGATION))
               self.tell(response, sendingActor)
           })
         case NoState =>
           log.warning(s"Process context seems to contain no tasks, no processing - tasks: ${execution.tasks}")
-          val response = BadCorn(NotExistingTask)
-          response.addTags(AGGREGATION, this.execution.currentData.getTagsForType(AGGREGATION))
+          val response = BadCorn(NotExistingTask).withTags(AGGREGATION, this.execution.currentData.getTagsForType(AGGREGATION))
           sendingActor ! response
           self ! PoisonPill
       }

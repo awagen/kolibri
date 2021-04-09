@@ -125,14 +125,12 @@ class TaskWorkerActor[T] extends Actor with ActorLogging {
       }
     case ProcessingFailed(throwable) =>
       taskStates = taskStates.updated(taskStates.size - 1, Done(Left(FailedByException(throwable))))
-      val response = BadCorn(FailedByException(throwable))
-      response.addTags(AGGREGATION, this.data.getTagsForType(AGGREGATION))
+      val response = BadCorn(FailedByException(throwable)).withTags(AGGREGATION, this.data.getTagsForType(AGGREGATION))
       executionRequestor ! response
       self ! PoisonPill
     case TaskFailed(failType) =>
       taskStates = taskStates.updated(taskStates.size - 1, Done(Left(failType)))
-      val response = BadCorn(failType)
-      response.addTags(AGGREGATION, this.data.getTagsForType(AGGREGATION))
+      val response = BadCorn(failType).withTags(AGGREGATION, this.data.getTagsForType(AGGREGATION))
       executionRequestor ! response
       self ! PoisonPill
     case other =>

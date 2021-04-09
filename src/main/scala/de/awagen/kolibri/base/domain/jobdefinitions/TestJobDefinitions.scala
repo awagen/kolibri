@@ -59,17 +59,13 @@ object TestJobDefinitions {
 
   def piEstimationJob(jobName: String, nrThrows: Int, batchSize: Int, resultDir: String): SupervisorActor.ProcessActorRunnableJobCmd[Int, Double, Double, Map[Tag, AggregateValue[Double]]] = {
     assert(batchSize <= nrThrows)
-    val flowFunct: SerializableFunction1[Int, Corn[Double]] = _ => {
+    val flowFunct: SerializableFunction1[Int, ProcessingMessage[Double]] = _ => {
       val sq_rad = math.pow(math.random(), 2) + math.pow(math.random(), 2)
       if (sq_rad <= 1) {
-        val corn = Corn(1.0)
-        corn.addTags(AGGREGATION, Set(StringTag("ALL"), StringTag("1")))
-        corn
+        Corn(1.0).withTags(AGGREGATION, Set(StringTag("ALL"), StringTag("1")))
       }
       else {
-        val corn = Corn(0.0)
-        corn.addTags(AGGREGATION, Set(StringTag("ALL"), StringTag("0")))
-        corn
+        Corn(0.0).withTags(AGGREGATION, Set(StringTag("ALL"), StringTag("0")))
       }
     }
     val batchGenerator: SerializableFunction1[Int, IndexedGenerator[Batch[Int]]] = new SerializableFunction1[Int, IndexedGenerator[Batch[Int]]] {
@@ -91,7 +87,7 @@ object TestJobDefinitions {
       jobId = jobName,
       nrThrows.toInt,
       dataBatchGenerator = batchGenerator,
-      transformerFlow = Flow.fromFunction[Int, Corn[Double]](flowFunct),
+      transformerFlow = Flow.fromFunction[Int, ProcessingMessage[Double]](flowFunct),
       processingActorProps = None,
       expectationGenerator = expectationGen,
       aggregatorSupplier = new SerializableSupplier[Aggregator[ProcessingMessage[Double], Map[Tag, AggregateValue[Double]]]] {

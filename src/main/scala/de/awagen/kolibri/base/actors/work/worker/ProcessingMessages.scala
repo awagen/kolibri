@@ -20,6 +20,7 @@ import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.ProcessingRes
 import de.awagen.kolibri.base.processing.execution.expectation.ExecutionExpectation
 import de.awagen.kolibri.base.processing.failure.TaskFailType.TaskFailType
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
+import de.awagen.kolibri.datatypes.tagging.TagType.TagType
 import de.awagen.kolibri.datatypes.tagging.TaggedWithType
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.types.DataStore
@@ -28,6 +29,11 @@ object ProcessingMessages {
 
   trait ProcessingMessage[+T] extends KolibriSerializable with TaggedWithType[Tag] with DataStore[T] {
     val data: T
+
+    def withTags(tagType: TagType, tags: Set[Tag]): ProcessingMessage[T] = {
+      this.addTags(tagType, tags)
+      this
+    }
   }
 
   trait BatchProcessingMessage[+T] extends KolibriSerializable with ProcessingMessage[T] {
