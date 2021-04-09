@@ -34,7 +34,7 @@ class TestActorRunnableActor() extends Actor with ActorLogging {
   implicit val ec: ExecutionContextExecutor = system.dispatcher
 
   val readyForJob: Receive = {
-    case e: ActorRunnable[_, _, _] =>
+    case e: ActorRunnable[_, _, _,_] =>
       val actorConfig = JobActorConfig(self, immutable.Map(ActorType.ACTOR_SINK -> sender()))
       val runnableGraph = e.getRunnableGraph(actorConfig)
       runnableGraph.run()

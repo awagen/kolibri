@@ -29,10 +29,10 @@ import de.awagen.kolibri.datatypes.mutable.stores.{TypeTaggedMap, TypedMapStore}
 import de.awagen.kolibri.datatypes.tagging.TagType.AGGREGATION
 import de.awagen.kolibri.datatypes.tagging.TaggedWithType
 import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}
+import de.awagen.kolibri.datatypes.tagging.TypeTaggedMapImplicits._
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
-import de.awagen.kolibri.datatypes.tagging.TypeTaggedMapImplicits._
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
@@ -58,10 +58,10 @@ class TaskExecutionWorkerActorSpec extends KolibriTestKitNoCluster
       val data: TypeTaggedMap with TaggedWithType[Tag] = TypedMapStore.empty.toTaggedWithTypeMap
       data.addTag(AGGREGATION, StringTag("ALL"))
       data.put(productIdResult.typed, Seq("p3", "p4", "p21"))
-      val tasks: Seq[Task[_]] = Seq(concatIdsTask, reverseIdsTask)
+      val tasks: Seq[Task[_]] = Seq(concatIdsTask, reverseIdsTaskPM)
       val taskExecution: TaskExecution[String] = SimpleTaskExecution(
-        resultKey = reversedIdKey.typed,
-        data.toTaggedWithTypeMap,
+        resultKey = reversedIdKeyPM.typed,
+        data,
         tasks
       )
       val msg = ProcessTaskExecution(taskExecution, BaseJobPartIdentifier("testJob", 1))
@@ -85,7 +85,7 @@ class TaskExecutionWorkerActorSpec extends KolibriTestKitNoCluster
       data.put(productIdResult.typed, Seq("p3", "p4", "p21"))
       val tasks: Seq[Task[_]] = Seq(concatIdsTask, asyncReverseIdsTask)
       val taskExecution: TaskExecution[String] = SimpleTaskExecution(
-        resultKey = reversedIdKey.typed,
+        resultKey = reversedIdKeyPM.typed,
         data.toTaggedWithTypeMap,
         tasks
       )

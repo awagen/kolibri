@@ -22,10 +22,11 @@ import de.awagen.kolibri.base.processing.failure.TaskFailType.TaskFailType
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.tagging.TaggedWithType
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
+import de.awagen.kolibri.datatypes.types.DataStore
 
 object ProcessingMessages {
 
-  trait ProcessingMessage[+T] extends KolibriSerializable with TaggedWithType[Tag] {
+  trait ProcessingMessage[+T] extends KolibriSerializable with TaggedWithType[Tag] with DataStore[T] {
     val data: T
   }
 
@@ -36,7 +37,9 @@ object ProcessingMessages {
 
   case class Corn[+T](data: T) extends ProcessingMessage[T]
 
-  case class BadCorn(data: TaskFailType) extends ProcessingMessage[TaskFailType]
+  case class BadCorn[+T](failType: TaskFailType) extends ProcessingMessage[T] {
+    override val data: T = null.asInstanceOf[T]
+  }
 
   case class AggregationState[+V](data: V, jobID: String, batchNr: Int, executionExpectation: ExecutionExpectation) extends BatchProcessingMessage[V]
 

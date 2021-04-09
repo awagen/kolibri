@@ -18,7 +18,7 @@ package de.awagen.kolibri.base.actors.work.worker
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, PoisonPill, Props}
 import de.awagen.kolibri.base.actors.work.worker.JobPartIdentifiers.JobPartIdentifier
-import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{BadCorn, Corn, ProcessingMessage}
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{BadCorn, ProcessingMessage}
 import de.awagen.kolibri.base.actors.work.worker.TaskWorkerActor._
 import de.awagen.kolibri.base.processing.execution.task.Task
 import de.awagen.kolibri.base.processing.execution.task.TaskStates.{Done, Running, TaskState}
@@ -38,7 +38,10 @@ object TaskWorkerActor {
 
   def props[T]: Props = Props[TaskWorkerActor[T]]
 
-  case class ProcessTasks[T](data: TypeTaggedMap with TaggedWithType[Tag], tasks: Seq[Task[_]], finalResultKey: ClassTyped[T], identifier: JobPartIdentifier)
+  case class ProcessTasks[T](data: TypeTaggedMap with TaggedWithType[Tag],
+                             tasks: Seq[Task[_]],
+                             finalResultKey: ClassTyped[ProcessingMessage[T]],
+                             identifier: JobPartIdentifier)
     extends InternalProcessingCmd
 
   sealed trait InternalProcessingCmd extends KolibriSerializable
@@ -67,7 +70,7 @@ class TaskWorkerActor[T] extends Actor with ActorLogging {
   var data: TypeTaggedMap with TaggedWithType[Tag] = _
   var tasks: Seq[Task[_]] = _
   var executionRequestor: ActorRef = _
-  var resultKey: ClassTyped[T] = _
+  var resultKey: ClassTyped[ProcessingMessage[T]] = _
   var partIdentifier: JobPartIdentifier = _
 
 
@@ -94,7 +97,7 @@ class TaskWorkerActor[T] extends Actor with ActorLogging {
       this.executionRequestor = sender()
       this.data = data
       this.tasks = tasks
-      this.resultKey = resultKey.asInstanceOf[ClassTyped[T]]
+      this.resultKey = resultKey.asInstanceOf[ClassTyped[ProcessingMessage[T]]]
       this.partIdentifier = identifier
       context become processing
       process(data, tasks)
@@ -109,7 +112,7 @@ class TaskWorkerActor[T] extends Actor with ActorLogging {
       if (currentTaskIndex >= tasks.size) {
         val result: ProcessingMessage[Any] = data.get(resultKey) match {
           case Some(value) =>
-            Corn(value)
+            value
           case None =>
             BadCorn(MissingResultKey(resultKey))
         }

@@ -22,6 +22,7 @@ import de.awagen.kolibri.base.actors.work.manager.WorkManagerActor.ExecutionType
 import de.awagen.kolibri.base.actors.work.manager.WorkManagerActor.{ExecutionType, GetWorkerStatus, TaskExecutionWithTypedResult, TasksWithTypedResult}
 import de.awagen.kolibri.base.actors.work.worker.AggregatingActor.ReportResults
 import de.awagen.kolibri.base.actors.work.worker.JobPartIdentifiers.JobPartIdentifier
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.ProcessingMessage
 import de.awagen.kolibri.base.actors.work.worker.TaskExecutionWorkerActor.ProcessTaskExecution
 import de.awagen.kolibri.base.actors.work.worker.TaskWorkerActor.ProcessTasks
 import de.awagen.kolibri.base.actors.work.worker.{RunnableExecutionActor, TaskExecutionWorkerActor, TaskWorkerActor}
@@ -43,7 +44,7 @@ object WorkManagerActor {
 
   sealed trait WorkManagerMsg extends KolibriSerializable
 
-  case class TasksWithTypedResult[T](data: TypeTaggedMap with TaggedWithType[Tag], tasks: Seq[Task[_]], finalResultKey: ClassTyped[T], partIdentifier: JobPartIdentifier) extends WorkManagerMsg
+  case class TasksWithTypedResult[T](data: TypeTaggedMap with TaggedWithType[Tag], tasks: Seq[Task[_]], finalResultKey: ClassTyped[ProcessingMessage[T]], partIdentifier: JobPartIdentifier) extends WorkManagerMsg
 
   case class TaskExecutionWithTypedResult[T](taskExecution: TaskExecution[T], partIdentifier: JobPartIdentifier) extends WorkManagerMsg
 
@@ -104,7 +105,7 @@ class WorkManagerActor() extends Actor with ActorLogging with KolibriSerializabl
       val taskExecutionWorker: ActorRef = context.actorOf(TaskExecutionWorkerActor.props)
       workerKeyToActiveWorker.put(workerKey(TASK_EXECUTION, e.partIdentifier.jobId, e.partIdentifier.batchNr), taskExecutionWorker)
       taskExecutionWorker.tell(ProcessTaskExecution(e.taskExecution, e.partIdentifier), sender())
-    case e: ActorRunnable[_, _, _] =>
+    case e: ActorRunnable[_, _, _, _] =>
       log.debug("received runnable for execution")
       val reportTo = sender()
       val runnableActor: ActorRef = context.actorOf(RunnableExecutionActor.probs(e.maxExecutionDuration))

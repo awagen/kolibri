@@ -21,11 +21,10 @@ import akka.serialization.{SerializationExtension, Serializers}
 import akka.stream.scaladsl.Flow
 import akka.testkit.{ImplicitSender, TestKit}
 import de.awagen.kolibri.base.actors.KolibriTestKitNoCluster
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{Corn, ProcessingMessage}
 import de.awagen.kolibri.base.processing.execution.expectation.{BaseExecutionExpectation, ExecutionExpectation}
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnableSinkType.REPORT_TO_ACTOR_SINK
-import de.awagen.kolibri.base.processing.execution.job.TestActorRunnableActor.IntMsg
 import de.awagen.kolibri.datatypes.collections.BaseIndexedGenerator
-import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.types.SerializableCallable.{SerializableFunction1, SerializableSupplier}
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 import org.scalatest.BeforeAndAfterAll
@@ -51,20 +50,21 @@ class ActorRunnableSpec extends KolibriTestKitNoCluster
   object TestMessages {
 
     val generatorFunc: SerializableFunction1[Int, Option[Int]] = (v1: Int) => Some(v1 + 1)
-    val transformerFunc: SerializableFunction1[Int, IntMsg] = (v1: Int) => IntMsg(v1 + 2)
+    val transformerFunc: SerializableFunction1[Int, ProcessingMessage[Int]] = (v1: Int) => Corn(v1 + 2)
     // NOTE: lambda expression here instead of explicit new SerializableSupplier call doest work, kryo serialization fails then
     val expectationGen: SerializableSupplier[ExecutionExpectation] = new SerializableSupplier[ExecutionExpectation] {
       override def get(): ExecutionExpectation = BaseExecutionExpectation.empty()
     }
-    val msg1: ActorRunnable[Int, IntMsg, Double] = ActorRunnable(jobId = "test", batchNr = 1, supplier = BaseIndexedGenerator(4, generatorFunc), transformer = Flow.fromFunction(transformerFunc), processingActorProps = None, expectationGenerator = _ => expectationGen.get(), aggregationSupplier = new SerializableSupplier[Aggregator[Tag, Any, Double]]{
-                override def get(): Aggregator[Tag, Any, Double] = new Aggregator[Tag, Any, Double] {
-                  override def add(keys: Set[Tag], sample: Any): Unit = ()
+    val msg1: ActorRunnable[Int, Int, Int, Double] = ActorRunnable(jobId = "test", batchNr = 1, supplier = BaseIndexedGenerator(4, generatorFunc),
+      transformer = Flow.fromFunction(transformerFunc), processingActorProps = None, expectationGenerator = _ => expectationGen.get(), aggregationSupplier = new SerializableSupplier[Aggregator[ProcessingMessage[Int], Double]] {
+        override def get(): Aggregator[ProcessingMessage[Int], Double] = new Aggregator[ProcessingMessage[Int], Double] {
+          override def add(sample: ProcessingMessage[Int]): Unit = ()
 
-                  override def aggregation: Double = 0.0
+          override def aggregation: Double = 0.0
 
-                  override def add(aggregatedValue: Double): Unit = ()
-                }
-              }, returnType = REPORT_TO_ACTOR_SINK, 1 minute, 1 minute)
+          override def addAggregate(aggregatedValue: Double): Unit = ()
+        }
+      }, returnType = REPORT_TO_ACTOR_SINK, 1 minute, 1 minute)
   }
 
   "ActorRunnable" should {
@@ -72,23 +72,23 @@ class ActorRunnableSpec extends KolibriTestKitNoCluster
     "correctly execute ActorRunnable" in {
       // given
       val runnableExecutorActor: ActorRef = system.actorOf(Props[TestActorRunnableActor])
-      val expectedValues: immutable.Seq[IntMsg] = Seq(1, 2, 3, 4).map(x => IntMsg(x + 2))
+      val expectedValues: immutable.Seq[ProcessingMessage[Int]] = Seq(1, 2, 3, 4).map(x => Corn(x + 2))
       // when
       runnableExecutorActor ! TestMessages.msg1
       // then
-      expectMsgAllOf[IntMsg](2 seconds, expectedValues: _*)
+      expectMsgAllOf[ProcessingMessage[Int]](2 seconds, expectedValues: _*)
     }
 
     "be serializable" in {
       // given
-      val actorRunnable: ActorRunnable[Int, IntMsg, Double] = TestMessages.msg1
+      val actorRunnable: ActorRunnable[Int, Int, Int, Double] = TestMessages.msg1
       // when
       val serialization = SerializationExtension(system)
       val bytes = serialization.serialize(actorRunnable).get
       val serializerId = serialization.findSerializerFor(actorRunnable).identifier
       val manifest = Serializers.manifestFor(serialization.findSerializerFor(actorRunnable), actorRunnable)
       // Turn it back into an object
-      val back: ActorRunnable[Int, IntMsg, Double] = serialization.deserialize(bytes, serializerId, manifest).get.asInstanceOf[ActorRunnable[Int, IntMsg, Double]]
+      val back: ActorRunnable[Int, Int, Int, Double] = serialization.deserialize(bytes, serializerId, manifest).get.asInstanceOf[ActorRunnable[Int, Int, Int, Double]]
       // then
       back.jobId mustBe actorRunnable.jobId
       back.batchNr mustBe actorRunnable.batchNr

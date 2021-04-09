@@ -16,6 +16,7 @@
 
 package de.awagen.kolibri.base.processing
 
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{Corn, ProcessingMessage}
 import de.awagen.kolibri.base.domain.TaskDataKeys.Val
 import de.awagen.kolibri.base.processing.execution.task.{SimpleAsyncTask, SimpleSyncTask}
 import de.awagen.kolibri.base.processing.failure.TaskFailType.{FailedByException, TaskFailType}
@@ -31,6 +32,7 @@ object TestTaskHelper {
   val productIdResult: Val[Seq[String]] = Val("product_ids", ClassTyped[Seq[String]])
   val concatIdKey: Val[String] = Val("concatenated_product_ids", ClassTyped[String])
   val reversedIdKey: Val[String] = Val("reversed_product_ids", ClassTyped[String])
+  val reversedIdKeyPM: Val[ProcessingMessage[String]] = Val("reversed_product_ids", ClassTyped[ProcessingMessage[String]])
   val reversedIdSeqKey: Val[Seq[String]] = Val("reversed_product_ids", ClassTyped[Seq[String]])
   val reversedIdSeqSublistKey: Val[Seq[String]] = Val("reversed_product_ids_sublist", ClassTyped[Seq[String]])
   val failTaskKey: Val[Unit] = Val[Unit]("fail_task", ClassTyped[Unit])
@@ -39,6 +41,7 @@ object TestTaskHelper {
 
   val concatIdsFunc: TypeTaggedMap => Either[TaskFailType, String] = x => Right(x.get(productIdResult.typed).map(y => y.mkString(",")).getOrElse(""))
   val reverseIdsFunc: TypeTaggedMap => Either[TaskFailType, String] = x => Right(x.get(concatIdKey.typed).map(y => y.reverse).getOrElse(""))
+  val reverseIdsFuncPM: TypeTaggedMap => Either[TaskFailType, ProcessingMessage[String]] = x => Right(x.get(concatIdKey.typed).map(y => Corn(y.reverse)).getOrElse(Corn("")))
   val reverseIdsValueFunc: TypeTaggedMap => String = x => x.get(concatIdKey.typed).map(y => y.reverse).getOrElse("")
   val reverseIdSeqFunc: TypeTaggedMap => Either[TaskFailType, Seq[String]] = x => Right(x.get(productIdResult.typed).map(y => y.reverse).getOrElse(Seq.empty))
   val subListFromReverseProductIdsFunc: TypeTaggedMap => Either[TaskFailType, Seq[String]] = x => Right(
@@ -50,9 +53,14 @@ object TestTaskHelper {
 
   def reverseIdsTask: SimpleSyncTask[String] = SimpleSyncTask[String](Seq(concatIdKey.typed), reversedIdKey.typed, taskFailTypeKey.typed, reverseIdsFunc)
 
-  def asyncReverseIdsTask(implicit ec: ExecutionContext): SimpleAsyncTask[String, String] = SimpleAsyncTask(Seq(concatIdKey.typed), reversedIdKey.typed, taskFailTypeKey.typed,
+  def reverseIdsTaskPM: SimpleSyncTask[ProcessingMessage[String]] = SimpleSyncTask[ProcessingMessage[String]](Seq(concatIdKey.typed), reversedIdKeyPM.typed, taskFailTypeKey.typed, reverseIdsFuncPM)
+
+  def asyncReverseIdsTask(implicit ec: ExecutionContext): SimpleAsyncTask[ProcessingMessage[String], ProcessingMessage[String]] = SimpleAsyncTask(
+    Seq(concatIdKey.typed),
+    reversedIdKeyPM.typed,
+    taskFailTypeKey.typed,
     x => Future {
-      reverseIdsValueFunc.apply(x)
+      Corn(reverseIdsValueFunc.apply(x))
     }, (_, _) => (), _ => ())
 
   def reverseIdSeqTask: SimpleSyncTask[Seq[String]] = execution.task

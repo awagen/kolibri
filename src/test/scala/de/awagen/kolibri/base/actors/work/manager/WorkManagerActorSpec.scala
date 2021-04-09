@@ -23,7 +23,7 @@ import de.awagen.kolibri.base.actors.work.manager.WorkManagerActor.{TaskExecutio
 import de.awagen.kolibri.base.actors.work.worker.JobPartIdentifiers.BaseJobPartIdentifier
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationState, Corn}
 import de.awagen.kolibri.base.actors.{KolibriTestKitNoCluster, TestMessages}
-import de.awagen.kolibri.base.processing.TestTaskHelper.{concatIdsTask, productIdResult, reverseIdsTask, reversedIdKey}
+import de.awagen.kolibri.base.processing.TestTaskHelper._
 import de.awagen.kolibri.base.processing.execution.SimpleTaskExecution
 import de.awagen.kolibri.base.processing.execution.task.Task
 import de.awagen.kolibri.datatypes.mutable.stores.{TypeTaggedMap, TypedMapStore}
@@ -77,8 +77,8 @@ class WorkManagerActorSpec extends KolibriTestKitNoCluster
       val data: TypeTaggedMap with TaggedWithType[Tag] = TypedMapStore.empty.toTaggedWithTypeMap
       data.addTag(AGGREGATION, StringTag("ALL"))
       data.put(productIdResult.typed, Seq("p3", "p4", "p21"))
-      val tasks: Seq[Task[_]] = Seq(concatIdsTask, reverseIdsTask)
-      val msg = TasksWithTypedResult(data = data, tasks = tasks, finalResultKey = reversedIdKey.typed,
+      val tasks: Seq[Task[_]] = Seq(concatIdsTask, reverseIdsTaskPM)
+      val msg = TasksWithTypedResult(data = data, tasks = tasks, finalResultKey = reversedIdKeyPM.typed,
         BaseJobPartIdentifier(jobId = "testJob", batchNr = 1))
       // when
       workManager.tell(msg, testProbe.ref)
@@ -97,9 +97,9 @@ class WorkManagerActorSpec extends KolibriTestKitNoCluster
       val data: TypeTaggedMap with TaggedWithType[Tag] = TypedMapStore.empty.toTaggedWithTypeMap
       data.addTag(AGGREGATION, StringTag("ALL"))
       data.put(productIdResult.typed, Seq("p3", "p4", "p21"))
-      val tasks: Seq[Task[_]] = Seq(concatIdsTask, reverseIdsTask)
+      val tasks: Seq[Task[_]] = Seq(concatIdsTask, reverseIdsTaskPM)
       val taskExecution = SimpleTaskExecution(
-        resultKey = reversedIdKey.typed,
+        resultKey = reversedIdKeyPM.typed,
         currentData = data.toTaggedWithTypeMap,
         tasks = tasks
       )

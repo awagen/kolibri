@@ -59,7 +59,7 @@ class SupervisorActorSpec extends KolibriTestKit
     "correctly process ProcessActorRunnableJobCmd" in {
       // given
       val supervisor: ActorRef = system.actorOf(SupervisorActor.props(true))
-      val msg: SupervisorActor.ProcessActorRunnableJobCmd[_,_] = generateProcessActorRunnableJobCmd("testId1")
+      val msg: SupervisorActor.ProcessActorRunnableJobCmd[_,_, _, _] = generateProcessActorRunnableJobCmd("testId1")
       // when
       supervisor ! msg
       // then

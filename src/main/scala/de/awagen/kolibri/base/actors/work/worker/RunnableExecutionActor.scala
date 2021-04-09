@@ -81,7 +81,7 @@ class RunnableExecutionActor(maxBatchDuration: FiniteDuration) extends Actor wit
   private[this] var aggregatingActor: ActorRef = _
 
   val readyForJob: Receive = {
-    case runnable: ActorRunnable[_, _, _] =>
+    case runnable: ActorRunnable[_, _, _, _] =>
       jobSender = sender()
       // jobId and batchNr might be used as identifiers to filter received messages by
       runningJobId = runnable.jobId

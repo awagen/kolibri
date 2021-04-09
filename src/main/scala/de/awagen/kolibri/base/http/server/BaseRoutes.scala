@@ -30,7 +30,6 @@ import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor._
 import de.awagen.kolibri.base.cluster.ClusterStatus
 import de.awagen.kolibri.base.config.AppConfig.config.internalJobStatusRequestTimeout
-import de.awagen.kolibri.base.domain.jobdefinitions.JobDefinitions.{OrderedMultiValuesRunnableJobDefinition, OrderedMultiValuesRunnableTaskJobDefinition}
 import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -121,42 +120,6 @@ object BaseRoutes {
       post {
         supervisorActor ! KillAllChildren
         complete(StatusCodes.OK)
-      }
-    }
-  }
-
-  def executeActorRunnableJobRoute(implicit system: ActorSystem): Route = {
-    import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
-    import akka.http.scaladsl.server.Directives._
-    import de.awagen.kolibri.base.io.json.JobDefinitionsJsonProtocol._
-    path("jobRunnable") {
-      post {
-        extractRequest { _ =>
-          entity(as[OrderedMultiValuesRunnableJobDefinition]) { definition =>
-            supervisorActor ! definition.createActorRunnableJobCmd
-            // return ok to indicate job could be parsed and is processed now
-            // request status via separate endpoint
-            complete(StatusCodes.OK)
-          }
-        }
-      }
-    }
-  }
-
-  def executeTaskJobRoute(implicit system: ActorSystem): Route = {
-    import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
-    import akka.http.scaladsl.server.Directives._
-    import de.awagen.kolibri.base.io.json.JobDefinitionsJsonProtocol._
-    path("jobTaskRunnable") {
-      post {
-        extractRequest { _ =>
-          entity(as[OrderedMultiValuesRunnableTaskJobDefinition]) { definition =>
-            supervisorActor ! definition.createActorRunnableTaskJobCmd
-            // return ok to indicate job could be parsed and is processed now
-            // request status via separate endpoint
-            complete(StatusCodes.OK)
-          }
-        }
       }
     }
   }

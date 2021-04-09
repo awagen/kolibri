@@ -19,8 +19,8 @@ package de.awagen.kolibri.base.domain.jobdefinitions
 
 import akka.stream.scaladsl.Flow
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor
-import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.Corn
-import de.awagen.kolibri.base.domain.jobdefinitions.provider.data.BatchGenerators.{IntNumberBatchGenerator, TaggedWrapper}
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{Corn, ProcessingMessage}
+import de.awagen.kolibri.base.domain.jobdefinitions.provider.data.BatchGenerators.IntNumberBatchGenerator
 import de.awagen.kolibri.base.http.server.BaseRoutes.logger
 import de.awagen.kolibri.base.io.writer.base.LocalDirectoryFileFileWriter
 import de.awagen.kolibri.base.processing.execution.expectation._
@@ -31,34 +31,35 @@ import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}
 import de.awagen.kolibri.datatypes.types.SerializableCallable.{SerializableFunction1, SerializableSupplier}
 import de.awagen.kolibri.datatypes.values.AggregateValue
 import de.awagen.kolibri.datatypes.values.RunningValue.doubleAvgRunningValue
-import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.{Aggregator, BaseAnyAggregator}
+import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 
 import scala.collection.mutable
 import scala.concurrent.duration.DurationInt
 
 object TestJobDefinitions {
 
-  class RunningDoubleAvgPerTagAggregator() extends BaseAnyAggregator[Double, Map[Tag, AggregateValue[Double]]](new Aggregator[Tag, Double, Map[Tag, AggregateValue[Double]]] {
+  class RunningDoubleAvgPerTagAggregator() extends Aggregator[ProcessingMessage[Double], Map[Tag, AggregateValue[Double]]] {
     val map: mutable.Map[Tag, AggregateValue[Double]] = mutable.Map.empty
 
-    override def add(keys: Set[Tag], sample: Double): Unit = {
+    override def add(sample: ProcessingMessage[Double]): Unit = {
+      val keys: Set[Tag] = sample.getTagsForType(AGGREGATION)
       keys.foreach(key => {
-        map(key) = map.getOrElse(key, doubleAvgRunningValue(count = 0, value = 0.0)).add(sample)
+        map(key) = map.getOrElse(key, doubleAvgRunningValue(count = 0, value = 0.0)).add(sample.data)
       })
     }
 
     override def aggregation: Map[Tag, AggregateValue[Double]] = Map(map.toSeq: _*)
 
-    override def add(aggregatedValue: Map[Tag, AggregateValue[Double]]): Unit = {
+    override def addAggregate(aggregatedValue: Map[Tag, AggregateValue[Double]]): Unit = {
       aggregatedValue.keys.foreach(key => {
         map(key) = map.getOrElse(key, doubleAvgRunningValue(count = 0, value = 0.0)).add(aggregatedValue(key))
       })
     }
-  })
+  }
 
-  def piEstimationJob(jobName: String, nrThrows: Int, batchSize: Int, resultDir: String): SupervisorActor.ProcessActorRunnableJobCmd[TaggedWrapper[Int], Map[Tag, AggregateValue[Double]]] = {
+  def piEstimationJob(jobName: String, nrThrows: Int, batchSize: Int, resultDir: String): SupervisorActor.ProcessActorRunnableJobCmd[Int, Double, Double, Map[Tag, AggregateValue[Double]]] = {
     assert(batchSize <= nrThrows)
-    val flowFunct: SerializableFunction1[TaggedWrapper[Int], Corn[Double]] = taggedWrapper => {
+    val flowFunct: SerializableFunction1[Int, Corn[Double]] = _ => {
       val sq_rad = math.pow(math.random(), 2) + math.pow(math.random(), 2)
       if (sq_rad <= 1) {
         val corn = Corn(1.0)
@@ -71,8 +72,8 @@ object TestJobDefinitions {
         corn
       }
     }
-    val batchGenerator: SerializableFunction1[Int, IndexedGenerator[Batch[TaggedWrapper[Int]]]] = new SerializableFunction1[Int, IndexedGenerator[Batch[TaggedWrapper[Int]]]] {
-      override def apply(v1: Int): IndexedGenerator[Batch[TaggedWrapper[Int]]] = IntNumberBatchGenerator(batchSize).batchFunc.apply(v1)
+    val batchGenerator: SerializableFunction1[Int, IndexedGenerator[Batch[Int]]] = new SerializableFunction1[Int, IndexedGenerator[Batch[Int]]] {
+      override def apply(v1: Int): IndexedGenerator[Batch[Int]] = IntNumberBatchGenerator(batchSize).batchFunc.apply(v1)
     }
     val expectationGen: SerializableFunction1[Int, ExecutionExpectation] = new SerializableFunction1[Int, ExecutionExpectation] {
       override def apply(v1: Int): ExecutionExpectation = BaseExecutionExpectation(
@@ -86,15 +87,15 @@ object TestJobDefinitions {
           TimeExpectation(10 seconds))
       )
     }
-    JobMsgFactory.createActorRunnableJobCmd[Int, TaggedWrapper[Int], Map[Tag, AggregateValue[Double]]](
+    JobMsgFactory.createActorRunnableJobCmd[Int, Int, Double, Double, Map[Tag, AggregateValue[Double]]](
       jobId = jobName,
       nrThrows.toInt,
       dataBatchGenerator = batchGenerator,
-      transformerFlow = Flow.fromFunction[TaggedWrapper[Int], Corn[Double]](flowFunct),
+      transformerFlow = Flow.fromFunction[Int, Corn[Double]](flowFunct),
       processingActorProps = None,
       expectationGenerator = expectationGen,
-      aggregatorSupplier = new SerializableSupplier[Aggregator[Tag, Any, Map[Tag, AggregateValue[Double]]]] {
-        override def get(): Aggregator[Tag, Any, Map[Tag, AggregateValue[Double]]] = BaseAnyAggregator(new RunningDoubleAvgPerTagAggregator())
+      aggregatorSupplier = new SerializableSupplier[Aggregator[ProcessingMessage[Double], Map[Tag, AggregateValue[Double]]]] {
+        override def get(): Aggregator[ProcessingMessage[Double], Map[Tag, AggregateValue[Double]]] = new RunningDoubleAvgPerTagAggregator()
       },
       writer = (data: Map[Tag, AggregateValue[Double]], _: Tag) => {
         logger.info("writing result: {}", data)

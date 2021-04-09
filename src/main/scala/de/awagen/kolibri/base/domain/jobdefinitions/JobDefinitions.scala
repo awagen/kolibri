@@ -17,6 +17,7 @@
 package de.awagen.kolibri.base.domain.jobdefinitions
 
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.{ProcessActorRunnableJobCmd, ProcessActorRunnableTaskJobCmd}
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.ProcessingMessage
 import de.awagen.kolibri.base.domain.TaskDataKeys
 import de.awagen.kolibri.base.domain.jobdefinitions.ProcessingActorProps.ProcessingActorProps
 import de.awagen.kolibri.base.domain.jobdefinitions.provider.data.BatchGenerators.{OrderedMultiValuesBatchGenerator, OrderedMultiValuesTypedTagBatchGenerator}
@@ -37,9 +38,9 @@ import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 
 object JobDefinitions {
 
-  trait ActorRunnableJobDefinition[V <: TaggedWithType[Tag], U] {
+  trait ActorRunnableJobDefinition[V, V1, V2, U] {
 
-    def createActorRunnableJobCmd: ProcessActorRunnableJobCmd[V, U]
+    def createActorRunnableJobCmd: ProcessActorRunnableJobCmd[V, V1, V2, U]
 
   }
 
@@ -57,12 +58,12 @@ object JobDefinitions {
                                                      processingActorProps: Option[ProcessingActorProps],
                                                      expectationGenerators: RunnableExpectationGenerators.Val,
                                                      returnType: ActorRunnableSinkType,
-                                                     aggregatorSupplier: SerializableSupplier[Aggregator[Tag, Any, MetricAggregation[Tag]]],
+                                                     aggregatorSupplier: SerializableSupplier[Aggregator[ProcessingMessage[MetricRow], MetricAggregation[Tag]]],
                                                      writer: Writer[MetricAggregation[Tag], Tag, Any],
                                                      allowedTimePerBatchInSeconds: Long,
                                                      allowedTimeForJobInSeconds: Long
-                                                    ) extends ActorRunnableJobDefinition[MutableTaggedMap[String, Seq[Any]], MetricAggregation[Tag]] {
-    override def createActorRunnableJobCmd: ProcessActorRunnableJobCmd[MutableTaggedMap[String, Seq[Any]], MetricAggregation[Tag]] = {
+                                                    ) extends ActorRunnableJobDefinition[MutableTaggedMap[String, Seq[Any]], Any, MetricRow, MetricAggregation[Tag]] {
+    override def createActorRunnableJobCmd: ProcessActorRunnableJobCmd[MutableTaggedMap[String, Seq[Any]], Any, MetricRow, MetricAggregation[Tag]] = {
       val serializableBatchGenerator: SerializableFunction1[OrderedMultiValues, IndexedGenerator[Batch[MutableTaggedMap[String, Seq[Any]]]]] = x => batchGenerator.batchFunc.apply(x)
       JobMsgFactory.createActorRunnableJobCmd(
         jobId = jobId,
@@ -83,9 +84,9 @@ object JobDefinitions {
   case class OrderedMultiValuesRunnableTaskJobDefinition(jobId: String,
                                                          dataProvider: OrderedMultiValuesProvider,
                                                          batchGenerator: OrderedMultiValuesTypedTagBatchGenerator,
-                                                         resultDataKey: TaskDataKeys.Val[MetricRow],
+                                                         resultDataKey: TaskDataKeys.Val[ProcessingMessage[MetricRow]],
                                                          tasks: Seq[TaskDefinitions.Val[Any]],
-                                                         aggregatorSupplier: SerializableSupplier[Aggregator[Tag, Any, MetricAggregation[Tag]]],
+                                                         aggregatorSupplier: SerializableSupplier[Aggregator[ProcessingMessage[Any], MetricAggregation[Tag]]],
                                                          writer: Writer[MetricAggregation[Tag], Tag, Any],
                                                          allowedTimePerBatchInSeconds: Long,
                                                          allowedTimeForJobInSeconds: Long
