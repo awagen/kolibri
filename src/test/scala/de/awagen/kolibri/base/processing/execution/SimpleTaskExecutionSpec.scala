@@ -21,9 +21,7 @@ import de.awagen.kolibri.base.processing.execution
 import de.awagen.kolibri.base.processing.execution.task.{SimpleSyncTask, SyncTask}
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
 import de.awagen.kolibri.datatypes.ClassTyped
-import de.awagen.kolibri.datatypes.mutable.stores.{TypeTaggedMap, TypedMapStore}
-import de.awagen.kolibri.datatypes.tagging.TaggedWithType
-import de.awagen.kolibri.datatypes.tagging.Tags.Tag
+import de.awagen.kolibri.datatypes.mutable.stores.TypedMapStore
 import de.awagen.kolibri.datatypes.tagging.TypeTaggedMapImplicits._
 
 import scala.collection.mutable
@@ -34,10 +32,10 @@ class SimpleTaskExecutionSpec extends UnitTestSpec {
 
   implicit val ec: ExecutionContext = ExecutionContext.global
 
-  def prepareTaskExecution(tasks: Seq[SyncTask[_]], productSeq: Seq[String]): SimpleTaskExecution[String, TypeTaggedMap with TaggedWithType[Tag]] = {
+  def prepareTaskExecution(tasks: Seq[SyncTask[_]], productSeq: Seq[String]): SimpleTaskExecution[String] = {
     val map = TypedMapStore(mutable.Map.empty[ClassTyped[Any], Any])
     map.put(productIdResult.typed, productSeq)
-    execution.SimpleTaskExecution(reversedIdKey.typed, map.toTaggedWithTypeMap, tasks)
+    execution.SimpleTaskExecution(reversedIdKeyPM.typed, map.toTaggedWithTypeMap, tasks)
   }
 
   "SimpleTaskExecution" should {
@@ -45,7 +43,7 @@ class SimpleTaskExecutionSpec extends UnitTestSpec {
     "correctly execute all sync tasks" in {
       // given
       val tasks: Seq[SimpleSyncTask[String]] = Seq(concatIdsTask, reverseIdsTask)
-      val execution: SimpleTaskExecution[String, TypeTaggedMap with TaggedWithType[Tag]] = prepareTaskExecution(tasks, Seq("p3", "p4", "p21"))
+      val execution: SimpleTaskExecution[String] = prepareTaskExecution(tasks, Seq("p3", "p4", "p21"))
       // when
       execution.processRemainingTasks
       // then

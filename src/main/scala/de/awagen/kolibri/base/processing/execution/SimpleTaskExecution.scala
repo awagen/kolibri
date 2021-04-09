@@ -16,6 +16,7 @@
 
 package de.awagen.kolibri.base.processing.execution
 
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.ProcessingMessage
 import de.awagen.kolibri.base.processing.execution.task.Task
 import de.awagen.kolibri.base.processing.execution.task.TaskStates.{Done, NoState, Running, TaskState}
 import de.awagen.kolibri.base.processing.failure.TaskFailType.{FailedByException, MissingPrerequisites, TaskFailType}
@@ -35,11 +36,11 @@ import scala.util.{Failure, Success}
   * @param currentData
   * @param tasks
   */
-case class SimpleTaskExecution[+T, +U <: TypeTaggedMap with TaggedWithType[Tag]](resultKey: ClassTyped[T], currentData: U, tasks: Seq[Task[_]]) extends TaskExecution[T] {
+case class SimpleTaskExecution[+T](resultKey: ClassTyped[ProcessingMessage[T]], currentData: TypeTaggedMap with TaggedWithType[Tag], tasks: Seq[Task[_]]) extends TaskExecution[T] {
 
   assert(tasks.nonEmpty)
 
-  private val logger = LoggerFactory.getLogger(classOf[SimpleTaskExecution[_, _]])
+  private val logger = LoggerFactory.getLogger(classOf[SimpleTaskExecution[_]])
 
   private var taskResults: Vector[TaskState] = Vector.empty
 

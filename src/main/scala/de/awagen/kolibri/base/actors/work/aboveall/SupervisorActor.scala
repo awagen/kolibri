@@ -23,7 +23,7 @@ import akka.util.Timeout
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor._
 import de.awagen.kolibri.base.actors.work.manager.JobManagerActor
 import de.awagen.kolibri.base.actors.work.manager.JobManagerActor._
-import de.awagen.kolibri.base.actors.work.worker.ResultMessages.ResultSummary
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{ProcessingMessage, ResultSummary}
 import de.awagen.kolibri.base.actors.work.worker.TaskExecutionWorkerActor
 import de.awagen.kolibri.base.config.AppConfig._
 import de.awagen.kolibri.base.domain.jobdefinitions.Batch
@@ -61,7 +61,7 @@ object SupervisorActor {
 
   case class GetJobWorkerStatus(job: String)
 
-  type ActorRunnableJobGenerator[U, V, W] = IndexedGenerator[ActorRunnable[U, V, W]]
+  type ActorRunnableJobGenerator[U, V, V1, W] = IndexedGenerator[ActorRunnable[U, V, V1, W]]
   type TaggedTypeTaggedMapBatch = Batch[TypeTaggedMap with TaggedWithType[Tag]]
   type BatchTypeTaggedMapGenerator = IndexedGenerator[TaggedTypeTaggedMapBatch]
 
@@ -69,18 +69,18 @@ object SupervisorActor {
   // e.g by parameter values for selected parameter or batch size and by utilizing OrderedMultiValuesImplicits
   // this can be mapped to actual Iterators over the parameter values contained in the split
   // OrderedMultiValues
-  case class ProcessActorRunnableJobCmd[V, U](jobId: String,
-                                              processElements: ActorRunnableJobGenerator[V, Any, U],
-                                              aggregatorSupplier: SerializableSupplier[Aggregator[Tag, Any, U]],
-                                              writer: Writer[U, Tag, _],
-                                              allowedTimePerBatch: FiniteDuration,
-                                              allowedTimeForJob: FiniteDuration) extends SupervisorCmd
+  case class ProcessActorRunnableJobCmd[V, V1, V2, U](jobId: String,
+                                                      processElements: ActorRunnableJobGenerator[V, V1, V2, U],
+                                                      aggregatorSupplier: SerializableSupplier[Aggregator[ProcessingMessage[V2], U]],
+                                                      writer: Writer[U, Tag, _],
+                                                      allowedTimePerBatch: FiniteDuration,
+                                                      allowedTimeForJob: FiniteDuration) extends SupervisorCmd
 
   case class ProcessActorRunnableTaskJobCmd[U](jobId: String,
                                                dataIterable: BatchTypeTaggedMapGenerator,
                                                tasks: Seq[Task[_]],
-                                               resultKey: ClassTyped[Any],
-                                               aggregatorSupplier: SerializableSupplier[Aggregator[Tag, Any, U]],
+                                               resultKey: ClassTyped[ProcessingMessage[Any]],
+                                               aggregatorSupplier: SerializableSupplier[Aggregator[ProcessingMessage[Any], U]],
                                                writer: Writer[U, Tag, _],
                                                allowedTimePerBatch: FiniteDuration,
                                                allowedTimeForJob: FiniteDuration) extends SupervisorCmd
@@ -117,12 +117,12 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
 
   val jobIdToActorRefAndExpectation: mutable.Map[String, (ActorSetup, ExecutionExpectation)] = mutable.Map.empty
 
-  def createJobManagerActor[U](jobId: String,
-                               aggregatorSupplier: SerializableSupplier[Aggregator[Tag, Any, U]],
-                               writer: Writer[U, Tag, _],
-                               allowedTimeForJob: FiniteDuration,
-                               allowedTimeForBatch: FiniteDuration): ActorRef = {
-    context.actorOf(JobManagerActor.props[U](
+  def createJobManagerActor[T, U](jobId: String,
+                                  aggregatorSupplier: SerializableSupplier[Aggregator[ProcessingMessage[T], U]],
+                                  writer: Writer[U, Tag, _],
+                                  allowedTimeForJob: FiniteDuration,
+                                  allowedTimeForBatch: FiniteDuration): ActorRef = {
+    context.actorOf(JobManagerActor.props[T, U](
       experimentId = jobId,
       runningTaskBaselineCount = config.runningTasksBaselineCount,
       aggregatorSupplier = aggregatorSupplier,
@@ -224,7 +224,7 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
     case MaxTimeExceededEvent(jobId) =>
       log.info("received MaxTimeExceeded message for jobId {}, thus respective JobManager is expected to kill himself," +
         "which will be reflected in another Terminated message", jobId)
-    case job: ProcessActorRunnableJobCmd[_, _] =>
+    case job: ProcessActorRunnableJobCmd[_, _, _, _] =>
       val jobSender = sender()
       val jobId = job.jobId
       if (jobIdToActorRefAndExpectation.contains(jobId)) {
@@ -250,8 +250,16 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
         ()
       }
       else {
-        val mappedIterable: IndexedGenerator[ActorRunnable[SimpleTaskExecution[_, TypeTaggedMap with TaggedWithType[Tag]], Any, Any]] =
-          TaskUtils.tasksToActorRunnable(jobId = jobId, resultKey = job.resultKey, mapGenerator = job.dataIterable, tasks = job.tasks, aggregatorSupplier = job.aggregatorSupplier, taskExecutionWorkerProps = createTaskExecutionWorkerProps(finalResultKey = job.resultKey), timeoutPerRunnable = job.allowedTimePerBatch, 1 minute)
+        val mappedIterable: IndexedGenerator[ActorRunnable[SimpleTaskExecution[_], Any, Any, Any]] =
+          TaskUtils.tasksToActorRunnable(
+            jobId = jobId,
+            resultKey = job.resultKey,
+            mapGenerator = job.dataIterable,
+            tasks = job.tasks,
+            aggregatorSupplier = job.aggregatorSupplier,
+            taskExecutionWorkerProps = createTaskExecutionWorkerProps(finalResultKey = job.resultKey),
+            timeoutPerRunnable = job.allowedTimePerBatch,
+            1 minute)
         log.info("Creating and sending job to JobManager, jobId: {}", jobId)
         val actor = createJobManagerActor(jobId, job.aggregatorSupplier, job.writer, job.allowedTimeForJob,
           job.allowedTimePerBatch)

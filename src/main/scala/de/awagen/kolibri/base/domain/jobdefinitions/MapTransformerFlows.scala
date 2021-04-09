@@ -18,14 +18,15 @@ package de.awagen.kolibri.base.domain.jobdefinitions
 
 import akka.NotUsed
 import akka.stream.scaladsl.Flow
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{Corn, ProcessingMessage}
 import de.awagen.kolibri.datatypes.tagging.MapImplicits.MutableTaggedMap
 
 object MapTransformerFlows extends Enumeration {
   type MapTransformerFlows = Val
 
-  case class Val(transformerFlow: Flow[MutableTaggedMap[String, Seq[Any]], Any, NotUsed]) extends super.Val
+  case class Val(transformerFlow: Flow[MutableTaggedMap[String, Seq[Any]], ProcessingMessage[Any], NotUsed]) extends super.Val
 
-  val IDENTITY: Val = Val(Flow.fromFunction(identity))
+  val IDENTITY: Val = Val(Flow.fromFunction(x => Corn(x)))
 
 
 }

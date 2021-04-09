@@ -27,8 +27,7 @@ import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.ProcessingRes
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.{ActorRunnableJobGenerator, FinishedJobEvent, ProcessingResult}
 import de.awagen.kolibri.base.actors.work.manager.JobManagerActor._
 import de.awagen.kolibri.base.actors.work.manager.WorkManagerActor.{ExecutionType, GetWorkerStatus}
-import de.awagen.kolibri.base.actors.work.worker.AggregatingActor.AggregationState
-import de.awagen.kolibri.base.actors.work.worker.ResultMessages.{ResultEvent, ResultMessage, ResultSummary}
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationState, ProcessingMessage, ResultSummary}
 import de.awagen.kolibri.base.config.AppConfig._
 import de.awagen.kolibri.base.io.writer.Writers.Writer
 import de.awagen.kolibri.base.processing.execution.expectation._
@@ -48,9 +47,9 @@ object JobManagerActor {
 
   final def name(jobId: String) = s"jobManager-$jobId"
 
-  def props[U](experimentId: String,
+  def props[T, U](experimentId: String,
                runningTaskBaselineCount: Int,
-               aggregatorSupplier: SerializableSupplier[Aggregator[Tag, Any, U]],
+               aggregatorSupplier: SerializableSupplier[Aggregator[ProcessingMessage[T], U]],
                writer: Writer[U, Tag, _],
                maxProcessDuration: FiniteDuration,
                maxBatchDuration: FiniteDuration): Props =
@@ -60,7 +59,7 @@ object JobManagerActor {
   // cmds telling JobManager to do sth
   sealed trait ExternalJobManagerCmd extends KolibriSerializable
 
-  case class ProcessJobCmd[U, V, W](job: ActorRunnableJobGenerator[U, V, W]) extends ExternalJobManagerCmd
+  case class ProcessJobCmd[U, V, V1, W](job: ActorRunnableJobGenerator[U, V, V1, W]) extends ExternalJobManagerCmd
 
   case object ProvideJobStatus extends ExternalJobManagerCmd
 
@@ -93,9 +92,9 @@ object JobManagerActor {
 
 }
 
-class JobManagerActor[U](val jobId: String,
+class JobManagerActor[T, U](val jobId: String,
                          runningTaskBaselineCount: Int,
-                         val aggregatorSupplier: SerializableSupplier[Aggregator[Tag, Any, U]],
+                         val aggregatorSupplier: SerializableSupplier[Aggregator[ProcessingMessage[T], U]],
                          val writer: Writer[U, Tag, _],
                          val maxProcessDuration: FiniteDuration,
                          val maxBatchDuration: FiniteDuration) extends Actor with ActorLogging with KolibriSerializable {
@@ -105,7 +104,7 @@ class JobManagerActor[U](val jobId: String,
 
   // same aggregator also passed to batch processing. Within batches aggregates single elements
   // here aggregates single aggregations (one result per batch)
-  var aggregator: Aggregator[Tag, Any, U] = aggregatorSupplier.get()
+  var aggregator: Aggregator[ProcessingMessage[T], U] = aggregatorSupplier.get()
   // nr of concurrent batches in processing
   var continuousRunningTaskCount: Int = runningTaskBaselineCount
   // nr of total batches to process, set after job cmd is sent here
@@ -127,8 +126,8 @@ class JobManagerActor[U](val jobId: String,
 
   var failedBatches: Seq[Int] = Seq.empty
 
-  var jobToProcess: ActorRunnableJobGenerator[_, _, U] = _
-  var jobBatchesIterator: Iterator[ActorRunnable[_, _, U]] = _
+  var jobToProcess: ActorRunnableJobGenerator[_, _, _, U] = _
+  var jobBatchesIterator: Iterator[ActorRunnable[_, _, _, U]] = _
 
   val workerService: ActorRef = createWorkerRoutingService
 
@@ -147,18 +146,12 @@ class JobManagerActor[U](val jobId: String,
   }
 
   def updateExpectationForMsg(msg: Any): Unit = msg match {
-    case e: ResultMessage =>
-      // if the batchNr is within existing expectations, update the expectations
-      executionExpectationMap.get(e.partIdentifier.batchNr).foreach(x => {
-        x.accept(msg)
-      })
-      updateExpectations(Seq(e.partIdentifier.batchNr))
     case e: AggregationState[_] =>
       // if the batchNr is within existing expectations, update the expectations
-      executionExpectationMap.get(e.jobPartIdentifier.batchNr).foreach(x => {
+      executionExpectationMap.get(e.batchNr).foreach(x => {
         x.accept(msg)
       })
-      updateExpectations(Seq(e.jobPartIdentifier.batchNr))
+      updateExpectations(Seq(e.batchNr))
   }
 
   def updateExpectations(keys: Seq[Int]): Unit = {
@@ -202,9 +195,9 @@ class JobManagerActor[U](val jobId: String,
     }
   }
 
-  def getBatchesToBeRetried: Iterator[ActorRunnable[_, _, U]] = {
+  def getBatchesToBeRetried: Iterator[ActorRunnable[_, _, _, U]] = {
     val retryBatches: Set[Int] = Set.empty ++ failedACKReceiveBatchNumbers ++ failedBatches
-    val retryRunnables: Set[ActorRunnable[_, _, U]] = retryBatches.map(batchNr => jobToProcess.get(batchNr).get)
+    val retryRunnables: Set[ActorRunnable[_, _, _, U]] = retryBatches.map(batchNr => jobToProcess.get(batchNr).get)
     log.info(s"batches to be retried: ${retryRunnables.map(x => x.batchNr).toSeq}")
     retryRunnables.iterator
   }
@@ -279,7 +272,7 @@ class JobManagerActor[U](val jobId: String,
   }
 
   def submitNextBatch(): Unit = {
-    val nextBatch: ActorRunnable[_, _, U] = jobBatchesIterator.next()
+    val nextBatch: ActorRunnable[_, _, _, U] = jobBatchesIterator.next()
     // the only expectation here is that we get a single AggregationState
     // the expectation of the runnable is actually handled within the runnable
     // allowed time per batch is handled where the actual execution happens,
@@ -297,7 +290,7 @@ class JobManagerActor[U](val jobId: String,
   }
 
   def startState: Receive = {
-    case cmd: ProcessJobCmd[_, _, U] =>
+    case cmd: ProcessJobCmd[_, _, _, U] =>
       log.debug(s"received job to process: $cmd")
       reportResultsTo = sender()
       jobToProcess = cmd.job
@@ -349,31 +342,18 @@ class JobManagerActor[U](val jobId: String,
       log.debug(s"received AddToRunningBaselineCount, count: $count")
       continuousRunningTaskCount += math.max(0, continuousRunningTaskCount + count)
       fillUpFreeSlots()
-    case e@ResultEvent(Left(_), _, _) =>
-      log.debug(s"recieved failed result event: $e")
-      acceptResultMsg(e)
-    case e@ResultEvent(Right(result), _, _) =>
-      log.debug(s"received SuccessEvent: $e")
-      result match {
-        case aggregation: Aggregator[Tag, Any, U] =>
-          aggregator.add(aggregation.aggregation)
-        case element: U =>
-          aggregator.add(e.tags, element)
-        case _ =>
-      }
-      acceptResultMsg(e)
     case e: AggregationState[U] =>
-      val receivedBatchNr: Int = e.jobPartIdentifier.batchNr
+      val receivedBatchNr: Int = e.batchNr
       if (!executionExpectationMap.contains(receivedBatchNr) && failedACKReceiveBatchNumbers.contains(receivedBatchNr)) {
         jobToProcess.get(receivedBatchNr).foreach(batch => {
           executionExpectationMap(batch.batchNr) = expectationForNextBatch()
         })
       }
-      failedACKReceiveBatchNumbers = failedACKReceiveBatchNumbers - e.jobPartIdentifier.batchNr
-      batchesSentWaitingForACK = batchesSentWaitingForACK - e.jobPartIdentifier.batchNr
-      batchesConfirmedProcessingAndRunning = batchesConfirmedProcessingAndRunning - e.jobPartIdentifier.batchNr
-      aggregator.add(e.aggregation)
-      log.info("received aggregation (batch finished) - aggregation: {}, part: {}, ", e.aggregation, e.jobPartIdentifier)
+      failedACKReceiveBatchNumbers = failedACKReceiveBatchNumbers - e.batchNr
+      batchesSentWaitingForACK = batchesSentWaitingForACK - e.batchNr
+      batchesConfirmedProcessingAndRunning = batchesConfirmedProcessingAndRunning - e.batchNr
+      aggregator.addAggregate(e.data)
+      log.info("received aggregation (batch finished) - aggregation: {}, jobId: {}, batchNr: {} ", e.data, e.jobID, e.batchNr)
       acceptResultMsg(e)
     case WriteResultAndSendFailNoteAndTakePoisonPillCmd =>
       log.warning("received WriteResultAndSendFailNoteAndTakePoisonPillCmd")

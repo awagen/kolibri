@@ -42,4 +42,6 @@ object TaskFailType {
 
   case object EmptyMetrics extends TaskFailType
 
+  case class UnknownResponseClass(className: String) extends TaskFailType
+
 }

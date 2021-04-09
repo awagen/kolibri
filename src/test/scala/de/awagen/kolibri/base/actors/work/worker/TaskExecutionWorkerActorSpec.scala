@@ -20,7 +20,7 @@ import akka.actor.ActorRef
 import akka.testkit.{ImplicitSender, TestKit}
 import de.awagen.kolibri.base.actors.KolibriTestKitNoCluster
 import de.awagen.kolibri.base.actors.work.worker.JobPartIdentifiers.BaseJobPartIdentifier
-import de.awagen.kolibri.base.actors.work.worker.ResultMessages.ResultEvent
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.Corn
 import de.awagen.kolibri.base.actors.work.worker.TaskExecutionWorkerActor.ProcessTaskExecution
 import de.awagen.kolibri.base.processing.TestTaskHelper._
 import de.awagen.kolibri.base.processing.execution.task.Task
@@ -29,10 +29,10 @@ import de.awagen.kolibri.datatypes.mutable.stores.{TypeTaggedMap, TypedMapStore}
 import de.awagen.kolibri.datatypes.tagging.TagType.AGGREGATION
 import de.awagen.kolibri.datatypes.tagging.TaggedWithType
 import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}
+import de.awagen.kolibri.datatypes.tagging.TypeTaggedMapImplicits._
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
-import de.awagen.kolibri.datatypes.tagging.TypeTaggedMapImplicits._
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
@@ -58,10 +58,10 @@ class TaskExecutionWorkerActorSpec extends KolibriTestKitNoCluster
       val data: TypeTaggedMap with TaggedWithType[Tag] = TypedMapStore.empty.toTaggedWithTypeMap
       data.addTag(AGGREGATION, StringTag("ALL"))
       data.put(productIdResult.typed, Seq("p3", "p4", "p21"))
-      val tasks: Seq[Task[_]] = Seq(concatIdsTask, reverseIdsTask)
+      val tasks: Seq[Task[_]] = Seq(concatIdsTask, reverseIdsTaskPM)
       val taskExecution: TaskExecution[String] = SimpleTaskExecution(
-        resultKey = reversedIdKey.typed,
-        data.toTaggedWithTypeMap,
+        resultKey = reversedIdKeyPM.typed,
+        data,
         tasks
       )
       val msg = ProcessTaskExecution(taskExecution, BaseJobPartIdentifier("testJob", 1))
@@ -70,7 +70,7 @@ class TaskExecutionWorkerActorSpec extends KolibriTestKitNoCluster
       executionWorker ! msg
       // then
       expectMsgPF(2 seconds) {
-        case ResultEvent(Right(result), _, _) =>
+        case Corn(result) =>
           result mustBe "12p,4p,3p"
         case other => fail(s"received message $other instead of expected success msg")
       }
@@ -85,7 +85,7 @@ class TaskExecutionWorkerActorSpec extends KolibriTestKitNoCluster
       data.put(productIdResult.typed, Seq("p3", "p4", "p21"))
       val tasks: Seq[Task[_]] = Seq(concatIdsTask, asyncReverseIdsTask)
       val taskExecution: TaskExecution[String] = SimpleTaskExecution(
-        resultKey = reversedIdKey.typed,
+        resultKey = reversedIdKeyPM.typed,
         data.toTaggedWithTypeMap,
         tasks
       )
@@ -94,7 +94,7 @@ class TaskExecutionWorkerActorSpec extends KolibriTestKitNoCluster
       ExecutionWorker ! msg
       // then
       expectMsgPF(2 seconds) {
-        case ResultEvent(Right(result), _, _) =>
+        case Corn(result) =>
           result mustBe "12p,4p,3p"
         case other => fail(s"received message $other instead of expected success msg")
       }

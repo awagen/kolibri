@@ -24,8 +24,8 @@ import akka.management.scaladsl.AkkaManagement
 import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.{Config, ConfigFactory}
 import de.awagen.kolibri.base.actors.KolibriTestKit
-import de.awagen.kolibri.base.actors.TestMessages.TestMsg
 import de.awagen.kolibri.base.actors.testactors.TestTransformActor
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.Corn
 import de.awagen.kolibri.base.cluster.ClusterSingletonUtils
 import de.awagen.kolibri.base.config.AppConfig.config
 import org.scalatest.BeforeAndAfterAll
@@ -48,7 +48,7 @@ class RoutingActorSpec extends KolibriTestKit
     AkkaManagement(system).start()
     ClusterBootstrap(system).start()
     cluster = Cluster(system)
-    val transformActorProps = Props(TestTransformActor(x => TestMsg(x.nr + 1)))
+    val transformActorProps = Props(TestTransformActor(x => Corn(x.data + 1)))
     cluster.registerOnMemberUp({
       ClusterSingletonUtils.createClusterSingletonManager(system, Props(RoutingActor(transformActorProps)))
     })
@@ -75,9 +75,9 @@ class RoutingActorSpec extends KolibriTestKit
       // given
       val router: ActorRef = createWorkerRoutingService
       // when
-      router ! TestMsg(1)
+      router ! Corn(1)
       // then
-      expectMsg(1 minute, TestMsg(2))
+      expectMsg(1 minute, Corn(2))
     }
 
   }

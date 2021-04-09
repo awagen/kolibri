@@ -63,15 +63,15 @@ object BatchGenerators {
     *
     * @param elementsToSplitBy
     */
-  case class IntNumberBatchGenerator(elementsToSplitBy: Int) extends IndexedBatchGenerator[Int, TaggedWrapper[Int]] {
-    override def batchFunc: Int => IndexedGenerator[Batch[TaggedWrapper[Int]]] = nrOfElements => {
+  case class IntNumberBatchGenerator(elementsToSplitBy: Int) extends IndexedBatchGenerator[Int, Int] {
+    override def batchFunc: Int => IndexedGenerator[Batch[Int]] = nrOfElements => {
       val remainingPartialBatchSize = nrOfElements % elementsToSplitBy
       val nrBatches = nrOfElements / elementsToSplitBy + (if (remainingPartialBatchSize == 0) 0 else 1)
       val elementsLastBatch = if (remainingPartialBatchSize == 0) elementsToSplitBy else remainingPartialBatchSize
       BaseIndexedGenerator(nrOfElements = nrBatches,
         x => Some(value = Batch(x, BaseIndexedGenerator(
           nrOfElements = if (x == nrBatches - 1) elementsLastBatch else elementsToSplitBy,
-          genFunc = y => Some(TaggedWrapper[Int](y, x))))))
+          genFunc = y => Some(y)))))
     }
   }
 

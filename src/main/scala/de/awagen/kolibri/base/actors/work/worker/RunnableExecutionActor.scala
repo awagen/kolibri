@@ -20,8 +20,9 @@ import akka.Done
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, PoisonPill, Props}
 import akka.stream.UniqueKillSwitch
 import akka.stream.scaladsl.RunnableGraph
-import de.awagen.kolibri.base.actors.work.worker.AggregatingActor.{AggregationState, ProvideStateAndStop, ReportResults}
+import de.awagen.kolibri.base.actors.work.worker.AggregatingActor.{ProvideStateAndStop, ReportResults}
 import de.awagen.kolibri.base.actors.work.worker.JobPartIdentifiers.BaseJobPartIdentifier
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.AggregationState
 import de.awagen.kolibri.base.actors.work.worker.RunnableExecutionActor.{ProvideAggregationState, RunnableHousekeeping}
 import de.awagen.kolibri.base.config.AppConfig.config
 import de.awagen.kolibri.base.processing.execution.expectation.{BaseExecutionExpectation, ExecutionExpectation, Expectation, ReceiveCountExpectation, TimeExpectation}
@@ -80,7 +81,7 @@ class RunnableExecutionActor(maxBatchDuration: FiniteDuration) extends Actor wit
   private[this] var aggregatingActor: ActorRef = _
 
   val readyForJob: Receive = {
-    case runnable: ActorRunnable[_, _, _] =>
+    case runnable: ActorRunnable[_, _, _, _] =>
       jobSender = sender()
       // jobId and batchNr might be used as identifiers to filter received messages by
       runningJobId = runnable.jobId

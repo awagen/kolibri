@@ -19,11 +19,10 @@ package de.awagen.kolibri.base.actors.work.worker
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, PoisonPill, Props}
 import de.awagen.kolibri.base.actors.work.worker.AggregatingActor._
-import de.awagen.kolibri.base.actors.work.worker.ResultMessages.ResultEvent
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationState, BadCorn, Corn, ProcessingMessage}
 import de.awagen.kolibri.base.config.AppConfig.config
 import de.awagen.kolibri.base.processing.execution.expectation.ExecutionExpectation
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
-import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSupplier
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 
@@ -31,7 +30,7 @@ import scala.concurrent.ExecutionContextExecutor
 
 object AggregatingActor {
 
-  def props[U, V](aggregatorSupplier: SerializableSupplier[Aggregator[Tag, U, V]],
+  def props[U, V](aggregatorSupplier: SerializableSupplier[Aggregator[ProcessingMessage[U], V]],
                   expectationSupplier: SerializableSupplier[ExecutionExpectation],
                   owner: ActorRef,
                   jobPartIdentifier: JobPartIdentifiers.JobPartIdentifier): Props =
@@ -40,8 +39,6 @@ object AggregatingActor {
   trait AggregatingActorCmd extends KolibriSerializable
 
   trait AggregatingActorEvent extends KolibriSerializable
-
-  case class AggregationState[V](aggregation: V, jobPartIdentifier: JobPartIdentifiers.JobPartIdentifier,  executionExpectation: ExecutionExpectation) extends AggregatingActorEvent
 
   case object Close extends AggregatingActorCmd
 
@@ -53,7 +50,7 @@ object AggregatingActor {
 
 }
 
-class AggregatingActor[U, V](val aggregatorSupplier: SerializableSupplier[Aggregator[Tag, U, V]],
+class AggregatingActor[U, V](val aggregatorSupplier: SerializableSupplier[Aggregator[ProcessingMessage[U], V]],
                              val expectationSupplier: SerializableSupplier[ExecutionExpectation],
                              val owner: ActorRef,
                              val jobPartIdentifier: JobPartIdentifiers.JobPartIdentifier)
@@ -64,12 +61,12 @@ class AggregatingActor[U, V](val aggregatorSupplier: SerializableSupplier[Aggreg
 
   val expectation: ExecutionExpectation = expectationSupplier.get()
   expectation.init
-  val aggregator: Aggregator[Tag, U, V] = aggregatorSupplier.get()
+  val aggregator: Aggregator[ProcessingMessage[U], V] = aggregatorSupplier.get()
 
   def handleExpectationStateAndCloseIfFinished(adjustReceive: Boolean): Unit = {
     if (expectation.succeeded || expectation.failed) {
       log.debug(s"expectation succeeded: ${expectation.succeeded}, expectation failed: ${expectation.failed}")
-      owner ! AggregationState(aggregator.aggregation, jobPartIdentifier, expectation.deepCopy)
+      owner ! AggregationState(aggregator.aggregation, jobPartIdentifier.jobId, jobPartIdentifier.batchNr, expectation.deepCopy)
       if (adjustReceive) self ! Close
     }
   }
@@ -83,18 +80,20 @@ class AggregatingActor[U, V](val aggregatorSupplier: SerializableSupplier[Aggreg
   override def receive: Receive = openState
 
   def openState: Receive = {
-    case result@ResultEvent(value: U, _, tags: Set[Tag]) =>
+    case e: BadCorn[U] =>
+      aggregator.add(e)
+    case result: Corn[U] =>
       log.debug("received single result event: {}", result)
       log.debug("expectation state: {}", expectation.statusDesc)
       log.debug(s"expectation: $expectation")
-      aggregator.add(tags, value)
+      aggregator.add(result)
       expectation.accept(result)
       handleExpectationStateAndCloseIfFinished(true)
-    case result@ResultEvent(aggregator: Aggregator[Tag, U, V],_,_) =>
+    case result@Corn(aggregator: Aggregator[ProcessingMessage[U], V]) =>
       log.debug("received aggregated result event: {}", result)
       log.debug("expectation state: {}", expectation.statusDesc)
       log.debug(s"expectation: $expectation")
-      aggregator.add(aggregator.aggregation)
+      aggregator.addAggregate(aggregator.aggregation)
       expectation.accept(aggregator)
       handleExpectationStateAndCloseIfFinished(true)
     case Close =>
@@ -104,18 +103,21 @@ class AggregatingActor[U, V](val aggregatorSupplier: SerializableSupplier[Aggreg
       handleExpectationStateAndCloseIfFinished(true)
     case ProvideStateAndStop(reportTo) =>
       log.debug("Providing aggregation state and stopping aggregator")
-      reportTo ! AggregationState(aggregator.aggregation, jobPartIdentifier, expectation.deepCopy)
+      reportTo ! AggregationState(aggregator.aggregation, jobPartIdentifier.jobId,
+        jobPartIdentifier.batchNr, expectation.deepCopy)
       self ! PoisonPill
     case Housekeeping =>
       handleExpectationStateAndCloseIfFinished(adjustReceive = true)
     case ReportResults =>
-      owner ! AggregationState(aggregator.aggregation, jobPartIdentifier, expectation.deepCopy)
+      owner ! AggregationState(aggregator.aggregation, jobPartIdentifier.jobId,
+        jobPartIdentifier.batchNr, expectation.deepCopy)
     case e =>
       log.warning("Received unmatched msg: {}", e)
   }
 
   def closedState: Receive = {
     case ReportResults =>
-      owner ! AggregationState(aggregator.aggregation, jobPartIdentifier, expectation.deepCopy)
+      owner ! AggregationState(aggregator.aggregation, jobPartIdentifier.jobId,
+        jobPartIdentifier.batchNr, expectation.deepCopy)
   }
 }
