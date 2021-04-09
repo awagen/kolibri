@@ -17,7 +17,7 @@
 
 package de.awagen.kolibri.datatypes.types
 
-trait DataStore[T] {
+trait DataStore[+T] {
 
   def data: T
 
