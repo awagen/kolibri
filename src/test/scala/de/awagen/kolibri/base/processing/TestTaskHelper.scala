@@ -20,55 +20,53 @@ import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{Corn, Proce
 import de.awagen.kolibri.base.domain.TaskDataKeys.Val
 import de.awagen.kolibri.base.processing.execution.task.{SimpleAsyncTask, SimpleSyncTask}
 import de.awagen.kolibri.base.processing.failure.TaskFailType.{FailedByException, TaskFailType}
-import de.awagen.kolibri.datatypes.ClassTyped
 import de.awagen.kolibri.datatypes.mutable.stores.TypeTaggedMap
 
 import scala.concurrent.{ExecutionContext, Future}
 
 
-// TODO: might wanna change ClassTyped to NamedClassType with some string identifier
 object TestTaskHelper {
 
-  val productIdResult: Val[Seq[String]] = Val("product_ids", ClassTyped[Seq[String]])
-  val concatIdKey: Val[String] = Val("concatenated_product_ids", ClassTyped[String])
-  val reversedIdKey: Val[String] = Val("reversed_product_ids", ClassTyped[String])
-  val reversedIdKeyPM: Val[ProcessingMessage[String]] = Val("reversed_product_ids", ClassTyped[ProcessingMessage[String]])
-  val reversedIdSeqKey: Val[Seq[String]] = Val("reversed_product_ids", ClassTyped[Seq[String]])
-  val reversedIdSeqSublistKey: Val[Seq[String]] = Val("reversed_product_ids_sublist", ClassTyped[Seq[String]])
-  val failTaskKey: Val[Unit] = Val[Unit]("fail_task", ClassTyped[Unit])
-  val taskFailTypeKey: Val[TaskFailType] = Val("task_fail_type", ClassTyped[TaskFailType])
-  val eitherKey: Val[Either[Int, String]] = Val("either_task", ClassTyped[Either[Int, String]])
+  val productIdResult: Val[Seq[String]] = Val("product_ids")
+  val concatIdKey: Val[String] = Val("concatenated_product_ids")
+  val reversedIdKey: Val[String] = Val("reversed_product_ids")
+  val reversedIdKeyPM: Val[ProcessingMessage[String]] = Val("reversed_product_ids")
+  val reversedIdSeqKey: Val[Seq[String]] = Val("reversed_product_ids")
+  val reversedIdSeqSublistKey: Val[Seq[String]] = Val("reversed_product_ids_sublist")
+  val failTaskKey: Val[Unit] = Val[Unit]("fail_task")
+  val taskFailTypeKey: Val[TaskFailType] = Val("task_fail_type")
+  val eitherKey: Val[Either[Int, String]] = Val("either_task")
 
-  val concatIdsFunc: TypeTaggedMap => Either[TaskFailType, String] = x => Right(x.get(productIdResult.typed).map(y => y.mkString(",")).getOrElse(""))
-  val reverseIdsFunc: TypeTaggedMap => Either[TaskFailType, String] = x => Right(x.get(concatIdKey.typed).map(y => y.reverse).getOrElse(""))
-  val reverseIdsFuncPM: TypeTaggedMap => Either[TaskFailType, ProcessingMessage[String]] = x => Right(x.get(concatIdKey.typed).map(y => Corn(y.reverse)).getOrElse(Corn("")))
-  val reverseIdsValueFunc: TypeTaggedMap => String = x => x.get(concatIdKey.typed).map(y => y.reverse).getOrElse("")
-  val reverseIdSeqFunc: TypeTaggedMap => Either[TaskFailType, Seq[String]] = x => Right(x.get(productIdResult.typed).map(y => y.reverse).getOrElse(Seq.empty))
+  val concatIdsFunc: TypeTaggedMap => Either[TaskFailType, String] = x => Right(x.get(productIdResult).map(y => y.mkString(",")).getOrElse(""))
+  val reverseIdsFunc: TypeTaggedMap => Either[TaskFailType, String] = x => Right(x.get(concatIdKey).map(y => y.reverse).getOrElse(""))
+  val reverseIdsFuncPM: TypeTaggedMap => Either[TaskFailType, ProcessingMessage[String]] = x => Right(x.get(concatIdKey).map(y => Corn(y.reverse)).getOrElse(Corn("")))
+  val reverseIdsValueFunc: TypeTaggedMap => String = x => x.get(concatIdKey).map(y => y.reverse).getOrElse("")
+  val reverseIdSeqFunc: TypeTaggedMap => Either[TaskFailType, Seq[String]] = x => Right(x.get(productIdResult).map(y => y.reverse).getOrElse(Seq.empty))
   val subListFromReverseProductIdsFunc: TypeTaggedMap => Either[TaskFailType, Seq[String]] = x => Right(
-    x.get(reversedIdSeqKey.typed).map(y => reversedIdSeqKey.typed.castFunc.apply(y)).map(z => z.take(2)).getOrElse(Seq.empty))
+    x.get(reversedIdSeqKey).map(y => reversedIdSeqKey.castFunc.apply(y)).map(z => z.take(2)).getOrElse(Seq.empty))
   val failFunc: TypeTaggedMap => Either[TaskFailType, Unit] = _ =>
     Left(FailedByException(new RuntimeException("failed")))
 
-  def concatIdsTask: SimpleSyncTask[String] = execution.task.SimpleSyncTask[String](Seq(productIdResult.typed), concatIdKey.typed, taskFailTypeKey.typed, concatIdsFunc)
+  def concatIdsTask: SimpleSyncTask[String] = execution.task.SimpleSyncTask[String](Seq(productIdResult), concatIdKey, taskFailTypeKey, concatIdsFunc)
 
-  def reverseIdsTask: SimpleSyncTask[String] = SimpleSyncTask[String](Seq(concatIdKey.typed), reversedIdKey.typed, taskFailTypeKey.typed, reverseIdsFunc)
+  def reverseIdsTask: SimpleSyncTask[String] = SimpleSyncTask[String](Seq(concatIdKey), reversedIdKey, taskFailTypeKey, reverseIdsFunc)
 
-  def reverseIdsTaskPM: SimpleSyncTask[ProcessingMessage[String]] = SimpleSyncTask[ProcessingMessage[String]](Seq(concatIdKey.typed), reversedIdKeyPM.typed, taskFailTypeKey.typed, reverseIdsFuncPM)
+  def reverseIdsTaskPM: SimpleSyncTask[ProcessingMessage[String]] = SimpleSyncTask[ProcessingMessage[String]](Seq(concatIdKey), reversedIdKeyPM, taskFailTypeKey, reverseIdsFuncPM)
 
   def asyncReverseIdsTask(implicit ec: ExecutionContext): SimpleAsyncTask[ProcessingMessage[String], ProcessingMessage[String]] = SimpleAsyncTask(
-    Seq(concatIdKey.typed),
-    reversedIdKeyPM.typed,
-    taskFailTypeKey.typed,
+    Seq(concatIdKey),
+    reversedIdKeyPM,
+    taskFailTypeKey,
     x => Future {
       Corn(reverseIdsValueFunc.apply(x))
     }, (_, _) => (), _ => ())
 
   def reverseIdSeqTask: SimpleSyncTask[Seq[String]] = execution.task
-    .SimpleSyncTask[Seq[String]](Seq(productIdResult.typed), reversedIdSeqKey.typed, taskFailTypeKey.typed, reverseIdSeqFunc)
+    .SimpleSyncTask[Seq[String]](Seq(productIdResult), reversedIdSeqKey, taskFailTypeKey, reverseIdSeqFunc)
 
   def reverseIdSeqSubseqTask: SimpleSyncTask[Seq[String]] = execution.task
-    .SimpleSyncTask[Seq[String]](Seq(reversedIdSeqKey.typed), reversedIdSeqSublistKey.typed, taskFailTypeKey.typed, subListFromReverseProductIdsFunc)
+    .SimpleSyncTask[Seq[String]](Seq(reversedIdSeqKey), reversedIdSeqSublistKey, taskFailTypeKey, subListFromReverseProductIdsFunc)
 
-  def failTask: SimpleSyncTask[Unit] = execution.task.SimpleSyncTask[Unit](Seq.empty, failTaskKey.typed, taskFailTypeKey.typed, failFunc)
+  def failTask: SimpleSyncTask[Unit] = execution.task.SimpleSyncTask[Unit](Seq.empty, failTaskKey, taskFailTypeKey, failFunc)
 
 }

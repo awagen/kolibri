@@ -185,14 +185,14 @@ object TestMessages {
     val baseElements = Seq(Seq("1", "2"), Seq("3", "4"), Seq("5", "6"))
     val batchTypeTaggedMapGenerator: IndexedGenerator[TaggedTypeTaggedMapBatch] = BaseIndexedGenerator(
       5,
-      batchNr => Some(Batch(batchNr, typeTaggedMapIterator(baseElements.map(y => y ++ s"$batchNr"), productIdResult.typed)))
+      batchNr => Some(Batch(batchNr, typeTaggedMapIterator(baseElements.map(y => y ++ s"$batchNr"), productIdResult)))
     )
     val tasks: Seq[Task[_]] = Seq(concatIdsTask, reverseIdsTaskPM)
     ProcessActorRunnableTaskJobCmd(
       jobId,
       batchTypeTaggedMapGenerator,
       tasks,
-      reversedIdKeyPM.typed,
+      reversedIdKeyPM,
       aggregatorSupplier = new SerializableSupplier[Aggregator[ProcessingMessage[Any], Any]] {
         override def get(): Aggregator[ProcessingMessage[Any], Any] = new Aggregator[ProcessingMessage[Any], Any] {
           override def add(sample: ProcessingMessage[Any]): Unit = ()

@@ -42,9 +42,9 @@ class SimpleAsyncTaskSpec extends UnitTestSpec {
       val successHandler: (Int, TypeTaggedMap) => Unit = (x, y) => print(s"yay: $x, yay map: ${y.get(successKey)}")
       val throwableHandler: Throwable => Unit = x => ()
       val typeTaggedMap: TypeTaggedMap = TypedMapStore(mutable.Map.empty[ClassTyped[Any], Any])
-      typeTaggedMap.put(productIdResult.typed, Seq("test1", "test2"))
+      typeTaggedMap.put(productIdResult, Seq("test1", "test2"))
       val task = SimpleAsyncTask(
-        prerequisites = Seq(productIdResult.typed),
+        prerequisites = Seq(productIdResult),
         successKey = successKey,
         failKey = failKey,
         futureFunc = futureFunc,

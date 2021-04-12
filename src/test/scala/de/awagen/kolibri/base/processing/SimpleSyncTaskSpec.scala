@@ -51,7 +51,7 @@ class SimpleSyncTaskSpec extends UnitTestSpec {
     "correctly be executed" in {
       // given
       val map: TypeTaggedMap = TypedMapStore(mutable.Map.empty)
-      map.put(productIdResult.typed, Seq("p1", "p2", "p3"))
+      map.put(productIdResult, Seq("p1", "p2", "p3"))
       // when
       val generatedData: Either[TaskFailType, String] = concatIdsTask.func.apply(map)
       // then

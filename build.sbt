@@ -114,6 +114,8 @@ val additionalDependencies = Seq(
   "com.lightbend.akka.management" %% "akka-management-cluster-http" % akkaManagementVersion,
   // tag-based aws discovery
   "com.lightbend.akka.discovery" %% "akka-discovery-aws-api" % akkaManagementVersion,
+  // k8s discovery
+  "com.lightbend.akka.discovery" %% "akka-discovery-kubernetes-api" % akkaManagementVersion,
   // to discover other members of the cluster
   "com.typesafe.akka" %% "akka-discovery" % akkaVersion,
   "com.typesafe.akka" %% "akka-cluster" % akkaVersion,

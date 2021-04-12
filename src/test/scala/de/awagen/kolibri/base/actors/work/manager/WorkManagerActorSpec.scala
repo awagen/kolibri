@@ -76,9 +76,9 @@ class WorkManagerActorSpec extends KolibriTestKitNoCluster
       val testProbe = TestProbe()
       val data: TypeTaggedMap with TaggedWithType[Tag] = TypedMapStore.empty.toTaggedWithTypeMap
       data.addTag(AGGREGATION, StringTag("ALL"))
-      data.put(productIdResult.typed, Seq("p3", "p4", "p21"))
+      data.put(productIdResult, Seq("p3", "p4", "p21"))
       val tasks: Seq[Task[_]] = Seq(concatIdsTask, reverseIdsTaskPM)
-      val msg = TasksWithTypedResult(data = data, tasks = tasks, finalResultKey = reversedIdKeyPM.typed,
+      val msg = TasksWithTypedResult(data = data, tasks = tasks, finalResultKey = reversedIdKeyPM,
         BaseJobPartIdentifier(jobId = "testJob", batchNr = 1))
       // when
       workManager.tell(msg, testProbe.ref)
@@ -96,10 +96,10 @@ class WorkManagerActorSpec extends KolibriTestKitNoCluster
       val testProbe = TestProbe()
       val data: TypeTaggedMap with TaggedWithType[Tag] = TypedMapStore.empty.toTaggedWithTypeMap
       data.addTag(AGGREGATION, StringTag("ALL"))
-      data.put(productIdResult.typed, Seq("p3", "p4", "p21"))
+      data.put(productIdResult, Seq("p3", "p4", "p21"))
       val tasks: Seq[Task[_]] = Seq(concatIdsTask, reverseIdsTaskPM)
       val taskExecution = SimpleTaskExecution(
-        resultKey = reversedIdKeyPM.typed,
+        resultKey = reversedIdKeyPM,
         currentData = data.toTaggedWithTypeMap,
         tasks = tasks
       )

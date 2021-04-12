@@ -34,8 +34,8 @@ class SimpleTaskExecutionSpec extends UnitTestSpec {
 
   def prepareTaskExecution(tasks: Seq[SyncTask[_]], productSeq: Seq[String]): SimpleTaskExecution[String] = {
     val map = TypedMapStore(mutable.Map.empty[ClassTyped[Any], Any])
-    map.put(productIdResult.typed, productSeq)
-    execution.SimpleTaskExecution(reversedIdKeyPM.typed, map.toTaggedWithTypeMap, tasks)
+    map.put(productIdResult, productSeq)
+    execution.SimpleTaskExecution(reversedIdKeyPM, map.toTaggedWithTypeMap, tasks)
   }
 
   "SimpleTaskExecution" should {
@@ -47,8 +47,8 @@ class SimpleTaskExecutionSpec extends UnitTestSpec {
       // when
       execution.processRemainingTasks
       // then
-      execution.currentData.get(concatIdKey.typed).get mustBe "p3,p4,p21"
-      execution.currentData.get(reversedIdKey.typed).get mustBe "12p,4p,3p"
+      execution.currentData.get(concatIdKey).get mustBe "p3,p4,p21"
+      execution.currentData.get(reversedIdKey).get mustBe "12p,4p,3p"
     }
 
   }
