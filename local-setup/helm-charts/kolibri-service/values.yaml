@@ -1,0 +1,167 @@
+# Default values for kolibri-service.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+
+image:
+  # workaround to enable local images for kind cluster,
+  # e.g using local repo localhost:5000
+  repository: localhost:5000/kolibri-base
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  #tag: ""
+
+imagePullSecrets: [ ]
+nameOverride: ""
+fullnameOverride: ""
+
+environmentalVars:
+  PROFILE: 'prod'
+  ROLES: 'httpserver'
+  CLUSTER_NODE_HOST: '<getHostAddress>'
+  CLUSTER_NODE_PORT: '8001'
+  CLUSTER_NODE_BIND_HOST: '0.0.0.0'
+  CLUSTER_NODE_BIND_PORT: '8001'
+  MANAGEMENT_HOST: '<getHostAddress>'
+  MANAGEMENT_PORT: '8558'
+  MANAGEMENT_BIND_HOSTNAME: '0.0.0.0'
+  MANAGEMENT_BIND_PORT: '8558'
+  HTTP_SERVER_INTERFACE: '0.0.0.0'
+  HTTP_SERVER_PORT: '8000'
+  DISCOVERY_SERVICE_NAME: 'kolibri-service'
+  KOLIBRI_ACTOR_SYSTEM_NAME: 'KolibriAppSystem'
+  DISCOVERY_METHOD: 'kubernetes-api'
+
+environmentalVarsComputeNodes:
+  PROFILE: 'prod'
+  ROLES: 'compute'
+  CLUSTER_NODE_HOST: '<getHostAddress>'
+  CLUSTER_NODE_PORT: '8001'
+  CLUSTER_NODE_BIND_HOST: '0.0.0.0'
+  CLUSTER_NODE_BIND_PORT: '8001'
+  MANAGEMENT_HOST: '<getHostAddress>'
+  MANAGEMENT_PORT: '8558'
+  MANAGEMENT_BIND_HOSTNAME: '0.0.0.0'
+  MANAGEMENT_BIND_PORT: '8558'
+  DISCOVERY_SERVICE_NAME: 'kolibri-service'
+  KOLIBRI_ACTOR_SYSTEM_NAME: 'KolibriAppSystem'
+  DISCOVERY_METHOD: 'kubernetes-api'
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: false
+  # Annotations to add to the service account
+  annotations: { }
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+podAnnotations:
+  # for faster cluster forming
+  service.alpha.kubernetes.io/tolerate-unready-endpoints: "true"
+
+podSecurityContext: { }
+# fsGroup: 2000
+
+securityContext: { }
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+# runAsNonRoot: true
+# runAsUser: 1000
+
+service:
+  type: ClusterIP
+  port: 8000
+  livenessProbe:
+    # exec here instead of httpGet would place a dummy probe that would always succeed
+    #    exec:
+    #      command: ["true"]
+    initialDelaySeconds: 1
+    failureThreshold: 300
+    httpGet:
+      path: /hello
+      port: 8000
+    periodSeconds: 10
+    successThreshold: 1
+    timeoutSeconds: 10
+  readinessProbe:
+    initialDelaySeconds: 1
+    failureThreshold: 300
+    httpGet:
+      path: /hello
+      port: 8000
+    periodSeconds: 10
+    successThreshold: 1
+    timeoutSeconds: 10
+  livenessProbeCompute:
+    initialDelaySeconds: 1
+    failureThreshold: 300
+    httpGet:
+      path: /alive
+      port: 8558
+    periodSeconds: 10
+    successThreshold: 1
+    timeoutSeconds: 10
+  readinessProbeCompute:
+    initialDelaySeconds: 1
+    failureThreshold: 300
+    httpGet:
+      path: /ready
+      port: 8558
+    periodSeconds: 10
+    successThreshold: 1
+    timeoutSeconds: 10
+
+ingress:
+  enabled: false
+  annotations: { }
+  hosts:
+    - host: kolibri-base.local
+      paths:
+        - path: /
+          backend:
+            serviceName: kolibri-service
+            servicePort: 8000
+  tls: [ ]
+
+resources: { }
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+#   cpu: 100m
+#   memory: 128Mi
+
+
+# for the httpserver we do not utilize autoscaling, since
+# computations happen on the compute nodes
+autoscaling:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 1
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 90
+
+autoscalingCompute:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 90
+
+nodeSelector: { }
+
+tolerations: [ ]
+
+affinity: { }
+
+labels:
+  app.kubernetes.io/name: kolibri-service

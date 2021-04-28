@@ -57,10 +57,10 @@ class TaskExecutionWorkerActorSpec extends KolibriTestKitNoCluster
       // given
       val data: TypeTaggedMap with TaggedWithType[Tag] = TypedMapStore.empty.toTaggedWithTypeMap
       data.addTag(AGGREGATION, StringTag("ALL"))
-      data.put(productIdResult.typed, Seq("p3", "p4", "p21"))
+      data.put(productIdResult, Seq("p3", "p4", "p21"))
       val tasks: Seq[Task[_]] = Seq(concatIdsTask, reverseIdsTaskPM)
       val taskExecution: TaskExecution[String] = SimpleTaskExecution(
-        resultKey = reversedIdKeyPM.typed,
+        resultKey = reversedIdKeyPM,
         data,
         tasks
       )
@@ -82,10 +82,10 @@ class TaskExecutionWorkerActorSpec extends KolibriTestKitNoCluster
       val ExecutionWorker: ActorRef = system.actorOf(TaskExecutionWorkerActor.props)
       val data: TypeTaggedMap with TaggedWithType[Tag] = TypedMapStore.empty.toTaggedWithTypeMap
       data.addTag(AGGREGATION, StringTag("ALL"))
-      data.put(productIdResult.typed, Seq("p3", "p4", "p21"))
+      data.put(productIdResult, Seq("p3", "p4", "p21"))
       val tasks: Seq[Task[_]] = Seq(concatIdsTask, asyncReverseIdsTask)
       val taskExecution: TaskExecution[String] = SimpleTaskExecution(
-        resultKey = reversedIdKeyPM.typed,
+        resultKey = reversedIdKeyPM,
         data.toTaggedWithTypeMap,
         tasks
       )

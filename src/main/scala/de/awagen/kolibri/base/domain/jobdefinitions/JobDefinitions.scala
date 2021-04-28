@@ -99,7 +99,7 @@ object JobDefinitions {
         jobId = jobId,
         data = dataProvider.data,
         dataBatchGenerator = serializableBatchGeneratorFunc,
-        resultDataKey = resultDataKey.typed,
+        resultDataKey = resultDataKey,
         tasks = tasks,
         aggregatorSupplier = aggregatorSupplier,
         writer = writer,
