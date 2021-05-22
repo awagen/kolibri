@@ -87,6 +87,15 @@ class BaseIndexedGeneratorSpec extends UnitTestSpec {
       assertThrows[AssertionError](generator.getPart(-1, 3))
     }
 
+    "should correctly createFromSeq" in {
+      // given
+      val elements = Seq(1, 2, 3, 4)
+      // when
+      val generator = BaseIndexedGenerator.createFromSeq(elements)
+      // then
+      generator.iterator.toSeq mustBe Seq(1, 2, 3, 4)
+    }
+
   }
 
 }

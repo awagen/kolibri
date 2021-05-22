@@ -16,15 +16,14 @@
 
 package de.awagen.kolibri.datatypes.collections
 
-import de.awagen.kolibri.datatypes.collections.CollectionTraits.{Generatable, Sizeable}
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 
 object BaseIndexedGenerator {
 
-  def createFromSizeableAndGeneratable[T](elem: Sizeable with Generatable[T]): BaseIndexedGenerator[T] = {
-    BaseIndexedGenerator(elem.nrOfElements, {
-      case e if e >= 0 && e < elem.nrOfElements => Some(elem.get(e))
+  def createFromSeq[T](elem: Seq[T]): BaseIndexedGenerator[T] = {
+    BaseIndexedGenerator(elem.size, {
+      case e if e >= 0 && e < elem.size => Some(elem(e))
       case _ => None
     })
   }
