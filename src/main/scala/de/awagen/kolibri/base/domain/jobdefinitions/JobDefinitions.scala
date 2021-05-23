@@ -24,7 +24,7 @@ import de.awagen.kolibri.base.domain.jobdefinitions.provider.data.BatchGenerator
 import de.awagen.kolibri.base.domain.jobdefinitions.provider.data.DataProviders.OrderedMultiValuesProvider
 import de.awagen.kolibri.base.io.writer.Writers.Writer
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnableSinkType.ActorRunnableSinkType
-import de.awagen.kolibri.datatypes.collections.IndexedGenerator
+import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
 import de.awagen.kolibri.datatypes.multivalues.OrderedMultiValues
 import de.awagen.kolibri.datatypes.mutable.stores.TypeTaggedMap

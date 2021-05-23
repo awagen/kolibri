@@ -26,7 +26,7 @@ import de.awagen.kolibri.base.processing.execution.expectation.ExecutionExpectat
 import de.awagen.kolibri.base.processing.execution.job.{ActorRunnable, ActorRunnableSinkType}
 import de.awagen.kolibri.base.processing.execution.task.Task
 import de.awagen.kolibri.datatypes.ClassTyped
-import de.awagen.kolibri.datatypes.collections.IndexedGenerator
+import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.mutable.stores.TypeTaggedMap
 import de.awagen.kolibri.datatypes.tagging.TaggedWithType
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag

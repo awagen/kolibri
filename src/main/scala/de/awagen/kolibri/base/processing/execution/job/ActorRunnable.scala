@@ -29,7 +29,7 @@ import de.awagen.kolibri.base.processing.execution.job
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnable._
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnableSinkType._
 import de.awagen.kolibri.base.processing.failure.TaskFailType
-import de.awagen.kolibri.datatypes.collections.IndexedGenerator
+import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.types.SerializableCallable.{SerializableFunction1, SerializableSupplier}
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
@@ -56,16 +56,20 @@ object ActorRunnable {
   *
   * @tparam U - input element type
   * @tparam V - message type to be send to actor passed to actorSink function per element
-  * @param jobId               - id of the runnable
-  * @param batchNr             - nr of the batch of the overall job
-  * @param supplier            - the IndexedGenerator[U] of data to process
-  * @param transformer         - the transformation applied to elements of the supplier, U => V
-  * @param expectationSupplier - the execution expectation. Can be utilized by actor running the actorRunnable to determine whether
-  *                            processing succeeded, failed due to processing or due to exceeding timeout
-  * @param returnType          - only if set not set to IGNORE_SINK and actorConfig passed to getRunnableGraph contains REPORT_TO actor type
-  *                            will the result of each transformation (U => V) of type V be send to the actorRef given by REPORT_TO type in the actorConfig.
-  *                            Otherwise Sink.ignore is used. Note that the expectation can still be non empty in case the sending of responses
-  *                            does not happen in the sink here but messages are send to other processors which then provide the response
+  * @param jobId                - id of the runnable
+  * @param batchNr              - nr of the batch of the overall job
+  * @param supplier             - the IndexedGenerator[U] of data to process
+  * @param transformer          - the transformation applied to elements of the supplier, U => V
+  * @param processingActorProps - if set, send ProcessingMessage[V] to actor of specified type for processing
+  * @param expectationGenerator - the execution expectation. Can be utilized by actor running the actorRunnable to determine whether
+  *                             processing succeeded, failed due to processing or due to exceeding timeout
+  * @param aggregationSupplier  - Supplier for aggregator. Typed by type to expect for aggregation (wrapped within ProcessingMessage) and type of aggregation
+  * @param returnType           - only if set not set to IGNORE_SINK and actorConfig passed to getRunnableGraph contains REPORT_TO actor type
+  *                             will the result of each transformation (U => V) of type V be send to the actorRef given by REPORT_TO type in the actorConfig.
+  *                             Otherwise Sink.ignore is used. Note that the expectation can still be non empty in case the sending of responses
+  *                             does not happen in the sink here but messages are send to other processors which then provide the response
+  * @param maxExecutionDuration - the overall maximal execution time for the processing defined in the ActorRunnable
+  * @param waitTimePerElement   - max time to wait per processing element
   */
 case class ActorRunnable[U, V, V1, Y](jobId: String,
                                       batchNr: Int,

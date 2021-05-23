@@ -16,18 +16,17 @@
 
 package de.awagen.kolibri.base.http.client.request
 
-import akka.http.scaladsl.model.HttpRequest
+import akka.http.scaladsl.model.{HttpMethods, HttpRequest}
 import akka.http.scaladsl.model.headers.RawHeader
 import de.awagen.kolibri.base.actors.tracking.RequestTrackingActor._
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
 
 
-class RequestContextSpec extends UnitTestSpec {
+class RequestTemplateSpec extends UnitTestSpec {
 
 
-  private[this] def getContext: RequestContext = {
-    RequestContext(groupId = "", requestSequenceId = 1, contextPath = "testpath",
-      parameters = Map("debug" -> Seq("false"), "echoParams" -> Seq("none")))
+  private[this] def getContext: RequestTemplate = {
+    RequestTemplate(contextPath = "testpath", parameters = Map("debug" -> Seq("false"), "echoParams" -> Seq("none")), headers = Seq.empty, body = "", httpMethod = HttpMethods.GET)
   }
 
 
@@ -53,7 +52,7 @@ class RequestContextSpec extends UnitTestSpec {
       //then
       val startTimeValue = request.headers.filter(x => x.name() == PROJECT_HEADER_PREFIX + "START").toList.head.value().toLong
       startTimeValue - currentTimeInMs >= 200 mustBe true
-      request.headers.contains(RawHeader(PROJECT_HEADER_PREFIX + "G_ID", "testGroupId"))
+      request.headers.contains(RawHeader(PROJECT_HEADER_PREFIX + "HASH", request.hashCode().toString))
     }
   }
 

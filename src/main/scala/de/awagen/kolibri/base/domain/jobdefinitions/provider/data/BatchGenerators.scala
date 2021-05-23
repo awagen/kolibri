@@ -17,7 +17,7 @@
 package de.awagen.kolibri.base.domain.jobdefinitions.provider.data
 
 import de.awagen.kolibri.base.domain.jobdefinitions.Batch
-import de.awagen.kolibri.datatypes.collections.{BaseIndexedGenerator, IndexedGenerator}
+import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator}
 import de.awagen.kolibri.datatypes.multivalues.OrderedMultiValues
 import de.awagen.kolibri.datatypes.multivalues.OrderedMultiValuesImplicits.OrderedMultiValuesToParameterIterator
 import de.awagen.kolibri.datatypes.mutable.stores.{TypeTaggedMap, TypedMapStore}
@@ -46,14 +46,14 @@ object BatchGenerators {
   case class OrderedMultiValuesBatchGenerator(paramNameToSplitBy: String) extends IndexedBatchGenerator[OrderedMultiValues, MutableTaggedMap[String, Seq[Any]]] {
     override def batchFunc: OrderedMultiValues => IndexedGenerator[Batch[MutableTaggedMap[String, Seq[Any]]]] = x => {
       val seqByQuery: Seq[OrderedMultiValues] = OrderedMultiValuesBatchUtils.splitIntoBatchByParameter(x, paramNameToSplitBy).toSeq
-      BaseIndexedGenerator(seqByQuery.size, batchNr => Some(Batch(batchNr, seqByQuery(batchNr).toParamNameValuesMapIndexedGenerator.mapGen(map => new MutableTaggedMap[String, Seq[Any]](new MutableTaggedMap(mutable.Map(map.toSeq: _*)))))))
+      ByFunctionNrLimitedIndexedGenerator(seqByQuery.size, batchNr => Some(Batch(batchNr, seqByQuery(batchNr).toParamNameValuesMapIndexedGenerator.mapGen(map => new MutableTaggedMap[String, Seq[Any]](new MutableTaggedMap(mutable.Map(map.toSeq: _*)))))))
     }
   }
 
   case class OrderedMultiValuesTypedTagBatchGenerator(paramNameToSplitBy: String) extends IndexedBatchGenerator[OrderedMultiValues, TypeTaggedMap with TaggedWithType[Tag]] {
     override def batchFunc: OrderedMultiValues => IndexedGenerator[Batch[TypeTaggedMap with TaggedWithType[Tag]]] = x => {
       val seqByQuery: Seq[OrderedMultiValues] = OrderedMultiValuesBatchUtils.splitIntoBatchByParameter(x, paramNameToSplitBy).toSeq
-      BaseIndexedGenerator(seqByQuery.size, batchNr => Some(Batch(batchNr, seqByQuery(batchNr).toParamNameValuesMapIndexedGenerator
+      ByFunctionNrLimitedIndexedGenerator(seqByQuery.size, batchNr => Some(Batch(batchNr, seqByQuery(batchNr).toParamNameValuesMapIndexedGenerator
         .mapGen(map => TypedMapStore(mutable.Map(DataKeys.TAGGED_MAP.typed -> map)).toTaggedWithTypeMap))))
     }
   }
@@ -68,8 +68,8 @@ object BatchGenerators {
       val remainingPartialBatchSize = nrOfElements % elementsToSplitBy
       val nrBatches = nrOfElements / elementsToSplitBy + (if (remainingPartialBatchSize == 0) 0 else 1)
       val elementsLastBatch = if (remainingPartialBatchSize == 0) elementsToSplitBy else remainingPartialBatchSize
-      BaseIndexedGenerator(nrOfElements = nrBatches,
-        x => Some(value = Batch(x, BaseIndexedGenerator(
+      ByFunctionNrLimitedIndexedGenerator(nrOfElements = nrBatches,
+        x => Some(value = Batch(x, ByFunctionNrLimitedIndexedGenerator(
           nrOfElements = if (x == nrBatches - 1) elementsLastBatch else elementsToSplitBy,
           genFunc = y => Some(y)))))
     }

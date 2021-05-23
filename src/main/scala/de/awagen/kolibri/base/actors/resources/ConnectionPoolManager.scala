@@ -17,7 +17,6 @@
 package de.awagen.kolibri.base.actors.resources
 
 import java.util.concurrent.atomic.AtomicReference
-
 import de.awagen.kolibri.base.http.client.provider
 import de.awagen.kolibri.base.http.client.provider.ConnectionPoolStorage
 import de.awagen.kolibri.base.http.client.request.HttpRequestProvider

@@ -50,7 +50,7 @@ class ThroughputActorSpec extends KolibriTestKitNoCluster
       throughputActor ! AddForStage("stage1")
       throughputActor ! AddForStage("stage1")
       throughputActor ! AddForStage("stage1")
-      Thread.sleep(11)
+      Thread.sleep(12)
       throughputActor ! AddForStage("stage1")
       throughputActor ! AddForStage("stage2")
       throughputActor ! AddForStage("stage2")

@@ -27,7 +27,7 @@ import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.{FinishedJobE
 import de.awagen.kolibri.base.actors.work.manager.JobManagerActor.ProcessJobCmd
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{Corn, ProcessingMessage, ResultSummary}
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnable
-import de.awagen.kolibri.datatypes.collections.{BaseIndexedGenerator, IndexedGenerator}
+import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator}
 import de.awagen.kolibri.datatypes.tagging.TagType.AGGREGATION
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSupplier
@@ -93,7 +93,7 @@ class JobManagerActorSpec extends KolibriTestKit
             }
         }, writer = (_: Map[Tag, Double], _: Tag) => Right(()), maxProcessDuration = 10 minutes, maxBatchDuration = 1 minute)
       val jobManagerActor: ActorRef = system.actorOf(managerProps)
-      val jobGenerator: IndexedGenerator[ActorRunnable[TaggedInt, Int, Int, Map[Tag, Double]]] = BaseIndexedGenerator(
+      val jobGenerator: IndexedGenerator[ActorRunnable[TaggedInt, Int, Int, Map[Tag, Double]]] = ByFunctionNrLimitedIndexedGenerator(
         nrOfElements = 4,
         genFunc = x => Some(messagesToActorRefRunnableGenFunc.apply(x))
       )

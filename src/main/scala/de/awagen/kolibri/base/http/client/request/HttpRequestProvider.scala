@@ -14,6 +14,7 @@
   * limitations under the License.
   */
 
+
 package de.awagen.kolibri.base.http.client.request
 
 import akka.http.scaladsl.model.HttpRequest

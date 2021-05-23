@@ -29,7 +29,7 @@ import de.awagen.kolibri.base.processing.execution.job.ActorRunnable
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnableSinkType.REPORT_TO_ACTOR_SINK
 import de.awagen.kolibri.base.processing.execution.task.Task
 import de.awagen.kolibri.datatypes.ClassTyped
-import de.awagen.kolibri.datatypes.collections.{BaseIndexedGenerator, IndexedGenerator}
+import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator}
 import de.awagen.kolibri.datatypes.mutable.stores.{TypeTaggedMap, TypedMapStore}
 import de.awagen.kolibri.datatypes.tagging.TagType.AGGREGATION
 import de.awagen.kolibri.datatypes.tagging.TaggedWithType
@@ -46,7 +46,7 @@ object TestMessages {
 
   val log: Logger = LoggerFactory.getLogger(TestMessages.getClass)
 
-  def messagesToActorRefRunnable(): ActorRunnable[Int, Int, Int, Map[Tag, Double]] = ActorRunnable(jobId = "test", batchNr = 1, supplier = BaseIndexedGenerator(11, x => Some(x)), transformer = Flow.fromFunction[Int, Corn[Int]](x => Corn(x + 10)), processingActorProps = Some(Props(TestTransformActor(m => {
+  def messagesToActorRefRunnable(): ActorRunnable[Int, Int, Int, Map[Tag, Double]] = ActorRunnable(jobId = "test", batchNr = 1, supplier = ByFunctionNrLimitedIndexedGenerator(11, x => Some(x)), transformer = Flow.fromFunction[Int, Corn[Int]](x => Corn(x + 10)), processingActorProps = Some(Props(TestTransformActor(m => {
     Corn(m.data).withTags(AGGREGATION, Set(StringTag("ALL")))
   }))), expectationGenerator = _ => BaseExecutionExpectation(
     fulfillAllForSuccess = Seq(ReceiveCountExpectation(Map(
@@ -66,7 +66,7 @@ object TestMessages {
 
   val expectedValuesForMessagesToActorRefRunnable: immutable.Seq[Corn[Int]] = Range(0, 11, 1).map(x => Corn(x + 11))
 
-  val msg1: ActorRunnable[Int, Int, Int, Map[Tag, Double]] = ActorRunnable(jobId = "test", batchNr = 1, supplier = BaseIndexedGenerator(11, x => Some(x)), transformer = Flow.fromFunction[Int, ProcessingMessage[Int]](x => {
+  val msg1: ActorRunnable[Int, Int, Int, Map[Tag, Double]] = ActorRunnable(jobId = "test", batchNr = 1, supplier = ByFunctionNrLimitedIndexedGenerator(11, x => Some(x)), transformer = Flow.fromFunction[Int, ProcessingMessage[Int]](x => {
     Corn(x + 10).withTags(AGGREGATION, Set(StringTag("ALL")))
   }),
     processingActorProps = None, expectationGenerator = _ => BaseExecutionExpectation(
@@ -94,7 +94,7 @@ object TestMessages {
 
   def messagesToActorRefRunnableGenFunc: Int => ActorRunnable[TaggedInt, Int, Int, Map[Tag, Double]] = x =>
     ActorRunnable(jobId = "test", batchNr = x,
-      supplier = BaseIndexedGenerator(3, y => Some(TaggedInt(y + x))),
+      supplier = ByFunctionNrLimitedIndexedGenerator(3, y => Some(TaggedInt(y + x))),
       transformer = Flow.fromFunction[TaggedInt, ProcessingMessage[Int]](z => {
         Corn(z.value).withTags(AGGREGATION, z.getTagsForType(AGGREGATION))
       }),
@@ -142,7 +142,7 @@ object TestMessages {
 
 
   def generateProcessActorRunnableJobCmd(jobId: String): ProcessActorRunnableJobCmd[_, _, _, _] = {
-    val actorRunnableGenerator: IndexedGenerator[ActorRunnable[TaggedInt, Int, Int, Map[Tag, Double]]] = BaseIndexedGenerator(
+    val actorRunnableGenerator: IndexedGenerator[ActorRunnable[TaggedInt, Int, Int, Map[Tag, Double]]] = ByFunctionNrLimitedIndexedGenerator(
       nrOfElements = 4,
       genFunc = x => Some(messagesToActorRefRunnableGenFunc(x))
     )
@@ -178,12 +178,12 @@ object TestMessages {
   }
 
   def typeTaggedMapIterator[T](elements: Seq[T], startDataKey: ClassTyped[T]): IndexedGenerator[TypeTaggedMap with TaggedWithType[Tag]] = {
-    BaseIndexedGenerator(elements.size, x => Some(TaggedTypeTaggedMap(TypedMapStore(mutable.Map(startDataKey -> elements(x))))))
+    ByFunctionNrLimitedIndexedGenerator(elements.size, x => Some(TaggedTypeTaggedMap(TypedMapStore(mutable.Map(startDataKey -> elements(x))))))
   }
 
   def generateProcessActorRunnableTaskJobCmd(jobId: String): ProcessActorRunnableTaskJobCmd[Any] = {
     val baseElements = Seq(Seq("1", "2"), Seq("3", "4"), Seq("5", "6"))
-    val batchTypeTaggedMapGenerator: IndexedGenerator[TaggedTypeTaggedMapBatch] = BaseIndexedGenerator(
+    val batchTypeTaggedMapGenerator: IndexedGenerator[TaggedTypeTaggedMapBatch] = ByFunctionNrLimitedIndexedGenerator(
       5,
       batchNr => Some(Batch(batchNr, typeTaggedMapIterator(baseElements.map(y => y ++ s"$batchNr"), productIdResult)))
     )
