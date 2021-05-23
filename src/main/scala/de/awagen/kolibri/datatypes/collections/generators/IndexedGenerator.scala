@@ -1,20 +1,4 @@
-/**
-  * Copyright 2021 Andreas Wagenmann
-  *
-  * Licensed under the Apache License, Version 2.0 (the "License");
-  * you may not use this file except in compliance with the License.
-  * You may obtain a copy of the License at
-  *
-  * http://www.apache.org/licenses/LICENSE-2.0
-  *
-  * Unless required by applicable law or agreed to in writing, software
-  * distributed under the License is distributed on an "AS IS" BASIS,
-  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  * See the License for the specific language governing permissions and
-  * limitations under the License.
-  */
-
-package de.awagen.kolibri.datatypes.collections
+package de.awagen.kolibri.datatypes.collections.generators
 
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
@@ -36,14 +20,52 @@ trait IndexedGenerator[+T] extends KolibriSerializable {
 
   val nrOfElements: Int
 
-  def iterator: Iterator[T]
+  /**
+    * Iterator over contained elements
+    *
+    * @return
+    */
+  def iterator: Iterator[T] = {
+    new Iterator[T] {
+      var currentPosition = 0
+
+      override def hasNext: Boolean = currentPosition < nrOfElements
+
+      override def next(): T = {
+        val element = get(currentPosition)
+        currentPosition += 1
+        element.get
+      }
+    }
+  }
 
   def size: Int = nrOfElements
 
+  /**
+    * create generator that only generates a part of the original generator.
+    *
+    * @param startIndex : startIndex (inclusive)
+    * @param endIndex   : endIndex (exclusive)
+    * @return: generator generating the subpart of the generator as given by startIndex and endIndex
+    */
   def getPart(startIndex: Int, endIndex: Int): IndexedGenerator[T]
 
+  /**
+    * Get the index-th element
+    *
+    * @param index
+    * @return
+    */
   def get(index: Int): Option[T]
 
+  /**
+    * Provided a mapping function, create generator of new type where elements are created by current generator
+    * and then mapped by the provided function
+    *
+    * @param f : mapping function
+    * @tparam B : the type the original element type is mapped to
+    * @return : new generator providing the new type
+    */
   def mapGen[B](f: SerializableFunction1[T, B]): IndexedGenerator[B]
 
 }

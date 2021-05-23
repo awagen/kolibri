@@ -16,7 +16,7 @@
 
 package de.awagen.kolibri.datatypes.utils
 
-import de.awagen.kolibri.datatypes.collections.BaseIndexedGenerator
+import de.awagen.kolibri.datatypes.collections.generators.ByFunctionNrLimitedIndexedGenerator
 import de.awagen.kolibri.datatypes.multivalues.{GridOrderedMultiValuesBatch, OrderedMultiValues, OrderedMultiValuesBatch}
 import de.awagen.kolibri.datatypes.values.{DistinctValues, OrderedValues}
 
@@ -28,7 +28,7 @@ object OrderedMultiValuesBatchUtils {
       assert(multiValues.getParameterNameSequence.contains(byParameterName))
       val batchByParamOption: Option[OrderedValues[_]] = multiValues.values.find(x => x.name.eq(byParameterName))
       val batchByParam: OrderedValues[Any] = batchByParamOption.get
-      val batchParamIterator: Iterator[Any] = BaseIndexedGenerator[Any](nrOfElements = batchByParam.totalValueCount,
+      val batchParamIterator: Iterator[Any] = ByFunctionNrLimitedIndexedGenerator[Any](nrOfElements = batchByParam.totalValueCount,
         genFunc = index => batchByParam.getNthZeroBased(index)).iterator
 
       override def hasNext: Boolean = batchParamIterator.hasNext

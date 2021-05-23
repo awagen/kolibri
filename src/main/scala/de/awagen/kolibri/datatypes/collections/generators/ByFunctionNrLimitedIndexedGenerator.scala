@@ -14,15 +14,15 @@
   * limitations under the License.
   */
 
-package de.awagen.kolibri.datatypes.collections
+package de.awagen.kolibri.datatypes.collections.generators
 
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 
-object BaseIndexedGenerator {
+object ByFunctionNrLimitedIndexedGenerator {
 
-  def createFromSeq[T](elem: Seq[T]): BaseIndexedGenerator[T] = {
-    BaseIndexedGenerator(elem.size, {
+  def createFromSeq[T](elem: Seq[T]): ByFunctionNrLimitedIndexedGenerator[T] = {
+    ByFunctionNrLimitedIndexedGenerator(elem.size, {
       case e if e >= 0 && e < elem.size => Some(elem(e))
       case _ => None
     })
@@ -30,19 +30,19 @@ object BaseIndexedGenerator {
 
 }
 
-case class BaseIndexedGenerator[+T](nrOfElements: Int,
-                                    genFunc: SerializableFunction1[Int, Option[T]]) extends IndexedGenerator[T] with KolibriSerializable {
+case class ByFunctionNrLimitedIndexedGenerator[+T](nrOfElements: Int,
+                                                   genFunc: SerializableFunction1[Int, Option[T]]) extends IndexedGenerator[T] with KolibriSerializable {
 
   override def getPart(startIndex: Int, endIndex: Int): IndexedGenerator[T] = {
     assert(startIndex >= 0)
     val end: Int = math.min(nrOfElements, endIndex)
     val newSize = end - startIndex
     val genFunc: SerializableFunction1[Int, Option[T]] = x => this.get(x + startIndex)
-    BaseIndexedGenerator(newSize, genFunc)
+    ByFunctionNrLimitedIndexedGenerator(newSize, genFunc)
   }
 
   override def mapGen[B](f: SerializableFunction1[T, B]): IndexedGenerator[B] = {
-    new BaseIndexedGenerator[B](nrOfElements, x => genFunc(x).map(f))
+    new ByFunctionNrLimitedIndexedGenerator[B](nrOfElements, x => genFunc(x).map(f))
   }
 
 
@@ -51,17 +51,4 @@ case class BaseIndexedGenerator[+T](nrOfElements: Int,
     case _ => None
   }
 
-  override def iterator: Iterator[T] = {
-    new Iterator[T] {
-      var currentPosition = 0
-
-      override def hasNext: Boolean = currentPosition < nrOfElements
-
-      override def next(): T = {
-        val element = get(currentPosition)
-        currentPosition += 1
-        element.get
-      }
-    }
-  }
 }

@@ -16,6 +16,7 @@
 
 package de.awagen.kolibri.datatypes.collections
 
+import de.awagen.kolibri.datatypes.collections.generators.ByFunctionNrLimitedIndexedGenerator
 import de.awagen.kolibri.datatypes.testclasses.UnitTestSpec
 
 class GeneratingBatchIterableSpec extends UnitTestSpec {
@@ -25,7 +26,7 @@ class GeneratingBatchIterableSpec extends UnitTestSpec {
     "correctly provide element-generating batches of given size" in {
       // given
       val batchIterable: GeneratingBatchIterable[Int] = GeneratingBatchIterable(
-        baseIterable = BaseIndexedGenerator(7, x => Some(x + 1)),
+        baseIterable = ByFunctionNrLimitedIndexedGenerator(7, x => Some(x + 1)),
         batchSize = 2
       )
       val batchIterator = batchIterable.iterator

@@ -16,6 +16,7 @@
 
 package de.awagen.kolibri.datatypes.collections
 
+import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 
 /**

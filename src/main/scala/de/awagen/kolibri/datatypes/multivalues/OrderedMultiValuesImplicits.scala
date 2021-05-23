@@ -16,7 +16,7 @@
 
 package de.awagen.kolibri.datatypes.multivalues
 
-import de.awagen.kolibri.datatypes.collections.{BaseIndexedGenerator, IndexedGenerator}
+import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator}
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -87,14 +87,14 @@ object OrderedMultiValuesImplicits {
     def toParamValuesIndexedGenerator: IndexedGenerator[Seq[Any]] = new IndexedGenerator[Seq[Any]] {
       override val nrOfElements: Int = multiValues.numberOfCombinations
 
-      override def getPart(startIndex: Int, endIndex: Int): IndexedGenerator[Seq[Any]] = BaseIndexedGenerator(
+      override def getPart(startIndex: Int, endIndex: Int): IndexedGenerator[Seq[Any]] = ByFunctionNrLimitedIndexedGenerator(
         math.max(0, math.min(endIndex, nrOfElements) - math.max(0, startIndex)),
         x => multiValues.findNthElement(startIndex + x)
       )
 
       override def get(index: Int): Option[Seq[Any]] = multiValues.findNthElement(index)
 
-      override def mapGen[B](f: SerializableFunction1[Seq[Any], B]): IndexedGenerator[B] = BaseIndexedGenerator(
+      override def mapGen[B](f: SerializableFunction1[Seq[Any], B]): IndexedGenerator[B] = ByFunctionNrLimitedIndexedGenerator(
         multiValues.numberOfCombinations,
         x => multiValues.findNthElement(x).map(y => f.apply(y))
       )

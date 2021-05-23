@@ -16,7 +16,7 @@
 
 package de.awagen.kolibri.datatypes.multivalues
 
-import de.awagen.kolibri.datatypes.collections.IndexedGenerator
+import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.testclasses.UnitTestSpec
 import de.awagen.kolibri.datatypes.values.DistinctValues
 
