@@ -13,7 +13,7 @@ case class BatchByGeneratorIndexedGenerator[+T](generators: Seq[IndexedGenerator
     *
     * @param startIndex : startIndex (inclusive)
     * @param endIndex   : endIndex (exclusive)
-    * @return: generator generating the subpart of the generator as given by startIndex and endIndex
+    * @return generator generating the subpart of the generator as given by startIndex and endIndex
     */
   override def getPart(startIndex: Int, endIndex: Int): IndexedGenerator[IndexedGenerator[Seq[T]]] = {
     val start = math.min(math.max(0, startIndex), nrOfElements - 1)

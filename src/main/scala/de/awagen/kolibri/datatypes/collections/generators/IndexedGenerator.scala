@@ -46,7 +46,7 @@ trait IndexedGenerator[+T] extends KolibriSerializable {
     *
     * @param startIndex : startIndex (inclusive)
     * @param endIndex   : endIndex (exclusive)
-    * @return: generator generating the subpart of the generator as given by startIndex and endIndex
+    * @return generator generating the subpart of the generator as given by startIndex and endIndex
     */
   def getPart(startIndex: Int, endIndex: Int): IndexedGenerator[T]
 
