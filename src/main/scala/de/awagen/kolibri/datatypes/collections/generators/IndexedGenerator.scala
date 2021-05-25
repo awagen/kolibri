@@ -16,7 +16,7 @@ import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFuncti
   *
   * @tparam T
   */
-trait IndexedGenerator[+T] extends KolibriSerializable {
+trait IndexedGenerator[+T] extends KolibriSerializable with Iterable[T] {
 
   val nrOfElements: Int
 
@@ -39,7 +39,7 @@ trait IndexedGenerator[+T] extends KolibriSerializable {
     }
   }
 
-  def size: Int = nrOfElements
+  override def size: Int = nrOfElements
 
   /**
     * create generator that only generates a part of the original generator.
