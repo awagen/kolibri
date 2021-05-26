@@ -33,10 +33,7 @@ import scala.reflect.runtime.universe._
 
 object Aggregators {
 
-  abstract class Aggregator[U: TypeTag, V: TypeTag] extends KolibriSerializable {
-
-    val singleElementType: TypeTag[U] = implicitly[TypeTag[U]]
-    val aggregationType: TypeTag[V] = implicitly[TypeTag[V]]
+  abstract class Aggregator[-U: TypeTag, V: TypeTag] extends KolibriSerializable {
 
     def add(sample: U): Unit
 
@@ -131,7 +128,7 @@ object Aggregators {
       }
       catch {
         case _: Throwable =>
-          logger.warn(s"Could not add sample $sample as element of type ${aggregator.singleElementType.tpe.typeSymbol.name.toString}")
+          logger.warn(s"Could not add sample $sample as element of type ${aggregator.getClass}")
       }
     }
 
