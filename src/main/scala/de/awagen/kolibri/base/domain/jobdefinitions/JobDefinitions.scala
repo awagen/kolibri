@@ -32,6 +32,7 @@ import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.tagging.MapImplicits._
 import de.awagen.kolibri.datatypes.tagging.TaggedWithType
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
+import de.awagen.kolibri.datatypes.types.DataStore
 import de.awagen.kolibri.datatypes.types.SerializableCallable.{SerializableFunction1, SerializableSupplier}
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 
@@ -58,7 +59,7 @@ object JobDefinitions {
                                                      processingActorProps: Option[ProcessingActorProps],
                                                      expectationGenerators: RunnableExpectationGenerators.Val,
                                                      returnType: ActorRunnableSinkType,
-                                                     aggregatorSupplier: SerializableSupplier[Aggregator[ProcessingMessage[MetricRow], MetricAggregation[Tag]]],
+                                                     aggregatorSupplier: SerializableSupplier[Aggregator[TaggedWithType[Tag] with DataStore[MetricRow], MetricAggregation[Tag]]],
                                                      writer: Writer[MetricAggregation[Tag], Tag, Any],
                                                      allowedTimePerBatchInSeconds: Long,
                                                      allowedTimeForJobInSeconds: Long
@@ -86,7 +87,7 @@ object JobDefinitions {
                                                          batchGenerator: OrderedMultiValuesTypedTagBatchGenerator,
                                                          resultDataKey: TaskDataKeys.Val[ProcessingMessage[MetricRow]],
                                                          tasks: Seq[TaskDefinitions.Val[Any]],
-                                                         aggregatorSupplier: SerializableSupplier[Aggregator[ProcessingMessage[Any], MetricAggregation[Tag]]],
+                                                         aggregatorSupplier: SerializableSupplier[Aggregator[TaggedWithType[Tag] with DataStore[Any], MetricAggregation[Tag]]],
                                                          writer: Writer[MetricAggregation[Tag], Tag, Any],
                                                          allowedTimePerBatchInSeconds: Long,
                                                          allowedTimeForJobInSeconds: Long

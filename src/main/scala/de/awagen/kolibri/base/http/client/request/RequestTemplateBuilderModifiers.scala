@@ -56,7 +56,7 @@ object RequestTemplateBuilderModifiers {
 
   }
 
-  case class CombinedModifier[T](modifiers: Seq[Modifier[T]]) {
+  case class CombinedModifier[T](modifiers: Seq[Modifier[T]]) extends Modifier[T] {
 
     def apply(a: T): T = {
       var current = a

@@ -27,13 +27,15 @@ import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.ProcessingRes
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.{ActorRunnableJobGenerator, FinishedJobEvent, ProcessingResult}
 import de.awagen.kolibri.base.actors.work.manager.JobManagerActor._
 import de.awagen.kolibri.base.actors.work.manager.WorkManagerActor.{ExecutionType, GetWorkerStatus}
-import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationState, ProcessingMessage, ResultSummary}
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationState, ResultSummary}
 import de.awagen.kolibri.base.config.AppConfig._
 import de.awagen.kolibri.base.io.writer.Writers.Writer
 import de.awagen.kolibri.base.processing.execution.expectation._
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnable
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
+import de.awagen.kolibri.datatypes.tagging.TaggedWithType
 import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}
+import de.awagen.kolibri.datatypes.types.DataStore
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSupplier
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 
@@ -49,7 +51,7 @@ object JobManagerActor {
 
   def props[T, U](experimentId: String,
                runningTaskBaselineCount: Int,
-               aggregatorSupplier: SerializableSupplier[Aggregator[ProcessingMessage[T], U]],
+               aggregatorSupplier: SerializableSupplier[Aggregator[TaggedWithType[Tag] with DataStore[T], U]],
                writer: Writer[U, Tag, _],
                maxProcessDuration: FiniteDuration,
                maxBatchDuration: FiniteDuration): Props =
@@ -94,7 +96,7 @@ object JobManagerActor {
 
 class JobManagerActor[T, U](val jobId: String,
                          runningTaskBaselineCount: Int,
-                         val aggregatorSupplier: SerializableSupplier[Aggregator[ProcessingMessage[T], U]],
+                         val aggregatorSupplier: SerializableSupplier[Aggregator[TaggedWithType[Tag] with DataStore[T], U]],
                          val writer: Writer[U, Tag, _],
                          val maxProcessDuration: FiniteDuration,
                          val maxBatchDuration: FiniteDuration) extends Actor with ActorLogging with KolibriSerializable {
@@ -104,7 +106,7 @@ class JobManagerActor[T, U](val jobId: String,
 
   // same aggregator also passed to batch processing. Within batches aggregates single elements
   // here aggregates single aggregations (one result per batch)
-  var aggregator: Aggregator[ProcessingMessage[T], U] = aggregatorSupplier.get()
+  var aggregator: Aggregator[TaggedWithType[Tag] with DataStore[T], U] = aggregatorSupplier.get()
   // nr of concurrent batches in processing
   var continuousRunningTaskCount: Int = runningTaskBaselineCount
   // nr of total batches to process, set after job cmd is sent here

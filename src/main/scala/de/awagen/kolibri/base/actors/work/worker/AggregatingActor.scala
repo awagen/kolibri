@@ -23,6 +23,9 @@ import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{Aggregation
 import de.awagen.kolibri.base.config.AppConfig.config
 import de.awagen.kolibri.base.processing.execution.expectation.ExecutionExpectation
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
+import de.awagen.kolibri.datatypes.tagging.TaggedWithType
+import de.awagen.kolibri.datatypes.tagging.Tags.Tag
+import de.awagen.kolibri.datatypes.types.DataStore
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSupplier
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 
@@ -30,7 +33,7 @@ import scala.concurrent.ExecutionContextExecutor
 
 object AggregatingActor {
 
-  def props[U, V](aggregatorSupplier: SerializableSupplier[Aggregator[ProcessingMessage[U], V]],
+  def props[U, V](aggregatorSupplier: SerializableSupplier[Aggregator[TaggedWithType[Tag] with DataStore[U], V]],
                   expectationSupplier: SerializableSupplier[ExecutionExpectation],
                   owner: ActorRef,
                   jobPartIdentifier: JobPartIdentifiers.JobPartIdentifier): Props =
@@ -50,7 +53,7 @@ object AggregatingActor {
 
 }
 
-class AggregatingActor[U, V](val aggregatorSupplier: SerializableSupplier[Aggregator[ProcessingMessage[U], V]],
+class AggregatingActor[U, V](val aggregatorSupplier: SerializableSupplier[Aggregator[TaggedWithType[Tag] with DataStore[U], V]],
                              val expectationSupplier: SerializableSupplier[ExecutionExpectation],
                              val owner: ActorRef,
                              val jobPartIdentifier: JobPartIdentifiers.JobPartIdentifier)
@@ -61,7 +64,7 @@ class AggregatingActor[U, V](val aggregatorSupplier: SerializableSupplier[Aggreg
 
   val expectation: ExecutionExpectation = expectationSupplier.get()
   expectation.init
-  val aggregator: Aggregator[ProcessingMessage[U], V] = aggregatorSupplier.get()
+  val aggregator: Aggregator[TaggedWithType[Tag] with DataStore[U], V] = aggregatorSupplier.get()
 
   def handleExpectationStateAndCloseIfFinished(adjustReceive: Boolean): Unit = {
     if (expectation.succeeded || expectation.failed) {

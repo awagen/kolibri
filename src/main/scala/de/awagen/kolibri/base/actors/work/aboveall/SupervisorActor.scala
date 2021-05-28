@@ -39,6 +39,7 @@ import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.mutable.stores.TypeTaggedMap
 import de.awagen.kolibri.datatypes.tagging.TaggedWithType
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
+import de.awagen.kolibri.datatypes.types.DataStore
 import de.awagen.kolibri.datatypes.types.SerializableCallable.{SerializableFunction1, SerializableSupplier}
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 
@@ -71,7 +72,7 @@ object SupervisorActor {
   // OrderedMultiValues
   case class ProcessActorRunnableJobCmd[V, V1, V2, U](jobId: String,
                                                       processElements: ActorRunnableJobGenerator[V, V1, V2, U],
-                                                      aggregatorSupplier: SerializableSupplier[Aggregator[ProcessingMessage[V2], U]],
+                                                      aggregatorSupplier: SerializableSupplier[Aggregator[TaggedWithType[Tag] with DataStore[V2], U]],
                                                       writer: Writer[U, Tag, _],
                                                       allowedTimePerBatch: FiniteDuration,
                                                       allowedTimeForJob: FiniteDuration) extends SupervisorCmd
@@ -80,7 +81,7 @@ object SupervisorActor {
                                                dataIterable: BatchTypeTaggedMapGenerator,
                                                tasks: Seq[Task[_]],
                                                resultKey: ClassTyped[ProcessingMessage[Any]],
-                                               aggregatorSupplier: SerializableSupplier[Aggregator[ProcessingMessage[Any], U]],
+                                               aggregatorSupplier: SerializableSupplier[Aggregator[TaggedWithType[Tag] with DataStore[Any], U]],
                                                writer: Writer[U, Tag, _],
                                                allowedTimePerBatch: FiniteDuration,
                                                allowedTimeForJob: FiniteDuration) extends SupervisorCmd
@@ -118,7 +119,7 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
   val jobIdToActorRefAndExpectation: mutable.Map[String, (ActorSetup, ExecutionExpectation)] = mutable.Map.empty
 
   def createJobManagerActor[T, U](jobId: String,
-                                  aggregatorSupplier: SerializableSupplier[Aggregator[ProcessingMessage[T], U]],
+                                  aggregatorSupplier: SerializableSupplier[Aggregator[TaggedWithType[Tag] with DataStore[T], U]],
                                   writer: Writer[U, Tag, _],
                                   allowedTimeForJob: FiniteDuration,
                                   allowedTimeForBatch: FiniteDuration): ActorRef = {

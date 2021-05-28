@@ -30,6 +30,7 @@ import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.mutable.stores.TypeTaggedMap
 import de.awagen.kolibri.datatypes.tagging.TaggedWithType
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
+import de.awagen.kolibri.datatypes.types.DataStore
 import de.awagen.kolibri.datatypes.types.SerializableCallable.{SerializableFunction1, SerializableSupplier}
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 
@@ -50,7 +51,7 @@ object JobMsgFactory {
                                              transformerFlow: Flow[V, ProcessingMessage[V1], NotUsed],
                                              processingActorProps: Option[Props],
                                              expectationGenerator: SerializableFunction1[Int, ExecutionExpectation],
-                                             aggregatorSupplier: SerializableSupplier[Aggregator[ProcessingMessage[V2], W]],
+                                             aggregatorSupplier: SerializableSupplier[Aggregator[TaggedWithType[Tag] with DataStore[V2], W]],
                                              writer: Writer[W, Tag, Any],
                                              returnType: ActorRunnableSinkType.Value,
                                              allowedTimePerBatchInSeconds: Long,
@@ -86,7 +87,7 @@ object JobMsgFactory {
                                           dataBatchGenerator: SerializableFunction1[T, IndexedGenerator[Batch[TypeTaggedMap with TaggedWithType[Tag]]]],
                                           resultDataKey: ClassTyped[ProcessingMessage[Any]],
                                           tasks: Seq[TaskDefinitions.Val[Any]],
-                                          aggregatorSupplier: SerializableSupplier[Aggregator[ProcessingMessage[Any], W]],
+                                          aggregatorSupplier: SerializableSupplier[Aggregator[TaggedWithType[Tag] with DataStore[Any], W]],
                                           writer: Writer[W, Tag, Any],
                                           allowedTimePerBatchInSeconds: Long,
                                           allowedTimeForJobInSeconds: Long): ProcessActorRunnableTaskJobCmd[W] = {

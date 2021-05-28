@@ -25,6 +25,9 @@ import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{Corn, Proce
 import de.awagen.kolibri.base.processing.execution.expectation.{BaseExecutionExpectation, ExecutionExpectation}
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnableSinkType.REPORT_TO_ACTOR_SINK
 import de.awagen.kolibri.datatypes.collections.generators.ByFunctionNrLimitedIndexedGenerator
+import de.awagen.kolibri.datatypes.tagging.TaggedWithType
+import de.awagen.kolibri.datatypes.tagging.Tags.Tag
+import de.awagen.kolibri.datatypes.types.DataStore
 import de.awagen.kolibri.datatypes.types.SerializableCallable.{SerializableFunction1, SerializableSupplier}
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 import org.scalatest.BeforeAndAfterAll
@@ -56,9 +59,9 @@ class ActorRunnableSpec extends KolibriTestKitNoCluster
       override def get(): ExecutionExpectation = BaseExecutionExpectation.empty()
     }
     val msg1: ActorRunnable[Int, Int, Int, Double] = ActorRunnable(jobId = "test", batchNr = 1, supplier = ByFunctionNrLimitedIndexedGenerator(4, generatorFunc),
-      transformer = Flow.fromFunction(transformerFunc), processingActorProps = None, expectationGenerator = _ => expectationGen.get(), aggregationSupplier = new SerializableSupplier[Aggregator[ProcessingMessage[Int], Double]] {
-        override def get(): Aggregator[ProcessingMessage[Int], Double] = new Aggregator[ProcessingMessage[Int], Double] {
-          override def add(sample: ProcessingMessage[Int]): Unit = ()
+      transformer = Flow.fromFunction(transformerFunc), processingActorProps = None, expectationGenerator = _ => expectationGen.get(), aggregationSupplier = new SerializableSupplier[Aggregator[TaggedWithType[Tag] with DataStore[Int], Double]] {
+        override def get(): Aggregator[TaggedWithType[Tag] with DataStore[Int], Double] = new Aggregator[TaggedWithType[Tag] with DataStore[Int], Double] {
+          override def add(sample: TaggedWithType[Tag] with DataStore[Int]): Unit = ()
 
           override def aggregation: Double = 0.0
 

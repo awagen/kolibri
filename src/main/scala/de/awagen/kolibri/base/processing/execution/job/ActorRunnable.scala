@@ -31,6 +31,9 @@ import de.awagen.kolibri.base.processing.execution.job.ActorRunnableSinkType._
 import de.awagen.kolibri.base.processing.failure.TaskFailType
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
+import de.awagen.kolibri.datatypes.tagging.TaggedWithType
+import de.awagen.kolibri.datatypes.tagging.Tags.Tag
+import de.awagen.kolibri.datatypes.types.DataStore
 import de.awagen.kolibri.datatypes.types.SerializableCallable.{SerializableFunction1, SerializableSupplier}
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 import org.slf4j.{Logger, LoggerFactory}
@@ -77,7 +80,7 @@ case class ActorRunnable[U, V, V1, Y](jobId: String,
                                       transformer: Flow[U, ProcessingMessage[V], NotUsed],
                                       processingActorProps: Option[Props],
                                       expectationGenerator: SerializableFunction1[Int, ExecutionExpectation],
-                                      aggregationSupplier: SerializableSupplier[Aggregator[ProcessingMessage[V1], Y]],
+                                      aggregationSupplier: SerializableSupplier[Aggregator[TaggedWithType[Tag] with DataStore[V1], Y]],
                                       returnType: job.ActorRunnableSinkType.Value,
                                       maxExecutionDuration: FiniteDuration,
                                       waitTimePerElement: FiniteDuration) extends KolibriSerializable {
