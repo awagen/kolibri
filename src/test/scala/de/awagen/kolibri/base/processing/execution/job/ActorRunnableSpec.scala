@@ -58,16 +58,15 @@ class ActorRunnableSpec extends KolibriTestKitNoCluster
     val expectationGen: SerializableSupplier[ExecutionExpectation] = new SerializableSupplier[ExecutionExpectation] {
       override def get(): ExecutionExpectation = BaseExecutionExpectation.empty()
     }
-    val msg1: ActorRunnable[Int, Int, Int, Double] = ActorRunnable(jobId = "test", batchNr = 1, supplier = ByFunctionNrLimitedIndexedGenerator(4, generatorFunc),
-      transformer = Flow.fromFunction(transformerFunc), processingActorProps = None, expectationGenerator = _ => expectationGen.get(), aggregationSupplier = new SerializableSupplier[Aggregator[TaggedWithType[Tag] with DataStore[Int], Double]] {
-        override def get(): Aggregator[TaggedWithType[Tag] with DataStore[Int], Double] = new Aggregator[TaggedWithType[Tag] with DataStore[Int], Double] {
-          override def add(sample: TaggedWithType[Tag] with DataStore[Int]): Unit = ()
+    val msg1: ActorRunnable[Int, Int, Int, Double] = ActorRunnable(jobId = "test", batchNr = 1, supplier = ByFunctionNrLimitedIndexedGenerator(4, generatorFunc), transformer = Flow.fromFunction(transformerFunc), processingActorProps = None, expectationGenerator = _ => expectationGen.get(), aggregationSupplier = new SerializableSupplier[Aggregator[TaggedWithType[Tag] with DataStore[Int], Double]] {
+                override def get(): Aggregator[TaggedWithType[Tag] with DataStore[Int], Double] = new Aggregator[TaggedWithType[Tag] with DataStore[Int], Double] {
+                  override def add(sample: TaggedWithType[Tag] with DataStore[Int]): Unit = ()
 
-          override def aggregation: Double = 0.0
+                  override def aggregation: Double = 0.0
 
-          override def addAggregate(aggregatedValue: Double): Unit = ()
-        }
-      }, returnType = REPORT_TO_ACTOR_SINK, 1 minute, 1 minute)
+                  override def addAggregate(aggregatedValue: Double): Unit = ()
+                }
+              }, returnType = REPORT_TO_ACTOR_SINK, 1 minute, 1 minute)
   }
 
   "ActorRunnable" should {

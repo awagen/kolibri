@@ -29,6 +29,7 @@ import de.awagen.kolibri.base.config.AppConfig.config
 import de.awagen.kolibri.base.domain.jobdefinitions.provider.CredentialsProvider
 import de.awagen.kolibri.base.http.client.request.HttpRequestProvider
 import de.awagen.kolibri.base.tracking.RequestTrackingInterface
+import de.awagen.kolibri.datatypes.types.DataStore
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
@@ -46,9 +47,9 @@ object GenericRequestFlows {
   def getHttpsConnectionPoolFlow[T](implicit actorSystem: ActorSystem): Host => Flow[(HttpRequest, T), (Try[HttpResponse], T), Http.HostConnectionPool] =
     x => Http().cachedHostConnectionPoolHttps[T](x.hostname, x.port)
 
-  def expandProcessContextFlow[T <: HttpRequestProvider](): Flow[T, (HttpRequest, T), NotUsed] =
+  def expandProcessContextFlow[T <: DataStore[HttpRequestProvider]](): Flow[T, (HttpRequest, T), NotUsed] =
     Flow.fromFunction[T, (HttpRequest, T)](x => {
-      (x.getRequest, x)
+      (x.data.getRequest, x)
     })
 
   def enrichWithCredentialsFlow[T](credentialsProvider: CredentialsProvider): Flow[(HttpRequest, T), (HttpRequest, T), NotUsed] =
@@ -59,7 +60,7 @@ object GenericRequestFlows {
   def identity[T](): Flow[(HttpRequest, T), (HttpRequest, T), NotUsed] =
     Flow.fromFunction(x => x)
 
-  def genericRequestFlow[T <: HttpRequestProvider](connectionPool: Flow[(HttpRequest, T), (Try[HttpResponse], T), _],
+  def genericRequestFlow[T <: DataStore[HttpRequestProvider]](connectionPool: Flow[(HttpRequest, T), (Try[HttpResponse], T), _],
                                                    credentialsProvider: Option[CredentialsProvider],
                                                    meter: Option[ActorRef]): Flow[T, (Try[HttpResponse], T), NotUsed] = {
     expandProcessContextFlow[T]()
@@ -75,37 +76,37 @@ object GenericRequestFlows {
     })
   }
 
-  def httpResponseTryToFutureFlow[T, U <: HttpRequestProvider](function: HttpResponse => Future[T],
+  def httpResponseTryToFutureFlow[T, U <: DataStore[HttpRequestProvider]](function: HttpResponse => Future[T],
                                                                failValue: Future[T]): Flow[(Try[HttpResponse], U), (Future[T], U), NotUsed] = {
     Flow.fromFunction[(Try[HttpResponse], U), (Future[T], U)]({
-      case (Success(response), requestContext) =>
-        if (config.useRequestTracking) RequestTrackingInterface.sendMessageToTrackingActor(SetRequestSuccess(requestContext.getRequest))
-        (function.apply(response), requestContext)
+      case (Success(response), requestProviderStore) =>
+        if (config.useRequestTracking) RequestTrackingInterface.sendMessageToTrackingActor(SetRequestSuccess(requestProviderStore.data.getRequest))
+        (function.apply(response), requestProviderStore)
       case (Failure(ex), processContext) =>
-        if (config.useRequestTracking) RequestTrackingInterface.sendMessageToTrackingActor(SetRequestFailed(processContext.getRequest, ex.getMessage))
+        if (config.useRequestTracking) RequestTrackingInterface.sendMessageToTrackingActor(SetRequestFailed(processContext.data.getRequest, ex.getMessage))
         (failValue, processContext)
     })
   }
 
-  def processResponseAndTrackRead[T <: HttpRequestProvider, U](responseHandler: HttpResponse => Future[Either[Throwable, U]])(in: (Try[HttpResponse], T))
+  def processResponseAndTrackRead[T <: DataStore[HttpRequestProvider], U](responseHandler: HttpResponse => Future[Either[Throwable, U]])(in: (Try[HttpResponse], T))
                                                               (implicit actorSystem: ActorSystem, ec: ExecutionContext,
                                                                mat: Materializer): Future[(Either[Throwable, U], T)] = {
     in match {
-      case (Success(response), requestcontext) =>
-        if (config.useRequestTracking) RequestTrackingInterface.sendMessageToTrackingActor(SetRequestSuccess(requestcontext.getRequest))
+      case (Success(response), requestProviderStore) =>
+        if (config.useRequestTracking) RequestTrackingInterface.sendMessageToTrackingActor(SetRequestSuccess(requestProviderStore.data.getRequest))
         for {
           v1 <- {
             val fut = responseHandler.apply(response)
             fut.onComplete(_ => {
               if (config.useRequestTracking) RequestTrackingInterface
-                .sendMessageToTrackingActor(SetRequestEndFullResponseRead(requestcontext.getRequest, System.currentTimeMillis()))
+                .sendMessageToTrackingActor(SetRequestEndFullResponseRead(requestProviderStore.data.getRequest, System.currentTimeMillis()))
             })
             fut
           }
-          v2 <- Future.successful(requestcontext)
+          v2 <- Future.successful(requestProviderStore)
         } yield (v1, v2)
       case (Failure(ex), processcontext) =>
-        if (config.useRequestTracking) RequestTrackingInterface.sendMessageToTrackingActor(SetRequestFailed(processcontext.getRequest, ex.getMessage))
+        if (config.useRequestTracking) RequestTrackingInterface.sendMessageToTrackingActor(SetRequestFailed(processcontext.data.getRequest, ex.getMessage))
         Future.successful[(Either[Throwable, U], T)]((Left(ex), processcontext))
     }
   }
@@ -124,7 +125,7 @@ object GenericRequestFlows {
     * @tparam U
     * @return
     */
-  def requestAndParseResponseFlow[T <: HttpRequestProvider, U](credentialsProvider: Option[CredentialsProvider],
+  def requestAndParseResponseFlow[T <: DataStore[HttpRequestProvider], U](credentialsProvider: Option[CredentialsProvider],
                                                                connectionPool: Flow[(HttpRequest, T), (Try[HttpResponse], T), _],
                                                                meter: Option[ActorRef],
                                                                responseHandler: HttpResponse => Future[Either[Throwable, U]])
@@ -136,7 +137,7 @@ object GenericRequestFlows {
       .withAttributes(FlowAttributes.DEFAULT_LOG_LEVELS) //some logging settings
   }
 
-  def requestAndParseResponseFlowByConnections[T <: HttpRequestProvider, U](credentialsProvider: Option[CredentialsProvider],
+  def requestAndParseResponseFlowByConnections[T <: DataStore[HttpRequestProvider], U](credentialsProvider: Option[CredentialsProvider],
                                                                             connectionPool: Flow[(HttpRequest, T), (Try[HttpResponse], T), _],
                                                                             meter: Option[ActorRef],
                                                                             responseHandler: HttpResponse => Future[Either[Throwable, U]])
@@ -149,7 +150,7 @@ object GenericRequestFlows {
       .withAttributes(FlowAttributes.DEFAULT_LOG_LEVELS) //some logging settings
   }
 
-  def getConnectionPoolFlow[T <: HttpRequestProvider](host: String, port: Int, useHttps: Boolean)
+  def getConnectionPoolFlow[T <: DataStore[HttpRequestProvider]](host: String, port: Int, useHttps: Boolean)
                                                      (implicit actorSystem: ActorSystem): Flow[(HttpRequest, T), (Try[HttpResponse], T), _] = {
     ConnectionPoolManager.connectionPoolStorage.getPoolForHost(Host(host, port), useHttps)
   }

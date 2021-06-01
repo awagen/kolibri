@@ -61,6 +61,7 @@ object JobDefinitions {
                                                      returnType: ActorRunnableSinkType,
                                                      aggregatorSupplier: SerializableSupplier[Aggregator[TaggedWithType[Tag] with DataStore[MetricRow], MetricAggregation[Tag]]],
                                                      writer: Writer[MetricAggregation[Tag], Tag, Any],
+                                                     allowedTimePerElementInMillis: Long,
                                                      allowedTimePerBatchInSeconds: Long,
                                                      allowedTimeForJobInSeconds: Long
                                                     ) extends ActorRunnableJobDefinition[MutableTaggedMap[String, Seq[Any]], Any, MetricRow, MetricAggregation[Tag]] {
@@ -72,10 +73,11 @@ object JobDefinitions {
         dataBatchGenerator = serializableBatchGenerator,
         transformerFlow = transformer.transformerFlow,
         processingActorProps = processingActorProps.map(x => x.props),
-        expectationGenerator = expectationGenerators.elementCountToExpectationFunc,
-        aggregatorSupplier = aggregatorSupplier,
+        perBatchExpectationGenerator = expectationGenerators.elementCountToExpectationFunc,
+        perBatchAndOverallAggregatorSupplier = aggregatorSupplier,
         writer = writer,
         returnType = returnType,
+        allowedTimePerElementInMillis = allowedTimePerElementInMillis,
         allowedTimePerBatchInSeconds = allowedTimePerBatchInSeconds,
         allowedTimeForJobInSeconds = allowedTimeForJobInSeconds
       )

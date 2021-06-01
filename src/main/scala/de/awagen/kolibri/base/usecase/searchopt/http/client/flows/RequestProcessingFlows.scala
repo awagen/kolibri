@@ -81,7 +81,7 @@ object RequestProcessingFlows {
           import GraphDSL.Implicits._
           // creating the elements that will be part of the sink
           val source: SourceShape[ProcessingMessage[RequestTemplate]] = b.add(Source.fromIterator[ProcessingMessage[RequestTemplate]](() => requestTemplateGenerator.iterator))
-          val flow: FlowShape[ProcessingMessage[RequestTemplate], (Either[Throwable, T], RequestTemplate)] = b.add(requestAndParsingFlow[T](throughputActor, queryParam, groupId, connections, connectionToFlowFunc, parsingFunc))
+          val flow: FlowShape[ProcessingMessage[RequestTemplate], (Either[Throwable, T], ProcessingMessage[RequestTemplate])] = b.add(requestAndParsingFlow[T](throughputActor, queryParam, groupId, connections, connectionToFlowFunc, parsingFunc))
           // creating the graph
           source ~> flow ~> sinkInst
           ClosedShape
@@ -113,7 +113,7 @@ object RequestProcessingFlows {
                               )(implicit as: ActorSystem,
                                 mat: Materializer,
                                 ec: ExecutionContext,
-                                ac: ActorContext): Graph[FlowShape[ProcessingMessage[RequestTemplate], (Either[Throwable, T], RequestTemplate)], NotUsed] = GraphDSL.create() { implicit b =>
+                                ac: ActorContext): Graph[FlowShape[ProcessingMessage[RequestTemplate], (Either[Throwable, T], ProcessingMessage[RequestTemplate])], NotUsed] = GraphDSL.create() { implicit b =>
     import GraphDSL.Implicits._
     // now define the single elements
     val initThroughputFlow = b.add(Flow.fromFunction[ProcessingMessage[RequestTemplate], ProcessingMessage[RequestTemplate]](x => {
@@ -141,8 +141,8 @@ object RequestProcessingFlows {
             connectionPool = connectionPool,
             meter = Some(throughputActor), responseHandler = parsingFunc)
       })
-    val merge = b.add(Merge[(Either[Throwable, T], RequestTemplate)](connections.size))
-    val throughputFlow: FlowShape[(Either[Throwable, T], RequestTemplate), (Either[Throwable, T], RequestTemplate)] = b
+    val merge = b.add(Merge[(Either[Throwable, T], ProcessingMessage[RequestTemplate])](connections.size))
+    val throughputFlow: FlowShape[(Either[Throwable, T], ProcessingMessage[RequestTemplate]), (Either[Throwable, T], ProcessingMessage[RequestTemplate])] = b
       .add(flowThroughActorMeter(throughputActor, "toMetricsCalc"))
     initThroughputFlow ~> balance
     connectionFlows.foreach(x => balance ~> x ~> merge)

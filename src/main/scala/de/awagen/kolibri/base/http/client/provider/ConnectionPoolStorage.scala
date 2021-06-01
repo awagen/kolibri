@@ -24,10 +24,11 @@ import akka.stream.scaladsl.Flow
 import de.awagen.kolibri.base.actors.flows.GenericRequestFlows.{Host, getHttpConnectionPoolFlow, getHttpsConnectionPoolFlow}
 import de.awagen.kolibri.base.http.client.request.HttpRequestProvider
 import de.awagen.kolibri.datatypes.ConcurrentUpdateMapOps
+import de.awagen.kolibri.datatypes.types.DataStore
 
 import scala.util.Try
 
-case class ConnectionPoolStorage[T <: HttpRequestProvider](map: AtomicReference[Map[String, Flow[(HttpRequest, T), (Try[HttpResponse], T), Http.HostConnectionPool]]]) {
+case class ConnectionPoolStorage[T <: DataStore[HttpRequestProvider]](map: AtomicReference[Map[String, Flow[(HttpRequest, T), (Try[HttpResponse], T), Http.HostConnectionPool]]]) {
 
   def getPoolForHost(host: Host, useHttps: Boolean)(implicit actorSystem: ActorSystem): Flow[(HttpRequest, T), (Try[HttpResponse], T), Http.HostConnectionPool] = {
     val poolFunc = if (useHttps) getHttpsConnectionPoolFlow[T] else getHttpConnectionPoolFlow[T]

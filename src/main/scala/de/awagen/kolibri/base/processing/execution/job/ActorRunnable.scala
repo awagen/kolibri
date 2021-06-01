@@ -22,7 +22,7 @@ import akka.stream._
 import akka.stream.scaladsl.{Flow, GraphDSL, Keep, RunnableGraph, Sink, Source}
 import akka.util.Timeout
 import akka.{Done, NotUsed}
-import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{BadCorn, ProcessingMessage}
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.BadCorn
 import de.awagen.kolibri.base.config.AppConfig.config
 import de.awagen.kolibri.base.processing.execution.expectation.ExecutionExpectation
 import de.awagen.kolibri.base.processing.execution.job
@@ -71,37 +71,36 @@ object ActorRunnable {
   *                             will the result of each transformation (U => V) of type V be send to the actorRef given by REPORT_TO type in the actorConfig.
   *                             Otherwise Sink.ignore is used. Note that the expectation can still be non empty in case the sending of responses
   *                             does not happen in the sink here but messages are send to other processors which then provide the response
-  * @param maxExecutionDuration - the overall maximal execution time for the processing defined in the ActorRunnable
-  * @param waitTimePerElement   - max time to wait per processing element
+  * @param waitTimePerElement   - max time to wait per processing element (in case processingActorProps are not None; only used to set timeout to the respective ask future)
   */
 case class ActorRunnable[U, V, V1, Y](jobId: String,
                                       batchNr: Int,
                                       supplier: IndexedGenerator[U],
-                                      transformer: Flow[U, ProcessingMessage[V], NotUsed],
+                                      transformer: Flow[U, TaggedWithType[Tag] with DataStore[V], NotUsed],
                                       processingActorProps: Option[Props],
                                       expectationGenerator: SerializableFunction1[Int, ExecutionExpectation],
                                       aggregationSupplier: SerializableSupplier[Aggregator[TaggedWithType[Tag] with DataStore[V1], Y]],
                                       returnType: job.ActorRunnableSinkType.Value,
-                                      maxExecutionDuration: FiniteDuration,
-                                      waitTimePerElement: FiniteDuration) extends KolibriSerializable {
+                                      waitTimePerElement: FiniteDuration,
+                                      maxExecutionDuration: FiniteDuration) extends KolibriSerializable {
 
   val log: Logger = LoggerFactory.getLogger(ActorRunnable.getClass)
 
-  val actorSink: SerializableFunction1[ActorRef, Sink[ProcessingMessage[V1], Future[Done]]] = new SerializableFunction1[ActorRef, Sink[ProcessingMessage[V1], Future[Done]]] {
-    override def apply(actorRef: ActorRef): Sink[ProcessingMessage[V1], Future[Done]] = Sink.foreach[ProcessingMessage[V1]](element => {
+  val actorSink: SerializableFunction1[ActorRef, Sink[TaggedWithType[Tag] with DataStore[V1], Future[Done]]] = new SerializableFunction1[ActorRef, Sink[TaggedWithType[Tag] with DataStore[V1], Future[Done]]] {
+    override def apply(actorRef: ActorRef): Sink[TaggedWithType[Tag] with DataStore[V1], Future[Done]] = Sink.foreach[TaggedWithType[Tag] with DataStore[V1]](element => {
       actorRef ! element
       ()
     })
   }
 
-  def getSink(actorConfig: JobActorConfig): Sink[ProcessingMessage[V1], (UniqueKillSwitch, Future[Done])] = {
-    val killSwitch: Flow[ProcessingMessage[V1], ProcessingMessage[V1], UniqueKillSwitch] = Flow.fromGraph(KillSwitches.single[ProcessingMessage[V1]])
+  def getSink(actorConfig: JobActorConfig): Sink[TaggedWithType[Tag] with DataStore[V1], (UniqueKillSwitch, Future[Done])] = {
+    val killSwitch: Flow[TaggedWithType[Tag] with DataStore[V1], TaggedWithType[Tag] with DataStore[V1], UniqueKillSwitch] = Flow.fromGraph(KillSwitches.single[TaggedWithType[Tag] with DataStore[V1]])
     returnType match {
       case IGNORE_SINK =>
         killSwitch.toMat(Sink.ignore)(Keep.both)
       case REPORT_TO_ACTOR_SINK =>
         val reportTo: Option[ActorRef] = actorConfig.others.get(ActorType.ACTOR_SINK)
-        val sink: Sink[ProcessingMessage[V1], Future[Done]] = reportTo.map(x => actorSink.apply(x)).getOrElse(Sink.ignore)
+        val sink: Sink[TaggedWithType[Tag] with DataStore[V1], Future[Done]] = reportTo.map(x => actorSink.apply(x)).getOrElse(Sink.ignore)
         killSwitch.toMat(sink)(Keep.both)
       case e =>
         log.warn(s"return type '$e' not covered, using Sink.ignore")
@@ -122,30 +121,31 @@ case class ActorRunnable[U, V, V1, Y](jobId: String,
     * @return
     */
   def getRunnableGraph(actorConfig: JobActorConfig)(implicit actorSystem: ActorSystem, actorContext: ActorContext, mat: Materializer, ec: ExecutionContext): RunnableGraph[(UniqueKillSwitch, Future[Done])] = {
-    val sinkInst: Sink[ProcessingMessage[V1], (UniqueKillSwitch, Future[Done])] = getSink(actorConfig)
+    val sinkInst: Sink[TaggedWithType[Tag] with DataStore[V1], (UniqueKillSwitch, Future[Done])] = getSink(actorConfig)
     RunnableGraph.fromGraph(GraphDSL.create(sinkInst) {
       implicit builder =>
         sink =>
           import GraphDSL.Implicits._
           val source: SourceShape[U] = builder.add(Source.fromIterator[U](() => supplier.iterator))
-          val flowStage: FlowShape[U, ProcessingMessage[V]] = builder.add(transformer)
+          val flowStage: FlowShape[U, TaggedWithType[Tag] with DataStore[V]] = builder.add(transformer)
           // stage sending message to separate actor if processingActorProps is set, otherwise
           // not changing the input element
-          val sendFlow: Flow[ProcessingMessage[V], ProcessingMessage[V1], NotUsed] = processingActorProps.map(props => {
-            Flow.fromFunction[ProcessingMessage[V], ProcessingMessage[V]](identity).mapAsyncUnordered[ProcessingMessage[V1]](config.requestParallelism)(x => {
-              val sendToActor: ActorRef = actorContext.actorOf(props)
-              implicit val timeout: Timeout = Timeout(waitTimePerElement)
-              val responseFuture: Future[Any] = sendToActor ? x
-              val mappedResponseFuture: Future[ProcessingMessage[V1]] = responseFuture.transform({
-                case Success(value: ProcessingMessage[V1]) => Success(value)
-                case Failure(exception) => Success[ProcessingMessage[V1]](BadCorn(TaskFailType.FailedByException(exception)))
-                case e =>
-                  Success(BadCorn(TaskFailType.UnknownResponseClass(e.getClass.getName)))
+          val sendFlow: Flow[TaggedWithType[Tag] with DataStore[V], TaggedWithType[Tag] with DataStore[V1], NotUsed] = processingActorProps.map(props => {
+            Flow.fromFunction[TaggedWithType[Tag] with DataStore[V], TaggedWithType[Tag] with DataStore[V]](identity)
+              .mapAsyncUnordered[TaggedWithType[Tag] with DataStore[V1]](config.requestParallelism)(x => {
+                val sendToActor: ActorRef = actorContext.actorOf(props)
+                implicit val timeout: Timeout = Timeout(waitTimePerElement)
+                val responseFuture: Future[Any] = sendToActor ? x
+                val mappedResponseFuture: Future[TaggedWithType[Tag] with DataStore[V1]] = responseFuture.transform({
+                  case Success(value: TaggedWithType[Tag] with DataStore[V1]) => Success(value)
+                  case Failure(exception) => Success[TaggedWithType[Tag] with DataStore[V1]](BadCorn(TaskFailType.FailedByException(exception)))
+                  case e =>
+                    Success(BadCorn(TaskFailType.UnknownResponseClass(e.getClass.getName)))
+                })
+                mappedResponseFuture
               })
-              mappedResponseFuture
-            })
-          }).getOrElse(Flow.fromFunction[ProcessingMessage[V], ProcessingMessage[V1]](x => x.asInstanceOf[ProcessingMessage[V1]]))
-          val sendStage: FlowShape[ProcessingMessage[V], ProcessingMessage[V1]] = builder.add(sendFlow)
+          }).getOrElse(Flow.fromFunction[TaggedWithType[Tag] with DataStore[V], TaggedWithType[Tag] with DataStore[V1]](x => x.asInstanceOf[TaggedWithType[Tag] with DataStore[V1]]))
+          val sendStage: FlowShape[TaggedWithType[Tag] with DataStore[V], TaggedWithType[Tag] with DataStore[V1]] = builder.add(sendFlow)
           // connect graph
           source ~> flowStage ~> sendStage ~> sink
           ClosedShape
