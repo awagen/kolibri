@@ -45,7 +45,7 @@ object AppConfig {
     val configName: String = s"application-$profile.conf"
     logger.info(s"loading config: $configName")
     val loadedConfig: Config = ConfigFactory.load(configName)
-    logger.info(s"loaded config: ${loadedConfig.toString}")
+    logger.debug(s"loaded config: ${loadedConfig.toString}")
     val pod_ip = POD_IP.value
     logger.info(s"pod ip: $pod_ip")
     val roles: Array[String] = NODE_ROLES.value.split(",")

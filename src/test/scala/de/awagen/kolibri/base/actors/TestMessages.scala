@@ -34,7 +34,6 @@ import de.awagen.kolibri.datatypes.mutable.stores.{TypeTaggedMap, TypedMapStore}
 import de.awagen.kolibri.datatypes.tagging.TagType.AGGREGATION
 import de.awagen.kolibri.datatypes.tagging.TaggedWithType
 import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}
-import de.awagen.kolibri.datatypes.types.DataStore
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSupplier
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 import org.slf4j.{Logger, LoggerFactory}
@@ -54,9 +53,9 @@ object TestMessages {
       Range(0, 11, 1).map(x => Corn(x + 10) -> 1): _*
     ))),
     fulfillAnyForFail = Seq(StopExpectation(0, _ => false, _ => false),
-      TimeExpectation(100 days))), aggregationSupplier = new SerializableSupplier[Aggregator[TaggedWithType[Tag] with DataStore[Int], Map[Tag, Double]]] {
-    override def get(): Aggregator[TaggedWithType[Tag] with DataStore[Int], Map[Tag, Double]] = new Aggregator[TaggedWithType[Tag] with DataStore[Int], Map[Tag, Double]] {
-      override def add(sample: TaggedWithType[Tag] with DataStore[Int]): Unit = ()
+      TimeExpectation(100 days))), aggregationSupplier = new SerializableSupplier[Aggregator[ProcessingMessage[Int], Map[Tag, Double]]] {
+    override def get(): Aggregator[ProcessingMessage[Int], Map[Tag, Double]] = new Aggregator[ProcessingMessage[Int], Map[Tag, Double]] {
+      override def add(sample: ProcessingMessage[Int]): Unit = ()
 
       override def aggregation: Map[Tag, Double] = Map.empty[Tag, Double]
 
@@ -77,9 +76,9 @@ object TestMessages {
       }): _*
     ))),
     fulfillAnyForFail = Seq(StopExpectation(0, _ => false, _ => false),
-      TimeExpectation(100 days))), aggregationSupplier = new SerializableSupplier[Aggregator[TaggedWithType[Tag] with DataStore[Int], Map[Tag, Double]]] {
-    override def get(): Aggregator[TaggedWithType[Tag] with DataStore[Int], Map[Tag, Double]] = new Aggregator[TaggedWithType[Tag] with DataStore[Int], Map[Tag, Double]] {
-      override def add(sample: TaggedWithType[Tag] with DataStore[Int]): Unit = ()
+      TimeExpectation(100 days))), aggregationSupplier = new SerializableSupplier[Aggregator[ProcessingMessage[Int], Map[Tag, Double]]] {
+    override def get(): Aggregator[ProcessingMessage[Int], Map[Tag, Double]] = new Aggregator[ProcessingMessage[Int], Map[Tag, Double]] {
+      override def add(sample: ProcessingMessage[Int]): Unit = ()
 
       override def aggregation: Map[Tag, Double] = Map.empty[Tag, Double]
 
@@ -103,12 +102,12 @@ object TestMessages {
         Corn(x + 2) -> 1,
         Corn(x + 3) -> 1))),
       fulfillAnyForFail = Seq(StopExpectation(0, _ => false, _ => false),
-        TimeExpectation(100 days))), aggregationSupplier = new SerializableSupplier[Aggregator[TaggedWithType[Tag] with DataStore[Int], Map[Tag, Double]]] {
-      override def get(): Aggregator[TaggedWithType[Tag] with DataStore[Int], Map[Tag, Double]] =
-        new Aggregator[TaggedWithType[Tag] with DataStore[Int], Map[Tag, Double]]() {
+        TimeExpectation(100 days))), aggregationSupplier = new SerializableSupplier[Aggregator[ProcessingMessage[Int], Map[Tag, Double]]] {
+      override def get(): Aggregator[ProcessingMessage[Int], Map[Tag, Double]] =
+        new Aggregator[ProcessingMessage[Int], Map[Tag, Double]]() {
           val map: mutable.Map[Tag, Double] = mutable.Map.empty
 
-          override def add(sample: TaggedWithType[Tag] with DataStore[Int]): Unit = {
+          override def add(sample: ProcessingMessage[Int]): Unit = {
             sample match {
               case _: Corn[Int] =>
                 val keys: Set[Tag] = sample.getTagsForType(AGGREGATION)
@@ -145,9 +144,9 @@ object TestMessages {
     ProcessActorRunnableJobCmd[TaggedInt, Corn[Int], Int, Map[Tag, Double]](
       jobId = jobId,
       processElements = actorRunnableGenerator.asInstanceOf[IndexedGenerator[ActorRunnable[TaggedInt, Corn[Int], Int, Map[Tag, Double]]]],
-      aggregatorSupplier = new SerializableSupplier[Aggregator[TaggedWithType[Tag] with DataStore[Int], Map[Tag, Double]]] {
-        override def get(): Aggregator[TaggedWithType[Tag] with DataStore[Int], Map[Tag, Double]] = new Aggregator[TaggedWithType[Tag] with DataStore[Int], Map[Tag, Double]] {
-          override def add(sample: TaggedWithType[Tag] with DataStore[Int]): Unit = ()
+      aggregatorSupplier = new SerializableSupplier[Aggregator[ProcessingMessage[Int], Map[Tag, Double]]] {
+        override def get(): Aggregator[ProcessingMessage[Int], Map[Tag, Double]] = new Aggregator[ProcessingMessage[Int], Map[Tag, Double]] {
+          override def add(sample: ProcessingMessage[Int]): Unit = ()
 
           override def aggregation: Map[Tag, Double] = Map.empty[Tag, Double]
 
@@ -189,9 +188,9 @@ object TestMessages {
       batchTypeTaggedMapGenerator,
       tasks,
       reversedIdKeyPM,
-      aggregatorSupplier = new SerializableSupplier[Aggregator[TaggedWithType[Tag] with DataStore[Any], Any]] {
-        override def get(): Aggregator[TaggedWithType[Tag] with DataStore[Any], Any] = new Aggregator[TaggedWithType[Tag] with DataStore[Any], Any] {
-          override def add(sample: TaggedWithType[Tag] with DataStore[Any]): Unit = ()
+      aggregatorSupplier = new SerializableSupplier[Aggregator[ProcessingMessage[Any], Any]] {
+        override def get(): Aggregator[ProcessingMessage[Any], Any] = new Aggregator[ProcessingMessage[Any], Any] {
+          override def add(sample: ProcessingMessage[Any]): Unit = ()
 
           override def aggregation: Any = ()
 

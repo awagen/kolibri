@@ -19,7 +19,7 @@ package de.awagen.kolibri.base.domain.jobdefinitions
 
 import akka.stream.scaladsl.Flow
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor
-import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.Corn
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{Corn, ProcessingMessage}
 import de.awagen.kolibri.base.domain.jobdefinitions.provider.data.BatchGenerators.IntNumberBatchGenerator
 import de.awagen.kolibri.base.http.server.BaseRoutes.logger
 import de.awagen.kolibri.base.io.writer.base.LocalDirectoryFileFileWriter
@@ -27,9 +27,7 @@ import de.awagen.kolibri.base.processing.execution.expectation._
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnableSinkType
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.tagging.TagType.AGGREGATION
-import de.awagen.kolibri.datatypes.tagging.TaggedWithType
 import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}
-import de.awagen.kolibri.datatypes.types.DataStore
 import de.awagen.kolibri.datatypes.types.SerializableCallable.{SerializableFunction1, SerializableSupplier}
 import de.awagen.kolibri.datatypes.values.AggregateValue
 import de.awagen.kolibri.datatypes.values.RunningValue.doubleAvgRunningValue
@@ -40,10 +38,10 @@ import scala.concurrent.duration.DurationInt
 
 object TestJobDefinitions {
 
-  class RunningDoubleAvgPerTagAggregator() extends Aggregator[TaggedWithType[Tag] with DataStore[Double], Map[Tag, AggregateValue[Double]]] {
+  class RunningDoubleAvgPerTagAggregator() extends Aggregator[ProcessingMessage[Double], Map[Tag, AggregateValue[Double]]] {
     val map: mutable.Map[Tag, AggregateValue[Double]] = mutable.Map.empty
 
-    override def add(sample: TaggedWithType[Tag] with DataStore[Double]): Unit = {
+    override def add(sample: ProcessingMessage[Double]): Unit = {
       val keys: Set[Tag] = sample.getTagsForType(AGGREGATION)
       keys.foreach(key => {
         map(key) = map.getOrElse(key, doubleAvgRunningValue(count = 0, value = 0.0)).add(sample.data)
@@ -61,13 +59,15 @@ object TestJobDefinitions {
 
   def piEstimationJob(jobName: String, nrThrows: Int, batchSize: Int, resultDir: String): SupervisorActor.ProcessActorRunnableJobCmd[Int, Double, Double, Map[Tag, AggregateValue[Double]]] = {
     assert(batchSize <= nrThrows)
-    val flowFunct: SerializableFunction1[Int, TaggedWithType[Tag] with DataStore[Double]] = _ => {
-      val sq_rad = math.pow(math.random(), 2) + math.pow(math.random(), 2)
-      if (sq_rad <= 1) {
-        Corn(1.0).withTags(AGGREGATION, Set(StringTag("ALL"), StringTag("1")))
-      }
-      else {
-        Corn(0.0).withTags(AGGREGATION, Set(StringTag("ALL"), StringTag("0")))
+    val flowFunct: SerializableFunction1[Int, ProcessingMessage[Double]] = new SerializableFunction1[Int, ProcessingMessage[Double]]() {
+      override def apply(v1: Int): ProcessingMessage[Double] = {
+        val sq_rad = math.pow(math.random(), 2) + math.pow(math.random(), 2)
+        if (sq_rad <= 1) {
+          Corn(1.0).withTags(AGGREGATION, Set(StringTag("ALL"), StringTag("1")))
+        }
+        else {
+          Corn(0.0).withTags(AGGREGATION, Set(StringTag("ALL"), StringTag("0")))
+        }
       }
     }
     val batchGenerator: SerializableFunction1[Int, IndexedGenerator[Batch[Int]]] = new SerializableFunction1[Int, IndexedGenerator[Batch[Int]]] {
@@ -89,11 +89,11 @@ object TestJobDefinitions {
       jobId = jobName,
       nrThrows.toInt,
       dataBatchGenerator = batchGenerator,
-      transformerFlow = Flow.fromFunction[Int, TaggedWithType[Tag] with DataStore[Double]](flowFunct),
+      transformerFlow = Flow.fromFunction[Int, ProcessingMessage[Double]](flowFunct),
       processingActorProps = None,
       perBatchExpectationGenerator = expectationGen,
-      perBatchAndOverallAggregatorSupplier = new SerializableSupplier[Aggregator[TaggedWithType[Tag] with DataStore[Double], Map[Tag, AggregateValue[Double]]]] {
-        override def get(): Aggregator[TaggedWithType[Tag] with DataStore[Double], Map[Tag, AggregateValue[Double]]] = new RunningDoubleAvgPerTagAggregator()
+      perBatchAndOverallAggregatorSupplier = new SerializableSupplier[Aggregator[ProcessingMessage[Double], Map[Tag, AggregateValue[Double]]]] {
+        override def get(): Aggregator[ProcessingMessage[Double], Map[Tag, AggregateValue[Double]]] = new RunningDoubleAvgPerTagAggregator()
       },
       writer = (data: Map[Tag, AggregateValue[Double]], _: Tag) => {
         logger.info("writing result: {}", data)

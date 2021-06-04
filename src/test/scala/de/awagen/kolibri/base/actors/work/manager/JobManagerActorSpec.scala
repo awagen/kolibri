@@ -29,9 +29,7 @@ import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{Corn, Proce
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnable
 import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator}
 import de.awagen.kolibri.datatypes.tagging.TagType.AGGREGATION
-import de.awagen.kolibri.datatypes.tagging.TaggedWithType
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
-import de.awagen.kolibri.datatypes.types.DataStore
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSupplier
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 import org.scalatest.BeforeAndAfterAll
@@ -70,12 +68,12 @@ class JobManagerActorSpec extends KolibriTestKit
       val managerProps = JobManagerActor.props(
         experimentId = "testId",
         runningTaskBaselineCount = 10,
-        aggregatorSupplier = new SerializableSupplier[Aggregator[TaggedWithType[Tag] with DataStore[Int], Map[Tag, Double]]] {
-          override def get(): Aggregator[TaggedWithType[Tag] with DataStore[Int], Map[Tag, Double]] =
-            new Aggregator[TaggedWithType[Tag] with DataStore[Int], Map[Tag, Double]]() {
+        aggregatorSupplier = new SerializableSupplier[Aggregator[ProcessingMessage[Int], Map[Tag, Double]]] {
+          override def get(): Aggregator[ProcessingMessage[Int], Map[Tag, Double]] =
+            new Aggregator[ProcessingMessage[Int], Map[Tag, Double]]() {
               val map: mutable.Map[Tag, Double] = mutable.Map.empty
 
-              override def add(sample: TaggedWithType[Tag] with DataStore[Int]): Unit = {
+              override def add(sample: ProcessingMessage[Int]): Unit = {
                 sample match {
                   case _: Corn[Int] =>
                     val keys = sample.getTagsForType(AGGREGATION)

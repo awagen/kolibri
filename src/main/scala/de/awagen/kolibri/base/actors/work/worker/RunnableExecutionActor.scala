@@ -25,13 +25,13 @@ import de.awagen.kolibri.base.actors.work.worker.JobPartIdentifiers.BaseJobPartI
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.AggregationState
 import de.awagen.kolibri.base.actors.work.worker.RunnableExecutionActor.{ProvideAggregationState, RunnableHousekeeping}
 import de.awagen.kolibri.base.config.AppConfig.config
-import de.awagen.kolibri.base.processing.execution.expectation.{BaseExecutionExpectation, ExecutionExpectation, Expectation, ReceiveCountExpectation, TimeExpectation}
+import de.awagen.kolibri.base.processing.execution.expectation._
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnable.JobActorConfig
 import de.awagen.kolibri.base.processing.execution.job.{ActorRunnable, ActorType}
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 
-import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.concurrent.duration._
+import scala.concurrent.{ExecutionContextExecutor, Future}
 
 
 object RunnableExecutionActor {
@@ -88,7 +88,7 @@ class RunnableExecutionActor(maxBatchDuration: FiniteDuration) extends Actor wit
       runningJobBatchNr = runnable.batchNr
       aggregatingActor = context.actorOf(AggregatingActor.props(
         runnable.aggregationSupplier,
-        () => runnable.expectationGenerator.apply(runnable.supplier.nrOfElements),
+        () => runnable.expectationGenerator.apply(runnable.supplier.size),
         owner = this.self,
         jobPartIdentifier = BaseJobPartIdentifier(jobId = runningJobId, batchNr = runningJobBatchNr)
       ))
