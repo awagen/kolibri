@@ -17,7 +17,9 @@
 
 package de.awagen.kolibri.datatypes.types
 
-trait DataStore[+T] {
+import de.awagen.kolibri.datatypes.io.KolibriSerializable
+
+trait DataStore[+T] extends KolibriSerializable {
 
   def data: T
 

@@ -58,8 +58,8 @@ class BatchBySizeIndexedGeneratorSpec extends UnitTestSpec {
 
     "correctly map elements" in {
       // given, when
-      val mapped: Seq[Seq[Seq[Int]]] = batchGenerator.mapGen(x => x.toSeq).iterator.toSeq
-      val expected = batchGenerator.iterator.map(x => x.toSeq).toSeq
+      val mapped: Seq[Seq[Seq[Int]]] = batchGenerator.mapGen(x => x.iterator.toSeq).iterator.toSeq
+      val expected = batchGenerator.iterator.map(x => x.iterator.toSeq).toSeq
       // then
       mapped mustBe expected
     }

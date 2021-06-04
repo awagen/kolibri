@@ -30,9 +30,16 @@ import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFuncti
   * set. If we have many parameter combinations, it would be memory-inefficient storing them all instead of providing logic
   * to generate on demand
   *
+  * NOTE: this class could extend Iterable[T], yet this seems to cause
+  * some problems with Kryo Serialization when assigning KolibriSerializable
+  * to kryo serializer (e.g correct type of generator is not preserved);
+  * should be solvable by proper config. Until then dont extend Iterable
+  * (otherwise should see serialization log error that desired interface is not implemented but element being of
+  * type scala.collection.immutable.$colon$colon)
+  *
   * @tparam T
   */
-trait IndexedGenerator[+T] extends KolibriSerializable with Iterable[T] {
+trait IndexedGenerator[+T] extends KolibriSerializable {
 
   val nrOfElements: Int
 
@@ -55,7 +62,7 @@ trait IndexedGenerator[+T] extends KolibriSerializable with Iterable[T] {
     }
   }
 
-  override def size: Int = nrOfElements
+  def size: Int = nrOfElements
 
   /**
     * create generator that only generates a part of the original generator.
