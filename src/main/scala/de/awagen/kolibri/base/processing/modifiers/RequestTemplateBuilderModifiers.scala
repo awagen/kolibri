@@ -14,15 +14,16 @@
   * limitations under the License.
   */
 
-
-package de.awagen.kolibri.base.http.client.request
+package de.awagen.kolibri.base.processing.modifiers
 
 import akka.http.scaladsl.model.{HttpHeader, MessageEntity}
-import de.awagen.kolibri.base.types.Modifier
+import de.awagen.kolibri.base.http.client.request.RequestTemplateBuilder
 
 import scala.collection.immutable
 
 object RequestTemplateBuilderModifiers {
+
+  type RequestTemplateBuilderModifier = Modifier[RequestTemplateBuilder]
 
   case class RequestParameterModifier(params: immutable.Map[String, Seq[String]], replace: Boolean) extends Modifier[RequestTemplateBuilder] {
 

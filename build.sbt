@@ -5,7 +5,7 @@ val sl4jApiVersion = "1.7.30"
 val scalaTestVersion = "3.2.2"
 val kolibriDatatypesVersion = "0.1.0-alpha2"
 
-val akkaVersion = "2.6.12"
+val akkaVersion = "2.6.14"
 val akkaContribVersion = "2.5.31"
 val akkaHttpVersion = "10.2.1"
 val akkaManagementVersion = "1.0.8"
@@ -129,6 +129,11 @@ val additionalDependencies = Seq(
   "com.typesafe.akka" %% "akka-actor-typed" % akkaVersion,
   "com.typesafe.akka" %% "akka-cluster-typed" % akkaVersion,
   "com.typesafe.akka" %% "akka-serialization-jackson" % akkaVersion,
+  "com.typesafe.akka" %% "akka-pki" % akkaVersion,
+  "com.typesafe.akka" %% "akka-coordination" % akkaVersion,
+  "com.typesafe.akka" %% "akka-remote" % akkaVersion,
+  "com.typesafe.akka" %% "akka-protobuf-v3" % akkaVersion,
+  "com.typesafe.akka" %% "akka-testkit" % akkaVersion,
   //scala test framework (scalactic is recommended but not required)(http://www.scalatest.org/install)
   "org.scalactic" %% "scalactic" % scalaTestVersion % Test,
   "org.scalatest" %% "scalatest" % scalaTestVersion % Test,

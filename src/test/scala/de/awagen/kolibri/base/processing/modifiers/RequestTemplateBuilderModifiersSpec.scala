@@ -1,9 +1,26 @@
-package de.awagen.kolibri.base.http.client.request
+/**
+  * Copyright 2021 Andreas Wagenmann
+  *
+  * Licensed under the Apache License, Version 2.0 (the "License");
+  * you may not use this file except in compliance with the License.
+  * You may obtain a copy of the License at
+  *
+  * http://www.apache.org/licenses/LICENSE-2.0
+  *
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  */
+
+package de.awagen.kolibri.base.processing.modifiers
 
 import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity}
 import akka.util.ByteString
-import de.awagen.kolibri.base.http.client.request.RequestTemplateBuilderModifiers.{BodyModifier, CombinedModifier, ContextPathModifier, HeaderModifier, RequestParameterModifier}
+import de.awagen.kolibri.base.http.client.request.RequestTemplateBuilder
+import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers._
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
 
 import scala.collection.immutable
@@ -26,13 +43,13 @@ class RequestTemplateBuilderModifiersSpec extends UnitTestSpec {
       builder_replace = modifier_replace.apply(builder_replace)
       builder_noreplace = modifier_noreplace.apply(builder_noreplace)
       // then
-      builder_replace.parameters mustBe Map("k1" -> Seq("v1", "v2"), "k2" -> Seq("w1"))
-      builder_noreplace.parameters mustBe Map("k1" -> Seq("v3", "v1", "v2"), "k2" -> Seq("w2", "w1"))
+      builder_replace.build().parameters mustBe Map("k1" -> Seq("v1", "v2"), "k2" -> Seq("w1"))
+      builder_noreplace.build().parameters mustBe Map("k1" -> Seq("v3", "v1", "v2"), "k2" -> Seq("w2", "w1"))
     }
 
     "correctly apply ContextPathModifier" in {
       // given, when, then
-      ContextPathModifier("newPath").apply(createRequestTemplateBuilder).contextPath mustBe "newPath"
+      ContextPathModifier("newPath").apply(createRequestTemplateBuilder).build().contextPath mustBe "newPath"
     }
 
     "correctly apply HeaderModifier" in {
@@ -45,8 +62,8 @@ class RequestTemplateBuilderModifiersSpec extends UnitTestSpec {
       modifier_noreplace.apply(builder_noreplace)
       modifier_replace.apply(builder_replace)
       // then
-      builder_noreplace.headers mustBe Seq(RawHeader("h1", "v1"), RawHeader("h2", "v2"), RawHeader("h3", "v3"))
-      builder_replace.headers mustBe Seq(RawHeader("h1", "v1"), RawHeader("h3", "v3"))
+      builder_noreplace.build().headers mustBe Seq(RawHeader("h1", "v1"), RawHeader("h2", "v2"), RawHeader("h3", "v3"))
+      builder_replace.build().headers mustBe Seq(RawHeader("h1", "v1"), RawHeader("h3", "v3"))
     }
 
     "correctly apply BodyModifier" in {
@@ -55,7 +72,7 @@ class RequestTemplateBuilderModifiersSpec extends UnitTestSpec {
       val body = HttpEntity.Strict(ContentTypes.`application/json`, ByteString(testJsonBody))
       val modifier = BodyModifier(body)
       // when, then
-      modifier.apply(createRequestTemplateBuilder).body mustBe body
+      modifier.apply(createRequestTemplateBuilder).build().body mustBe body
     }
 
     "correctly apply CombinedModifier" in {
@@ -68,9 +85,9 @@ class RequestTemplateBuilderModifiersSpec extends UnitTestSpec {
       // when
       val modifiedBuilder = CombinedModifier(Seq(bodyModifier, modifierReplace, contextModifier)).apply(createRequestTemplateBuilder)
       // then
-      modifiedBuilder.headers mustBe Seq(RawHeader("h1", "v1"), RawHeader("h3", "v3"))
-      modifiedBuilder.body mustBe body
-      modifiedBuilder.contextPath mustBe "newPath"
+      modifiedBuilder.build().headers mustBe Seq(RawHeader("h1", "v1"), RawHeader("h3", "v3"))
+      modifiedBuilder.build().body mustBe body
+      modifiedBuilder.build().contextPath mustBe "newPath"
     }
 
   }

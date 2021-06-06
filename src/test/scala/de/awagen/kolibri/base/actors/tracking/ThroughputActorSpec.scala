@@ -19,7 +19,7 @@ package de.awagen.kolibri.base.actors.tracking
 import akka.actor.Props
 import akka.testkit.{ImplicitSender, TestKit}
 import de.awagen.kolibri.base.actors.KolibriTestKitNoCluster
-import de.awagen.kolibri.base.actors.tracking.ThroughputActor.{AddForStage, IndexedCount, ProvideThroughputForStage, ThroughputForStage}
+import de.awagen.kolibri.base.actors.tracking.ThroughputActor.{AddForStage, ProvideThroughputForStage, ThroughputForStage}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
@@ -50,7 +50,7 @@ class ThroughputActorSpec extends KolibriTestKitNoCluster
       throughputActor ! AddForStage("stage1")
       throughputActor ! AddForStage("stage1")
       throughputActor ! AddForStage("stage1")
-      Thread.sleep(12)
+      Thread.sleep(11)
       throughputActor ! AddForStage("stage1")
       throughputActor ! AddForStage("stage2")
       throughputActor ! AddForStage("stage2")
@@ -58,16 +58,14 @@ class ThroughputActorSpec extends KolibriTestKitNoCluster
       throughputActor ! ProvideThroughputForStage("stage1")
       throughputActor ! ProvideThroughputForStage("stage2")
       // then
-      expectMsgAllOf(1 second, ThroughputForStage(
-        "stage1",
-        Vector(IndexedCount(0, 5), IndexedCount(1, 1)),
-        6
-      ),
-        ThroughputForStage(
-          "stage2",
-          Vector(IndexedCount(0, 0), IndexedCount(1, 2)),
-          2
-        ))
+      val receivedMessages: Seq[ThroughputForStage] = receiveWhile[ThroughputForStage](1 second, 10 millis, 2)({
+        case e => e.asInstanceOf[ThroughputForStage]
+      })
+      receivedMessages.head.throughputPerTimeUnit.count(x => x.value == 5) mustBe 1
+      receivedMessages.head.throughputPerTimeUnit.count(x => x.value == 1) mustBe 1
+      receivedMessages.head.totalSoFar mustBe 6
+      receivedMessages(1).throughputPerTimeUnit.count(x => x.value == 2) mustBe 1
+      receivedMessages(1).totalSoFar mustBe 2
     }
 
   }
