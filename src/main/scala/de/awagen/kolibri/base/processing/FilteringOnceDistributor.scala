@@ -17,6 +17,7 @@
 package de.awagen.kolibri.base.processing
 
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.AggregationState
+import de.awagen.kolibri.base.traits.Traits.WithBatchNr
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -26,10 +27,10 @@ import org.slf4j.{Logger, LoggerFactory}
   * TODO: need override of next to filter out batches that are not contained
   * in acceptOnlyIds anyways
   */
-class FilteringOnceDistributor[T, U](private[this] var maxParallel: Int,
-                                     generator: IndexedGenerator[T],
-                                     resultConsumer: AggregationState[U] => (),
-                                     private[this] var acceptOnlyIds: Set[Int])
+class FilteringOnceDistributor[T <: WithBatchNr, U](private[this] var maxParallel: Int,
+                                                    generator: IndexedGenerator[T],
+                                                    resultConsumer: AggregationState[U] => (),
+                                                    private[this] var acceptOnlyIds: Set[Int])
   extends ProcessOnceDistributor[T, U](
     maxParallel,
     generator,

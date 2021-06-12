@@ -66,7 +66,7 @@ object JobMsgFactory {
         processingActorProps = processingActorProps,
         expectationGenerator = perBatchExpectationGenerator,
         aggregationSupplier = perBatchAndOverallAggregatorSupplier,
-        returnType = returnType,
+        sinkType = returnType,
         allowedTimePerElementInMillis millis,
         allowedTimePerBatchInSeconds seconds)
     }

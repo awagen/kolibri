@@ -63,7 +63,7 @@ class ActorRunnableSpec extends KolibriTestKitNoCluster
 
         override def addAggregate(aggregatedValue: Double): Unit = ()
       }
-    }, returnType = REPORT_TO_ACTOR_SINK, 1 minute, 1 minute)
+    }, sinkType = REPORT_TO_ACTOR_SINK, 1 minute, 1 minute)
   }
 
   "ActorRunnable" should {

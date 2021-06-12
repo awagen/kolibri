@@ -18,6 +18,7 @@ package de.awagen.kolibri.base.processing
 
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.AggregationState
 import de.awagen.kolibri.base.processing.DistributionStates.{AllProvidedWaitingForResults, Completed, DistributionState, Pausing}
+import de.awagen.kolibri.base.traits.Traits.WithBatchNr
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 
 /**
@@ -26,20 +27,19 @@ import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
   * retrieved yet. Result can either be the corresponding AggregationState or
   * marking as failed
   *
-  * @param maxParallel - max elements to provide as in progress at the same time
-  * @param generator - generator providing the elements of type T
+  * @param maxParallel    - max elements to provide as in progress at the same time
+  * @param generator      - generator providing the elements of type T
   * @param resultConsumer - consumer of the aggregated result of tyoe AggregationState[T]
   * @tparam T - type of elements provided by generator
   * @tparam U - type of the aggregation
   */
-class ProcessOnceDistributor[T, U](private[this] var maxParallel: Int,
-                                   generator: IndexedGenerator[T],
-                                   resultConsumer: AggregationState[U] => ()) extends Distributor[T, U] {
+class ProcessOnceDistributor[T <: WithBatchNr, U](private[this] var maxParallel: Int,
+                                                  generator: IndexedGenerator[T],
+                                                  resultConsumer: AggregationState[U] => ()) extends Distributor[T, U] {
 
   private[this] val iterator: Iterator[T] = generator.iterator
   private[this] var failed: Seq[Int] = Seq.empty
   private[this] var inProgress: Seq[Int] = Seq.empty
-  private[this] var nextElementNr: Int = 0
 
   private[processing] def removeBatchRecords(batchNr: Int): Unit = {
     failed = failed.filter(_ != batchNr)
@@ -47,12 +47,13 @@ class ProcessOnceDistributor[T, U](private[this] var maxParallel: Int,
   }
 
   private[processing] def prepareAndProvideNextBatches: Seq[T] = {
-    val nextBatches: Seq[T] = Range(0, freeSlots, 1).map(_ => iterator.next())
-    nextBatches.foreach(b => {
-      inProgress = inProgress :+ nextElementNr
-      nextElementNr += 1
-    })
-    nextBatches
+    var addedElements: Seq[T] = Seq.empty
+    while (iterator.hasNext && freeSlots > 0) {
+      val el = iterator.next()
+      addedElements = addedElements :+ el
+      inProgress = inProgress :+ el.batchNr
+    }
+    addedElements
   }
 
   def maxBatchesAreRunning: Boolean = idsInProgress.size >= maxInParallel
@@ -70,9 +71,9 @@ class ProcessOnceDistributor[T, U](private[this] var maxParallel: Int,
     }
   }
 
-  def markAsFail(identifier: Int): Unit = {
-    failed = failed :+ identifier
-    inProgress = inProgress.filter(_ != identifier)
+  def markAsFail(batchNr: Int): Unit = {
+    failed = failed :+ batchNr
+    inProgress = inProgress.filter(_ != batchNr)
   }
 
   def hasUnsentBatches: Boolean = iterator.hasNext

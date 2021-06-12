@@ -29,6 +29,7 @@ import de.awagen.kolibri.base.processing.execution.job
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnable._
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnableSinkType._
 import de.awagen.kolibri.base.processing.failure.TaskFailType
+import de.awagen.kolibri.base.traits.Traits.WithBatchNr
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.types.SerializableCallable.{SerializableFunction1, SerializableSupplier}
@@ -64,7 +65,7 @@ object ActorRunnable {
   * @param expectationGenerator - the execution expectation. Can be utilized by actor running the actorRunnable to determine whether
   *                             processing succeeded, failed due to processing or due to exceeding timeout
   * @param aggregationSupplier  - Supplier for aggregator. Typed by type to expect for aggregation (wrapped within ProcessingMessage) and type of aggregation
-  * @param returnType           - only if set not set to IGNORE_SINK and actorConfig passed to getRunnableGraph contains REPORT_TO actor type
+  * @param sinkType           - only if set not set to IGNORE_SINK and actorConfig passed to getRunnableGraph contains REPORT_TO actor type
   *                             will the result of each transformation (U => V) of type V be send to the actorRef given by REPORT_TO type in the actorConfig.
   *                             Otherwise Sink.ignore is used. Note that the expectation can still be non empty in case the sending of responses
   *                             does not happen in the sink here but messages are send to other processors which then provide the response
@@ -77,9 +78,9 @@ case class ActorRunnable[U, V, V1, Y](jobId: String,
                                       processingActorProps: Option[Props],
                                       expectationGenerator: SerializableFunction1[Int, ExecutionExpectation],
                                       aggregationSupplier: SerializableSupplier[Aggregator[ProcessingMessage[V1], Y]],
-                                      returnType: job.ActorRunnableSinkType.Value,
+                                      sinkType: job.ActorRunnableSinkType.Value,
                                       waitTimePerElement: FiniteDuration,
-                                      maxExecutionDuration: FiniteDuration) extends KolibriSerializable {
+                                      maxExecutionDuration: FiniteDuration) extends KolibriSerializable with WithBatchNr {
 
   val log: Logger = LoggerFactory.getLogger(ActorRunnable.getClass)
 
@@ -92,7 +93,7 @@ case class ActorRunnable[U, V, V1, Y](jobId: String,
 
   def getSink(actorConfig: JobActorConfig): Sink[ProcessingMessage[V1], (UniqueKillSwitch, Future[Done])] = {
     val killSwitch: Flow[ProcessingMessage[V1], ProcessingMessage[V1], UniqueKillSwitch] = Flow.fromGraph(KillSwitches.single[ProcessingMessage[V1]])
-    returnType match {
+    sinkType match {
       case IGNORE_SINK =>
         killSwitch.toMat(Sink.ignore)(Keep.both)
       case REPORT_TO_ACTOR_SINK =>

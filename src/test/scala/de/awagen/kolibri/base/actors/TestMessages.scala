@@ -62,7 +62,7 @@ object TestMessages {
       override def addAggregate(other: Map[Tag, Double]): Unit = ()
 
     }
-  }, returnType = REPORT_TO_ACTOR_SINK, 1 minute, 1 minute)
+  }, sinkType = REPORT_TO_ACTOR_SINK, 1 minute, 1 minute)
 
   val expectedValuesForMessagesToActorRefRunnable: immutable.Seq[Corn[Int]] = Range(0, 11, 1).map(x => Corn(x + 11))
 
@@ -85,7 +85,7 @@ object TestMessages {
       override def addAggregate(other: Map[Tag, Double]): Unit = ()
 
     }
-  }, returnType = REPORT_TO_ACTOR_SINK, 1 minute, 1 minute)
+  }, sinkType = REPORT_TO_ACTOR_SINK, 1 minute, 1 minute)
 
   val expectedValuesForMsg1: immutable.Seq[Corn[Int]] = Range(0, 11, 1).map(x => Corn(x + 10))
 
@@ -127,7 +127,7 @@ object TestMessages {
             })
           }
         }
-    }, returnType = REPORT_TO_ACTOR_SINK, 1 minute, 1 minute)
+    }, sinkType = REPORT_TO_ACTOR_SINK, 1 minute, 1 minute)
 
   def expectedMessagesForRunnableGenFunc(i: Int) = Seq(
     Corn(i + 1),

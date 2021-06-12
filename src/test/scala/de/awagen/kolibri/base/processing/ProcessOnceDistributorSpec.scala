@@ -20,12 +20,15 @@ import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.AggregationS
 import de.awagen.kolibri.base.processing.DistributionStates.{AllProvidedWaitingForResults, Completed, Pausing}
 import de.awagen.kolibri.base.processing.execution.expectation.BaseExecutionExpectation
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
+import de.awagen.kolibri.base.traits.Traits.WithBatchNr
 import de.awagen.kolibri.datatypes.collections.generators.ByFunctionNrLimitedIndexedGenerator
 
 class ProcessOnceDistributorSpec extends UnitTestSpec {
 
-  private[this] def distributor[T, U](elements: Seq[T],
-                                      aggConsumer: AggregationState[U] => ()): Distributor[T, U] = new ProcessOnceDistributor[T, U](
+  case class IntWithBatch(batchNr: Int, value: Int) extends WithBatchNr
+
+  private[this] def distributor[T <: WithBatchNr, U](elements: Seq[T],
+                                                     aggConsumer: AggregationState[U] => ()): Distributor[T, U] = new ProcessOnceDistributor[T, U](
     maxParallel = 3,
     generator = ByFunctionNrLimitedIndexedGenerator.createFromSeq(
       elements
@@ -38,14 +41,14 @@ class ProcessOnceDistributorSpec extends UnitTestSpec {
     "correctly provide elements" in {
       // given
       var elements: Seq[Int] = Seq.empty
-      val intDistributor = distributor[Int, Int](Range(0,10), el => {
+      val intDistributor = distributor[IntWithBatch, Int](Range(0, 10).map(x => IntWithBatch(x, x)), el => {
         elements = elements :+ el.batchNr
       })
       // when, then
-      intDistributor.next mustBe Right(Seq(0, 1, 2))
+      intDistributor.next mustBe Right(Seq(0, 1, 2).map(x => IntWithBatch(x, x)))
       intDistributor.next mustBe Left(Pausing)
       intDistributor.accept(AggregationState(1, "jobId", 0, BaseExecutionExpectation.empty()))
-      intDistributor.next mustBe Right(Seq(3))
+      intDistributor.next mustBe Right(Seq(3).map(x => IntWithBatch(x, x)))
       intDistributor.next mustBe Left(Pausing)
       // should not change anything if we call accept on a state with batchNr that is not
       // in the record anymore
@@ -57,16 +60,16 @@ class ProcessOnceDistributorSpec extends UnitTestSpec {
       intDistributor.next mustBe Left(Pausing)
       intDistributor.accept(AggregationState(1, "", 1, BaseExecutionExpectation.empty()))
       intDistributor.accept(AggregationState(1, "", 2, BaseExecutionExpectation.empty()))
-      intDistributor.next mustBe Right(Seq(4, 5))
+      intDistributor.next mustBe Right(Seq(4, 5).map(x => IntWithBatch(x, x)))
       intDistributor.next mustBe Left(Pausing)
       intDistributor.idsInProgress mustBe Seq(3, 4, 5)
       intDistributor.markAsFail(3)
-      intDistributor.next mustBe Right(Seq(6))
+      intDistributor.next mustBe Right(Seq(6).map(x => IntWithBatch(x, x)))
       intDistributor.idsInProgress mustBe Seq(4, 5, 6)
       intDistributor.accept(AggregationState(1, "", 4, BaseExecutionExpectation.empty()))
       intDistributor.accept(AggregationState(1, "", 5, BaseExecutionExpectation.empty()))
       intDistributor.accept(AggregationState(1, "", 6, BaseExecutionExpectation.empty()))
-      intDistributor.next mustBe Right(Seq(7, 8, 9))
+      intDistributor.next mustBe Right(Seq(7, 8, 9).map(x => IntWithBatch(x, x)))
       intDistributor.next mustBe Left(AllProvidedWaitingForResults)
       intDistributor.accept(AggregationState(1, "", 7, BaseExecutionExpectation.empty()))
       intDistributor.next mustBe Left(AllProvidedWaitingForResults)

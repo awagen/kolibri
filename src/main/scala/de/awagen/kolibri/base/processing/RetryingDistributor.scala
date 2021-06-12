@@ -18,14 +18,18 @@ package de.awagen.kolibri.base.processing
 
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.AggregationState
 import de.awagen.kolibri.base.processing.DistributionStates.{AllProvidedWaitingForResults, Completed, Pausing}
+import de.awagen.kolibri.base.traits.Traits.WithBatchNr
 import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator}
+import org.slf4j.{Logger, LoggerFactory}
 
 
 // TODO: add Distributor[T, U] => Distributor[T, U] instead of fixed retryDistributor
-class RetryingDistributor[T, U](private[this] var maxParallel: Int,
-                                generator: IndexedGenerator[T],
-                                resultConsumer: AggregationState[U] => (),
-                                private[this] var maxNrRetries: Int) extends Distributor[T, U] {
+class RetryingDistributor[T <: WithBatchNr, U](private[this] var maxParallel: Int,
+                                               generator: IndexedGenerator[T],
+                                               resultConsumer: AggregationState[U] => (),
+                                               private[this] var maxNrRetries: Int) extends Distributor[T, U] {
+
+  private[processing] val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
   private[processing] var currentNrRetries: Int = 0
 
@@ -39,7 +43,7 @@ class RetryingDistributor[T, U](private[this] var maxParallel: Int,
     new FilteringOnceDistributor[T, U](
       maxParallel,
       ByFunctionNrLimitedIndexedGenerator.createFromSeq(
-        idsFailed.map(x => generator.get(x).get).toSeq
+        idsFailed.map(x => generator.get(x).get)
       ),
       resultConsumer,
       unfinishedSoFar.toSet
@@ -66,14 +70,14 @@ class RetryingDistributor[T, U](private[this] var maxParallel: Int,
   override def next: Either[DistributionStates.DistributionState, Seq[T]] = {
     currentDistributor.next match {
       case nxt@Left(e) if e == Pausing => nxt
-      case nxt@Left(e) if e == AllProvidedWaitingForResults  => nxt
-      case nxt@Left(e) if e == Completed  =>
+      case nxt@Left(e) if e == AllProvidedWaitingForResults => nxt
+      case nxt@Left(e) if e == Completed =>
         if (idsFailed.nonEmpty && currentNrRetries < maxNrRetries) {
           currentDistributor = retryDistributor
           currentNrRetries += 1
           next
         }
-        nxt
+        else nxt
       case e@Right(_) => e
     }
   }

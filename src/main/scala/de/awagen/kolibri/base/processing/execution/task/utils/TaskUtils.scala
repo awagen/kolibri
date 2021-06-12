@@ -65,7 +65,7 @@ object TaskUtils {
             TimeExpectation(timeoutPerRunnable))
         ),
         aggregationSupplier = aggregatorSupplier,
-        returnType = ActorRunnableSinkType.REPORT_TO_ACTOR_SINK,
+        sinkType = ActorRunnableSinkType.REPORT_TO_ACTOR_SINK,
         timeoutPerRunnable,
         timeoutPerElement)
     })
