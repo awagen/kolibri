@@ -47,7 +47,11 @@ object ProcessingMessages {
     override val data: T = null.asInstanceOf[T]
   }
 
-  case class AggregationState[+V](data: V, jobID: String, batchNr: Int, executionExpectation: ExecutionExpectation) extends BatchProcessingMessage[V]
+  case class AggregationState[+V](data: V,
+                                  jobID: String,
+                                  batchNr: Int,
+                                  executionExpectation: ExecutionExpectation
+                                 ) extends BatchProcessingMessage[V]
 
   case class ResultSummary(result: ProcessingResult.Value,
                            nrOfBatchesTotal: Int,

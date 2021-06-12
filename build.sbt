@@ -14,7 +14,6 @@ val logbackVersion = "1.2.3"
 val kryoSerializationVersion = "2.2.0"
 val awsSdkVersion = "1.11.713"
 val apacheCommonsIOVersion = "2.8.0"
-val macWireVersion = "2.3.7"
 
 ThisBuild / scalaVersion := "2.13.2"
 ThisBuild / version := "0.1.0-alpha2"
