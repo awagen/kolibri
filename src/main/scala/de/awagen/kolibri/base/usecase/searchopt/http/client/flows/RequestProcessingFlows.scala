@@ -25,7 +25,7 @@ import akka.{Done, NotUsed}
 import de.awagen.kolibri.base.actors.flows.GenericRequestFlows
 import de.awagen.kolibri.base.actors.flows.GenericRequestFlows.flowThroughActorMeter
 import de.awagen.kolibri.base.actors.tracking.ThroughputActor.AddForStage
-import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.ProcessingMessage
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{Corn, ProcessingMessage}
 import de.awagen.kolibri.base.domain.Connection
 import de.awagen.kolibri.base.http.client.request.RequestTemplate
 import de.awagen.kolibri.base.processing.execution.task.Task
@@ -34,6 +34,7 @@ import de.awagen.kolibri.base.usecase.searchopt.processing.plan.PlanProvider
 import de.awagen.kolibri.base.usecase.searchopt.provider.JudgementProviderFactory
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.tagging.TagImplicits.{logger, _}
+import de.awagen.kolibri.datatypes.tagging.TagType
 import de.awagen.kolibri.datatypes.tagging.TagType.AGGREGATION
 import de.awagen.kolibri.datatypes.tagging.Tags.{ParameterMultiValueTag, StringTag}
 
@@ -70,7 +71,7 @@ object RequestProcessingFlows {
                                                            connectionToFlowFunc: Connection => Flow[(HttpRequest, ProcessingMessage[RequestTemplate]), (Try[HttpResponse], ProcessingMessage[RequestTemplate]), _],
                                                            parsingFunc: HttpResponse => Future[Either[Throwable, T]],
                                                            throughputActor: ActorRef,
-                                                           sink: Sink[(Either[Throwable, T], ProcessingMessage[RequestTemplate]), Future[Done]])
+                                                           sink: Sink[ProcessingMessage[(Either[Throwable, T], RequestTemplate)], Future[Done]])
                                                           (implicit as: ActorSystem,
                                                            mat: Materializer,
                                                            ec: ExecutionContext,
@@ -81,7 +82,7 @@ object RequestProcessingFlows {
           import GraphDSL.Implicits._
           // creating the elements that will be part of the sink
           val source: SourceShape[ProcessingMessage[RequestTemplate]] = b.add(Source.fromIterator[ProcessingMessage[RequestTemplate]](() => requestTemplateGenerator.iterator))
-          val flow: FlowShape[ProcessingMessage[RequestTemplate], (Either[Throwable, T], ProcessingMessage[RequestTemplate])] = b.add(requestAndParsingFlow[T](throughputActor, queryParam, groupId, connections, connectionToFlowFunc, parsingFunc))
+          val flow: FlowShape[ProcessingMessage[RequestTemplate], ProcessingMessage[(Either[Throwable, T], RequestTemplate)]] = b.add(requestAndParsingFlow[T](throughputActor, queryParam, groupId, connections, connectionToFlowFunc, parsingFunc))
           // creating the graph
           source ~> flow ~> sinkInst
           ClosedShape
@@ -113,7 +114,7 @@ object RequestProcessingFlows {
                               )(implicit as: ActorSystem,
                                 mat: Materializer,
                                 ec: ExecutionContext,
-                                ac: ActorContext): Graph[FlowShape[ProcessingMessage[RequestTemplate], (Either[Throwable, T], ProcessingMessage[RequestTemplate])], NotUsed] = GraphDSL.create() { implicit b =>
+                                ac: ActorContext): Graph[FlowShape[ProcessingMessage[RequestTemplate], ProcessingMessage[(Either[Throwable, T], RequestTemplate)]], NotUsed] = GraphDSL.create() { implicit b =>
     import GraphDSL.Implicits._
     // now define the single elements
     val initThroughputFlow = b.add(Flow.fromFunction[ProcessingMessage[RequestTemplate], ProcessingMessage[RequestTemplate]](x => {
@@ -132,17 +133,21 @@ object RequestProcessingFlows {
     }).log("after fromSource throughput meter"))
     val balance: UniformFanOutShape[ProcessingMessage[RequestTemplate], ProcessingMessage[RequestTemplate]] = b
       .add(Balance.apply[ProcessingMessage[RequestTemplate]](connections.size, waitForAllDownstreams = false))
-    val connectionFlows: Seq[Flow[ProcessingMessage[RequestTemplate], (Either[Throwable, T], ProcessingMessage[RequestTemplate]), NotUsed]] = connections
+    val connectionFlows: Seq[Flow[ProcessingMessage[RequestTemplate], ProcessingMessage[(Either[Throwable, T], RequestTemplate)], NotUsed]] = connections
       .map(x => {
         val connectionPool: Flow[(HttpRequest, ProcessingMessage[RequestTemplate]), (Try[HttpResponse], ProcessingMessage[RequestTemplate]), _] = connectionToFlowFunc(x)
-        GenericRequestFlows
+        val flowResult: Flow[ProcessingMessage[RequestTemplate], (Either[Throwable, T], ProcessingMessage[RequestTemplate]), NotUsed] = GenericRequestFlows
           .requestAndParseResponseFlow[ProcessingMessage[RequestTemplate], T](
             credentialsProvider = x.credentialsProvider,
             connectionPool = connectionPool,
             meter = Some(throughputActor), responseHandler = parsingFunc)
+        flowResult.via(Flow.fromFunction(x => {
+          // map to processing message of tuple
+          Corn((x._1, x._2.data)).withTags(TagType.AGGREGATION, x._2.getTagsForType(AGGREGATION))
+        }))
       })
-    val merge = b.add(Merge[(Either[Throwable, T], ProcessingMessage[RequestTemplate])](connections.size))
-    val throughputFlow: FlowShape[(Either[Throwable, T], ProcessingMessage[RequestTemplate]), (Either[Throwable, T], ProcessingMessage[RequestTemplate])] = b
+    val merge = b.add(Merge[ProcessingMessage[(Either[Throwable, T], RequestTemplate)]](connections.size))
+    val throughputFlow: FlowShape[ProcessingMessage[(Either[Throwable, T], RequestTemplate)], ProcessingMessage[(Either[Throwable, T], RequestTemplate)]] = b
       .add(flowThroughActorMeter(throughputActor, "toMetricsCalc"))
     initThroughputFlow ~> balance
     connectionFlows.foreach(x => balance ~> x ~> merge)
