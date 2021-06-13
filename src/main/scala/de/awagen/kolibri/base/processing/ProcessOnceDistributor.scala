@@ -105,7 +105,7 @@ class ProcessOnceDistributor[T <: WithBatchNr, U](private[this] var maxParallel:
 
   def idsFailed: Seq[Int] = failed
 
-  override def nrDistributed: Int = ???
+  override def nrDistributed: Int = distributedBatchCount
 
-  override def nrResultsAccepted: Int = ???
+  override def nrResultsAccepted: Int = numResultsReceivedCount
 }

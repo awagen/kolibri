@@ -81,6 +81,7 @@ class RetryingDistributor[T <: WithBatchNr, U](private[this] var maxParallel: In
       case nxt@Left(e) if e == AllProvidedWaitingForResults => nxt
       case nxt@Left(e) if e == Completed =>
         if (idsFailed.nonEmpty && currentNrRetries < maxNrRetries) {
+          logger.info(s"switching to retry nr: ${currentNrRetries + 1}")
           currentDistributor = retryDistributor
           currentNrRetries += 1
           next

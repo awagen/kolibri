@@ -192,6 +192,10 @@ class JobManagerActor[T, U](val jobId: String,
 
   def wrapUp: Unit = {
     log.info(s"wrapping up execution of jobId '$jobId'")
+    log.info(s"distributed batches: ${batchDistributor.nrDistributed}, " +
+      s"received results: ${batchDistributor.nrResultsAccepted}, " +
+      s"failed results: ${batchDistributor.idsFailed.size}, " +
+      s"in progress: ${batchDistributor.idsInProgress}")
     writer.write(aggregator.aggregation, StringTag(jobId))
     // cancel set schedules
     scheduleCancellables.foreach(x => x.cancel())
