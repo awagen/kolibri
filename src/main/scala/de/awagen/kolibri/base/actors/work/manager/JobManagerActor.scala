@@ -28,6 +28,7 @@ import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.{ActorRunnabl
 import de.awagen.kolibri.base.actors.work.manager.JobManagerActor._
 import de.awagen.kolibri.base.actors.work.manager.WorkManagerActor.{ExecutionType, GetWorkerStatus}
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationState, ProcessingMessage, ResultSummary}
+import de.awagen.kolibri.base.config.AppConfig
 import de.awagen.kolibri.base.config.AppConfig._
 import de.awagen.kolibri.base.io.writer.Writers.Writer
 import de.awagen.kolibri.base.processing.execution.expectation._
@@ -169,11 +170,11 @@ class JobManagerActor[T, U](val jobId: String,
     val nextBatchesOrState: Either[DistributionStates.DistributionState, Seq[ActorRunnable[_, _, _, U]]] = batchDistributor.next
     nextBatchesOrState match {
       case Left(state) =>
-        log.info(s"state received from distributor: $state")
+        log.debug(s"state received from distributor: $state")
         if (state == DistributionStates.Completed) distributionCompleted = true
         ()
       case Right(batches) =>
-        log.info(s"batches received from distributor (size: ${batches.size}): ${batches.map(x => x.batchNr)}")
+        log.debug(s"batches received from distributor (size: ${batches.size}): ${batches.map(x => x.batchNr)}")
         submitNextBatches(batches)
     }
   }
@@ -231,7 +232,7 @@ class JobManagerActor[T, U](val jobId: String,
 
   def checkIfJobAckReceivedAndRemoveIfNot(batchNr: Int): Unit = {
     batchesSentWaitingForACK.find(nr => nr == batchNr).foreach(nr => {
-      log.info("batch still waiting for ACK by WorkManager, removing from processed")
+      log.warning("batch still waiting for ACK by WorkManager, removing from processed")
       batchesSentWaitingForACK = batchesSentWaitingForACK - nr
       failedACKReceiveBatchNumbers = failedACKReceiveBatchNumbers + nr
       executionExpectationMap -= nr
@@ -253,7 +254,7 @@ class JobManagerActor[T, U](val jobId: String,
       workerService ! batch
       // first place the batch in waiting for acknowledgement for processing by worker
       batchesSentWaitingForACK = batchesSentWaitingForACK + batch.batchNr
-      context.system.scheduler.scheduleOnce(200 millis, self, CheckIfJobAckReceivedAndRemoveIfNot(batch.batchNr))
+      context.system.scheduler.scheduleOnce(config.batchMaxTimeToACKInMs, self, CheckIfJobAckReceivedAndRemoveIfNot(batch.batchNr))
     })
 
   }
@@ -261,7 +262,7 @@ class JobManagerActor[T, U](val jobId: String,
   def startState: Receive = {
     case cmd: ProcessJobCmd[_, _, _, U] =>
       log.debug(s"received job to process: $cmd")
-      log.info(s"job contains ${cmd.job.size} batches")
+      log.debug(s"job contains ${cmd.job.size} batches")
       reportResultsTo = sender()
       jobToProcess = cmd.job
       batchDistributor = new RetryingDistributor[ActorRunnable[_, _, _, U], U](

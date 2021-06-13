@@ -91,6 +91,7 @@ object AppConfig {
       MILLISECONDS)
     val runningTasksBaselineCount: Int = baseConfig.getInt("kolibri.job.runningTasksBaselineCount")
     val batchDistributionInterval: FiniteDuration = FiniteDuration(baseConfig.getInt("kolibri.job.batchDistributionIntervalInMs"), MILLISECONDS)
+    val batchMaxTimeToACKInMs: FiniteDuration = FiniteDuration(baseConfig.getInt("kolibri.job.batchMaxTimeToACKInMs"), MILLISECONDS)
 
     // resourceCheckerGenerator
     val isValidResourceCheckerType: Boolean = baseConfig.hasPath("kolibri.job.resources.resourcesCheckerType") && baseConfig.getString("kolibri.job.resources.resourcesCheckerType").toLowerCase() == "cpu"
