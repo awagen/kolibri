@@ -72,6 +72,9 @@ class RetryingDistributor[T <: WithBatchNr, U](private[this] var maxParallel: In
   override def accept(element: AggregationState[U]): Boolean = {
     val didAccept: Boolean = currentDistributor.accept(element)
     if (didAccept) numResultsReceivedCount += 1
+    else {
+      logger.warn(s"state received but not accepted: $element")
+    }
     didAccept
   }
 
@@ -80,6 +83,7 @@ class RetryingDistributor[T <: WithBatchNr, U](private[this] var maxParallel: In
       case nxt@Left(e) if e == Pausing => nxt
       case nxt@Left(e) if e == AllProvidedWaitingForResults => nxt
       case nxt@Left(e) if e == Completed =>
+        logger.debug(s"completed - in processing: $idsInProgress")
         if (idsFailed.nonEmpty && currentNrRetries < maxNrRetries) {
           logger.info(s"switching to retry nr: ${currentNrRetries + 1}")
           currentDistributor = retryDistributor
@@ -91,6 +95,7 @@ class RetryingDistributor[T <: WithBatchNr, U](private[this] var maxParallel: In
         if (currentNrRetries == 0) {
           distributedBatchCount += batches.size
         }
+        logger.debug(s"providing batches - in processing: $idsInProgress")
         e
     }
   }

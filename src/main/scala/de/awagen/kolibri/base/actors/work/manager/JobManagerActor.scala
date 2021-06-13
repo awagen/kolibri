@@ -74,6 +74,8 @@ object JobManagerActor {
 
   private case object DistributeBatches extends InternalJobManagerCmd
 
+  private case class CheckIfJobAckReceivedAndRemoveIfNot(batchId: Int) extends InternalJobManagerCmd
+
   private case object UpdateStateAndCheckForCompletion extends InternalJobManagerCmd
 
   // cmds providing some event info to JobManagerActor (e.g in case some result finished computing))
@@ -115,14 +117,13 @@ class JobManagerActor[T, U](val jobId: String,
   // and timeout for wait has not yet passed after which itll be moved to failedACKReceiveBatchNumbers
   var batchesSentWaitingForACK: Set[Int] = Set.empty
   var failedACKReceiveBatchNumbers: Set[Int] = Set.empty
-  var batchesConfirmedProcessingAndRunning: Set[Int] = Set.empty
 
   var jobToProcess: ActorRunnableJobGenerator[_, _, _, U] = _
   var distributionCompleted: Boolean = false
 
-  // the atch distributor encapsulating the logic of when to release how many new batches for processing and
+  // the batch distributor encapsulating the logic of when to release how many new batches for processing and
   // retrying. Its state has to be updated when result comes in or when a batch can be marked as failed
-  private[this] var batchDistributor: Distributor[ActorRunnable[_, _, _, U], U] = null
+  private[this] var batchDistributor: Distributor[ActorRunnable[_, _, _, U], U] = _
 
 
   val workerService: ActorRef = createWorkerRoutingService
@@ -252,8 +253,7 @@ class JobManagerActor[T, U](val jobId: String,
       workerService ! batch
       // first place the batch in waiting for acknowledgement for processing by worker
       batchesSentWaitingForACK = batchesSentWaitingForACK + batch.batchNr
-      val checkAckInTimeRunnable: Runnable = () => checkIfJobAckReceivedAndRemoveIfNot(batch.batchNr)
-      context.system.scheduler.scheduleOnce(200 millis, checkAckInTimeRunnable)
+      context.system.scheduler.scheduleOnce(200 millis, self, CheckIfJobAckReceivedAndRemoveIfNot(batch.batchNr))
     })
 
   }
@@ -291,7 +291,8 @@ class JobManagerActor[T, U](val jobId: String,
     case e: ACK =>
       log.debug(s"received ACK: $e")
       batchesSentWaitingForACK = batchesSentWaitingForACK - e.batchNr
-      batchesConfirmedProcessingAndRunning = batchesConfirmedProcessingAndRunning + e.batchNr
+    case CheckIfJobAckReceivedAndRemoveIfNot(batchNr) =>
+      checkIfJobAckReceivedAndRemoveIfNot(batchNr)
     case ProvideJobStatus =>
       sender() ! JobStatusInfo(jobId = jobId, resultSummary = resultSummary(RUNNING))
     case UpdateStateAndCheckForCompletion =>
@@ -322,7 +323,6 @@ class JobManagerActor[T, U](val jobId: String,
     case e: AggregationState[U] =>
       failedACKReceiveBatchNumbers = failedACKReceiveBatchNumbers - e.batchNr
       batchesSentWaitingForACK = batchesSentWaitingForACK - e.batchNr
-      batchesConfirmedProcessingAndRunning = batchesConfirmedProcessingAndRunning - e.batchNr
       log.info("received aggregation (batch finished) - aggregation: {}, jobId: {}, batchNr: {} ", e.data, e.jobID, e.batchNr)
       acceptResultMsg(e)
     case WriteResultAndSendFailNoteAndTakePoisonPillCmd =>

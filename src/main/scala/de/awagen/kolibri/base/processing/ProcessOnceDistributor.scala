@@ -48,13 +48,15 @@ class ProcessOnceDistributor[T <: WithBatchNr, U](private[this] var maxParallel:
     inProgress = inProgress.filter(_ != batchNr)
   }
 
-  private[processing] def prepareAndProvideNextBatches: Seq[T] = {
+  private[processing] def provideNextBatchesAndUpdateProgressState: Seq[T] = {
+    var availableSlots: Int = freeSlots
     var addedElements: Seq[T] = Seq.empty
-    while (iterator.hasNext && freeSlots > 0) {
-      val el = iterator.next()
-      addedElements = addedElements :+ el
-      inProgress = inProgress :+ el.batchNr
+    while (iterator.hasNext && availableSlots > 0) {
+      addedElements = addedElements :+ iterator.next()
+      availableSlots -= 1
     }
+    inProgress = inProgress ++ addedElements.map(x => x.batchNr)
+    distributedBatchCount += addedElements.size
     addedElements
   }
 
@@ -91,9 +93,7 @@ class ProcessOnceDistributor[T <: WithBatchNr, U](private[this] var maxParallel:
       else Left(AllProvidedWaitingForResults)
     }
     else if (hasUnsentBatches) {
-      val provideBatches: Seq[T] = prepareAndProvideNextBatches
-      distributedBatchCount += provideBatches.size
-      Right(provideBatches)
+      Right(provideNextBatchesAndUpdateProgressState)
     }
     else if (inProgress.nonEmpty) Left(AllProvidedWaitingForResults)
     else Left(Completed)

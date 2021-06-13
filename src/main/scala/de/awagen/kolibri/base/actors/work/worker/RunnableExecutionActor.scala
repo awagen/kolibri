@@ -97,7 +97,7 @@ class RunnableExecutionActor(maxBatchDuration: FiniteDuration) extends Actor wit
       // messages to executing actors within the graph)
       actorConfig = JobActorConfig(self,
         Map(ActorType.ACTOR_SINK -> aggregatingActor))
-      log.info(s"RunnableExecutionActor received actor runnable to process, jobId: ${runnable.jobId}, batchNr: ${runnable.batchNr}")
+      log.debug(s"RunnableExecutionActor received actor runnable to process, jobId: ${runnable.jobId}, batchNr: ${runnable.batchNr}")
       val runnableGraph: RunnableGraph[(UniqueKillSwitch, Future[Done])] = runnable.getRunnableGraph(actorConfig)
       // the time allowed per execution is actually defined within the expectation
       // passed to the aggregation actor, thus if time ran out there the aggregation
