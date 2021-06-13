@@ -28,7 +28,6 @@ import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.{ActorRunnabl
 import de.awagen.kolibri.base.actors.work.manager.JobManagerActor._
 import de.awagen.kolibri.base.actors.work.manager.WorkManagerActor.{ExecutionType, GetWorkerStatus}
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationState, ProcessingMessage, ResultSummary}
-import de.awagen.kolibri.base.config.AppConfig
 import de.awagen.kolibri.base.config.AppConfig._
 import de.awagen.kolibri.base.io.writer.Writers.Writer
 import de.awagen.kolibri.base.processing.execution.expectation._
@@ -283,6 +282,7 @@ class JobManagerActor[T, U](val jobId: String,
       val cancellableDistributeBatchSchedule: Cancellable = context.system.scheduler.scheduleAtFixedRate(0 second,
         config.batchDistributionInterval, self, DistributeBatches)
       scheduleCancellables = scheduleCancellables :+ cancellableDistributeBatchSchedule
+      logger.info(s"started processing of job '$jobId'")
       ()
     case a: Any =>
       log.warning(s"received invalid message: $a")
@@ -324,8 +324,9 @@ class JobManagerActor[T, U](val jobId: String,
     case e: AggregationState[U] =>
       failedACKReceiveBatchNumbers = failedACKReceiveBatchNumbers - e.batchNr
       batchesSentWaitingForACK = batchesSentWaitingForACK - e.batchNr
-      log.info("received aggregation (batch finished) - aggregation: {}, jobId: {}, batchNr: {} ", e.data, e.jobID, e.batchNr)
+      log.debug("received aggregation (batch finished) - aggregation: {}, jobId: {}, batchNr: {} ", e.data, e.jobID, e.batchNr)
       acceptResultMsg(e)
+      if (batchDistributor.nrResultsAccepted % 10 == 0 || batchDistributor.nrResultsAccepted == jobToProcess.size) log.info(s"received nr of results: ${batchDistributor.nrResultsAccepted}")
     case WriteResultAndSendFailNoteAndTakePoisonPillCmd =>
       log.warning("received WriteResultAndSendFailNoteAndTakePoisonPillCmd")
       writer.write(aggregator.aggregation, StringTag(jobId))
