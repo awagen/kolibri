@@ -40,6 +40,8 @@ class ProcessOnceDistributor[T <: WithBatchNr, U](private[this] var maxParallel:
   private[this] val iterator: Iterator[T] = generator.iterator
   private[this] var failed: Seq[Int] = Seq.empty
   private[this] var inProgress: Seq[Int] = Seq.empty
+  private[this] var distributedBatchCount: Int = 0
+  private[this] var numResultsReceivedCount: Int = 0
 
   private[processing] def removeBatchRecords(batchNr: Int): Unit = {
     failed = failed.filter(_ != batchNr)
@@ -64,11 +66,14 @@ class ProcessOnceDistributor[T <: WithBatchNr, U](private[this] var maxParallel:
     maxParallel = count
   }
 
-  def accept(element: AggregationState[U]): Unit = {
+  def accept(element: AggregationState[U]): Boolean = {
     if ((failed ++ inProgress).contains(element.batchNr)) {
       resultConsumer.apply(element)
       removeBatchRecords(element.batchNr)
+      numResultsReceivedCount += 1
+      true
     }
+    else false
   }
 
   def markAsFail(batchNr: Int): Unit = {
@@ -86,7 +91,9 @@ class ProcessOnceDistributor[T <: WithBatchNr, U](private[this] var maxParallel:
       else Left(AllProvidedWaitingForResults)
     }
     else if (hasUnsentBatches) {
-      Right(prepareAndProvideNextBatches)
+      val provideBatches: Seq[T] = prepareAndProvideNextBatches
+      distributedBatchCount += provideBatches.size
+      Right(provideBatches)
     }
     else if (inProgress.nonEmpty) Left(AllProvidedWaitingForResults)
     else Left(Completed)
@@ -97,4 +104,8 @@ class ProcessOnceDistributor[T <: WithBatchNr, U](private[this] var maxParallel:
   def maxInParallel: Int = maxParallel
 
   def idsFailed: Seq[Int] = failed
+
+  override def nrDistributed: Int = ???
+
+  override def nrResultsAccepted: Int = ???
 }

@@ -21,6 +21,10 @@ import de.awagen.kolibri.base.processing.DistributionStates.DistributionState
 
 trait Distributor[T, U] {
 
+  def nrDistributed: Int
+
+  def nrResultsAccepted: Int
+
   def setMaxParallelCount(count: Int): Unit
 
   def maxInParallel: Int
@@ -33,7 +37,7 @@ trait Distributor[T, U] {
 
   def markAsFail(identifier: Int): Unit
 
-  def accept(element: AggregationState[U])
+  def accept(element: AggregationState[U]): Boolean
 
   def next: Either[DistributionState, Seq[T]]
 

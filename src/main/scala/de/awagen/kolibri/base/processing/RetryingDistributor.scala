@@ -33,6 +33,10 @@ class RetryingDistributor[T <: WithBatchNr, U](private[this] var maxParallel: In
 
   private[processing] var currentNrRetries: Int = 0
 
+  private[processing] var distributedBatchCount: Int = 0
+
+  private[processing] var numResultsReceivedCount: Int = 0
+
   private[processing] var currentDistributor: Distributor[T, U] = new ProcessOnceDistributor[T, U](
     maxParallel,
     generator,
@@ -65,7 +69,11 @@ class RetryingDistributor[T <: WithBatchNr, U](private[this] var maxParallel: In
 
   override def markAsFail(identifier: Int): Unit = currentDistributor.markAsFail(identifier)
 
-  override def accept(element: AggregationState[U]): Unit = currentDistributor.accept(element)
+  override def accept(element: AggregationState[U]): Boolean = {
+    val didAccept: Boolean = currentDistributor.accept(element)
+    if (didAccept) numResultsReceivedCount += 1
+    didAccept
+  }
 
   override def next: Either[DistributionStates.DistributionState, Seq[T]] = {
     currentDistributor.next match {
@@ -78,7 +86,15 @@ class RetryingDistributor[T <: WithBatchNr, U](private[this] var maxParallel: In
           next
         }
         else nxt
-      case e@Right(_) => e
+      case e@Right(batches) =>
+        if (currentNrRetries == 0) {
+          distributedBatchCount += batches.size
+        }
+        e
     }
   }
+
+  override def nrDistributed: Int = distributedBatchCount
+
+  override def nrResultsAccepted: Int = numResultsReceivedCount
 }

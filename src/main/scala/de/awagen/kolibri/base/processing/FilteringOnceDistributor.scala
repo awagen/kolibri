@@ -38,15 +38,18 @@ class FilteringOnceDistributor[T <: WithBatchNr, U](private[this] var maxParalle
 
   val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
-  override def accept(element: AggregationState[U]): Unit = {
+  override def accept(element: AggregationState[U]): Boolean = {
+    var didAccept: Boolean = false
     if (acceptOnlyIds.contains(element.batchNr)) {
       resultConsumer.apply(element)
       acceptOnlyIds = acceptOnlyIds - element.batchNr
+      didAccept = true
     }
     else {
       logger.warn(s"received result with ignored id '${element.batchNr}'")
     }
     removeBatchRecords(element.batchNr)
+    didAccept
   }
 
 }
