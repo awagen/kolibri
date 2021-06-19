@@ -19,8 +19,8 @@ package de.awagen.kolibri.base.usecase.searchopt.http.client.flows
 
 import akka.actor.{ActorContext, ActorRef, ActorSystem}
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
-import akka.stream.scaladsl.{Balance, Flow, GraphDSL, Merge, RunnableGraph, Sink, Source}
 import akka.stream._
+import akka.stream.scaladsl.{Balance, Flow, GraphDSL, Merge, RunnableGraph, Sink, Source}
 import akka.{Done, NotUsed}
 import de.awagen.kolibri.base.actors.flows.GenericRequestFlows
 import de.awagen.kolibri.base.actors.flows.GenericRequestFlows.flowThroughActorMeter
@@ -33,16 +33,19 @@ import de.awagen.kolibri.base.usecase.searchopt.metrics.MetricsCalculation
 import de.awagen.kolibri.base.usecase.searchopt.processing.plan.PlanProvider
 import de.awagen.kolibri.base.usecase.searchopt.provider.JudgementProviderFactory
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
-import de.awagen.kolibri.datatypes.tagging.TagImplicits.{logger, _}
+import de.awagen.kolibri.datatypes.tagging.TagImplicits._
 import de.awagen.kolibri.datatypes.tagging.TagType
 import de.awagen.kolibri.datatypes.tagging.TagType.AGGREGATION
 import de.awagen.kolibri.datatypes.tagging.Tags.{ParameterMultiValueTag, StringTag}
+import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
+import org.slf4j.{Logger, LoggerFactory}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 
 object RequestProcessingFlows {
 
+  val logger: Logger = LoggerFactory.getLogger(RequestProcessingFlows.getClass)
 
   /**
     * Create a graph that is closed and thus can be run.
@@ -70,7 +73,7 @@ object RequestProcessingFlows {
                                                            groupId: String,
                                                            connectionToFlowFunc: Connection => Flow[(HttpRequest, ProcessingMessage[RequestTemplate]), (Try[HttpResponse], ProcessingMessage[RequestTemplate]), _],
                                                            parsingFunc: HttpResponse => Future[Either[Throwable, T]],
-                                                           throughputActor: ActorRef,
+                                                           throughputActor: Option[ActorRef],
                                                            sink: Sink[ProcessingMessage[(Either[Throwable, T], RequestTemplate)], Future[Done]])
                                                           (implicit as: ActorSystem,
                                                            mat: Materializer,
@@ -105,7 +108,7 @@ object RequestProcessingFlows {
     * @tparam T type of the parsed result
     * @return Graph[FlowShape] providing the streaming requesting and parsing logic
     */
-  def requestAndParsingFlow[T](throughputActor: ActorRef,
+  def requestAndParsingFlow[T](throughputActor: Option[ActorRef],
                                queryParam: String,
                                groupId: String,
                                connections: Seq[Connection],
@@ -113,18 +116,21 @@ object RequestProcessingFlows {
                                parsingFunc: HttpResponse => Future[Either[Throwable, T]]
                               )(implicit as: ActorSystem,
                                 mat: Materializer,
-                                ec: ExecutionContext,
-                                ac: ActorContext): Graph[FlowShape[ProcessingMessage[RequestTemplate], ProcessingMessage[(Either[Throwable, T], RequestTemplate)]], NotUsed] = GraphDSL.create() { implicit b =>
+                                ec: ExecutionContext): Graph[FlowShape[ProcessingMessage[RequestTemplate], ProcessingMessage[(Either[Throwable, T], RequestTemplate)]], NotUsed] = GraphDSL.create() { implicit b =>
     import GraphDSL.Implicits._
     // now define the single elements
     val initThroughputFlow = b.add(Flow.fromFunction[ProcessingMessage[RequestTemplate], ProcessingMessage[RequestTemplate]](x => {
-      throughputActor ! AddForStage("fromSource")
+      throughputActor.foreach(x => x ! AddForStage("fromSource"))
       // tag with the varied parameters to allow grouping of requests (e.g for aggregation of metrics and such)
       // exclude query parameter
       try {
-        val filteredParams: Map[String, Seq[String]] = x.data.parameters.filter(y => y._1 != queryParam)
-        val tag = ParameterMultiValueTag(filteredParams).toMultiTag.add(StringTag(s"groupId=${groupId}"))
+        val filterFunc: SerializableFunction1[String, Boolean] = new SerializableFunction1[String, Boolean] {
+          override def apply(v1: String): Boolean = v1 != queryParam
+        }
+        val filteredParams: Map[String, Seq[String]] = x.data.parameters.filter(y => filterFunc.apply(y._1))
+        val tag = ParameterMultiValueTag(filteredParams).toMultiTag.add(StringTag(s"groupId=$groupId"))
         x.addTag(AGGREGATION, tag)
+        logger.info(s"tagged entity: $x")
       }
       catch {
         case e: Exception => logger.warn(s"could not add parameters tag, ignoring: $e")
@@ -140,15 +146,18 @@ object RequestProcessingFlows {
           .requestAndParseResponseFlow[ProcessingMessage[RequestTemplate], T](
             credentialsProvider = x.credentialsProvider,
             connectionPool = connectionPool,
-            meter = Some(throughputActor), responseHandler = parsingFunc)
+            meter = throughputActor, responseHandler = parsingFunc)
         flowResult.via(Flow.fromFunction(x => {
           // map to processing message of tuple
           Corn((x._1, x._2.data)).withTags(TagType.AGGREGATION, x._2.getTagsForType(AGGREGATION))
         }))
       })
     val merge = b.add(Merge[ProcessingMessage[(Either[Throwable, T], RequestTemplate)]](connections.size))
+    val identityFlow: Flow[ProcessingMessage[(Either[Throwable, T], RequestTemplate)], ProcessingMessage[(Either[Throwable, T], RequestTemplate)], NotUsed] = Flow.fromFunction(identity)
     val throughputFlow: FlowShape[ProcessingMessage[(Either[Throwable, T], RequestTemplate)], ProcessingMessage[(Either[Throwable, T], RequestTemplate)]] = b
-      .add(flowThroughActorMeter(throughputActor, "toMetricsCalc"))
+      .add(
+        throughputActor.map(ta => flowThroughActorMeter[ProcessingMessage[(Either[Throwable, T], RequestTemplate)]](ta, "toMetricsCalc")).getOrElse(identityFlow)
+      )
     initThroughputFlow ~> balance
     connectionFlows.foreach(x => balance ~> x ~> merge)
     merge ~> throughputFlow

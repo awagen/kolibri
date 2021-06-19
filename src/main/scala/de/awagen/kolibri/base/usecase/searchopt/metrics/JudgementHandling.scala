@@ -42,7 +42,7 @@ object JudgementValidation extends Enumeration {
 
 object JudgementHandlingStrategy {
 
-  val default: JudgementHandlingStrategy = JudgementHandlingStrategy(
+  val EXIST_RESULTS_AND_JUDGEMENTS_MISSING_AS_ZEROS: JudgementHandlingStrategy = JudgementHandlingStrategy(
     Seq(
       EXIST_RESULTS,
       EXIST_JUDGEMENTS),

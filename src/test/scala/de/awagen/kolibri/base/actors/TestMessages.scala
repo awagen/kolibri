@@ -46,23 +46,27 @@ object TestMessages {
 
   val log: Logger = LoggerFactory.getLogger(TestMessages.getClass)
 
-  def messagesToActorRefRunnable(): ActorRunnable[Int, Int, Int, Map[Tag, Double]] = ActorRunnable(jobId = "test", batchNr = 1, supplier = ByFunctionNrLimitedIndexedGenerator(11, x => Some(x)), transformer = Flow.fromFunction[Int, Corn[Int]](x => Corn(x + 10)), processingActorProps = Some(Props(TestTransformActor(m => {
-    Corn(m.data).withTags(AGGREGATION, Set(StringTag("ALL")))
-  }))), expectationGenerator = _ => BaseExecutionExpectation(
-    fulfillAllForSuccess = Seq(ReceiveCountExpectation(Map(
-      Range(0, 11, 1).map(x => Corn(x + 10) -> 1): _*
-    ))),
-    fulfillAnyForFail = Seq(StopExpectation(0, _ => false, _ => false),
-      TimeExpectation(100 days))), aggregationSupplier = new SerializableSupplier[Aggregator[ProcessingMessage[Int], Map[Tag, Double]]] {
-    override def get(): Aggregator[ProcessingMessage[Int], Map[Tag, Double]] = new Aggregator[ProcessingMessage[Int], Map[Tag, Double]] {
-      override def add(sample: ProcessingMessage[Int]): Unit = ()
+  def messagesToActorRefRunnable(jobId: String): ActorRunnable[Int, Int, Int, Map[Tag, Double]] = ActorRunnable(
+    jobId = jobId,
+    batchNr = 1,
+    supplier = ByFunctionNrLimitedIndexedGenerator(
+      11, x => Some(x)), transformer = Flow.fromFunction[Int, Corn[Int]](x => Corn(x + 10)), processingActorProps = Some(Props(TestTransformActor(m => {
+      Corn(m.data).withTags(AGGREGATION, Set(StringTag("ALL")))
+    }))), expectationGenerator = _ => BaseExecutionExpectation(
+      fulfillAllForSuccess = Seq(ReceiveCountExpectation(Map(
+        Range(0, 11, 1).map(x => Corn(x + 10) -> 1): _*
+      ))),
+      fulfillAnyForFail = Seq(StopExpectation(0, _ => false, _ => false),
+        TimeExpectation(100 days))), aggregationSupplier = new SerializableSupplier[Aggregator[ProcessingMessage[Int], Map[Tag, Double]]] {
+      override def get(): Aggregator[ProcessingMessage[Int], Map[Tag, Double]] = new Aggregator[ProcessingMessage[Int], Map[Tag, Double]] {
+        override def add(sample: ProcessingMessage[Int]): Unit = ()
 
-      override def aggregation: Map[Tag, Double] = Map.empty[Tag, Double]
+        override def aggregation: Map[Tag, Double] = Map.empty[Tag, Double]
 
-      override def addAggregate(other: Map[Tag, Double]): Unit = ()
+        override def addAggregate(other: Map[Tag, Double]): Unit = ()
 
-    }
-  }, sinkType = REPORT_TO_ACTOR_SINK, 1 minute, 1 minute)
+      }
+    }, sinkType = REPORT_TO_ACTOR_SINK, 1 minute, 1 minute)
 
   val expectedValuesForMessagesToActorRefRunnable: immutable.Seq[Corn[Int]] = Range(0, 11, 1).map(x => Corn(x + 11))
 
@@ -91,8 +95,8 @@ object TestMessages {
 
   case class TaggedInt(value: Int) extends TaggedWithType[Tag]
 
-  def messagesToActorRefRunnableGenFunc: Int => ActorRunnable[TaggedInt, Int, Int, Map[Tag, Double]] = x =>
-    ActorRunnable(jobId = "test", batchNr = x, supplier = ByFunctionNrLimitedIndexedGenerator(3, y => Some(TaggedInt(y + x))), transformer = Flow.fromFunction[TaggedInt, ProcessingMessage[Int]](z => {
+  def messagesToActorRefRunnableGenFunc(jobId: String): Int => ActorRunnable[TaggedInt, Int, Int, Map[Tag, Double]] = x =>
+    ActorRunnable(jobId = jobId, batchNr = x, supplier = ByFunctionNrLimitedIndexedGenerator(3, y => Some(TaggedInt(y + x))), transformer = Flow.fromFunction[TaggedInt, ProcessingMessage[Int]](z => {
       Corn(z.value).withTags(AGGREGATION, z.getTagsForType(AGGREGATION))
     }), processingActorProps = Some(Props(TestTransformActor(m => {
       Corn(m.data + 1).withTags(AGGREGATION, Set(StringTag("ALL")))
@@ -139,7 +143,7 @@ object TestMessages {
   def generateProcessActorRunnableJobCmd(jobId: String): ProcessActorRunnableJobCmd[_, _, _, _] = {
     val actorRunnableGenerator: IndexedGenerator[ActorRunnable[TaggedInt, Int, Int, Map[Tag, Double]]] = ByFunctionNrLimitedIndexedGenerator(
       nrOfElements = 4,
-      genFunc = x => Some(messagesToActorRefRunnableGenFunc(x))
+      genFunc = x => Some(messagesToActorRefRunnableGenFunc(jobId)(x))
     )
     ProcessActorRunnableJobCmd[TaggedInt, Corn[Int], Int, Map[Tag, Double]](
       jobId = jobId,

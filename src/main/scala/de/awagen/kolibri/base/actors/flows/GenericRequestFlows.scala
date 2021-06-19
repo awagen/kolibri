@@ -61,8 +61,8 @@ object GenericRequestFlows {
     Flow.fromFunction(x => x)
 
   def genericRequestFlow[T <: DataStore[HttpRequestProvider]](connectionPool: Flow[(HttpRequest, T), (Try[HttpResponse], T), _],
-                                                   credentialsProvider: Option[CredentialsProvider],
-                                                   meter: Option[ActorRef]): Flow[T, (Try[HttpResponse], T), NotUsed] = {
+                                                              credentialsProvider: Option[CredentialsProvider],
+                                                              meter: Option[ActorRef]): Flow[T, (Try[HttpResponse], T), NotUsed] = {
     expandProcessContextFlow[T]()
       .via(if (credentialsProvider.nonEmpty) enrichWithCredentialsFlow(credentialsProvider.get) else identity())
       .via(if (meter.isDefined) flowThroughActorMeter(meter.get, "toConnectionPool") else identity())
@@ -77,7 +77,7 @@ object GenericRequestFlows {
   }
 
   def httpResponseTryToFutureFlow[T, U <: DataStore[HttpRequestProvider]](function: HttpResponse => Future[T],
-                                                               failValue: Future[T]): Flow[(Try[HttpResponse], U), (Future[T], U), NotUsed] = {
+                                                                          failValue: Future[T]): Flow[(Try[HttpResponse], U), (Future[T], U), NotUsed] = {
     Flow.fromFunction[(Try[HttpResponse], U), (Future[T], U)]({
       case (Success(response), requestProviderStore) =>
         if (config.useRequestTracking) RequestTrackingInterface.sendMessageToTrackingActor(SetRequestSuccess(requestProviderStore.data.getRequest))
@@ -89,8 +89,8 @@ object GenericRequestFlows {
   }
 
   def processResponseAndTrackRead[T <: DataStore[HttpRequestProvider], U](responseHandler: HttpResponse => Future[Either[Throwable, U]])(in: (Try[HttpResponse], T))
-                                                              (implicit actorSystem: ActorSystem, ec: ExecutionContext,
-                                                               mat: Materializer): Future[(Either[Throwable, U], T)] = {
+                                                                         (implicit actorSystem: ActorSystem, ec: ExecutionContext,
+                                                                          mat: Materializer): Future[(Either[Throwable, U], T)] = {
     in match {
       case (Success(response), requestProviderStore) =>
         if (config.useRequestTracking) RequestTrackingInterface.sendMessageToTrackingActor(SetRequestSuccess(requestProviderStore.data.getRequest))
@@ -126,11 +126,11 @@ object GenericRequestFlows {
     * @return
     */
   def requestAndParseResponseFlow[T <: DataStore[HttpRequestProvider], U](credentialsProvider: Option[CredentialsProvider],
-                                                               connectionPool: Flow[(HttpRequest, T), (Try[HttpResponse], T), _],
-                                                               meter: Option[ActorRef],
-                                                               responseHandler: HttpResponse => Future[Either[Throwable, U]])
-                                                              (implicit actorSystem: ActorSystem, mat: Materializer,
-                                                               ec: ExecutionContext): Flow[T, (Either[Throwable, U], T), NotUsed] = {
+                                                                          connectionPool: Flow[(HttpRequest, T), (Try[HttpResponse], T), _],
+                                                                          meter: Option[ActorRef],
+                                                                          responseHandler: HttpResponse => Future[Either[Throwable, U]])
+                                                                         (implicit actorSystem: ActorSystem, mat: Materializer,
+                                                                          ec: ExecutionContext): Flow[T, (Either[Throwable, U], T), NotUsed] = {
     GenericRequestFlows.genericRequestFlow(connectionPool, credentialsProvider, meter)
       .mapAsyncUnordered[(Either[Throwable, U], T)](config.requestParallelism)(x => GenericRequestFlows.processResponseAndTrackRead[T, U](responseHandler)(x))
       .log("after request processing")
@@ -138,11 +138,11 @@ object GenericRequestFlows {
   }
 
   def requestAndParseResponseFlowByConnections[T <: DataStore[HttpRequestProvider], U](credentialsProvider: Option[CredentialsProvider],
-                                                                            connectionPool: Flow[(HttpRequest, T), (Try[HttpResponse], T), _],
-                                                                            meter: Option[ActorRef],
-                                                                            responseHandler: HttpResponse => Future[Either[Throwable, U]])
-                                                                           (implicit actorSystem: ActorSystem, mat: Materializer,
-                                                                            ec: ExecutionContext): Flow[T, (Either[Throwable, U], T), NotUsed] = {
+                                                                                       connectionPool: Flow[(HttpRequest, T), (Try[HttpResponse], T), _],
+                                                                                       meter: Option[ActorRef],
+                                                                                       responseHandler: HttpResponse => Future[Either[Throwable, U]])
+                                                                                      (implicit actorSystem: ActorSystem, mat: Materializer,
+                                                                                       ec: ExecutionContext): Flow[T, (Either[Throwable, U], T), NotUsed] = {
 
     GenericRequestFlows.genericRequestFlow(connectionPool, credentialsProvider, meter)
       .mapAsyncUnordered[(Either[Throwable, U], T)](config.requestParallelism)(x => GenericRequestFlows.processResponseAndTrackRead[T, U](responseHandler)(x))
@@ -151,7 +151,7 @@ object GenericRequestFlows {
   }
 
   def getConnectionPoolFlow[T <: DataStore[HttpRequestProvider]](host: String, port: Int, useHttps: Boolean)
-                                                     (implicit actorSystem: ActorSystem): Flow[(HttpRequest, T), (Try[HttpResponse], T), _] = {
+                                                                (implicit actorSystem: ActorSystem): Flow[(HttpRequest, T), (Try[HttpResponse], T), _] = {
     ConnectionPoolManager.connectionPoolStorage.getPoolForHost(Host(host, port), useHttps)
   }
 

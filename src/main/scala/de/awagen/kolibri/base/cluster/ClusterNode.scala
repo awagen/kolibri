@@ -16,8 +16,6 @@
 
 package de.awagen.kolibri.base.cluster
 
-import java.util.Objects
-
 import akka.actor.ActorSystem
 import akka.cluster.Cluster
 import akka.http.scaladsl.server.Directives._
@@ -33,6 +31,7 @@ import de.awagen.kolibri.base.http.server.BaseRoutes._
 import de.awagen.kolibri.base.http.server.{BaseRoutes, HttpServer}
 import org.slf4j.{Logger, LoggerFactory}
 
+import java.util.Objects
 import scala.concurrent.ExecutionContextExecutor
 import scala.util.{Failure, Success}
 
@@ -79,7 +78,7 @@ object ClusterNode extends App {
     // need to initialiize the BaseRoutes to start Supervisor actor in current actorSystem
     BaseRoutes.init
     val usedRoute: Route = route.getOrElse(simpleHelloRoute ~ streamingUserRoutes ~ clusterStatusRoutee ~ killAllJobs
-      ~ getJobStatus ~ killJob ~ getJobWorkerStatus ~ getRunningJobIds ~ executeDistributedPiCalculationExample)
+      ~ getJobStatus ~ killJob ~ getJobWorkerStatus ~ getRunningJobIds ~ executeDistributedPiCalculationExample ~ startSearchEval)
     val isHttpServerNode: Boolean = node_roles.contains(config.HTTP_SERVER_ROLE)
 
     logger.info(s"Node roles: $node_roles")

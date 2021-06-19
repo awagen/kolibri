@@ -126,16 +126,21 @@ class JobManagerActor[T, U](val jobId: String,
   private[this] var batchDistributor: Distributor[ActorRunnable[_, _, _, U], U] = _
 
 
-  val workerService: ActorRef = createWorkerRoutingService
+  val workerServiceRouter: ActorRef = createWorkerRoutingServiceForJob
 
   var scheduleCancellables: Seq[Cancellable] = Seq.empty
 
-  def createWorkerRoutingService: ActorRef = {
+  def createWorkerRoutingServiceForJob: ActorRef = {
     context.actorOf(
       ClusterRouterPool(
         RoundRobinPool(0),
-        ClusterRouterPoolSettings(totalInstances = 20, maxInstancesPerNode = 7, allowLocalRoutees = true))
-        .props(Props[WorkManagerActor]),
+        // right now we want to have a single WorkManager per node. Just distributes the batches
+        // to workers on its respective node and keeps state of running workers
+        ClusterRouterPoolSettings(
+          totalInstances = 10,
+          maxInstancesPerNode = 1,
+          allowLocalRoutees = true))
+        .props(WorkManagerActor.props(jobId)),
       name = s"jobBatchRouter-$jobId")
   }
 
@@ -250,7 +255,7 @@ class JobManagerActor[T, U](val jobId: String,
       val nextExpectation: ExecutionExpectation = expectationForNextBatch()
       nextExpectation.init
       executionExpectationMap(batch.batchNr) = nextExpectation
-      workerService ! batch
+      workerServiceRouter ! batch
       // first place the batch in waiting for acknowledgement for processing by worker
       batchesSentWaitingForACK = batchesSentWaitingForACK + batch.batchNr
       context.system.scheduler.scheduleOnce(config.batchMaxTimeToACKInMs, self, CheckIfJobAckReceivedAndRemoveIfNot(batch.batchNr))
@@ -340,7 +345,7 @@ class JobManagerActor[T, U](val jobId: String,
       val runningBatches = executionExpectationMap.keys.toSeq
       val messages = runningBatches.map(batchNr => GetWorkerStatus(ExecutionType.RUNNABLE, jobId, batchNr))
       implicit val timeout: Timeout = Timeout(1 second)
-      val responseFuture: Future[Seq[Any]] = Future.sequence(messages.map(x => workerService.ask(x)))
+      val responseFuture: Future[Seq[Any]] = Future.sequence(messages.map(x => workerServiceRouter.ask(x)))
       responseFuture.onComplete({
         case Success(value) =>
           reportTo ! WorkerStatusResponse[U](Right(value = value.asInstanceOf[Seq[AggregationState[U]]]))

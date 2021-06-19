@@ -61,7 +61,7 @@ class RunnableExecutionActorSpec extends KolibriTestKitNoCluster
       val reportToActor: TestProbe = TestProbe()
       val runnableExecutorActor: ActorRef = system.actorOf(RunnableExecutionActor.probs(2 seconds))
       // when
-      runnableExecutorActor.tell(TestMessages.messagesToActorRefRunnable(), reportToActor.ref)
+      runnableExecutorActor.tell(TestMessages.messagesToActorRefRunnable("testJob"), reportToActor.ref)
       // then
       reportToActor.expectMsgPF(2 seconds){
         case _: AggregationState[Map[Tag, Double]] => true

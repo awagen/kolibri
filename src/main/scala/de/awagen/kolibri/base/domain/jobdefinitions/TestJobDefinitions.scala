@@ -87,7 +87,7 @@ object TestJobDefinitions {
     }
     JobMsgFactory.createActorRunnableJobCmd[Int, Int, Double, Double, Map[Tag, AggregateValue[Double]]](
       jobId = jobName,
-      nrThrows.toInt,
+      nrThrows,
       dataBatchGenerator = batchGenerator,
       transformerFlow = Flow.fromFunction[Int, ProcessingMessage[Double]](flowFunct),
       processingActorProps = None,

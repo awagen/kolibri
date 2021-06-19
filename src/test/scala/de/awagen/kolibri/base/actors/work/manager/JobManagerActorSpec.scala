@@ -95,7 +95,7 @@ class JobManagerActorSpec extends KolibriTestKit
       val jobManagerActor: ActorRef = system.actorOf(managerProps)
       val jobGenerator: IndexedGenerator[ActorRunnable[TaggedInt, Int, Int, Map[Tag, Double]]] = ByFunctionNrLimitedIndexedGenerator(
         nrOfElements = 4,
-        genFunc = x => Some(messagesToActorRefRunnableGenFunc.apply(x))
+        genFunc = x => Some(messagesToActorRefRunnableGenFunc("testId").apply(x))
       )
       // when
       val msg: ProcessJobCmd[TaggedInt, Int, Int, Map[Tag, Double]] = ProcessJobCmd(job = jobGenerator)
