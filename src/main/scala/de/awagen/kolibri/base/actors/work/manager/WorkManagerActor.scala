@@ -32,6 +32,7 @@ import de.awagen.kolibri.base.processing.JobMessagesImplicits._
 import de.awagen.kolibri.base.processing.execution.TaskExecution
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnable
 import de.awagen.kolibri.base.processing.execution.task.Task
+import de.awagen.kolibri.base.traits.Traits.WithBatchNr
 import de.awagen.kolibri.datatypes.ClassTyped
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
@@ -45,7 +46,7 @@ import scala.concurrent.ExecutionContext
 
 object WorkManagerActor {
 
-  def props(jobId: String): Props = Props(new WorkManagerActor(jobId))
+  def props: Props = Props[WorkManagerActor]
 
   sealed trait WorkManagerMsg extends KolibriSerializable
 
@@ -53,19 +54,20 @@ object WorkManagerActor {
 
   case class TaskExecutionWithTypedResult[T](taskExecution: TaskExecution[T], partIdentifier: JobPartIdentifier) extends WorkManagerMsg
 
-  object ExecutionType extends Enumeration {
+  object ExecutionType extends Enumeration with KolibriSerializable {
     val TASK, TASK_EXECUTION, RUNNABLE = Value
   }
 
   case class GetWorkerStatus(executionType: ExecutionType.Value, job: String, batchNr: Int) extends WorkManagerMsg
 
-  case class JobBatchMsg[T](jobName: String, batchNr: Int, msg: T) extends WorkManagerMsg
+  case class JobBatchMsg[T](jobName: String, batchNr: Int, msg: T) extends WorkManagerMsg with WithBatchNr
 
 }
 
 
-class WorkManagerActor(val jobId: String) extends Actor with ActorLogging with KolibriSerializable {
+class WorkManagerActor() extends Actor with ActorLogging with KolibriSerializable {
 
+  var receivedBatchCount: Int = 0
   // record of worker key to the actual actor reference
   val workerKeyToActiveWorker: mutable.Map[String, ActorRef] = mutable.Map.empty
   // worker key to the respective job manager expecting the answer
@@ -116,46 +118,38 @@ class WorkManagerActor(val jobId: String) extends Actor with ActorLogging with K
     */
   override def receive: Receive = {
     case e: TasksWithTypedResult[_] =>
-      val exec = () => {
-        val taskWorker: ActorRef = context.actorOf(TaskWorkerActor.props)
-        workerKeyToActiveWorker.put(workerKey(TASK, e.partIdentifier.jobId, e.partIdentifier.batchNr), taskWorker)
-        taskWorker.tell(ProcessTasks(e.data, e.tasks, e.finalResultKey, e.partIdentifier), sender())
-      }
-      checkJobIdAndExecute(e.partIdentifier.jobId, exec)
+      val taskWorker: ActorRef = context.actorOf(TaskWorkerActor.props)
+      workerKeyToActiveWorker.put(workerKey(TASK, e.partIdentifier.jobId, e.partIdentifier.batchNr), taskWorker)
+      taskWorker.tell(ProcessTasks(e.data, e.tasks, e.finalResultKey, e.partIdentifier), sender())
     case e: TaskExecutionWithTypedResult[_] =>
-      val exec = () => {
-        val taskExecutionWorker: ActorRef = context.actorOf(TaskExecutionWorkerActor.props)
-        workerKeyToActiveWorker.put(workerKey(TASK_EXECUTION, e.partIdentifier.jobId, e.partIdentifier.batchNr), taskExecutionWorker)
-        taskExecutionWorker.tell(ProcessTaskExecution(e.taskExecution, e.partIdentifier), sender())
-      }
-      checkJobIdAndExecute(e.partIdentifier.jobId, exec)
+      val taskExecutionWorker: ActorRef = context.actorOf(TaskExecutionWorkerActor.props)
+      workerKeyToActiveWorker.put(workerKey(TASK_EXECUTION, e.partIdentifier.jobId, e.partIdentifier.batchNr), taskExecutionWorker)
+      taskExecutionWorker.tell(ProcessTaskExecution(e.taskExecution, e.partIdentifier), sender())
     case e: JobBatchMsg[TestPiCalculation] =>
-      val exec = () => {
-        if (runnableGeneratorForJob.isEmpty) {
-          runnableGeneratorForJob = Some(e.msg.toRunnable.processElements)
-        }
-        val runnable: Option[ActorRunnable[_, _, _, _]] = runnableGeneratorForJob.flatMap(x => x.get(e.batchNr))
-        runnable
-          .map(x => distributeRunnable(x))
-          .getOrElse(log.warning(s"job for message '$e' does not contain batch '${e.batchNr}', not executing anything for batch"))
+      if (receivedBatchCount % 10 == 0) {
+        log.info(s"received pi calc batch messages: $receivedBatchCount")
       }
-      checkJobIdAndExecute(e.jobName, exec)
+      receivedBatchCount += 1
+      if (runnableGeneratorForJob.isEmpty) {
+        runnableGeneratorForJob = Some(e.msg.toRunnable.processElements)
+      }
+      val runnable: Option[ActorRunnable[_, _, _, _]] = runnableGeneratorForJob.flatMap(x => x.get(e.batchNr))
+      runnable
+        .map(x => distributeRunnable(x))
+        .getOrElse(log.warning(s"job for message '$e' does not contain batch '${e.batchNr}', not executing anything for batch"))
     case e: JobBatchMsg[SearchEvaluation] =>
-      val exec = () => {
-        if (runnableGeneratorForJob.isEmpty) {
-          implicit val ec: ExecutionContext = context.system.dispatcher
-          implicit val timeout: Timeout = e.msg.timeout
-          implicit val actorSystem: ActorSystem = context.system
-          runnableGeneratorForJob = Some(e.msg.toRunnable.processElements)
-        }
-        val runnable: Option[ActorRunnable[_, _, _, _]] = runnableGeneratorForJob.flatMap(x => x.get(e.batchNr))
-        runnable
-          .map(x => distributeRunnable(x))
-          .getOrElse(log.warning(s"job for message '$e' does not contain batch '${e.batchNr}', not executing anything for batch"))
+      if (runnableGeneratorForJob.isEmpty) {
+        implicit val ec: ExecutionContext = context.system.dispatcher
+        implicit val timeout: Timeout = e.msg.timeout
+        implicit val actorSystem: ActorSystem = context.system
+        runnableGeneratorForJob = Some(e.msg.toRunnable.processElements)
       }
-      checkJobIdAndExecute(e.jobName, exec)
+      val runnable: Option[ActorRunnable[_, _, _, _]] = runnableGeneratorForJob.flatMap(x => x.get(e.batchNr))
+      runnable
+        .map(x => distributeRunnable(x))
+        .getOrElse(log.warning(s"job for message '$e' does not contain batch '${e.batchNr}', not executing anything for batch"))
     case runnable: ActorRunnable[_, _, _, _] =>
-      checkJobIdAndExecute(runnable.jobId, () => distributeRunnable(runnable))
+      distributeRunnable(runnable)
     case Terminated(actorRef: ActorRef) =>
       log.debug(s"received termination of actor: ${actorRef.path.toString}")
       val killedKeys: Seq[String] = workerKeyToActiveWorker.keys.filter(x => workerKeyToActiveWorker(x).equals(actorRef)).toSeq
@@ -175,14 +169,6 @@ class WorkManagerActor(val jobId: String) extends Actor with ActorLogging with K
       worker.foreach(x => x.tell(ReportResults, reportTo))
     case e =>
       log.warning(s"Unknown and unhandled message: '$e'")
-  }
-
-  def checkJobIdAndExecute(jobId: String, exec: () => ()): Unit = {
-    if (jobId == this.jobId) exec.apply()
-    else {
-      log.warning(s"received message for unknown jobId '$jobId' (expected jobId: ${this.jobId}), " +
-        s"not doing anything")
-    }
   }
 
   def distributeRunnable(runnable: ActorRunnable[_, _, _, _]): Unit = {

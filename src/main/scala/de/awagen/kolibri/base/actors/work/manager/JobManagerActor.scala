@@ -23,19 +23,28 @@ import akka.pattern.ask
 import akka.routing.RoundRobinPool
 import akka.util.Timeout
 import de.awagen.kolibri.base.actors.resources.BatchFreeSlotResourceCheckingActor.AddToRunningBaselineCount
+import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.ProcessingResult.RUNNING
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.{ActorRunnableJobGenerator, FinishedJobEvent, ProcessingResult}
 import de.awagen.kolibri.base.actors.work.manager.JobManagerActor._
-import de.awagen.kolibri.base.actors.work.manager.WorkManagerActor.{ExecutionType, GetWorkerStatus}
+import de.awagen.kolibri.base.actors.work.manager.WorkManagerActor.{ExecutionType, GetWorkerStatus, JobBatchMsg}
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationState, ProcessingMessage, ResultSummary}
 import de.awagen.kolibri.base.config.AppConfig._
+import de.awagen.kolibri.base.http.client.request.RequestTemplate
 import de.awagen.kolibri.base.io.writer.Writers.Writer
+import de.awagen.kolibri.base.processing.JobMessages.{SearchEvaluation, TestPiCalculation}
+import de.awagen.kolibri.base.processing.JobMessagesImplicits._
 import de.awagen.kolibri.base.processing.execution.expectation._
-import de.awagen.kolibri.base.processing.execution.job.ActorRunnable
+import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
 import de.awagen.kolibri.base.processing.{DistributionStates, Distributor, RetryingDistributor}
+import de.awagen.kolibri.base.traits.Traits.WithBatchNr
+import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator}
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
+import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
+import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSupplier
+import de.awagen.kolibri.datatypes.values.AggregateValue
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 
 import scala.collection.mutable
@@ -48,13 +57,15 @@ object JobManagerActor {
 
   final def name(jobId: String) = s"jobManager-$jobId"
 
+  type BatchType = Any with WithBatchNr
+
   def props[T, U](experimentId: String,
                   runningTaskBaselineCount: Int,
                   aggregatorSupplier: SerializableSupplier[Aggregator[ProcessingMessage[T], U]],
                   writer: Writer[U, Tag, _],
                   maxProcessDuration: FiniteDuration,
                   maxBatchDuration: FiniteDuration): Props =
-    Props(new JobManagerActor(experimentId, runningTaskBaselineCount, aggregatorSupplier, writer, maxProcessDuration, maxBatchDuration))
+    Props(new JobManagerActor[T, U](experimentId, runningTaskBaselineCount, aggregatorSupplier, writer, maxProcessDuration, maxBatchDuration))
 
 
   // cmds telling JobManager to do sth
@@ -96,11 +107,11 @@ object JobManagerActor {
 }
 
 class JobManagerActor[T, U](val jobId: String,
-                            runningTaskBaselineCount: Int,
-                            val aggregatorSupplier: SerializableSupplier[Aggregator[ProcessingMessage[T], U]],
-                            val writer: Writer[U, Tag, _],
-                            val maxProcessDuration: FiniteDuration,
-                            val maxBatchDuration: FiniteDuration) extends Actor with ActorLogging with KolibriSerializable {
+                                              runningTaskBaselineCount: Int,
+                                              val aggregatorSupplier: SerializableSupplier[Aggregator[ProcessingMessage[T], U]],
+                                              val writer: Writer[U, Tag, _],
+                                              val maxProcessDuration: FiniteDuration,
+                                              val maxBatchDuration: FiniteDuration) extends Actor with ActorLogging with KolibriSerializable {
 
   implicit val system: ActorSystem = context.system
   implicit val ec: ExecutionContextExecutor = system.dispatcher
@@ -118,18 +129,22 @@ class JobManagerActor[T, U](val jobId: String,
   var batchesSentWaitingForACK: Set[Int] = Set.empty
   var failedACKReceiveBatchNumbers: Set[Int] = Set.empty
 
-  var jobToProcess: ActorRunnableJobGenerator[_, _, _, U] = _
+  var jobToProcess: IndexedGenerator[BatchType] = _
   var distributionCompleted: Boolean = false
 
   // the batch distributor encapsulating the logic of when to release how many new batches for processing and
   // retrying. Its state has to be updated when result comes in or when a batch can be marked as failed
-  private[this] var batchDistributor: Distributor[ActorRunnable[_, _, _, U], U] = _
-
+  private[this] var batchDistributor: Distributor[BatchType, U] = _
 
   val workerServiceRouter: ActorRef = createWorkerRoutingServiceForJob
 
   var scheduleCancellables: Seq[Cancellable] = Seq.empty
 
+  // NOTE: do not require the routees to have any props arguments.
+  // this can lead to failed serialization on routee creation
+  // (even if its just a case class with primitives, maybe due to disabled
+  // java serialization and respective msg not being of KolibriSerializable.
+  // Not fully clear yet though
   def createWorkerRoutingServiceForJob: ActorRef = {
     context.actorOf(
       ClusterRouterPool(
@@ -138,9 +153,9 @@ class JobManagerActor[T, U](val jobId: String,
         // to workers on its respective node and keeps state of running workers
         ClusterRouterPoolSettings(
           totalInstances = 10,
-          maxInstancesPerNode = 1,
+          maxInstancesPerNode = 2,
           allowLocalRoutees = true))
-        .props(WorkManagerActor.props(jobId)),
+        .props(WorkManagerActor.props),
       name = s"jobBatchRouter-$jobId")
   }
 
@@ -171,7 +186,7 @@ class JobManagerActor[T, U](val jobId: String,
   }
 
   def fillUpFreeSlots(): Unit = {
-    val nextBatchesOrState: Either[DistributionStates.DistributionState, Seq[ActorRunnable[_, _, _, U]]] = batchDistributor.next
+    val nextBatchesOrState: Either[DistributionStates.DistributionState, Seq[BatchType]] = batchDistributor.next
     nextBatchesOrState match {
       case Left(state) =>
         log.debug(s"state received from distributor: $state")
@@ -246,7 +261,7 @@ class JobManagerActor[T, U](val jobId: String,
     fillUpFreeSlots()
   }
 
-  def submitNextBatches(batches: Seq[ActorRunnable[_, _, _, U]]): Unit = {
+  def submitNextBatches(batches: Seq[BatchType]): Unit = {
     batches.foreach(batch => {
       // the only expectation here is that we get a single AggregationState
       // the expectation of the runnable is actually handled within the runnable
@@ -263,32 +278,78 @@ class JobManagerActor[T, U](val jobId: String,
 
   }
 
+  def handleProcessJobCmd(cmd: ProcessJobCmd[_, _, _, U]): Unit = {
+    log.debug(s"received job to process: $cmd")
+    log.debug(s"job contains ${cmd.job.size} batches")
+    reportResultsTo = sender()
+    jobToProcess = cmd.job
+    batchDistributor = new RetryingDistributor[BatchType, U](
+      maxParallel = runningTaskBaselineCount,
+      generator = jobToProcess,
+      aggState => {
+        aggregator.addAggregate(aggState.data)
+        executionExpectationMap.get(aggState.batchNr).foreach(x => x.accept(aggState))
+        updateExpectations(Seq(aggState.batchNr))
+      },
+      maxNrRetries = 2)
+    context.become(processingState)
+    // if a maximal process duration is set, schedule message to self to
+    // write result and send a fail note, then take PoisonPill
+    scheduleCancellables = scheduleCancellables :+ context.system.scheduler.scheduleOnce(maxProcessDuration, self,
+      WriteResultAndSendFailNoteAndTakePoisonPillCmd)
+    // distribute batches at fixed rate
+    val cancellableDistributeBatchSchedule: Cancellable = context.system.scheduler.scheduleAtFixedRate(0 second,
+      config.batchDistributionInterval, self, DistributeBatches)
+    scheduleCancellables = scheduleCancellables :+ cancellableDistributeBatchSchedule
+    logger.info(s"started processing of job '$jobId'")
+    ()
+  }
+
+  def getDistributor(dataGen: IndexedGenerator[BatchType]): Distributor[BatchType, U] = {
+    new RetryingDistributor[BatchType, U](
+      maxParallel = runningTaskBaselineCount,
+      generator = dataGen,
+      aggState => {
+        aggregator.addAggregate(aggState.data)
+        executionExpectationMap.get(aggState.batchNr).foreach(x => x.accept(aggState))
+        updateExpectations(Seq(aggState.batchNr))
+      },
+      maxNrRetries = 2)
+  }
+
   def startState: Receive = {
-    case cmd: ProcessJobCmd[_, _, _, U] =>
-      log.debug(s"received job to process: $cmd")
-      log.debug(s"job contains ${cmd.job.size} batches")
+    case testJobMsg: TestPiCalculation =>
+      log.debug(s"received job to process: $testJobMsg")
       reportResultsTo = sender()
-      jobToProcess = cmd.job
-      batchDistributor = new RetryingDistributor[ActorRunnable[_, _, _, U], U](
-        maxParallel = runningTaskBaselineCount,
-        generator = jobToProcess,
-        aggState => {
-          aggregator.addAggregate(aggState.data)
-          executionExpectationMap.get(aggState.batchNr).foreach(x => x.accept(aggState))
-          updateExpectations(Seq(aggState.batchNr))
-        },
-        maxNrRetries = 2)
+      val jobMsg: SupervisorActor.ProcessActorRunnableJobCmd[Int, Double, Double, Map[Tag, AggregateValue[Double]]] = testJobMsg.toRunnable
+      val numberBatches: Int = jobMsg.processElements.size
+      jobToProcess = ByFunctionNrLimitedIndexedGenerator(numberBatches, batchNr => Some(JobBatchMsg(jobMsg.jobId, batchNr, testJobMsg)))
+      log.debug(s"job contains ${jobToProcess.size} batches")
+      batchDistributor = getDistributor(jobToProcess)
       context.become(processingState)
-      // if a maximal process duration is set, schedule message to self to
-      // write result and send a fail note, then take PoisonPill
       scheduleCancellables = scheduleCancellables :+ context.system.scheduler.scheduleOnce(maxProcessDuration, self,
         WriteResultAndSendFailNoteAndTakePoisonPillCmd)
-      // distribute batches at fixed rate
       val cancellableDistributeBatchSchedule: Cancellable = context.system.scheduler.scheduleAtFixedRate(0 second,
         config.batchDistributionInterval, self, DistributeBatches)
       scheduleCancellables = scheduleCancellables :+ cancellableDistributeBatchSchedule
       logger.info(s"started processing of job '$jobId'")
       ()
+    case searchJobMsg: SearchEvaluation =>
+      implicit val timeout: Timeout = 10 minutes
+      val jobMsg: SupervisorActor.ProcessActorRunnableJobCmd[RequestTemplateBuilderModifier, (Either[Throwable, MetricRow], RequestTemplate), MetricRow, MetricAggregation[Tag]] = searchJobMsg.toRunnable
+      val numberBatches: Int = jobMsg.processElements.size
+      jobToProcess = ByFunctionNrLimitedIndexedGenerator(numberBatches, batchNr => Some(JobBatchMsg(jobMsg.jobId, batchNr, searchJobMsg)))
+      batchDistributor = getDistributor(jobToProcess)
+      context.become(processingState)
+      scheduleCancellables = scheduleCancellables :+ context.system.scheduler.scheduleOnce(maxProcessDuration, self,
+        WriteResultAndSendFailNoteAndTakePoisonPillCmd)
+      val cancellableDistributeBatchSchedule: Cancellable = context.system.scheduler.scheduleAtFixedRate(0 second,
+        config.batchDistributionInterval, self, DistributeBatches)
+      scheduleCancellables = scheduleCancellables :+ cancellableDistributeBatchSchedule
+      logger.info(s"started processing of job '$jobId'")
+      ()
+    case cmd: ProcessJobCmd[_, _, _, U] =>
+      handleProcessJobCmd(cmd)
     case a: Any =>
       log.warning(s"received invalid message: $a")
   }

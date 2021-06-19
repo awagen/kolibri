@@ -27,17 +27,18 @@ object JobMessages {
 
   case class TestPiCalculation(jobName: String, nrThrows: Int, batchSize: Int, resultDir: String) extends JobMessage
 
-  case class SearchEvaluation(parameters: OrderedMultiValues,
+  case class SearchEvaluation(jobName: String,
+                              parameters: OrderedMultiValues,
                               judgementsFileClassPathURI: String = "data/test_judgements.txt",
                               connections: Seq[Connection] = Seq(Connection(host = "localhost", port = 80, useHttps = false, credentialsProvider = None)),
                               resultFileURI: String = "/home/ed/REPOS/github/kolibri_release/kolibri-base/kolibri-test",
-                              timeout: FiniteDuration = 60 minutes)
+                              timeout: FiniteDuration = 60 minutes) extends JobMessage
 }
 
 
 object JobMessagesImplicits {
 
-  implicit class TestPiCalcToRunnable(calc: TestPiCalculation){
+  implicit class TestPiCalcToRunnable(calc: TestPiCalculation) {
 
     def toRunnable: SupervisorActor.ProcessActorRunnableJobCmd[Int, Double, Double, Map[Tag, AggregateValue[Double]]] = {
       TestJobDefinitions.piEstimationJob(
@@ -56,7 +57,7 @@ object JobMessagesImplicits {
     }
   }
 
-//  val piCalc: TestPiCalculation = TestPiCalculation("job1", 3, 3, "")
-//  piCalc.toRunnable
+  //  val piCalc: TestPiCalculation = TestPiCalculation("job1", 3, 3, "")
+  //  piCalc.toRunnable
 
 }

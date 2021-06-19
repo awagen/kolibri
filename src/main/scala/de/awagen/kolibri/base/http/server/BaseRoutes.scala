@@ -17,7 +17,7 @@
 package de.awagen.kolibri.base.http.server
 
 import akka.NotUsed
-import akka.actor.{ActorContext, ActorRef, ActorSystem}
+import akka.actor.{ActorRef, ActorSystem}
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpHeader, StatusCodes}
 import akka.http.scaladsl.server.Directives.{complete, get, onSuccess, parameters, path, post}
 import akka.http.scaladsl.server.Route
@@ -31,11 +31,12 @@ import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor._
 import de.awagen.kolibri.base.cluster.ClusterStatus
 import de.awagen.kolibri.base.config.AppConfig.config.internalJobStatusRequestTimeout
 import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions
+import de.awagen.kolibri.base.processing.JobMessages.TestPiCalculation
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.SearchJobDefinitions
 import org.slf4j.{Logger, LoggerFactory}
 
 import java.util.Objects
-import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
+import scala.concurrent.ExecutionContextExecutor
 import scala.concurrent.duration._
 import scala.util.Random
 
@@ -137,6 +138,20 @@ object BaseRoutes {
         val actorRunnableJob = TestJobDefinitions.piEstimationJob(jobName, nrThrows.toInt, batchSize.toInt, resultDir)
         supervisorActor ! actorRunnableJob
         complete(StatusCodes.Accepted, "Processing Pi Calculation Example")
+      }
+      }
+    }
+  }
+
+  def executeDistributedPiCalculationExampleWithoutSerialization(implicit system: ActorSystem): Route = {
+
+    implicit val timeout: Timeout = Timeout(1 minute)
+    implicit val ec: ExecutionContextExecutor = system.dispatcher
+    path("pi_calc_no_ser") {
+      parameters("jobName", "nrThrows", "batchSize", "resultDir") { (jobName, nrThrows, batchSize, resultDir) => {
+        val msg = TestPiCalculation(jobName, nrThrows.toInt, batchSize.toInt, resultDir)
+        supervisorActor ! msg
+        complete(StatusCodes.Accepted, "Processing Pi Calculation (without full ActorRunnable serialization) Example")
       }
       }
     }

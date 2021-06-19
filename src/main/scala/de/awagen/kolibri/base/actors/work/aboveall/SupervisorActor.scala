@@ -27,19 +27,25 @@ import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{ProcessingM
 import de.awagen.kolibri.base.actors.work.worker.TaskExecutionWorkerActor
 import de.awagen.kolibri.base.config.AppConfig._
 import de.awagen.kolibri.base.domain.jobdefinitions.Batch
+import de.awagen.kolibri.base.http.client.request.RequestTemplate
 import de.awagen.kolibri.base.io.writer.Writers.Writer
+import de.awagen.kolibri.base.processing.JobMessages.{SearchEvaluation, TestPiCalculation}
 import de.awagen.kolibri.base.processing.execution.SimpleTaskExecution
 import de.awagen.kolibri.base.processing.execution.expectation._
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnable
 import de.awagen.kolibri.base.processing.execution.task.Task
 import de.awagen.kolibri.base.processing.execution.task.utils.TaskUtils
+import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
 import de.awagen.kolibri.datatypes.ClassTyped
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
+import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
 import de.awagen.kolibri.datatypes.mutable.stores.TypeTaggedMap
+import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.tagging.TaggedWithType
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.types.SerializableCallable.{SerializableFunction1, SerializableSupplier}
+import de.awagen.kolibri.datatypes.values.AggregateValue
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 
 import scala.collection.mutable
@@ -239,6 +245,51 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
         context.watch(actor)
         actor ! ProcessJobCmd(job.processElements)
         val expectation = createJobExecutionExpectation(job.allowedTimeForJob)
+        expectation.init
+        jobIdToActorRefAndExpectation(jobId) = (ActorSetup(actor, jobSender), expectation)
+      }
+    case e: TestPiCalculation =>
+      val jobSender = sender()
+      val jobId = e.jobName
+      if (jobIdToActorRefAndExpectation.contains(jobId)) {
+        log.warning("Job with id {} is still running, thus not starting that here", jobId)
+      }
+      else {
+        log.info("Creating and sending job to JobManager, jobId: {}", jobId)
+        import de.awagen.kolibri.base.processing.JobMessagesImplicits._
+        val runnableJob: ProcessActorRunnableJobCmd[Int, Double, Double, Map[Tag, AggregateValue[Double]]] = e.toRunnable
+        val actor = createJobManagerActor(
+          jobId,
+          runnableJob.aggregatorSupplier,
+          runnableJob.writer,
+          runnableJob.allowedTimeForJob,
+          runnableJob.allowedTimePerBatch)
+        context.watch(actor)
+        actor ! e
+        val expectation = createJobExecutionExpectation(runnableJob.allowedTimeForJob)
+        expectation.init
+        jobIdToActorRefAndExpectation(jobId) = (ActorSetup(actor, jobSender), expectation)
+      }
+    case e: SearchEvaluation =>
+      val jobSender = sender()
+      val jobId = e.jobName
+      if (jobIdToActorRefAndExpectation.contains(jobId)) {
+        log.warning("Job with id {} is still running, thus not starting that here", jobId)
+      }
+      else {
+        log.info("Creating and sending job to JobManager, jobId: {}", jobId)
+        import de.awagen.kolibri.base.processing.JobMessagesImplicits._
+        implicit val timeout: Timeout = 10 minutes
+        val runnableJob: ProcessActorRunnableJobCmd[RequestTemplateBuilderModifier, (Either[Throwable, MetricRow], RequestTemplate), MetricRow, MetricAggregation[Tag]] = e.toRunnable
+        val actor = createJobManagerActor(
+          jobId,
+          runnableJob.aggregatorSupplier,
+          runnableJob.writer,
+          runnableJob.allowedTimeForJob,
+          runnableJob.allowedTimePerBatch)
+        context.watch(actor)
+        actor ! e
+        val expectation = createJobExecutionExpectation(runnableJob.allowedTimeForJob)
         expectation.init
         jobIdToActorRefAndExpectation(jobId) = (ActorSetup(actor, jobSender), expectation)
       }
