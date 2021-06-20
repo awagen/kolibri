@@ -44,7 +44,7 @@ object Aggregators {
   }
 
   class BaseAggregator[U: TypeTag, V: TypeTag](aggFunc: SerializableFunction2[U, V, V], startValueGen: SerializableSupplier[V], mergeFunc: SerializableFunction2[V, V, V]) extends Aggregator[U, V] {
-    var value: V = startValueGen.get()
+    var value: V = startValueGen.apply()
 
     override def add(sample: U): Unit = {
       value = aggFunc.apply(sample, value)
