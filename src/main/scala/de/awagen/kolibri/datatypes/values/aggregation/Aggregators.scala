@@ -97,17 +97,23 @@ object Aggregators {
   }
 
   class TagKeyMetricAggregationPerClassAggregator() extends Aggregator[TaggedWithType[Tag] with DataStore[MetricRow], MetricAggregation[Tag]] {
+    val logger: Logger = LoggerFactory.getLogger(this.getClass)
+
     val aggregationState: MetricAggregation[Tag] = MetricAggregation.empty[Tag]
 
     override def add(sample: TaggedWithType[Tag] with DataStore[MetricRow]): Unit = {
+      logger.debug(s"adding sample to aggregation (for keys: ${sample.getTagsForType(AGGREGATION)}: $sample")
       val keys = sample.getTagsForType(AGGREGATION)
       aggregationState.addResults(keys, sample.data)
+      logger.debug(s"aggregation state is now: $aggregationState")
     }
 
     override def aggregation: MetricAggregation[Tag] = aggregationState
 
     override def addAggregate(aggregatedValue: MetricAggregation[Tag]): Unit = {
+      logger.debug(s"adding aggregation to aggregation: $aggregatedValue")
       aggregationState.add(aggregatedValue)
+      logger.debug(s"aggregation state is now: $aggregationState")
     }
   }
 

@@ -49,7 +49,7 @@ case class MetricDocument[A <: AnyRef](id: A, rows: mutable.Map[ParamMap, Metric
   }
 
   def add(doc: MetricDocument[A]): Unit = {
-    if (doc.id ne id) {
+    if (doc.id != id) {
       throw new IllegalArgumentException(s"trying to add document with id ${doc.id} to doc with id $id")
     }
     paramNames = paramNames ++ doc.getParamNames
