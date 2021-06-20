@@ -39,6 +39,7 @@ class FilteringOnceDistributor[T <: WithBatchNr, U](private[this] var maxParalle
   val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
   override def accept(element: AggregationState[U]): Boolean = {
+    logger.debug(s"distributor: received aggregation state: $element")
     var didAccept: Boolean = false
     if (acceptOnlyIds.contains(element.batchNr)) {
       resultConsumer.apply(element)

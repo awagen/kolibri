@@ -44,6 +44,7 @@ import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}
 import de.awagen.kolibri.datatypes.values.AggregateValue
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
+import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.mutable
 import scala.concurrent.duration._
@@ -105,14 +106,16 @@ object JobManagerActor {
 }
 
 class JobManagerActor[T, U](val jobId: String,
-                                              runningTaskBaselineCount: Int,
-                                              val aggregatorSupplier: () => Aggregator[ProcessingMessage[T], U],
-                                              val writer: Writer[U, Tag, _],
-                                              val maxProcessDuration: FiniteDuration,
-                                              val maxBatchDuration: FiniteDuration) extends Actor with ActorLogging with KolibriSerializable {
+                            runningTaskBaselineCount: Int,
+                            val aggregatorSupplier: () => Aggregator[ProcessingMessage[T], U],
+                            val writer: Writer[U, Tag, _],
+                            val maxProcessDuration: FiniteDuration,
+                            val maxBatchDuration: FiniteDuration) extends Actor with ActorLogging with KolibriSerializable {
 
   implicit val system: ActorSystem = context.system
   implicit val ec: ExecutionContextExecutor = system.dispatcher
+
+  val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
   // same aggregator also passed to batch processing. Within batches aggregates single elements
   // here aggregates single aggregations (one result per batch)
@@ -174,6 +177,7 @@ class JobManagerActor[T, U](val jobId: String,
   }
 
   def acceptResultMsg(msg: AggregationState[U]): Unit = {
+    logger.debug(s"received aggregation state: $msg")
     batchDistributor.accept(msg)
     if (completed) {
       wrapUp

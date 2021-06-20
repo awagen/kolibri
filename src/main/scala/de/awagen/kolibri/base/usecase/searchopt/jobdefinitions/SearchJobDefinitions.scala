@@ -49,7 +49,8 @@ import de.awagen.kolibri.datatypes.metrics.aggregation.writer.CSVParameterBasedM
 import de.awagen.kolibri.datatypes.multivalues.{GridOrderedMultiValues, OrderedMultiValues}
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason
 import de.awagen.kolibri.datatypes.stores.{MetricDocument, MetricRow}
-import de.awagen.kolibri.datatypes.tagging.Tags.Tag
+import de.awagen.kolibri.datatypes.tagging.TagType.AGGREGATION
+import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}
 import de.awagen.kolibri.datatypes.tagging.{TagType, Tags}
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.{Aggregator, TagKeyMetricAggregationPerClassAggregator}
 import de.awagen.kolibri.datatypes.values.{DistinctValues, MetricValue, RangeValues}
@@ -80,10 +81,9 @@ object SearchJobDefinitions {
   // every batch is an IndexedGenerator over Modifiers on RequestTemplateBuilder
   def batchGenerator(batchByIndex: Int): Seq[IndexedGenerator[Modifier[RequestTemplateBuilder]]] => IndexedGenerator[Batch[Modifier[RequestTemplateBuilder]]] =
     modifierGenerators => {
-      val atomicInt = new AtomicInteger(0)
-      BatchByGeneratorIndexedGenerator(modifierGenerators, batchByIndex)
+      val generator: IndexedGenerator[IndexedGenerator[CombinedModifier[RequestTemplateBuilder]]] = BatchByGeneratorIndexedGenerator(modifierGenerators, batchByIndex)
         .mapGen(x => x.mapGen(y => CombinedModifier(y)))
-        .mapGen(x => Batch(atomicInt.getAndAdd(1), x))
+      ByFunctionNrLimitedIndexedGenerator.createFromSeq(Range(0, generator.size).map(index => Batch(index, generator.get(index).get)))
     }
 
   // the supplier of aggregators needed to aggregate ProcessingMessage[MetricRow]
@@ -179,20 +179,21 @@ object SearchJobDefinitions {
     partialFlow.mapAsyncUnordered[ProcessingMessage[MetricRow]](config.requestParallelism)(x => {
       x.data._1 match {
         case e@Left(_) =>
-          val metricRow = throwableToMetricRowResponse(e.value)
-          val result: ProcessingMessage[MetricRow] = Corn(metricRow)
-          val originalTags: Set[Tag] = x.getTagsForType(TagType.AGGREGATION)
-          result.addTags(TagType.AGGREGATION, originalTags)
-          Future.successful(result)
+            val metricRow = throwableToMetricRowResponse(e.value)
+            val result: ProcessingMessage[MetricRow] = Corn(metricRow)
+            val originalTags: Set[Tag] = x.getTagsForType(TagType.AGGREGATION)
+            result.addTags(TagType.AGGREGATION, originalTags)
+            Future.successful(result)
         case e@Right(_) =>
-          val judgementFuture: Future[JudgementProvider[Double]] = judgementProviderFactory.getJudgements.future
-          judgementFuture
+          judgementProviderFactory.getJudgements.future
             .map(y => {
               val judgements: Seq[Option[Double]] = y.retrieveJudgements(x.data._2.parameters("q").head, e.value)
               logger.debug(s"retrieved judgements: $judgements")
               val metricRow: MetricRow = metricsCalculation.calculateAll(judgements)
               logger.debug(s"calculated metrics: $metricRow")
-              Corn(metricRow)
+              // TODO: we should place default tag, otherwise final aggregation will
+              // not contain anything :)
+              Corn(metricRow).withTags(AGGREGATION, Set(StringTag("ALL")))
             })
             .recover(throwable => {
               logger.warn(s"failed retrieving judgements: $throwable")
@@ -220,11 +221,11 @@ object SearchJobDefinitions {
     )
   }
 
-  val fileWriter: FileWriter[String, Any] = LocalDirectoryFileFileWriter(directory = "/home/ed/REPOS/github/kolibri_release/kolibri-base/kolibri-test")
+  val fileWriter: FileWriter[String, Any] = LocalDirectoryFileFileWriter(directory = "/app/data")
 
   val documentWriter: Writer[MetricDocument[Tag], Tag, Any] = BaseMetricDocumentWriter(
     writer = fileWriter,
-    format = CSVParameterBasedMetricDocumentFormat(columnSeparator = "/t"),
+    format = CSVParameterBasedMetricDocumentFormat(columnSeparator = "\t"),
     keyToFilenameFunc = x => x.toString)
   val writer: Writer[MetricAggregation[Tag], Tag, Any] = BaseMetricAggregationWriter(writer = documentWriter)
 
@@ -245,8 +246,8 @@ object SearchJobDefinitions {
       perBatchAndOverallAggregatorSupplier = metricRowAggregatorSupplier,
       writer = writer,
       returnType = ActorRunnableSinkType.REPORT_TO_ACTOR_SINK,
-      allowedTimePerElementInMillis = 1000,
-      allowedTimePerBatchInSeconds = 120,
+      allowedTimePerElementInMillis = 10000,
+      allowedTimePerBatchInSeconds = 180,
       allowedTimeForJobInSeconds = 1200
     )
 

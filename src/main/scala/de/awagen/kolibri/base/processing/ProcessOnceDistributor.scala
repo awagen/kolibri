@@ -20,6 +20,7 @@ import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.AggregationS
 import de.awagen.kolibri.base.processing.DistributionStates.{AllProvidedWaitingForResults, Completed, DistributionState, Pausing}
 import de.awagen.kolibri.base.traits.Traits.WithBatchNr
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
+import org.slf4j.{Logger, LoggerFactory}
 
 /**
   * Basic distributor that just provides batches up to the max of concurrently processed
@@ -36,6 +37,8 @@ import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 class ProcessOnceDistributor[T <: WithBatchNr, U](private[this] var maxParallel: Int,
                                                   generator: IndexedGenerator[T],
                                                   resultConsumer: AggregationState[U] => ()) extends Distributor[T, U] {
+
+  private[this] val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
   private[this] val iterator: Iterator[T] = generator.iterator
   private[this] var failed: Seq[Int] = Seq.empty
@@ -69,6 +72,7 @@ class ProcessOnceDistributor[T <: WithBatchNr, U](private[this] var maxParallel:
   }
 
   def accept(element: AggregationState[U]): Boolean = {
+    logger.debug(s"distributor: received aggregation state: $element")
     if ((failed ++ inProgress).contains(element.batchNr)) {
       resultConsumer.apply(element)
       removeBatchRecords(element.batchNr)
