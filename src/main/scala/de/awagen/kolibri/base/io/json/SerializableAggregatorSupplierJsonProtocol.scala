@@ -32,7 +32,7 @@ object SerializableAggregatorSupplierJsonProtocol extends DefaultJsonProtocol {
     override def read(json: JsValue): SerializableSupplier[Aggregator[ProcessingMessage[MetricRow], MetricAggregation[Tag]]] = json match {
       case spray.json.JsObject(fields) if fields.contains("type") && fields("type").convertTo[String] == METRIC_ROW_TYPE =>
         new SerializableSupplier[Aggregator[ProcessingMessage[MetricRow], MetricAggregation[Tag]]] {
-          override def get(): Aggregator[ProcessingMessage[MetricRow], MetricAggregation[Tag]] = new TagKeyMetricAggregationPerClassAggregator()
+          override def apply(): Aggregator[ProcessingMessage[MetricRow], MetricAggregation[Tag]] = new TagKeyMetricAggregationPerClassAggregator()
         }
     }
 

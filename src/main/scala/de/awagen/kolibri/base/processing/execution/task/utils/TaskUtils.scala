@@ -28,7 +28,6 @@ import de.awagen.kolibri.base.processing.execution.job.{ActorRunnable, ActorRunn
 import de.awagen.kolibri.base.processing.execution.task.Task
 import de.awagen.kolibri.datatypes.ClassTyped
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
-import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSupplier
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 
 import java.util.concurrent.atomic.AtomicInteger
@@ -40,7 +39,7 @@ object TaskUtils {
                               resultKey: ClassTyped[ProcessingMessage[Any]],
                               mapGenerator: BatchTypeTaggedMapGenerator,
                               tasks: Seq[Task[_]],
-                              aggregatorSupplier: SerializableSupplier[Aggregator[ProcessingMessage[Any], U]],
+                              aggregatorSupplier: () => Aggregator[ProcessingMessage[Any], U],
                               taskExecutionWorkerProps: Props,
                               timeoutPerRunnable: FiniteDuration,
                               timeoutPerElement: FiniteDuration): IndexedGenerator[ActorRunnable[SimpleTaskExecution[Any], Any, Any, U]] = {

@@ -31,8 +31,10 @@ import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor._
 import de.awagen.kolibri.base.cluster.ClusterStatus
 import de.awagen.kolibri.base.config.AppConfig.config.internalJobStatusRequestTimeout
 import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions
-import de.awagen.kolibri.base.processing.JobMessages.TestPiCalculation
+import de.awagen.kolibri.base.processing.JobMessages.{SearchEvaluation, TestPiCalculation}
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.SearchJobDefinitions
+import de.awagen.kolibri.datatypes.multivalues.GridOrderedMultiValues
+import de.awagen.kolibri.datatypes.values.{DistinctValues, RangeValues}
 import org.slf4j.{Logger, LoggerFactory}
 
 import java.util.Objects
@@ -219,6 +221,19 @@ object BaseRoutes {
     path("search_eval") {
       supervisorActor ! SearchJobDefinitions.processActorRunnableJobCmd
       complete(StatusCodes.Accepted, "Starting search evaluation example")
+    }
+  }
+
+  def startSearchEvalNoSerialize(implicit system: ActorSystem): Route = {
+    implicit val timeout: Timeout = Timeout(1 minute)
+    implicit val ec: ExecutionContextExecutor = system.dispatcher
+    path("search_eval_no_ser") {
+      supervisorActor ! SearchEvaluation(jobName = "searchEvalJob",
+        parameters = GridOrderedMultiValues.apply(Seq(
+          DistinctValues[String]("q", Range(0, 100, 1).map(x => s"q$x")),
+          RangeValues[Float](name = "rangeParam1", start = 0.0F, end = 10.0F, stepSize = 1.0F)
+        )))
+      complete(StatusCodes.Accepted, "Starting search evaluation example (no serialization)")
     }
   }
 }

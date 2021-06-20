@@ -32,7 +32,7 @@ import de.awagen.kolibri.base.processing.failure.TaskFailType
 import de.awagen.kolibri.base.traits.Traits.WithBatchNr
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
-import de.awagen.kolibri.datatypes.types.SerializableCallable.{SerializableFunction1, SerializableSupplier}
+import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -65,7 +65,7 @@ object ActorRunnable {
   * @param expectationGenerator - the execution expectation. Can be utilized by actor running the actorRunnable to determine whether
   *                             processing succeeded, failed due to processing or due to exceeding timeout
   * @param aggregationSupplier  - Supplier for aggregator. Typed by type to expect for aggregation (wrapped within ProcessingMessage) and type of aggregation
-  * @param sinkType           - only if set not set to IGNORE_SINK and actorConfig passed to getRunnableGraph contains REPORT_TO actor type
+  * @param sinkType             - only if set not set to IGNORE_SINK and actorConfig passed to getRunnableGraph contains REPORT_TO actor type
   *                             will the result of each transformation (U => V) of type V be send to the actorRef given by REPORT_TO type in the actorConfig.
   *                             Otherwise Sink.ignore is used. Note that the expectation can still be non empty in case the sending of responses
   *                             does not happen in the sink here but messages are send to other processors which then provide the response
@@ -76,8 +76,8 @@ case class ActorRunnable[U, V, V1, Y](jobId: String,
                                       supplier: IndexedGenerator[U],
                                       transformer: Flow[U, ProcessingMessage[V], NotUsed],
                                       processingActorProps: Option[Props],
-                                      expectationGenerator: SerializableFunction1[Int, ExecutionExpectation],
-                                      aggregationSupplier: SerializableSupplier[Aggregator[ProcessingMessage[V1], Y]],
+                                      expectationGenerator: Int => ExecutionExpectation,
+                                      aggregationSupplier: () => Aggregator[ProcessingMessage[V1], Y],
                                       sinkType: job.ActorRunnableSinkType.Value,
                                       waitTimePerElement: FiniteDuration,
                                       maxExecutionDuration: FiniteDuration) extends KolibriSerializable with WithBatchNr {

@@ -125,7 +125,7 @@ class WorkManagerActor() extends Actor with ActorLogging with KolibriSerializabl
       val taskExecutionWorker: ActorRef = context.actorOf(TaskExecutionWorkerActor.props)
       workerKeyToActiveWorker.put(workerKey(TASK_EXECUTION, e.partIdentifier.jobId, e.partIdentifier.batchNr), taskExecutionWorker)
       taskExecutionWorker.tell(ProcessTaskExecution(e.taskExecution, e.partIdentifier), sender())
-    case e: JobBatchMsg[TestPiCalculation] =>
+    case e: JobBatchMsg[TestPiCalculation] if e.msg.isInstanceOf[TestPiCalculation] =>
       if (receivedBatchCount % 10 == 0) {
         log.info(s"received pi calc batch messages: $receivedBatchCount")
       }
@@ -137,7 +137,7 @@ class WorkManagerActor() extends Actor with ActorLogging with KolibriSerializabl
       runnable
         .map(x => distributeRunnable(x))
         .getOrElse(log.warning(s"job for message '$e' does not contain batch '${e.batchNr}', not executing anything for batch"))
-    case e: JobBatchMsg[SearchEvaluation] =>
+    case e: JobBatchMsg[SearchEvaluation] if e.msg.isInstanceOf[SearchEvaluation] =>
       if (runnableGeneratorForJob.isEmpty) {
         implicit val ec: ExecutionContext = context.system.dispatcher
         implicit val timeout: Timeout = e.msg.timeout
@@ -180,7 +180,7 @@ class WorkManagerActor() extends Actor with ActorLogging with KolibriSerializabl
     workerKeyToJobManager.put(jobKey, reportTo)
     workerKeyToActiveWorker.put(jobKey, runnableActor)
     runnableActor.tell(runnable, reportTo)
-    sender() ! ACK(runnable.jobId, runnable.batchNr, self)
+    reportTo ! ACK(runnable.jobId, runnable.batchNr, self)
   }
 
 

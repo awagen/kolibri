@@ -20,20 +20,20 @@ import play.api.libs.json.JsValue
 
 object SolrResponseParseUtils {
 
-  def retrieveIdsInOrderFromFullResponse(response: JsValue): Seq[String] = {
-    (response \ "response" \ "docs" \\ "id").map(_.as[String]).toSeq
+  def retrieveIdsInOrderFromFullResponse(value: JsValue): Seq[String] = {
+    (value \ "response" \ "docs" \\ "id").map(_.as[String]).toSeq
   }
 
-  def retrieveProductIdsInOrderFromFullResponse(response: JsValue): Seq[String] = {
-    (response \ "response" \ "docs" \\ "product_id").map(_.as[String]).toSeq
+  def retrieveProductIdsInOrderFromFullResponse(value: JsValue): Seq[String] = {
+    (value \ "response" \ "docs" \\ "product_id").map(_.as[String]).toSeq
   }
 
-  def retrieveStatusFromFullResponse(response: JsValue): Int = {
-    (response \ "responseHeader" \ "status").get.as[Int]
+  def retrieveStatusFromFullResponse(value: JsValue): Int = {
+    (value \ "responseHeader" \ "status").get.as[Int]
   }
 
-  def retrieveErrorFromFullResponse(response: JsValue): Int = {
-    (response \ "error" \ "status").get.as[Int]
+  def retrieveErrorFromFullResponse(value: JsValue): Int = {
+    (value \ "error" \ "status").get.as[Int]
   }
 
 }

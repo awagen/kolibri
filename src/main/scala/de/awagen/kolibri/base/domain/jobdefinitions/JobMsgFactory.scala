@@ -30,7 +30,7 @@ import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.mutable.stores.TypeTaggedMap
 import de.awagen.kolibri.datatypes.tagging.TaggedWithType
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
-import de.awagen.kolibri.datatypes.types.SerializableCallable.{SerializableFunction1, SerializableSupplier}
+import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 
 import scala.concurrent.duration._
@@ -46,11 +46,11 @@ object JobMsgFactory {
 
   def createActorRunnableJobCmd[T, V, V1, V2, W](jobId: String,
                                                  data: T,
-                                                 dataBatchGenerator: SerializableFunction1[T, IndexedGenerator[Batch[V]]],
+                                                 dataBatchGenerator: T => IndexedGenerator[Batch[V]],
                                                  transformerFlow: Flow[V, ProcessingMessage[V1], NotUsed],
                                                  processingActorProps: Option[Props],
-                                                 perBatchExpectationGenerator: SerializableFunction1[Int, ExecutionExpectation],
-                                                 perBatchAndOverallAggregatorSupplier: SerializableSupplier[Aggregator[ProcessingMessage[V2], W]],
+                                                 perBatchExpectationGenerator: Int => ExecutionExpectation,
+                                                 perBatchAndOverallAggregatorSupplier: () => Aggregator[ProcessingMessage[V2], W],
                                                  writer: Writer[W, Tag, Any],
                                                  returnType: ActorRunnableSinkType.Value,
                                                  allowedTimePerElementInMillis: Long,
@@ -84,10 +84,10 @@ object JobMsgFactory {
 
   def createActorRunnableTaskJobCmd[T, W](jobId: String,
                                           data: T,
-                                          dataBatchGenerator: SerializableFunction1[T, IndexedGenerator[Batch[TypeTaggedMap with TaggedWithType[Tag]]]],
+                                          dataBatchGenerator: T => IndexedGenerator[Batch[TypeTaggedMap with TaggedWithType[Tag]]],
                                           resultDataKey: ClassTyped[ProcessingMessage[Any]],
                                           tasks: Seq[TaskDefinitions.Val[Any]],
-                                          aggregatorSupplier: SerializableSupplier[Aggregator[ProcessingMessage[Any], W]],
+                                          aggregatorSupplier: () => Aggregator[ProcessingMessage[Any], W],
                                           writer: Writer[W, Tag, Any],
                                           allowedTimePerBatchInSeconds: Long,
                                           allowedTimeForJobInSeconds: Long): ProcessActorRunnableTaskJobCmd[W] = {

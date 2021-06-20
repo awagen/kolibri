@@ -49,21 +49,32 @@ class ActorRunnableSpec extends KolibriTestKitNoCluster
 
   object TestMessages {
 
-    val generatorFunc: SerializableFunction1[Int, Option[Int]] = (v1: Int) => Some(v1 + 1)
-    val transformerFunc: SerializableFunction1[Int, ProcessingMessage[Int]] = (v1: Int) => Corn(v1 + 2)
-    // NOTE: lambda expression here instead of explicit new SerializableSupplier call doest work, kryo serialization fails then
-    val expectationGen: SerializableSupplier[ExecutionExpectation] = new SerializableSupplier[ExecutionExpectation] {
-      override def get(): ExecutionExpectation = BaseExecutionExpectation.empty()
+    val generatorFunc: SerializableFunction1[Int, Option[Int]] = new SerializableFunction1[Int, Option[Int]] {
+      override def apply(v1: Int): Option[Int] = Some(v1 + 1)
     }
-    val msg1: ActorRunnable[Int, Int, Int, Double] = ActorRunnable(jobId = "test", batchNr = 1, supplier = ByFunctionNrLimitedIndexedGenerator(4, generatorFunc), transformer = Flow.fromFunction(transformerFunc), processingActorProps = None, expectationGenerator = _ => expectationGen.get(), aggregationSupplier = new SerializableSupplier[Aggregator[ProcessingMessage[Int], Double]] {
-      override def get(): Aggregator[ProcessingMessage[Int], Double] = new Aggregator[ProcessingMessage[Int], Double] {
-        override def add(sample: ProcessingMessage[Int]): Unit = ()
+    val transformerFunc: SerializableFunction1[Int, ProcessingMessage[Int]] = new SerializableFunction1[Int, ProcessingMessage[Int]] {
+      override def apply(v1: Int): ProcessingMessage[Int] = Corn(v1 + 2)
+    }
+    // NOTE: lambda expression here instead of explicit new SerializableSupplier call doest work, kryo serialization fails then
+    val expectationGen: SerializableFunction1[Int, ExecutionExpectation] = new SerializableFunction1[Int, ExecutionExpectation] {
+      override def apply(v1: Int): ExecutionExpectation = BaseExecutionExpectation.empty()
+    }
+    val msg1: ActorRunnable[Int, Int, Int, Double] = ActorRunnable(
+      jobId = "test",
+      batchNr = 1,
+      supplier = ByFunctionNrLimitedIndexedGenerator(4, generatorFunc),
+      transformer = Flow.fromFunction(transformerFunc),
+      processingActorProps = None,
+      expectationGenerator = expectationGen,
+      aggregationSupplier = new SerializableSupplier[Aggregator[ProcessingMessage[Int], Double]] {
+        override def apply(): Aggregator[ProcessingMessage[Int], Double] = new Aggregator[ProcessingMessage[Int], Double] {
+          override def add(sample: ProcessingMessage[Int]): Unit = ()
 
-        override def aggregation: Double = 0.0
+          override def aggregation: Double = 0.0
 
-        override def addAggregate(aggregatedValue: Double): Unit = ()
-      }
-    }, sinkType = REPORT_TO_ACTOR_SINK, 1 minute, 1 minute)
+          override def addAggregate(aggregatedValue: Double): Unit = ()
+        }
+      }, sinkType = REPORT_TO_ACTOR_SINK, 1 minute, 1 minute)
   }
 
   "ActorRunnable" should {

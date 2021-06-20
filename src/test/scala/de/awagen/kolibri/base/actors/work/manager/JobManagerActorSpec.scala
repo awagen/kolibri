@@ -69,7 +69,7 @@ class JobManagerActorSpec extends KolibriTestKit
         experimentId = "testId",
         runningTaskBaselineCount = 10,
         aggregatorSupplier = new SerializableSupplier[Aggregator[ProcessingMessage[Int], Map[Tag, Double]]] {
-          override def get(): Aggregator[ProcessingMessage[Int], Map[Tag, Double]] =
+          override def apply(): Aggregator[ProcessingMessage[Int], Map[Tag, Double]] =
             new Aggregator[ProcessingMessage[Int], Map[Tag, Double]]() {
               val map: mutable.Map[Tag, Double] = mutable.Map.empty
 

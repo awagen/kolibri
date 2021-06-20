@@ -28,7 +28,7 @@ import de.awagen.kolibri.base.processing.execution.job.ActorRunnableSinkType
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.tagging.TagType.AGGREGATION
 import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}
-import de.awagen.kolibri.datatypes.types.SerializableCallable.{SerializableFunction1, SerializableSupplier}
+import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 import de.awagen.kolibri.datatypes.values.AggregateValue
 import de.awagen.kolibri.datatypes.values.RunningValue.doubleAvgRunningValue
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
@@ -92,9 +92,7 @@ object TestJobDefinitions {
       transformerFlow = Flow.fromFunction[Int, ProcessingMessage[Double]](flowFunct),
       processingActorProps = None,
       perBatchExpectationGenerator = expectationGen,
-      perBatchAndOverallAggregatorSupplier = new SerializableSupplier[Aggregator[ProcessingMessage[Double], Map[Tag, AggregateValue[Double]]]] {
-        override def get(): Aggregator[ProcessingMessage[Double], Map[Tag, AggregateValue[Double]]] = new RunningDoubleAvgPerTagAggregator()
-      },
+      perBatchAndOverallAggregatorSupplier = () => new RunningDoubleAvgPerTagAggregator(),
       writer = (data: Map[Tag, AggregateValue[Double]], _: Tag) => {
         logger.info("writing result: {}", data)
         logger.info("result is '{}' on '{}' samples; writing result", data, data(StringTag("ALL")).count)

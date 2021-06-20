@@ -23,8 +23,8 @@ import de.awagen.kolibri.base.usecase.searchopt.provider.ClassPathFileBasedJudge
 
 object ClassPathFileBasedJudgementProvider {
 
-  val JUDGEMENT_FILE_COLUMN_DIVIDER: String = "\u0001"
-  val JUDGEMENT_LIST_DELIMITER: String = "\u0001"
+  val JUDGEMENT_FILE_COLUMN_DIVIDER: String = "\u0000"
+  val JUDGEMENT_LIST_DELIMITER: String = "\u0000"
   val JUDGEMENT_FILE_COLUMNS: Int = 3
   val JUDGEMENT_FILE_JUDGEMENT_COLUMN: Int = 2
   val JUDGEMENT_FILE_SEARCHTERM_COLUMN: Int = 0
@@ -42,7 +42,7 @@ private[provider] class ClassPathFileBasedJudgementProvider(filepath: String) ex
 
   private[this] def readJudgementsFromFile(filepath: String): Map[String, Double] = {
     FileReaderUtils.mappingFromFile[Double](
-      FileReaderUtils.localResourceSource(filepath),
+      () => FileReaderUtils.localResourceSource(filepath),
       JUDGEMENT_LIST_DELIMITER, JUDGEMENT_FILE_COLUMNS,
       x => createKey(x(JUDGEMENT_FILE_SEARCHTERM_COLUMN), x(JUDGEMENT_FILE_PRODUCTID_COLUMN)),
       x => x(JUDGEMENT_FILE_JUDGEMENT_COLUMN).toDouble)

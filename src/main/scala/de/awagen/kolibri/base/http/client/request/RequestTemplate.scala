@@ -16,10 +16,11 @@
 
 package de.awagen.kolibri.base.http.client.request
 
-import akka.http.scaladsl.model._
+import akka.http.scaladsl.model.{MessageEntity, _}
 import akka.http.scaladsl.model.headers.RawHeader
 import de.awagen.kolibri.base.actors.tracking.RequestTrackingActor._
 import de.awagen.kolibri.datatypes.utils.ParameterUtils
+import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.immutable
 
@@ -45,6 +46,7 @@ object RequestTemplate {
 
 /**
   * Immutable http request that sets its own traffic-specific headers when the HttpRequest is requested from it.
+  *
   * @param contextPath - context path used in the query
   * @param parameters  - request parameters. Value is Seq[String] in case of multiple params of same name.
   * @param headers     - headers to set for the request.
@@ -60,9 +62,11 @@ class RequestTemplate(val contextPath: String,
                       val protocol: HttpProtocol = HttpProtocols.`HTTP/1.1`)
   extends HttpRequestProvider {
 
+  val logger: Logger = LoggerFactory.getLogger(this.getClass)
+
   val fullQueryString: String = ParameterUtils.queryStringFromParameterNamesAndValues(parameters)
   val buffer: StringBuffer = new StringBuffer("")
-    .append(contextPath)
+    .append(if (contextPath.startsWith("/")) contextPath else s"/$contextPath")
   if (fullQueryString.nonEmpty) buffer.append(s"?$fullQueryString")
   val query: String = buffer.toString
 
@@ -89,11 +93,13 @@ class RequestTemplate(val contextPath: String,
   def getRequest: HttpRequest = {
     if (request != null) return request
     request = HttpRequest(
+      uri = Uri(s"$query"),
       method = httpMethod,
-      uri = Uri(s"/$query"),
       protocol = protocol,
       headers = getContextHeaders,
-      entity = body)
+      entity = body
+    )
+    logger.debug(s"request: $request")
     request
   }
 

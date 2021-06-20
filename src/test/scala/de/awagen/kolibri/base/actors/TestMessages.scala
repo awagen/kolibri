@@ -58,7 +58,7 @@ object TestMessages {
       ))),
       fulfillAnyForFail = Seq(StopExpectation(0, _ => false, _ => false),
         TimeExpectation(100 days))), aggregationSupplier = new SerializableSupplier[Aggregator[ProcessingMessage[Int], Map[Tag, Double]]] {
-      override def get(): Aggregator[ProcessingMessage[Int], Map[Tag, Double]] = new Aggregator[ProcessingMessage[Int], Map[Tag, Double]] {
+      override def apply(): Aggregator[ProcessingMessage[Int], Map[Tag, Double]] = new Aggregator[ProcessingMessage[Int], Map[Tag, Double]] {
         override def add(sample: ProcessingMessage[Int]): Unit = ()
 
         override def aggregation: Map[Tag, Double] = Map.empty[Tag, Double]
@@ -81,7 +81,7 @@ object TestMessages {
     ))),
     fulfillAnyForFail = Seq(StopExpectation(0, _ => false, _ => false),
       TimeExpectation(100 days))), aggregationSupplier = new SerializableSupplier[Aggregator[ProcessingMessage[Int], Map[Tag, Double]]] {
-    override def get(): Aggregator[ProcessingMessage[Int], Map[Tag, Double]] = new Aggregator[ProcessingMessage[Int], Map[Tag, Double]] {
+    override def apply(): Aggregator[ProcessingMessage[Int], Map[Tag, Double]] = new Aggregator[ProcessingMessage[Int], Map[Tag, Double]] {
       override def add(sample: ProcessingMessage[Int]): Unit = ()
 
       override def aggregation: Map[Tag, Double] = Map.empty[Tag, Double]
@@ -107,7 +107,7 @@ object TestMessages {
         Corn(x + 3) -> 1))),
       fulfillAnyForFail = Seq(StopExpectation(0, _ => false, _ => false),
         TimeExpectation(100 days))), aggregationSupplier = new SerializableSupplier[Aggregator[ProcessingMessage[Int], Map[Tag, Double]]] {
-      override def get(): Aggregator[ProcessingMessage[Int], Map[Tag, Double]] =
+      override def apply(): Aggregator[ProcessingMessage[Int], Map[Tag, Double]] =
         new Aggregator[ProcessingMessage[Int], Map[Tag, Double]]() {
           val map: mutable.Map[Tag, Double] = mutable.Map.empty
 
@@ -149,7 +149,7 @@ object TestMessages {
       jobId = jobId,
       processElements = actorRunnableGenerator.asInstanceOf[IndexedGenerator[ActorRunnable[TaggedInt, Corn[Int], Int, Map[Tag, Double]]]],
       aggregatorSupplier = new SerializableSupplier[Aggregator[ProcessingMessage[Int], Map[Tag, Double]]] {
-        override def get(): Aggregator[ProcessingMessage[Int], Map[Tag, Double]] = new Aggregator[ProcessingMessage[Int], Map[Tag, Double]] {
+        override def apply(): Aggregator[ProcessingMessage[Int], Map[Tag, Double]] = new Aggregator[ProcessingMessage[Int], Map[Tag, Double]] {
           override def add(sample: ProcessingMessage[Int]): Unit = ()
 
           override def aggregation: Map[Tag, Double] = Map.empty[Tag, Double]
@@ -193,7 +193,7 @@ object TestMessages {
       tasks,
       reversedIdKeyPM,
       aggregatorSupplier = new SerializableSupplier[Aggregator[ProcessingMessage[Any], Any]] {
-        override def get(): Aggregator[ProcessingMessage[Any], Any] = new Aggregator[ProcessingMessage[Any], Any] {
+        override def apply(): Aggregator[ProcessingMessage[Any], Any] = new Aggregator[ProcessingMessage[Any], Any] {
           override def add(sample: ProcessingMessage[Any]): Unit = ()
 
           override def aggregation: Any = ()

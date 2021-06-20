@@ -21,17 +21,24 @@ import akka.http.scaladsl.model.HttpResponse
 import akka.stream.Materializer
 import de.awagen.kolibri.base.http.client.response.responsehandlers.HttpResponseHandlers
 import de.awagen.kolibri.base.usecase.searchopt.parse.SolrResponseParseUtils
+import org.slf4j.{Logger, LoggerFactory}
+import play.api.libs.json.JsValue
+
 import scala.concurrent.{ExecutionContext, Future}
 
 
 object SolrHttpResponseHandlers {
 
-  def httpToProductIdSeqFuture(implicit actorSystem: ActorSystem, mat: Materializer,
+  val logger: Logger = LoggerFactory.getLogger(this.getClass)
+
+  def httpToProductIdSeqFuture(validationFunc: JsValue => Boolean)(implicit actorSystem: ActorSystem, mat: Materializer,
                                ec: ExecutionContext): HttpResponse => Future[Either[Throwable, Seq[String]]] = {
     x =>
-      HttpResponseHandlers.doJSValueParse(
+      logger.debug(s"received http response entity: ${x.entity}")
+      HttpResponseHandlers.doJSValueParse[Seq[String]](
         response = x,
-        isValidFunc = JsValueValidation.validateStatusCode,
+//        isValidFunc = JsValueValidation.validateStatusCode,
+        isValidFunc = validationFunc,
         parseFunc = SolrResponseParseUtils.retrieveProductIdsInOrderFromFullResponse)
   }
 

@@ -23,15 +23,14 @@ import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{Aggregation
 import de.awagen.kolibri.base.config.AppConfig.config
 import de.awagen.kolibri.base.processing.execution.expectation.ExecutionExpectation
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
-import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSupplier
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 
 import scala.concurrent.ExecutionContextExecutor
 
 object AggregatingActor {
 
-  def props[U, V](aggregatorSupplier: SerializableSupplier[Aggregator[ProcessingMessage[U], V]],
-                  expectationSupplier: SerializableSupplier[ExecutionExpectation],
+  def props[U, V](aggregatorSupplier: () => Aggregator[ProcessingMessage[U], V],
+                  expectationSupplier: () => ExecutionExpectation,
                   owner: ActorRef,
                   jobPartIdentifier: JobPartIdentifiers.JobPartIdentifier): Props =
     Props(new AggregatingActor[U, V](aggregatorSupplier, expectationSupplier, owner, jobPartIdentifier))
@@ -50,8 +49,8 @@ object AggregatingActor {
 
 }
 
-class AggregatingActor[U, V](val aggregatorSupplier: SerializableSupplier[Aggregator[ProcessingMessage[U], V]],
-                             val expectationSupplier: SerializableSupplier[ExecutionExpectation],
+class AggregatingActor[U, V](val aggregatorSupplier: () => Aggregator[ProcessingMessage[U], V],
+                             val expectationSupplier: () => ExecutionExpectation,
                              val owner: ActorRef,
                              val jobPartIdentifier: JobPartIdentifiers.JobPartIdentifier)
   extends Actor with ActorLogging {
@@ -59,9 +58,9 @@ class AggregatingActor[U, V](val aggregatorSupplier: SerializableSupplier[Aggreg
   implicit val system: ActorSystem = context.system
   implicit val ec: ExecutionContextExecutor = system.dispatcher
 
-  val expectation: ExecutionExpectation = expectationSupplier.get()
+  val expectation: ExecutionExpectation = expectationSupplier.apply()
   expectation.init
-  val aggregator: Aggregator[ProcessingMessage[U], V] = aggregatorSupplier.get()
+  val aggregator: Aggregator[ProcessingMessage[U], V] = aggregatorSupplier.apply()
 
   def handleExpectationStateAndCloseIfFinished(adjustReceive: Boolean): Unit = {
     if (expectation.succeeded || expectation.failed) {

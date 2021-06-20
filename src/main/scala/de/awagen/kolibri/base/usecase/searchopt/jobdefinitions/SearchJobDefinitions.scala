@@ -23,20 +23,20 @@ import akka.http.scaladsl.model.{HttpMethods, HttpProtocols, HttpRequest, HttpRe
 import akka.stream.scaladsl.Flow
 import akka.stream.{FlowShape, Graph}
 import akka.util.Timeout
-import de.awagen.kolibri.base.actors.flows.GenericRequestFlows.{Host, getHttpsConnectionPoolFlow}
+import de.awagen.kolibri.base.actors.flows.GenericRequestFlows.{Host, getHttpConnectionPoolFlow}
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{Corn, ProcessingMessage}
-import de.awagen.kolibri.base.config.AppConfig.config
+import de.awagen.kolibri.base.config.AppConfig.{config, logger}
 import de.awagen.kolibri.base.domain.Connection
 import de.awagen.kolibri.base.domain.jobdefinitions.{Batch, JobMsgFactory}
 import de.awagen.kolibri.base.http.client.request.{RequestTemplate, RequestTemplateBuilder}
 import de.awagen.kolibri.base.io.writer.Writers.{FileWriter, Writer}
 import de.awagen.kolibri.base.io.writer.aggregation.{BaseMetricAggregationWriter, BaseMetricDocumentWriter}
 import de.awagen.kolibri.base.io.writer.base.LocalDirectoryFileFileWriter
-import de.awagen.kolibri.base.processing.JobMessages.SearchEvaluation
 import de.awagen.kolibri.base.processing.execution.expectation._
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnableSinkType
-import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.{CombinedModifier, RequestTemplateBuilderModifier}
+import de.awagen.kolibri.base.processing.failure.TaskFailType
+import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.{CombinedModifier, RequestParameterModifier, RequestTemplateBuilderModifier}
 import de.awagen.kolibri.base.processing.modifiers.{Modifier, RequestTemplateBuilderModifiers}
 import de.awagen.kolibri.base.usecase.searchopt.http.client.flows.RequestProcessingFlows
 import de.awagen.kolibri.base.usecase.searchopt.http.client.flows.responsehandlers.SolrHttpResponseHandlers
@@ -47,12 +47,12 @@ import de.awagen.kolibri.datatypes.collections.generators.{BatchByGeneratorIndex
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
 import de.awagen.kolibri.datatypes.metrics.aggregation.writer.CSVParameterBasedMetricDocumentFormat
 import de.awagen.kolibri.datatypes.multivalues.{GridOrderedMultiValues, OrderedMultiValues}
+import de.awagen.kolibri.datatypes.reason.ComputeFailReason
 import de.awagen.kolibri.datatypes.stores.{MetricDocument, MetricRow}
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.tagging.{TagType, Tags}
-import de.awagen.kolibri.datatypes.types.SerializableCallable.{SerializableFunction1, SerializableSupplier}
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.{Aggregator, TagKeyMetricAggregationPerClassAggregator}
-import de.awagen.kolibri.datatypes.values.{DistinctValues, OrderedValues, RangeValues}
+import de.awagen.kolibri.datatypes.values.{DistinctValues, MetricValue, RangeValues}
 
 import java.util.concurrent.atomic.AtomicInteger
 import scala.collection.immutable
@@ -62,166 +62,153 @@ import scala.util.Try
 
 object SearchJobDefinitions {
 
-  def metricRowAggregatorSupplier: SerializableSupplier[Aggregator[ProcessingMessage[MetricRow], MetricAggregation[Tag]]] = {
-    new SerializableSupplier[Aggregator[ProcessingMessage[MetricRow], MetricAggregation[Tag]]] {
-      override def get(): Aggregator[ProcessingMessage[MetricRow], MetricAggregation[Tag]] = new TagKeyMetricAggregationPerClassAggregator()
+  // define the changes to the request
+  val urlModifierGenerators: Seq[IndexedGenerator[Modifier[RequestTemplateBuilder]]] = Seq(
+    ByFunctionNrLimitedIndexedGenerator(20,
+      genFunc = x => Some(RequestParameterModifier(params = immutable.Map[String, Seq[String]]("q" -> Seq(s"q$x")),
+        replace = true)))
+  )
+  val requestParameterGrid: OrderedMultiValues = GridOrderedMultiValues.apply(Seq(
+    DistinctValues[String]("q", Range(0, 100, 1).map(x => s"q$x")),
+    RangeValues[Float](name = "rangeParam1", start = 0.0F, end = 10.0F, stepSize = 1.0F)
+  ))
+  // TODO: if replace is set to false, for some reason multiple q are contained, which shouldnt be the case, check it
+  val paramGenerators: Seq[IndexedGenerator[Modifier[RequestTemplateBuilder]]] = requestParameterGrid.values.map(x => ByFunctionNrLimitedIndexedGenerator.createFromSeq(x.getAll.map(y => RequestTemplateBuilderModifiers.RequestParameterModifier(params = immutable.Map(x.name -> Seq(y.toString)), replace = true))))
+  val allModifierGenerators: Seq[IndexedGenerator[Modifier[RequestTemplateBuilder]]] = urlModifierGenerators ++ paramGenerators
+
+  // create batches by query single query values (the generator at index 0)
+  // every batch is an IndexedGenerator over Modifiers on RequestTemplateBuilder
+  def batchGenerator(batchByIndex: Int): Seq[IndexedGenerator[Modifier[RequestTemplateBuilder]]] => IndexedGenerator[Batch[Modifier[RequestTemplateBuilder]]] =
+    modifierGenerators => {
+      val atomicInt = new AtomicInteger(0)
+      BatchByGeneratorIndexedGenerator(modifierGenerators, batchByIndex)
+        .mapGen(x => x.mapGen(y => CombinedModifier(y)))
+        .mapGen(x => Batch(atomicInt.getAndAdd(1), x))
     }
+
+  // the supplier of aggregators needed to aggregate ProcessingMessage[MetricRow]
+  def metricRowAggregatorSupplier: () => Aggregator[ProcessingMessage[MetricRow], MetricAggregation[Tag]] = () => {
+    new TagKeyMetricAggregationPerClassAggregator()
   }
 
-  def classPathjudgementProviderFactory(filename: String): JudgementProviderFactory[Double] = ClassPathFileBasedJudgementProviderFactory(filename)
+  // provider of judgements of type Double
+  val judgementProviderFactory: JudgementProviderFactory[Double] = ClassPathFileBasedJudgementProviderFactory("data/test_judgements.txt")
 
-  val judgementProviderFactory: JudgementProviderFactory[Double] = classPathjudgementProviderFactory("data/test_judgements.txt")
-
+  // defining which metrics to calculate and how to handle missing judgements
   def metricsCalculation: MetricsCalculation = MetricsCalculation(
     metrics = Seq(NDCG_10, PRECISION_4, ERR),
     judgementHandling = JudgementHandlingStrategy.EXIST_RESULTS_AND_JUDGEMENTS_MISSING_AS_ZEROS)
 
-  def metricsEvaluation(judgementProviderFactory: JudgementProviderFactory[Double], metricsCalculation: MetricsCalculation) =
-    MetricsEvaluation(judgementProviderFactory, metricsCalculation: MetricsCalculation)
+  // metricsEvaluation groups judgement provision and metric calculation
+  val metricsEvaluation: MetricsEvaluation = MetricsEvaluation(judgementProviderFactory, metricsCalculation)
 
-  val metricsEvaluations: MetricsEvaluation = metricsEvaluation(judgementProviderFactory, metricsCalculation)
-
+  // TODO: in creation of the requesting flow make sure
+  // useHttps is taken into account (e.g only use https mode
+  // is useHttps = true)
   val connections: Seq[Connection] = Seq(
-    Connection(host = "localhost", port = 80, useHttps = false, credentialsProvider = None)
+    //    Connection(host = "127.0.0.1", port = 80, useHttps = false, credentialsProvider = None)
+    Connection(host = "172.33.1.4", port = 80, useHttps = false, credentialsProvider = None)
+    //    Connection(host = "fastapi", port = 80, useHttps = false, credentialsProvider = None)
   )
-
-  // in dataGrid need distinction between normal values, headers, body and so on to correctly modify the request context
-  val intToQuery: SerializableFunction1[Int, String] = new SerializableFunction1[Int, String] {
-    override def apply(v1: Int): String = s"q$v1"
-  }
-  val requestParameterGrid: OrderedMultiValues = GridOrderedMultiValues.apply(Seq(
-    DistinctValues[String]("q", Range(0, 100, 1).map(intToQuery)),
-    RangeValues[Float](name = "rangeParam1", start = 0.0F, end = 10.0F, stepSize = 1.0F)
-  ))
-  // OrderedMultiValues to generators of parameter modifiers
-  def anyToModifier(paramName: String): SerializableFunction1[Any, Modifier[RequestTemplateBuilder]] = new SerializableFunction1[Any, Modifier[RequestTemplateBuilder]]{
-    override def apply(v1: Any): Modifier[RequestTemplateBuilder] = {
-      RequestTemplateBuilderModifiers.RequestParameterModifier(params = immutable.Map(paramName -> Seq(v1.toString)), replace = false)
-    }
-  }
-  val orderedValuesToGenerator: SerializableFunction1[OrderedValues[Any], IndexedGenerator[RequestTemplateBuilderModifier]] = new SerializableFunction1[OrderedValues[Any], IndexedGenerator[RequestTemplateBuilderModifier]]{
-    override def apply(v1: OrderedValues[Any]): IndexedGenerator[RequestTemplateBuilderModifier] = {
-      ByFunctionNrLimitedIndexedGenerator.createFromSeq(v1.getAll.map(anyToModifier(v1.name)))
-    }
-  }
-  val paramGenerators: Seq[IndexedGenerator[RequestTemplateBuilderModifier]] = requestParameterGrid.values.map(orderedValuesToGenerator)
-
-  val batchSize: Int = 1000
-  val modifierSeqToCombined: SerializableFunction1[Seq[Modifier[RequestTemplateBuilder]], Modifier[RequestTemplateBuilder]] = new SerializableFunction1[Seq[Modifier[RequestTemplateBuilder]], Modifier[RequestTemplateBuilder]] {
-    override def apply(v1: Seq[Modifier[RequestTemplateBuilder]]): Modifier[RequestTemplateBuilder] = CombinedModifier(v1)
-  }
-  val modSeqToBatch: SerializableFunction1[IndexedGenerator[Seq[RequestTemplateBuilderModifier]], IndexedGenerator[RequestTemplateBuilderModifier]] = new SerializableFunction1[IndexedGenerator[Seq[RequestTemplateBuilderModifier]], IndexedGenerator[RequestTemplateBuilderModifier]]{
-    override def apply(v1: IndexedGenerator[Seq[RequestTemplateBuilderModifier]]): IndexedGenerator[RequestTemplateBuilderModifier] = {
-      v1.mapGen(modifierSeqToCombined)
-    }
-  }
-  val batchByGeneratorByIndex: IndexedGenerator[IndexedGenerator[RequestTemplateBuilderModifier]] = BatchByGeneratorIndexedGenerator(paramGenerators, 0)
-    .mapGen(modSeqToBatch)
 
   // some fixed parameters
   val fixedParams: Map[String, Seq[String]] = Map("k1" -> Seq("v1", "v2"), "k2" -> Seq("v3"))
-  val requestTemplateBuilderSupplier: SerializableSupplier[RequestTemplateBuilder] = new SerializableSupplier[RequestTemplateBuilder] {
-    override def get(): RequestTemplateBuilder = new RequestTemplateBuilder()
+  // val fixedParams: Map[String, Seq[String]] = Map.empty
+  // the base RequestTeplateBuilder to be modified by the specific modifications in each batch
+  val requestTemplateBuilderSupplier: () => RequestTemplateBuilder = () => {
+    new RequestTemplateBuilder()
       .withContextPath("search")
       .withProtocol(HttpProtocols.`HTTP/1.1`)
       .withHttpMethod(HttpMethods.GET)
       .withParams(fixedParams)
   }
-  // the processing flow of each combination
-  val modifierToProcessingMessage: SerializableFunction1[RequestTemplateBuilderModifier, ProcessingMessage[RequestTemplate]] = new SerializableFunction1[RequestTemplateBuilderModifier, ProcessingMessage[RequestTemplate]] {
-    override def apply(v1: RequestTemplateBuilderModifier): ProcessingMessage[RequestTemplate] = {
-      val requestTemplateBuilder: RequestTemplateBuilder = requestTemplateBuilderSupplier.get()
-      val requestTemplate: RequestTemplate = v1.apply(requestTemplateBuilder).build()
-      val seqToString: SerializableFunction1[Seq[String], String] = new SerializableFunction1[Seq[String], String] {
-        override def apply(v1: Seq[String]): String = v1.mkString("-")
-      }
-      Corn(requestTemplate)
-        // tag the processing element
-        .withTags(TagType.AGGREGATION,
-          Set(Tags.ParameterSingleValueTag(
-            Map("q" -> requestTemplate.getParameter("q").map(seqToString).getOrElse(""))
-          ))
-        )
-    }
-  }
-  val processingFlow: Flow[RequestTemplateBuilderModifier, ProcessingMessage[RequestTemplate], NotUsed] = Flow.fromFunction[RequestTemplateBuilderModifier, ProcessingMessage[RequestTemplate]](modifierToProcessingMessage)
 
-  def connectionFunc(implicit actorSystem: ActorSystem): SerializableFunction1[Connection, Flow[(HttpRequest, ProcessingMessage[RequestTemplate]), (Try[HttpResponse], ProcessingMessage[RequestTemplate]), _]]  = new SerializableFunction1[Connection, Flow[(HttpRequest, ProcessingMessage[RequestTemplate]), (Try[HttpResponse], ProcessingMessage[RequestTemplate]), _]]{
-    override def apply(v1: Connection): Flow[(HttpRequest, ProcessingMessage[RequestTemplate]), (Try[HttpResponse], ProcessingMessage[RequestTemplate]), _] = {
-      getHttpsConnectionPoolFlow[ProcessingMessage[RequestTemplate]].apply(Host(v1.host, v1.port))
-    }
+  // transforming single modifier to ProcessingMessage[RequestTemplate], e.g the actual unit to process
+  val modifierToProcessingMessage: Modifier[RequestTemplateBuilder] => ProcessingMessage[RequestTemplate] = v1 => {
+    val requestTemplateBuilder: RequestTemplateBuilder = requestTemplateBuilderSupplier.apply()
+    val requestTemplate: RequestTemplate = v1.apply(requestTemplateBuilder).build()
+    Corn(requestTemplate)
+      // tag the processing element
+      .withTags(TagType.AGGREGATION,
+        Set(Tags.ParameterSingleValueTag(
+          Map("q" -> requestTemplate.getParameter("q").map(y => y.mkString("-")).getOrElse(""))
+        ))
+      )
   }
 
-  def requestingFlow(throughputActor: ActorRef)(implicit as: ActorSystem, ec: ExecutionContext): Graph[FlowShape[ProcessingMessage[RequestTemplate], ProcessingMessage[(Either[Throwable, Seq[String]], RequestTemplate)]], NotUsed] = RequestProcessingFlows.requestAndParsingFlow(
-    Some(throughputActor),
+  // actual flow of transforming modifiers into ProcessingMessage[RequestTemplate] (with query tag)
+  val processingFlow: Flow[Modifier[RequestTemplateBuilder], ProcessingMessage[RequestTemplate], NotUsed] = Flow.fromFunction[RequestTemplateBuilderModifier, ProcessingMessage[RequestTemplate]](modifierToProcessingMessage)
+
+  val processingMsgToRequestTuple: Flow[ProcessingMessage[RequestTemplate], (HttpRequest, ProcessingMessage[RequestTemplate]), NotUsed] =
+    Flow.fromFunction(x => (x.data.getRequest, x))
+
+  // mapping of connection to actual flow of tuple (HttpRequest, ProcessingMessage[RequestTemplate]) to
+  // (Try[HttpResponse], ProcessingMessage[RequestTemplate])
+  def connectionFunc(implicit actorSystem: ActorSystem): Connection => Flow[(HttpRequest, ProcessingMessage[RequestTemplate]), (Try[HttpResponse], ProcessingMessage[RequestTemplate]), _] = v1 => {
+    //    getHttpsConnectionPoolFlow[ProcessingMessage[RequestTemplate]].apply(Host(v1.host, v1.port))
+    getHttpConnectionPoolFlow[ProcessingMessage[RequestTemplate]].apply(Host(v1.host, v1.port))
+  }
+
+  // mapping all set connections to their flow of request execution
+  def connectionFlows(implicit actorSystem: ActorSystem): Seq[Flow[(HttpRequest, ProcessingMessage[RequestTemplate]), (Try[HttpResponse], ProcessingMessage[RequestTemplate]), _]] = connections.map(connectionFunc)
+
+
+  def requestingFlow(throughputActor: Option[ActorRef])(implicit as: ActorSystem, ec: ExecutionContext): Graph[FlowShape[ProcessingMessage[RequestTemplate], ProcessingMessage[(Either[Throwable, Seq[String]], RequestTemplate)]], NotUsed] = RequestProcessingFlows.requestAndParsingFlow(
+    throughputActor,
     "q",
     "jobId",
     connections,
     connectionFunc,
-    SolrHttpResponseHandlers.httpToProductIdSeqFuture
+    SolrHttpResponseHandlers.httpToProductIdSeqFuture(_ => true)
   )
 
+  def throwableToMetricRowResponse(e: Throwable): MetricRow = {
+    val metricRow = MetricRow(params = Map.empty[String, Seq[String]], metrics = Map.empty[String, MetricValue[Double]])
+    val failMetricName: String = TaskFailType.FailedByException(e).toString
+    val addValue: MetricValue[Double] = MetricValue.createAvgFailSample(metricName = failMetricName, failMap = Map[ComputeFailReason, Int](ComputeFailReason(s"exception:${e.getClass.toString}") -> 1))
+    metricRow.addMetric(addValue)
+  }
+
   // full request flow of tagging the resulting request template and then async requesting and response parsing
-  def fullProcessingFlow(throughputActor: ActorRef,
+  def fullProcessingFlow(throughputActor: Option[ActorRef],
                          judgementProviderFactory: JudgementProviderFactory[Double],
                          metricsCalculation: MetricsCalculation)
-                        (implicit as: ActorSystem, ec: ExecutionContext, timeout: Timeout): Flow[RequestTemplateBuilderModifier, ProcessingMessage[(Either[Throwable, MetricRow], RequestTemplate)], NotUsed] = {
+                        (implicit as: ActorSystem, ec: ExecutionContext, timeout: Timeout): Flow[RequestTemplateBuilderModifier, ProcessingMessage[MetricRow], NotUsed] = {
     val partialFlow: Flow[RequestTemplateBuilderModifier, ProcessingMessage[(Either[Throwable, Seq[String]], RequestTemplate)], NotUsed] = processingFlow.via(Flow.fromGraph(requestingFlow(throughputActor)))
 
-    // TODO: correctly transfer the below here to serializable function without lambdas
-    def judgementProviderToMetricRow(searchTerm: String, productIds: Seq[String], requestTemplate: RequestTemplate): SerializableFunction1[JudgementProvider[Double], ProcessingMessage[(Either[Throwable, MetricRow], RequestTemplate)]] = new SerializableFunction1[JudgementProvider[Double], ProcessingMessage[(Either[Throwable, MetricRow], RequestTemplate)]] {
-      override def apply(v1: JudgementProvider[Double]): ProcessingMessage[(Either[Throwable, MetricRow], RequestTemplate)] = {
-        val judgements: Seq[Option[Double]] = v1.retrieveJudgements(searchTerm, productIds)
-        val metricRow: MetricRow = metricsCalculation.calculateAll(judgements)
-        Corn((Right(metricRow), requestTemplate))
+    partialFlow.mapAsyncUnordered[ProcessingMessage[MetricRow]](config.requestParallelism)(x => {
+      x.data._1 match {
+        case e@Left(_) =>
+          val metricRow = throwableToMetricRowResponse(e.value)
+          val result: ProcessingMessage[MetricRow] = Corn(metricRow)
+          val originalTags: Set[Tag] = x.getTagsForType(TagType.AGGREGATION)
+          result.addTags(TagType.AGGREGATION, originalTags)
+          Future.successful(result)
+        case e@Right(_) =>
+          val judgementFuture: Future[JudgementProvider[Double]] = judgementProviderFactory.getJudgements.future
+          judgementFuture
+            .map(y => {
+              val judgements: Seq[Option[Double]] = y.retrieveJudgements(x.data._2.parameters("q").head, e.value)
+              logger.debug(s"retrieved judgements: $judgements")
+              val metricRow: MetricRow = metricsCalculation.calculateAll(judgements)
+              logger.debug(s"calculated metrics: $metricRow")
+              Corn(metricRow)
+            })
+            .recover(throwable => {
+              logger.warn(s"failed retrieving judgements: $throwable")
+              val metricRow = throwableToMetricRowResponse(throwable)
+              val result: ProcessingMessage[MetricRow] = Corn(metricRow)
+              val originalTags: Set[Tag] = x.getTagsForType(TagType.AGGREGATION)
+              result.addTags(TagType.AGGREGATION, originalTags)
+              result
+            })
       }
-    }
-
-    //    val judgementProviderToMetricRow: SerializableFunction2[JudgementProvider[Double], ProcessingMessage[(Either[Throwable, Seq[String]], RequestTemplate)], ProcessingMessage[(Either[Throwable, MetricRow], RequestTemplate)]] = new SerializableFunction2[JudgementProvider[Double], ProcessingMessage[(Either[Throwable, Seq[String]], RequestTemplate)], ProcessingMessage[(Either[Throwable, MetricRow], RequestTemplate)]] {
-    //      override def apply(v1: JudgementProvider[Double], v2: ProcessingMessage[(Either[Throwable, Seq[String]], RequestTemplate)]): ProcessingMessage[(Either[Throwable, MetricRow], RequestTemplate)] = {
-    //        val judgements: Seq[Option[Double]] = v1.retrieveJudgements(v2.data._2.query, v2.data._1.toOption.get)
-    //        val metricRow: MetricRow = metricsCalculation.calculateAll(judgements)
-    //        Corn((Right(metricRow), v2.data._2))
-    //      }
-    //    }
-    val processingFunc: SerializableFunction1[ProcessingMessage[(Either[Throwable, Seq[String]], RequestTemplate)], Future[ProcessingMessage[(Either[Throwable, MetricRow], RequestTemplate)]]] = new SerializableFunction1[ProcessingMessage[(Either[Throwable, Seq[String]], RequestTemplate)], Future[ProcessingMessage[(Either[Throwable, MetricRow], RequestTemplate)]]] {
-      override def apply(v1: ProcessingMessage[(Either[Throwable, Seq[String]], RequestTemplate)]): Future[ProcessingMessage[(Either[Throwable, MetricRow], RequestTemplate)]] = {
-        v1.data._1 match {
-          case e@Left(_) => Future.successful(Corn((e.asInstanceOf[Either[Throwable, MetricRow]], v1.data._2)))
-          case e@Right(_) =>
-            judgementProviderFactory.getJudgements.future.map(
-              judgementProviderToMetricRow(v1.data._2.query, e.value, v1.data._2)
-              //              judgementProvider => {
-              //              val judgements: Seq[Option[Double]] = judgementProvider.retrieveJudgements(v1.data._2.query, e.value)
-              //              val metricRow: MetricRow = metricsCalculation.calculateAll(judgements)
-              //              Corn((Right(metricRow), v1.data._2))
-              //            }
-            )
-        }
-      }
-    }
-
-    partialFlow.mapAsyncUnordered[ProcessingMessage[(Either[Throwable, MetricRow], RequestTemplate)]](config.requestParallelism)(processingFunc)
-
-    // way via actor, which should not be needed
-    //          val future: Future[Any] = ac.actorOf(Props[MetricsCalculationWorker]) ? ProcessProductIdSequenceResponse(
-    //            query = x.data._2.query,
-    //            response = e,
-    //            judgementProviderFactory = judgementProviderFactory,
-    //            metricsCalculation = metricsCalculation)
-    //          future.map({
-    //            case CalculatedMetricsEvent(metricsRow: MetricRow) =>
-    //              Corn((Right(metricsRow), x.data._2))
-    //            case MetricsRetrievalFailedEvent(_: Seq[String], throwable: Throwable) =>
-    //              Corn((Left(throwable), x.data._2))
-    //            case _ => Corn((Left(new RuntimeException("unknown result message")), x.data._2))
-    //          })
-
+    })
   }
 
 
-  val expectationGen: SerializableFunction1[Int, ExecutionExpectation] = new SerializableFunction1[Int, ExecutionExpectation] {
-    override def apply(v1: Int): ExecutionExpectation = BaseExecutionExpectation(
+  val expectationGen: Int => ExecutionExpectation = v1 => {
+    BaseExecutionExpectation(
       fulfillAllForSuccess = Seq(ClassifyingCountExpectation(classifier = Map("finishResponse" -> {
         case Corn(e) if e.isInstanceOf[MetricRow] => true
         case _ => false
@@ -229,84 +216,36 @@ object SearchJobDefinitions {
       fulfillAnyForFail = Seq(StopExpectation(v1, {
         _ => false
       }, x => x._2 > 0),
-        TimeExpectation(10 seconds))
+        TimeExpectation(2 minutes))
     )
   }
 
-  //    val batchGenerator: IndexedGenerator[ActorRunnable[RequestTemplateBuilderModifier, RequestTemplate, MetricRow, MetricAggregation[Tag]]] =
-  //      batchByGeneratorByIndex.mapGen(x => {
-  //        // TODO: need to define processingActorProps
-  //        ActorRunnable("testJobId", 0, x, processingFlow, None, expectationGen, metricRowAggregatorSupplier, ActorRunnableSinkType.IGNORE_SINK, 3 seconds, 3 seconds)
-  //      })
-  // ProcessJobCmd is actually the task within JobManager, for supervisor message with writer
-  // and so on we need ProcessActorRunnableJobCmd (see below)
-//  def anyToModifier(paramName: String): SerializableFunction1[Any, Modifier[RequestTemplateBuilder]] = new SerializableFunction1[Any, Modifier[RequestTemplateBuilder]]{
-//    override def apply(v1: Any): Modifier[RequestTemplateBuilder] = {
-//      RequestTemplateBuilderModifiers.RequestParameterModifier(params = immutable.Map(paramName -> Seq(v1.toString)), replace = false)
-//    }
-//  }
-  val orderedValuesToBatched: SerializableFunction1[OrderedValues[Any], IndexedGenerator[RequestTemplateBuilderModifier]] = new SerializableFunction1[OrderedValues[Any], IndexedGenerator[RequestTemplateBuilderModifier]] {
-    override def apply(v1: OrderedValues[Any]): IndexedGenerator[RequestTemplateBuilderModifier] = {
-      ByFunctionNrLimitedIndexedGenerator.createFromSeq(v1.getAll.map(anyToModifier(v1.name)
-      ))
-    }
-  }
-
-  val modifiersToCombinedModifier: SerializableFunction1[IndexedGenerator[Seq[Modifier[RequestTemplateBuilder]]], Batch[Modifier[RequestTemplateBuilder]]] = new SerializableFunction1[IndexedGenerator[Seq[Modifier[RequestTemplateBuilder]]], Batch[Modifier[RequestTemplateBuilder]]] {
-    override def apply(v1: IndexedGenerator[Seq[Modifier[RequestTemplateBuilder]]]): Batch[Modifier[RequestTemplateBuilder]] = {
-      val atomicInt = new AtomicInteger(0)
-      val data: IndexedGenerator[Modifier[RequestTemplateBuilder]] = v1.mapGen(modifierSeqToCombined)
-      Batch(batchNr = atomicInt.addAndGet(1), data = data)
-    }
-  }
-  val dataToBatchGenerator: SerializableFunction1[OrderedMultiValues, IndexedGenerator[Batch[RequestTemplateBuilderModifier]]] = new SerializableFunction1[OrderedMultiValues, IndexedGenerator[Batch[RequestTemplateBuilderModifier]]]() {
-    override def apply(v1: OrderedMultiValues): IndexedGenerator[Batch[RequestTemplateBuilderModifier]] = {
-      val paramGenerators: Seq[IndexedGenerator[RequestTemplateBuilderModifier]] = v1.values.map(orderedValuesToBatched)
-      val batchGeneratorBySize: IndexedGenerator[IndexedGenerator[Seq[RequestTemplateBuilderModifier]]] = BatchByGeneratorIndexedGenerator(paramGenerators, 0)
-      val atomicInt = new AtomicInteger(0)
-      batchGeneratorBySize.mapGen(
-        modifiersToCombinedModifier
-//        x => {
-//          val data: IndexedGenerator[Modifier[RequestTemplateBuilder]] = x.mapGen(y => CombinedModifier(y))
-//          Batch(batchNr = atomicInt.addAndGet(1), data = data)
-//        }
-      )
-    }
-  }
-  // ProcessJobCmd is command already to JobManager, so its usually what the supervisor will send after receiving ProcessActorRunnableJobCmd
-  //    val processJobCmd: ProcessJobCmd[RequestTemplateBuilderModifier, RequestTemplate, MetricRow, MetricAggregation[Tag]] =
-  //      ProcessJobCmd[RequestTemplateBuilderModifier, RequestTemplate, MetricRow, MetricAggregation[Tag]](job = batchGenerator)
-
-
   val fileWriter: FileWriter[String, Any] = LocalDirectoryFileFileWriter(directory = "/home/ed/REPOS/github/kolibri_release/kolibri-base/kolibri-test")
 
-  val keyToFilenameFunc: SerializableFunction1[Tag, String] = new SerializableFunction1[Tag, String] {
-    override def apply(v1: Tag): String = v1.toString
-  }
   val documentWriter: Writer[MetricDocument[Tag], Tag, Any] = BaseMetricDocumentWriter(
     writer = fileWriter,
     format = CSVParameterBasedMetricDocumentFormat(columnSeparator = "/t"),
-    keyToFilenameFunc = keyToFilenameFunc)
+    keyToFilenameFunc = x => x.toString)
   val writer: Writer[MetricAggregation[Tag], Tag, Any] = BaseMetricAggregationWriter(writer = documentWriter)
 
   // define the message to supervisor which will generate ProcessJobCmd
   // TODO: we can only initialize this within some actor with a given actorcontext, so if we define this within routes
   // the respective actor wont be there yet to provide context, thus wrap this here to be able to create route without
-  def processActorRunnableJobCmd(implicit as: ActorSystem, ec: ExecutionContext, timeout: Timeout): SupervisorActor.ProcessActorRunnableJobCmd[RequestTemplateBuilderModifier, (Either[Throwable, MetricRow], RequestTemplate), MetricRow, MetricAggregation[Tag]] =
-    JobMsgFactory.createActorRunnableJobCmd[OrderedMultiValues, RequestTemplateBuilderModifier, (Either[Throwable, MetricRow], RequestTemplate), MetricRow, MetricAggregation[Tag]](
+  def processActorRunnableJobCmd(implicit as: ActorSystem, ec: ExecutionContext, timeout: Timeout): SupervisorActor.ProcessActorRunnableJobCmd[RequestTemplateBuilderModifier, MetricRow, MetricRow, MetricAggregation[Tag]] =
+    JobMsgFactory.createActorRunnableJobCmd[Seq[IndexedGenerator[Modifier[RequestTemplateBuilder]]], RequestTemplateBuilderModifier, MetricRow, MetricRow, MetricAggregation[Tag]](
       jobId = "testJobId",
-      data = requestParameterGrid,
-      dataBatchGenerator = dataToBatchGenerator,
+      data = allModifierGenerators,
+      dataBatchGenerator = batchGenerator(batchByIndex = 0),
       transformerFlow = fullProcessingFlow(
-        throughputActor = null,
+        throughputActor = Option.empty[ActorRef],
         judgementProviderFactory = judgementProviderFactory,
         metricsCalculation = metricsCalculation),
       processingActorProps = None, // need to change this
       perBatchExpectationGenerator = expectationGen,
       perBatchAndOverallAggregatorSupplier = metricRowAggregatorSupplier,
       writer = writer,
-      returnType = ActorRunnableSinkType.IGNORE_SINK,
-      allowedTimePerElementInMillis = 100,
+      returnType = ActorRunnableSinkType.REPORT_TO_ACTOR_SINK,
+      allowedTimePerElementInMillis = 1000,
       allowedTimePerBatchInSeconds = 120,
       allowedTimeForJobInSeconds = 1200
     )

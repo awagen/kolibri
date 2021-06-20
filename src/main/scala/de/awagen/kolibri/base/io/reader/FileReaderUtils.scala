@@ -53,16 +53,15 @@ object FileReaderUtils {
   }
 
 
-  def mappingFromFile[T](source: Source,
+  def mappingFromFile[T](source: () => Source,
                          columnDelimiter: String,
                          filterLessColumnsThan: Int,
                          valsToKey: Seq[String] => String,
                          columnsToValue: Array[String] => T): Map[String, T] = {
-    source
-      .getLines
+    source.apply().getLines
       .filter(f => f.trim.nonEmpty && !f.startsWith("#"))
       .map(x => x.split(columnDelimiter))
-      .filter(x => x.length == filterLessColumnsThan)
+      .filter(x => x.length >= filterLessColumnsThan)
       .map(x => valsToKey(x) -> columnsToValue(x))
       .toMap
   }

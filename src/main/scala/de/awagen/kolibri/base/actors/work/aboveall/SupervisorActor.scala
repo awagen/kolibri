@@ -27,7 +27,6 @@ import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{ProcessingM
 import de.awagen.kolibri.base.actors.work.worker.TaskExecutionWorkerActor
 import de.awagen.kolibri.base.config.AppConfig._
 import de.awagen.kolibri.base.domain.jobdefinitions.Batch
-import de.awagen.kolibri.base.http.client.request.RequestTemplate
 import de.awagen.kolibri.base.io.writer.Writers.Writer
 import de.awagen.kolibri.base.processing.JobMessages.{SearchEvaluation, TestPiCalculation}
 import de.awagen.kolibri.base.processing.execution.SimpleTaskExecution
@@ -44,7 +43,7 @@ import de.awagen.kolibri.datatypes.mutable.stores.TypeTaggedMap
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.tagging.TaggedWithType
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
-import de.awagen.kolibri.datatypes.types.SerializableCallable.{SerializableFunction1, SerializableSupplier}
+import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 import de.awagen.kolibri.datatypes.values.AggregateValue
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 
@@ -77,7 +76,7 @@ object SupervisorActor {
   // OrderedMultiValues
   case class ProcessActorRunnableJobCmd[V, V1, V2, U](jobId: String,
                                                       processElements: ActorRunnableJobGenerator[V, V1, V2, U],
-                                                      aggregatorSupplier: SerializableSupplier[Aggregator[ProcessingMessage[V2], U]],
+                                                      aggregatorSupplier: () => Aggregator[ProcessingMessage[V2], U],
                                                       writer: Writer[U, Tag, _],
                                                       allowedTimePerBatch: FiniteDuration,
                                                       allowedTimeForJob: FiniteDuration) extends SupervisorCmd
@@ -86,7 +85,7 @@ object SupervisorActor {
                                                dataIterable: BatchTypeTaggedMapGenerator,
                                                tasks: Seq[Task[_]],
                                                resultKey: ClassTyped[ProcessingMessage[Any]],
-                                               aggregatorSupplier: SerializableSupplier[Aggregator[ProcessingMessage[Any], U]],
+                                               aggregatorSupplier: () => Aggregator[ProcessingMessage[Any], U],
                                                writer: Writer[U, Tag, _],
                                                allowedTimePerBatch: FiniteDuration,
                                                allowedTimeForJob: FiniteDuration) extends SupervisorCmd
@@ -124,7 +123,7 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
   val jobIdToActorRefAndExpectation: mutable.Map[String, (ActorSetup, ExecutionExpectation)] = mutable.Map.empty
 
   def createJobManagerActor[T, U](jobId: String,
-                                  aggregatorSupplier: SerializableSupplier[Aggregator[ProcessingMessage[T], U]],
+                                  aggregatorSupplier: () => Aggregator[ProcessingMessage[T], U],
                                   writer: Writer[U, Tag, _],
                                   allowedTimeForJob: FiniteDuration,
                                   allowedTimeForBatch: FiniteDuration): ActorRef = {
@@ -280,7 +279,7 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
         log.info("Creating and sending job to JobManager, jobId: {}", jobId)
         import de.awagen.kolibri.base.processing.JobMessagesImplicits._
         implicit val timeout: Timeout = 10 minutes
-        val runnableJob: ProcessActorRunnableJobCmd[RequestTemplateBuilderModifier, (Either[Throwable, MetricRow], RequestTemplate), MetricRow, MetricAggregation[Tag]] = e.toRunnable
+        val runnableJob: ProcessActorRunnableJobCmd[RequestTemplateBuilderModifier, MetricRow, MetricRow, MetricAggregation[Tag]] = e.toRunnable
         val actor = createJobManagerActor(
           jobId,
           runnableJob.aggregatorSupplier,

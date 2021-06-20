@@ -31,7 +31,7 @@ class RequestTemplateBuilder {
   private[request] var protocol: HttpProtocol = HttpProtocols.`HTTP/1.1`
 
   def withContextPath(path: String): RequestTemplateBuilder = {
-    this.contextPath = path
+    this.contextPath = if (path.startsWith("/")) path else s"/$path"
     this
   }
 
@@ -65,7 +65,8 @@ class RequestTemplateBuilder {
       contextPath = contextPath,
       parameters = parameters,
       headers = headers,
-      body = body, httpMethod = httpMethod,
+      body = body,
+      httpMethod = httpMethod,
       protocol = protocol
     )
   }

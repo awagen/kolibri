@@ -37,7 +37,6 @@ import de.awagen.kolibri.datatypes.tagging.TagImplicits._
 import de.awagen.kolibri.datatypes.tagging.TagType
 import de.awagen.kolibri.datatypes.tagging.TagType.AGGREGATION
 import de.awagen.kolibri.datatypes.tagging.Tags.{ParameterMultiValueTag, StringTag}
-import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -124,13 +123,11 @@ object RequestProcessingFlows {
       // tag with the varied parameters to allow grouping of requests (e.g for aggregation of metrics and such)
       // exclude query parameter
       try {
-        val filterFunc: SerializableFunction1[String, Boolean] = new SerializableFunction1[String, Boolean] {
-          override def apply(v1: String): Boolean = v1 != queryParam
-        }
-        val filteredParams: Map[String, Seq[String]] = x.data.parameters.filter(y => filterFunc.apply(y._1))
+        val filteredParams: Map[String, Seq[String]] = x.data.parameters.filter(y => y._1 != queryParam)
         val tag = ParameterMultiValueTag(filteredParams).toMultiTag.add(StringTag(s"groupId=$groupId"))
         x.addTag(AGGREGATION, tag)
-        logger.info(s"tagged entity: $x")
+        logger.debug(s"tagged entity: $x")
+        logger.debug(s"request: ${x.data.getRequest.toString()}")
       }
       catch {
         case e: Exception => logger.warn(s"could not add parameters tag, ignoring: $e")

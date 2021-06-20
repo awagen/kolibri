@@ -23,6 +23,7 @@ import akka.stream.Materializer
 import akka.stream.scaladsl.Sink
 import akka.util.ByteString
 import de.awagen.kolibri.datatypes.io.BaseIO
+import org.slf4j.{Logger, LoggerFactory}
 import play.api.libs.json.JsValue
 
 import scala.concurrent.duration._
@@ -30,6 +31,8 @@ import scala.concurrent.{ExecutionContext, Future}
 
 
 object HttpResponseHandlers extends BaseIO {
+
+  val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
   def discardingConsume(httpResponse: HttpResponse)(implicit actorSystem: ActorSystem, mat: Materializer): Future[Done] = {
     httpResponse.entity.dataBytes
@@ -59,14 +62,18 @@ object HttpResponseHandlers extends BaseIO {
         .map(x => {
           try {
             val json: JsValue = jsonStringToJsValue(x.decodeString("UTF-8"))
+            logger.debug(s"parsed response of type '${json.getClass}': $json")
             if (!isValidFunc(json)) {
+              logger.debug(s"invalid response json: $json")
               throw new RuntimeException(s"invalid response: $json")
             }
             val product_ids: T = parseFunc.apply(json)
+            logger.debug(s"parsed product_ids: $product_ids")
             Right(product_ids)
           }
           catch {
             case e: Throwable =>
+              logger.warn(s"search response parsing failed: $e")
               Left(e)
           }
         })
