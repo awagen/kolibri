@@ -58,8 +58,10 @@ class ProcessOnceDistributor[T <: WithBatchNr, U](private[this] var maxParallel:
       addedElements = addedElements :+ iterator.next()
       availableSlots -= 1
     }
-    inProgress = inProgress ++ addedElements.map(x => x.batchNr)
+    val addedBatchNrs = addedElements.map(x => x.batchNr)
+    inProgress = inProgress ++ addedBatchNrs
     distributedBatchCount += addedElements.size
+    logger.info(s"submitting new set of batches: $addedBatchNrs")
     addedElements
   }
 
@@ -79,7 +81,10 @@ class ProcessOnceDistributor[T <: WithBatchNr, U](private[this] var maxParallel:
       numResultsReceivedCount += 1
       true
     }
-    else false
+    else {
+      logger.info(s"rejected accepting - acceptable batches: failed=$failed, inProgress=$inProgress, received batch: ${element.batchNr}")
+      false
+    }
   }
 
   def markAsFail(batchNr: Int): Unit = {

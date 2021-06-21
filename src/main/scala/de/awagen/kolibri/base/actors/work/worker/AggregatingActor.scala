@@ -17,7 +17,7 @@
 
 package de.awagen.kolibri.base.actors.work.worker
 
-import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, PoisonPill, Props}
+import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Cancellable, PoisonPill, Props}
 import de.awagen.kolibri.base.actors.work.worker.AggregatingActor._
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationState, BadCorn, Corn, ProcessingMessage}
 import de.awagen.kolibri.base.config.AppConfig.config
@@ -61,20 +61,24 @@ class AggregatingActor[U, V](val aggregatorSupplier: () => Aggregator[Processing
   val expectation: ExecutionExpectation = expectationSupplier.apply()
   expectation.init
   val aggregator: Aggregator[ProcessingMessage[U], V] = aggregatorSupplier.apply()
-
-  def handleExpectationStateAndCloseIfFinished(adjustReceive: Boolean): Unit = {
-    if (expectation.succeeded || expectation.failed) {
-      log.debug(s"expectation succeeded: ${expectation.succeeded}, expectation failed: ${expectation.failed}")
-      owner ! AggregationState(aggregator.aggregation, jobPartIdentifier.jobId, jobPartIdentifier.batchNr, expectation.deepCopy)
-      if (adjustReceive) self ! Close
-    }
-  }
-
-  context.system.scheduler.scheduleAtFixedRate(
+  val cancellableSchedule: Cancellable = context.system.scheduler.scheduleAtFixedRate(
     initialDelay = config.runnableExecutionActorHousekeepingInterval,
     interval = config.runnableExecutionActorHousekeepingInterval,
     receiver = self,
     message = Housekeeping)
+
+  def handleExpectationStateAndCloseIfFinished(adjustReceive: Boolean): Unit = {
+    if (expectation.succeeded || expectation.failed) {
+      cancellableSchedule.cancel()
+      log.debug(s"expectation succeeded: ${expectation.succeeded}, expectation failed: ${expectation.failed}")
+      log.info(s"sending aggregation state for batch: ${jobPartIdentifier.batchNr}")
+      owner ! AggregationState(aggregator.aggregation, jobPartIdentifier.jobId, jobPartIdentifier.batchNr, expectation.deepCopy)
+      if (adjustReceive) {
+        context.become(closedState)
+      }
+    }
+  }
+
 
   override def receive: Receive = openState
 
@@ -108,7 +112,7 @@ class AggregatingActor[U, V](val aggregatorSupplier: () => Aggregator[Processing
     case Housekeeping =>
       handleExpectationStateAndCloseIfFinished(adjustReceive = true)
     case ReportResults =>
-      owner ! AggregationState(aggregator.aggregation, jobPartIdentifier.jobId,
+      sender() ! AggregationState(aggregator.aggregation, jobPartIdentifier.jobId,
         jobPartIdentifier.batchNr, expectation.deepCopy)
     case e =>
       log.warning("Received unmatched msg: {}", e)
@@ -116,7 +120,7 @@ class AggregatingActor[U, V](val aggregatorSupplier: () => Aggregator[Processing
 
   def closedState: Receive = {
     case ReportResults =>
-      owner ! AggregationState(aggregator.aggregation, jobPartIdentifier.jobId,
+      sender() ! AggregationState(aggregator.aggregation, jobPartIdentifier.jobId,
         jobPartIdentifier.batchNr, expectation.deepCopy)
   }
 }

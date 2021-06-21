@@ -2,6 +2,7 @@ FROM adoptopenjdk/openjdk13:jdk-13.0.2_8-alpine-slim
 
 ENV KOLIBRI_USER kolibri
 ENV KOLIBRI_USER_ID 1000
+ENV JVM_OPTS "-XX:+UseG1GC -Xms512m -Xmx1024m"
 
 RUN mkdir -p /app/logs
 RUN mkdir -p /app/data
@@ -20,4 +21,4 @@ EXPOSE ${HTTP_SERVER_PORT}
 EXPOSE ${MANAGEMENT_PORT}
 EXPOSE ${CLUSTER_NODE_PORT}
 
-ENTRYPOINT java -Dapplication.home="/app" -cp app.jar de.awagen.kolibri.base.cluster.ClusterNode true
+ENTRYPOINT java ${JVM_OPTS} -Dapplication.home="/app" -cp app.jar de.awagen.kolibri.base.cluster.ClusterNode true

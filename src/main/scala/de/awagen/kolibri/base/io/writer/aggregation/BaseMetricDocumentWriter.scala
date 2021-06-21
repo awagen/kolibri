@@ -24,6 +24,7 @@ import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 
 case class BaseMetricDocumentWriter(writer: FileWriter[String, Any],
                                     format: MetricDocumentFormat,
+                                    subFolder: String,
                                     pathSeparator: String = "/",
                                     keyToFilenameFunc: Tag => String = x => x.toString,
                                    ) extends Writer[MetricDocument[Tag], Tag, Any] {
@@ -34,7 +35,7 @@ case class BaseMetricDocumentWriter(writer: FileWriter[String, Any],
     if (data.id != targetIdentifier) Left(new RuntimeException(s"tragetIdentifier '$targetIdentifier' does not match" +
       s"tag '${data.id}' in document '$data'"))
     else {
-      val filename = s"$targetIdentifier/${keyToFilenameFunc.apply(targetIdentifier)}"
+      val filename = s"$subFolder$pathSeparator${keyToFilenameFunc.apply(targetIdentifier)}"
       val doc = format.metricDocumentToString(data)
       writer.write(doc, filename)
     }

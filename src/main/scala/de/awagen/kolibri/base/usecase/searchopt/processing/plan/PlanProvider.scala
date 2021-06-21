@@ -53,11 +53,11 @@ object PlanProvider {
     * @param metricsCalculation
     * @return
     */
-  def metricsCalculationTask(metricsCalculation: MetricsCalculation): SyncTask[ProcessingMessage[MetricRow]] = SimpleSyncTask[ProcessingMessage[MetricRow]](
+  def metricsCalculationTask(params: Map[String, Seq[String]], metricsCalculation: MetricsCalculation): SyncTask[ProcessingMessage[MetricRow]] = SimpleSyncTask[ProcessingMessage[MetricRow]](
     Seq(JUDGEMENTS),
     METRICS_PM,
     METRICS_FAILED,
-    Functions.judgementsToMetricsFunc(metricsCalculation).andThen({
+    Functions.judgementsToMetricsFunc(params, metricsCalculation).andThen({
       case Left(e) => Left(e)
       case Right(e) => Right(Corn(e))
     })
@@ -71,9 +71,9 @@ object PlanProvider {
     * @param query
     * @return
     */
-  def resultEvaluationPlan(provider: JudgementProvider[Double], metricsCalculation: MetricsCalculation, query: String): Seq[SyncTask[_]] = Seq(
+  def resultEvaluationPlan(params: Map[String, Seq[String]], provider: JudgementProvider[Double], metricsCalculation: MetricsCalculation, query: String): Seq[SyncTask[_]] = Seq(
     judgementGenerationTask(provider, query),
-    metricsCalculationTask(metricsCalculation)
+    metricsCalculationTask(params, metricsCalculation)
   )
 
   /**
@@ -115,12 +115,12 @@ object PlanProvider {
     * @param metricsCalculation
     * @return
     */
-  def judgementsToMetricsTask(metricsCalculation: MetricsCalculation): SimpleSyncTask[MetricRow] = {
+  def judgementsToMetricsTask(params: Map[String, Seq[String]], metricsCalculation: MetricsCalculation): SimpleSyncTask[MetricRow] = {
     SimpleSyncTask[MetricRow](
       prerequisites = Seq(JUDGEMENTS),
       successKey = METRICS,
       failKey = METRICS_FAILED,
-      func = Functions.judgementsToMetricsFunc(metricsCalculation))
+      func = Functions.judgementsToMetricsFunc(params, metricsCalculation))
   }
 
   /**
@@ -133,12 +133,12 @@ object PlanProvider {
     * @param ec
     * @return
     */
-  def metricsCalcuationTaskSeq(query: String, judgementProviderFactory: JudgementProviderFactory[Double], metricsCalculation: MetricsCalculation)
+  def metricsCalcuationTaskSeq(query: String, params: Map[String, Seq[String]], judgementProviderFactory: JudgementProviderFactory[Double], metricsCalculation: MetricsCalculation)
                               (implicit ec: ExecutionContext): Seq[Task[_]] = {
     Seq(
       judgementProviderGetTask(judgementProviderFactory),
       judgementGenerationTask(query),
-      judgementsToMetricsTask(metricsCalculation)
+      judgementsToMetricsTask(params, metricsCalculation)
     )
   }
 

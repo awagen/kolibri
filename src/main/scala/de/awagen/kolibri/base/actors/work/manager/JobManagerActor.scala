@@ -285,15 +285,7 @@ class JobManagerActor[T, U](val jobId: String,
     log.debug(s"job contains ${cmd.job.size} batches")
     reportResultsTo = sender()
     jobToProcess = cmd.job
-    batchDistributor = new RetryingDistributor[BatchType, U](
-      maxParallel = runningTaskBaselineCount,
-      generator = jobToProcess,
-      aggState => {
-        aggregator.addAggregate(aggState.data)
-        executionExpectationMap.get(aggState.batchNr).foreach(x => x.accept(aggState))
-        updateExpectations(Seq(aggState.batchNr))
-      },
-      maxNrRetries = 2)
+    batchDistributor = getDistributor(jobToProcess)
     context.become(processingState)
     // if a maximal process duration is set, schedule message to self to
     // write result and send a fail note, then take PoisonPill

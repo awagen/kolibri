@@ -31,6 +31,7 @@ import de.awagen.kolibri.base.http.server.BaseRoutes._
 import de.awagen.kolibri.base.http.server.{BaseRoutes, HttpServer}
 import org.slf4j.{Logger, LoggerFactory}
 
+import java.lang.management.ManagementFactory
 import java.util.Objects
 import scala.concurrent.ExecutionContextExecutor
 import scala.util.{Failure, Success}
@@ -42,6 +43,14 @@ import scala.util.{Failure, Success}
 object ClusterNode extends App {
 
   val logger: Logger = LoggerFactory.getLogger(ClusterNode.getClass.toString)
+
+  val mb = 1024 * 1024
+  val memoryBean = ManagementFactory.getMemoryMXBean
+  val xmx = memoryBean.getHeapMemoryUsage.getMax / mb
+  val xms = memoryBean.getHeapMemoryUsage.getInit / mb
+  logger.info("Initial Memory (xms) : {}mb", xms)
+  logger.info("Max Memory (xmx) : {}mb", xmx)
+
   private[this] var setup: SystemSetup = _
   if (args.length > 0 && args(0).toBoolean) {
     startSystemSetup(None)

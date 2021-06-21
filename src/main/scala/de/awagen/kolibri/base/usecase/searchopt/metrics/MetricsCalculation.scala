@@ -22,6 +22,8 @@ import de.awagen.kolibri.datatypes.reason.ComputeFailReason
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.values.{MetricValue, RunningValue}
 
+import scala.collection.immutable
+
 
 case class MetricsCalculation(metrics: Seq[Metrics], judgementHandling: JudgementHandlingStrategy) {
 
@@ -47,8 +49,8 @@ case class MetricsCalculation(metrics: Seq[Metrics], judgementHandling: Judgemen
     }
   }
 
-  def calculateAll(values: Seq[Option[Double]]): MetricRow = {
-    var metricRow = MetricRow.empty
+  def calculateAll(params: immutable.Map[String, Seq[String]], values: Seq[Option[Double]]): MetricRow = {
+    var metricRow = MetricRow(params = params, metrics = Map.empty)
     metrics.foreach(x => metricRow = metricRow.addMetric(calculateMetric(x, values)))
     metricRow
   }

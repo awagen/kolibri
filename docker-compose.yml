@@ -13,6 +13,11 @@ services:
     ports:
       - "8000:8000"
     environment:
+      JVM_OPTS: >
+        -XX:+PrintFlagsFinal
+        -XX:+UseG1GC
+        -Xms1024m
+        -Xmx4096m
       PROFILE: prod
       ROLES: compute,httpserver
       CLUSTER_NODE_HOST: 172.33.1.1
@@ -33,10 +38,16 @@ services:
     networks:
       kolibri-net:
         ipv4_address: 172.33.1.1
+#    mem_limit: 3000m
 
   kolibri2:
     image: kolibri-base:0.1.0-alpha2
     environment:
+      JVM_OPTS: >
+        -XX:+PrintFlagsFinal
+        -XX:+UseG1GC
+        -Xms1024m
+        -Xmx4096m
       PROFILE: prod
       ROLES: compute
       CLUSTER_NODE_HOST: 172.33.1.2
@@ -55,11 +66,17 @@ services:
     networks:
       kolibri-net:
         ipv4_address: 172.33.1.2
+#    mem_limit: 3000m
 
 
   kolibri3:
     image: kolibri-base:0.1.0-alpha2
     environment:
+      JVM_OPTS: >
+        -XX:+PrintFlagsFinal
+        -XX:+UseG1GC
+        -Xms1024m
+        -Xmx4069m
       PROFILE: prod
       ROLES: compute
       CLUSTER_NODE_HOST: 172.33.1.3
@@ -78,4 +95,4 @@ services:
     networks:
       kolibri-net:
         ipv4_address: 172.33.1.3
-
+#    mem_limit: 2000m

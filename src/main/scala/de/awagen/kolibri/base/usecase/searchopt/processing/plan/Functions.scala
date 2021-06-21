@@ -24,6 +24,8 @@ import de.awagen.kolibri.base.usecase.searchopt.provider.JudgementProvider
 import de.awagen.kolibri.datatypes.mutable.stores.TypeTaggedMap
 import de.awagen.kolibri.datatypes.stores.MetricRow
 
+import scala.collection.immutable
+
 
 object Functions {
 
@@ -31,7 +33,7 @@ object Functions {
     data =>
       val productIds: Option[Seq[String]] = data.get(PRODUCT_ID_RESULT)
       if (productIds.isEmpty) Left(ProductIdsMissing)
-      Right(provider.retrieveJudgements(query, productIds.get))
+      else Right(provider.retrieveJudgements(query, productIds.get))
   }
 
   def judgementRetrievalFunc(query: String): TypeTaggedMap => Either[TaskFailType, Seq[Option[Double]]] = {
@@ -43,12 +45,14 @@ object Functions {
       else Right(judgementProviderOpt.get.retrieveJudgements(query, productResultsOpt.get))
   }
 
-  def judgementsToMetricsFunc(metricsCalculation: MetricsCalculation): TypeTaggedMap => Either[TaskFailType, MetricRow] = {
+  def judgementsToMetricsFunc(params: immutable.Map[String, Seq[String]], metricsCalculation: MetricsCalculation): TypeTaggedMap => Either[TaskFailType, MetricRow] = {
     data =>
       val judgementsOpt: Option[Seq[Option[Double]]] = data.get(JUDGEMENTS)
       if (judgementsOpt.isEmpty) Left(JudgementsMissing)
-      val judgements: Seq[Option[Double]] = judgementsOpt.get
-      Right(metricsCalculation.calculateAll(judgements))
+      else {
+        val judgements: Seq[Option[Double]] = judgementsOpt.get
+        Right(metricsCalculation.calculateAll(params, judgements))
+      }
   }
 
 }

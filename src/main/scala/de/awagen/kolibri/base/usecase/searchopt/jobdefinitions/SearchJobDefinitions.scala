@@ -42,7 +42,7 @@ import de.awagen.kolibri.base.usecase.searchopt.http.client.flows.RequestProcess
 import de.awagen.kolibri.base.usecase.searchopt.http.client.flows.responsehandlers.SolrHttpResponseHandlers
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Metrics._
 import de.awagen.kolibri.base.usecase.searchopt.metrics.{JudgementHandlingStrategy, MetricsCalculation, MetricsEvaluation}
-import de.awagen.kolibri.base.usecase.searchopt.provider.{ClassPathFileBasedJudgementProviderFactory, JudgementProvider, JudgementProviderFactory}
+import de.awagen.kolibri.base.usecase.searchopt.provider.{ClassPathFileBasedJudgementProviderFactory, JudgementProviderFactory}
 import de.awagen.kolibri.datatypes.collections.generators.{BatchByGeneratorIndexedGenerator, ByFunctionNrLimitedIndexedGenerator, IndexedGenerator}
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
 import de.awagen.kolibri.datatypes.metrics.aggregation.writer.CSVParameterBasedMetricDocumentFormat
@@ -55,7 +55,6 @@ import de.awagen.kolibri.datatypes.tagging.{TagType, Tags}
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.{Aggregator, TagKeyMetricAggregationPerClassAggregator}
 import de.awagen.kolibri.datatypes.values.{DistinctValues, MetricValue, RangeValues}
 
-import java.util.concurrent.atomic.AtomicInteger
 import scala.collection.immutable
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
@@ -67,13 +66,12 @@ object SearchJobDefinitions {
   val urlModifierGenerators: Seq[IndexedGenerator[Modifier[RequestTemplateBuilder]]] = Seq(
     ByFunctionNrLimitedIndexedGenerator(20,
       genFunc = x => Some(RequestParameterModifier(params = immutable.Map[String, Seq[String]]("q" -> Seq(s"q$x")),
-        replace = true)))
+        replace = false)))
   )
   val requestParameterGrid: OrderedMultiValues = GridOrderedMultiValues.apply(Seq(
-    DistinctValues[String]("q", Range(0, 100, 1).map(x => s"q$x")),
+    DistinctValues[String]("a", Range(0, 100, 1).map(x => s"q$x")),
     RangeValues[Float](name = "rangeParam1", start = 0.0F, end = 10.0F, stepSize = 1.0F)
   ))
-  // TODO: if replace is set to false, for some reason multiple q are contained, which shouldnt be the case, check it
   val paramGenerators: Seq[IndexedGenerator[Modifier[RequestTemplateBuilder]]] = requestParameterGrid.values.map(x => ByFunctionNrLimitedIndexedGenerator.createFromSeq(x.getAll.map(y => RequestTemplateBuilderModifiers.RequestParameterModifier(params = immutable.Map(x.name -> Seq(y.toString)), replace = true))))
   val allModifierGenerators: Seq[IndexedGenerator[Modifier[RequestTemplateBuilder]]] = urlModifierGenerators ++ paramGenerators
 
@@ -179,21 +177,23 @@ object SearchJobDefinitions {
     partialFlow.mapAsyncUnordered[ProcessingMessage[MetricRow]](config.requestParallelism)(x => {
       x.data._1 match {
         case e@Left(_) =>
-            val metricRow = throwableToMetricRowResponse(e.value)
-            val result: ProcessingMessage[MetricRow] = Corn(metricRow)
-            val originalTags: Set[Tag] = x.getTagsForType(TagType.AGGREGATION)
-            result.addTags(TagType.AGGREGATION, originalTags)
-            Future.successful(result)
+          val metricRow = throwableToMetricRowResponse(e.value)
+          val result: ProcessingMessage[MetricRow] = Corn(metricRow)
+          val originalTags: Set[Tag] = x.getTagsForType(TagType.AGGREGATION)
+          result.addTags(TagType.AGGREGATION, originalTags)
+          Future.successful(result)
         case e@Right(_) =>
           judgementProviderFactory.getJudgements.future
             .map(y => {
               val judgements: Seq[Option[Double]] = y.retrieveJudgements(x.data._2.parameters("q").head, e.value)
               logger.debug(s"retrieved judgements: $judgements")
-              val metricRow: MetricRow = metricsCalculation.calculateAll(judgements)
+              // TODO: need to set the parameters of the request here, otherwise its just one overall aggregated value per tag,
+              // irrespective of distinct tried parameter settings
+              val metricRow: MetricRow = metricsCalculation.calculateAll(immutable.Map(x.data._2.parameters.toSeq.filter(x => x._1 != "q"): _*), judgements)
               logger.debug(s"calculated metrics: $metricRow")
               // TODO: we should place default tag, otherwise final aggregation will
               // not contain anything :)
-              Corn(metricRow).withTags(AGGREGATION, Set(StringTag("ALL")))
+              Corn(metricRow).withTags(AGGREGATION, Set(StringTag("ALL"), StringTag(s"q=${x.data._2.parameters("q").head}")))
             })
             .recover(throwable => {
               logger.warn(s"failed retrieving judgements: $throwable")
@@ -226,6 +226,7 @@ object SearchJobDefinitions {
   val documentWriter: Writer[MetricDocument[Tag], Tag, Any] = BaseMetricDocumentWriter(
     writer = fileWriter,
     format = CSVParameterBasedMetricDocumentFormat(columnSeparator = "\t"),
+    subFolder = "testJobId",
     keyToFilenameFunc = x => x.toString)
   val writer: Writer[MetricAggregation[Tag], Tag, Any] = BaseMetricAggregationWriter(writer = documentWriter)
 

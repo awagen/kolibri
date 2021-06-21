@@ -163,9 +163,10 @@ object RequestProcessingFlows {
 
 
   def experimentDefinitionToTaskSeq(query: String,
+                                    params: Map[String, Seq[String]],
                                     metricsCalculation: MetricsCalculation,
                                     judgementProviderFactory: JudgementProviderFactory[Double])
                                    (implicit ec: ExecutionContext): Seq[Task[_]] = PlanProvider
-    .metricsCalcuationTaskSeq(query, judgementProviderFactory, metricsCalculation)
+    .metricsCalcuationTaskSeq(query, params, judgementProviderFactory, metricsCalculation)
 
 }
