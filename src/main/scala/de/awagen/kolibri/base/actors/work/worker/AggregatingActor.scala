@@ -23,6 +23,8 @@ import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{Aggregation
 import de.awagen.kolibri.base.config.AppConfig.config
 import de.awagen.kolibri.base.processing.execution.expectation.ExecutionExpectation
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
+import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
+import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 
 import scala.concurrent.ExecutionContextExecutor
@@ -47,6 +49,8 @@ object AggregatingActor {
 
   case object Housekeeping
 
+  case object ACK
+
 }
 
 class AggregatingActor[U, V](val aggregatorSupplier: () => Aggregator[ProcessingMessage[U], V],
@@ -70,8 +74,11 @@ class AggregatingActor[U, V](val aggregatorSupplier: () => Aggregator[Processing
   def handleExpectationStateAndCloseIfFinished(adjustReceive: Boolean): Unit = {
     if (expectation.succeeded || expectation.failed) {
       cancellableSchedule.cancel()
-      log.debug(s"expectation succeeded: ${expectation.succeeded}, expectation failed: ${expectation.failed}")
+      log.info(s"expectation succeeded: ${expectation.succeeded}, expectation failed: ${expectation.failed}")
       log.info(s"sending aggregation state for batch: ${jobPartIdentifier.batchNr}")
+      // TODO: remove, just for debugging, the cast only holds for this specific use case
+      val resultMap = aggregator.aggregation.asInstanceOf[MetricAggregation[Tag]].aggregationStateMap
+      log.info(s"nr of parameter combinations in aggregation state for batch '${jobPartIdentifier.batchNr}': ${resultMap.values.map(x => x.rows.size).toSeq}")
       owner ! AggregationState(aggregator.aggregation, jobPartIdentifier.jobId, jobPartIdentifier.batchNr, expectation.deepCopy)
       if (adjustReceive) {
         context.become(closedState)
@@ -85,20 +92,25 @@ class AggregatingActor[U, V](val aggregatorSupplier: () => Aggregator[Processing
   def openState: Receive = {
     case e: BadCorn[U] =>
       aggregator.add(e)
+//      sender() ! ACK
     case result: Corn[U] =>
+//      val ackTo: ActorRef = sender()
       log.debug("received single result event: {}", result)
       log.debug("expectation state: {}", expectation.statusDesc)
       log.debug(s"expectation: $expectation")
       aggregator.add(result)
       expectation.accept(result)
       handleExpectationStateAndCloseIfFinished(true)
+//      ackTo ! ACK
     case result@Corn(aggregator: Aggregator[ProcessingMessage[U], V]) =>
+//      val ackTo: ActorRef  = sender()
       log.debug("received aggregated result event: {}", result)
       log.debug("expectation state: {}", expectation.statusDesc)
       log.debug(s"expectation: $expectation")
       aggregator.addAggregate(aggregator.aggregation)
       expectation.accept(aggregator)
       handleExpectationStateAndCloseIfFinished(true)
+//      ackTo ! ACK
     case Close =>
       log.debug("aggregator switched to closed state")
       context.become(closedState)

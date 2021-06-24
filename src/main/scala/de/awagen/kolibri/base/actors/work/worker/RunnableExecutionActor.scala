@@ -17,7 +17,7 @@
 package de.awagen.kolibri.base.actors.work.worker
 
 import akka.Done
-import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, PoisonPill, Props}
+import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Cancellable, PoisonPill, Props}
 import akka.stream.UniqueKillSwitch
 import akka.stream.scaladsl.RunnableGraph
 import de.awagen.kolibri.base.actors.work.worker.AggregatingActor.{ProvideStateAndStop, ReportResults}
@@ -79,6 +79,8 @@ class RunnableExecutionActor(maxBatchDuration: FiniteDuration) extends Actor wit
   private[this] var jobSender: ActorRef = _
   // the actor aggregating results
   private[this] var aggregatingActor: ActorRef = _
+  // cancellable of housekeeping schedule
+  private[this] var housekeepingCancellable: Cancellable = _
 
   val readyForJob: Receive = {
     case runnable: ActorRunnable[_, _, _, _] =>
@@ -113,7 +115,7 @@ class RunnableExecutionActor(maxBatchDuration: FiniteDuration) extends Actor wit
       executionFuture = outcome._2
       context.become(processing)
       // schedule the housekeeping, checking the runnable status
-      context.system.scheduler.scheduleAtFixedRate(
+      housekeepingCancellable = context.system.scheduler.scheduleAtFixedRate(
         initialDelay = config.runnableExecutionActorHousekeepingInterval,
         interval = config.runnableExecutionActorHousekeepingInterval,
         receiver = self,
@@ -138,6 +140,7 @@ class RunnableExecutionActor(maxBatchDuration: FiniteDuration) extends Actor wit
     case e: AggregationState[_] =>
       log.debug("received aggregation (batch finished): {}", e)
       expectation.accept(e)
+      housekeepingCancellable.cancel()
       jobSender ! e
       self ! PoisonPill
     case ProvideAggregationState =>

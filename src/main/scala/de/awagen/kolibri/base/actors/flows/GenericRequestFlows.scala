@@ -21,7 +21,7 @@ import akka.actor.{ActorRef, ActorSystem}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.stream.Materializer
-import akka.stream.scaladsl.Flow
+import akka.stream.scaladsl.{Flow, Source}
 import de.awagen.kolibri.base.actors.resources.ConnectionPoolManager
 import de.awagen.kolibri.base.actors.tracking.ThroughputActor.AddForStage
 import de.awagen.kolibri.base.actors.tracking.{SetRequestEndFullResponseRead, SetRequestFailed, SetRequestSuccess}
@@ -59,6 +59,14 @@ object GenericRequestFlows {
 
   def identity[T](): Flow[(HttpRequest, T), (HttpRequest, T), NotUsed] =
     Flow.fromFunction(x => x)
+
+  def runRequestAndConsume[T <: DataStore[HttpRequestProvider], U](element: (HttpRequest, T),
+                                 connectionPool: Flow[(HttpRequest, T), (Try[HttpResponse], T), _],
+                                 responseHandler: HttpResponse => Future[Either[Throwable, U]])(implicit actorSystem: ActorSystem,
+                                                                   mat: Materializer,
+                                                                   ec: ExecutionContext): Source[Future[(Either[Throwable, U], T)], NotUsed] = {
+    Source.single[(HttpRequest, T)](element).via(connectionPool).map(x => processResponseAndTrackRead[T, U](responseHandler)(x))
+  }
 
   def genericRequestFlow[T <: DataStore[HttpRequestProvider]](connectionPool: Flow[(HttpRequest, T), (Try[HttpResponse], T), _],
                                                               credentialsProvider: Option[CredentialsProvider],

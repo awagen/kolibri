@@ -155,7 +155,8 @@ class JobManagerActor[T, U](val jobId: String,
         ClusterRouterPoolSettings(
           totalInstances = 10,
           maxInstancesPerNode = 2,
-          allowLocalRoutees = true))
+          allowLocalRoutees = true,
+          useRoles = Set("compute")))
         .props(WorkManagerActor.props),
       name = s"jobBatchRouter-$jobId")
   }

@@ -69,8 +69,8 @@ object SearchJobDefinitions {
         replace = false)))
   )
   val requestParameterGrid: OrderedMultiValues = GridOrderedMultiValues.apply(Seq(
-    DistinctValues[String]("a", Range(0, 100, 1).map(x => s"q$x")),
-    RangeValues[Float](name = "rangeParam1", start = 0.0F, end = 10.0F, stepSize = 1.0F)
+    DistinctValues[String]("a", Range(0, 10, 1).map(x => s"q$x")),
+    RangeValues[Float](name = "rangeParam1", start = 0.0F, end = 100.0F, stepSize = 1.0F)
   ))
   val paramGenerators: Seq[IndexedGenerator[Modifier[RequestTemplateBuilder]]] = requestParameterGrid.values.map(x => ByFunctionNrLimitedIndexedGenerator.createFromSeq(x.getAll.map(y => RequestTemplateBuilderModifiers.RequestParameterModifier(params = immutable.Map(x.name -> Seq(y.toString)), replace = true))))
   val allModifierGenerators: Seq[IndexedGenerator[Modifier[RequestTemplateBuilder]]] = urlModifierGenerators ++ paramGenerators
@@ -181,7 +181,8 @@ object SearchJobDefinitions {
           val result: ProcessingMessage[MetricRow] = Corn(metricRow)
           val originalTags: Set[Tag] = x.getTagsForType(TagType.AGGREGATION)
           result.addTags(TagType.AGGREGATION, originalTags)
-          Future.successful(result)
+          // TODO: temporal test tagging, remove and put at appropriate position
+          Future.successful(result.withTags(AGGREGATION, Set(StringTag("ALL"), StringTag(s"q=${x.data._2.parameters("q").head}"))))
         case e@Right(_) =>
           judgementProviderFactory.getJudgements.future
             .map(y => {
@@ -201,7 +202,7 @@ object SearchJobDefinitions {
               val result: ProcessingMessage[MetricRow] = Corn(metricRow)
               val originalTags: Set[Tag] = x.getTagsForType(TagType.AGGREGATION)
               result.addTags(TagType.AGGREGATION, originalTags)
-              result
+              result.withTags(AGGREGATION, Set(StringTag("ALL"), StringTag(s"q=${x.data._2.parameters("q").head}")))
             })
       }
     })
@@ -217,7 +218,7 @@ object SearchJobDefinitions {
       fulfillAnyForFail = Seq(StopExpectation(v1, {
         _ => false
       }, x => x._2 > 0),
-        TimeExpectation(2 minutes))
+        TimeExpectation(600 minutes))
     )
   }
 
@@ -248,8 +249,8 @@ object SearchJobDefinitions {
       writer = writer,
       returnType = ActorRunnableSinkType.REPORT_TO_ACTOR_SINK,
       allowedTimePerElementInMillis = 10000,
-      allowedTimePerBatchInSeconds = 180,
-      allowedTimeForJobInSeconds = 1200
+      allowedTimePerBatchInSeconds = 60000,
+      allowedTimeForJobInSeconds = 36000
     )
 
 }

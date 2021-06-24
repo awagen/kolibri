@@ -18,14 +18,15 @@
 package de.awagen.kolibri.base.usecase.searchopt.http.client.flows
 
 import akka.actor.{ActorContext, ActorRef, ActorSystem}
-import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
+import akka.http.scaladsl.Http
+import akka.http.scaladsl.model.{HttpRequest, HttpResponse, Uri}
 import akka.stream._
 import akka.stream.scaladsl.{Balance, Flow, GraphDSL, Merge, RunnableGraph, Sink, Source}
 import akka.{Done, NotUsed}
-import de.awagen.kolibri.base.actors.flows.GenericRequestFlows
 import de.awagen.kolibri.base.actors.flows.GenericRequestFlows.flowThroughActorMeter
 import de.awagen.kolibri.base.actors.tracking.ThroughputActor.AddForStage
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{Corn, ProcessingMessage}
+import de.awagen.kolibri.base.config.AppConfig.config
 import de.awagen.kolibri.base.domain.Connection
 import de.awagen.kolibri.base.http.client.request.RequestTemplate
 import de.awagen.kolibri.base.processing.execution.task.Task
@@ -138,15 +139,21 @@ object RequestProcessingFlows {
       .add(Balance.apply[ProcessingMessage[RequestTemplate]](connections.size, waitForAllDownstreams = false))
     val connectionFlows: Seq[Flow[ProcessingMessage[RequestTemplate], ProcessingMessage[(Either[Throwable, T], RequestTemplate)], NotUsed]] = connections
       .map(x => {
-        val connectionPool: Flow[(HttpRequest, ProcessingMessage[RequestTemplate]), (Try[HttpResponse], ProcessingMessage[RequestTemplate]), _] = connectionToFlowFunc(x)
-        val flowResult: Flow[ProcessingMessage[RequestTemplate], (Either[Throwable, T], ProcessingMessage[RequestTemplate]), NotUsed] = GenericRequestFlows
-          .requestAndParseResponseFlow[ProcessingMessage[RequestTemplate], T](
-            credentialsProvider = x.credentialsProvider,
-            connectionPool = connectionPool,
-            meter = throughputActor, responseHandler = parsingFunc)
-        flowResult.via(Flow.fromFunction(x => {
+        val flowResult: Flow[ProcessingMessage[RequestTemplate], (Either[Throwable, T], ProcessingMessage[RequestTemplate]), NotUsed] =
+        Flow.fromFunction[ProcessingMessage[RequestTemplate], (HttpRequest, ProcessingMessage[RequestTemplate])](
+          y => (y.data.getRequest, y)
+        ).mapAsyncUnordered[(Either[Throwable, T], ProcessingMessage[RequestTemplate])](config.requestParallelism)(
+          y => {
+            val e: Future[(Either[Throwable, T], ProcessingMessage[RequestTemplate])] =
+              Http().singleRequest(y._1.withUri(Uri(s"http://${x.host}:${x.port}${y._1.uri.toString()}")))
+              .flatMap { response => parsingFunc.apply(response)}
+              .map(v => (v, y._2))
+            e
+          }
+        )
+          flowResult.via(Flow.fromFunction(y => {
           // map to processing message of tuple
-          Corn((x._1, x._2.data)).withTags(TagType.AGGREGATION, x._2.getTagsForType(AGGREGATION))
+          Corn((y._1, y._2.data)).withTags(TagType.AGGREGATION, y._2.getTagsForType(AGGREGATION))
         }))
       })
     val merge = b.add(Merge[ProcessingMessage[(Either[Throwable, T], RequestTemplate)]](connections.size))

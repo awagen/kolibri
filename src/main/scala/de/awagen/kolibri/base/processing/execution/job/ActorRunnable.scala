@@ -85,10 +85,18 @@ case class ActorRunnable[U, V, V1, Y](jobId: String,
   val log: Logger = LoggerFactory.getLogger(ActorRunnable.getClass)
 
   val actorSink: SerializableFunction1[ActorRef, Sink[ProcessingMessage[V1], Future[Done]]] = new SerializableFunction1[ActorRef, Sink[ProcessingMessage[V1], Future[Done]]] {
-    override def apply(actorRef: ActorRef): Sink[ProcessingMessage[V1], Future[Done]] = Sink.foreach[ProcessingMessage[V1]](element => {
-      actorRef ! element
-      ()
-    })
+        override def apply(actorRef: ActorRef): Sink[ProcessingMessage[V1], Future[Done]] = Sink.foreach[ProcessingMessage[V1]](element => {
+          actorRef ! element
+          ()
+        })
+//    implicit val timeout: Timeout = Timeout(10 seconds)
+////
+//    override def apply(actorRef: ActorRef): Sink[ProcessingMessage[V1], Future[Done]] = {
+//      val flow: Flow[ProcessingMessage[V1], Any, NotUsed] = Flow.fromFunction[ProcessingMessage[V1], ProcessingMessage[V1]](identity)
+//        .mapAsyncUnordered[Any](64)(element => actorRef ? element)
+//      val sink: Sink[Any, Future[Done]] = Sink.foreach[Any](_ => ())
+//      flow.toMat(sink)(Keep.right)
+//    }
   }
 
   def getSink(actorConfig: JobActorConfig): Sink[ProcessingMessage[V1], (UniqueKillSwitch, Future[Done])] = {
