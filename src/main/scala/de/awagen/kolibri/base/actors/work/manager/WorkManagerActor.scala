@@ -18,6 +18,7 @@ package de.awagen.kolibri.base.actors.work.manager
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props, Terminated}
 import akka.util.Timeout
+import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor
 import de.awagen.kolibri.base.actors.work.manager.JobManagerActor.{ACK, WorkerKilled}
 import de.awagen.kolibri.base.actors.work.manager.WorkManagerActor.ExecutionType.{RUNNABLE, TASK, TASK_EXECUTION}
 import de.awagen.kolibri.base.actors.work.manager.WorkManagerActor._
@@ -27,16 +28,20 @@ import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.ProcessingMe
 import de.awagen.kolibri.base.actors.work.worker.TaskExecutionWorkerActor.ProcessTaskExecution
 import de.awagen.kolibri.base.actors.work.worker.TaskWorkerActor.ProcessTasks
 import de.awagen.kolibri.base.actors.work.worker.{RunnableExecutionActor, TaskExecutionWorkerActor, TaskWorkerActor}
+import de.awagen.kolibri.base.io.writer.Writers
 import de.awagen.kolibri.base.processing.JobMessages.{SearchEvaluation, TestPiCalculation}
 import de.awagen.kolibri.base.processing.JobMessagesImplicits._
 import de.awagen.kolibri.base.processing.execution.TaskExecution
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnable
 import de.awagen.kolibri.base.processing.execution.task.Task
+import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
 import de.awagen.kolibri.base.traits.Traits.WithBatchNr
 import de.awagen.kolibri.datatypes.ClassTyped
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
+import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
 import de.awagen.kolibri.datatypes.mutable.stores.TypeTaggedMap
+import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.tagging.TaggedWithType
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 
@@ -135,21 +140,23 @@ class WorkManagerActor() extends Actor with ActorLogging with KolibriSerializabl
       }
       val runnable: Option[ActorRunnable[_, _, _, _]] = runnableGeneratorForJob.flatMap(x => x.get(e.batchNr))
       runnable
-        .map(x => distributeRunnable(x))
+        .map(x => distributeRunnable(x, None))
         .getOrElse(log.warning(s"job for message '$e' does not contain batch '${e.batchNr}', not executing anything for batch"))
     case e: JobBatchMsg[SearchEvaluation] if e.msg.isInstanceOf[SearchEvaluation] =>
+      implicit val ec: ExecutionContext = context.system.dispatcher
+      implicit val timeout: Timeout = e.msg.timeout
+      implicit val actorSystem: ActorSystem = context.system
+      val runnableMsg: SupervisorActor.ProcessActorRunnableJobCmd[RequestTemplateBuilderModifier, MetricRow, MetricRow, MetricAggregation[Tag]] = e.msg.toRunnable
+      val writerOpt: Option[Writers.Writer[MetricAggregation[Tag], Tag, _]] = if (runnableMsg.expectResultsFromBatchCalculations)  None else Some(runnableMsg.writer)
       if (runnableGeneratorForJob.isEmpty) {
-        implicit val ec: ExecutionContext = context.system.dispatcher
-        implicit val timeout: Timeout = e.msg.timeout
-        implicit val actorSystem: ActorSystem = context.system
         runnableGeneratorForJob = Some(e.msg.toRunnable.processElements)
       }
       val runnable: Option[ActorRunnable[_, _, _, _]] = runnableGeneratorForJob.flatMap(x => x.get(e.batchNr))
       runnable
-        .map(x => distributeRunnable(x))
+        .map(x => distributeRunnable(x, writerOpt))
         .getOrElse(log.warning(s"job for message '$e' does not contain batch '${e.batchNr}', not executing anything for batch"))
     case runnable: ActorRunnable[_, _, _, _] =>
-      distributeRunnable(runnable)
+      distributeRunnable(runnable, None)
     case Terminated(actorRef: ActorRef) =>
       log.debug(s"received termination of actor: ${actorRef.path.toString}")
       val killedKeys: Seq[String] = workerKeyToActiveWorker.keys.filter(x => workerKeyToActiveWorker(x).equals(actorRef)).toSeq
@@ -171,10 +178,10 @@ class WorkManagerActor() extends Actor with ActorLogging with KolibriSerializabl
       log.warning(s"Unknown and unhandled message: '$e'")
   }
 
-  def distributeRunnable(runnable: ActorRunnable[_, _, _, _]): Unit = {
+  def distributeRunnable(runnable: ActorRunnable[_, _, _, _], writerOpt: Option[Writers.Writer[MetricAggregation[Tag], Tag, _]]): Unit = {
     log.debug("received runnable for execution")
     val reportTo = sender()
-    val runnableActor: ActorRef = context.actorOf(RunnableExecutionActor.probs(runnable.maxExecutionDuration))
+    val runnableActor: ActorRef = context.actorOf(RunnableExecutionActor.probs(runnable.maxExecutionDuration, writerOpt))
     context.watch(runnableActor)
     val jobKey: String = workerKey(RUNNABLE, runnable.jobId, runnable.batchNr)
     workerKeyToJobManager.put(jobKey, reportTo)

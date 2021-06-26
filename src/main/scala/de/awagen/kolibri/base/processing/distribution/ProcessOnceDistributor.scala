@@ -14,10 +14,10 @@
   * limitations under the License.
   */
 
-package de.awagen.kolibri.base.processing
+package de.awagen.kolibri.base.processing.distribution
 
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.AggregationState
-import de.awagen.kolibri.base.processing.DistributionStates.{AllProvidedWaitingForResults, Completed, DistributionState, Pausing}
+import de.awagen.kolibri.base.processing.distribution.DistributionStates.{AllProvidedWaitingForResults, Completed, DistributionState, Pausing}
 import de.awagen.kolibri.base.traits.Traits.WithBatchNr
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import org.slf4j.{Logger, LoggerFactory}

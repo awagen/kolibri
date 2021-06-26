@@ -85,7 +85,11 @@ object SearchJobDefinitions {
     }
 
   // the supplier of aggregators needed to aggregate ProcessingMessage[MetricRow]
-  def metricRowAggregatorSupplier: () => Aggregator[ProcessingMessage[MetricRow], MetricAggregation[Tag]] = () => {
+  // this corresponds to the aggregator to be used within AggregatingActor utilized by RunnableActor
+  // in case option selected to send results back to JobManager, we need to use this aggregator within job manager also, otherwise
+  // we just keep expectation and distributor without aggregating anything (also no writer in this case, but writer needs to be set for
+  // single AggregatingActor
+  def batchSingleElementAndOverallAggregatorSupplier: () => Aggregator[ProcessingMessage[MetricRow], MetricAggregation[Tag]] = () => {
     new TagKeyMetricAggregationPerClassAggregator()
   }
 
@@ -245,12 +249,14 @@ object SearchJobDefinitions {
         metricsCalculation = metricsCalculation),
       processingActorProps = None, // need to change this
       perBatchExpectationGenerator = expectationGen,
-      perBatchAndOverallAggregatorSupplier = metricRowAggregatorSupplier,
+      perBatchAndOverallAggregatorSupplier = batchSingleElementAndOverallAggregatorSupplier,
       writer = writer,
       returnType = ActorRunnableSinkType.REPORT_TO_ACTOR_SINK,
       allowedTimePerElementInMillis = 10000,
       allowedTimePerBatchInSeconds = 60000,
-      allowedTimeForJobInSeconds = 36000
+      allowedTimeForJobInSeconds = 36000,
+      // TODO: set this to no if the batch level is the same as the result writing level (e.g lets say grouping by query)
+      expectResultsFromBatchCalculations = false
     )
 
 }

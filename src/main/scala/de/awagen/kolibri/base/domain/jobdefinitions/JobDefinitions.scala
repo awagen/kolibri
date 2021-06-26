@@ -62,7 +62,8 @@ object JobDefinitions {
                                                      writer: Writer[MetricAggregation[Tag], Tag, Any],
                                                      allowedTimePerElementInMillis: Long,
                                                      allowedTimePerBatchInSeconds: Long,
-                                                     allowedTimeForJobInSeconds: Long
+                                                     allowedTimeForJobInSeconds: Long,
+                                                     expectResultsFromBatchCalculations: Boolean
                                                     ) extends ActorRunnableJobDefinition[MutableTaggedMap[String, Seq[Any]], Any, MetricRow, MetricAggregation[Tag]] {
     override def createActorRunnableJobCmd: ProcessActorRunnableJobCmd[MutableTaggedMap[String, Seq[Any]], Any, MetricRow, MetricAggregation[Tag]] = {
       val serializableBatchGenerator: SerializableFunction1[OrderedMultiValues, IndexedGenerator[Batch[MutableTaggedMap[String, Seq[Any]]]]] = x => batchGenerator.batchFunc.apply(x)
@@ -78,8 +79,8 @@ object JobDefinitions {
         returnType = returnType,
         allowedTimePerElementInMillis = allowedTimePerElementInMillis,
         allowedTimePerBatchInSeconds = allowedTimePerBatchInSeconds,
-        allowedTimeForJobInSeconds = allowedTimeForJobInSeconds
-      )
+        allowedTimeForJobInSeconds = allowedTimeForJobInSeconds,
+        expectResultsFromBatchCalculations = expectResultsFromBatchCalculations)
     }
   }
 

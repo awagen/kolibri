@@ -103,7 +103,8 @@ object TestJobDefinitions {
       returnType = ActorRunnableSinkType.REPORT_TO_ACTOR_SINK,
       allowedTimePerElementInMillis = 10,
       allowedTimeForJobInSeconds = 600,
-      allowedTimePerBatchInSeconds = 60
+      allowedTimePerBatchInSeconds = 60,
+      expectResultsFromBatchCalculations = true
     )
   }
 

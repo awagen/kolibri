@@ -14,7 +14,7 @@
   * limitations under the License.
   */
 
-package de.awagen.kolibri.base.processing
+package de.awagen.kolibri.base.processing.distribution
 
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.AggregationState
 import de.awagen.kolibri.base.traits.Traits.WithBatchNr

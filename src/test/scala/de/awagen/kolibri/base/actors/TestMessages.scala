@@ -160,7 +160,8 @@ object TestMessages {
       },
       writer = (_: Map[Tag, Double], _: Tag) => Right(()),
       allowedTimePerBatch = 10 seconds,
-      allowedTimeForJob = 2 minutes
+      allowedTimeForJob = 2 minutes,
+      expectResultsFromBatchCalculations = true
     )
   }
 

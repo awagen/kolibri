@@ -14,10 +14,10 @@
   * limitations under the License.
   */
 
-package de.awagen.kolibri.base.processing
+package de.awagen.kolibri.base.processing.distribution
 
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.AggregationState
-import de.awagen.kolibri.base.processing.DistributionStates.{AllProvidedWaitingForResults, Completed}
+import de.awagen.kolibri.base.processing.distribution.DistributionStates.{AllProvidedWaitingForResults, Completed}
 import de.awagen.kolibri.base.processing.execution.expectation.BaseExecutionExpectation
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
 import de.awagen.kolibri.base.traits.Traits.WithBatchNr

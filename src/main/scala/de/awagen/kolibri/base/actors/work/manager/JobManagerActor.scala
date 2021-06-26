@@ -33,9 +33,9 @@ import de.awagen.kolibri.base.config.AppConfig._
 import de.awagen.kolibri.base.io.writer.Writers.Writer
 import de.awagen.kolibri.base.processing.JobMessages.{SearchEvaluation, TestPiCalculation}
 import de.awagen.kolibri.base.processing.JobMessagesImplicits._
+import de.awagen.kolibri.base.processing.distribution.{DistributionStates, Distributor, RetryingDistributor}
 import de.awagen.kolibri.base.processing.execution.expectation._
 import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
-import de.awagen.kolibri.base.processing.{DistributionStates, Distributor, RetryingDistributor}
 import de.awagen.kolibri.base.traits.Traits.WithBatchNr
 import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator}
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
@@ -141,6 +141,10 @@ class JobManagerActor[T, U](val jobId: String,
 
   var scheduleCancellables: Seq[Cancellable] = Seq.empty
 
+  // if set to true, job manager will expect batches to send back actual results, otherwise will not look at returned data in messages but only at success criteria
+  // e.g makes sense in case sending results back is not needed since each batch corresponds to an result by itself
+  var expectResultsFromBatchCalculations: Boolean = false
+
   // NOTE: do not require the routees to have any props arguments.
   // this can lead to failed serialization on routee creation
   // (even if its just a case class with primitives, maybe due to disabled
@@ -220,7 +224,9 @@ class JobManagerActor[T, U](val jobId: String,
       s"received results: ${batchDistributor.nrResultsAccepted}, " +
       s"failed results: ${batchDistributor.idsFailed.size}, " +
       s"in progress: ${batchDistributor.idsInProgress}")
-    writer.write(aggregator.aggregation, StringTag(jobId))
+    if (expectResultsFromBatchCalculations) {
+      writer.write(aggregator.aggregation, StringTag(jobId))
+    }
     // cancel set schedules
     scheduleCancellables.foreach(x => x.cancel())
     // TODO: just cause some batch failed doesnt need to mean the whole thing failed
@@ -245,7 +251,8 @@ class JobManagerActor[T, U](val jobId: String,
     BaseExecutionExpectation(
       fulfillAllForSuccess = Seq(
         ClassifyingCountExpectation(Map("finishResponse" -> {
-          case _: AggregationState[U] => true
+          case _: AggregationState[U] if expectResultsFromBatchCalculations => true
+          case _: AggregationState[Any] if !expectResultsFromBatchCalculations => true
           case _ => false
         }), Map("finishResponse" -> 1))
       ),
@@ -286,7 +293,7 @@ class JobManagerActor[T, U](val jobId: String,
     log.debug(s"job contains ${cmd.job.size} batches")
     reportResultsTo = sender()
     jobToProcess = cmd.job
-    batchDistributor = getDistributor(jobToProcess)
+    batchDistributor = getDistributor(jobToProcess, expectResultsFromBatchCalculations)
     context.become(processingState)
     // if a maximal process duration is set, schedule message to self to
     // write result and send a fail note, then take PoisonPill
@@ -300,12 +307,14 @@ class JobManagerActor[T, U](val jobId: String,
     ()
   }
 
-  def getDistributor(dataGen: IndexedGenerator[BatchType]): Distributor[BatchType, U] = {
+  def getDistributor(dataGen: IndexedGenerator[BatchType], expectResultsFromBatchCalculations: Boolean): Distributor[BatchType, U] = {
     new RetryingDistributor[BatchType, U](
       maxParallel = runningTaskBaselineCount,
       generator = dataGen,
       aggState => {
-        aggregator.addAggregate(aggState.data)
+        if (expectResultsFromBatchCalculations) {
+          aggregator.addAggregate(aggState.data)
+        }
         executionExpectationMap.get(aggState.batchNr).foreach(x => x.accept(aggState))
         updateExpectations(Seq(aggState.batchNr))
       },
@@ -320,7 +329,7 @@ class JobManagerActor[T, U](val jobId: String,
       val numberBatches: Int = jobMsg.processElements.size
       jobToProcess = ByFunctionNrLimitedIndexedGenerator(numberBatches, batchNr => Some(JobBatchMsg(jobMsg.jobId, batchNr, testJobMsg)))
       log.debug(s"job contains ${jobToProcess.size} batches")
-      batchDistributor = getDistributor(jobToProcess)
+      batchDistributor = getDistributor(jobToProcess, expectResultsFromBatchCalculations)
       context.become(processingState)
       scheduleCancellables = scheduleCancellables :+ context.system.scheduler.scheduleOnce(maxProcessDuration, self,
         WriteResultAndSendFailNoteAndTakePoisonPillCmd)
@@ -333,10 +342,12 @@ class JobManagerActor[T, U](val jobId: String,
       log.debug(s"received job to process: $searchJobMsg")
       implicit val timeout: Timeout = Timeout(10 minutes)
       reportResultsTo = sender()
+      expectResultsFromBatchCalculations = searchJobMsg.expectResultsFromBatchCalculations
+      log.info(s"expectResultsFromBatchCalculations: $expectResultsFromBatchCalculations")
       val jobMsg: SupervisorActor.ProcessActorRunnableJobCmd[RequestTemplateBuilderModifier, MetricRow, MetricRow, MetricAggregation[Tag]] = searchJobMsg.toRunnable
       val numberBatches: Int = jobMsg.processElements.size
       jobToProcess = ByFunctionNrLimitedIndexedGenerator(numberBatches, batchNr => Some(JobBatchMsg(jobMsg.jobId, batchNr, searchJobMsg)))
-      batchDistributor = getDistributor(jobToProcess)
+      batchDistributor = getDistributor(jobToProcess, expectResultsFromBatchCalculations)
       context.become(processingState)
       scheduleCancellables = scheduleCancellables :+ context.system.scheduler.scheduleOnce(maxProcessDuration, self,
         WriteResultAndSendFailNoteAndTakePoisonPillCmd)

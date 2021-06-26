@@ -79,7 +79,8 @@ object SupervisorActor {
                                                       aggregatorSupplier: () => Aggregator[ProcessingMessage[V2], U],
                                                       writer: Writer[U, Tag, _],
                                                       allowedTimePerBatch: FiniteDuration,
-                                                      allowedTimeForJob: FiniteDuration) extends SupervisorCmd
+                                                      allowedTimeForJob: FiniteDuration,
+                                                      expectResultsFromBatchCalculations: Boolean) extends SupervisorCmd
 
   case class ProcessActorRunnableTaskJobCmd[U](jobId: String,
                                                dataIterable: BatchTypeTaggedMapGenerator,

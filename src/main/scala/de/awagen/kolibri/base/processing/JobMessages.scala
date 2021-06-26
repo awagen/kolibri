@@ -47,7 +47,8 @@ object JobMessages {
                               judgementsFileClassPathURI: String = "data/test_judgements.txt",
                               connections: Seq[Connection] = Seq(Connection(host = "localhost", port = 80, useHttps = false, credentialsProvider = None)),
                               resultFileURI: String = "/home/ed/REPOS/github/kolibri_release/kolibri-base/kolibri-test",
-                              timeout: FiniteDuration = 60 minutes) extends JobMessage
+                              timeout: FiniteDuration = 60 minutes,
+                              expectResultsFromBatchCalculations: Boolean = true) extends JobMessage
 }
 
 

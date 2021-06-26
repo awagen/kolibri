@@ -49,7 +49,7 @@ class RequestTemplateBuilderModifiersSpec extends UnitTestSpec {
 
     "correctly apply ContextPathModifier" in {
       // given, when, then
-      ContextPathModifier("newPath").apply(createRequestTemplateBuilder).build().contextPath mustBe "newPath"
+      ContextPathModifier("newPath").apply(createRequestTemplateBuilder).build().contextPath mustBe "/newPath"
     }
 
     "correctly apply HeaderModifier" in {
@@ -87,7 +87,7 @@ class RequestTemplateBuilderModifiersSpec extends UnitTestSpec {
       // then
       modifiedBuilder.build().headers mustBe Seq(RawHeader("h1", "v1"), RawHeader("h3", "v3"))
       modifiedBuilder.build().body mustBe body
-      modifiedBuilder.build().contextPath mustBe "newPath"
+      modifiedBuilder.build().contextPath mustBe "/newPath"
     }
 
   }

@@ -25,10 +25,12 @@ import de.awagen.kolibri.base.actors.work.worker.JobPartIdentifiers.BaseJobPartI
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.AggregationState
 import de.awagen.kolibri.base.actors.work.worker.RunnableExecutionActor.{ProvideAggregationState, RunnableHousekeeping}
 import de.awagen.kolibri.base.config.AppConfig.config
+import de.awagen.kolibri.base.io.writer.Writers.Writer
 import de.awagen.kolibri.base.processing.execution.expectation._
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnable.JobActorConfig
 import de.awagen.kolibri.base.processing.execution.job.{ActorRunnable, ActorType}
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
+import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContextExecutor, Future}
@@ -36,8 +38,8 @@ import scala.concurrent.{ExecutionContextExecutor, Future}
 
 object RunnableExecutionActor {
 
-  def probs(maxBatchDurationInSeconds: FiniteDuration): Props =
-    Props(new RunnableExecutionActor(maxBatchDurationInSeconds))
+  def probs[U](maxBatchDurationInSeconds: FiniteDuration, writerOpt: Option[Writer[U, Tag, _]]): Props =
+    Props(new RunnableExecutionActor[U](maxBatchDurationInSeconds, writerOpt))
 
   trait RunnableExecutionActorCmd extends KolibriSerializable
 
@@ -56,7 +58,9 @@ object RunnableExecutionActor {
   * This is send to the ActorRef given in JobActorConfig actor corresponding to ACTOR_SINK type
   * if set and within ActorRunnable the sink type is NOT IGNORE_SINK.
   */
-class RunnableExecutionActor(maxBatchDuration: FiniteDuration) extends Actor with ActorLogging with KolibriSerializable {
+// TODO: the specific writer type is not suitable, just temporary for testing the writing and not response returning by aggregation actors
+class RunnableExecutionActor[U](maxBatchDuration: FiniteDuration,
+                             val writerOpt: Option[Writer[U, Tag, _]]) extends Actor with ActorLogging with KolibriSerializable {
 
   implicit val system: ActorSystem = context.system
   implicit val ec: ExecutionContextExecutor = system.dispatcher
@@ -82,8 +86,9 @@ class RunnableExecutionActor(maxBatchDuration: FiniteDuration) extends Actor wit
   // cancellable of housekeeping schedule
   private[this] var housekeepingCancellable: Cancellable = _
 
+
   val readyForJob: Receive = {
-    case runnable: ActorRunnable[_, _, _, _] =>
+    case runnable: ActorRunnable[_, _, _, U] =>
       jobSender = sender()
       // jobId and batchNr might be used as identifiers to filter received messages by
       runningJobId = runnable.jobId
@@ -92,7 +97,10 @@ class RunnableExecutionActor(maxBatchDuration: FiniteDuration) extends Actor wit
         runnable.aggregationSupplier,
         () => runnable.expectationGenerator.apply(runnable.supplier.size),
         owner = this.self,
-        jobPartIdentifier = BaseJobPartIdentifier(jobId = runningJobId, batchNr = runningJobBatchNr)
+        jobPartIdentifier = BaseJobPartIdentifier(jobId = runningJobId, batchNr = runningJobBatchNr),
+        // TODO: those two following are quick hack to send the writer around, draft state
+        writerOpt,
+        sendResultDataToSender = false
       ))
       // we set the aggregatingActor as receiver of all messages
       // (whether graph sink is used or setting the aggregator as sender when sending

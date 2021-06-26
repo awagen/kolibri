@@ -55,7 +55,8 @@ object JobMsgFactory {
                                                  returnType: ActorRunnableSinkType.Value,
                                                  allowedTimePerElementInMillis: Long,
                                                  allowedTimePerBatchInSeconds: Long,
-                                                 allowedTimeForJobInSeconds: Long): ProcessActorRunnableJobCmd[V, V1, V2, W] = {
+                                                 allowedTimeForJobInSeconds: Long,
+                                                 expectResultsFromBatchCalculations: Boolean): ProcessActorRunnableJobCmd[V, V1, V2, W] = {
     val batches: IndexedGenerator[Batch[V]] = dataBatchGenerator.apply(data)
     val mapFunc: SerializableFunction1[Batch[V], ActorRunnable[V, V1, V2, W]] = new SerializableFunction1[Batch[V], ActorRunnable[V, V1, V2, W]] {
       override def apply(v1: Batch[V]): ActorRunnable[V, V1, V2, W] = ActorRunnable(
@@ -77,8 +78,8 @@ object JobMsgFactory {
       aggregatorSupplier = perBatchAndOverallAggregatorSupplier,
       writer = writer,
       allowedTimePerBatch = FiniteDuration(allowedTimePerBatchInSeconds, SECONDS),
-      allowedTimeForJob = FiniteDuration(allowedTimeForJobInSeconds, SECONDS)
-    )
+      allowedTimeForJob = FiniteDuration(allowedTimeForJobInSeconds, SECONDS),
+      expectResultsFromBatchCalculations)
   }
 
 
