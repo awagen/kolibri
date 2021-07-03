@@ -38,7 +38,8 @@ case class MetricAggregation[A <: AnyRef](aggregationStateMap: mutable.Map[A, Me
                                           keyMapFunction: SerializableFunction1[A, A] = identity) {
 
   def addResults(tags: Set[A], record: MetricRow): Unit = {
-    tags.foreach(x =>
+    val mappedTags = tags.map(tag => keyMapFunction.apply(tag))
+    mappedTags.foreach(x =>
       if (aggregationStateMap.contains(x)) {
         aggregationStateMap(x).add(record)
       }
@@ -50,7 +51,8 @@ case class MetricAggregation[A <: AnyRef](aggregationStateMap: mutable.Map[A, Me
   }
 
   def add(aggregation: MetricAggregation[A]): Unit = {
-    aggregation.aggregationStateMap.keySet.foreach {
+    val mappedKeys = aggregation.aggregationStateMap.keySet.map(key => keyMapFunction.apply(key))
+    mappedKeys.foreach {
       case e if aggregationStateMap.keySet.contains(e) =>
         aggregationStateMap(e).add(aggregation.aggregationStateMap(e))
       case e =>
