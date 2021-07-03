@@ -42,7 +42,7 @@ import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIn
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
 import de.awagen.kolibri.datatypes.stores.MetricRow
-import de.awagen.kolibri.datatypes.tagging.Tags.Tag
+import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}
 import de.awagen.kolibri.datatypes.values.AggregateValue
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 import org.slf4j.{Logger, LoggerFactory}
@@ -210,7 +210,7 @@ class JobManagerActor[T, U](val jobId: String,
     }
   }
 
-  def completed: Boolean = batchDistributor.hasCompleted
+  def completed: Boolean = batchDistributor.hasCompleted && executionExpectationMap.keys.isEmpty
 
   def resultSummary(result: ProcessingResult.Value): ResultSummary = {
     ResultSummary(

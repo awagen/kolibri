@@ -44,6 +44,7 @@ import de.awagen.kolibri.base.usecase.searchopt.metrics.Metrics._
 import de.awagen.kolibri.base.usecase.searchopt.metrics.{JudgementHandlingStrategy, MetricsCalculation, MetricsEvaluation}
 import de.awagen.kolibri.base.usecase.searchopt.provider.{ClassPathFileBasedJudgementProviderFactory, JudgementProviderFactory}
 import de.awagen.kolibri.datatypes.collections.generators.{BatchByGeneratorIndexedGenerator, ByFunctionNrLimitedIndexedGenerator, IndexedGenerator}
+import de.awagen.kolibri.datatypes.functions.GeneralSerializableFunctions._
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
 import de.awagen.kolibri.datatypes.metrics.aggregation.writer.CSVParameterBasedMetricDocumentFormat
 import de.awagen.kolibri.datatypes.multivalues.{GridOrderedMultiValues, OrderedMultiValues}
@@ -70,7 +71,7 @@ object SearchJobDefinitions {
   )
   val requestParameterGrid: OrderedMultiValues = GridOrderedMultiValues.apply(Seq(
     DistinctValues[String]("a", Range(0, 10, 1).map(x => s"q$x")),
-    RangeValues[Float](name = "rangeParam1", start = 0.0F, end = 100.0F, stepSize = 1.0F)
+    RangeValues[Float](name = "rangeParam1", start = 0.0F, end = 10.0F, stepSize = 1.0F)
   ))
   val paramGenerators: Seq[IndexedGenerator[Modifier[RequestTemplateBuilder]]] = requestParameterGrid.values.map(x => ByFunctionNrLimitedIndexedGenerator.createFromSeq(x.getAll.map(y => RequestTemplateBuilderModifiers.RequestParameterModifier(params = immutable.Map(x.name -> Seq(y.toString)), replace = true))))
   val allModifierGenerators: Seq[IndexedGenerator[Modifier[RequestTemplateBuilder]]] = urlModifierGenerators ++ paramGenerators
@@ -90,7 +91,7 @@ object SearchJobDefinitions {
   // we just keep expectation and distributor without aggregating anything (also no writer in this case, but writer needs to be set for
   // single AggregatingActor
   def batchSingleElementAndOverallAggregatorSupplier: () => Aggregator[ProcessingMessage[MetricRow], MetricAggregation[Tag]] = () => {
-    new TagKeyMetricAggregationPerClassAggregator()
+    new TagKeyMetricAggregationPerClassAggregator(identity)
   }
 
   // provider of judgements of type Double
