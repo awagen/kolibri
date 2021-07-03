@@ -57,25 +57,32 @@ object Aggregators {
     }
   }
 
-  class BasePerClassAggregator[T <: Tag: TypeTag, TT <: TaggedWithType[T] : TypeTag, V: TypeTag](aggFunc: SerializableFunction2[TT, V, V], startValueForKey: SerializableFunction1[T, V], mergeFunc: SerializableFunction2[V, V, V]) extends Aggregator[TT, Map[T, V]] {
+  class BasePerClassAggregator[T <: Tag: TypeTag, TT <: TaggedWithType[T] : TypeTag, V: TypeTag](aggFunc: SerializableFunction2[TT, V, V],
+                                                                                                 startValueForKey: SerializableFunction1[T, V],
+                                                                                                 mergeFunc: SerializableFunction2[V, V, V],
+                                                                                                 keyMapFunction: SerializableFunction1[T, T]) extends Aggregator[TT, Map[T, V]] {
     val map: mutable.Map[T, V] = mutable.Map.empty
 
     override def add(sample: TT): Unit = {
-      val keys: Set[T] = sample.getTags(AGGREGATION)
+      val keys: Set[T] = sample.getTags(AGGREGATION).map(tag => keyMapFunction.apply(tag))
       keys.foreach(x => map(x) = aggFunc.apply(sample, map.getOrElse(x, startValueForKey.apply(x))))
     }
 
     override def aggregation: Map[T, V] = Map(map.toSeq: _*)
 
     override def addAggregate(aggregatedValue: Map[T, V]): Unit = {
-      aggregatedValue.foreach(x => map += (x._1 -> mergeFunc.apply(map.getOrElse(x._1, startValueForKey.apply(x._1)), x._2)))
+      aggregatedValue.foreach(x => {
+        val key = keyMapFunction.apply(x._1)
+        map += (key -> mergeFunc.apply(map.getOrElse(key, startValueForKey.apply(key)), x._2))
+      })
     }
   }
 
-  class TagKeyRunningDoubleAvgPerClassAggregator() extends BasePerClassAggregator[Tag, TaggedWithType[Tag] with DataStore[Double], AggregateValue[Double]](
+  class TagKeyRunningDoubleAvgPerClassAggregator(keyMapFunction: SerializableFunction1[Tag, Tag]) extends BasePerClassAggregator[Tag, TaggedWithType[Tag] with DataStore[Double], AggregateValue[Double]](
     aggFunc = (x, y) => y.add(x.data),
     startValueForKey = _ => doubleAvgRunningValue(count = 0, value = 0.0),
-    mergeFunc = (x, y) => x.add(y)) {
+    mergeFunc = (x, y) => x.add(y),
+    keyMapFunction) {
   }
 
   class TagKeyRunningDoubleAvgAggregator() extends BaseAggregator[Double, AggregateValue[Double]](
@@ -84,7 +91,7 @@ object Aggregators {
     mergeFunc = (x, y) => x.add(y)) {
   }
 
-  class TagKeyMetricDocumentPerClassAggregator() extends BasePerClassAggregator[Tag, TaggedWithType[Tag] with DataStore[MetricRow], MetricDocument[Tag]](
+  class TagKeyMetricDocumentPerClassAggregator(keyMapFunction: SerializableFunction1[Tag, Tag]) extends BasePerClassAggregator[Tag, TaggedWithType[Tag] with DataStore[MetricRow], MetricDocument[Tag]](
     aggFunc = (x, y) => {
       y.add(x.data)
       y
@@ -93,17 +100,18 @@ object Aggregators {
     mergeFunc = (x, y) => {
       x.add(y)
       x
-    }) {
+    },
+    keyMapFunction) {
   }
 
-  class TagKeyMetricAggregationPerClassAggregator() extends Aggregator[TaggedWithType[Tag] with DataStore[MetricRow], MetricAggregation[Tag]] {
+  class TagKeyMetricAggregationPerClassAggregator(keyMapFunction: SerializableFunction1[Tag, Tag]) extends Aggregator[TaggedWithType[Tag] with DataStore[MetricRow], MetricAggregation[Tag]] {
     val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
-    val aggregationState: MetricAggregation[Tag] = MetricAggregation.empty[Tag]
+    val aggregationState: MetricAggregation[Tag] = MetricAggregation.empty[Tag](keyMapFunction)
 
     override def add(sample: TaggedWithType[Tag] with DataStore[MetricRow]): Unit = {
       logger.debug(s"adding sample to aggregation (for keys: ${sample.getTagsForType(AGGREGATION)}: $sample")
-      val keys = sample.getTagsForType(AGGREGATION)
+      val keys = sample.getTagsForType(AGGREGATION).map(tag => keyMapFunction.apply(tag))
       aggregationState.addResults(keys, sample.data)
       logger.debug(s"aggregation state is now: $aggregationState")
     }

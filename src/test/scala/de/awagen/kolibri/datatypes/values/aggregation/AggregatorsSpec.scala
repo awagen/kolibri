@@ -16,10 +16,11 @@
 
 package de.awagen.kolibri.datatypes.values.aggregation
 
+import de.awagen.kolibri.datatypes.functions.GeneralSerializableFunctions._
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricsHelper.{metricRecord1, metricRecord2, metricRecord3, metricRecord4}
 import de.awagen.kolibri.datatypes.stores.{MetricDocument, MetricRow}
 import de.awagen.kolibri.datatypes.tagging.TagType.AGGREGATION
-import de.awagen.kolibri.datatypes.tagging.{TaggedWithType}
+import de.awagen.kolibri.datatypes.tagging.TaggedWithType
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.testclasses.UnitTestSpec
 import de.awagen.kolibri.datatypes.types.DataStore
@@ -44,7 +45,7 @@ class AggregatorsSpec extends UnitTestSpec {
 
     "correctly add values" in {
       // given
-      val aggregator: Aggregator[TaggedWithType[Tag] with DataStore[Double], Map[Tag, AggregateValue[Double]]] = new TagKeyRunningDoubleAvgPerClassAggregator()
+      val aggregator: Aggregator[TaggedWithType[Tag] with DataStore[Double], Map[Tag, AggregateValue[Double]]] = new TagKeyRunningDoubleAvgPerClassAggregator(identity)
       // when
       val v1 = TaggedData[Double](1).withAggregationTags(Set(StringTag("t1"), StringTag("t2")))
       val v2 = TaggedData[Double](3).withAggregationTags(Set(StringTag("t1"), StringTag("t2")))
@@ -66,8 +67,8 @@ class AggregatorsSpec extends UnitTestSpec {
 
     "correctly add other AggregateValues" in {
       // given
-      val aggregator1: Aggregator[TaggedWithType[Tag] with DataStore[Double], Map[Tag, AggregateValue[Double]]] = new TagKeyRunningDoubleAvgPerClassAggregator()
-      val aggregator2: Aggregator[TaggedWithType[Tag] with DataStore[Double], Map[Tag, AggregateValue[Double]]] = new TagKeyRunningDoubleAvgPerClassAggregator()
+      val aggregator1: Aggregator[TaggedWithType[Tag] with DataStore[Double], Map[Tag, AggregateValue[Double]]] = new TagKeyRunningDoubleAvgPerClassAggregator(identity)
+      val aggregator2: Aggregator[TaggedWithType[Tag] with DataStore[Double], Map[Tag, AggregateValue[Double]]] = new TagKeyRunningDoubleAvgPerClassAggregator(identity)
       // when
       val v1 = TaggedData[Double](1).withAggregationTags(Set(StringTag("t1"), StringTag("t2")))
       val v2 = TaggedData[Double](3).withAggregationTags(Set(StringTag("t1"), StringTag("t2")))
@@ -102,7 +103,7 @@ class AggregatorsSpec extends UnitTestSpec {
 
     "correctly add values" in {
       // given
-      val aggregator = new TagKeyMetricDocumentPerClassAggregator()
+      val aggregator = new TagKeyMetricDocumentPerClassAggregator(identity)
       // when
       val v1 = TaggedData[MetricRow](metricRecord1).withAggregationTags(Set(StringTag("test1")))
       val v2 = TaggedData[MetricRow](metricRecord2).withAggregationTags(Set(StringTag("test2")))
@@ -130,8 +131,8 @@ class AggregatorsSpec extends UnitTestSpec {
 
     "correctly add other values" in {
       // given
-      val aggregator1 = new TagKeyMetricDocumentPerClassAggregator()
-      val aggregator2 = new TagKeyMetricDocumentPerClassAggregator()
+      val aggregator1 = new TagKeyMetricDocumentPerClassAggregator(identity)
+      val aggregator2 = new TagKeyMetricDocumentPerClassAggregator(identity)
       // when
       val v1 = TaggedData[MetricRow](metricRecord1).withAggregationTags(Set(StringTag("test1")))
       val v2 = TaggedData[MetricRow](metricRecord2).withAggregationTags(Set(StringTag("test2")))

@@ -17,6 +17,7 @@
 
 package de.awagen.kolibri.datatypes.io.json
 
+import de.awagen.kolibri.datatypes.functions.GeneralSerializableFunctions._
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
 import de.awagen.kolibri.datatypes.stores.{MetricDocument, MetricRow}
 import de.awagen.kolibri.datatypes.tagging.TaggedWithType
@@ -25,8 +26,7 @@ import de.awagen.kolibri.datatypes.types.DataStore
 import de.awagen.kolibri.datatypes.values.AggregateValue
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.{Aggregator, TagKeyMetricAggregationPerClassAggregator, TagKeyMetricDocumentPerClassAggregator, TagKeyRunningDoubleAvgPerClassAggregator}
 import spray.json.DefaultJsonProtocol.StringJsonFormat
-import spray.json.JsonFormat
-import spray.json._
+import spray.json.{JsonFormat, _}
 
 object AggregatorsJsonProtocol {
 
@@ -39,7 +39,7 @@ object AggregatorsJsonProtocol {
 
     override def read(json: JsValue): Aggregator[TaggedWithType[Tag] with DataStore[Double], Map[Tag, AggregateValue[Double]]] = json match {
       case spray.json.JsObject(fields) if fields.contains(TYPE_FIELD) && fields(TYPE_FIELD).convertTo[String] == TYPE_PER_CLASS_DOUBLE =>
-        new TagKeyRunningDoubleAvgPerClassAggregator()
+        new TagKeyRunningDoubleAvgPerClassAggregator(identity)
       case e => throw DeserializationException(s"Expected a value from Aggregator[Tag, Double, Map[Tag, AggregateValue[Double]]] but got value $e")
     }
 
@@ -53,7 +53,7 @@ object AggregatorsJsonProtocol {
 
     override def read(json: JsValue): Aggregator[TaggedWithType[Tag] with DataStore[MetricRow], Map[Tag, MetricDocument[Tag]]] = json match {
       case spray.json.JsObject(fields) if fields.contains(TYPE_FIELD) && fields(TYPE_FIELD).convertTo[String] == TYPE_PER_CLASS_METRIC_ROW =>
-        new TagKeyMetricDocumentPerClassAggregator()
+        new TagKeyMetricDocumentPerClassAggregator(identity)
       case e => throw DeserializationException(s"Expected a value from Aggregator[Tag, MetricRow, Map[Tag, MetricDocument[Tag]]] but got value $e")
     }
 
@@ -67,7 +67,7 @@ object AggregatorsJsonProtocol {
 
     override def read(json: JsValue): Aggregator[TaggedWithType[Tag] with DataStore[MetricRow], MetricAggregation[Tag]] = json match {
       case spray.json.JsObject(fields) if fields.contains(TYPE_FIELD) && fields(TYPE_FIELD).convertTo[String] == TYPE_METRIC_AGGREGATION =>
-        new TagKeyMetricAggregationPerClassAggregator()
+        new TagKeyMetricAggregationPerClassAggregator(identity)
       case e => throw DeserializationException(s"Expected a value from Aggregator[Tag, MetricRow, MetricAggregation[Tag]] but got value $e")
     }
 

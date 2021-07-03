@@ -16,14 +16,16 @@
 
 package de.awagen.kolibri.datatypes.metrics.aggregation
 
+import de.awagen.kolibri.datatypes.functions.GeneralSerializableFunctions._
 import de.awagen.kolibri.datatypes.stores.{MetricDocument, MetricRow}
+import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 
 import scala.collection.mutable
 
 
 object MetricAggregation {
 
-  def empty[A <: AnyRef]: MetricAggregation[A] = MetricAggregation[A](mutable.Map.empty)
+  def empty[A <: AnyRef](keyMapFunction: SerializableFunction1[A, A]): MetricAggregation[A] = MetricAggregation[A](mutable.Map.empty, keyMapFunction)
 
   def combineAggregates[A](agg1: MetricRow, agg2: MetricRow): MetricRow = {
     MetricRow.empty.addRecord(agg1).addRecord(agg2)
@@ -32,7 +34,8 @@ object MetricAggregation {
 }
 
 
-case class MetricAggregation[A <: AnyRef](aggregationStateMap: mutable.Map[A, MetricDocument[A]] = mutable.Map.empty[A, MetricDocument[A]]) {
+case class MetricAggregation[A <: AnyRef](aggregationStateMap: mutable.Map[A, MetricDocument[A]] = mutable.Map.empty[A, MetricDocument[A]],
+                                          keyMapFunction: SerializableFunction1[A, A] = identity) {
 
   def addResults(tags: Set[A], record: MetricRow): Unit = {
     tags.foreach(x =>
