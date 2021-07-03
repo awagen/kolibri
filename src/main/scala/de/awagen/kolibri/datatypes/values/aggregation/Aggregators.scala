@@ -111,7 +111,7 @@ object Aggregators {
 
     override def add(sample: TaggedWithType[Tag] with DataStore[MetricRow]): Unit = {
       logger.debug(s"adding sample to aggregation (for keys: ${sample.getTagsForType(AGGREGATION)}: $sample")
-      val keys = sample.getTagsForType(AGGREGATION).map(tag => keyMapFunction.apply(tag))
+      val keys = sample.getTagsForType(AGGREGATION)
       aggregationState.addResults(keys, sample.data)
       logger.debug(s"aggregation state is now: $aggregationState")
     }
