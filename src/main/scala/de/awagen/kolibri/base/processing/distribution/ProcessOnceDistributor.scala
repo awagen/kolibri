@@ -35,11 +35,12 @@ import org.slf4j.{Logger, LoggerFactory}
   * @tparam U - type of the aggregation
   */
 class ProcessOnceDistributor[T <: WithBatchNr, U](private[this] var maxParallel: Int,
-                                                  generator: IndexedGenerator[T],
-                                                  resultConsumer: AggregationState[U] => ()) extends Distributor[T, U] {
+                                                  generator: IndexedGenerator[T]) extends Distributor[T, U] {
 
   private[this] val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
+
+  private[this] var completed: Boolean = false
   private[this] val iterator: Iterator[T] = generator.iterator
   private[this] var failed: Seq[Int] = Seq.empty
   private[this] var inProgress: Seq[Int] = Seq.empty
@@ -76,7 +77,6 @@ class ProcessOnceDistributor[T <: WithBatchNr, U](private[this] var maxParallel:
   def accept(element: AggregationState[U]): Boolean = {
     logger.debug(s"distributor: received aggregation state: $element")
     if ((failed ++ inProgress).contains(element.batchNr)) {
-      resultConsumer.apply(element)
       removeBatchRecords(element.batchNr)
       numResultsReceivedCount += 1
       true
@@ -105,7 +105,10 @@ class ProcessOnceDistributor[T <: WithBatchNr, U](private[this] var maxParallel:
       Right(provideNextBatchesAndUpdateProgressState)
     }
     else if (inProgress.nonEmpty) Left(AllProvidedWaitingForResults)
-    else Left(Completed)
+    else {
+      completed = true
+      Left(Completed)
+    }
   }
 
   def idsInProgress: Seq[Int] = inProgress
@@ -117,4 +120,6 @@ class ProcessOnceDistributor[T <: WithBatchNr, U](private[this] var maxParallel:
   override def nrDistributed: Int = distributedBatchCount
 
   override def nrResultsAccepted: Int = numResultsReceivedCount
+
+  override def hasCompleted: Boolean = completed
 }

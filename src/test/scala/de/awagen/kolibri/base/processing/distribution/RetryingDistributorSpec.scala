@@ -28,13 +28,11 @@ class RetryingDistributorSpec extends UnitTestSpec {
   case class IntWithBatch(batchNr: Int, value: Int) extends WithBatchNr
 
   private[this] def distributor[T <: WithBatchNr, U](elements: Seq[T],
-                                                     aggConsumer: AggregationState[U] => (),
                                                      maxRetries: Int): Distributor[T, U] = new RetryingDistributor[T, U](
     maxParallel = 3,
     generator = ByFunctionNrLimitedIndexedGenerator.createFromSeq(
       elements
     ),
-    aggConsumer,
     maxRetries
   )
 
@@ -49,7 +47,6 @@ class RetryingDistributorSpec extends UnitTestSpec {
       }
       val distributor: Distributor[IntWithBatch, Int] = this.distributor[IntWithBatch, Int](
         Range(0, 6).map(x => IntWithBatch(x, x)),
-        aggConsumer,
         1
       )
       // when, then

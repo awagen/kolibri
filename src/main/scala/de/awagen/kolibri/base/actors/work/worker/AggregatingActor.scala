@@ -60,7 +60,7 @@ class AggregatingActor[U, V](val aggregatorSupplier: () => Aggregator[Processing
                              val owner: ActorRef,
                              val jobPartIdentifier: JobPartIdentifiers.JobPartIdentifier,
                              val writerOpt: Option[Writer[V, Tag, _]],
-                             val sendResultDataToSender: Boolean = false)
+                             val sendResultDataToSender: Boolean = true)
   extends Actor with ActorLogging {
 
   implicit val system: ActorSystem = context.system
@@ -80,9 +80,6 @@ class AggregatingActor[U, V](val aggregatorSupplier: () => Aggregator[Processing
       cancellableSchedule.cancel()
       log.info(s"expectation succeeded: ${expectation.succeeded}, expectation failed: ${expectation.failed}")
       log.info(s"sending aggregation state for batch: ${jobPartIdentifier.batchNr}")
-      // TODO: remove, just for debugging, the cast only holds for this specific use case
-      //      val resultMap = aggregator.aggregation.asInstanceOf[MetricAggregation[Tag]].aggregationStateMap
-      //      log.info(s"nr of parameter combinations in aggregation state for batch '${jobPartIdentifier.batchNr}': ${resultMap.values.map(x => x.rows.size).toSeq}")
       if (sendResultDataToSender) {
         owner ! AggregationState(aggregator.aggregation, jobPartIdentifier.jobId, jobPartIdentifier.batchNr, expectation.deepCopy)
       }

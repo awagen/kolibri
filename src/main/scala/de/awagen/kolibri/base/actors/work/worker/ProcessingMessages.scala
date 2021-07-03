@@ -27,7 +27,7 @@ import de.awagen.kolibri.datatypes.types.DataStore
 
 object ProcessingMessages {
 
-  trait ProcessingMessage[+T] extends KolibriSerializable with TaggedWithType[Tag] with DataStore[T] {
+  sealed trait ProcessingMessage[+T] extends KolibriSerializable with TaggedWithType[Tag] with DataStore[T] {
     val data: T
 
     def withTags(tagType: TagType, tags: Set[Tag]): ProcessingMessage[T] = {
@@ -36,7 +36,7 @@ object ProcessingMessages {
     }
   }
 
-  trait BatchProcessingMessage[+T] extends KolibriSerializable with ProcessingMessage[T] {
+  sealed trait BatchProcessingMessage[+T] extends KolibriSerializable with ProcessingMessage[T] {
     val jobID: String
     val batchNr: Int
   }

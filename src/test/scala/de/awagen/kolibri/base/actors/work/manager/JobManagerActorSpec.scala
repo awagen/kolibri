@@ -25,7 +25,7 @@ import de.awagen.kolibri.base.actors.KolibriTestKit
 import de.awagen.kolibri.base.actors.TestMessages.{TaggedInt, messagesToActorRefRunnableGenFunc}
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.{FinishedJobEvent, ProcessingResult}
 import de.awagen.kolibri.base.actors.work.manager.JobManagerActor.ProcessJobCmd
-import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{Corn, ProcessingMessage, ResultSummary}
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationState, ProcessingMessage, ResultSummary}
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnable
 import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator}
 import de.awagen.kolibri.datatypes.tagging.TagType.AGGREGATION
@@ -75,7 +75,7 @@ class JobManagerActorSpec extends KolibriTestKit
 
               override def add(sample: ProcessingMessage[Int]): Unit = {
                 sample match {
-                  case _: Corn[Int] =>
+                  case _: AggregationState[Int] =>
                     val keys = sample.getTagsForType(AGGREGATION)
                     keys.foreach(x => {
                       map(x) = map.getOrElse(x, 0.0) + sample.data
@@ -91,7 +91,7 @@ class JobManagerActorSpec extends KolibriTestKit
                 })
               }
             }
-        }, writer = (_: Map[Tag, Double], _: Tag) => Right(()), maxProcessDuration = 10 minutes, maxBatchDuration = 1 minute)
+        }, writer = (_: Map[Tag, Double], _: Tag) => Right(()), maxProcessDuration = 10 minutes, maxBatchDuration = 1 minute, 2)
       val jobManagerActor: ActorRef = system.actorOf(managerProps)
       val jobGenerator: IndexedGenerator[ActorRunnable[TaggedInt, Int, Int, Map[Tag, Double]]] = ByFunctionNrLimitedIndexedGenerator(
         nrOfElements = 4,

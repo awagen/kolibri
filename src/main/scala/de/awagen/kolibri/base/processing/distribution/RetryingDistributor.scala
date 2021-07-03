@@ -26,9 +26,9 @@ import org.slf4j.{Logger, LoggerFactory}
 // TODO: add Distributor[T, U] => Distributor[T, U] instead of fixed retryDistributor
 class RetryingDistributor[T <: WithBatchNr, U](private[this] var maxParallel: Int,
                                                generator: IndexedGenerator[T],
-                                              // TODO: we might wanna pass here a general consumer Consumer[AggregationState[U]]
-                                               resultConsumer: AggregationState[U] => (),
                                                private[this] var maxNrRetries: Int) extends Distributor[T, U] {
+
+  private[processing] var completed: Boolean = false
 
   private[processing] val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
@@ -40,8 +40,7 @@ class RetryingDistributor[T <: WithBatchNr, U](private[this] var maxParallel: In
 
   private[processing] var currentDistributor: Distributor[T, U] = new ProcessOnceDistributor[T, U](
     maxParallel,
-    generator,
-    resultConsumer)
+    generator)
 
   def retryDistributor: Distributor[T, U] = {
     val unfinishedSoFar: Seq[Int] = currentDistributor.unfinished
@@ -50,9 +49,7 @@ class RetryingDistributor[T <: WithBatchNr, U](private[this] var maxParallel: In
       ByFunctionNrLimitedIndexedGenerator.createFromSeq(
         idsFailed.map(x => generator.get(x).get)
       ),
-      resultConsumer,
-      unfinishedSoFar.toSet
-    )
+      unfinishedSoFar.toSet)
   }
 
   override def setMaxParallelCount(count: Int): Unit = {
@@ -95,7 +92,10 @@ class RetryingDistributor[T <: WithBatchNr, U](private[this] var maxParallel: In
           currentNrRetries += 1
           next
         }
-        else nxt
+        else {
+          completed = true
+          nxt
+        }
       case e@Right(batches) =>
         if (currentNrRetries == 0) {
           distributedBatchCount += batches.size
@@ -108,4 +108,6 @@ class RetryingDistributor[T <: WithBatchNr, U](private[this] var maxParallel: In
   override def nrDistributed: Int = distributedBatchCount
 
   override def nrResultsAccepted: Int = numResultsReceivedCount
+
+  override def hasCompleted: Boolean = completed
 }

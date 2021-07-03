@@ -28,13 +28,11 @@ class FilteringOnceDistributorSpec extends UnitTestSpec {
   case class IntWithBatch(batchNr: Int, value: Int) extends WithBatchNr
 
   private[this] def distributor[T <: WithBatchNr, U](elements: Seq[T],
-                                                     aggConsumer: AggregationState[U] => (),
                                                      acceptOnlyIds: Seq[Int]): Distributor[T, U] = new FilteringOnceDistributor[T, U](
     maxParallel = 3,
     generator = ByFunctionNrLimitedIndexedGenerator.createFromSeq(
       elements
     ),
-    aggConsumer,
     acceptOnlyIds.toSet
   )
 
@@ -42,10 +40,7 @@ class FilteringOnceDistributorSpec extends UnitTestSpec {
 
     "correctly provide elements and accept only ids provided" in {
       // given
-      var elements: Seq[Int] = Seq.empty
-      val intDistributor = distributor[IntWithBatch, Int](Range(2,5).map(x => IntWithBatch(x, x)), el => {
-        elements = elements :+ el.batchNr
-      }, Range(0, 5))
+      val intDistributor = distributor[IntWithBatch, Int](Range(2,5).map(x => IntWithBatch(x, x)), Range(0, 5))
       // when, then
       intDistributor.next mustBe Right(Seq(2, 3, 4).map(x => IntWithBatch(x,x)))
       intDistributor.next mustBe Left(AllProvidedWaitingForResults)
@@ -56,7 +51,6 @@ class FilteringOnceDistributorSpec extends UnitTestSpec {
       intDistributor.accept(AggregationState(1, "jobId", 1, BaseExecutionExpectation.empty()))
       intDistributor.accept(AggregationState(1, "jobId", 5, BaseExecutionExpectation.empty()))
       intDistributor.next mustBe Left(Completed)
-      elements mustBe Seq(2, 3, 4, 0, 1)
     }
 
   }

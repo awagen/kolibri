@@ -98,9 +98,10 @@ class RunnableExecutionActor[U](maxBatchDuration: FiniteDuration,
         () => runnable.expectationGenerator.apply(runnable.supplier.size),
         owner = this.self,
         jobPartIdentifier = BaseJobPartIdentifier(jobId = runningJobId, batchNr = runningJobBatchNr),
-        // TODO: those two following are quick hack to send the writer around, draft state
+        // TODO: those two following are quick hack to send the writer around, draft state,
+        // TODO: thus make sendResultDataToSender configurable
         writerOpt,
-        sendResultDataToSender = false
+        sendResultDataToSender = true
       ))
       // we set the aggregatingActor as receiver of all messages
       // (whether graph sink is used or setting the aggregator as sender when sending

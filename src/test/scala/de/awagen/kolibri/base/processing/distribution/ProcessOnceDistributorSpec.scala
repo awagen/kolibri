@@ -27,13 +27,11 @@ class ProcessOnceDistributorSpec extends UnitTestSpec {
 
   case class IntWithBatch(batchNr: Int, value: Int) extends WithBatchNr
 
-  private[this] def distributor[T <: WithBatchNr, U](elements: Seq[T],
-                                                     aggConsumer: AggregationState[U] => ()): Distributor[T, U] = new ProcessOnceDistributor[T, U](
+  private[this] def distributor[T <: WithBatchNr, U](elements: Seq[T]): Distributor[T, U] = new ProcessOnceDistributor[T, U](
     maxParallel = 3,
     generator = ByFunctionNrLimitedIndexedGenerator.createFromSeq(
       elements
-    ),
-    aggConsumer
+    )
   )
 
   "ProcessOnceDistributor" should {
@@ -41,9 +39,7 @@ class ProcessOnceDistributorSpec extends UnitTestSpec {
     "correctly provide elements" in {
       // given
       var elements: Seq[Int] = Seq.empty
-      val intDistributor = distributor[IntWithBatch, Int](Range(0, 10).map(x => IntWithBatch(x, x)), el => {
-        elements = elements :+ el.batchNr
-      })
+      val intDistributor = distributor[IntWithBatch, Int](Range(0, 10).map(x => IntWithBatch(x, x)))
       // when, then
       intDistributor.next mustBe Right(Seq(0, 1, 2).map(x => IntWithBatch(x, x)))
       intDistributor.next mustBe Left(Pausing)

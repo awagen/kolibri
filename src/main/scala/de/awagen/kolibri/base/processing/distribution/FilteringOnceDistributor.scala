@@ -29,12 +29,10 @@ import org.slf4j.{Logger, LoggerFactory}
   */
 class FilteringOnceDistributor[T <: WithBatchNr, U](private[this] var maxParallel: Int,
                                                     generator: IndexedGenerator[T],
-                                                    resultConsumer: AggregationState[U] => (),
                                                     private[this] var acceptOnlyIds: Set[Int])
   extends ProcessOnceDistributor[T, U](
     maxParallel,
-    generator,
-    resultConsumer) {
+    generator) {
 
   val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
@@ -42,7 +40,6 @@ class FilteringOnceDistributor[T <: WithBatchNr, U](private[this] var maxParalle
     logger.debug(s"distributor: received aggregation state: $element")
     var didAccept: Boolean = false
     if (acceptOnlyIds.contains(element.batchNr)) {
-      resultConsumer.apply(element)
       acceptOnlyIds = acceptOnlyIds - element.batchNr
       didAccept = true
     }

@@ -33,6 +33,7 @@ import de.awagen.kolibri.base.config.AppConfig._
 import de.awagen.kolibri.base.io.writer.Writers.Writer
 import de.awagen.kolibri.base.processing.JobMessages.{SearchEvaluation, TestPiCalculation}
 import de.awagen.kolibri.base.processing.JobMessagesImplicits._
+import de.awagen.kolibri.base.processing.consume.Consumers.{BaseExecutionConsumer, ExecutionConsumer}
 import de.awagen.kolibri.base.processing.distribution.{DistributionStates, Distributor, RetryingDistributor}
 import de.awagen.kolibri.base.processing.execution.expectation._
 import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
@@ -41,7 +42,7 @@ import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIn
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
 import de.awagen.kolibri.datatypes.stores.MetricRow
-import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}
+import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.values.AggregateValue
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 import org.slf4j.{Logger, LoggerFactory}
@@ -63,8 +64,9 @@ object JobManagerActor {
                   aggregatorSupplier: () => Aggregator[ProcessingMessage[T], U],
                   writer: Writer[U, Tag, _],
                   maxProcessDuration: FiniteDuration,
-                  maxBatchDuration: FiniteDuration): Props =
-    Props(new JobManagerActor[T, U](experimentId, runningTaskBaselineCount, aggregatorSupplier, writer, maxProcessDuration, maxBatchDuration))
+                  maxBatchDuration: FiniteDuration,
+                  maxNumRetries: Int): Props =
+    Props(new JobManagerActor[T, U](experimentId, runningTaskBaselineCount, aggregatorSupplier, writer, maxProcessDuration, maxBatchDuration, maxNumRetries))
 
 
   // cmds telling JobManager to do sth
@@ -105,21 +107,24 @@ object JobManagerActor {
 
 }
 
+
 class JobManagerActor[T, U](val jobId: String,
                             runningTaskBaselineCount: Int,
                             val aggregatorSupplier: () => Aggregator[ProcessingMessage[T], U],
                             val writer: Writer[U, Tag, _],
                             val maxProcessDuration: FiniteDuration,
-                            val maxBatchDuration: FiniteDuration) extends Actor with ActorLogging with KolibriSerializable {
+                            val maxBatchDuration: FiniteDuration,
+                            val maxNumRetries: Int) extends Actor with ActorLogging with KolibriSerializable {
 
   implicit val system: ActorSystem = context.system
   implicit val ec: ExecutionContextExecutor = system.dispatcher
 
   val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
-  // same aggregator also passed to batch processing. Within batches aggregates single elements
-  // here aggregates single aggregations (one result per batch)
-  var aggregator: Aggregator[ProcessingMessage[T], U] = aggregatorSupplier.apply()
+  // if set to true, job manager will expect batches to send back actual results, otherwise will not look at returned data in messages but only at success criteria
+  // e.g makes sense in case sending results back is not needed since each batch corresponds to an result by itself
+  var expectResultsFromBatchCalculations: Boolean = true
+
   // actor to which to send notification of completed processing
   var reportResultsTo: ActorRef = _
   // execution expectation
@@ -130,26 +135,26 @@ class JobManagerActor[T, U](val jobId: String,
   var batchesSentWaitingForACK: Set[Int] = Set.empty
   var failedACKReceiveBatchNumbers: Set[Int] = Set.empty
 
+  // the batches to be distributed to the workers
   var jobToProcess: IndexedGenerator[BatchType] = _
-  var distributionCompleted: Boolean = false
 
   // the batch distributor encapsulating the logic of when to release how many new batches for processing and
   // retrying. Its state has to be updated when result comes in or when a batch can be marked as failed
   private[this] var batchDistributor: Distributor[BatchType, U] = _
+  private[this] var executionConsumer: ExecutionConsumer[U] = _
 
   val workerServiceRouter: ActorRef = createWorkerRoutingServiceForJob
 
   var scheduleCancellables: Seq[Cancellable] = Seq.empty
-
-  // if set to true, job manager will expect batches to send back actual results, otherwise will not look at returned data in messages but only at success criteria
-  // e.g makes sense in case sending results back is not needed since each batch corresponds to an result by itself
-  var expectResultsFromBatchCalculations: Boolean = false
 
   // NOTE: do not require the routees to have any props arguments.
   // this can lead to failed serialization on routee creation
   // (even if its just a case class with primitives, maybe due to disabled
   // java serialization and respective msg not being of KolibriSerializable.
   // Not fully clear yet though
+  // TODO: router actor needs to be configurable, e.g round robin or load based or similar
+  // TODO: wed also need a distribution strategy then, e.g for load based makes sense to wait a few seconds after a batch
+  // is distributed to take the increase in load into account
   def createWorkerRoutingServiceForJob: ActorRef = {
     context.actorOf(
       ClusterRouterPool(
@@ -165,7 +170,7 @@ class JobManagerActor[T, U](val jobId: String,
       name = s"jobBatchRouter-$jobId")
   }
 
-  def updateExpectations(keys: Seq[Int]): Unit = {
+  def updateSingleBatchExpectations(keys: Seq[Int]): Unit = {
     val batchKeys: Seq[Int] = executionExpectationMap.keys.filter(x => keys.contains(x)).toSeq
     batchKeys.foreach(x => {
       val expectationOpt: Option[ExecutionExpectation] = executionExpectationMap.get(x)
@@ -183,6 +188,7 @@ class JobManagerActor[T, U](val jobId: String,
 
   def acceptResultMsg(msg: AggregationState[U]): Unit = {
     logger.debug(s"received aggregation state: $msg")
+    executionConsumer.applyFunc.apply(msg)
     batchDistributor.accept(msg)
     if (completed) {
       wrapUp
@@ -197,7 +203,6 @@ class JobManagerActor[T, U](val jobId: String,
     nextBatchesOrState match {
       case Left(state) =>
         log.debug(s"state received from distributor: $state")
-        if (state == DistributionStates.Completed) distributionCompleted = true
         ()
       case Right(batches) =>
         log.debug(s"batches received from distributor (size: ${batches.size}): ${batches.map(x => x.batchNr)}")
@@ -205,7 +210,7 @@ class JobManagerActor[T, U](val jobId: String,
     }
   }
 
-  def completed: Boolean = distributionCompleted
+  def completed: Boolean = batchDistributor.hasCompleted
 
   def resultSummary(result: ProcessingResult.Value): ResultSummary = {
     ResultSummary(
@@ -224,15 +229,10 @@ class JobManagerActor[T, U](val jobId: String,
       s"received results: ${batchDistributor.nrResultsAccepted}, " +
       s"failed results: ${batchDistributor.idsFailed.size}, " +
       s"in progress: ${batchDistributor.idsInProgress}")
-    if (expectResultsFromBatchCalculations) {
-      writer.write(aggregator.aggregation, StringTag(jobId))
-    }
+    executionConsumer.wrapUp
     // cancel set schedules
     scheduleCancellables.foreach(x => x.cancel())
-    // TODO: just cause some batch failed doesnt need to mean the whole thing failed
-    // TODO: must rather refer to overall expectation here
-    // TODO: define overall expectation here instead of per-batch expectation?
-    if (batchDistributor.idsFailed.isEmpty) {
+    if (executionConsumer.expectation.succeeded) {
       log.info(s"job with jobId '$jobId' finished successfully, sending response to supervisor")
       reportResultsTo ! FinishedJobEvent(jobId, resultSummary(ProcessingResult.SUCCESS))
       context.become(ignoringAll)
@@ -259,6 +259,19 @@ class JobManagerActor[T, U](val jobId: String,
       fulfillAnyForFail = failExpectations)
   }
 
+  def jobExpectation(numberBatches: Int): ExecutionExpectation = {
+    val failExpectations: Seq[Expectation[Any]] = Seq(TimeExpectation(maxProcessDuration))
+    BaseExecutionExpectation(
+      fulfillAllForSuccess = Seq(
+        ClassifyingCountExpectation(Map("finishResponse" -> {
+          case _: AggregationState[U] if expectResultsFromBatchCalculations => true
+          case _: AggregationState[Any] if !expectResultsFromBatchCalculations => true
+          case _ => false
+        }), Map("finishResponse" -> numberBatches))
+      ),
+      fulfillAnyForFail = failExpectations)
+  }
+
   def checkIfJobAckReceivedAndRemoveIfNot(batchNr: Int): Unit = {
     batchesSentWaitingForACK.find(nr => nr == batchNr).foreach(nr => {
       log.warning("batch still waiting for ACK by WorkManager, removing from processed")
@@ -280,6 +293,7 @@ class JobManagerActor[T, U](val jobId: String,
       val nextExpectation: ExecutionExpectation = expectationForNextBatch()
       nextExpectation.init
       executionExpectationMap(batch.batchNr) = nextExpectation
+
       workerServiceRouter ! batch
       // first place the batch in waiting for acknowledgement for processing by worker
       batchesSentWaitingForACK = batchesSentWaitingForACK + batch.batchNr
@@ -293,7 +307,8 @@ class JobManagerActor[T, U](val jobId: String,
     log.debug(s"job contains ${cmd.job.size} batches")
     reportResultsTo = sender()
     jobToProcess = cmd.job
-    batchDistributor = getDistributor(jobToProcess, expectResultsFromBatchCalculations)
+    executionConsumer = getExecutionConsumer(jobExpectation(cmd.job.size))
+    batchDistributor = getDistributor(jobToProcess, maxNumRetries)
     context.become(processingState)
     // if a maximal process duration is set, schedule message to self to
     // write result and send a fail note, then take PoisonPill
@@ -307,18 +322,34 @@ class JobManagerActor[T, U](val jobId: String,
     ()
   }
 
-  def getDistributor(dataGen: IndexedGenerator[BatchType], expectResultsFromBatchCalculations: Boolean): Distributor[BatchType, U] = {
+  /**
+    * Consumer of incoming results, taking care of updating expectations, aggregations and result writing
+    * on an overall job level
+    *
+    * @param executionExpectation
+    * @return
+    */
+  def getExecutionConsumer(executionExpectation: ExecutionExpectation): ExecutionConsumer[U] = {
+    BaseExecutionConsumer(
+      jobId = jobId,
+      expectation = executionExpectation,
+      aggregator = aggregatorSupplier.apply(),
+      writer = writer
+    )
+  }
+
+  /**
+    * Distributor distributing the single batches on nodes. Needs updates on batches considered to be failed
+    * (e.g due to failing ACK or by failing the single batch expectation,...). Allows retry on failed batches.
+    *
+    * @param dataGen
+    * @return
+    */
+  def getDistributor(dataGen: IndexedGenerator[BatchType], numRetries: Int): Distributor[BatchType, U] = {
     new RetryingDistributor[BatchType, U](
       maxParallel = runningTaskBaselineCount,
       generator = dataGen,
-      aggState => {
-        if (expectResultsFromBatchCalculations) {
-          aggregator.addAggregate(aggState.data)
-        }
-        executionExpectationMap.get(aggState.batchNr).foreach(x => x.accept(aggState))
-        updateExpectations(Seq(aggState.batchNr))
-      },
-      maxNrRetries = 2)
+      maxNrRetries = numRetries)
   }
 
   def startState: Receive = {
@@ -329,7 +360,8 @@ class JobManagerActor[T, U](val jobId: String,
       val numberBatches: Int = jobMsg.processElements.size
       jobToProcess = ByFunctionNrLimitedIndexedGenerator(numberBatches, batchNr => Some(JobBatchMsg(jobMsg.jobId, batchNr, testJobMsg)))
       log.debug(s"job contains ${jobToProcess.size} batches")
-      batchDistributor = getDistributor(jobToProcess, expectResultsFromBatchCalculations)
+      executionConsumer = getExecutionConsumer(jobExpectation(jobMsg.processElements.size))
+      batchDistributor = getDistributor(jobToProcess, maxNumRetries)
       context.become(processingState)
       scheduleCancellables = scheduleCancellables :+ context.system.scheduler.scheduleOnce(maxProcessDuration, self,
         WriteResultAndSendFailNoteAndTakePoisonPillCmd)
@@ -347,7 +379,8 @@ class JobManagerActor[T, U](val jobId: String,
       val jobMsg: SupervisorActor.ProcessActorRunnableJobCmd[RequestTemplateBuilderModifier, MetricRow, MetricRow, MetricAggregation[Tag]] = searchJobMsg.toRunnable
       val numberBatches: Int = jobMsg.processElements.size
       jobToProcess = ByFunctionNrLimitedIndexedGenerator(numberBatches, batchNr => Some(JobBatchMsg(jobMsg.jobId, batchNr, searchJobMsg)))
-      batchDistributor = getDistributor(jobToProcess, expectResultsFromBatchCalculations)
+      executionConsumer = getExecutionConsumer(jobExpectation(jobToProcess.size))
+      batchDistributor = getDistributor(jobToProcess, maxNumRetries)
       context.become(processingState)
       scheduleCancellables = scheduleCancellables :+ context.system.scheduler.scheduleOnce(maxProcessDuration, self,
         WriteResultAndSendFailNoteAndTakePoisonPillCmd)
@@ -372,14 +405,14 @@ class JobManagerActor[T, U](val jobId: String,
       sender() ! JobStatusInfo(jobId = jobId, resultSummary = resultSummary(RUNNING))
     case UpdateStateAndCheckForCompletion =>
       log.debug("received UpdateStateAndCheckForCompletion")
-      updateExpectations(executionExpectationMap.keys.toSeq)
+      updateSingleBatchExpectations(executionExpectationMap.keys.toSeq)
       if (completed) {
         log.debug("UpdateStateAndCheckForCompletion: completed")
         wrapUp
       }
     case DistributeBatches =>
       log.debug("received DistributeBatches")
-      updateExpectations(executionExpectationMap.keys.toSeq)
+      updateSingleBatchExpectations(executionExpectationMap.keys.toSeq)
       fillUpFreeSlots()
       if (completed) {
         log.debug("UpdateStateAndCheckForCompletion: completed")
@@ -400,10 +433,11 @@ class JobManagerActor[T, U](val jobId: String,
       batchesSentWaitingForACK = batchesSentWaitingForACK - e.batchNr
       log.debug("received aggregation (batch finished) - aggregation: {}, jobId: {}, batchNr: {} ", e.data, e.jobID, e.batchNr)
       acceptResultMsg(e)
-      if (batchDistributor.nrResultsAccepted % 10 == 0 || batchDistributor.nrResultsAccepted == jobToProcess.size) log.info(s"received nr of results: ${batchDistributor.nrResultsAccepted}")
+      if (batchDistributor.nrResultsAccepted % 10 == 0 || batchDistributor.nrResultsAccepted == jobToProcess.size) {
+        log.info(s"received nr of results: ${batchDistributor.nrResultsAccepted}")
+      }
     case WriteResultAndSendFailNoteAndTakePoisonPillCmd =>
       log.warning("received WriteResultAndSendFailNoteAndTakePoisonPillCmd")
-      writer.write(aggregator.aggregation, StringTag(jobId))
       reportResultsTo ! MaxTimeExceededEvent(jobId)
       context.become(ignoringAll)
       self ! PoisonPill
