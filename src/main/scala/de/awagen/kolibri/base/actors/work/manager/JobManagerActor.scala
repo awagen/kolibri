@@ -42,7 +42,7 @@ import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIn
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
 import de.awagen.kolibri.datatypes.stores.MetricRow
-import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}
+import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.values.AggregateValue
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 import org.slf4j.{Logger, LoggerFactory}
@@ -61,12 +61,21 @@ object JobManagerActor {
 
   def props[T, U](experimentId: String,
                   runningTaskBaselineCount: Int,
-                  aggregatorSupplier: () => Aggregator[ProcessingMessage[T], U],
+                  perBatchAggregatorSupplier: () => Aggregator[ProcessingMessage[T], U],
+                  perJobAggregatorSupplier: () => Aggregator[ProcessingMessage[T], U],
                   writer: Writer[U, Tag, _],
                   maxProcessDuration: FiniteDuration,
                   maxBatchDuration: FiniteDuration,
                   maxNumRetries: Int): Props =
-    Props(new JobManagerActor[T, U](experimentId, runningTaskBaselineCount, aggregatorSupplier, writer, maxProcessDuration, maxBatchDuration, maxNumRetries))
+    Props(new JobManagerActor[T, U](
+      experimentId,
+      runningTaskBaselineCount,
+      perBatchAggregatorSupplier,
+      perJobAggregatorSupplier,
+      writer,
+      maxProcessDuration,
+      maxBatchDuration,
+      maxNumRetries))
 
 
   // cmds telling JobManager to do sth
@@ -110,7 +119,8 @@ object JobManagerActor {
 
 class JobManagerActor[T, U](val jobId: String,
                             runningTaskBaselineCount: Int,
-                            val aggregatorSupplier: () => Aggregator[ProcessingMessage[T], U],
+                            val perBatchAggregatorSupplier: () => Aggregator[ProcessingMessage[T], U],
+                            val perJobAggregatorSupplier: () => Aggregator[ProcessingMessage[T], U],
                             val writer: Writer[U, Tag, _],
                             val maxProcessDuration: FiniteDuration,
                             val maxBatchDuration: FiniteDuration,
@@ -333,7 +343,7 @@ class JobManagerActor[T, U](val jobId: String,
     BaseExecutionConsumer(
       jobId = jobId,
       expectation = executionExpectation,
-      aggregator = aggregatorSupplier.apply(),
+      aggregator = perJobAggregatorSupplier.apply(),
       writer = writer
     )
   }

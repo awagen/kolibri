@@ -92,7 +92,8 @@ object TestJobDefinitions {
       transformerFlow = Flow.fromFunction[Int, ProcessingMessage[Double]](flowFunct),
       processingActorProps = None,
       perBatchExpectationGenerator = expectationGen,
-      perBatchAndOverallAggregatorSupplier = () => new RunningDoubleAvgPerTagAggregator(),
+      perBatchAggregatorSupplier = () => new RunningDoubleAvgPerTagAggregator(),
+      perJobAggregatorSupplier = () => new RunningDoubleAvgPerTagAggregator(),
       writer = (data: Map[Tag, AggregateValue[Double]], _: Tag) => {
         logger.info("writing result: {}", data)
         logger.info("result is '{}' on '{}' samples; writing result", data, data(StringTag("ALL")).count)

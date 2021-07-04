@@ -53,6 +53,7 @@ import de.awagen.kolibri.datatypes.stores.{MetricDocument, MetricRow}
 import de.awagen.kolibri.datatypes.tagging.TagType.AGGREGATION
 import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}
 import de.awagen.kolibri.datatypes.tagging.{TagType, Tags}
+import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.{Aggregator, TagKeyMetricAggregationPerClassAggregator}
 import de.awagen.kolibri.datatypes.values.{DistinctValues, MetricValue, RangeValues}
 
@@ -90,8 +91,14 @@ object SearchJobDefinitions {
   // in case option selected to send results back to JobManager, we need to use this aggregator within job manager also, otherwise
   // we just keep expectation and distributor without aggregating anything (also no writer in this case, but writer needs to be set for
   // single AggregatingActor
-  def batchSingleElementAndOverallAggregatorSupplier: () => Aggregator[ProcessingMessage[MetricRow], MetricAggregation[Tag]] = () => {
-    new TagKeyMetricAggregationPerClassAggregator(identity)
+  def singleBatchAggregatorSupplier: () => Aggregator[ProcessingMessage[MetricRow], MetricAggregation[Tag]] = () => {
+    new TagKeyMetricAggregationPerClassAggregator(identity, ignoreIdDiff = false)
+  }
+
+  def fullJobAggregatorSupplier: () => Aggregator[ProcessingMessage[MetricRow], MetricAggregation[Tag]] = () => {
+    new TagKeyMetricAggregationPerClassAggregator(new SerializableFunction1[Tag, Tag] {
+      override def apply(v1: Tag): Tag = StringTag("ALL")
+    }, ignoreIdDiff = true)
   }
 
   // provider of judgements of type Double
@@ -187,7 +194,7 @@ object SearchJobDefinitions {
           val originalTags: Set[Tag] = x.getTagsForType(TagType.AGGREGATION)
           result.addTags(TagType.AGGREGATION, originalTags)
           // TODO: temporal test tagging, remove and put at appropriate position
-          Future.successful(result.withTags(AGGREGATION, Set(StringTag("ALL"), StringTag(s"q=${x.data._2.parameters("q").head}"))))
+          Future.successful(result.withTags(AGGREGATION, Set(StringTag(s"q=${x.data._2.parameters("q").head}"))))
         case e@Right(_) =>
           judgementProviderFactory.getJudgements.future
             .map(y => {
@@ -199,7 +206,7 @@ object SearchJobDefinitions {
               logger.debug(s"calculated metrics: $metricRow")
               // TODO: we should place default tag, otherwise final aggregation will
               // not contain anything :)
-              Corn(metricRow).withTags(AGGREGATION, Set(StringTag("ALL"), StringTag(s"q=${x.data._2.parameters("q").head}")))
+              Corn(metricRow).withTags(AGGREGATION, Set(StringTag(s"q=${x.data._2.parameters("q").head}")))
             })
             .recover(throwable => {
               logger.warn(s"failed retrieving judgements: $throwable")
@@ -207,7 +214,7 @@ object SearchJobDefinitions {
               val result: ProcessingMessage[MetricRow] = Corn(metricRow)
               val originalTags: Set[Tag] = x.getTagsForType(TagType.AGGREGATION)
               result.addTags(TagType.AGGREGATION, originalTags)
-              result.withTags(AGGREGATION, Set(StringTag("ALL"), StringTag(s"q=${x.data._2.parameters("q").head}")))
+              result.withTags(AGGREGATION, Set(StringTag(s"q=${x.data._2.parameters("q").head}")))
             })
       }
     })
@@ -250,7 +257,8 @@ object SearchJobDefinitions {
         metricsCalculation = metricsCalculation),
       processingActorProps = None, // need to change this
       perBatchExpectationGenerator = expectationGen,
-      perBatchAndOverallAggregatorSupplier = batchSingleElementAndOverallAggregatorSupplier,
+      perBatchAggregatorSupplier = singleBatchAggregatorSupplier,
+      perJobAggregatorSupplier = fullJobAggregatorSupplier,
       writer = writer,
       returnType = ActorRunnableSinkType.REPORT_TO_ACTOR_SINK,
       allowedTimePerElementInMillis = 10000,

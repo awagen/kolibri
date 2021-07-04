@@ -50,7 +50,8 @@ object JobMsgFactory {
                                                  transformerFlow: Flow[V, ProcessingMessage[V1], NotUsed],
                                                  processingActorProps: Option[Props],
                                                  perBatchExpectationGenerator: Int => ExecutionExpectation,
-                                                 perBatchAndOverallAggregatorSupplier: () => Aggregator[ProcessingMessage[V2], W],
+                                                 perBatchAggregatorSupplier: () => Aggregator[ProcessingMessage[V2], W],
+                                                 perJobAggregatorSupplier: () => Aggregator[ProcessingMessage[V2], W],
                                                  writer: Writer[W, Tag, Any],
                                                  returnType: ActorRunnableSinkType.Value,
                                                  allowedTimePerElementInMillis: Long,
@@ -66,7 +67,7 @@ object JobMsgFactory {
         transformer = transformerFlow,
         processingActorProps = processingActorProps,
         expectationGenerator = perBatchExpectationGenerator,
-        aggregationSupplier = perBatchAndOverallAggregatorSupplier,
+        aggregationSupplier = perBatchAggregatorSupplier,
         sinkType = returnType,
         allowedTimePerElementInMillis millis,
         allowedTimePerBatchInSeconds seconds)
@@ -75,7 +76,8 @@ object JobMsgFactory {
     new ProcessActorRunnableJobCmd[V, V1, V2, W](
       jobId = jobId,
       processElements = actorRunnableBatches,
-      aggregatorSupplier = perBatchAndOverallAggregatorSupplier,
+      perBatchAggregatorSupplier = perBatchAggregatorSupplier,
+      perJobAggregatorSupplier = perJobAggregatorSupplier,
       writer = writer,
       allowedTimePerBatch = FiniteDuration(allowedTimePerBatchInSeconds, SECONDS),
       allowedTimeForJob = FiniteDuration(allowedTimeForJobInSeconds, SECONDS),
@@ -88,7 +90,8 @@ object JobMsgFactory {
                                           dataBatchGenerator: T => IndexedGenerator[Batch[TypeTaggedMap with TaggedWithType[Tag]]],
                                           resultDataKey: ClassTyped[ProcessingMessage[Any]],
                                           tasks: Seq[TaskDefinitions.Val[Any]],
-                                          aggregatorSupplier: () => Aggregator[ProcessingMessage[Any], W],
+                                          perBatchAggregatorSupplier: () => Aggregator[ProcessingMessage[Any], W],
+                                          perJobAggregatorSupplier: () => Aggregator[ProcessingMessage[Any], W],
                                           writer: Writer[W, Tag, Any],
                                           allowedTimePerBatchInSeconds: Long,
                                           allowedTimeForJobInSeconds: Long): ProcessActorRunnableTaskJobCmd[W] = {
@@ -101,7 +104,8 @@ object JobMsgFactory {
       dataIterable = batches,
       tasks = tasks.map(taskMapFunc),
       resultKey = resultDataKey,
-      aggregatorSupplier = aggregatorSupplier,
+      perBatchAggregatorSupplier = perBatchAggregatorSupplier,
+      perJobAggregatorSupplier = perJobAggregatorSupplier,
       writer = writer,
       allowedTimePerBatch = FiniteDuration(allowedTimePerBatchInSeconds, SECONDS),
       allowedTimeForJob = FiniteDuration(allowedTimeForJobInSeconds, SECONDS)

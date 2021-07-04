@@ -140,6 +140,17 @@ object TestMessages {
   )
 
 
+  val aggregatorSupplier = new SerializableSupplier[Aggregator[ProcessingMessage[Int], Map[Tag, Double]]] {
+    override def apply(): Aggregator[ProcessingMessage[Int], Map[Tag, Double]] = new Aggregator[ProcessingMessage[Int], Map[Tag, Double]] {
+      override def add(sample: ProcessingMessage[Int]): Unit = ()
+
+      override def aggregation: Map[Tag, Double] = Map.empty[Tag, Double]
+
+      override def addAggregate(other: Map[Tag, Double]): Unit = ()
+
+    }
+  }
+
   def generateProcessActorRunnableJobCmd(jobId: String): ProcessActorRunnableJobCmd[_, _, _, _] = {
     val actorRunnableGenerator: IndexedGenerator[ActorRunnable[TaggedInt, Int, Int, Map[Tag, Double]]] = ByFunctionNrLimitedIndexedGenerator(
       nrOfElements = 4,
@@ -148,16 +159,8 @@ object TestMessages {
     ProcessActorRunnableJobCmd[TaggedInt, Corn[Int], Int, Map[Tag, Double]](
       jobId = jobId,
       processElements = actorRunnableGenerator.asInstanceOf[IndexedGenerator[ActorRunnable[TaggedInt, Corn[Int], Int, Map[Tag, Double]]]],
-      aggregatorSupplier = new SerializableSupplier[Aggregator[ProcessingMessage[Int], Map[Tag, Double]]] {
-        override def apply(): Aggregator[ProcessingMessage[Int], Map[Tag, Double]] = new Aggregator[ProcessingMessage[Int], Map[Tag, Double]] {
-          override def add(sample: ProcessingMessage[Int]): Unit = ()
-
-          override def aggregation: Map[Tag, Double] = Map.empty[Tag, Double]
-
-          override def addAggregate(other: Map[Tag, Double]): Unit = ()
-
-        }
-      },
+      perBatchAggregatorSupplier = aggregatorSupplier,
+      perJobAggregatorSupplier = aggregatorSupplier,
       writer = (_: Map[Tag, Double], _: Tag) => Right(()),
       allowedTimePerBatch = 10 seconds,
       allowedTimeForJob = 2 minutes,
@@ -181,6 +184,16 @@ object TestMessages {
     ByFunctionNrLimitedIndexedGenerator(elements.size, x => Some(TaggedTypeTaggedMap(TypedMapStore(mutable.Map(startDataKey -> elements(x))))))
   }
 
+  val aggregatorSupplier1 = new SerializableSupplier[Aggregator[ProcessingMessage[Any], Any]] {
+    override def apply(): Aggregator[ProcessingMessage[Any], Any] = new Aggregator[ProcessingMessage[Any], Any] {
+      override def add(sample: ProcessingMessage[Any]): Unit = ()
+
+      override def aggregation: Any = ()
+
+      override def addAggregate(other: Any): Unit = ()
+    }
+  }
+
   def generateProcessActorRunnableTaskJobCmd(jobId: String): ProcessActorRunnableTaskJobCmd[Any] = {
     val baseElements = Seq(Seq("1", "2"), Seq("3", "4"), Seq("5", "6"))
     val batchTypeTaggedMapGenerator: IndexedGenerator[TaggedTypeTaggedMapBatch] = ByFunctionNrLimitedIndexedGenerator(
@@ -193,15 +206,8 @@ object TestMessages {
       batchTypeTaggedMapGenerator,
       tasks,
       reversedIdKeyPM,
-      aggregatorSupplier = new SerializableSupplier[Aggregator[ProcessingMessage[Any], Any]] {
-        override def apply(): Aggregator[ProcessingMessage[Any], Any] = new Aggregator[ProcessingMessage[Any], Any] {
-          override def add(sample: ProcessingMessage[Any]): Unit = ()
-
-          override def aggregation: Any = ()
-
-          override def addAggregate(other: Any): Unit = ()
-        }
-      },
+      perBatchAggregatorSupplier = aggregatorSupplier1,
+      perJobAggregatorSupplier = aggregatorSupplier1,
       writer = new Writer[Any, Tag, Any] {
         override def write(data: Any, targetIdentifier: Tag): Either[Exception, Any] = Right(())
       },

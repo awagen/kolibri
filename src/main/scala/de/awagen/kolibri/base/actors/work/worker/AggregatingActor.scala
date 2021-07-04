@@ -84,11 +84,12 @@ class AggregatingActor[U, V](val aggregatorSupplier: () => Aggregator[Processing
         owner ! AggregationState(aggregator.aggregation, jobPartIdentifier.jobId, jobPartIdentifier.batchNr, expectation.deepCopy)
       }
       else {
+        // TODO: use alternative msg here, setting data to null is bad idea
         owner ! AggregationState(null, jobPartIdentifier.jobId, jobPartIdentifier.batchNr, expectation.deepCopy)
-        writerOpt.foreach(writer => {
-          writer.write(aggregator.aggregation, StringTag(jobPartIdentifier.jobId))
-        })
       }
+      writerOpt.foreach(writer => {
+        writer.write(aggregator.aggregation, StringTag(jobPartIdentifier.jobId))
+      })
       if (adjustReceive) {
         context.become(closedState)
       }

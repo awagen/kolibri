@@ -131,6 +131,7 @@ class WorkManagerActor() extends Actor with ActorLogging with KolibriSerializabl
       workerKeyToActiveWorker.put(workerKey(TASK_EXECUTION, e.partIdentifier.jobId, e.partIdentifier.batchNr), taskExecutionWorker)
       taskExecutionWorker.tell(ProcessTaskExecution(e.taskExecution, e.partIdentifier), sender())
     case e: JobBatchMsg[TestPiCalculation] if e.msg.isInstanceOf[TestPiCalculation] =>
+      log.info("received TestPiCalculation msg")
       if (receivedBatchCount % 10 == 0) {
         log.info(s"received pi calc batch messages: $receivedBatchCount")
       }
@@ -143,11 +144,13 @@ class WorkManagerActor() extends Actor with ActorLogging with KolibriSerializabl
         .map(x => distributeRunnable(x, None))
         .getOrElse(log.warning(s"job for message '$e' does not contain batch '${e.batchNr}', not executing anything for batch"))
     case e: JobBatchMsg[SearchEvaluation] if e.msg.isInstanceOf[SearchEvaluation] =>
+      log.info("received SearchEvaluation msg")
       implicit val ec: ExecutionContext = context.system.dispatcher
       implicit val timeout: Timeout = e.msg.timeout
       implicit val actorSystem: ActorSystem = context.system
       val runnableMsg: SupervisorActor.ProcessActorRunnableJobCmd[RequestTemplateBuilderModifier, MetricRow, MetricRow, MetricAggregation[Tag]] = e.msg.toRunnable
-      val writerOpt: Option[Writers.Writer[MetricAggregation[Tag], Tag, _]] = if (runnableMsg.expectResultsFromBatchCalculations)  None else Some(runnableMsg.writer)
+      // TODO: adjust passed flags to regulate whether nodes write single batch results
+      val writerOpt: Option[Writers.Writer[MetricAggregation[Tag], Tag, _]] = Some(runnableMsg.writer)
       if (runnableGeneratorForJob.isEmpty) {
         runnableGeneratorForJob = Some(e.msg.toRunnable.processElements)
       }
@@ -156,6 +159,7 @@ class WorkManagerActor() extends Actor with ActorLogging with KolibriSerializabl
         .map(x => distributeRunnable(x, writerOpt))
         .getOrElse(log.warning(s"job for message '$e' does not contain batch '${e.batchNr}', not executing anything for batch"))
     case runnable: ActorRunnable[_, _, _, _] =>
+      log.info("received generic runnable msg")
       distributeRunnable(runnable, None)
     case Terminated(actorRef: ActorRef) =>
       log.debug(s"received termination of actor: ${actorRef.path.toString}")
