@@ -91,20 +91,32 @@ object Aggregators {
     mergeFunc = (x, y) => x.add(y)) {
   }
 
-  class TagKeyMetricDocumentPerClassAggregator(keyMapFunction: SerializableFunction1[Tag, Tag]) extends BasePerClassAggregator[Tag, TaggedWithType[Tag] with DataStore[MetricRow], MetricDocument[Tag]](
+  /**
+    * In case of a mapping function that alters original tags, ignoreIdDiff would need to be true to avoid conflicts.
+    * Setting this attribute to true enables aggregating data for the original tag to data for the mapped tag.
+    * @param keyMapFunction
+    * @param ignoreIdDiff
+    */
+  class TagKeyMetricDocumentPerClassAggregator(keyMapFunction: SerializableFunction1[Tag, Tag], ignoreIdDiff: Boolean = false) extends BasePerClassAggregator[Tag, TaggedWithType[Tag] with DataStore[MetricRow], MetricDocument[Tag]](
     aggFunc = (x, y) => {
       y.add(x.data)
       y
     },
     startValueForKey = x => MetricDocument.empty[Tag](x),
     mergeFunc = (x, y) => {
-      x.add(y)
+      x.add(y, ignoreIdDiff = ignoreIdDiff)
       x
     },
     keyMapFunction) {
   }
 
-  class TagKeyMetricAggregationPerClassAggregator(keyMapFunction: SerializableFunction1[Tag, Tag]) extends Aggregator[TaggedWithType[Tag] with DataStore[MetricRow], MetricAggregation[Tag]] {
+  /**
+    * In case of a mapping function that alters original tags, ignoreIdDiff would need to be true to avoid conflicts.
+    * Setting this attribute to true enables aggregating data for the original tag to data for the mapped tag.
+    * @param keyMapFunction
+    * @param ignoreIdDiff
+    */
+  class TagKeyMetricAggregationPerClassAggregator(keyMapFunction: SerializableFunction1[Tag, Tag], ignoreIdDiff: Boolean = false) extends Aggregator[TaggedWithType[Tag] with DataStore[MetricRow], MetricAggregation[Tag]] {
     val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
     val aggregationState: MetricAggregation[Tag] = MetricAggregation.empty[Tag](keyMapFunction)
@@ -120,7 +132,7 @@ object Aggregators {
 
     override def addAggregate(aggregatedValue: MetricAggregation[Tag]): Unit = {
       logger.debug(s"adding aggregation to aggregation: $aggregatedValue")
-      aggregationState.add(aggregatedValue)
+      aggregationState.add(aggregatedValue, ignoreIdDiff)
       logger.debug(s"aggregation state is now: $aggregationState")
     }
   }

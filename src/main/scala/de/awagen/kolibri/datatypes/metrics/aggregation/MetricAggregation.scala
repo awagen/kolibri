@@ -50,13 +50,16 @@ case class MetricAggregation[A <: AnyRef](aggregationStateMap: mutable.Map[A, Me
     )
   }
 
-  def add(aggregation: MetricAggregation[A]): Unit = {
-    val mappedKeys = aggregation.aggregationStateMap.keySet.map(key => keyMapFunction.apply(key))
-    mappedKeys.foreach {
-      case e if aggregationStateMap.keySet.contains(e) =>
-        aggregationStateMap(e).add(aggregation.aggregationStateMap(e))
+  def add(aggregation: MetricAggregation[A], ignoreIdDiff: Boolean = false): Unit = {
+    val originalKeys = aggregation.aggregationStateMap.keySet.toSeq
+    val mappedKeys = aggregation.aggregationStateMap.keySet.map(key => keyMapFunction.apply(key)).toSeq
+    originalKeys.indices.foreach {
+      case e if aggregationStateMap.keySet.contains(mappedKeys(e)) =>
+        aggregationStateMap(mappedKeys(e)).add(aggregation.aggregationStateMap(originalKeys(e)), ignoreIdDiff = ignoreIdDiff)
       case e =>
-        aggregationStateMap(e) = aggregation.aggregationStateMap(e)
+        val newDoc = MetricDocument.empty[A](mappedKeys(e))
+        newDoc.add(aggregation.aggregationStateMap(originalKeys(e)), ignoreIdDiff = ignoreIdDiff)
+        aggregationStateMap(mappedKeys(e)) = newDoc
     }
   }
 
