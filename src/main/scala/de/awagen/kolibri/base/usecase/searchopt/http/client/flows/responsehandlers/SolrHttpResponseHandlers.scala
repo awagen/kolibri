@@ -32,12 +32,11 @@ object SolrHttpResponseHandlers {
   val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
   def httpToProductIdSeqFuture(validationFunc: JsValue => Boolean)(implicit actorSystem: ActorSystem, mat: Materializer,
-                               ec: ExecutionContext): HttpResponse => Future[Either[Throwable, Seq[String]]] = {
+                                                                   ec: ExecutionContext): HttpResponse => Future[Either[Throwable, Seq[String]]] = {
     x =>
       logger.debug(s"received http response entity: ${x.entity}")
       HttpResponseHandlers.doJSValueParse[Seq[String]](
         response = x,
-//        isValidFunc = JsValueValidation.validateStatusCode,
         isValidFunc = validationFunc,
         parseFunc = SolrResponseParseUtils.retrieveProductIdsInOrderFromFullResponse)
   }

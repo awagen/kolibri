@@ -123,16 +123,16 @@ object RequestProcessingFlows {
       throughputActor.foreach(x => x ! AddForStage("fromSource"))
       // tag with the varied parameters to allow grouping of requests (e.g for aggregation of metrics and such)
       // exclude query parameter
-      try {
-        val filteredParams: Map[String, Seq[String]] = x.data.parameters.filter(y => y._1 != queryParam)
-        val tag = ParameterMultiValueTag(filteredParams).toMultiTag.add(StringTag(s"groupId=$groupId"))
-        x.addTag(AGGREGATION, tag)
-        logger.debug(s"tagged entity: $x")
-        logger.debug(s"request: ${x.data.getRequest.toString()}")
-      }
-      catch {
-        case e: Exception => logger.warn(s"could not add parameters tag, ignoring: $e")
-      }
+//      try {
+//        val filteredParams: Map[String, Seq[String]] = x.data.parameters.filter(y => y._1 != queryParam)
+//        val tag = ParameterMultiValueTag(filteredParams).toMultiTag.add(StringTag(s"groupId=$groupId"))
+//        x.addTag(AGGREGATION, tag)
+//        logger.debug(s"tagged entity: $x")
+//        logger.debug(s"request: ${x.data.getRequest.toString()}")
+//      }
+//      catch {
+//        case e: Exception => logger.warn(s"could not add parameters tag, ignoring: $e")
+//      }
       x
     }).log("after fromSource throughput meter"))
     val balance: UniformFanOutShape[ProcessingMessage[RequestTemplate], ProcessingMessage[RequestTemplate]] = b
@@ -144,10 +144,12 @@ object RequestProcessingFlows {
           y => (y.data.getRequest, y)
         ).mapAsyncUnordered[(Either[Throwable, T], ProcessingMessage[RequestTemplate])](config.requestParallelism)(
           y => {
-            val e: Future[(Either[Throwable, T], ProcessingMessage[RequestTemplate])] =
+            val e: Future[(Either[Throwable, T], ProcessingMessage[RequestTemplate])] = {
+              // TODO: get rid of single result, we wanna use above balance instead
               Http().singleRequest(y._1.withUri(Uri(s"http://${x.host}:${x.port}${y._1.uri.toString()}")))
               .flatMap { response => parsingFunc.apply(response)}
               .map(v => (v, y._2))
+            }
             e
           }
         )

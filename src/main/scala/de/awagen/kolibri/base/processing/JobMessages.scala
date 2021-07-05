@@ -69,11 +69,11 @@ object JobMessagesImplicits {
   implicit class SearchEvaluationToRunnable(eval: SearchEvaluation) {
 
     def toRunnable(implicit as: ActorSystem, ec: ExecutionContext, timeout: Timeout): SupervisorActor.ProcessActorRunnableJobCmd[RequestTemplateBuilderModifier, MetricRow, MetricRow, MetricAggregation[Tag]] = {
-      SearchJobDefinitions.processActorRunnableJobCmd
+      // TODO: this is just temporary stub picking predefined definition. Change to take the actual definition into account and create the actual ActorRunnableJobCmd
+      // some fixed parameters (pick those from SearchEvaluation object)
+      val fixedParams: Map[String, Seq[String]] = Map("k1" -> Seq("v1", "v2"), "k2" -> Seq("v3"))
+      SearchJobDefinitions.processActorRunnableJobCmd(fixedParams)
     }
   }
-
-  //  val piCalc: TestPiCalculation = TestPiCalculation("job1", 3, 3, "")
-  //  piCalc.toRunnable
 
 }
