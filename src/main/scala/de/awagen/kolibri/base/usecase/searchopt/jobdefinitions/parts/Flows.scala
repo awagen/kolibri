@@ -142,22 +142,23 @@ object Flows {
 
   /**
     * Full flow definition from RequestTemplateBuilderModifier to ProcessingMessage[MetricRow]
-    * @param throughputActor: optional ActorRef to receive throughput information
-    * @param connections: connections to be utilized for the requests. Requests will be balanced across all given connections
-    * @param contextPath: context path to be used for requests
-    * @param fixedParams: fixed parameters to use for every request
-    * @param queryParam: the parameter name of the query parameter
-    * @param groupId: group id, usually the same as the jobId
-    * @param requestTagger: the tagger to tag ProcessingMessage[RequestTemplate]
-    * @param responseParsingFunc: the parsing function to map HttpResponse to Future of either Throwable (in case of error)
-    * or Seq[String] giving the productIds in order (in case of successful execution)
-    * @param judgementProviderFactory: the factory providing judgement provider, which is used to retrieve judgements for
-    * the productIds
-    * @param metricsCalculation: definition of metrics to calculate and how to handle judgements (validations of judgements and
-    * handling of missing values)
-    * @param as: implicit ActorSystem
-    * @param ec: implicit ExecutionContext
-    * @param timeout: implicit timeout for the requests
+    *
+    * @param throughputActor          : optional ActorRef to receive throughput information
+    * @param connections              : connections to be utilized for the requests. Requests will be balanced across all given connections
+    * @param contextPath              : context path to be used for requests
+    * @param fixedParams              : fixed parameters to use for every request
+    * @param queryParam               : the parameter name of the query parameter
+    * @param groupId                  : group id, usually the same as the jobId
+    * @param requestTagger            : the tagger to tag ProcessingMessage[RequestTemplate]
+    * @param responseParsingFunc      : the parsing function to map HttpResponse to Future of either Throwable (in case of error)
+    *                                 or Seq[String] giving the productIds in order (in case of successful execution)
+    * @param judgementProviderFactory : the factory providing judgement provider, which is used to retrieve judgements for
+    *                                 the productIds
+    * @param metricsCalculation       : definition of metrics to calculate and how to handle judgements (validations of judgements and
+    *                                 handling of missing values)
+    * @param as                       : implicit ActorSystem
+    * @param ec                       : implicit ExecutionContext
+    * @param timeout                  : implicit timeout for the requests
     * @return
     */
   def fullProcessingFlow(throughputActor: Option[ActorRef],
@@ -188,22 +189,16 @@ object Flows {
           val originalTags: Set[Tag] = x.getTagsForType(TagType.AGGREGATION)
           result.addTags(TagType.AGGREGATION, originalTags)
           Future.successful(result)
-//          // TODO: temporal test tagging, remove and put at appropriate position
-//          Future.successful(result.withTags(AGGREGATION, Set(StringTag(s"q=${x.data._2.parameters("q").head}"))))
         case e@Right(_) =>
           judgementProviderFactory.getJudgements.future
             .map(y => {
               val judgements: Seq[Option[Double]] = y.retrieveJudgements(x.data._2.parameters("q").head, e.value)
               logger.debug(s"retrieved judgements: $judgements")
-              // TODO: need to set the parameters of the request here, otherwise its just one overall aggregated value per tag,
-              // irrespective of distinct tried parameter settings
+              // TODO: pass the list of parameters to filter out instead of filtering q-param out
               val metricRow: MetricRow = metricsCalculation.calculateAll(immutable.Map(x.data._2.parameters.toSeq.filter(x => x._1 != "q"): _*), judgements)
               logger.debug(s"calculated metrics: $metricRow")
               val originalTags: Set[Tag] = x.getTagsForType(TagType.AGGREGATION)
               Corn(metricRow).withTags(AGGREGATION, originalTags)
-//                // TODO: we should place default tag, otherwise final aggregation will
-//              // not contain anything :)
-//              Corn(metricRow).withTags(AGGREGATION, Set(StringTag(s"q=${x.data._2.parameters("q").head}")))
             })
             .recover(throwable => {
               logger.warn(s"failed retrieving judgements: $throwable")
@@ -211,8 +206,6 @@ object Flows {
               val result: ProcessingMessage[MetricRow] = Corn(metricRow)
               val originalTags: Set[Tag] = x.getTagsForType(TagType.AGGREGATION)
               result.withTags(TagType.AGGREGATION, originalTags)
-//              result.addTags(TagType.AGGREGATION, originalTags)
-//              result.withTags(AGGREGATION, Set(StringTag(s"q=${x.data._2.parameters("q").head}")))
             })
       }
     })

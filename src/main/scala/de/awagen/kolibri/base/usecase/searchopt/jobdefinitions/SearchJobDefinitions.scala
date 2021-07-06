@@ -26,7 +26,7 @@ import de.awagen.kolibri.base.http.client.request.RequestTemplateBuilder
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnableSinkType
 import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.{RequestParameterModifier, RequestTemplateBuilderModifier}
 import de.awagen.kolibri.base.processing.modifiers.{Modifier, RequestTemplateBuilderModifiers}
-import de.awagen.kolibri.base.usecase.searchopt.http.client.flows.responsehandlers.{JsValueValidation, SolrHttpResponseHandlers}
+import de.awagen.kolibri.base.usecase.searchopt.http.client.flows.responsehandlers.SolrHttpResponseHandlers
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.Aggregators.{fullJobToSingleTagAggregatorSupplier, singleBatchAggregatorSupplier}
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.BatchGenerators.batchGenerator
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.Expectations.expectationPerBatchSupplier
@@ -76,8 +76,6 @@ object SearchJobDefinitions {
   )
 
   // define the message to supervisor which will generate ProcessJobCmd
-  // TODO: we can only initialize this within some actor with a given actorcontext, so if we define this within routes
-  // the respective actor wont be there yet to provide context, thus wrap this here to be able to create route without
   def processActorRunnableJobCmd(fixedParams: Map[String, Seq[String]])(implicit as: ActorSystem, ec: ExecutionContext, timeout: Timeout): SupervisorActor.ProcessActorRunnableJobCmd[RequestTemplateBuilderModifier, MetricRow, MetricRow, MetricAggregation[Tag]] =
     JobMsgFactory.createActorRunnableJobCmd[Seq[IndexedGenerator[Modifier[RequestTemplateBuilder]]], RequestTemplateBuilderModifier, MetricRow, MetricRow, MetricAggregation[Tag]](
       jobId = "testJobId",

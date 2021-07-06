@@ -29,19 +29,14 @@ import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{Corn, Proce
 import de.awagen.kolibri.base.config.AppConfig.config
 import de.awagen.kolibri.base.domain.Connection
 import de.awagen.kolibri.base.http.client.request.RequestTemplate
-import de.awagen.kolibri.base.processing.execution.task.Task
-import de.awagen.kolibri.base.usecase.searchopt.metrics.MetricsCalculation
-import de.awagen.kolibri.base.usecase.searchopt.processing.plan.PlanProvider
-import de.awagen.kolibri.base.usecase.searchopt.provider.JudgementProviderFactory
+import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.Flows.connectionFunc
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
-import de.awagen.kolibri.datatypes.tagging.TagImplicits._
 import de.awagen.kolibri.datatypes.tagging.TagType
 import de.awagen.kolibri.datatypes.tagging.TagType.AGGREGATION
-import de.awagen.kolibri.datatypes.tagging.Tags.{ParameterMultiValueTag, StringTag}
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
 object RequestProcessingFlows {
 
@@ -85,12 +80,78 @@ object RequestProcessingFlows {
           import GraphDSL.Implicits._
           // creating the elements that will be part of the sink
           val source: SourceShape[ProcessingMessage[RequestTemplate]] = b.add(Source.fromIterator[ProcessingMessage[RequestTemplate]](() => requestTemplateGenerator.iterator))
-          val flow: FlowShape[ProcessingMessage[RequestTemplate], ProcessingMessage[(Either[Throwable, T], RequestTemplate)]] = b.add(requestAndParsingFlow[T](throughputActor, queryParam, groupId, connections, connectionToFlowFunc, parsingFunc))
+          val flow: FlowShape[ProcessingMessage[RequestTemplate], ProcessingMessage[(Either[Throwable, T], RequestTemplate)]] = b.add(
+            requestAndParsingFlow[T](throughputActor, queryParam, groupId, connections, connectionToFlowFunc, parsingFunc)
+          )
           // creating the graph
           source ~> flow ~> sinkInst
           ClosedShape
     })
   }
+
+  /**
+    * Creates request execution and parsing flow based on single requests, just picking the protocol, host, port details
+    * from the passed connection
+    * @param connection: Connection object providing connection details to use
+    * @param parsingFunc: Parsing function applied to the retrieved response to yield result
+    * @param as
+    * @param ec
+    * @tparam T
+    * @return
+    */
+  @deprecated
+  def singleRequestFlow[T](connection: Connection, parsingFunc: HttpResponse => Future[Either[Throwable, T]])(implicit as: ActorSystem,
+                                                                                                              ec: ExecutionContext): Flow[ProcessingMessage[RequestTemplate], ProcessingMessage[(Either[Throwable, T], RequestTemplate)], NotUsed] = {
+    val flowResult: Flow[ProcessingMessage[RequestTemplate], (Either[Throwable, T], ProcessingMessage[RequestTemplate]), NotUsed] =
+      Flow.fromFunction[ProcessingMessage[RequestTemplate], (HttpRequest, ProcessingMessage[RequestTemplate])](
+        y => (y.data.getRequest, y)
+      ).mapAsyncUnordered[(Either[Throwable, T], ProcessingMessage[RequestTemplate])](config.requestParallelism)(
+        y => {
+          val e: Future[(Either[Throwable, T], ProcessingMessage[RequestTemplate])] = {
+            val protocol: String = if (connection.useHttps) "https" else "http"
+            Http().singleRequest(y._1.withUri(Uri(s"$protocol://${connection.host}:${connection.port}${y._1.uri.toString()}")))
+              .flatMap { response => parsingFunc.apply(response) }
+              .map(v => (v, y._2))
+          }
+          e
+        }
+      )
+    flowResult.via(Flow.fromFunction(y => {
+      // map to processing message of tuple
+      Corn((y._1, y._2.data)).withTags(TagType.AGGREGATION, y._2.getTagsForType(AGGREGATION))
+    }))
+  }
+
+  /**
+    * Flow based requesting based on connection pool for the given connection
+    * @param connection: Connection providing details for the connection pool
+    * @param parsingFunc: Parse function applied to the response to yield the result
+    * @param as: implicit ActorSystem
+    * @param ec: implicit ExecutionContext
+    * @tparam T: type of the parsed result
+    * @return
+    */
+  def connectionRequestFlow[T](connection: Connection, parsingFunc: HttpResponse => Future[Either[Throwable, T]])(implicit as: ActorSystem,
+                                                                                                                  ec: ExecutionContext): Flow[ProcessingMessage[RequestTemplate], ProcessingMessage[(Either[Throwable, T], RequestTemplate)], NotUsed] = {
+    val throughConnectionFlow: Flow[(HttpRequest, ProcessingMessage[RequestTemplate]), (Try[HttpResponse], ProcessingMessage[RequestTemplate]), _] =
+      connectionFunc.apply(connection)
+    val flow =
+      Flow.fromFunction[ProcessingMessage[RequestTemplate], (HttpRequest, ProcessingMessage[RequestTemplate])](
+        y => (y.data.getRequest, y)
+      )
+        .via(throughConnectionFlow)
+        .mapAsyncUnordered[(Either[Throwable, T], ProcessingMessage[RequestTemplate])](config.requestParallelism) {
+          case y@(Success(e), _) =>
+            parsingFunc.apply(e).map(v => (v, y._2))
+          case y@(Failure(e), _) =>
+            Future.successful(Left(e)).map(v => (v, y._2))
+        }
+    flow.via(Flow.fromFunction(y => {
+      // map to processing message of tuple
+      Corn((y._1, y._2.data)).withTags(TagType.AGGREGATION, y._2.getTagsForType(AGGREGATION))
+    }))
+  }
+
 
   /**
     * Return Graph[FlowShape] with flow of processing single ProcessingMessage[RequestTemplate] elements
@@ -121,43 +182,13 @@ object RequestProcessingFlows {
     // now define the single elements
     val initThroughputFlow = b.add(Flow.fromFunction[ProcessingMessage[RequestTemplate], ProcessingMessage[RequestTemplate]](x => {
       throughputActor.foreach(x => x ! AddForStage("fromSource"))
-      // tag with the varied parameters to allow grouping of requests (e.g for aggregation of metrics and such)
-      // exclude query parameter
-//      try {
-//        val filteredParams: Map[String, Seq[String]] = x.data.parameters.filter(y => y._1 != queryParam)
-//        val tag = ParameterMultiValueTag(filteredParams).toMultiTag.add(StringTag(s"groupId=$groupId"))
-//        x.addTag(AGGREGATION, tag)
-//        logger.debug(s"tagged entity: $x")
-//        logger.debug(s"request: ${x.data.getRequest.toString()}")
-//      }
-//      catch {
-//        case e: Exception => logger.warn(s"could not add parameters tag, ignoring: $e")
-//      }
       x
     }).log("after fromSource throughput meter"))
     val balance: UniformFanOutShape[ProcessingMessage[RequestTemplate], ProcessingMessage[RequestTemplate]] = b
       .add(Balance.apply[ProcessingMessage[RequestTemplate]](connections.size, waitForAllDownstreams = false))
+
     val connectionFlows: Seq[Flow[ProcessingMessage[RequestTemplate], ProcessingMessage[(Either[Throwable, T], RequestTemplate)], NotUsed]] = connections
-      .map(x => {
-        val flowResult: Flow[ProcessingMessage[RequestTemplate], (Either[Throwable, T], ProcessingMessage[RequestTemplate]), NotUsed] =
-        Flow.fromFunction[ProcessingMessage[RequestTemplate], (HttpRequest, ProcessingMessage[RequestTemplate])](
-          y => (y.data.getRequest, y)
-        ).mapAsyncUnordered[(Either[Throwable, T], ProcessingMessage[RequestTemplate])](config.requestParallelism)(
-          y => {
-            val e: Future[(Either[Throwable, T], ProcessingMessage[RequestTemplate])] = {
-              // TODO: get rid of single result, we wanna use above balance instead
-              Http().singleRequest(y._1.withUri(Uri(s"http://${x.host}:${x.port}${y._1.uri.toString()}")))
-              .flatMap { response => parsingFunc.apply(response)}
-              .map(v => (v, y._2))
-            }
-            e
-          }
-        )
-          flowResult.via(Flow.fromFunction(y => {
-          // map to processing message of tuple
-          Corn((y._1, y._2.data)).withTags(TagType.AGGREGATION, y._2.getTagsForType(AGGREGATION))
-        }))
-      })
+      .map(x => connectionRequestFlow(x, parsingFunc))
     val merge = b.add(Merge[ProcessingMessage[(Either[Throwable, T], RequestTemplate)]](connections.size))
     val identityFlow: Flow[ProcessingMessage[(Either[Throwable, T], RequestTemplate)], ProcessingMessage[(Either[Throwable, T], RequestTemplate)], NotUsed] = Flow.fromFunction(identity)
     val throughputFlow: FlowShape[ProcessingMessage[(Either[Throwable, T], RequestTemplate)], ProcessingMessage[(Either[Throwable, T], RequestTemplate)]] = b
@@ -169,13 +200,5 @@ object RequestProcessingFlows {
     merge ~> throughputFlow
     FlowShape(initThroughputFlow.in, throughputFlow.out)
   }
-
-
-  def experimentDefinitionToTaskSeq(query: String,
-                                    params: Map[String, Seq[String]],
-                                    metricsCalculation: MetricsCalculation,
-                                    judgementProviderFactory: JudgementProviderFactory[Double])
-                                   (implicit ec: ExecutionContext): Seq[Task[_]] = PlanProvider
-    .metricsCalcuationTaskSeq(query, params, judgementProviderFactory, metricsCalculation)
 
 }
