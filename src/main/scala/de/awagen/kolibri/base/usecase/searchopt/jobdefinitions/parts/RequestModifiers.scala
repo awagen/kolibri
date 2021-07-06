@@ -77,17 +77,22 @@ object RequestModifiers {
     })
   }
 
-  // TODO: define needed groupings of generators of modifiers, e.g in case n-to-n match needed
-  // complete the below definition with combination info to be able to generate the overall modifiers
-  // TODO: see whether we directly fill this with the right overall modifiers or we allow configuration of
-  // combinations
+  /**
+    * Container for the distinct values to generate Modifier[RequestTemplateBuilder] from. One single parameter name
+    * in the case of params and headers a generator is created providing all defined values.
+    * For bodies its a single generator providing all distinct body values. bodyContentType determines the format
+    * of the passed body
+    * @param params
+    * @param headers
+    * @param bodies
+    * @param bodyContentType
+    */
   case class RequestPermutation(params: OrderedMultiValues,
                                 headers: OrderedMultiValues,
                                 bodies: Seq[String],
                                 bodyContentType: ContentType = ContentTypes.`application/json`) {
     val paramModifierGenerators: Seq[IndexedGenerator[RequestParameterModifier]] = multiValuesToRequestParamModifiers(params, replace = false)
     val headerModifierGenerators: Seq[IndexedGenerator[HeaderModifier]] = multiValuesToHeaderModifiers(headers, replace = false)
-    // body modifiers only make sense when any value is set in bodies
     val bodyModifierGenerator: IndexedGenerator[BodyModifier] = bodiesToBodyModifier(bodies, bodyContentType)
   }
 

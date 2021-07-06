@@ -86,6 +86,7 @@ object SearchJobDefinitions {
         contextPath = "search",
         fixedParams = fixedParams,
         queryParam = "q",
+        excludeParamsFromMetricRow = Seq("q"),
         groupId = "testJobId",
         connections = connections,
         requestTagger = taggerByParameter("q"),

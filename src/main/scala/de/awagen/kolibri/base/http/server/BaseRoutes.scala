@@ -219,7 +219,10 @@ object BaseRoutes {
     implicit val timeout: Timeout = Timeout(1 minute)
     implicit val ec: ExecutionContextExecutor = system.dispatcher
     path("search_eval") {
-      supervisorActor ! SearchJobDefinitions.processActorRunnableJobCmd
+      // some fixed parameters
+      // TODO: remove test parameters here and parse SearchEvaluation definition
+      val fixedParams: Map[String, Seq[String]] = Map("k1" -> Seq("v1", "v2"), "k2" -> Seq("v3"))
+      supervisorActor ! SearchJobDefinitions.processActorRunnableJobCmd(fixedParams)
       complete(StatusCodes.Accepted, "Starting search evaluation example")
     }
   }

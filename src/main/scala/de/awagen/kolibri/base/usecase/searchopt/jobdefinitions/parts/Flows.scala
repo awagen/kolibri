@@ -138,8 +138,6 @@ object Flows {
     metricRow.addMetric(addValue)
   }
 
-  // full request flow of tagging the resulting request template and then async requesting and response parsing
-
   /**
     * Full flow definition from RequestTemplateBuilderModifier to ProcessingMessage[MetricRow]
     *
@@ -166,6 +164,7 @@ object Flows {
                          contextPath: String,
                          fixedParams: Map[String, Seq[String]],
                          queryParam: String,
+                         excludeParamsFromMetricRow: Seq[String],
                          groupId: String,
                          requestTagger: ProcessingMessage[RequestTemplate] => ProcessingMessage[RequestTemplate],
                          responseParsingFunc: HttpResponse => Future[Either[Throwable, Seq[String]]],
@@ -194,8 +193,7 @@ object Flows {
             .map(y => {
               val judgements: Seq[Option[Double]] = y.retrieveJudgements(x.data._2.parameters("q").head, e.value)
               logger.debug(s"retrieved judgements: $judgements")
-              // TODO: pass the list of parameters to filter out instead of filtering q-param out
-              val metricRow: MetricRow = metricsCalculation.calculateAll(immutable.Map(x.data._2.parameters.toSeq.filter(x => x._1 != "q"): _*), judgements)
+              val metricRow: MetricRow = metricsCalculation.calculateAll(immutable.Map(x.data._2.parameters.toSeq.filter(x => !excludeParamsFromMetricRow.contains(x._1)): _*), judgements)
               logger.debug(s"calculated metrics: $metricRow")
               val originalTags: Set[Tag] = x.getTagsForType(TagType.AGGREGATION)
               Corn(metricRow).withTags(AGGREGATION, originalTags)
