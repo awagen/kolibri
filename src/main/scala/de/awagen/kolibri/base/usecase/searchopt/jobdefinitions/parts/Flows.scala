@@ -22,7 +22,6 @@ import akka.actor.{ActorRef, ActorSystem}
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.stream.scaladsl.Flow
 import akka.stream.{FlowShape, Graph}
-import akka.util.Timeout
 import de.awagen.kolibri.base.actors.flows.GenericRequestFlows.{Host, getHttpConnectionPoolFlow, getHttpsConnectionPoolFlow}
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{Corn, ProcessingMessage}
 import de.awagen.kolibri.base.config.AppConfig.{config, logger}
@@ -170,7 +169,7 @@ object Flows {
                          responseParsingFunc: HttpResponse => Future[Either[Throwable, Seq[String]]],
                          judgementProviderFactory: JudgementProviderFactory[Double],
                          metricsCalculation: MetricsCalculation)
-                        (implicit as: ActorSystem, ec: ExecutionContext, timeout: Timeout): Flow[RequestTemplateBuilderModifier, ProcessingMessage[MetricRow], NotUsed] = {
+                        (implicit as: ActorSystem, ec: ExecutionContext): Flow[RequestTemplateBuilderModifier, ProcessingMessage[MetricRow], NotUsed] = {
     val partialFlow: Flow[RequestTemplateBuilderModifier, ProcessingMessage[(Either[Throwable, Seq[String]], RequestTemplate)], NotUsed] =
       processingFlow(contextPath, fixedParams, requestTagger)
         .via(Flow.fromGraph(requestingFlow(

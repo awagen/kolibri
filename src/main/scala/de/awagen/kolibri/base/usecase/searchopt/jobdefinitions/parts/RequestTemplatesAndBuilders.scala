@@ -21,6 +21,7 @@ import akka.http.scaladsl.model.{HttpMethods, HttpProtocols}
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.ProcessingMessage
 import de.awagen.kolibri.base.http.client.request.{RequestTemplate, RequestTemplateBuilder}
 import de.awagen.kolibri.datatypes.tagging.{TagType, Tags}
+import de.awagen.kolibri.datatypes.types.SerializableCallable.{SerializableFunction1, SerializableSupplier}
 
 object RequestTemplatesAndBuilders {
 
@@ -34,12 +35,15 @@ object RequestTemplatesAndBuilders {
     * @return
     */
   def getRequestTemplateBuilderSupplier(contextPath: String,
-                                        fixedParams: Map[String, Seq[String]]): () => RequestTemplateBuilder = () => {
-    new RequestTemplateBuilder()
-      .withContextPath(contextPath)
-      .withProtocol(HttpProtocols.`HTTP/1.1`)
-      .withHttpMethod(HttpMethods.GET)
-      .withParams(fixedParams)
+                                        fixedParams: Map[String, Seq[String]]): SerializableSupplier[RequestTemplateBuilder] = new SerializableSupplier[RequestTemplateBuilder]() {
+
+    override def apply(): RequestTemplateBuilder = {
+      new RequestTemplateBuilder()
+        .withContextPath(contextPath)
+        .withProtocol(HttpProtocols.`HTTP/1.1`)
+        .withHttpMethod(HttpMethods.GET)
+        .withParams(fixedParams)
+    }
   }
 
 
@@ -50,8 +54,9 @@ object RequestTemplatesAndBuilders {
     * @param param : String - The actual parameter name used to tag the processed element with the parameter's value
     * @return
     */
-  def taggerByParameter(param: String): ProcessingMessage[RequestTemplate] => ProcessingMessage[RequestTemplate] = {
-    msg => {
+  def taggerByParameter(param: String): SerializableFunction1[ProcessingMessage[RequestTemplate], ProcessingMessage[RequestTemplate]] = new SerializableFunction1[ProcessingMessage[RequestTemplate], ProcessingMessage[RequestTemplate]]() {
+
+    override def apply(msg: ProcessingMessage[RequestTemplate]): ProcessingMessage[RequestTemplate] = {
       msg.withTags(TagType.AGGREGATION,
         Set(Tags.ParameterSingleValueTag(
           Map(param -> msg.data.getParameter(param).map(y => y.mkString("-")).getOrElse(""))

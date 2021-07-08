@@ -23,7 +23,6 @@ import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIn
 import org.slf4j.{Logger, LoggerFactory}
 
 
-// TODO: add Distributor[T, U] => Distributor[T, U] instead of fixed retryDistributor
 class RetryingDistributor[T <: WithBatchNr, U](private[this] var maxParallel: Int,
                                                generator: IndexedGenerator[T],
                                                private[this] var maxNrRetries: Int) extends Distributor[T, U] {

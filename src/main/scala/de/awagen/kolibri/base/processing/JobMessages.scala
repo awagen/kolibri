@@ -18,22 +18,20 @@
 package de.awagen.kolibri.base.processing
 
 import akka.actor.ActorSystem
-import akka.util.Timeout
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor
 import de.awagen.kolibri.base.domain.Connection
 import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions
 import de.awagen.kolibri.base.processing.JobMessages.{SearchEvaluation, TestPiCalculation}
 import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.SearchJobDefinitions
+import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.RequestModifiers.RequestPermutation
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
-import de.awagen.kolibri.datatypes.multivalues.OrderedMultiValues
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.values.AggregateValue
 
 import scala.concurrent.ExecutionContext
-import scala.concurrent.duration.{FiniteDuration, _}
 import scala.language.implicitConversions
 
 object JobMessages {
@@ -43,11 +41,20 @@ object JobMessages {
   case class TestPiCalculation(jobName: String, nrThrows: Int, batchSize: Int, resultDir: String) extends JobMessage
 
   case class SearchEvaluation(jobName: String,
-                              parameters: OrderedMultiValues,
-                              judgementsFileClassPathURI: String = "data/test_judgements.txt",
-                              connections: Seq[Connection] = Seq(Connection(host = "localhost", port = 80, useHttps = false, credentialsProvider = None)),
-                              resultFileURI: String = "/home/ed/REPOS/github/kolibri_release/kolibri-base/kolibri-test",
-                              timeout: FiniteDuration = 60 minutes,
+                              fixedParams: Map[String, Seq[String]],
+                              contextPath: String,
+                              connections: Seq[Connection],
+                              requestPermutation: RequestPermutation,
+                              batchByIndex: Int,
+                              queryParam: String,
+                              excludeParamsFromMetricRow: Seq[String],
+                              judgementFileClasspathURI: String,
+                              tagByParam: String,
+                              writerDir: String = "/app/data",
+                              writerColumnSeparator: String = "\t",
+                              allowedTimePerElementInMillis: Int = 1000,
+                              allowedTimePerBatchInSeconds: Int = 600,
+                              allowedTimeForJobInSeconds: Int = 7200,
                               expectResultsFromBatchCalculations: Boolean = true) extends JobMessage
 }
 
@@ -68,11 +75,8 @@ object JobMessagesImplicits {
 
   implicit class SearchEvaluationToRunnable(eval: SearchEvaluation) {
 
-    def toRunnable(implicit as: ActorSystem, ec: ExecutionContext, timeout: Timeout): SupervisorActor.ProcessActorRunnableJobCmd[RequestTemplateBuilderModifier, MetricRow, MetricRow, MetricAggregation[Tag]] = {
-      // TODO: this is just temporary stub picking predefined definition. Change to take the actual definition into account and create the actual ActorRunnableJobCmd
-      // some fixed parameters (pick those from SearchEvaluation object)
-      val fixedParams: Map[String, Seq[String]] = Map("k1" -> Seq("v1", "v2"), "k2" -> Seq("v3"))
-      SearchJobDefinitions.processActorRunnableJobCmd(fixedParams)
+    def toRunnable(implicit as: ActorSystem, ec: ExecutionContext): SupervisorActor.ProcessActorRunnableJobCmd[RequestTemplateBuilderModifier, MetricRow, MetricRow, MetricAggregation[Tag]] = {
+      SearchJobDefinitions.searchEvaluationToRunnableJobCmd(eval)
     }
   }
 

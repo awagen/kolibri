@@ -19,8 +19,9 @@ package de.awagen.kolibri.base.actors.work.worker
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Cancellable, PoisonPill, Props}
 import de.awagen.kolibri.base.actors.work.worker.AggregatingActor._
-import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationState, BadCorn, Corn, ProcessingMessage}
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages._
 import de.awagen.kolibri.base.config.AppConfig.config
+import de.awagen.kolibri.base.config.AppConfig.config.useAggregatorBackpressure
 import de.awagen.kolibri.base.io.writer.Writers.Writer
 import de.awagen.kolibri.base.processing.execution.expectation.ExecutionExpectation
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
@@ -102,25 +103,23 @@ class AggregatingActor[U, V](val aggregatorSupplier: () => Aggregator[Processing
   def openState: Receive = {
     case e: BadCorn[U] =>
       aggregator.add(e)
-    //      sender() ! ACK
+      if (useAggregatorBackpressure) sender() ! ACK
     case result: Corn[U] =>
-      //      val ackTo: ActorRef = sender()
       log.debug("received single result event: {}", result)
       log.debug("expectation state: {}", expectation.statusDesc)
       log.debug(s"expectation: $expectation")
       aggregator.add(result)
       expectation.accept(result)
       handleExpectationStateAndCloseIfFinished(true)
-    //      ackTo ! ACK
+      if (useAggregatorBackpressure) sender() ! ACK
     case result@Corn(aggregator: Aggregator[ProcessingMessage[U], V]) =>
-      //      val ackTo: ActorRef  = sender()
       log.debug("received aggregated result event: {}", result)
       log.debug("expectation state: {}", expectation.statusDesc)
       log.debug(s"expectation: $expectation")
       aggregator.addAggregate(aggregator.aggregation)
       expectation.accept(aggregator)
       handleExpectationStateAndCloseIfFinished(true)
-    //      ackTo ! ACK
+      if (useAggregatorBackpressure) sender() ! ACK
     case Close =>
       log.debug("aggregator switched to closed state")
       cancellableSchedule.cancel()

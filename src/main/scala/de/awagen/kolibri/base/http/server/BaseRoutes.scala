@@ -19,7 +19,7 @@ package de.awagen.kolibri.base.http.server
 import akka.NotUsed
 import akka.actor.{ActorRef, ActorSystem}
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpHeader, StatusCodes}
-import akka.http.scaladsl.server.Directives.{complete, get, onSuccess, parameters, path, post}
+import akka.http.scaladsl.server.Directives.{as, complete, entity, get, onSuccess, parameters, path, post}
 import akka.http.scaladsl.server.Route
 import akka.pattern.ask
 import akka.stream.scaladsl.Source
@@ -31,10 +31,9 @@ import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor._
 import de.awagen.kolibri.base.cluster.ClusterStatus
 import de.awagen.kolibri.base.config.AppConfig.config.internalJobStatusRequestTimeout
 import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions
+import de.awagen.kolibri.base.io.json.SearchEvaluationJsonProtocol._
 import de.awagen.kolibri.base.processing.JobMessages.{SearchEvaluation, TestPiCalculation}
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.SearchJobDefinitions
-import de.awagen.kolibri.datatypes.multivalues.GridOrderedMultiValues
-import de.awagen.kolibri.datatypes.values.{DistinctValues, RangeValues}
 import org.slf4j.{Logger, LoggerFactory}
 
 import java.util.Objects
@@ -216,27 +215,22 @@ object BaseRoutes {
   }
 
   def startSearchEval(implicit system: ActorSystem): Route = {
-    implicit val timeout: Timeout = Timeout(1 minute)
     implicit val ec: ExecutionContextExecutor = system.dispatcher
     path("search_eval") {
-      // some fixed parameters
-      // TODO: remove test parameters here and parse SearchEvaluation definition
-      val fixedParams: Map[String, Seq[String]] = Map("k1" -> Seq("v1", "v2"), "k2" -> Seq("v3"))
-      supervisorActor ! SearchJobDefinitions.processActorRunnableJobCmd(fixedParams)
-      complete(StatusCodes.Accepted, "Starting search evaluation example")
+      entity(as[SearchEvaluation]) { searchEvaluation =>
+        supervisorActor ! SearchJobDefinitions.searchEvaluationToRunnableJobCmd(searchEvaluation)
+        complete(StatusCodes.Accepted, "Starting search evaluation example")
+      }
     }
   }
 
   def startSearchEvalNoSerialize(implicit system: ActorSystem): Route = {
-    implicit val timeout: Timeout = Timeout(1 minute)
     implicit val ec: ExecutionContextExecutor = system.dispatcher
     path("search_eval_no_ser") {
-      supervisorActor ! SearchEvaluation(jobName = "searchEvalJob",
-        parameters = GridOrderedMultiValues.apply(Seq(
-          DistinctValues[String]("q", Range(0, 100, 1).map(x => s"q$x")),
-          RangeValues[Float](name = "rangeParam1", start = 0.0F, end = 10.0F, stepSize = 1.0F)
-        )))
-      complete(StatusCodes.Accepted, "Starting search evaluation example (no serialization)")
+      entity(as[SearchEvaluation]) { searchEvaluation =>
+        supervisorActor ! searchEvaluation
+        complete(StatusCodes.Accepted, "Starting search evaluation example")
+      }
     }
   }
 }

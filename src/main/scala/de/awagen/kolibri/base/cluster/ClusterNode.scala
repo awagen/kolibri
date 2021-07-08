@@ -87,7 +87,7 @@ object ClusterNode extends App {
     // need to initialiize the BaseRoutes to start Supervisor actor in current actorSystem
     BaseRoutes.init
     val usedRoute: Route = route.getOrElse(simpleHelloRoute ~ streamingUserRoutes ~ clusterStatusRoutee ~ killAllJobs
-      ~ getJobStatus ~ killJob ~ getJobWorkerStatus ~ getRunningJobIds ~ executeDistributedPiCalculationExample ~ startSearchEval
+      ~ getJobStatus ~ killJob ~ getJobWorkerStatus ~ getRunningJobIds ~ executeDistributedPiCalculationExample
       ~ executeDistributedPiCalculationExampleWithoutSerialization ~ startSearchEval ~ startSearchEvalNoSerialize)
     val isHttpServerNode: Boolean = node_roles.contains(config.HTTP_SERVER_ROLE)
 

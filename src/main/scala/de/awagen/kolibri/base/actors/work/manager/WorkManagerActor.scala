@@ -17,7 +17,6 @@
 package de.awagen.kolibri.base.actors.work.manager
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props, Terminated}
-import akka.util.Timeout
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor
 import de.awagen.kolibri.base.actors.work.manager.JobManagerActor.{ACK, WorkerKilled}
 import de.awagen.kolibri.base.actors.work.manager.WorkManagerActor.ExecutionType.{RUNNABLE, TASK, TASK_EXECUTION}
@@ -146,7 +145,6 @@ class WorkManagerActor() extends Actor with ActorLogging with KolibriSerializabl
     case e: JobBatchMsg[SearchEvaluation] if e.msg.isInstanceOf[SearchEvaluation] =>
       log.info("received SearchEvaluation msg")
       implicit val ec: ExecutionContext = context.system.dispatcher
-      implicit val timeout: Timeout = e.msg.timeout
       implicit val actorSystem: ActorSystem = context.system
       val runnableMsg: SupervisorActor.ProcessActorRunnableJobCmd[RequestTemplateBuilderModifier, MetricRow, MetricRow, MetricAggregation[Tag]] = e.msg.toRunnable
       // TODO: adjust passed flags to regulate whether nodes write single batch results
