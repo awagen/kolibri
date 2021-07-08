@@ -1,0 +1,72 @@
+{
+  "jobName": "testJob",
+  "fixedParams": {
+    "k1": [
+      "v1",
+      "v2"
+    ],
+    "k2": [
+      "v3"
+    ]
+  },
+  "contextPath": "search",
+  "connections": [
+    {
+      "host": "172.33.1.4",
+      "port": 80,
+      "useHttps": false
+    }
+  ],
+  "requestPermutation": {
+    "params": {
+      "values": [
+        {
+          "name": "q",
+          "values": [
+            "q1",
+            "q2",
+            "q3",
+            "q4",
+            "q5",
+            "q6",
+            "q7",
+            "q8",
+            "q9",
+            "q10"
+          ]
+        },
+        {
+          "name": "a1",
+          "values": [
+            0.45,
+            0.32
+          ]
+        },
+        {
+          "name": "o",
+          "start": 0.0,
+          "end": 1000.0,
+          "stepSize": 1.0
+        }
+      ]
+    },
+    "headers": {
+      "values": []
+    },
+    "bodies": [],
+    "bodyContentType": "json"
+  },
+  "batchByIndex": 0,
+  "queryParam": "q",
+  "excludeParamsFromMetricRow": [
+    "q"
+  ],
+  "judgementFileClasspathURI": "data/test_judgements.txt",
+  "tagByParam": "q",
+  "writerDir": "/app/data",
+  "writerColumnSeparator": "\t",
+  "allowedTimePerElementInMillis": 1000,
+  "allowedTimePerBatchInSeconds": 600,
+  "allowedTimeForJobInSeconds": 7200,
+  "expectResultsFromBatchCalculations": true
+}
