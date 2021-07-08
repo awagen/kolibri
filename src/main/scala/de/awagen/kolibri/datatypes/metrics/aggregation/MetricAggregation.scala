@@ -52,7 +52,7 @@ case class MetricAggregation[A <: AnyRef](aggregationStateMap: mutable.Map[A, Me
 
   def add(aggregation: MetricAggregation[A], ignoreIdDiff: Boolean = false): Unit = {
     val originalKeys = aggregation.aggregationStateMap.keySet.toSeq
-    val mappedKeys = aggregation.aggregationStateMap.keySet.map(key => keyMapFunction.apply(key)).toSeq
+    val mappedKeys = originalKeys.map(key => keyMapFunction.apply(key))
     originalKeys.indices.foreach {
       case e if aggregationStateMap.keySet.contains(mappedKeys(e)) =>
         aggregationStateMap(mappedKeys(e)).add(aggregation.aggregationStateMap(originalKeys(e)), ignoreIdDiff = ignoreIdDiff)
