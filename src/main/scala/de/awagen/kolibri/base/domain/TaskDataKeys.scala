@@ -16,6 +16,7 @@
 
 package de.awagen.kolibri.base.domain
 
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.ProcessingMessage
 import de.awagen.kolibri.base.processing.failure.TaskFailType.TaskFailType
 import de.awagen.kolibri.datatypes.ClassTyped
 import de.awagen.kolibri.datatypes.stores.MetricRow
@@ -26,10 +27,11 @@ import scala.reflect.runtime.universe._
 object TaskDataKeys extends Enumeration {
   type TaskDataKeys = Val[_]
 
-  case class Val[T: TypeTag](identifier: String, typed: ClassTyped[T]) extends super.Val
+  case class Val[T: TypeTag](identifier: String) extends ClassTyped[T]
 
-  val METRICS: TaskDataKeys.Val[MetricRow] = Val("metrics", ClassTyped[MetricRow])
-  val METRICS_FAILED: TaskDataKeys.Val[TaskFailType] = Val("metrics generation failed", ClassTyped[TaskFailType])
+  val METRICS: TaskDataKeys.Val[MetricRow] = Val("metrics")
+  val METRICS_PM: TaskDataKeys.Val[ProcessingMessage[MetricRow]] = Val("metrics_message")
+  val METRICS_FAILED: TaskDataKeys.Val[TaskFailType] = Val("metrics generation failed")
 
 }
 

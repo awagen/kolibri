@@ -20,22 +20,23 @@ import akka.actor.Props
 import akka.stream.scaladsl.Flow
 import de.awagen.kolibri.base.actors.testactors.TestTransformActor
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.{ProcessActorRunnableJobCmd, ProcessActorRunnableTaskJobCmd, TaggedTypeTaggedMapBatch}
-import de.awagen.kolibri.base.actors.work.worker.JobPartIdentifiers.BaseJobPartIdentifier
-import de.awagen.kolibri.base.actors.work.worker.ResultMessages.ResultEvent
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{Corn, ProcessingMessage}
 import de.awagen.kolibri.base.domain.jobdefinitions.Batch
 import de.awagen.kolibri.base.io.writer.Writers.Writer
-import de.awagen.kolibri.base.processing.TestTaskHelper.{concatIdsTask, productIdResult, reverseIdsTask, reversedIdKey}
+import de.awagen.kolibri.base.processing.TestTaskHelper.{concatIdsTask, productIdResult, reverseIdsTaskPM, reversedIdKeyPM}
 import de.awagen.kolibri.base.processing.execution.expectation.{BaseExecutionExpectation, ReceiveCountExpectation, StopExpectation, TimeExpectation}
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnable
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnableSinkType.REPORT_TO_ACTOR_SINK
 import de.awagen.kolibri.base.processing.execution.task.Task
 import de.awagen.kolibri.datatypes.ClassTyped
-import de.awagen.kolibri.datatypes.collections.{BaseIndexedGenerator, IndexedGenerator}
+import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator}
 import de.awagen.kolibri.datatypes.mutable.stores.{TypeTaggedMap, TypedMapStore}
+import de.awagen.kolibri.datatypes.tagging.TagType.AGGREGATION
 import de.awagen.kolibri.datatypes.tagging.TaggedWithType
 import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSupplier
-import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.{Aggregator, BaseAnyAggregator}
+import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
+import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.{immutable, mutable}
 import scala.concurrent.duration._
@@ -43,103 +44,127 @@ import scala.reflect.runtime.universe
 
 object TestMessages {
 
-  case class TestMsg(nr: Int)
+  val log: Logger = LoggerFactory.getLogger(TestMessages.getClass)
 
-  def messagesToActorRefRunnable(): ActorRunnable[Int, TestMsg, Map[Tag, Double]] = ActorRunnable(jobId = "test", batchNr = 1, supplier = BaseIndexedGenerator(11, x => Some(x)), transformer = Flow.fromFunction[Int, TestMsg](x => TestMsg(x + 10)), processingActorProps = Some(Props(TestTransformActor(m => ResultEvent(TestMsg(m.nr), BaseJobPartIdentifier("test", 1), Set(StringTag("ALL")))))), expectationGenerator = _ => BaseExecutionExpectation(
+  def messagesToActorRefRunnable(jobId: String): ActorRunnable[Int, Int, Int, Map[Tag, Double]] = ActorRunnable(
+    jobId = jobId,
+    batchNr = 1,
+    supplier = ByFunctionNrLimitedIndexedGenerator(
+      11, x => Some(x)), transformer = Flow.fromFunction[Int, Corn[Int]](x => Corn(x + 10)), processingActorProps = Some(Props(TestTransformActor(m => {
+      Corn(m.data).withTags(AGGREGATION, Set(StringTag("ALL")))
+    }))), expectationGenerator = _ => BaseExecutionExpectation(
+      fulfillAllForSuccess = Seq(ReceiveCountExpectation(Map(
+        Range(0, 11, 1).map(x => Corn(x + 10) -> 1): _*
+      ))),
+      fulfillAnyForFail = Seq(StopExpectation(0, _ => false, _ => false),
+        TimeExpectation(100 days))), aggregationSupplier = new SerializableSupplier[Aggregator[ProcessingMessage[Int], Map[Tag, Double]]] {
+      override def apply(): Aggregator[ProcessingMessage[Int], Map[Tag, Double]] = new Aggregator[ProcessingMessage[Int], Map[Tag, Double]] {
+        override def add(sample: ProcessingMessage[Int]): Unit = ()
+
+        override def aggregation: Map[Tag, Double] = Map.empty[Tag, Double]
+
+        override def addAggregate(other: Map[Tag, Double]): Unit = ()
+
+      }
+    }, sinkType = REPORT_TO_ACTOR_SINK, 1 minute, 1 minute)
+
+  val expectedValuesForMessagesToActorRefRunnable: immutable.Seq[Corn[Int]] = Range(0, 11, 1).map(x => Corn(x + 11))
+
+  val msg1: ActorRunnable[Int, Int, Int, Map[Tag, Double]] = ActorRunnable(jobId = "test", batchNr = 1, supplier = ByFunctionNrLimitedIndexedGenerator(11, x => Some(x)), transformer = Flow.fromFunction[Int, ProcessingMessage[Int]](x => {
+    Corn(x + 10).withTags(AGGREGATION, Set(StringTag("ALL")))
+  }), processingActorProps = None, expectationGenerator = _ => BaseExecutionExpectation(
     fulfillAllForSuccess = Seq(ReceiveCountExpectation(Map(
-      Range(0, 11, 1).map(x => ResultEvent(TestMsg(x + 10), BaseJobPartIdentifier("test", 1), Set(StringTag("ALL"))) -> 1): _*
+      Range(0, 11, 1).map(x => {
+        val corn = Corn(x + 10).withTags(AGGREGATION, Set(StringTag("ALL")))
+        corn -> 1
+      }): _*
     ))),
     fulfillAnyForFail = Seq(StopExpectation(0, _ => false, _ => false),
-      TimeExpectation(100 days))), aggregationSupplier = new SerializableSupplier[Aggregator[Tag, Any, Map[Tag, Double]]] {
-    override def get(): Aggregator[Tag, Any, Map[Tag, Double]] = BaseAnyAggregator(new Aggregator[Tag, TestMsg, Map[Tag, Double]] {
-      override def add(keys: Set[Tag], sample: TestMsg): Unit = ()
+      TimeExpectation(100 days))), aggregationSupplier = new SerializableSupplier[Aggregator[ProcessingMessage[Int], Map[Tag, Double]]] {
+    override def apply(): Aggregator[ProcessingMessage[Int], Map[Tag, Double]] = new Aggregator[ProcessingMessage[Int], Map[Tag, Double]] {
+      override def add(sample: ProcessingMessage[Int]): Unit = ()
 
       override def aggregation: Map[Tag, Double] = Map.empty[Tag, Double]
 
-      override def add(other: Map[Tag, Double]): Unit = ()
+      override def addAggregate(other: Map[Tag, Double]): Unit = ()
 
-    })
-  }, returnType = REPORT_TO_ACTOR_SINK, 1 minute, 1 minute)
+    }
+  }, sinkType = REPORT_TO_ACTOR_SINK, 1 minute, 1 minute)
 
-  val expectedValuesForMessagesToActorRefRunnable: immutable.Seq[TestMsg] = Range(0, 11, 1).map(x => TestMsg(x + 11))
-
-  val msg1: ActorRunnable[Int, ResultEvent[TestMsg], Map[Tag, Double]] = ActorRunnable(jobId = "test", batchNr = 1, supplier = BaseIndexedGenerator(11, x => Some(x)), transformer = Flow.fromFunction[Int, ResultEvent[TestMsg]](x => ResultEvent(TestMsg(x + 10), BaseJobPartIdentifier("test", 1), Set(StringTag("ALL")))), processingActorProps = None, expectationGenerator = _ => BaseExecutionExpectation(
-    fulfillAllForSuccess = Seq(ReceiveCountExpectation(Map(
-      Range(0, 11, 1).map(x => ResultEvent(TestMsg(x + 10), BaseJobPartIdentifier("test", 1), Set(StringTag("ALL"))) -> 1): _*
-    ))),
-    fulfillAnyForFail = Seq(StopExpectation(0, _ => false, _ => false),
-      TimeExpectation(100 days))), aggregationSupplier = new SerializableSupplier[Aggregator[Tag, Any, Map[Tag, Double]]] {
-    override def get(): Aggregator[Tag, Any, Map[Tag, Double]] = BaseAnyAggregator(new Aggregator[Tag, TestMsg, Map[Tag, Double]] {
-      override def add(keys: Set[Tag], sample: TestMsg): Unit = ()
-
-      override def aggregation: Map[Tag, Double] = Map.empty[Tag, Double]
-
-      override def add(other: Map[Tag, Double]): Unit = ()
-
-    })
-  }, returnType = REPORT_TO_ACTOR_SINK, 1 minute, 1 minute)
-
-  val expectedValuesForMsg1: immutable.Seq[TestMsg] = Range(0, 11, 1).map(x => TestMsg(x + 10))
+  val expectedValuesForMsg1: immutable.Seq[Corn[Int]] = Range(0, 11, 1).map(x => Corn(x + 10))
 
   case class TaggedInt(value: Int) extends TaggedWithType[Tag]
 
-  def messagesToActorRefRunnableGenFunc: Int => ActorRunnable[TaggedInt, TestMsg, Map[Tag, Double]] = x =>
-    ActorRunnable(jobId = "test", batchNr = x, supplier = BaseIndexedGenerator(3, y => Some(TaggedInt(y + x))), transformer = Flow.fromFunction[TaggedInt, TestMsg](z => TestMsg(z.value)), processingActorProps = Some(Props(TestTransformActor(m => ResultEvent(TestMsg(m.nr + 1), BaseJobPartIdentifier("test", x), Set(StringTag("ALL")))))), expectationGenerator = _ => BaseExecutionExpectation(
+  def messagesToActorRefRunnableGenFunc(jobId: String): Int => ActorRunnable[TaggedInt, Int, Int, Map[Tag, Double]] = x =>
+    ActorRunnable(jobId = jobId, batchNr = x, supplier = ByFunctionNrLimitedIndexedGenerator(3, y => Some(TaggedInt(y + x))), transformer = Flow.fromFunction[TaggedInt, ProcessingMessage[Int]](z => {
+      Corn(z.value).withTags(AGGREGATION, z.getTagsForType(AGGREGATION))
+    }), processingActorProps = Some(Props(TestTransformActor(m => {
+      Corn(m.data + 1).withTags(AGGREGATION, Set(StringTag("ALL")))
+    }))), expectationGenerator = _ => BaseExecutionExpectation(
       fulfillAllForSuccess = Seq(ReceiveCountExpectation(Map(
-        ResultEvent(TestMsg(x + 1), BaseJobPartIdentifier("test", x), Set(StringTag("ALL"))) -> 1,
-        ResultEvent(TestMsg(x + 2), BaseJobPartIdentifier("test", x), Set(StringTag("ALL"))) -> 1,
-        ResultEvent(TestMsg(x + 3), BaseJobPartIdentifier("test", x), Set(StringTag("ALL"))) -> 1))),
+        Corn(x + 1) -> 1,
+        Corn(x + 2) -> 1,
+        Corn(x + 3) -> 1))),
       fulfillAnyForFail = Seq(StopExpectation(0, _ => false, _ => false),
-        TimeExpectation(100 days))), aggregationSupplier = new SerializableSupplier[Aggregator[Tag, Any, Map[Tag, Double]]] {
-      override def get(): Aggregator[Tag, Any, Map[Tag, Double]] = BaseAnyAggregator(
-        new Aggregator[Tag, TestMsg, Map[Tag, Double]]() {
+        TimeExpectation(100 days))), aggregationSupplier = new SerializableSupplier[Aggregator[ProcessingMessage[Int], Map[Tag, Double]]] {
+      override def apply(): Aggregator[ProcessingMessage[Int], Map[Tag, Double]] =
+        new Aggregator[ProcessingMessage[Int], Map[Tag, Double]]() {
           val map: mutable.Map[Tag, Double] = mutable.Map.empty
 
-          override def add(keys: Set[Tag], sample: TestMsg): Unit = {
-            keys.foreach(x => {
-              map(x) = map.getOrElse(x, 0.0) + sample.nr
-            })
+          override def add(sample: ProcessingMessage[Int]): Unit = {
+            sample match {
+              case _: Corn[Int] =>
+                val keys: Set[Tag] = sample.getTagsForType(AGGREGATION)
+                keys.foreach(x => {
+                  map(x) = map.getOrElse(x, 0.0) + sample.data
+                })
+              case e =>
+                log.warn(s"Expected message of type Corn, got: $e")
+            }
           }
 
           override def aggregation: Map[Tag, Double] = Map(map.toSeq: _*)
 
-          override def add(other: Map[Tag, Double]): Unit = {
+          override def addAggregate(other: Map[Tag, Double]): Unit = {
             other.keys.foreach(x => {
               map(x) = map.getOrElse(x, 0.0) + other.getOrElse(x, 0.0)
             })
           }
         }
-      )
-    }, returnType = REPORT_TO_ACTOR_SINK, 1 minute, 1 minute)
+    }, sinkType = REPORT_TO_ACTOR_SINK, 1 minute, 1 minute)
 
   def expectedMessagesForRunnableGenFunc(i: Int) = Seq(
-    ResultEvent(Right(TestMsg(i + 1)), BaseJobPartIdentifier("test", i), Set(StringTag("ALL"))),
-    ResultEvent(Right(TestMsg(i + 2)), BaseJobPartIdentifier("test", i), Set(StringTag("ALL"))),
-    ResultEvent(Right(TestMsg(i + 3)), BaseJobPartIdentifier("test", i), Set(StringTag("ALL")))
+    Corn(i + 1),
+    Corn(i + 2),
+    Corn(i + 3)
   )
 
 
-  def generateProcessActorRunnableJobCmd(jobId: String): ProcessActorRunnableJobCmd[_, _] = {
-    val actorRunnableGenerator: IndexedGenerator[ActorRunnable[TaggedInt, TestMsg, Map[Tag, Double]]] = BaseIndexedGenerator(
+  val aggregatorSupplier = new SerializableSupplier[Aggregator[ProcessingMessage[Int], Map[Tag, Double]]] {
+    override def apply(): Aggregator[ProcessingMessage[Int], Map[Tag, Double]] = new Aggregator[ProcessingMessage[Int], Map[Tag, Double]] {
+      override def add(sample: ProcessingMessage[Int]): Unit = ()
+
+      override def aggregation: Map[Tag, Double] = Map.empty[Tag, Double]
+
+      override def addAggregate(other: Map[Tag, Double]): Unit = ()
+
+    }
+  }
+
+  def generateProcessActorRunnableJobCmd(jobId: String): ProcessActorRunnableJobCmd[_, _, _, _] = {
+    val actorRunnableGenerator: IndexedGenerator[ActorRunnable[TaggedInt, Int, Int, Map[Tag, Double]]] = ByFunctionNrLimitedIndexedGenerator(
       nrOfElements = 4,
-      genFunc = x => Some(messagesToActorRefRunnableGenFunc(x))
+      genFunc = x => Some(messagesToActorRefRunnableGenFunc(jobId)(x))
     )
-    ProcessActorRunnableJobCmd[TaggedInt, Map[Tag, Double]](
+    ProcessActorRunnableJobCmd[TaggedInt, Corn[Int], Int, Map[Tag, Double]](
       jobId = jobId,
-      processElements = actorRunnableGenerator.asInstanceOf[IndexedGenerator[ActorRunnable[TaggedInt, Any, Map[Tag, Double]]]],
-      aggregatorSupplier = new SerializableSupplier[Aggregator[Tag, Any, Map[Tag, Double]]] {
-        override def get(): Aggregator[Tag, Any, Map[Tag, Double]] = BaseAnyAggregator(new Aggregator[Tag, TestMsg, Map[Tag, Double]] {
-          override def add(keys: Set[Tag], sample: TestMsg): Unit = ()
-
-          override def aggregation: Map[Tag, Double] = Map.empty[Tag, Double]
-
-          override def add(other: Map[Tag, Double]): Unit = ()
-
-        })
-      },
+      processElements = actorRunnableGenerator.asInstanceOf[IndexedGenerator[ActorRunnable[TaggedInt, Corn[Int], Int, Map[Tag, Double]]]],
+      perBatchAggregatorSupplier = aggregatorSupplier,
+      perJobAggregatorSupplier = aggregatorSupplier,
       writer = (_: Map[Tag, Double], _: Tag) => Right(()),
       allowedTimePerBatch = 10 seconds,
-      allowedTimeForJob = 2 minutes
+      allowedTimeForJob = 2 minutes,
+      expectResultsFromBatchCalculations = true
     )
   }
 
@@ -156,30 +181,33 @@ object TestMessages {
   }
 
   def typeTaggedMapIterator[T](elements: Seq[T], startDataKey: ClassTyped[T]): IndexedGenerator[TypeTaggedMap with TaggedWithType[Tag]] = {
-    BaseIndexedGenerator(elements.size, x => Some(TaggedTypeTaggedMap(TypedMapStore(mutable.Map(startDataKey -> elements(x))))))
+    ByFunctionNrLimitedIndexedGenerator(elements.size, x => Some(TaggedTypeTaggedMap(TypedMapStore(mutable.Map(startDataKey -> elements(x))))))
+  }
+
+  val aggregatorSupplier1 = new SerializableSupplier[Aggregator[ProcessingMessage[Any], Any]] {
+    override def apply(): Aggregator[ProcessingMessage[Any], Any] = new Aggregator[ProcessingMessage[Any], Any] {
+      override def add(sample: ProcessingMessage[Any]): Unit = ()
+
+      override def aggregation: Any = ()
+
+      override def addAggregate(other: Any): Unit = ()
+    }
   }
 
   def generateProcessActorRunnableTaskJobCmd(jobId: String): ProcessActorRunnableTaskJobCmd[Any] = {
     val baseElements = Seq(Seq("1", "2"), Seq("3", "4"), Seq("5", "6"))
-    val batchTypeTaggedMapGenerator: IndexedGenerator[TaggedTypeTaggedMapBatch] = BaseIndexedGenerator(
+    val batchTypeTaggedMapGenerator: IndexedGenerator[TaggedTypeTaggedMapBatch] = ByFunctionNrLimitedIndexedGenerator(
       5,
-      batchNr => Some(Batch(batchNr, typeTaggedMapIterator(baseElements.map(y => y ++ s"$batchNr"), productIdResult.typed)))
+      batchNr => Some(Batch(batchNr, typeTaggedMapIterator(baseElements.map(y => y ++ s"$batchNr"), productIdResult)))
     )
-    val tasks: Seq[Task[_]] = Seq(concatIdsTask, reverseIdsTask)
+    val tasks: Seq[Task[_]] = Seq(concatIdsTask, reverseIdsTaskPM)
     ProcessActorRunnableTaskJobCmd(
       jobId,
       batchTypeTaggedMapGenerator,
       tasks,
-      reversedIdKey.typed,
-      aggregatorSupplier = new SerializableSupplier[Aggregator[Tag, Any, Any]] {
-        override def get(): Aggregator[Tag, Any, Any] = BaseAnyAggregator[Any, Any](new Aggregator[Tag, Any, Any] {
-          override def add(keys: Set[Tag], sample: Any): Unit = ()
-
-          override def aggregation: Any = ()
-
-          override def add(other: Any): Unit = ()
-        })
-      },
+      reversedIdKeyPM,
+      perBatchAggregatorSupplier = aggregatorSupplier1,
+      perJobAggregatorSupplier = aggregatorSupplier1,
       writer = new Writer[Any, Tag, Any] {
         override def write(data: Any, targetIdentifier: Tag): Either[Exception, Any] = Right(())
       },

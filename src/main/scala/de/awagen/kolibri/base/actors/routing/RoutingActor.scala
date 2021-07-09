@@ -39,7 +39,7 @@ case class RoutingActor(routeeProps: Props = Props[WorkManagerActor]) extends Ac
   val poolRouter: ActorRef = context.actorOf(FromConfig.props(routeeProps), name = "poolRouter")
 
   override def receive: Receive = {
-    case job: ActorRunnable[_, _,_] =>
+    case job: ActorRunnable[_, _,_,_] =>
       log.info("routingActor: received routed batch for processing")
       poolRouter forward job
     case msg: Any =>

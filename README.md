@@ -29,11 +29,11 @@ Connection refused:
 
 - you might temporarily need to clone kolibri-datatypes and publish locally (see kolibri-datatypes README on instructions)
 - build jar (find it in target folder afterwards): ```./scripts/buildJar.sh```
-- (optional) publish lib locally: ```sbt pubishLocal``` (afterwards to be found in ~/.ivy2/local)
-- build docker image for local usage: ```sudo docker build . -t kolibri-base:0.1.0-alpha1```
+- (optional) publish lib locally: ```sbt publishLocal``` (afterwards to be found in ~/.ivy2/local)
+- build docker image for local usage: ```sudo docker build . -t kolibri-base:0.1.0-alpha2```
 - run single-node cluster (compute and httpserver role, access via localhost:
   8000): ```./scripts/docker_run_single_node.sh```
-    - sets interface of http server to 0.0.0.0 to allow requests from hostsystem to localhost:8000 reach the service
+    - sets interface of http server to 0.0.0.0 to allow requests from host system to localhost:8000 reach the service
       within the container
 - start local 3-node cluster (one compute and httpserver node, two 'compute'-only nodes, access via localhost:
   8000): ```sudo docker-compose up```
@@ -46,7 +46,7 @@ approximate pi/4. Steps to execute this simple job example:
 
 - build jar and docker image according to above calls
 - start up cluster by ```docker-compose up``` command in project root
-- example url call: ```http://localhost:8000/pi_calc?nrThrows=10000000&batchSize=10000&resultDir=/app/data```
+- example url call: ```http://localhost:8000/pi_calc?jobName=job1&nrThrows=10000000&batchSize=10000&resultDir=/app/data```
   Note that giving the volume mount ```./kolibri-test:/app/data``` as given in the docker-compose, this will write into
   the projects root's ```kolibri-test``` folder per default into the file ```dartThrowResult.txt```. Note that the job
   is set up as a simple example that has no boundary on the nr of throws processed per second, and all flowing into
@@ -55,8 +55,8 @@ approximate pi/4. Steps to execute this simple job example:
   result messages. Yet given the way the aggregating actor is instantiated in the same instance as the
   RunnableExecutionActor executing the ActorRunnable (which produces the result messages), the message passing doesnt
   need serialization but is done via ref passing.
-- kill job: ```http://localhost:8000/stopJob?jobId=piCalculation```
-- check status of job: ```http://localhost:8000/getJobStatus?jobId=piCalculation```
+- kill job: ```http://localhost:8000/stopJob?jobId=job1```
+- check status of job: ```http://localhost:8000/getJobStatus?jobId=job1```
 
 ## Serialization
 

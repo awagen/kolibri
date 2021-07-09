@@ -16,14 +16,14 @@
 
 package de.awagen.kolibri.base.config
 
-import java.util
-
 import com.typesafe.config.{Config, ConfigFactory}
 import de.awagen.kolibri.base.actors.resources.{CPUBasedResourceChecker, ResourceChecker}
 import de.awagen.kolibri.base.cluster.ClusterStatus
-import de.awagen.kolibri.base.config.EnvVariableKeys.{CLUSTER_NODE_HOST, CLUSTER_NODE_PORT, IS_SINGLENODE, MANAGEMENT_HOST, MANAGEMENT_PORT, NODE_ROLES, PROFILE}
+import de.awagen.kolibri.base.config.EnvVariableKeys.{IS_SINGLENODE, NODE_ROLES, POD_IP, PROFILE}
 import de.awagen.kolibri.datatypes.metrics.aggregation.writer.{CSVParameterBasedMetricDocumentFormat, MetricDocumentFormat}
+import org.slf4j.{Logger, LoggerFactory}
 
+import java.util
 import scala.concurrent.duration._
 
 
@@ -31,6 +31,8 @@ import scala.concurrent.duration._
   * Object where config values are stored for the app
   */
 object AppConfig {
+
+  val logger: Logger = LoggerFactory.getLogger(AppConfig.getClass)
 
   val profile: String = PROFILE.value
   val config: BaseConfig = BaseConfig(profile)
@@ -40,11 +42,12 @@ object AppConfig {
   }
 
   def loadConfig(profile: String): Config = {
-    val loadedConfig: Config = ConfigFactory.load(s"application-$profile.conf")
-    val management_host: String = MANAGEMENT_HOST.value
-    val management_port: String = MANAGEMENT_PORT.value
-    val host: String = CLUSTER_NODE_HOST.value
-    val port: String = CLUSTER_NODE_PORT.value
+    val configName: String = s"application-$profile.conf"
+    logger.info(s"loading config: $configName")
+    val loadedConfig: Config = ConfigFactory.load(configName)
+    logger.debug(s"loaded config: ${loadedConfig.toString}")
+    val pod_ip = POD_IP.value
+    logger.info(s"pod ip: $pod_ip")
     val roles: Array[String] = NODE_ROLES.value.split(",")
     val roleList = new util.ArrayList[String]()
     roles.foreach(x => roleList.add(x))
@@ -53,10 +56,7 @@ object AppConfig {
       configValues.put("akka.management.cluster.bootstrap.contact-point-discovery.required-contact-point-nr", 1)
     }
     configValues.put("akka.cluster.singleton.use-lease", "")
-    configValues.put("akka.management.http.hostname", management_host)
-    configValues.put("akka.management.http.port", management_port)
-    if (host.nonEmpty) configValues.put("akka.remote.netty.tcp.hostname", s"$host")
-    if (port.nonEmpty) configValues.put("akka.remote.netty.tcp.port", s"$port")
+    if (pod_ip.nonEmpty) configValues.put("akka.management.http.hostname", pod_ip)
     configValues.put("akka.cluster.roles", roleList)
     ConfigFactory.parseMap(configValues).withFallback(loadedConfig)
   }
@@ -91,6 +91,10 @@ object AppConfig {
       MILLISECONDS)
     val runningTasksBaselineCount: Int = baseConfig.getInt("kolibri.job.runningTasksBaselineCount")
     val batchDistributionInterval: FiniteDuration = FiniteDuration(baseConfig.getInt("kolibri.job.batchDistributionIntervalInMs"), MILLISECONDS)
+    val batchMaxTimeToACKInMs: FiniteDuration = FiniteDuration(baseConfig.getInt("kolibri.job.batchMaxTimeToACKInMs"), MILLISECONDS)
+
+    val useAggregatorBackpressure: Boolean = baseConfig.getBoolean("kolibri.execution.useAggregatorBackpressure")
+    val aggregatorResultReceiveParallelism: Int = baseConfig.getInt("kolibri.execution.aggregatorResultReceiveParallelism")
 
     // resourceCheckerGenerator
     val isValidResourceCheckerType: Boolean = baseConfig.hasPath("kolibri.job.resources.resourcesCheckerType") && baseConfig.getString("kolibri.job.resources.resourcesCheckerType").toLowerCase() == "cpu"
@@ -125,24 +129,6 @@ object AppConfig {
     val writerDirPath: String = baseConfig.getString("kolibri.writer.dirpath")
 
     val startClusterSingletonRouter: Boolean = baseConfig.getBoolean("kolibri.cluster.startClusterSingletonRouter")
-
-//    val contentWriter: FileWriter[String, _] = writerType match {
-//      case "aws-s3" =>
-//        val writerBucket: String = baseConfig.getString("kolibri.writer.bucket")
-//        val writerRegion: String = baseConfig.getString("kolibri.writer.region")
-//        AwsS3FileWriter(bucketName = writerBucket,
-//          dirPath = writerDirPath,
-//          region = Regions.valueOf(writerRegion))
-//      case _ => LocalDirectoryFileFileWriter(writerDirPath)
-//    }
-//
-//    val metricAggregationWriter: MetricAggregationWriter[Tag, _] = {
-//      BaseMetricAggregationWriter[_](
-//        writer = contentWriter,
-//        format = metricDocumentFormat,
-//        keyToFilenameFunc = x => x.toString
-//      )
-//    }
 
     val supervisorHousekeepingInterval: FiniteDuration = getFiniteDuration(config = baseConfig,
       key = "kolibri.supervisor.houseKeepingIntervalInSeconds", SECONDS)

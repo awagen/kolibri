@@ -32,4 +32,5 @@ object EnvVariableKeys extends Enumeration {
   val NODE_ROLES: Val = Val("ROLES", "compute")
   val PROFILE: Val = Val("PROFILE", "local")
   val IS_SINGLENODE: Val = Val("SINGLE_NODE", "false")
+  val POD_IP: Val = Val("POD_IP", "")
 }

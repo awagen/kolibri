@@ -18,25 +18,29 @@ package de.awagen.kolibri.base.processing.execution.job
 
 import akka.actor.{ActorContext, ActorRef, ActorSystem, Props}
 import akka.pattern.ask
+import akka.stream._
 import akka.stream.scaladsl.{Flow, GraphDSL, Keep, RunnableGraph, Sink, Source}
-import akka.stream.{ClosedShape, FlowShape, KillSwitches, Materializer, SourceShape, UniqueKillSwitch}
 import akka.util.Timeout
 import akka.{Done, NotUsed}
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{BadCorn, ProcessingMessage}
 import de.awagen.kolibri.base.config.AppConfig.config
+import de.awagen.kolibri.base.config.AppConfig.config.{aggregatorResultReceiveParallelism, useAggregatorBackpressure}
 import de.awagen.kolibri.base.processing.execution.expectation.ExecutionExpectation
 import de.awagen.kolibri.base.processing.execution.job
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnable._
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnableSinkType._
-import de.awagen.kolibri.datatypes.collections.IndexedGenerator
+import de.awagen.kolibri.base.processing.failure.TaskFailType
+import de.awagen.kolibri.base.traits.Traits.WithBatchNr
+import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
-import de.awagen.kolibri.datatypes.tagging.Tags.Tag
-import de.awagen.kolibri.datatypes.types.SerializableCallable.{SerializableFunction1, SerializableSupplier}
+import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.immutable
-import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success}
 
 
 object ActorRunnable {
@@ -54,45 +58,60 @@ object ActorRunnable {
   *
   * @tparam U - input element type
   * @tparam V - message type to be send to actor passed to actorSink function per element
-  * @param jobId               - id of the runnable
-  * @param batchNr             - nr of the batch of the overall job
-  * @param supplier            - the IndexedGenerator[U] of data to process
-  * @param transformer         - the transformation applied to elements of the supplier, U => V
-  * @param expectationSupplier - the execution expectation. Can be utilized by actor running the actorRunnable to determine whether
-  *                            processing succeeded, failed due to processing or due to exceeding timeout
-  * @param returnType          - only if set not set to IGNORE_SINK and actorConfig passed to getRunnableGraph contains REPORT_TO actor type
-  *                            will the result of each transformation (U => V) of type V be send to the actorRef given by REPORT_TO type in the actorConfig.
-  *                            Otherwise Sink.ignore is used. Note that the expectation can still be non empty in case the sending of responses
-  *                            does not happen in the sink here but messages are send to other processors which then provide the response
+  * @param jobId                - id of the runnable
+  * @param batchNr              - nr of the batch of the overall job
+  * @param supplier             - the IndexedGenerator[U] of data to process
+  * @param transformer          - the transformation applied to elements of the supplier, U => V
+  * @param processingActorProps - if set, send ProcessingMessage[V] to actor of specified type for processing
+  * @param expectationGenerator - the execution expectation. Can be utilized by actor running the actorRunnable to determine whether
+  *                             processing succeeded, failed due to processing or due to exceeding timeout
+  * @param aggregationSupplier  - Supplier for aggregator. Typed by type to expect for aggregation (wrapped within ProcessingMessage) and type of aggregation
+  * @param sinkType             - only if set not set to IGNORE_SINK and actorConfig passed to getRunnableGraph contains REPORT_TO actor type
+  *                             will the result of each transformation (U => V) of type V be send to the actorRef given by REPORT_TO type in the actorConfig.
+  *                             Otherwise Sink.ignore is used. Note that the expectation can still be non empty in case the sending of responses
+  *                             does not happen in the sink here but messages are send to other processors which then provide the response
+  * @param waitTimePerElement   - max time to wait per processing element (in case processingActorProps are not None; only used to set timeout to the respective ask future)
   */
-case class ActorRunnable[U, V, Y](jobId: String,
-                                  batchNr: Int,
-                                  supplier: IndexedGenerator[U],
-                                  transformer: Flow[U, V, NotUsed],
-                                  processingActorProps: Option[Props],
-                                  expectationGenerator: SerializableFunction1[Int, ExecutionExpectation],
-                                  aggregationSupplier: SerializableSupplier[Aggregator[Tag, Any, Y]],
-                                  returnType: job.ActorRunnableSinkType.Value,
-                                  maxExecutionDuration: FiniteDuration,
-                                  waitTimePerElement: FiniteDuration) extends KolibriSerializable {
+case class ActorRunnable[U, V, V1, Y](jobId: String,
+                                      batchNr: Int,
+                                      supplier: IndexedGenerator[U],
+                                      transformer: Flow[U, ProcessingMessage[V], NotUsed],
+                                      processingActorProps: Option[Props],
+                                      expectationGenerator: Int => ExecutionExpectation,
+                                      aggregationSupplier: () => Aggregator[ProcessingMessage[V1], Y],
+                                      sinkType: job.ActorRunnableSinkType.Value,
+                                      waitTimePerElement: FiniteDuration,
+                                      maxExecutionDuration: FiniteDuration) extends KolibriSerializable with WithBatchNr {
 
   val log: Logger = LoggerFactory.getLogger(ActorRunnable.getClass)
 
-  val actorSink: SerializableFunction1[ActorRef, Sink[Any, Future[Done]]] = new SerializableFunction1[ActorRef, Sink[Any, Future[Done]]] {
-    override def apply(actorRef: ActorRef): Sink[Any, Future[Done]] = Sink.foreach[Any](element => {
-      actorRef ! element
-      ()
-    })
+  val actorSink: SerializableFunction1[ActorRef, Sink[ProcessingMessage[V1], Future[Done]]] = new SerializableFunction1[ActorRef, Sink[ProcessingMessage[V1], Future[Done]]] {
+
+    override def apply(actorRef: ActorRef): Sink[ProcessingMessage[V1], Future[Done]] = {
+      if (useAggregatorBackpressure) {
+        implicit val timeout: Timeout = Timeout(10 seconds)
+        val flow: Flow[ProcessingMessage[V1], Any, NotUsed] = Flow.fromFunction[ProcessingMessage[V1], ProcessingMessage[V1]](identity)
+          .mapAsyncUnordered[Any](aggregatorResultReceiveParallelism)(e => actorRef ? e)
+        val sink: Sink[Any, Future[Done]] = Sink.foreach[Any](_ => ())
+        flow.toMat(sink)(Keep.right)
+      }
+      else {
+        Sink.foreach[ProcessingMessage[V1]](element => {
+          actorRef ! element
+          ()
+        })
+      }
+    }
   }
 
-  def getSink(actorConfig: JobActorConfig): Sink[Any, (UniqueKillSwitch, Future[Done])] = {
-    val killSwitch: Flow[Any, Any, UniqueKillSwitch] = Flow.fromGraph(KillSwitches.single[Any])
-    returnType match {
+  def getSink(actorConfig: JobActorConfig): Sink[ProcessingMessage[V1], (UniqueKillSwitch, Future[Done])] = {
+    val killSwitch: Flow[ProcessingMessage[V1], ProcessingMessage[V1], UniqueKillSwitch] = Flow.fromGraph(KillSwitches.single[ProcessingMessage[V1]])
+    sinkType match {
       case IGNORE_SINK =>
         killSwitch.toMat(Sink.ignore)(Keep.both)
       case REPORT_TO_ACTOR_SINK =>
         val reportTo: Option[ActorRef] = actorConfig.others.get(ActorType.ACTOR_SINK)
-        val sink: Sink[Any, Future[Done]] = reportTo.map(x => actorSink.apply(x)).getOrElse(Sink.ignore)
+        val sink: Sink[ProcessingMessage[V1], Future[Done]] = reportTo.map(x => actorSink.apply(x)).getOrElse(Sink.ignore)
         killSwitch.toMat(sink)(Keep.both)
       case e =>
         log.warn(s"return type '$e' not covered, using Sink.ignore")
@@ -113,29 +132,34 @@ case class ActorRunnable[U, V, Y](jobId: String,
     * @return
     */
   def getRunnableGraph(actorConfig: JobActorConfig)(implicit actorSystem: ActorSystem, actorContext: ActorContext, mat: Materializer, ec: ExecutionContext): RunnableGraph[(UniqueKillSwitch, Future[Done])] = {
-    val sinkInst: Sink[Any, (UniqueKillSwitch, Future[Done])] = getSink(actorConfig)
+    val sinkInst: Sink[ProcessingMessage[V1], (UniqueKillSwitch, Future[Done])] = getSink(actorConfig)
     RunnableGraph.fromGraph(GraphDSL.create(sinkInst) {
       implicit builder =>
         sink =>
           import GraphDSL.Implicits._
           val source: SourceShape[U] = builder.add(Source.fromIterator[U](() => supplier.iterator))
-          val flowStage: FlowShape[U, V] = builder.add(transformer)
+          val flowStage: FlowShape[U, ProcessingMessage[V]] = builder.add(transformer)
           // stage sending message to separate actor if processingActorProps is set, otherwise
           // not changing the input element
-          val sendFlow: Flow[V, Any, NotUsed] = processingActorProps.map(props => {
-            Flow.fromFunction[V, V](x => x).mapAsyncUnordered[Any](config.requestParallelism)(x => {
-              val sendToActor: ActorRef = actorContext.actorOf(props)
-              implicit val timeout: Timeout = Timeout(waitTimePerElement)
-              sendToActor ? x
-            })
-          }).getOrElse(
-            Flow.fromFunction[V, Any](x => x)
-          )
-          val sendStage: FlowShape[V, Any] = builder.add(sendFlow)
+          val sendFlow: Flow[ProcessingMessage[V], ProcessingMessage[V1], NotUsed] = processingActorProps.map(props => {
+            Flow.fromFunction[ProcessingMessage[V], ProcessingMessage[V]](identity)
+              .mapAsyncUnordered[ProcessingMessage[V1]](config.requestParallelism)(x => {
+                val sendToActor: ActorRef = actorContext.actorOf(props)
+                implicit val timeout: Timeout = Timeout(waitTimePerElement)
+                val responseFuture: Future[Any] = sendToActor ? x
+                val mappedResponseFuture: Future[ProcessingMessage[V1]] = responseFuture.transform({
+                  case Success(value: ProcessingMessage[V1]) => Success(value)
+                  case Failure(exception) => Success[ProcessingMessage[V1]](BadCorn(TaskFailType.FailedByException(exception)))
+                  case e =>
+                    Success(BadCorn(TaskFailType.UnknownResponseClass(e.getClass.getName)))
+                })
+                mappedResponseFuture
+              })
+          }).getOrElse(Flow.fromFunction[ProcessingMessage[V], ProcessingMessage[V1]](x => x.asInstanceOf[ProcessingMessage[V1]]))
+          val sendStage: FlowShape[ProcessingMessage[V], ProcessingMessage[V1]] = builder.add(sendFlow)
           // connect graph
           source ~> flowStage ~> sendStage ~> sink
           ClosedShape
     })
   }
-
 }

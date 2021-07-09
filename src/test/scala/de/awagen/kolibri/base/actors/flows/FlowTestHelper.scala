@@ -18,9 +18,8 @@ package de.awagen.kolibri.base.actors.flows
 
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.stream.scaladsl.Flow
-import de.awagen.kolibri.base.http.client.request.{HttpRequestProvider, RequestContext}
+import de.awagen.kolibri.base.http.client.request.HttpRequestProvider
 
-import scala.collection.immutable
 import scala.util.{Failure, Try}
 
 object FlowTestHelper {
@@ -32,16 +31,4 @@ object FlowTestHelper {
       }
     )
 
-  def createRequestContext[T](number: Int, params: Map[String, Seq[String]]): RequestContext = {
-    new RequestContext(groupId = "testexperiment", requestSequenceId = number, contextPath = "", parameters = params) {
-      override def getContextHeaders: immutable.Seq[Nothing] = immutable.Seq.empty
-    }
-  }
-
-  def copyRequestContextWithProcessor(context: RequestContext): RequestContext = {
-    new RequestContext(groupId = context.groupId, requestSequenceId = context.requestSequenceId, contextPath = context.contextPath,
-      parameters = context.parameters) {
-      override def getContextHeaders: immutable.Seq[Nothing] = immutable.Seq.empty
-    }
-  }
 }

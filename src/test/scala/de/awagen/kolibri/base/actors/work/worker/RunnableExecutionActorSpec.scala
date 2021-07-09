@@ -18,7 +18,7 @@ package de.awagen.kolibri.base.actors.work.worker
 
 import akka.actor.ActorRef
 import akka.testkit.{ImplicitSender, TestKit, TestProbe}
-import de.awagen.kolibri.base.actors.work.worker.AggregatingActor.AggregationState
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.AggregationState
 import de.awagen.kolibri.base.actors.{KolibriTestKitNoCluster, TestMessages}
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import org.scalatest.BeforeAndAfterAll
@@ -46,7 +46,7 @@ class RunnableExecutionActorSpec extends KolibriTestKitNoCluster
     "correctly execute ActorRunnable with REPORT_TO_ACTOR_SINK" in {
       // given
       val reportToActor: TestProbe = TestProbe()
-      val runnableExecutorActor: ActorRef = system.actorOf(RunnableExecutionActor.probs(2 seconds))
+      val runnableExecutorActor: ActorRef = system.actorOf(RunnableExecutionActor.probs(2 seconds, None))
       // when
       runnableExecutorActor.tell(TestMessages.msg1, reportToActor.ref)
       // then
@@ -59,9 +59,9 @@ class RunnableExecutionActorSpec extends KolibriTestKitNoCluster
     "correctly execute ActorRunnable with IGNORE_SINK and reply receiving" in {
       // given
       val reportToActor: TestProbe = TestProbe()
-      val runnableExecutorActor: ActorRef = system.actorOf(RunnableExecutionActor.probs(2 seconds))
+      val runnableExecutorActor: ActorRef = system.actorOf(RunnableExecutionActor.probs(2 seconds, None))
       // when
-      runnableExecutorActor.tell(TestMessages.messagesToActorRefRunnable(), reportToActor.ref)
+      runnableExecutorActor.tell(TestMessages.messagesToActorRefRunnable("testJob"), reportToActor.ref)
       // then
       reportToActor.expectMsgPF(2 seconds){
         case _: AggregationState[Map[Tag, Double]] => true

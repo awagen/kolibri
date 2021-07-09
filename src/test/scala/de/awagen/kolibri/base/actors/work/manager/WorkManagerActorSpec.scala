@@ -16,15 +16,14 @@
 
 package de.awagen.kolibri.base.actors.work.manager
 
-import akka.actor.ActorRef
+import akka.actor.{ActorRef, Props}
 import akka.testkit.{TestKit, TestProbe}
 import de.awagen.kolibri.base.actors.work.manager.JobManagerActor.ACK
 import de.awagen.kolibri.base.actors.work.manager.WorkManagerActor.{TaskExecutionWithTypedResult, TasksWithTypedResult}
-import de.awagen.kolibri.base.actors.work.worker.AggregatingActor.AggregationState
 import de.awagen.kolibri.base.actors.work.worker.JobPartIdentifiers.BaseJobPartIdentifier
-import de.awagen.kolibri.base.actors.work.worker.ResultMessages.ResultEvent
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationState, Corn}
 import de.awagen.kolibri.base.actors.{KolibriTestKitNoCluster, TestMessages}
-import de.awagen.kolibri.base.processing.TestTaskHelper.{concatIdsTask, productIdResult, reverseIdsTask, reversedIdKey}
+import de.awagen.kolibri.base.processing.TestTaskHelper._
 import de.awagen.kolibri.base.processing.execution.SimpleTaskExecution
 import de.awagen.kolibri.base.processing.execution.task.Task
 import de.awagen.kolibri.datatypes.mutable.stores.{TypeTaggedMap, TypedMapStore}
@@ -54,10 +53,10 @@ class WorkManagerActorSpec extends KolibriTestKitNoCluster
 
     "correctly execute ActorRunnable[_,_]" in {
       // given
-      val workManager: ActorRef = system.actorOf(WorkManagerActor.props())
+      val workManager: ActorRef = system.actorOf(Props[WorkManagerActor])
       val testProbe = TestProbe()
       // when
-      workManager.tell(TestMessages.messagesToActorRefRunnable(), testProbe.ref)
+      workManager.tell(TestMessages.messagesToActorRefRunnable("testJob"), testProbe.ref)
       // then
       testProbe.expectMsgPF(2 second) {
         case ACK(_, _, _) =>
@@ -65,7 +64,7 @@ class WorkManagerActorSpec extends KolibriTestKitNoCluster
         case e => fail(s"instead of expected received: $e")
       }
       testProbe.expectMsgPF(2 second) {
-        case AggregationState(_, _, _) =>
+        case AggregationState(_, _, _, _) =>
           true
         case e => fail(s"instead of expected received: $e")
       }
@@ -73,34 +72,34 @@ class WorkManagerActorSpec extends KolibriTestKitNoCluster
 
     "correctly execute TasksWithTypedResult" in {
       // given
-      val workManager: ActorRef = system.actorOf(WorkManagerActor.props())
+      val workManager: ActorRef = system.actorOf(Props[WorkManagerActor])
       val testProbe = TestProbe()
       val data: TypeTaggedMap with TaggedWithType[Tag] = TypedMapStore.empty.toTaggedWithTypeMap
       data.addTag(AGGREGATION, StringTag("ALL"))
-      data.put(productIdResult.typed, Seq("p3", "p4", "p21"))
-      val tasks: Seq[Task[_]] = Seq(concatIdsTask, reverseIdsTask)
-      val msg = TasksWithTypedResult(data = data, tasks = tasks, finalResultKey = reversedIdKey.typed,
+      data.put(productIdResult, Seq("p3", "p4", "p21"))
+      val tasks: Seq[Task[_]] = Seq(concatIdsTask, reverseIdsTaskPM)
+      val msg = TasksWithTypedResult(data = data, tasks = tasks, finalResultKey = reversedIdKeyPM,
         BaseJobPartIdentifier(jobId = "testJob", batchNr = 1))
       // when
       workManager.tell(msg, testProbe.ref)
       // then
       testProbe.expectMsgPF(2 seconds) {
-        case ResultEvent(Right(value), _, _) =>
-          value mustBe Right("12p,4p,3p")
+        case Corn(value) =>
+          value mustBe "12p,4p,3p"
         case other => fail(s"received message $other instead of expected success msg")
       }
     }
 
     "correctly execute TaskExecutionWithTypedResult" in {
       // given
-      val workManager: ActorRef = system.actorOf(WorkManagerActor.props())
+      val workManager: ActorRef = system.actorOf(Props[WorkManagerActor])
       val testProbe = TestProbe()
       val data: TypeTaggedMap with TaggedWithType[Tag] = TypedMapStore.empty.toTaggedWithTypeMap
       data.addTag(AGGREGATION, StringTag("ALL"))
-      data.put(productIdResult.typed, Seq("p3", "p4", "p21"))
-      val tasks: Seq[Task[_]] = Seq(concatIdsTask, reverseIdsTask)
+      data.put(productIdResult, Seq("p3", "p4", "p21"))
+      val tasks: Seq[Task[_]] = Seq(concatIdsTask, reverseIdsTaskPM)
       val taskExecution = SimpleTaskExecution(
-        resultKey = reversedIdKey.typed,
+        resultKey = reversedIdKeyPM,
         currentData = data.toTaggedWithTypeMap,
         tasks = tasks
       )
@@ -109,7 +108,7 @@ class WorkManagerActorSpec extends KolibriTestKitNoCluster
         BaseJobPartIdentifier(jobId = "testJob", batchNr = 1)), testProbe.ref)
       // then
       testProbe.expectMsgPF(2 seconds) {
-        case ResultEvent(Right(result), _, _) =>
+        case Corn(result) =>
           result mustBe "12p,4p,3p"
         case other => fail(s"received message $other instead of expected success msg")
       }

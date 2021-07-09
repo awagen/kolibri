@@ -18,6 +18,7 @@ package de.awagen.kolibri.base.io.utils
 
 import de.awagen.kolibri.base.io.utils.TestObjects.{doc1, doc2}
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
+import de.awagen.kolibri.datatypes.functions.GeneralSerializableFunctions._
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
 
 
@@ -39,7 +40,7 @@ class CSVFormatUtilsSpec extends UnitTestSpec {
 
     "transform MetricAggregation to key -> (csv file content) map" in {
       // given
-      val aggregationFull: MetricAggregation[String] = MetricAggregation.empty[String]
+      val aggregationFull: MetricAggregation[String] = MetricAggregation.empty[String](identity)
       doc1.rows.values.foreach(x => aggregationFull.addResults(Set(doc1.id), x))
       doc2.rows.values.foreach(x => aggregationFull.addResults(Set(doc2.id), x))
       //  when

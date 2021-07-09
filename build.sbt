@@ -3,21 +3,20 @@ import sbt.url
 
 val sl4jApiVersion = "1.7.30"
 val scalaTestVersion = "3.2.2"
-val kolibriDatatypesVersion = "0.1.0-alpha1"
+val kolibriDatatypesVersion = "0.1.0-alpha2"
 
-val akkaVersion = "2.6.12"
+val akkaVersion = "2.6.14"
 val akkaContribVersion = "2.5.31"
 val akkaHttpVersion = "10.2.1"
 val akkaManagementVersion = "1.0.8"
 val shapelessVersion = "2.3.3"
 val logbackVersion = "1.2.3"
-val kryoSerializationVersion = "2.0.1"
+val kryoSerializationVersion = "2.2.0"
 val awsSdkVersion = "1.11.713"
 val apacheCommonsIOVersion = "2.8.0"
-val macWireVersion = "2.3.7"
 
 ThisBuild / scalaVersion := "2.13.2"
-ThisBuild / version := "0.1.0-alpha1"
+ThisBuild / version := "0.1.0-alpha2"
 
 lazy val jvmOptions = Seq(
   "-Xms1G",
@@ -114,6 +113,8 @@ val additionalDependencies = Seq(
   "com.lightbend.akka.management" %% "akka-management-cluster-http" % akkaManagementVersion,
   // tag-based aws discovery
   "com.lightbend.akka.discovery" %% "akka-discovery-aws-api" % akkaManagementVersion,
+  // k8s discovery
+  "com.lightbend.akka.discovery" %% "akka-discovery-kubernetes-api" % akkaManagementVersion,
   // to discover other members of the cluster
   "com.typesafe.akka" %% "akka-discovery" % akkaVersion,
   "com.typesafe.akka" %% "akka-cluster" % akkaVersion,
@@ -127,6 +128,11 @@ val additionalDependencies = Seq(
   "com.typesafe.akka" %% "akka-actor-typed" % akkaVersion,
   "com.typesafe.akka" %% "akka-cluster-typed" % akkaVersion,
   "com.typesafe.akka" %% "akka-serialization-jackson" % akkaVersion,
+  "com.typesafe.akka" %% "akka-pki" % akkaVersion,
+  "com.typesafe.akka" %% "akka-coordination" % akkaVersion,
+  "com.typesafe.akka" %% "akka-remote" % akkaVersion,
+  "com.typesafe.akka" %% "akka-protobuf-v3" % akkaVersion,
+  "com.typesafe.akka" %% "akka-testkit" % akkaVersion,
   //scala test framework (scalactic is recommended but not required)(http://www.scalatest.org/install)
   "org.scalactic" %% "scalactic" % scalaTestVersion % Test,
   "org.scalatest" %% "scalatest" % scalaTestVersion % Test,

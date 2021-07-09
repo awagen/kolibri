@@ -17,12 +17,12 @@
 package de.awagen.kolibri.base.actors.testactors
 
 import akka.actor.{Actor, ActorLogging}
-import de.awagen.kolibri.base.actors.TestMessages.TestMsg
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.Corn
 
 // TestActor receiving messages, adding 1 and sending reponse back to sender
-case class TestTransformActor[T](transformFunc: TestMsg => T) extends Actor with ActorLogging {
+case class TestTransformActor[T](transformFunc: Corn[Int] => T) extends Actor with ActorLogging {
   override def receive: Receive = {
-    case e: TestMsg =>
+    case e: Corn[Int] =>
       sender() ! transformFunc.apply(e)
     case e =>
       log.warning(s"Dont know message: '$e'")

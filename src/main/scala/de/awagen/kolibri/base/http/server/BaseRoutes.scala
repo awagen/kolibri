@@ -19,7 +19,7 @@ package de.awagen.kolibri.base.http.server
 import akka.NotUsed
 import akka.actor.{ActorRef, ActorSystem}
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpHeader, StatusCodes}
-import akka.http.scaladsl.server.Directives.{complete, get, onSuccess, parameters, path, post}
+import akka.http.scaladsl.server.Directives.{as, complete, entity, get, onSuccess, parameters, path, post}
 import akka.http.scaladsl.server.Route
 import akka.pattern.ask
 import akka.stream.scaladsl.Source
@@ -30,8 +30,10 @@ import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor._
 import de.awagen.kolibri.base.cluster.ClusterStatus
 import de.awagen.kolibri.base.config.AppConfig.config.internalJobStatusRequestTimeout
-import de.awagen.kolibri.base.domain.jobdefinitions.JobDefinitions.{OrderedMultiValuesRunnableJobDefinition, OrderedMultiValuesRunnableTaskJobDefinition}
 import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions
+import de.awagen.kolibri.base.io.json.SearchEvaluationJsonProtocol._
+import de.awagen.kolibri.base.processing.JobMessages.{SearchEvaluation, TestPiCalculation}
+import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.SearchJobDefinitions
 import org.slf4j.{Logger, LoggerFactory}
 
 import java.util.Objects
@@ -125,42 +127,6 @@ object BaseRoutes {
     }
   }
 
-  def executeActorRunnableJobRoute(implicit system: ActorSystem): Route = {
-    import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
-    import akka.http.scaladsl.server.Directives._
-    import de.awagen.kolibri.base.io.json.JobDefinitionsJsonProtocol._
-    path("jobRunnable") {
-      post {
-        extractRequest { _ =>
-          entity(as[OrderedMultiValuesRunnableJobDefinition]) { definition =>
-            supervisorActor ! definition.createActorRunnableJobCmd
-            // return ok to indicate job could be parsed and is processed now
-            // request status via separate endpoint
-            complete(StatusCodes.OK)
-          }
-        }
-      }
-    }
-  }
-
-  def executeTaskJobRoute(implicit system: ActorSystem): Route = {
-    import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
-    import akka.http.scaladsl.server.Directives._
-    import de.awagen.kolibri.base.io.json.JobDefinitionsJsonProtocol._
-    path("jobTaskRunnable") {
-      post {
-        extractRequest { _ =>
-          entity(as[OrderedMultiValuesRunnableTaskJobDefinition]) { definition =>
-            supervisorActor ! definition.createActorRunnableTaskJobCmd
-            // return ok to indicate job could be parsed and is processed now
-            // request status via separate endpoint
-            complete(StatusCodes.OK)
-          }
-        }
-      }
-    }
-  }
-
   // the division of pi * r^2 / (2*r)^2 for throwing dart in unit-square with circle of radius 0.5
   // for unit-sware is pi / 4 -> calculate freq of darts within circle, multiply by 4, gives pi
   // estimation will be more accurate for more darts
@@ -173,6 +139,20 @@ object BaseRoutes {
         val actorRunnableJob = TestJobDefinitions.piEstimationJob(jobName, nrThrows.toInt, batchSize.toInt, resultDir)
         supervisorActor ! actorRunnableJob
         complete(StatusCodes.Accepted, "Processing Pi Calculation Example")
+      }
+      }
+    }
+  }
+
+  def executeDistributedPiCalculationExampleWithoutSerialization(implicit system: ActorSystem): Route = {
+
+    implicit val timeout: Timeout = Timeout(1 minute)
+    implicit val ec: ExecutionContextExecutor = system.dispatcher
+    path("pi_calc_no_ser") {
+      parameters("jobName", "nrThrows", "batchSize", "resultDir") { (jobName, nrThrows, batchSize, resultDir) => {
+        val msg = TestPiCalculation(jobName, nrThrows.toInt, batchSize.toInt, resultDir)
+        supervisorActor ! msg
+        complete(StatusCodes.Accepted, "Processing Pi Calculation (without full ActorRunnable serialization) Example")
       }
       }
     }
@@ -230,6 +210,26 @@ object BaseRoutes {
             e => complete(e.toString)
           }
         }
+      }
+    }
+  }
+
+  def startSearchEval(implicit system: ActorSystem): Route = {
+    implicit val ec: ExecutionContextExecutor = system.dispatcher
+    path("search_eval") {
+      entity(as[SearchEvaluation]) { searchEvaluation =>
+        supervisorActor ! SearchJobDefinitions.searchEvaluationToRunnableJobCmd(searchEvaluation)
+        complete(StatusCodes.Accepted, "Starting search evaluation example")
+      }
+    }
+  }
+
+  def startSearchEvalNoSerialize(implicit system: ActorSystem): Route = {
+    implicit val ec: ExecutionContextExecutor = system.dispatcher
+    path("search_eval_no_ser") {
+      entity(as[SearchEvaluation]) { searchEvaluation =>
+        supervisorActor ! searchEvaluation
+        complete(StatusCodes.Accepted, "Starting search evaluation example")
       }
     }
   }

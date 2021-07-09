@@ -1,0 +1,28 @@
+{{- if .Values.autoscalingCompute.enabled }}
+apiVersion: autoscaling/v2beta1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "kolibri-service.fullnameCompute" . }}
+  labels:
+    {{- include "kolibri-service.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "kolibri-service.fullnameCompute" . }}
+  minReplicas: {{ .Values.autoscalingCompute.minReplicas }}
+  maxReplicas: {{ .Values.autoscalingCompute.maxReplicas }}
+  metrics:
+    {{- if .Values.autoscalingCompute.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        targetAverageUtilization: {{ .Values.autoscalingCompute.targetCPUUtilizationPercentage }}
+    {{- end }}
+    {{- if .Values.autoscalingCompute.targetMemoryUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        targetAverageUtilization: {{ .Values.autoscalingCompute.targetMemoryUtilizationPercentage }}
+    {{- end }}
+{{- end }}

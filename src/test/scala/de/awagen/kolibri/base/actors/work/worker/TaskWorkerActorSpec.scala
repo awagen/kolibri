@@ -20,19 +20,19 @@ import akka.actor.ActorRef
 import akka.testkit.{ImplicitSender, TestKit}
 import de.awagen.kolibri.base.actors.KolibriTestKitNoCluster
 import de.awagen.kolibri.base.actors.work.worker.JobPartIdentifiers.BaseJobPartIdentifier
-import de.awagen.kolibri.base.actors.work.worker.ResultMessages.ResultEvent
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{Corn, ProcessingMessage}
 import de.awagen.kolibri.base.actors.work.worker.TaskWorkerActor.ProcessTasks
 import de.awagen.kolibri.base.domain.TaskDataKeys
-import de.awagen.kolibri.base.processing.TestTaskHelper.{concatIdsTask, productIdResult, reverseIdsTask, reversedIdKey}
+import de.awagen.kolibri.base.processing.TestTaskHelper.{concatIdsTask, productIdResult, reverseIdsTaskPM, reversedIdKeyPM}
 import de.awagen.kolibri.base.processing.execution.task.Task
 import de.awagen.kolibri.datatypes.mutable.stores.{TypeTaggedMap, TypedMapStore}
 import de.awagen.kolibri.datatypes.tagging.TagType.AGGREGATION
 import de.awagen.kolibri.datatypes.tagging.TaggedWithType
 import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}
+import de.awagen.kolibri.datatypes.tagging.TypeTaggedMapImplicits._
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
-import de.awagen.kolibri.datatypes.tagging.TypeTaggedMapImplicits._
 
 import scala.concurrent.duration._
 
@@ -55,17 +55,17 @@ class TaskWorkerActorSpec extends KolibriTestKitNoCluster
       // given
       val data: TypeTaggedMap with TaggedWithType[Tag] = TypedMapStore.empty.toTaggedWithTypeMap
       data.addTag(AGGREGATION, StringTag("ALL"))
-      data.put(productIdResult.typed, Seq("p3", "p4", "p21"))
-      val tasks: Seq[Task[_]] = Seq(concatIdsTask, reverseIdsTask)
-      val resultKey: TaskDataKeys.Val[String] = reversedIdKey
-      val msg = ProcessTasks(data, tasks, resultKey.typed, BaseJobPartIdentifier("testJob", 1))
+      data.put(productIdResult, Seq("p3", "p4", "p21"))
+      val tasks: Seq[Task[_]] = Seq(concatIdsTask, reverseIdsTaskPM)
+      val resultKey: TaskDataKeys.Val[ProcessingMessage[String]] = reversedIdKeyPM
+      val msg = ProcessTasks(data, tasks, resultKey, BaseJobPartIdentifier("testJob", 1))
       val workerActor: ActorRef = system.actorOf(TaskWorkerActor.props)
       // when
       workerActor ! msg
       // then
       expectMsgPF(2 seconds) {
-        case ResultEvent(Right(result), _, _) =>
-          result mustBe Right("12p,4p,3p")
+        case Corn(result) =>
+          result mustBe "12p,4p,3p"
         case other => fail(s"received message $other instead of expected success msg")
       }
     }

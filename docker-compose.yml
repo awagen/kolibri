@@ -9,58 +9,90 @@ networks:
 
 services:
   kolibri1:
-    image: kolibri-base:0.1.0-alpha1
+    image: kolibri-base:0.1.0-alpha2
     ports:
       - "8000:8000"
     environment:
+      JVM_OPTS: >
+        -XX:+PrintFlagsFinal
+        -XX:+UseG1GC
+        -Xms1024m
+        -Xmx4096m
       PROFILE: prod
       ROLES: compute,httpserver
       CLUSTER_NODE_HOST: 172.33.1.1
-      CLUSTER_NODE_PORT: 0
+      CLUSTER_NODE_PORT: 8001
       HTTP_SERVER_INTERFACE: 172.33.1.1
       HTTP_SERVER_PORT: 8000
       MANAGEMENT_HOST: 172.33.1.1
       MANAGEMENT_PORT: 8558
-      DiscoveryServiceName: KolibriAppService
-      KolibriActorSystemName: KolibriAppSystem
+      MANAGEMENT_BIND_HOSTNAME: '0.0.0.0'
+      MANAGEMENT_BIND_PORT: 8558
+      CLUSTER_NODE_BIND_HOST: '0.0.0.0'
+      CLUSTER_NODE_BIND_PORT: 8001
+      DISCOVERY_SERVICE_NAME: kolibri-service
+      KOLIBRI_ACTOR_SYSTEM_NAME: KolibriAppSystem
+      DISCOVERY_METHOD: config
     volumes:
       - ./kolibri-test:/app/data
     networks:
       kolibri-net:
         ipv4_address: 172.33.1.1
+#    mem_limit: 3000m
 
   kolibri2:
-    image: kolibri-base:0.1.0-alpha1
+    image: kolibri-base:0.1.0-alpha2
     environment:
+      JVM_OPTS: >
+        -XX:+PrintFlagsFinal
+        -XX:+UseG1GC
+        -Xms1024m
+        -Xmx4096m
       PROFILE: prod
       ROLES: compute
       CLUSTER_NODE_HOST: 172.33.1.2
-      CLUSTER_NODE_PORT: 0
+      CLUSTER_NODE_PORT: 8001
       MANAGEMENT_HOST: 172.33.1.2
       MANAGEMENT_PORT: 8559
-      DiscoveryServiceName: KolibriAppService
-      KolibriActorSystemName: KolibriAppSystem
+      MANAGEMENT_BIND_HOSTNAME: '0.0.0.0'
+      MANAGEMENT_BIND_PORT: 8559
+      CLUSTER_NODE_BIND_HOST: '0.0.0.0'
+      CLUSTER_NODE_BIND_PORT: 8001
+      DISCOVERY_SERVICE_NAME: kolibri-service
+      KOLIBRI_ACTOR_SYSTEM_NAME: KolibriAppSystem
+      DISCOVERY_METHOD: config
     volumes:
       - ./kolibri-test:/app/data
     networks:
       kolibri-net:
         ipv4_address: 172.33.1.2
+#    mem_limit: 3000m
 
 
   kolibri3:
-    image: kolibri-base:0.1.0-alpha1
+    image: kolibri-base:0.1.0-alpha2
     environment:
+      JVM_OPTS: >
+        -XX:+PrintFlagsFinal
+        -XX:+UseG1GC
+        -Xms1024m
+        -Xmx4069m
       PROFILE: prod
       ROLES: compute
       CLUSTER_NODE_HOST: 172.33.1.3
-      CLUSTER_NODE_PORT: 0
+      CLUSTER_NODE_PORT: 8001
       MANAGEMENT_HOST: 172.33.1.3
       MANAGEMENT_PORT: 8560
-      DiscoveryServiceName: KolibriAppService
-      KolibriActorSystemName: KolibriAppSystem
+      MANAGEMENT_BIND_HOSTNAME: '0.0.0.0'
+      MANAGEMENT_BIND_PORT: 8560
+      CLUSTER_NODE_BIND_HOST: '0.0.0.0'
+      CLUSTER_NODE_BIND_PORT: 8001
+      DISCOVERY_SERVICE_NAME: kolibri-service
+      KOLIBRI_ACTOR_SYSTEM_NAME: KolibriAppSystem
+      DISCOVERY_METHOD: config
     volumes:
       - ./kolibri-test:/app/data
     networks:
       kolibri-net:
         ipv4_address: 172.33.1.3
-
+#    mem_limit: 2000m

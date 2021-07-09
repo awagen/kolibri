@@ -14,8 +14,8 @@ sudo docker run \
 -e MANAGEMENT_HOST='127.0.0.1' \
 -e MANAGEMENT_PORT='8558' \
 -e SINGLE_NODE='true' \
--e DiscoveryServiceName='KolibriAppService' \
+-e DISCOVERY_SERVICE_NAME='kolibri-service' \
 -e KOLIBRI_USER='kolibri_local' \
 -e KOLIBRI_USER_ID=$UID \
 -d \
-kolibri-base:0.1.0-alpha1
+kolibri-base:0.1.0-alpha2

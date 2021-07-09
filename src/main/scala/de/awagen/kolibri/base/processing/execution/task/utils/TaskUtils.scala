@@ -20,17 +20,14 @@ import akka.actor.Props
 import akka.stream.scaladsl.Flow
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.BatchTypeTaggedMapGenerator
 import de.awagen.kolibri.base.actors.work.worker.JobPartIdentifiers.BaseJobPartIdentifier
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{Corn, ProcessingMessage}
 import de.awagen.kolibri.base.actors.work.worker.TaskExecutionWorkerActor.ProcessTaskExecution
 import de.awagen.kolibri.base.processing.execution.SimpleTaskExecution
 import de.awagen.kolibri.base.processing.execution.expectation.{BaseExecutionExpectation, ClassifyingCountExpectation, StopExpectation, TimeExpectation}
 import de.awagen.kolibri.base.processing.execution.job.{ActorRunnable, ActorRunnableSinkType}
 import de.awagen.kolibri.base.processing.execution.task.Task
 import de.awagen.kolibri.datatypes.ClassTyped
-import de.awagen.kolibri.datatypes.collections.IndexedGenerator
-import de.awagen.kolibri.datatypes.mutable.stores.TypeTaggedMap
-import de.awagen.kolibri.datatypes.tagging.TaggedWithType
-import de.awagen.kolibri.datatypes.tagging.Tags.Tag
-import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSupplier
+import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 
 import java.util.concurrent.atomic.AtomicInteger
@@ -39,24 +36,24 @@ import scala.concurrent.duration.FiniteDuration
 object TaskUtils {
 
   def tasksToActorRunnable[U](jobId: String,
-                              resultKey: ClassTyped[Any],
+                              resultKey: ClassTyped[ProcessingMessage[Any]],
                               mapGenerator: BatchTypeTaggedMapGenerator,
                               tasks: Seq[Task[_]],
-                              aggregatorSupplier: SerializableSupplier[Aggregator[Tag, Any, U]],
+                              aggregatorSupplier: () => Aggregator[ProcessingMessage[Any], U],
                               taskExecutionWorkerProps: Props,
                               timeoutPerRunnable: FiniteDuration,
-                              timeoutPerElement: FiniteDuration): IndexedGenerator[ActorRunnable[SimpleTaskExecution[Any, TypeTaggedMap with TaggedWithType[Tag]], Any, U]] = {
-    val executionIterable: IndexedGenerator[IndexedGenerator[SimpleTaskExecution[Any, TypeTaggedMap with TaggedWithType[Tag]]]] =
+                              timeoutPerElement: FiniteDuration): IndexedGenerator[ActorRunnable[SimpleTaskExecution[Any], Any, Any, U]] = {
+    val executionIterable: IndexedGenerator[IndexedGenerator[SimpleTaskExecution[Any]]] =
       mapGenerator.mapGen(x => x.data.mapGen(y => SimpleTaskExecution(resultKey, y, tasks)))
     val atomicInt = new AtomicInteger(0)
     executionIterable.mapGen(x => {
       val batchNr = atomicInt.addAndGet(1)
-      ActorRunnable[SimpleTaskExecution[Any, TypeTaggedMap with TaggedWithType[Tag]], Any, U](
+      ActorRunnable[SimpleTaskExecution[Any], Any, Any, U](
         jobId = jobId,
         batchNr = batchNr,
         supplier = x,
         // send single TaskExecutions to TaskExecutionWorkerActor for processing
-        transformer = Flow.fromFunction[SimpleTaskExecution[Any, TypeTaggedMap with TaggedWithType[Tag]], Any](x => ProcessTaskExecution(taskExecution = x, BaseJobPartIdentifier(jobId, batchNr))),
+        transformer = Flow.fromFunction[SimpleTaskExecution[Any], ProcessingMessage[Any]](x => Corn(ProcessTaskExecution(taskExecution = x, BaseJobPartIdentifier(jobId, batchNr)))),
         processingActorProps = Some(taskExecutionWorkerProps),
         // right now the expectation bound to each ActorRunnable is to provide one result per processed element
         // back to the actor executing the runnable, without StopExpectation. TimeExpectation set to threshold of 10 min
@@ -67,7 +64,7 @@ object TaskUtils {
             TimeExpectation(timeoutPerRunnable))
         ),
         aggregationSupplier = aggregatorSupplier,
-        returnType = ActorRunnableSinkType.REPORT_TO_ACTOR_SINK,
+        sinkType = ActorRunnableSinkType.REPORT_TO_ACTOR_SINK,
         timeoutPerRunnable,
         timeoutPerElement)
     })

@@ -16,6 +16,7 @@
 
 package de.awagen.kolibri.base.processing.execution
 
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.ProcessingMessage
 import de.awagen.kolibri.base.processing.execution.task.Task
 import de.awagen.kolibri.base.processing.execution.task.TaskStates.TaskState
 import de.awagen.kolibri.datatypes.ClassTyped
@@ -34,7 +35,7 @@ trait TaskExecution[+T] extends KolibriSerializable {
 
   def currentData: TypeTaggedMap with TaggedWithType[Tag]
 
-  val resultKey: ClassTyped[T]
+  val resultKey: ClassTyped[ProcessingMessage[T]]
 
   def tasks: Seq[Task[_]]
 
