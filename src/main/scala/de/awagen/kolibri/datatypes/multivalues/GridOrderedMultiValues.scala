@@ -16,7 +16,7 @@
 
 package de.awagen.kolibri.datatypes.multivalues
 
-import de.awagen.kolibri.datatypes.utils.{ParameterGenerator, PermutationGenerator}
+import de.awagen.kolibri.datatypes.utils.{ParameterGenerator, PermutationUtils}
 import de.awagen.kolibri.datatypes.values.OrderedValues
 
 import scala.collection.immutable
@@ -27,7 +27,7 @@ case class GridOrderedMultiValues(values: Seq[OrderedValues[Any]]) extends Order
   val numberOfValuesPerParameter: immutable.Seq[Int] = values.map(x => x.totalValueCount).toList
 
   override def stepsForNthElementStartingFromFirstParam(n: Int): List[(Int, Int)] = {
-    PermutationGenerator.stepsForNthElementStartingFromFirstParam(numberOfValuesPerParameter, n)
+    PermutationUtils.stepsForNthElementBackwardCalc(numberOfValuesPerParameter, n)
   }
 
   /**
@@ -50,7 +50,7 @@ case class GridOrderedMultiValues(values: Seq[OrderedValues[Any]]) extends Order
     * @param n
     */
   override def findNthElement(n: Int): Option[Seq[Any]] = {
-    PermutationGenerator.findNthElement(numberOfValuesPerParameter, n)
+    PermutationUtils.findNthElementForwardCalc(numberOfValuesPerParameter, n)
       .map(x => ParameterGenerator.indicesToValues(x, values))
   }
 
@@ -62,7 +62,7 @@ case class GridOrderedMultiValues(values: Seq[OrderedValues[Any]]) extends Order
     * @param nrOfElements
     */
   override def findNNextElementsFromPosition(startElement: Int, nrOfElements: Int): Seq[Seq[Any]] = {
-    ParameterGenerator.indicesSeqToValueSeq(PermutationGenerator.findNNextElementsFromPosition(numberOfValuesPerParameter,
+    ParameterGenerator.indicesSeqToValueSeq(PermutationUtils.findNNextElementsFromPosition(numberOfValuesPerParameter,
       startElement, nrOfElements), values)
   }
 

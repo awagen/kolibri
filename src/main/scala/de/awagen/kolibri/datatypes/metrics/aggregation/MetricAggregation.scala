@@ -16,14 +16,16 @@
 
 package de.awagen.kolibri.datatypes.metrics.aggregation
 
+import de.awagen.kolibri.datatypes.functions.GeneralSerializableFunctions._
 import de.awagen.kolibri.datatypes.stores.{MetricDocument, MetricRow}
+import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 
 import scala.collection.mutable
 
 
 object MetricAggregation {
 
-  def empty[A <: AnyRef]: MetricAggregation[A] = MetricAggregation[A](mutable.Map.empty)
+  def empty[A <: AnyRef](keyMapFunction: SerializableFunction1[A, A]): MetricAggregation[A] = MetricAggregation[A](mutable.Map.empty, keyMapFunction)
 
   def combineAggregates[A](agg1: MetricRow, agg2: MetricRow): MetricRow = {
     MetricRow.empty.addRecord(agg1).addRecord(agg2)
@@ -32,10 +34,12 @@ object MetricAggregation {
 }
 
 
-case class MetricAggregation[A <: AnyRef](aggregationStateMap: mutable.Map[A, MetricDocument[A]] = mutable.Map.empty[A, MetricDocument[A]]) {
+case class MetricAggregation[A <: AnyRef](aggregationStateMap: mutable.Map[A, MetricDocument[A]] = mutable.Map.empty[A, MetricDocument[A]],
+                                          keyMapFunction: SerializableFunction1[A, A] = identity) {
 
   def addResults(tags: Set[A], record: MetricRow): Unit = {
-    tags.foreach(x =>
+    val mappedTags = tags.map(tag => keyMapFunction.apply(tag))
+    mappedTags.foreach(x =>
       if (aggregationStateMap.contains(x)) {
         aggregationStateMap(x).add(record)
       }
@@ -46,12 +50,16 @@ case class MetricAggregation[A <: AnyRef](aggregationStateMap: mutable.Map[A, Me
     )
   }
 
-  def add(aggregation: MetricAggregation[A]): Unit = {
-    aggregation.aggregationStateMap.keySet.foreach {
-      case e if aggregationStateMap.keySet.contains(e) =>
-        aggregationStateMap(e).add(aggregation.aggregationStateMap(e))
+  def add(aggregation: MetricAggregation[A], ignoreIdDiff: Boolean = false): Unit = {
+    val originalKeys = aggregation.aggregationStateMap.keySet.toSeq
+    val mappedKeys = originalKeys.map(key => keyMapFunction.apply(key))
+    originalKeys.indices.foreach {
+      case e if aggregationStateMap.keySet.contains(mappedKeys(e)) =>
+        aggregationStateMap(mappedKeys(e)).add(aggregation.aggregationStateMap(originalKeys(e)), ignoreIdDiff = ignoreIdDiff)
       case e =>
-        aggregationStateMap(e) = aggregation.aggregationStateMap(e)
+        val newDoc = MetricDocument.empty[A](mappedKeys(e))
+        newDoc.add(aggregation.aggregationStateMap(originalKeys(e)), ignoreIdDiff = ignoreIdDiff)
+        aggregationStateMap(mappedKeys(e)) = newDoc
     }
   }
 

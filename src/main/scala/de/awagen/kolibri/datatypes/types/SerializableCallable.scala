@@ -17,14 +17,12 @@
 
 package de.awagen.kolibri.datatypes.types
 
-import java.util.function.{Consumer, Supplier}
-
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 
 object SerializableCallable {
 
   @FunctionalInterface
-  trait SerializableSupplier[T] extends Supplier[T] with KolibriSerializable
+  trait SerializableSupplier[T] extends (() => T) with KolibriSerializable
 
   @FunctionalInterface
   trait SerializableFunction1[-T, +U] extends (T => U) with KolibriSerializable
@@ -33,6 +31,6 @@ object SerializableCallable {
   trait SerializableFunction2[-T1, -T2, R] extends ((T1, T2) => R) with KolibriSerializable
 
   @FunctionalInterface
-  trait SerializableConsumer[T] extends Consumer[T] with KolibriSerializable
+  trait SerializableConsumer[T] extends (T => ()) with KolibriSerializable
 
 }

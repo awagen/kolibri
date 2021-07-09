@@ -14,18 +14,18 @@
   * limitations under the License.
   */
 
-package de.awagen.kolibri.datatypes.collections
+package de.awagen.kolibri.datatypes.collections.generators
 
 import de.awagen.kolibri.datatypes.testclasses.UnitTestSpec
 
-class BaseIndexedGeneratorSpec extends UnitTestSpec {
+class ByFunctionNrLimitedIndexedGeneratorSpec extends UnitTestSpec {
 
   "BaseIndexedGenerator" should {
 
     "correctly map elements" in {
       // given
       val elements: Seq[Int] = Seq(2, 4, 6, 8)
-      val generator: BaseIndexedGenerator[Int] = BaseIndexedGenerator(4, c => Some(elements(c)))
+      val generator: ByFunctionNrLimitedIndexedGenerator[Int] = ByFunctionNrLimitedIndexedGenerator(4, c => Some(elements(c)))
       // when
       val new_generator: IndexedGenerator[String] = generator.mapGen(x => s"$x")
       val new_iterator: Iterator[String] = new_generator.iterator
@@ -40,7 +40,7 @@ class BaseIndexedGeneratorSpec extends UnitTestSpec {
     "correctly generate part" in {
       // given
       val elements = Seq(1, 4, 5, 2, 1, 2, 9, 10, 11, 0)
-      val generator = BaseIndexedGenerator(10, c => Some(elements(c)))
+      val generator = ByFunctionNrLimitedIndexedGenerator(10, c => Some(elements(c)))
       // when
       val firstHalf = generator.getPart(0, 5)
       val secondHalf = generator.getPart(5, 10)
@@ -58,7 +58,7 @@ class BaseIndexedGeneratorSpec extends UnitTestSpec {
     "correctly provide iterator for part" in {
       // given
       val elements = Seq(1, 4, 5, 2, 1, 2, 9, 10, 11, 0)
-      val generator = BaseIndexedGenerator(10, c => Some(elements(c)))
+      val generator = ByFunctionNrLimitedIndexedGenerator(10, c => Some(elements(c)))
       // when, then
       generator.getPart(2, 6).iterator.toSeq mustBe Seq(5, 2, 1, 2)
     }
@@ -66,7 +66,7 @@ class BaseIndexedGeneratorSpec extends UnitTestSpec {
     "correctly provide iterator for whole" in {
       // given
       val elements = Seq(1, 4, 5, 2, 1, 2, 9, 10, 11, 0)
-      val generator = BaseIndexedGenerator(10, c => Some(elements(c)))
+      val generator = ByFunctionNrLimitedIndexedGenerator(10, c => Some(elements(c)))
       // when, then
       generator.iterator.toSeq mustBe Seq(1, 4, 5, 2, 1, 2, 9, 10, 11, 0)
     }
@@ -74,7 +74,7 @@ class BaseIndexedGeneratorSpec extends UnitTestSpec {
     "should reduce endIndex to max index if exceeding" in {
       // given
       val elements = Seq(1, 4, 5, 2, 1, 2, 9, 10, 11, 0)
-      val generator = BaseIndexedGenerator(10, c => Some(elements(c)))
+      val generator = ByFunctionNrLimitedIndexedGenerator(10, c => Some(elements(c)))
       // when, then
       generator.getPart(2, 100).iterator.toSeq mustBe Seq(5, 2, 1, 2, 9, 10, 11, 0)
     }
@@ -82,9 +82,18 @@ class BaseIndexedGeneratorSpec extends UnitTestSpec {
     "should throw assertion exception if startIndex < 0" in {
       // given
       val elements = Seq(1, 4, 5, 2, 1, 2, 9, 10, 11, 0)
-      val generator = BaseIndexedGenerator(10, c => Some(elements(c)))
+      val generator = ByFunctionNrLimitedIndexedGenerator(10, c => Some(elements(c)))
       // when
       assertThrows[AssertionError](generator.getPart(-1, 3))
+    }
+
+    "should correctly createFromSeq" in {
+      // given
+      val elements = Seq(1, 2, 3, 4)
+      // when
+      val generator = ByFunctionNrLimitedIndexedGenerator.createFromSeq(elements)
+      // then
+      generator.iterator.toSeq mustBe Seq(1, 2, 3, 4)
     }
 
   }

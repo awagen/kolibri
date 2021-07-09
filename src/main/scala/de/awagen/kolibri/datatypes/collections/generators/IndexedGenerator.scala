@@ -14,7 +14,7 @@
   * limitations under the License.
   */
 
-package de.awagen.kolibri.datatypes.collections
+package de.awagen.kolibri.datatypes.collections.generators
 
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
@@ -30,20 +30,65 @@ import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFuncti
   * set. If we have many parameter combinations, it would be memory-inefficient storing them all instead of providing logic
   * to generate on demand
   *
+  * NOTE: this class could extend Iterable[T], yet this seems to cause
+  * some problems with Kryo Serialization when assigning KolibriSerializable
+  * to kryo serializer (e.g correct type of generator is not preserved);
+  * should be solvable by proper config. Until then dont extend Iterable
+  * (otherwise should see serialization log error that desired interface is not implemented but element being of
+  * type scala.collection.immutable.$colon$colon)
+  *
   * @tparam T
   */
 trait IndexedGenerator[+T] extends KolibriSerializable {
 
   val nrOfElements: Int
 
-  def iterator: Iterator[T]
+  /**
+    * Iterator over contained elements
+    *
+    * @return
+    */
+  def iterator: Iterator[T] = {
+    new Iterator[T] {
+      var currentPosition = 0
+
+      override def hasNext: Boolean = currentPosition < nrOfElements
+
+      override def next(): T = {
+        val element = get(currentPosition)
+        currentPosition += 1
+        element.get
+      }
+    }
+  }
 
   def size: Int = nrOfElements
 
+  /**
+    * create generator that only generates a part of the original generator.
+    *
+    * @param startIndex : startIndex (inclusive)
+    * @param endIndex   : endIndex (exclusive)
+    * @return generator generating the subpart of the generator as given by startIndex and endIndex
+    */
   def getPart(startIndex: Int, endIndex: Int): IndexedGenerator[T]
 
+  /**
+    * Get the index-th element
+    *
+    * @param index
+    * @return
+    */
   def get(index: Int): Option[T]
 
+  /**
+    * Provided a mapping function, create generator of new type where elements are created by current generator
+    * and then mapped by the provided function
+    *
+    * @param f : mapping function
+    * @tparam B : the type the original element type is mapped to
+    * @return : new generator providing the new type
+    */
   def mapGen[B](f: SerializableFunction1[T, B]): IndexedGenerator[B]
 
 }

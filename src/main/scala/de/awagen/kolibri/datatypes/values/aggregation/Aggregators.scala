@@ -19,7 +19,10 @@ package de.awagen.kolibri.datatypes.values.aggregation
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
 import de.awagen.kolibri.datatypes.stores.{MetricDocument, MetricRow}
+import de.awagen.kolibri.datatypes.tagging.TagType.AGGREGATION
+import de.awagen.kolibri.datatypes.tagging.TaggedWithType
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
+import de.awagen.kolibri.datatypes.types.DataStore
 import de.awagen.kolibri.datatypes.types.SerializableCallable.{SerializableFunction1, SerializableFunction2, SerializableSupplier}
 import de.awagen.kolibri.datatypes.values.AggregateValue
 import de.awagen.kolibri.datatypes.values.RunningValue.doubleAvgRunningValue
@@ -30,83 +33,107 @@ import scala.reflect.runtime.universe._
 
 object Aggregators {
 
-  abstract class Aggregator[T: TypeTag, U: TypeTag, V: TypeTag] extends KolibriSerializable {
+  abstract class Aggregator[-U: TypeTag, V: TypeTag] extends KolibriSerializable {
 
-    val keyType: TypeTag[T] = implicitly[TypeTag[T]]
-    val singleElementType: TypeTag[U] = implicitly[TypeTag[U]]
-    val aggregationType: TypeTag[V] = implicitly[TypeTag[V]]
-
-    def add(keys: Set[T], sample: U): Unit
+    def add(sample: U): Unit
 
     def aggregation: V
 
-    def add(aggregatedValue: V): Unit
+    def addAggregate(aggregatedValue: V): Unit
 
   }
 
-  class BaseAggregator[T: TypeTag, U: TypeTag, V: TypeTag](aggFunc: SerializableFunction2[U, V, V], startValueGen: SerializableSupplier[V], mergeFunc: SerializableFunction2[V, V, V]) extends Aggregator[T, U, V] {
-    var value: V = startValueGen.get()
+  class BaseAggregator[U: TypeTag, V: TypeTag](aggFunc: SerializableFunction2[U, V, V], startValueGen: SerializableSupplier[V], mergeFunc: SerializableFunction2[V, V, V]) extends Aggregator[U, V] {
+    var value: V = startValueGen.apply()
 
-    override def add(keys: Set[T], sample: U): Unit = {
+    override def add(sample: U): Unit = {
       value = aggFunc.apply(sample, value)
     }
 
     override def aggregation: V = value
 
-    override def add(aggregatedValue: V): Unit = {
+    override def addAggregate(aggregatedValue: V): Unit = {
       value = mergeFunc.apply(value, aggregatedValue)
     }
   }
 
-  class BasePerClassAggregator[T: TypeTag, TT: TypeTag, V: TypeTag](aggFunc: SerializableFunction2[TT, V, V], startValueForKey: SerializableFunction1[T, V], mergeFunc: SerializableFunction2[V, V, V]) extends Aggregator[T, TT, Map[T, V]] {
+  class BasePerClassAggregator[T <: Tag: TypeTag, TT <: TaggedWithType[T] : TypeTag, V: TypeTag](aggFunc: SerializableFunction2[TT, V, V],
+                                                                                                 startValueForKey: SerializableFunction1[T, V],
+                                                                                                 mergeFunc: SerializableFunction2[V, V, V],
+                                                                                                 keyMapFunction: SerializableFunction1[T, T]) extends Aggregator[TT, Map[T, V]] {
     val map: mutable.Map[T, V] = mutable.Map.empty
 
-    override def add(keys: Set[T], sample: TT): Unit = {
+    override def add(sample: TT): Unit = {
+      val keys: Set[T] = sample.getTags(AGGREGATION).map(tag => keyMapFunction.apply(tag))
       keys.foreach(x => map(x) = aggFunc.apply(sample, map.getOrElse(x, startValueForKey.apply(x))))
     }
 
     override def aggregation: Map[T, V] = Map(map.toSeq: _*)
 
-    override def add(aggregatedValue: Map[T, V]): Unit = {
-      aggregatedValue.foreach(x => map += (x._1 -> mergeFunc.apply(map.getOrElse(x._1, startValueForKey.apply(x._1)), x._2)))
+    override def addAggregate(aggregatedValue: Map[T, V]): Unit = {
+      aggregatedValue.foreach(x => {
+        val key = keyMapFunction.apply(x._1)
+        map += (key -> mergeFunc.apply(map.getOrElse(key, startValueForKey.apply(key)), x._2))
+      })
     }
   }
 
-  class TagKeyRunningDoubleAvgPerClassAggregator() extends BasePerClassAggregator[Tag, Double, AggregateValue[Double]](
-    aggFunc = (x, y) => y.add(x),
+  class TagKeyRunningDoubleAvgPerClassAggregator(keyMapFunction: SerializableFunction1[Tag, Tag]) extends BasePerClassAggregator[Tag, TaggedWithType[Tag] with DataStore[Double], AggregateValue[Double]](
+    aggFunc = (x, y) => y.add(x.data),
     startValueForKey = _ => doubleAvgRunningValue(count = 0, value = 0.0),
-    mergeFunc = (x, y) => x.add(y)) {
+    mergeFunc = (x, y) => x.add(y),
+    keyMapFunction) {
   }
 
-  class TagKeyRunningDoubleAvgAggregator() extends BaseAggregator[Tag, Double, AggregateValue[Double]](
+  class TagKeyRunningDoubleAvgAggregator() extends BaseAggregator[Double, AggregateValue[Double]](
     aggFunc = (x, y) => y.add(x),
     startValueGen = () => doubleAvgRunningValue(count = 0, value = 0.0),
     mergeFunc = (x, y) => x.add(y)) {
   }
 
-  class TagKeyMetricDocumentPerClassAggregator() extends BasePerClassAggregator[Tag, MetricRow, MetricDocument[Tag]](
+  /**
+    * In case of a mapping function that alters original tags, ignoreIdDiff would need to be true to avoid conflicts.
+    * Setting this attribute to true enables aggregating data for the original tag to data for the mapped tag.
+    * @param keyMapFunction
+    * @param ignoreIdDiff
+    */
+  class TagKeyMetricDocumentPerClassAggregator(keyMapFunction: SerializableFunction1[Tag, Tag], ignoreIdDiff: Boolean = false) extends BasePerClassAggregator[Tag, TaggedWithType[Tag] with DataStore[MetricRow], MetricDocument[Tag]](
     aggFunc = (x, y) => {
-      y.add(x)
+      y.add(x.data)
       y
     },
     startValueForKey = x => MetricDocument.empty[Tag](x),
     mergeFunc = (x, y) => {
-      x.add(y)
+      x.add(y, ignoreIdDiff = ignoreIdDiff)
       x
-    }) {
+    },
+    keyMapFunction) {
   }
 
-  class TagKeyMetricAggregationPerClassAggregator() extends Aggregator[Tag, MetricRow, MetricAggregation[Tag]] {
-    val aggregationState: MetricAggregation[Tag] = MetricAggregation.empty[Tag]
+  /**
+    * In case of a mapping function that alters original tags, ignoreIdDiff would need to be true to avoid conflicts.
+    * Setting this attribute to true enables aggregating data for the original tag to data for the mapped tag.
+    * @param keyMapFunction
+    * @param ignoreIdDiff
+    */
+  class TagKeyMetricAggregationPerClassAggregator(keyMapFunction: SerializableFunction1[Tag, Tag], ignoreIdDiff: Boolean = false) extends Aggregator[TaggedWithType[Tag] with DataStore[MetricRow], MetricAggregation[Tag]] {
+    val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
-    override def add(keys: Set[Tag], sample: MetricRow): Unit = {
-      aggregationState.addResults(keys, sample)
+    val aggregationState: MetricAggregation[Tag] = MetricAggregation.empty[Tag](keyMapFunction)
+
+    override def add(sample: TaggedWithType[Tag] with DataStore[MetricRow]): Unit = {
+      logger.debug(s"adding sample to aggregation (for keys: ${sample.getTagsForType(AGGREGATION)}: $sample")
+      val keys = sample.getTagsForType(AGGREGATION)
+      aggregationState.addResults(keys, sample.data)
+      logger.debug(s"aggregation state is now: $aggregationState")
     }
 
     override def aggregation: MetricAggregation[Tag] = aggregationState
 
-    override def add(aggregatedValue: MetricAggregation[Tag]): Unit = {
-      aggregationState.add(aggregatedValue)
+    override def addAggregate(aggregatedValue: MetricAggregation[Tag]): Unit = {
+      logger.debug(s"adding aggregation to aggregation: $aggregatedValue")
+      aggregationState.add(aggregatedValue, ignoreIdDiff)
+      logger.debug(s"aggregation state is now: $aggregationState")
     }
   }
 
@@ -117,24 +144,24 @@ object Aggregators {
     * @tparam T
     * @tparam V
     */
-  case class BaseAnyAggregator[T: TypeTag, V: TypeTag](aggregator: Aggregator[Tag, T, V]) extends Aggregator[Tag, Any, V] {
+  case class BaseAnyAggregator[T: TypeTag, V: TypeTag](aggregator: Aggregator[T, V]) extends Aggregator[Any, V] {
     val logger: Logger = LoggerFactory.getLogger(BaseAnyAggregator.getClass)
 
-    override def add(keys: Set[Tag], sample: Any): Unit = {
+    override def add(sample: Any): Unit = {
       try {
         val data: T = sample.asInstanceOf[T]
-        aggregator.add(keys, data)
+        aggregator.add(data)
       }
       catch {
         case _: Throwable =>
-          logger.warn(s"Could not add sample $sample as element of type ${aggregator.singleElementType.tpe.typeSymbol.name.toString}")
+          logger.warn(s"Could not add sample $sample as element of type ${aggregator.getClass}")
       }
     }
 
     override def aggregation: V = aggregator.aggregation
 
-    override def add(aggregatedValue: V): Unit = {
-      aggregator.add(aggregatedValue)
+    override def addAggregate(aggregatedValue: V): Unit = {
+      aggregator.addAggregate(aggregatedValue)
     }
   }
 

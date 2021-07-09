@@ -14,20 +14,13 @@
   * limitations under the License.
   */
 
-package de.awagen.kolibri.datatypes.collections
 
-object CollectionTraits {
+package de.awagen.kolibri.datatypes.types
 
-  trait Sizeable {
+import de.awagen.kolibri.datatypes.io.KolibriSerializable
 
-    def nrOfElements: Int
+trait DataStore[+T] extends KolibriSerializable {
 
-  }
-
-  trait Generatable[+T] {
-
-    def get(index: Int): T
-
-  }
+  def data: T
 
 }

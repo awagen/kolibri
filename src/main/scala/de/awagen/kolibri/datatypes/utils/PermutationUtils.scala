@@ -27,22 +27,47 @@ import scala.collection.mutable.ListBuffer
   * The methods here are provided to be able to avoid calculating crossproducts, which can be very expensive memory-wise,
   * and be able to calculate permutations by directly returning permutation n, or m values starting from position n.
   */
-object PermutationGenerator {
+object PermutationUtils {
 
-  //zero-based
-  def findFirstNonMaxValue(currentIndices: Seq[Int], nrOfElementsPerParameter: Seq[Int]): Option[Int] = {
+  /**
+    * Zero-based. Given a seq of current indices and a seq of nr of elements
+    * (where indices in the first correspond to indices in the latter, e.g both must be of same length)
+    * find the first that is not yet at its max value
+    *
+    * @param currentIndices           - the current indices for each position
+    * @param nrOfElementsPerParameter - the total nr of elements for each position
+    * @return Option[Int]. None if all are at max, or Some(elementIndex) if elementIndex is not at its max
+    */
+  private[utils] def findFirstNonMaxIndex(currentIndices: Seq[Int], nrOfElementsPerParameter: Seq[Int]): Option[Int] = {
     currentIndices.indices.to(LazyList)
       .find(x => currentIndices(x) < nrOfElementsPerParameter(x) - 1)
   }
 
-  //result does not include currentPosition
-  def iterateFirstTillMax(currentPosition: Seq[Int], nrOfValuesPerParameter: Seq[Int], nrOfElements: Int): Seq[Seq[Int]] = {
+  /**
+    * Same as iterateFirstTillMax(currentPosition: Seq[Int], nrOfValuesPerParameter: Seq[Int])
+    * but limiting the number of elements to nrOfElements
+    *
+    * @param currentPosition
+    * @param nrOfValuesPerParameter
+    * @param nrOfElements
+    * @return
+    */
+  private[utils] def iterateFirstTillMax(currentPosition: Seq[Int], nrOfValuesPerParameter: Seq[Int], nrOfElements: Int): Seq[Seq[Int]] = {
     val indexSequences: Seq[Seq[Int]] = iterateFirstTillMax(currentPosition, nrOfValuesPerParameter)
     indexSequences.slice(0, math.min(indexSequences.size, nrOfElements))
   }
 
-  //result does not include currentPosition
-  def iterateFirstTillMax(currentPosition: Seq[Int], nrOfValuesPerParameter: Seq[Int]): Seq[Seq[Int]] = {
+  /**
+    * Takes all values of index for the first parameter (currentPosition till max value)
+    * and for each value appends the unchanged indices for the later elements.
+    * NOTE: result does not include the current position
+    *
+    * @param currentPosition
+    * @param nrOfValuesPerParameter
+    * @return Seq[Seq[Int]]: seq of indices-per-element sequence with all but index for first element
+    *         unchanged
+    */
+  private[utils] def iterateFirstTillMax(currentPosition: Seq[Int], nrOfValuesPerParameter: Seq[Int]): Seq[Seq[Int]] = {
     val range = currentPosition.head until nrOfValuesPerParameter.head
     range.slice(1, range.size)
       .map(x => x +: currentPosition.slice(1, currentPosition.size))
@@ -57,7 +82,7 @@ object PermutationGenerator {
     * @param index The index (0-based), identifying the parameter
     * @return The newly generated sequence
     */
-  def increaseByStepAndResetPrevious(seq: Seq[Int], index: Int): Seq[Int] = {
+  private[utils] def increaseByStepAndResetPrevious(seq: Seq[Int], index: Int): Seq[Int] = {
     seq.indices.to(LazyList).map {
       case i if i < index => 0
       case i if i == index => seq(i) + 1
@@ -94,7 +119,7 @@ object PermutationGenerator {
     var break: Boolean = false
 
     while (addThese.size < nr && !break) {
-      val firstNonMax = findFirstNonMaxValue(currentStart, nrOfValuesPerParameter)
+      val firstNonMax = findFirstNonMaxIndex(currentStart, nrOfValuesPerParameter)
       firstNonMax match {
         case Some(0) =>
           addThese appendAll iterateFirstTillMax(currentStart, nrOfValuesPerParameter, nr - addThese.size)
@@ -124,7 +149,7 @@ object PermutationGenerator {
     */
   def findNNextElementsFromPosition(nrOfValuesPerParameter: Seq[Int], startElementNr: Int, nrOfElements: Int): Seq[Seq[Int]] = {
     if (nrOfElements == 0) return List.empty
-    val startElement: Option[Seq[Int]] = findNthElement(nrOfValuesPerParameter, startElementNr)
+    val startElement: Option[Seq[Int]] = findNthElementForwardCalc(nrOfValuesPerParameter, startElementNr)
     if (nrOfElements == 1) return if (startElement.nonEmpty) List(startElement.get) else List.empty
     startElement match {
       case Some(el) => el +: generateNextParameters(el, nrOfValuesPerParameter, nrOfElements - 1)
@@ -132,34 +157,35 @@ object PermutationGenerator {
     }
   }
 
-  //TODO: might be redundant since stepsForNthElementStartingFromFirstParam does this by calculation
   /**
-    * Returns n-th element (0-based) of parameter sequence. None if no such element existing
+    * Returns n-th element (0-based) of parameter sequence. None if no such element existing.
+    * Procedure: start from first element, increase till max, then go to next element, increase that
+    * and reset all element with smaller indices to first value (0) and continue like that
     *
     * @param n Position of the requested element (0-based)
     * @return
     */
-  def findNthElement(nrOfValuesPerParameter: Seq[Int], n: Int): Option[Seq[Int]] = {
+  def findNthElementForwardCalc(nrOfValuesPerParameter: Seq[Int], n: Int): Option[Seq[Int]] = {
     if (n > nrOfValuesPerParameter.product - 1 || n < 0) return Option.empty
 
-    var currentValue = nrOfValuesPerParameter.map(x => 0) //for all params, set starting value
+    var currentValue = nrOfValuesPerParameter.map(_ => 0) //for all params, set starting value
     var currentPosition: Int = 0
     var break: Boolean = false
 
     while (currentPosition < n && !break) {
-      val firstNonMax = findFirstNonMaxValue(currentValue, nrOfValuesPerParameter)
+      val firstNonMax = findFirstNonMaxIndex(currentValue, nrOfValuesPerParameter)
       firstNonMax match {
         case Some(0) =>
-          val next: Seq[Seq[Int]] = iterateFirstTillMax(currentValue, nrOfValuesPerParameter, n - currentPosition)
-          currentPosition += next.size
-          currentValue = next.last
+          val nextNumSteps = math.min(nrOfValuesPerParameter.head - 1 - currentValue.head, n - currentPosition)
+          currentPosition += nextNumSteps
+          currentValue = (currentValue.head + nextNumSteps) +: currentValue.slice(1, currentValue.size)
         case Some(e) =>
           currentValue = increaseByStepAndResetPrevious(currentValue, e)
           currentPosition += 1
           if (currentPosition < n && nrOfValuesPerParameter.head > 1) {
-            val next = iterateFirstTillMax(currentValue, nrOfValuesPerParameter, n - currentPosition)
-            currentPosition += next.size
-            currentValue = next.last
+            val nextNumSteps = math.min(nrOfValuesPerParameter.head - 1 - currentValue.head, n - currentPosition)
+            currentPosition += nextNumSteps
+            currentValue = (currentValue.head + nextNumSteps) +: currentValue.slice(1, currentValue.size)
           }
         case None => break = true
       }
@@ -168,30 +194,43 @@ object PermutationGenerator {
   }
 
   /**
+    * NOTE: this provides a list of tuples where x._1 is the parameter index and x._2 is the
+    * element index for the given parameter. It just contains the relevant steps,
+    * e.g the first m parameters needed to satisfy the dependency. The indices for the remaining
+    * parameters ones would just need to be set to 0
     *
     * @param n number of element
     * @return List of tuples, where first element corresponds to index and second to the respective step
+    *         (step is 0-based).
     */
-  def stepsForNthElementStartingFromFirstParam(stepsPerParam: Seq[Int], n: Int): List[(Int, Int)] = {
-    assert(stepsPerParam.product < n, s"Number of combinations (${stepsPerParam.product}) smaller than requested element number ($n)")
+  def stepsForNthElementBackwardCalc(stepsPerParam: Seq[Int], n: Int): List[(Int, Int)] = {
+    assert(stepsPerParam.product >= n, s"Number of combinations (${stepsPerParam.product}) smaller than requested element number ($n)")
 
+    // find first index for which the total nr of possibly permutations is >= n
     val index = stepsPerParam.indices
-      .find(x => stepsPerParam.slice(0, x + 1).product > n).get
+      .find(x => stepsPerParam.slice(0, x + 1).product >= (n + 1)).get
 
-    //got index, now determine which step for that index is right; those will be higher than n
+    // excluding the determined index, calc how many permutations would be generated by
+    // all combinations of indices < determined index (e.g in case of index = 0 this would be 1)
     val startCombinations = stepsPerParam.slice(0, index).product
 
+    // calculate first pair of index of element for the current index for which total number
+    // of permutations >= needed permutations. Afterwards we will just remove the leftover from the
+    // max of permutations from the previous indices and start the calculation anew
     val (indexForParam, combinationsCount): (Int, Int) = (0 until stepsPerParam(index)).to(LazyList)
       .map(x => (x, startCombinations * (x + 1)))
-      .find(x => x._2 >= n).get
+      .find(x => x._2 >= (n + 1)).get
 
     //if all combinations for current setting of current index are too many, find the setting for the previous values
     //where the too many elements are substracted from the number of their total combinations
-    val numberRemaining: Int = if (combinationsCount == n) 0 else
-      startCombinations + n - combinationsCount
+    // removeFromMaxPermutationsOfRemainingIndices will always be <= 0
+    val removeFromMaxPermutationsOfRemainingIndices = n - combinationsCount
+    // now limit search to the previous indices and find the nthElementOfPreviousIndices element
+    // to find the right position
+    val nthElementOfPreviousIndices: Int = startCombinations + removeFromMaxPermutationsOfRemainingIndices
 
-    if (index == 0 || numberRemaining == 0) (index, indexForParam) :: Nil
-    else stepsForNthElementStartingFromFirstParam(stepsPerParam, numberRemaining) ::: ((index, indexForParam) :: Nil)
+    if (index == 0) (index, indexForParam) :: Nil
+    else stepsForNthElementBackwardCalc(stepsPerParam, nthElementOfPreviousIndices) ::: ((index, indexForParam) :: Nil)
   }
 
 }

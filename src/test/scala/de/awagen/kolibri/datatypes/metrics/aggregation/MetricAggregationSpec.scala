@@ -16,6 +16,7 @@
 
 package de.awagen.kolibri.datatypes.metrics.aggregation
 
+import de.awagen.kolibri.datatypes.functions.GeneralSerializableFunctions._
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricsHelper.{metricRecord1, metricRecord2, metricRecord3, metricRecord4}
 import de.awagen.kolibri.datatypes.stores.{MetricDocument, MetricRow}
 import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}
@@ -28,7 +29,7 @@ class MetricAggregationSpec extends UnitTestSpec {
 
     "correctly add all metric results" in {
       //given
-      val aggregation = MetricAggregation.empty[Tag]
+      val aggregation = MetricAggregation.empty[Tag](identity)
       //when
       aggregation.addResults(Set(StringTag("test1")), metricRecord1)
       aggregation.addResults(Set(StringTag("test2")), metricRecord2)
@@ -52,13 +53,13 @@ class MetricAggregationSpec extends UnitTestSpec {
 
     "correctly add other MetricAggregation" in {
       //given
-      val aggregation1 = MetricAggregation.empty[Tag]
-      val aggregation2 = MetricAggregation.empty[Tag]
+      val aggregation1 = MetricAggregation.empty[Tag](identity)
+      val aggregation2 = MetricAggregation.empty[Tag](identity)
       //when
       aggregation1.addResults(Set(StringTag("test1")), metricRecord1)
       aggregation2.addResults(Set(StringTag("test2")), metricRecord2)
       aggregation2.addResults(Set(StringTag("test2")), metricRecord3)
-      val combined = MetricAggregation.empty[Tag]
+      val combined = MetricAggregation.empty[Tag](identity)
       combined.add(aggregation1)
       combined.add(aggregation2)
       val r1: MetricDocument[Tag] = combined.aggregationStateMap(StringTag("test1"))

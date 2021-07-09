@@ -20,18 +20,6 @@ import de.awagen.kolibri.datatypes.io.KolibriSerializable
 
 object Tags {
 
-  def tagToParameterHeader(tag: Tag, columnSeparator: String): String = tag match {
-    case e: ParameterTag => e.formattedParamHeader(columnSeparator)
-    case e: MultiTag => e.value.filter(x => x.isInstanceOf[ParameterTag]).head.asInstanceOf[ParameterTag].formattedParamHeader(columnSeparator)
-    case _ => ""
-  }
-
-  def tagToParameterValues(tag: Tag, columnSeparator: String): String = tag match {
-    case e: ParameterTag => e.formattedParamValues(columnSeparator)
-    case e: MultiTag => e.value.filter(x => x.isInstanceOf[ParameterTag]).head.asInstanceOf[ParameterTag].formattedParamValues(columnSeparator)
-    case _ => ""
-  }
-
   trait Tag extends KolibriSerializable {
 
     def stringId: String
@@ -106,6 +94,18 @@ object Tags {
 
   case class NamedTag(name: String, tag: Tag) extends Tag {
     override def stringId: String = Seq(name, tag.stringId).mkString("-")
+  }
+
+  def tagToParameterHeader(tag: Tag, columnSeparator: String): String = tag match {
+    case e: ParameterTag => e.formattedParamHeader(columnSeparator)
+    case e: MultiTag => e.value.filter(x => x.isInstanceOf[ParameterTag]).head.asInstanceOf[ParameterTag].formattedParamHeader(columnSeparator)
+    case _ => ""
+  }
+
+  def tagToParameterValues(tag: Tag, columnSeparator: String): String = tag match {
+    case e: ParameterTag => e.formattedParamValues(columnSeparator)
+    case e: MultiTag => e.value.filter(x => x.isInstanceOf[ParameterTag]).head.asInstanceOf[ParameterTag].formattedParamValues(columnSeparator)
+    case _ => ""
   }
 
 }
