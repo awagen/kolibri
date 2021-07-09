@@ -28,14 +28,14 @@ object FileReaderUtils {
   def trimmedEntriesByLineFromFile(source: Source): immutable.Seq[String] = {
     source
       .getLines
-      .filter(f => !f.trim.isEmpty)
+      .filter(f => f.trim.nonEmpty)
       .map(x => x.trim).toVector
   }
 
   def trimmedEntriesByDelimiterFromFile(source: Source, delimiter: String): immutable.Seq[String] = {
     source
       .getLines.map(x => x.trim)
-      .filter(f => !f.trim.isEmpty)
+      .filter(f => f.trim.nonEmpty)
       .flatMap(x => x.split(delimiter))
       .map(x => x.trim)
       .toVector
@@ -44,25 +44,24 @@ object FileReaderUtils {
   def pickUniquePositionPerLineDeterminedByDelimiter(source: Source, delimiter: String, position: Int): immutable.Seq[String] = {
     source
       .getLines.map(x => x.trim)
-      .filter(f => !f.trim.isEmpty)
+      .filter(f => f.trim.nonEmpty)
       .map(x => x.split(delimiter))
       .filter(x => x.length > position)
       .map(x => x(position).trim)
-      .filter(x => x.length > 0)
+      .filter(x => x.nonEmpty)
       .toSet[String].toVector
   }
 
 
-  def mappingFromFile[T](source: Source,
+  def mappingFromFile[T](source: () => Source,
                          columnDelimiter: String,
                          filterLessColumnsThan: Int,
                          valsToKey: Seq[String] => String,
                          columnsToValue: Array[String] => T): Map[String, T] = {
-    source
-      .getLines
-      .filter(f => !f.trim.isEmpty && !f.startsWith("#"))
+    source.apply().getLines
+      .filter(f => f.trim.nonEmpty && !f.startsWith("#"))
       .map(x => x.split(columnDelimiter))
-      .filter(x => x.length == filterLessColumnsThan)
+      .filter(x => x.length >= filterLessColumnsThan)
       .map(x => valsToKey(x) -> columnsToValue(x))
       .toMap
   }
@@ -75,7 +74,7 @@ object FileReaderUtils {
                               columnsToValue: Array[String] => T): Map[String, Set[T]] = {
     val mappings: Seq[(String, T)] = source
       .getLines
-      .filter(f => !f.trim.isEmpty && !f.startsWith("#"))
+      .filter(f => f.trim.nonEmpty && !f.startsWith("#"))
       .map(x => x.split(columnDelimiter))
       .filter(x => x.length == filterLessColumnsThan)
       .map(x => valsToKey(x) -> columnsToValue(x))

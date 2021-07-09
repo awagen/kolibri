@@ -16,8 +16,6 @@
 
 package de.awagen.kolibri.base.cluster
 
-import java.util.Objects
-
 import akka.actor.ActorSystem
 import akka.cluster.Cluster
 import akka.http.scaladsl.server.Directives._
@@ -33,6 +31,8 @@ import de.awagen.kolibri.base.http.server.BaseRoutes._
 import de.awagen.kolibri.base.http.server.{BaseRoutes, HttpServer}
 import org.slf4j.{Logger, LoggerFactory}
 
+import java.lang.management.ManagementFactory
+import java.util.Objects
 import scala.concurrent.ExecutionContextExecutor
 import scala.util.{Failure, Success}
 
@@ -43,6 +43,14 @@ import scala.util.{Failure, Success}
 object ClusterNode extends App {
 
   val logger: Logger = LoggerFactory.getLogger(ClusterNode.getClass.toString)
+
+  val mb = 1024 * 1024
+  val memoryBean = ManagementFactory.getMemoryMXBean
+  val xmx = memoryBean.getHeapMemoryUsage.getMax / mb
+  val xms = memoryBean.getHeapMemoryUsage.getInit / mb
+  logger.info("Initial Memory (xms) : {}mb", xms)
+  logger.info("Max Memory (xmx) : {}mb", xmx)
+
   private[this] var setup: SystemSetup = _
   if (args.length > 0 && args(0).toBoolean) {
     startSystemSetup(None)
@@ -79,7 +87,8 @@ object ClusterNode extends App {
     // need to initialiize the BaseRoutes to start Supervisor actor in current actorSystem
     BaseRoutes.init
     val usedRoute: Route = route.getOrElse(simpleHelloRoute ~ streamingUserRoutes ~ clusterStatusRoutee ~ killAllJobs
-      ~ getJobStatus ~ killJob ~ getJobWorkerStatus ~ getRunningJobIds ~ executeDistributedPiCalculationExample)
+      ~ getJobStatus ~ killJob ~ getJobWorkerStatus ~ getRunningJobIds ~ executeDistributedPiCalculationExample
+      ~ executeDistributedPiCalculationExampleWithoutSerialization ~ startSearchEval ~ startSearchEvalNoSerialize)
     val isHttpServerNode: Boolean = node_roles.contains(config.HTTP_SERVER_ROLE)
 
     logger.info(s"Node roles: $node_roles")

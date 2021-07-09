@@ -51,5 +51,6 @@
   <logger name="de.awagen.kolibri" level="INFO" />
   <logger name="akka.cluster.singleton" level="INFO" />
   <logger name="com.esotericsoftware.kryo" level="INFO" />
+  <logger name="io.altoo.akka.serialization.kryo" level="DEBUG" />
 
 </configuration>

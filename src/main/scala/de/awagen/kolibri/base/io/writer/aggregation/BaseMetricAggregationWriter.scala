@@ -23,8 +23,7 @@ import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 
 import scala.collection.mutable
 
-case class BaseMetricAggregationWriter(writer: Writer[MetricDocument[Tag], Tag, Any],
-                                      ) extends Writer[MetricAggregation[Tag], Tag, Any] {
+case class BaseMetricAggregationWriter(writer: Writer[MetricDocument[Tag], Tag, Any]) extends Writer[MetricAggregation[Tag], Tag, Any] {
 
   override def write(data: MetricAggregation[Tag], targetIdentifier: Tag): Either[Exception, Any] = {
     val aggMap: mutable.Map[Tag, MetricDocument[Tag]] = data.aggregationStateMap

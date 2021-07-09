@@ -31,7 +31,7 @@ class FileReaderUtilsSpec extends UnitTestSpec {
       //given
       val source: Source = FileReaderUtils.localResourceSource("testcolumns.txt")
       //when
-      val data: Map[String, (Int, Float)] = FileReaderUtils.mappingFromFile[(Int, Float)](source, "\\s+", 4, x => s"${x.head}-${x(1)}",
+      val data: Map[String, (Int, Float)] = FileReaderUtils.mappingFromFile[(Int, Float)](() => source, "\\s+", 4, x => s"${x.head}-${x(1)}",
         x => (x(2).toInt, x(3).toFloat))
       //then
       val expectedData = Map(

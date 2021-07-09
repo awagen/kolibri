@@ -16,7 +16,7 @@
 
 package de.awagen.kolibri.base.actors.work.manager
 
-import akka.actor.ActorRef
+import akka.actor.{ActorRef, Props}
 import akka.testkit.{TestKit, TestProbe}
 import de.awagen.kolibri.base.actors.work.manager.JobManagerActor.ACK
 import de.awagen.kolibri.base.actors.work.manager.WorkManagerActor.{TaskExecutionWithTypedResult, TasksWithTypedResult}
@@ -53,10 +53,10 @@ class WorkManagerActorSpec extends KolibriTestKitNoCluster
 
     "correctly execute ActorRunnable[_,_]" in {
       // given
-      val workManager: ActorRef = system.actorOf(WorkManagerActor.props())
+      val workManager: ActorRef = system.actorOf(Props[WorkManagerActor])
       val testProbe = TestProbe()
       // when
-      workManager.tell(TestMessages.messagesToActorRefRunnable(), testProbe.ref)
+      workManager.tell(TestMessages.messagesToActorRefRunnable("testJob"), testProbe.ref)
       // then
       testProbe.expectMsgPF(2 second) {
         case ACK(_, _, _) =>
@@ -72,7 +72,7 @@ class WorkManagerActorSpec extends KolibriTestKitNoCluster
 
     "correctly execute TasksWithTypedResult" in {
       // given
-      val workManager: ActorRef = system.actorOf(WorkManagerActor.props())
+      val workManager: ActorRef = system.actorOf(Props[WorkManagerActor])
       val testProbe = TestProbe()
       val data: TypeTaggedMap with TaggedWithType[Tag] = TypedMapStore.empty.toTaggedWithTypeMap
       data.addTag(AGGREGATION, StringTag("ALL"))
@@ -92,7 +92,7 @@ class WorkManagerActorSpec extends KolibriTestKitNoCluster
 
     "correctly execute TaskExecutionWithTypedResult" in {
       // given
-      val workManager: ActorRef = system.actorOf(WorkManagerActor.props())
+      val workManager: ActorRef = system.actorOf(Props[WorkManagerActor])
       val testProbe = TestProbe()
       val data: TypeTaggedMap with TaggedWithType[Tag] = TypedMapStore.empty.toTaggedWithTypeMap
       data.addTag(AGGREGATION, StringTag("ALL"))

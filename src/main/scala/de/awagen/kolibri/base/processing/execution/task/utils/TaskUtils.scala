@@ -27,8 +27,7 @@ import de.awagen.kolibri.base.processing.execution.expectation.{BaseExecutionExp
 import de.awagen.kolibri.base.processing.execution.job.{ActorRunnable, ActorRunnableSinkType}
 import de.awagen.kolibri.base.processing.execution.task.Task
 import de.awagen.kolibri.datatypes.ClassTyped
-import de.awagen.kolibri.datatypes.collections.IndexedGenerator
-import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSupplier
+import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 
 import java.util.concurrent.atomic.AtomicInteger
@@ -40,7 +39,7 @@ object TaskUtils {
                               resultKey: ClassTyped[ProcessingMessage[Any]],
                               mapGenerator: BatchTypeTaggedMapGenerator,
                               tasks: Seq[Task[_]],
-                              aggregatorSupplier: SerializableSupplier[Aggregator[ProcessingMessage[Any], U]],
+                              aggregatorSupplier: () => Aggregator[ProcessingMessage[Any], U],
                               taskExecutionWorkerProps: Props,
                               timeoutPerRunnable: FiniteDuration,
                               timeoutPerElement: FiniteDuration): IndexedGenerator[ActorRunnable[SimpleTaskExecution[Any], Any, Any, U]] = {
@@ -65,7 +64,7 @@ object TaskUtils {
             TimeExpectation(timeoutPerRunnable))
         ),
         aggregationSupplier = aggregatorSupplier,
-        returnType = ActorRunnableSinkType.REPORT_TO_ACTOR_SINK,
+        sinkType = ActorRunnableSinkType.REPORT_TO_ACTOR_SINK,
         timeoutPerRunnable,
         timeoutPerElement)
     })

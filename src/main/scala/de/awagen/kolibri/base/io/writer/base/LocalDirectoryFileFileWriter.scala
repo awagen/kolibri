@@ -29,6 +29,7 @@ case class LocalDirectoryFileFileWriter(directory: String) extends FileWriter[St
   val normedDirectory: String = directory.stripSuffix("/")
 
   override def write(data: String, targetIdentifier: String): Either[Exception, Unit] = {
+    logger.info(s"writing data for identifier: $targetIdentifier")
     val fullPath = s"$normedDirectory/$targetIdentifier"
     try {
       val file = new File(fullPath)

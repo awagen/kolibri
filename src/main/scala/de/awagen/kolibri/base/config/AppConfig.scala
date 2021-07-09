@@ -45,7 +45,7 @@ object AppConfig {
     val configName: String = s"application-$profile.conf"
     logger.info(s"loading config: $configName")
     val loadedConfig: Config = ConfigFactory.load(configName)
-    logger.info(s"loaded config: ${loadedConfig.toString}")
+    logger.debug(s"loaded config: ${loadedConfig.toString}")
     val pod_ip = POD_IP.value
     logger.info(s"pod ip: $pod_ip")
     val roles: Array[String] = NODE_ROLES.value.split(",")
@@ -91,6 +91,10 @@ object AppConfig {
       MILLISECONDS)
     val runningTasksBaselineCount: Int = baseConfig.getInt("kolibri.job.runningTasksBaselineCount")
     val batchDistributionInterval: FiniteDuration = FiniteDuration(baseConfig.getInt("kolibri.job.batchDistributionIntervalInMs"), MILLISECONDS)
+    val batchMaxTimeToACKInMs: FiniteDuration = FiniteDuration(baseConfig.getInt("kolibri.job.batchMaxTimeToACKInMs"), MILLISECONDS)
+
+    val useAggregatorBackpressure: Boolean = baseConfig.getBoolean("kolibri.execution.useAggregatorBackpressure")
+    val aggregatorResultReceiveParallelism: Int = baseConfig.getInt("kolibri.execution.aggregatorResultReceiveParallelism")
 
     // resourceCheckerGenerator
     val isValidResourceCheckerType: Boolean = baseConfig.hasPath("kolibri.job.resources.resourcesCheckerType") && baseConfig.getString("kolibri.job.resources.resourcesCheckerType").toLowerCase() == "cpu"

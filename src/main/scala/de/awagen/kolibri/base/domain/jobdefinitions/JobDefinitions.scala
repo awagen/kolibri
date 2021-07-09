@@ -24,7 +24,7 @@ import de.awagen.kolibri.base.domain.jobdefinitions.provider.data.BatchGenerator
 import de.awagen.kolibri.base.domain.jobdefinitions.provider.data.DataProviders.OrderedMultiValuesProvider
 import de.awagen.kolibri.base.io.writer.Writers.Writer
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnableSinkType.ActorRunnableSinkType
-import de.awagen.kolibri.datatypes.collections.IndexedGenerator
+import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
 import de.awagen.kolibri.datatypes.multivalues.OrderedMultiValues
 import de.awagen.kolibri.datatypes.mutable.stores.TypeTaggedMap
@@ -32,7 +32,7 @@ import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.tagging.MapImplicits._
 import de.awagen.kolibri.datatypes.tagging.TaggedWithType
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
-import de.awagen.kolibri.datatypes.types.SerializableCallable.{SerializableFunction1, SerializableSupplier}
+import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 
 
@@ -58,10 +58,13 @@ object JobDefinitions {
                                                      processingActorProps: Option[ProcessingActorProps],
                                                      expectationGenerators: RunnableExpectationGenerators.Val,
                                                      returnType: ActorRunnableSinkType,
-                                                     aggregatorSupplier: SerializableSupplier[Aggregator[ProcessingMessage[MetricRow], MetricAggregation[Tag]]],
+                                                     perBatchAggregatorSupplier: () => Aggregator[ProcessingMessage[MetricRow], MetricAggregation[Tag]],
+                                                     perJobAggregatorSupplier: () => Aggregator[ProcessingMessage[MetricRow], MetricAggregation[Tag]],
                                                      writer: Writer[MetricAggregation[Tag], Tag, Any],
+                                                     allowedTimePerElementInMillis: Long,
                                                      allowedTimePerBatchInSeconds: Long,
-                                                     allowedTimeForJobInSeconds: Long
+                                                     allowedTimeForJobInSeconds: Long,
+                                                     expectResultsFromBatchCalculations: Boolean
                                                     ) extends ActorRunnableJobDefinition[MutableTaggedMap[String, Seq[Any]], Any, MetricRow, MetricAggregation[Tag]] {
     override def createActorRunnableJobCmd: ProcessActorRunnableJobCmd[MutableTaggedMap[String, Seq[Any]], Any, MetricRow, MetricAggregation[Tag]] = {
       val serializableBatchGenerator: SerializableFunction1[OrderedMultiValues, IndexedGenerator[Batch[MutableTaggedMap[String, Seq[Any]]]]] = x => batchGenerator.batchFunc.apply(x)
@@ -71,13 +74,15 @@ object JobDefinitions {
         dataBatchGenerator = serializableBatchGenerator,
         transformerFlow = transformer.transformerFlow,
         processingActorProps = processingActorProps.map(x => x.props),
-        expectationGenerator = expectationGenerators.elementCountToExpectationFunc,
-        aggregatorSupplier = aggregatorSupplier,
+        perBatchExpectationGenerator = expectationGenerators.elementCountToExpectationFunc,
+        perBatchAggregatorSupplier = perBatchAggregatorSupplier,
+        perJobAggregatorSupplier = perJobAggregatorSupplier,
         writer = writer,
         returnType = returnType,
+        allowedTimePerElementInMillis = allowedTimePerElementInMillis,
         allowedTimePerBatchInSeconds = allowedTimePerBatchInSeconds,
-        allowedTimeForJobInSeconds = allowedTimeForJobInSeconds
-      )
+        allowedTimeForJobInSeconds = allowedTimeForJobInSeconds,
+        expectResultsFromBatchCalculations = expectResultsFromBatchCalculations)
     }
   }
 
@@ -86,7 +91,8 @@ object JobDefinitions {
                                                          batchGenerator: OrderedMultiValuesTypedTagBatchGenerator,
                                                          resultDataKey: TaskDataKeys.Val[ProcessingMessage[MetricRow]],
                                                          tasks: Seq[TaskDefinitions.Val[Any]],
-                                                         aggregatorSupplier: SerializableSupplier[Aggregator[ProcessingMessage[Any], MetricAggregation[Tag]]],
+                                                         perBatchAggregatorSupplier: () => Aggregator[ProcessingMessage[Any], MetricAggregation[Tag]],
+                                                         perJobAggregatorSupplier: () => Aggregator[ProcessingMessage[Any], MetricAggregation[Tag]],
                                                          writer: Writer[MetricAggregation[Tag], Tag, Any],
                                                          allowedTimePerBatchInSeconds: Long,
                                                          allowedTimeForJobInSeconds: Long
@@ -101,7 +107,8 @@ object JobDefinitions {
         dataBatchGenerator = serializableBatchGeneratorFunc,
         resultDataKey = resultDataKey,
         tasks = tasks,
-        aggregatorSupplier = aggregatorSupplier,
+        perBatchAggregatorSupplier = perBatchAggregatorSupplier,
+        perJobAggregatorSupplier = perJobAggregatorSupplier,
         writer = writer,
         allowedTimePerBatchInSeconds = allowedTimePerBatchInSeconds,
         allowedTimeForJobInSeconds = allowedTimeForJobInSeconds

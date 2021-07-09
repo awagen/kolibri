@@ -26,11 +26,11 @@ import de.awagen.kolibri.base.processing.execution.expectation.ExecutionExpectat
 import de.awagen.kolibri.base.processing.execution.job.{ActorRunnable, ActorRunnableSinkType}
 import de.awagen.kolibri.base.processing.execution.task.Task
 import de.awagen.kolibri.datatypes.ClassTyped
-import de.awagen.kolibri.datatypes.collections.IndexedGenerator
+import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.mutable.stores.TypeTaggedMap
 import de.awagen.kolibri.datatypes.tagging.TaggedWithType
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
-import de.awagen.kolibri.datatypes.types.SerializableCallable.{SerializableFunction1, SerializableSupplier}
+import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 
 import scala.concurrent.duration._
@@ -45,16 +45,19 @@ object JobMsgFactory {
 
 
   def createActorRunnableJobCmd[T, V, V1, V2, W](jobId: String,
-                                             data: T,
-                                             dataBatchGenerator: SerializableFunction1[T, IndexedGenerator[Batch[V]]],
-                                             transformerFlow: Flow[V, ProcessingMessage[V1], NotUsed],
-                                             processingActorProps: Option[Props],
-                                             expectationGenerator: SerializableFunction1[Int, ExecutionExpectation],
-                                             aggregatorSupplier: SerializableSupplier[Aggregator[ProcessingMessage[V2], W]],
-                                             writer: Writer[W, Tag, Any],
-                                             returnType: ActorRunnableSinkType.Value,
-                                             allowedTimePerBatchInSeconds: Long,
-                                             allowedTimeForJobInSeconds: Long): ProcessActorRunnableJobCmd[V, V1, V2, W] = {
+                                                 data: T,
+                                                 dataBatchGenerator: T => IndexedGenerator[Batch[V]],
+                                                 transformerFlow: Flow[V, ProcessingMessage[V1], NotUsed],
+                                                 processingActorProps: Option[Props],
+                                                 perBatchExpectationGenerator: Int => ExecutionExpectation,
+                                                 perBatchAggregatorSupplier: () => Aggregator[ProcessingMessage[V2], W],
+                                                 perJobAggregatorSupplier: () => Aggregator[ProcessingMessage[V2], W],
+                                                 writer: Writer[W, Tag, Any],
+                                                 returnType: ActorRunnableSinkType.Value,
+                                                 allowedTimePerElementInMillis: Long,
+                                                 allowedTimePerBatchInSeconds: Long,
+                                                 allowedTimeForJobInSeconds: Long,
+                                                 expectResultsFromBatchCalculations: Boolean): ProcessActorRunnableJobCmd[V, V1, V2, W] = {
     val batches: IndexedGenerator[Batch[V]] = dataBatchGenerator.apply(data)
     val mapFunc: SerializableFunction1[Batch[V], ActorRunnable[V, V1, V2, W]] = new SerializableFunction1[Batch[V], ActorRunnable[V, V1, V2, W]] {
       override def apply(v1: Batch[V]): ActorRunnable[V, V1, V2, W] = ActorRunnable(
@@ -63,30 +66,32 @@ object JobMsgFactory {
         supplier = v1.data,
         transformer = transformerFlow,
         processingActorProps = processingActorProps,
-        expectationGenerator = expectationGenerator,
-        aggregationSupplier = aggregatorSupplier,
-        returnType = returnType,
-        1 minute,
-        1 minute)
+        expectationGenerator = perBatchExpectationGenerator,
+        aggregationSupplier = perBatchAggregatorSupplier,
+        sinkType = returnType,
+        allowedTimePerElementInMillis millis,
+        allowedTimePerBatchInSeconds seconds)
     }
     val actorRunnableBatches: IndexedGenerator[ActorRunnable[V, V1, V2, W]] = batches.mapGen(mapFunc)
     new ProcessActorRunnableJobCmd[V, V1, V2, W](
       jobId = jobId,
       processElements = actorRunnableBatches,
-      aggregatorSupplier = aggregatorSupplier,
+      perBatchAggregatorSupplier = perBatchAggregatorSupplier,
+      perJobAggregatorSupplier = perJobAggregatorSupplier,
       writer = writer,
       allowedTimePerBatch = FiniteDuration(allowedTimePerBatchInSeconds, SECONDS),
-      allowedTimeForJob = FiniteDuration(allowedTimeForJobInSeconds, SECONDS)
-    )
+      allowedTimeForJob = FiniteDuration(allowedTimeForJobInSeconds, SECONDS),
+      expectResultsFromBatchCalculations)
   }
 
 
   def createActorRunnableTaskJobCmd[T, W](jobId: String,
                                           data: T,
-                                          dataBatchGenerator: SerializableFunction1[T, IndexedGenerator[Batch[TypeTaggedMap with TaggedWithType[Tag]]]],
+                                          dataBatchGenerator: T => IndexedGenerator[Batch[TypeTaggedMap with TaggedWithType[Tag]]],
                                           resultDataKey: ClassTyped[ProcessingMessage[Any]],
                                           tasks: Seq[TaskDefinitions.Val[Any]],
-                                          aggregatorSupplier: SerializableSupplier[Aggregator[ProcessingMessage[Any], W]],
+                                          perBatchAggregatorSupplier: () => Aggregator[ProcessingMessage[Any], W],
+                                          perJobAggregatorSupplier: () => Aggregator[ProcessingMessage[Any], W],
                                           writer: Writer[W, Tag, Any],
                                           allowedTimePerBatchInSeconds: Long,
                                           allowedTimeForJobInSeconds: Long): ProcessActorRunnableTaskJobCmd[W] = {
@@ -99,7 +104,8 @@ object JobMsgFactory {
       dataIterable = batches,
       tasks = tasks.map(taskMapFunc),
       resultKey = resultDataKey,
-      aggregatorSupplier = aggregatorSupplier,
+      perBatchAggregatorSupplier = perBatchAggregatorSupplier,
+      perJobAggregatorSupplier = perJobAggregatorSupplier,
       writer = writer,
       allowedTimePerBatch = FiniteDuration(allowedTimePerBatchInSeconds, SECONDS),
       allowedTimeForJob = FiniteDuration(allowedTimeForJobInSeconds, SECONDS)

@@ -25,7 +25,7 @@ import de.awagen.kolibri.base.http.server.BaseRoutes.logger
 import de.awagen.kolibri.base.io.writer.base.LocalDirectoryFileFileWriter
 import de.awagen.kolibri.base.processing.execution.expectation._
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnableSinkType
-import de.awagen.kolibri.datatypes.collections.IndexedGenerator
+import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.tagging.TagType.AGGREGATION
 import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}
 import de.awagen.kolibri.datatypes.types.SerializableCallable.{SerializableFunction1, SerializableSupplier}
@@ -59,13 +59,15 @@ object TestJobDefinitions {
 
   def piEstimationJob(jobName: String, nrThrows: Int, batchSize: Int, resultDir: String): SupervisorActor.ProcessActorRunnableJobCmd[Int, Double, Double, Map[Tag, AggregateValue[Double]]] = {
     assert(batchSize <= nrThrows)
-    val flowFunct: SerializableFunction1[Int, ProcessingMessage[Double]] = _ => {
-      val sq_rad = math.pow(math.random(), 2) + math.pow(math.random(), 2)
-      if (sq_rad <= 1) {
-        Corn(1.0).withTags(AGGREGATION, Set(StringTag("ALL"), StringTag("1")))
-      }
-      else {
-        Corn(0.0).withTags(AGGREGATION, Set(StringTag("ALL"), StringTag("0")))
+    val flowFunct: SerializableFunction1[Int, ProcessingMessage[Double]] = new SerializableFunction1[Int, ProcessingMessage[Double]]() {
+      override def apply(v1: Int): ProcessingMessage[Double] = {
+        val sq_rad = math.pow(math.random(), 2) + math.pow(math.random(), 2)
+        if (sq_rad <= 1) {
+          Corn(1.0).withTags(AGGREGATION, Set(StringTag("ALL"), StringTag("1")))
+        }
+        else {
+          Corn(0.0).withTags(AGGREGATION, Set(StringTag("ALL"), StringTag("0")))
+        }
       }
     }
     val batchGenerator: SerializableFunction1[Int, IndexedGenerator[Batch[Int]]] = new SerializableFunction1[Int, IndexedGenerator[Batch[Int]]] {
@@ -83,16 +85,20 @@ object TestJobDefinitions {
           TimeExpectation(10 seconds))
       )
     }
+
+    val aggregatorSupplier = new SerializableSupplier[Aggregator[ProcessingMessage[Double], Map[Tag, AggregateValue[Double]]]](){
+      override def apply(): Aggregator[ProcessingMessage[Double], Map[Tag, AggregateValue[Double]]] = new RunningDoubleAvgPerTagAggregator()
+    }
+
     JobMsgFactory.createActorRunnableJobCmd[Int, Int, Double, Double, Map[Tag, AggregateValue[Double]]](
       jobId = jobName,
-      nrThrows.toInt,
+      nrThrows,
       dataBatchGenerator = batchGenerator,
       transformerFlow = Flow.fromFunction[Int, ProcessingMessage[Double]](flowFunct),
       processingActorProps = None,
-      expectationGenerator = expectationGen,
-      aggregatorSupplier = new SerializableSupplier[Aggregator[ProcessingMessage[Double], Map[Tag, AggregateValue[Double]]]] {
-        override def get(): Aggregator[ProcessingMessage[Double], Map[Tag, AggregateValue[Double]]] = new RunningDoubleAvgPerTagAggregator()
-      },
+      perBatchExpectationGenerator = expectationGen,
+      perBatchAggregatorSupplier = aggregatorSupplier,
+      perJobAggregatorSupplier = aggregatorSupplier,
       writer = (data: Map[Tag, AggregateValue[Double]], _: Tag) => {
         logger.info("writing result: {}", data)
         logger.info("result is '{}' on '{}' samples; writing result", data, data(StringTag("ALL")).count)
@@ -101,9 +107,10 @@ object TestJobDefinitions {
         fileWriter.write(resultString, "dartThrowResult.txt")
       },
       returnType = ActorRunnableSinkType.REPORT_TO_ACTOR_SINK,
+      allowedTimePerElementInMillis = 10,
       allowedTimeForJobInSeconds = 600,
-      // TODO: time per batch effectively not used. This goes into the above expectation
-      allowedTimePerBatchInSeconds = 60
+      allowedTimePerBatchInSeconds = 60,
+      expectResultsFromBatchCalculations = true
     )
   }
 

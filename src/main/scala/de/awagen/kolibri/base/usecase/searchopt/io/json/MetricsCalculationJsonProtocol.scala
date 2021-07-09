@@ -14,39 +14,15 @@
   * limitations under the License.
   */
 
-package de.awagen.kolibri.base.processing.execution.job
+package de.awagen.kolibri.base.usecase.searchopt.io.json
 
-import de.awagen.kolibri.base.domain.Connection
-import de.awagen.kolibri.base.http.client.request.RequestContextProvider
+import EnumerationJsonProtocol._
+import JudgementHandlingStrategyJsonProtocol._
+import de.awagen.kolibri.base.usecase.searchopt.metrics.MetricsCalculation
+import spray.json.{DefaultJsonProtocol, RootJsonFormat}
 
-import scala.concurrent.duration.Duration
+object MetricsCalculationJsonProtocol extends DefaultJsonProtocol {
 
-object AttributeTraits {
-
-  trait Querying {
-
-    val queryParameter: String
-
-  }
-
-  trait Requesting {
-
-    val connections: Seq[Connection]
-
-    val contextProvider: RequestContextProvider
-
-  }
-
-  trait WithId {
-
-    val id: String
-
-  }
-
-  trait Timeoutable {
-
-    var timeout: Option[Duration]
-
-  }
+  implicit val metricsCalculationFormat: RootJsonFormat[MetricsCalculation] = jsonFormat2(MetricsCalculation)
 
 }

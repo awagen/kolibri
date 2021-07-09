@@ -21,12 +21,12 @@ import com.amazonaws.regions.Regions
 import de.awagen.kolibri.base.io.writer.Writers.{FileWriter, Writer}
 import de.awagen.kolibri.base.io.writer.aggregation.{BaseMetricAggregationWriter, BaseMetricDocumentWriter}
 import de.awagen.kolibri.base.io.writer.base.{AwsS3FileWriter, LocalDirectoryFileFileWriter}
+import de.awagen.kolibri.datatypes.io.json.MetricDocumentFormatJsonProtocol._
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
 import de.awagen.kolibri.datatypes.metrics.aggregation.writer.MetricDocumentFormat
 import de.awagen.kolibri.datatypes.stores.MetricDocument
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import spray.json.{DefaultJsonProtocol, DeserializationException, JsString, JsValue, JsonFormat}
-import de.awagen.kolibri.datatypes.io.json.MetricDocumentFormatJsonProtocol._
 
 
 object WriterJsonProtocol extends DefaultJsonProtocol {
@@ -38,6 +38,7 @@ object WriterJsonProtocol extends DefaultJsonProtocol {
   val CONTENT_TYPE_FIELD = "contentType"
   val WRITER_FIELD = "writer"
   val FORMAT_FIELD = "format"
+  val SUBFOLDER_FIELD = "subFolder"
   val PATH_SEPARATOR_FIELD = "pathSeparator"
 
   implicit object StringFileWriterFormat extends JsonFormat[FileWriter[String, Any]] {
@@ -66,6 +67,7 @@ object WriterJsonProtocol extends DefaultJsonProtocol {
         BaseMetricDocumentWriter(
           fields(WRITER_FIELD).convertTo[FileWriter[String, Any]],
           fields(FORMAT_FIELD).convertTo[MetricDocumentFormat],
+          fields(SUBFOLDER_FIELD).convertTo[String],
           fields(PATH_SEPARATOR_FIELD).convertTo[String],
           x => x.toString)
       case e => throw DeserializationException(s"Expected a value from Writer[MetricDocument[Tag], Tag, Any] but got value $e")
