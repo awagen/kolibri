@@ -29,6 +29,7 @@ import de.awagen.kolibri.base.config.AppConfig.config
 import de.awagen.kolibri.base.config.AppConfig.config.node_roles
 import de.awagen.kolibri.base.http.server.BaseRoutes._
 import de.awagen.kolibri.base.http.server.{BaseRoutes, HttpServer}
+import kamon.Kamon
 import org.slf4j.{Logger, LoggerFactory}
 
 import java.lang.management.ManagementFactory
@@ -43,6 +44,10 @@ import scala.util.{Failure, Success}
 object ClusterNode extends App {
 
   val logger: Logger = LoggerFactory.getLogger(ClusterNode.getClass.toString)
+
+  // This line initializes all Kamon components
+  // needs to happen before start of actor system
+  Kamon.init()
 
   val mb = 1024 * 1024
   val memoryBean = ManagementFactory.getMemoryMXBean

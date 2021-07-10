@@ -8,10 +8,38 @@ networks:
         - subnet: 172.33.0.0/16
 
 services:
+
+  prometheus:
+    image: prom/prometheus:v2.28.1
+    ports:
+      - 9000:9090
+    volumes:
+      - ./prometheus:/etc/prometheus
+      # /prometheus is the default data dir
+      - ./prometheus/data:/prometheus
+    networks:
+      kolibri-net:
+        ipv4_address: 172.33.1.5
+    command: --web.enable-lifecycle  --config.file=/etc/prometheus/prometheus.yaml
+
+  grafana:
+    image: grafana/grafana:8.0.5
+    volumes:
+      - ./grafana:/var/lib/grafana
+    ports:
+      - 3000:3000
+    # user setting needed to be set to owner/group of the volume (above grafana folder on host machine)
+    user: "1000:1000"
+    networks:
+      kolibri-net:
+        ipv4_address: 172.33.1.6
+
   kolibri1:
-    image: kolibri-base:0.1.0-alpha2
+    image: kolibri-base:0.1.0-alpha3
     ports:
       - "8000:8000"
+      - "5266:5266"
+      - "9095:9095"
     environment:
       JVM_OPTS: >
         -XX:+PrintFlagsFinal
@@ -19,7 +47,7 @@ services:
         -Xms1024m
         -Xmx4096m
       PROFILE: prod
-      ROLES: compute,httpserver
+      ROLES: httpserver
       CLUSTER_NODE_HOST: 172.33.1.1
       CLUSTER_NODE_PORT: 8001
       HTTP_SERVER_INTERFACE: 172.33.1.1
@@ -38,10 +66,10 @@ services:
     networks:
       kolibri-net:
         ipv4_address: 172.33.1.1
-#    mem_limit: 3000m
+    mem_limit: 4200m
 
   kolibri2:
-    image: kolibri-base:0.1.0-alpha2
+    image: kolibri-base:0.1.0-alpha3
     environment:
       JVM_OPTS: >
         -XX:+PrintFlagsFinal
@@ -66,11 +94,11 @@ services:
     networks:
       kolibri-net:
         ipv4_address: 172.33.1.2
-#    mem_limit: 3000m
+    mem_limit: 4200m
 
 
   kolibri3:
-    image: kolibri-base:0.1.0-alpha2
+    image: kolibri-base:0.1.0-alpha3
     environment:
       JVM_OPTS: >
         -XX:+PrintFlagsFinal
@@ -95,4 +123,4 @@ services:
     networks:
       kolibri-net:
         ipv4_address: 172.33.1.3
-#    mem_limit: 2000m
+    mem_limit: 4200m
