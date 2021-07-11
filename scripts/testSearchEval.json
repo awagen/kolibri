@@ -12,7 +12,7 @@
   "contextPath": "search",
   "connections": [
     {
-      "host": "172.33.1.4",
+      "host": "search-service",
       "port": 80,
       "useHttps": false
     }

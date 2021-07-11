@@ -1,12 +1,5 @@
 version: '3.5'
 
-networks:
-  kolibri-net:
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 172.33.0.0/16
-
 services:
 
   prometheus:
@@ -17,9 +10,6 @@ services:
       - ./prometheus:/etc/prometheus
       # /prometheus is the default data dir
       - ./prometheus/data:/prometheus
-    networks:
-      kolibri-net:
-        ipv4_address: 172.33.1.5
     command: --web.enable-lifecycle  --config.file=/etc/prometheus/prometheus.yaml
 
   grafana:
@@ -30,9 +20,6 @@ services:
       - 3000:3000
     # user setting needed to be set to owner/group of the volume (above grafana folder on host machine)
     user: "1000:1000"
-    networks:
-      kolibri-net:
-        ipv4_address: 172.33.1.6
 
   kolibri1:
     image: kolibri-base:0.1.0-alpha3
@@ -48,11 +35,11 @@ services:
         -Xmx4096m
       PROFILE: prod
       ROLES: httpserver
-      CLUSTER_NODE_HOST: 172.33.1.1
+      CLUSTER_NODE_HOST: kolibri1
       CLUSTER_NODE_PORT: 8001
-      HTTP_SERVER_INTERFACE: 172.33.1.1
+      HTTP_SERVER_INTERFACE: kolibri1
       HTTP_SERVER_PORT: 8000
-      MANAGEMENT_HOST: 172.33.1.1
+      MANAGEMENT_HOST: kolibri1
       MANAGEMENT_PORT: 8558
       MANAGEMENT_BIND_HOSTNAME: '0.0.0.0'
       MANAGEMENT_BIND_PORT: 8558
@@ -63,9 +50,6 @@ services:
       DISCOVERY_METHOD: config
     volumes:
       - ./kolibri-test:/app/data
-    networks:
-      kolibri-net:
-        ipv4_address: 172.33.1.1
     mem_limit: 4200m
 
   kolibri2:
@@ -78,9 +62,9 @@ services:
         -Xmx4096m
       PROFILE: prod
       ROLES: compute
-      CLUSTER_NODE_HOST: 172.33.1.2
+      CLUSTER_NODE_HOST: kolibri2
       CLUSTER_NODE_PORT: 8001
-      MANAGEMENT_HOST: 172.33.1.2
+      MANAGEMENT_HOST: kolibri2
       MANAGEMENT_PORT: 8559
       MANAGEMENT_BIND_HOSTNAME: '0.0.0.0'
       MANAGEMENT_BIND_PORT: 8559
@@ -91,9 +75,6 @@ services:
       DISCOVERY_METHOD: config
     volumes:
       - ./kolibri-test:/app/data
-    networks:
-      kolibri-net:
-        ipv4_address: 172.33.1.2
     mem_limit: 4200m
 
 
@@ -107,9 +88,9 @@ services:
         -Xmx4069m
       PROFILE: prod
       ROLES: compute
-      CLUSTER_NODE_HOST: 172.33.1.3
+      CLUSTER_NODE_HOST: kolibri3
       CLUSTER_NODE_PORT: 8001
-      MANAGEMENT_HOST: 172.33.1.3
+      MANAGEMENT_HOST: kolibri3
       MANAGEMENT_PORT: 8560
       MANAGEMENT_BIND_HOSTNAME: '0.0.0.0'
       MANAGEMENT_BIND_PORT: 8560
@@ -120,7 +101,4 @@ services:
       DISCOVERY_METHOD: config
     volumes:
       - ./kolibri-test:/app/data
-    networks:
-      kolibri-net:
-        ipv4_address: 172.33.1.3
     mem_limit: 4200m
