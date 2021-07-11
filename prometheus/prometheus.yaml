@@ -11,4 +11,6 @@ scrape_configs:
     static_configs:
       - targets:
           - 'kolibri1:9095'
+          - 'kolibri2:9096'
+          - 'kolibri2:9097'
 

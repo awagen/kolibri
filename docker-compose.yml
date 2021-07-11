@@ -35,6 +35,8 @@ services:
         -Xmx4096m
       PROFILE: prod
       ROLES: httpserver
+      KAMON_PROMETHEUS_PORT: 9095
+      KAMON_STATUSPAGE_PORT: 5266
       CLUSTER_NODE_HOST: kolibri1
       CLUSTER_NODE_PORT: 8001
       HTTP_SERVER_INTERFACE: kolibri1
@@ -54,6 +56,9 @@ services:
 
   kolibri2:
     image: kolibri-base:0.1.0-alpha3
+    ports:
+      - "5267:5267"
+      - "9096:9096"
     environment:
       JVM_OPTS: >
         -XX:+PrintFlagsFinal
@@ -62,6 +67,8 @@ services:
         -Xmx4096m
       PROFILE: prod
       ROLES: compute
+      KAMON_PROMETHEUS_PORT: 9096
+      KAMON_STATUSPAGE_PORT: 5267
       CLUSTER_NODE_HOST: kolibri2
       CLUSTER_NODE_PORT: 8001
       MANAGEMENT_HOST: kolibri2
@@ -80,6 +87,9 @@ services:
 
   kolibri3:
     image: kolibri-base:0.1.0-alpha3
+   ports:
+      - "5268:5268"
+      - "9097:9097"
     environment:
       JVM_OPTS: >
         -XX:+PrintFlagsFinal
@@ -88,6 +98,8 @@ services:
         -Xmx4069m
       PROFILE: prod
       ROLES: compute
+      KAMON_PROMETHEUS_PORT: 9097
+      KAMON_STATUSPAGE_PORT: 5268
       CLUSTER_NODE_HOST: kolibri3
       CLUSTER_NODE_PORT: 8001
       MANAGEMENT_HOST: kolibri3
