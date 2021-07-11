@@ -16,4 +16,5 @@ public
 *.log
 kolibri-test/
 prometheus/data
-grafana
+grafana/*
+!grafana/dashboards/

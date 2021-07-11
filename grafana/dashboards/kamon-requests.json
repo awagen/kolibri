@@ -1,0 +1,1592 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "API dashboard for apps instrumented with Kamon 2.x",
+  "editable": true,
+  "gnetId": 12317,
+  "graphTooltip": 0,
+  "id": 3,
+  "iteration": 1626030399681,
+  "links": [],
+  "panels": [
+    {
+      "collapse": false,
+      "collapsed": false,
+      "datasource": null,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 2,
+      "panels": [],
+      "repeat": null,
+      "repeatIteration": null,
+      "repeatRowId": null,
+      "showTitle": true,
+      "title": "API overview",
+      "titleSize": "h6",
+      "type": "row"
+    },
+    {
+      "aliasColors": {},
+      "bars": true,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "$PROMETHEUS_DS",
+      "description": "The average requests rate in the last $interval across all selected instances stacked by status",
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 1
+      },
+      "hiddenSeries": false,
+      "id": 3,
+      "legend": {
+        "alignAsTable": true,
+        "avg": true,
+        "current": true,
+        "max": true,
+        "min": true,
+        "rightSide": false,
+        "show": true,
+        "sort": "max",
+        "sortDesc": true,
+        "total": false,
+        "values": true
+      },
+      "lines": false,
+      "linewidth": 1,
+      "links": [],
+      "nullPointMode": "null",
+      "options": {
+        "alertThreshold": true
+      },
+      "percentage": false,
+      "pluginVersion": "8.0.5",
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "repeat": null,
+      "seriesOverrides": [
+        {
+          "alias": "2xx rpm",
+          "color": "rgb(55, 135, 45)"
+        },
+        {
+          "alias": "3xx rpm",
+          "color": "rgb(31, 96, 196)"
+        },
+        {
+          "alias": "4xx rpm",
+          "color": "rgb(224, 180, 0)"
+        },
+        {
+          "alias": "5xx rpm",
+          "color": "rgb(196, 22, 42)"
+        }
+      ],
+      "spaceLength": 10,
+      "stack": true,
+      "steppedLine": false,
+      "targets": [
+        {
+          "datasource": "$PROMETHEUS_DS",
+          "exemplar": true,
+          "expr": "sum by (instance) (increase(http_server_requests_total{http_status_code=\"2xx\"}[$interval]))",
+          "format": "time_series",
+          "interval": "",
+          "intervalFactor": 2,
+          "legendFormat": "2xx rpm - {{instance}}",
+          "refId": "A"
+        },
+        {
+          "datasource": "$PROMETHEUS_DS",
+          "exemplar": true,
+          "expr": "sum by (instance)(increase(http_server_requests_total{http_status_code=\"3xx\"}[$interval]))",
+          "format": "time_series",
+          "interval": "",
+          "intervalFactor": 2,
+          "legendFormat": "3xx rpm",
+          "refId": "B"
+        },
+        {
+          "datasource": "$PROMETHEUS_DS",
+          "exemplar": true,
+          "expr": "sum by (instance)(increase(http_server_requests_total{http_status_code=\"4xx\"}[$interval]))",
+          "format": "time_series",
+          "interval": "",
+          "intervalFactor": 2,
+          "legendFormat": "4xx rpm",
+          "refId": "C"
+        },
+        {
+          "datasource": "$PROMETHEUS_DS",
+          "exemplar": true,
+          "expr": "sum by (instance)(increase(http_server_requests_total{http_status_code=\"5xx\"}[$interval]))",
+          "format": "time_series",
+          "interval": "",
+          "intervalFactor": 2,
+          "legendFormat": "5xx rpm",
+          "refId": "D"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Throughput (avg. $interval)",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "rpm",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "rpm",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "Prometheus-1",
+      "description": "Latency of requests with 2xx status response over $interval",
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 7
+      },
+      "hiddenSeries": false,
+      "id": 4,
+      "legend": {
+        "alignAsTable": true,
+        "avg": true,
+        "current": true,
+        "max": true,
+        "min": true,
+        "rightSide": false,
+        "show": true,
+        "sort": "max",
+        "sortDesc": true,
+        "total": false,
+        "values": true
+      },
+      "lines": true,
+      "linewidth": 1,
+      "links": [],
+      "nullPointMode": "null",
+      "options": {
+        "alertThreshold": true
+      },
+      "percentage": false,
+      "pluginVersion": "8.0.5",
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "repeat": null,
+      "seriesOverrides": [
+        {
+          "alias": "p99.9",
+          "color": "rgb(55, 135, 45)"
+        },
+        {
+          "alias": "p99",
+          "color": "rgb(86, 166, 75)"
+        },
+        {
+          "alias": "p90",
+          "color": "rgb(150, 217, 141)"
+        },
+        {
+          "alias": "p50",
+          "color": "rgb(200, 242, 194)"
+        }
+      ],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "datasource": "$PROMETHEUS_DS",
+          "exemplar": true,
+          "expr": "histogram_quantile(0.999, sum(rate(span_processing_time_seconds_bucket{span_kind=\"server\", http_status_code=~\"2.*\"}[$interval])) by (le))",
+          "format": "time_series",
+          "interval": "",
+          "intervalFactor": 2,
+          "legendFormat": "p99.9",
+          "refId": "A"
+        },
+        {
+          "datasource": "$PROMETHEUS_DS",
+          "exemplar": true,
+          "expr": "histogram_quantile(0.99, sum(rate(span_processing_time_seconds_bucket{span_kind=\"server\", http_status_code=~\"2.*\"}[$interval])) by (le))",
+          "format": "time_series",
+          "interval": "",
+          "intervalFactor": 2,
+          "legendFormat": "p99",
+          "refId": "B"
+        },
+        {
+          "datasource": "$PROMETHEUS_DS",
+          "exemplar": true,
+          "expr": "histogram_quantile(0.90, sum(rate(span_processing_time_seconds_bucket{span_kind=\"server\", http_status_code=~\"2.*\"}[$interval])) by (le))",
+          "format": "time_series",
+          "interval": "",
+          "intervalFactor": 2,
+          "legendFormat": "p90",
+          "refId": "C"
+        },
+        {
+          "datasource": "$PROMETHEUS_DS",
+          "exemplar": true,
+          "expr": "histogram_quantile(0.50, sum(rate(span_processing_time_seconds_bucket{span_kind=\"server\", http_status_code=~\"2.*\"}[$interval])) by (le))",
+          "format": "time_series",
+          "interval": "",
+          "intervalFactor": 2,
+          "legendFormat": "p50",
+          "refId": "D"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Latency: only 2xx status response",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "s",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "s",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": true,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "Prometheus-1",
+      "description": "Given:\n  * Success requests: status 2xx\n  * Valid requests: status 2xx or status 5xx\n\nThe uptime could be estimated by 'success requests' / 'valid requests'.\n\nThis is just an approximation because it doesn't take in account a lot of corner cases. For a more accurate metric it should be measured from outside the app.\n",
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 6,
+        "w": 16,
+        "x": 0,
+        "y": 13
+      },
+      "hiddenSeries": false,
+      "id": 5,
+      "legend": {
+        "alignAsTable": true,
+        "avg": true,
+        "current": true,
+        "max": true,
+        "min": true,
+        "rightSide": false,
+        "show": true,
+        "sort": "max",
+        "sortDesc": true,
+        "total": false,
+        "values": true
+      },
+      "lines": false,
+      "linewidth": 1,
+      "links": [],
+      "nullPointMode": "null",
+      "options": {
+        "alertThreshold": true
+      },
+      "percentage": true,
+      "pluginVersion": "8.0.5",
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "repeat": null,
+      "seriesOverrides": [
+        {
+          "alias": "uptime",
+          "color": "rgb(55, 135, 45)"
+        }
+      ],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "datasource": "$PROMETHEUS_DS",
+          "exemplar": true,
+          "expr": "sum(rate(http_server_requests_total{http_status_code=\"2xx\"}[$interval]))\n /\n sum(rate(http_server_requests_total{http_status_code=~\"2xx|5xx\"}[$interval]))",
+          "format": "time_series",
+          "interval": "",
+          "intervalFactor": 2,
+          "legendFormat": "uptime",
+          "refId": "A"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Approximated Uptime: 'requests with 2xx status response' / 'requests with 2xx or 5xx status response'",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "percentunit",
+          "label": null,
+          "logBase": 1,
+          "max": 1,
+          "min": 0,
+          "show": true
+        },
+        {
+          "format": "percentunit",
+          "label": null,
+          "logBase": 1,
+          "max": 1,
+          "min": 0,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": true,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "Prometheus-1",
+      "description": "Relative frequency distribution of response 2xx, 3xx, 4xx and 5xx over $interval",
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 16,
+        "y": 13
+      },
+      "hiddenSeries": false,
+      "id": 6,
+      "legend": {
+        "alignAsTable": true,
+        "avg": true,
+        "current": true,
+        "max": true,
+        "min": true,
+        "rightSide": false,
+        "show": true,
+        "sort": "max",
+        "sortDesc": true,
+        "total": false,
+        "values": true
+      },
+      "lines": false,
+      "linewidth": 1,
+      "links": [],
+      "nullPointMode": "null",
+      "options": {
+        "alertThreshold": true
+      },
+      "percentage": true,
+      "pluginVersion": "8.0.5",
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "repeat": null,
+      "seriesOverrides": [
+        {
+          "alias": "Failures (5xx)",
+          "color": "rgb(196, 22, 42)"
+        },
+        {
+          "alias": "Client errors (4xx)",
+          "color": "rgb(224, 180, 0)"
+        },
+        {
+          "alias": "Redirects (3xx)",
+          "color": "rgb(31, 96, 196)"
+        },
+        {
+          "alias": "Success (2xx)",
+          "color": "rgb(55, 135, 45)"
+        }
+      ],
+      "spaceLength": 10,
+      "stack": true,
+      "steppedLine": false,
+      "targets": [
+        {
+          "datasource": "$PROMETHEUS_DS",
+          "exemplar": true,
+          "expr": "sum(rate(http_server_requests_total{http_status_code=\"5xx\"}[$interval]))\n/\nsum(rate(http_server_requests_total[$interval]))",
+          "format": "time_series",
+          "interval": "",
+          "intervalFactor": 2,
+          "legendFormat": "Failures (5xx)",
+          "refId": "A"
+        },
+        {
+          "datasource": "$PROMETHEUS_DS",
+          "exemplar": true,
+          "expr": "sum(rate(http_server_requests_total{http_status_code=\"4xx\"}[$interval]))\n/\nsum(rate(http_server_requests_total[$interval]))",
+          "format": "time_series",
+          "interval": "",
+          "intervalFactor": 2,
+          "legendFormat": "Client errors (4xx)",
+          "refId": "B"
+        },
+        {
+          "datasource": "$PROMETHEUS_DS",
+          "exemplar": true,
+          "expr": "sum(rate(http_server_requests_total{http_status_code=\"3xx\"}[$interval]))\n/\nsum(rate(http_server_requests_total[$interval]))",
+          "format": "time_series",
+          "interval": "",
+          "intervalFactor": 2,
+          "legendFormat": "Redirects (3xx)",
+          "refId": "C"
+        },
+        {
+          "datasource": "$PROMETHEUS_DS",
+          "exemplar": true,
+          "expr": "sum(rate(http_server_requests_total{http_status_code=\"2xx\"}[$interval]))\n/\nsum(rate(http_server_requests_total[$interval]))",
+          "format": "time_series",
+          "interval": "",
+          "intervalFactor": 2,
+          "legendFormat": "Success (2xx)",
+          "refId": "D"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "2xx | 4xx | 3xx | 5xx % (avg. $interval)",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "percentunit",
+          "label": null,
+          "logBase": 1,
+          "max": 100,
+          "min": 0,
+          "show": true
+        },
+        {
+          "format": "percentunit",
+          "label": null,
+          "logBase": 1,
+          "max": 100,
+          "min": 0,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "Prometheus-1",
+      "description": "Latency of requests with 3xx status response over $interval",
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 0,
+        "y": 19
+      },
+      "hiddenSeries": false,
+      "id": 7,
+      "legend": {
+        "alignAsTable": true,
+        "avg": true,
+        "current": true,
+        "max": true,
+        "min": true,
+        "rightSide": false,
+        "show": true,
+        "sort": "max",
+        "sortDesc": true,
+        "total": false,
+        "values": true
+      },
+      "lines": true,
+      "linewidth": 1,
+      "links": [],
+      "nullPointMode": "null",
+      "options": {
+        "alertThreshold": true
+      },
+      "percentage": false,
+      "pluginVersion": "8.0.5",
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "repeat": null,
+      "seriesOverrides": [
+        {
+          "alias": "p99.9",
+          "color": "rgb(31, 96, 196)"
+        },
+        {
+          "alias": "p99",
+          "color": "rgb(50, 116, 217)"
+        },
+        {
+          "alias": "p90",
+          "color": "rgb(138, 184, 255)"
+        },
+        {
+          "alias": "p50",
+          "color": "rgb(192, 216, 255)"
+        }
+      ],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "datasource": "$PROMETHEUS_DS",
+          "exemplar": true,
+          "expr": "histogram_quantile(0.99, sum(rate(span_processing_time_seconds_bucket{span_kind=\"server\", http_status_code=~\"3.*\"}[$interval])) by (le))",
+          "format": "time_series",
+          "interval": "",
+          "intervalFactor": 2,
+          "legendFormat": "p99",
+          "refId": "B"
+        },
+        {
+          "datasource": "$PROMETHEUS_DS",
+          "exemplar": true,
+          "expr": "histogram_quantile(0.90, sum(rate(span_processing_time_seconds_bucket{span_kind=\"server\", http_status_code=~\"3.*\"}[$interval])) by (le))",
+          "format": "time_series",
+          "interval": "",
+          "intervalFactor": 2,
+          "legendFormat": "p90",
+          "refId": "C"
+        },
+        {
+          "datasource": "$PROMETHEUS_DS",
+          "exemplar": true,
+          "expr": "histogram_quantile(0.50, sum(rate(span_processing_time_seconds_bucket{span_kind=\"server\", http_status_code=~\"3.*\"}[$interval])) by (le))",
+          "format": "time_series",
+          "interval": "",
+          "intervalFactor": 2,
+          "legendFormat": "p50",
+          "refId": "D"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Latency: only 3xx status response",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "s",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "s",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "Prometheus-1",
+      "description": "Latency of requests with 4xx status response over $interval",
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 8,
+        "y": 19
+      },
+      "hiddenSeries": false,
+      "id": 8,
+      "legend": {
+        "alignAsTable": true,
+        "avg": true,
+        "current": true,
+        "max": true,
+        "min": true,
+        "rightSide": false,
+        "show": true,
+        "sort": "max",
+        "sortDesc": true,
+        "total": false,
+        "values": true
+      },
+      "lines": true,
+      "linewidth": 1,
+      "links": [],
+      "nullPointMode": "null",
+      "options": {
+        "alertThreshold": true
+      },
+      "percentage": false,
+      "pluginVersion": "8.0.5",
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "repeat": null,
+      "seriesOverrides": [
+        {
+          "alias": "p99.9",
+          "color": "rgb(224, 180, 0)"
+        },
+        {
+          "alias": "p99",
+          "color": "rgb(242, 204, 12)"
+        },
+        {
+          "alias": "p90",
+          "color": "rgb(255, 238, 82)"
+        },
+        {
+          "alias": "p50",
+          "color": "rgb(255, 248, 153)"
+        }
+      ],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "datasource": "$PROMETHEUS_DS",
+          "exemplar": true,
+          "expr": "histogram_quantile(0.99, sum(rate(span_processing_time_seconds_bucket{span_kind=\"server\", http_status_code=~\"4.*\"}[$interval])) by (le))",
+          "format": "time_series",
+          "interval": "",
+          "intervalFactor": 2,
+          "legendFormat": "p99",
+          "refId": "B"
+        },
+        {
+          "datasource": "$PROMETHEUS_DS",
+          "exemplar": true,
+          "expr": "histogram_quantile(0.90, sum(rate(span_processing_time_seconds_bucket{span_kind=\"server\", http_status_code=~\"4.*\"}[$interval])) by (le))",
+          "format": "time_series",
+          "interval": "",
+          "intervalFactor": 2,
+          "legendFormat": "p90",
+          "refId": "C"
+        },
+        {
+          "datasource": "$PROMETHEUS_DS",
+          "exemplar": true,
+          "expr": "histogram_quantile(0.50, sum(rate(span_processing_time_seconds_bucket{span_kind=\"server\", http_status_code=~\"4.*\"}[$interval])) by (le))",
+          "format": "time_series",
+          "interval": "",
+          "intervalFactor": 2,
+          "legendFormat": "p50",
+          "refId": "D"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Latency: only 4xx status response",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "s",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "s",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "$PROMETHEUS_DS",
+      "description": "Latency of requests with 5xx status response over $interval",
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 16,
+        "y": 19
+      },
+      "hiddenSeries": false,
+      "id": 9,
+      "legend": {
+        "alignAsTable": true,
+        "avg": true,
+        "current": true,
+        "max": true,
+        "min": true,
+        "rightSide": false,
+        "show": true,
+        "sort": "max",
+        "sortDesc": true,
+        "total": false,
+        "values": true
+      },
+      "lines": true,
+      "linewidth": 1,
+      "links": [],
+      "nullPointMode": "null",
+      "options": {
+        "alertThreshold": true
+      },
+      "percentage": false,
+      "pluginVersion": "8.0.5",
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "repeat": null,
+      "seriesOverrides": [
+        {
+          "alias": "p99.9",
+          "color": "rgb(196, 22, 42)"
+        },
+        {
+          "alias": "p99",
+          "color": "rgb(224, 47, 68)"
+        },
+        {
+          "alias": "p90",
+          "color": "rgb(255, 115, 131)"
+        },
+        {
+          "alias": "p50",
+          "color": "rgb(255, 166, 176)"
+        }
+      ],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "datasource": "$PROMETHEUS_DS",
+          "exemplar": true,
+          "expr": "histogram_quantile(0.99, sum(rate(span_processing_time_seconds_bucket{span_kind=\"server\", http_status_code=~\"5.*\"}[$interval])) by (le))",
+          "format": "time_series",
+          "interval": "",
+          "intervalFactor": 2,
+          "legendFormat": "p99",
+          "refId": "B"
+        },
+        {
+          "datasource": "$PROMETHEUS_DS",
+          "exemplar": true,
+          "expr": "histogram_quantile(0.90, sum(rate(span_processing_time_seconds_bucket{span_kind=\"server\", http_status_code=~\"5.*\"}[$interval])) by (le))",
+          "format": "time_series",
+          "interval": "",
+          "intervalFactor": 2,
+          "legendFormat": "p90",
+          "refId": "C"
+        },
+        {
+          "datasource": "$PROMETHEUS_DS",
+          "exemplar": true,
+          "expr": "histogram_quantile(0.50, sum(rate(span_processing_time_seconds_bucket{span_kind=\"server\", http_status_code=~\"5.*\"}[$interval])) by (le))",
+          "format": "time_series",
+          "interval": "",
+          "intervalFactor": 2,
+          "legendFormat": "p50",
+          "refId": "D"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Latency: only 5xx status response",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "s",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "s",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "collapse": false,
+      "collapsed": false,
+      "datasource": null,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 25
+      },
+      "id": 10,
+      "panels": [],
+      "repeat": "client_operation",
+      "repeatIteration": null,
+      "repeatRowId": null,
+      "showTitle": true,
+      "title": "Clients metrics | $client_operation",
+      "titleSize": "h6",
+      "type": "row"
+    },
+    {
+      "aliasColors": {},
+      "bars": true,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "Prometheus-1",
+      "description": "The average outgoing requests rate in the last $interval across all selected instances",
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 26
+      },
+      "hiddenSeries": false,
+      "id": 11,
+      "legend": {
+        "alignAsTable": true,
+        "avg": true,
+        "current": true,
+        "max": true,
+        "min": true,
+        "rightSide": true,
+        "show": true,
+        "sort": "max",
+        "sortDesc": true,
+        "total": false,
+        "values": true
+      },
+      "lines": false,
+      "linewidth": 1,
+      "links": [],
+      "nullPointMode": "null",
+      "options": {
+        "alertThreshold": true
+      },
+      "percentage": false,
+      "pluginVersion": "8.0.5",
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "repeat": null,
+      "seriesOverrides": [
+        {
+          "alias": "/.*with no error/",
+          "color": "rgb(55, 135, 45)"
+        },
+        {
+          "alias": "/.*with error/",
+          "color": "rgb(196, 22, 42)"
+        }
+      ],
+      "spaceLength": 10,
+      "stack": true,
+      "steppedLine": false,
+      "targets": [
+        {
+          "datasource": "$PROMETHEUS_DS",
+          "exemplar": true,
+          "expr": "sum by (operation)(increase(span_processing_time_seconds_count{error=\"false\", span_kind=\"client\"}[$interval]))",
+          "format": "time_series",
+          "interval": "",
+          "intervalFactor": 2,
+          "legendFormat": "{{operation}} with no error",
+          "refId": "A"
+        },
+        {
+          "datasource": "$PROMETHEUS_DS",
+          "exemplar": true,
+          "expr": "sum by (operation)(increase(span_processing_time_seconds_count{error=\"true\", span_kind=\"client\"}[$interval]))",
+          "format": "time_series",
+          "interval": "",
+          "intervalFactor": 2,
+          "legendFormat": "{{operation}} with error",
+          "refId": "B"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Throughput of outgoing requests over $interval",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "rpm",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "rpm",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "${PROMETHEUS_DS}",
+      "description": "Latency of outgoing requests in the last $interval across all selected instances",
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 32
+      },
+      "hiddenSeries": false,
+      "id": 12,
+      "legend": {
+        "alignAsTable": true,
+        "avg": true,
+        "current": true,
+        "max": true,
+        "min": true,
+        "rightSide": true,
+        "show": true,
+        "sort": "max",
+        "sortDesc": true,
+        "total": false,
+        "values": true
+      },
+      "lines": true,
+      "linewidth": 1,
+      "links": [],
+      "nullPointMode": "null",
+      "options": {
+        "alertThreshold": true
+      },
+      "percentage": false,
+      "pluginVersion": "8.0.5",
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "repeat": null,
+      "seriesOverrides": [
+        {
+          "alias": "/p99.*with no error/",
+          "color": "rgb(55, 135, 45)"
+        },
+        {
+          "alias": "/p90.*with no error/",
+          "color": "rgb(86, 166, 75)"
+        },
+        {
+          "alias": "/p50.*with no error/",
+          "color": "rgb(150, 217, 141)"
+        },
+        {
+          "alias": "/p99.*with error/",
+          "color": "rgb(196, 22, 42)"
+        },
+        {
+          "alias": "/p90.*with error/",
+          "color": "rgb(224, 47, 68)"
+        },
+        {
+          "alias": "/p50.*with error/",
+          "color": "rgb(255, 115, 131)"
+        }
+      ],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "datasource": "$PROMETHEUS_DS",
+          "exemplar": true,
+          "expr": "histogram_quantile(0.99, sum(rate(span_processing_time_seconds_bucket{span_kind=\"client\", error=\"false\"}[$interval])) by (le))",
+          "format": "time_series",
+          "interval": "",
+          "intervalFactor": 2,
+          "legendFormat": "p99 {{operation}} with no error",
+          "refId": "A"
+        },
+        {
+          "datasource": "$PROMETHEUS_DS",
+          "exemplar": true,
+          "expr": "histogram_quantile(0.99, sum(rate(span_processing_time_seconds_bucket{span_kind=\"client\", error=\"true\"}[$interval])) by (le, instance))",
+          "format": "time_series",
+          "interval": "",
+          "intervalFactor": 2,
+          "legendFormat": "p99 {{operation}} with error",
+          "refId": "B"
+        },
+        {
+          "datasource": "$PROMETHEUS_DS",
+          "exemplar": true,
+          "expr": "histogram_quantile(0.90, sum(rate(span_processing_time_seconds_bucket{span_kind=\"client\", error=\"false\"}[$interval])) by (le, instance, operation))",
+          "format": "time_series",
+          "interval": "",
+          "intervalFactor": 2,
+          "legendFormat": "p90 {{operation}} with no error",
+          "refId": "C"
+        },
+        {
+          "datasource": "$PROMETHEUS_DS",
+          "exemplar": true,
+          "expr": "histogram_quantile(0.90, sum(rate(span_processing_time_seconds_bucket{span_kind=\"client\", error=\"true\"}[$interval])) by (le, instance, operation))",
+          "format": "time_series",
+          "interval": "",
+          "intervalFactor": 2,
+          "legendFormat": "p90 {{operation}} with error",
+          "refId": "D"
+        },
+        {
+          "datasource": "$PROMETHEUS_DS",
+          "exemplar": true,
+          "expr": "histogram_quantile(0.50, sum(rate(span_processing_time_seconds_bucket{span_kind=\"client\", error=\"false\"}[$interval])) by (le, instance, operation))",
+          "format": "time_series",
+          "interval": "",
+          "intervalFactor": 2,
+          "legendFormat": "p50 {{operation}} with no error",
+          "refId": "E"
+        },
+        {
+          "datasource": "$PROMETHEUS_DS",
+          "exemplar": true,
+          "expr": "histogram_quantile(0.50, sum(rate(span_processing_time_seconds_bucket{span_kind=\"client\", error=\"true\"}[$interval])) by (le, instance, operation))",
+          "format": "time_series",
+          "interval": "",
+          "intervalFactor": 2,
+          "legendFormat": "p50 {{operation}} with error",
+          "refId": "F"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Latency of outgoing requests over $interval",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "s",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "s",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    }
+  ],
+  "refresh": "1m",
+  "schemaVersion": 30,
+  "style": "dark",
+  "tags": [
+    "kamon",
+    "prometheus",
+    "web-server"
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "selected": false,
+          "text": "Prometheus-1",
+          "value": "Prometheus-1"
+        },
+        "description": null,
+        "error": null,
+        "hide": 1,
+        "includeAll": false,
+        "label": null,
+        "multi": false,
+        "name": "PROMETHEUS_DS",
+        "options": [],
+        "query": "prometheus",
+        "queryValue": "",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "type": "datasource"
+      },
+      {
+        "allValue": null,
+        "current": {
+          "selected": false,
+          "text": "my-app.*|another-app.*",
+          "value": "my-app.*|another-app.*"
+        },
+        "description": null,
+        "error": null,
+        "hide": 2,
+        "includeAll": false,
+        "label": "App filter",
+        "multi": false,
+        "name": "app_filter",
+        "options": [
+          {
+            "selected": true,
+            "text": "my-app.*|another-app.*",
+            "value": "my-app.*|another-app.*"
+          }
+        ],
+        "query": "my-app.*|another-app.*",
+        "refresh": 0,
+        "skipUrlSync": false,
+        "type": "custom"
+      },
+      {
+        "allValue": null,
+        "current": {
+          "selected": false,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": "$PROMETHEUS_DS",
+        "definition": "",
+        "description": null,
+        "error": null,
+        "hide": 0,
+        "includeAll": true,
+        "label": "Job",
+        "multi": true,
+        "name": "job",
+        "options": [],
+        "query": {
+          "query": "label_values(up{job=~\"$app_filter\"}, job)",
+          "refId": "Prometheus-job-Variable-Query"
+        },
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": null,
+        "current": {
+          "selected": false,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": "$PROMETHEUS_DS",
+        "definition": "",
+        "description": null,
+        "error": null,
+        "hide": 0,
+        "includeAll": true,
+        "label": "Instance",
+        "multi": true,
+        "name": "instance",
+        "options": [],
+        "query": {
+          "query": "label_values(up{job=~\"$job\"},instance)",
+          "refId": "Prometheus-instance-Variable-Query"
+        },
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "auto": false,
+        "auto_count": 0,
+        "auto_min": "10s",
+        "current": {
+          "selected": true,
+          "text": "1m",
+          "value": "1m"
+        },
+        "description": null,
+        "error": null,
+        "hide": 0,
+        "label": "Interval",
+        "name": "interval",
+        "options": [
+          {
+            "selected": false,
+            "text": "30s",
+            "value": "30s"
+          },
+          {
+            "selected": true,
+            "text": "1m",
+            "value": "1m"
+          },
+          {
+            "selected": false,
+            "text": "2m",
+            "value": "2m"
+          },
+          {
+            "selected": false,
+            "text": "5m",
+            "value": "5m"
+          },
+          {
+            "selected": false,
+            "text": "10m",
+            "value": "10m"
+          },
+          {
+            "selected": false,
+            "text": "30m",
+            "value": "30m"
+          },
+          {
+            "selected": false,
+            "text": "1h",
+            "value": "1h"
+          },
+          {
+            "selected": false,
+            "text": "6h",
+            "value": "6h"
+          },
+          {
+            "selected": false,
+            "text": "12h",
+            "value": "12h"
+          },
+          {
+            "selected": false,
+            "text": "1d",
+            "value": "1d"
+          },
+          {
+            "selected": false,
+            "text": "7d",
+            "value": "7d"
+          },
+          {
+            "selected": false,
+            "text": "14d",
+            "value": "14d"
+          },
+          {
+            "selected": false,
+            "text": "30d",
+            "value": "30d"
+          }
+        ],
+        "query": "30s,1m,2m,5m,10m,30m,1h,6h,12h,1d,7d,14d,30d",
+        "queryValue": "",
+        "refresh": 2,
+        "skipUrlSync": false,
+        "type": "interval"
+      },
+      {
+        "allValue": null,
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": "$PROMETHEUS_DS",
+        "definition": "",
+        "description": null,
+        "error": null,
+        "hide": 2,
+        "includeAll": true,
+        "label": "",
+        "multi": false,
+        "name": "client_operation",
+        "options": [],
+        "query": {
+          "query": "label_values(span_processing_time_seconds_count{job=~\"$job\", span_kind=\"client\"},operation)",
+          "refId": "Prometheus-client_operation-Variable-Query"
+        },
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "tagValuesQuery": "",
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      }
+    ]
+  },
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "5s",
+      "10s",
+      "30s",
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h",
+      "2h",
+      "1d"
+    ],
+    "time_options": [
+      "5m",
+      "15m",
+      "1h",
+      "6h",
+      "12h",
+      "24h",
+      "2d",
+      "7d",
+      "30d"
+    ]
+  },
+  "timezone": "browser",
+  "title": "Kamon 2.x - API dashboard",
+  "uid": "k1",
+  "version": 3
+}
