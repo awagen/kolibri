@@ -16,7 +16,7 @@
   "gnetId": null,
   "graphTooltip": 0,
   "id": 4,
-  "iteration": 1626191894037,
+  "iteration": 1626287680811,
   "links": [],
   "panels": [
     {
@@ -861,13 +861,14 @@
         {
           "exemplar": true,
           "expr": "sum by (operation, instance)(rate(span_processing_time_seconds_count{error=\"false\", span_kind=\"client\"}[1m]))",
+          "hide": false,
           "interval": "",
           "legendFormat": "{{operation}} on {{instance}} with no error",
           "refId": "A"
         },
         {
           "exemplar": true,
-          "expr": "sum by (operation)(rate(span_processing_time_seconds_count{error=\"true\", span_kind=\"client\"}[1m]))",
+          "expr": "sum by (operation, instance)(rate(span_processing_time_seconds_count{error=\"true\", span_kind=\"client\"}[1m]))",
           "hide": false,
           "interval": "",
           "legendFormat": "{operation}} on {{instance}} with error",
@@ -950,7 +951,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "sum by (instance, http_method)(increase(span_processing_time_seconds_sum{span_kind=\"client\"}[1m]) / increase(span_processing_time_seconds_count[1m])) * 1000",
+          "expr": "sum by (instance, http_method)(increase(span_processing_time_seconds_sum{span_kind=\"client\"}[2m]) / increase(span_processing_time_seconds_count[2m])) * 1000",
           "hide": false,
           "interval": "",
           "legendFormat": "avg - method={{http_method}}, instance={{instance}}",
@@ -977,7 +978,7 @@
           "expr": "histogram_quantile(0.90, sum(rate(span_processing_time_seconds_bucket{span_kind=\"client\"}[2m])) by (le, instance, http_method)) * 1000",
           "hide": false,
           "interval": "",
-          "legendFormat": "p99 - method={{http_method}}, instance={{instance}}",
+          "legendFormat": "p90 - method={{http_method}}, instance={{instance}}",
           "refId": "D"
         }
       ],
@@ -997,6 +998,107 @@
       "panels": [],
       "title": "System (JVM)",
       "type": "row"
+    },
+    {
+      "datasource": "${DATASOURCE}",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 14,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineStyle": {
+              "fill": "solid"
+            },
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 43
+      },
+      "id": 31,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "targets": [
+        {
+          "exemplar": true,
+          "expr": "avg(rate(host_cpu_usage_sum{mode!~\"idle\"}[5m:1m]))",
+          "hide": false,
+          "interval": "",
+          "legendFormat": "avg",
+          "refId": "D"
+        },
+        {
+          "exemplar": true,
+          "expr": "max(rate(host_cpu_usage_sum{mode!~\"idle\"}[5m:1m]))",
+          "hide": false,
+          "interval": "",
+          "legendFormat": "max",
+          "refId": "E"
+        },
+        {
+          "exemplar": true,
+          "expr": "min(rate(host_cpu_usage_sum{mode!~\"idle\"}[5m:1m]))",
+          "hide": false,
+          "interval": "",
+          "legendFormat": "min",
+          "refId": "F"
+        }
+      ],
+      "title": "Avg CPU Load (in CPUs)",
+      "type": "timeseries"
     },
     {
       "datasource": "${DATASOURCE}",
@@ -1053,7 +1155,7 @@
       "gridPos": {
         "h": 8,
         "w": 12,
-        "x": 0,
+        "x": 12,
         "y": 43
       },
       "id": 27,
@@ -1077,88 +1179,6 @@
         }
       ],
       "title": "Nr of GCs (per second)",
-      "type": "timeseries"
-    },
-    {
-      "datasource": "${DATASOURCE}",
-      "description": "",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "bars",
-            "fillOpacity": 36,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "normal"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 43
-      },
-      "id": 29,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "single"
-        }
-      },
-      "targets": [
-        {
-          "exemplar": true,
-          "expr": "rate(jvm_gc_seconds_sum[1m])",
-          "interval": "",
-          "legendFormat": "{{generation}}-{{instance}}",
-          "refId": "A"
-        }
-      ],
-      "title": "GC time (per second)",
       "type": "timeseries"
     },
     {
@@ -1240,7 +1260,89 @@
           "refId": "A"
         }
       ],
-      "title": "GC times",
+      "title": "Avg GC times",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "${DATASOURCE}",
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "bars",
+            "fillOpacity": 36,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "normal"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 51
+      },
+      "id": 29,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "targets": [
+        {
+          "exemplar": true,
+          "expr": "rate(jvm_gc_seconds_sum[1m])",
+          "interval": "",
+          "legendFormat": "{{generation}}-{{instance}}",
+          "refId": "A"
+        }
+      ],
+      "title": "GC time (per second)",
       "type": "timeseries"
     }
   ],
@@ -1281,5 +1383,5 @@
   "timezone": "",
   "title": "Kolibri Dashboard",
   "uid": "4w3cI1m7z",
-  "version": 13
+  "version": 20
 }
