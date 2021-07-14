@@ -16,7 +16,7 @@
   "gnetId": null,
   "graphTooltip": 0,
   "id": 4,
-  "iteration": 1626297254947,
+  "iteration": 1626302311069,
   "links": [],
   "panels": [
     {
@@ -1096,7 +1096,7 @@
           "refId": "F"
         }
       ],
-      "title": "Avg CPU Load (in CPUs)",
+      "title": "Avg CPU Load (%)",
       "type": "timeseries"
     },
     {
@@ -1395,32 +1395,7 @@
             ]
           }
         },
-        "overrides": [
-          {
-            "__systemRef": "hideSeriesFrom",
-            "matcher": {
-              "id": "byNames",
-              "options": {
-                "mode": "exclude",
-                "names": [
-                  "Used (MB) - kolibri2:9096"
-                ],
-                "prefix": "All except:",
-                "readOnly": true
-              }
-            },
-            "properties": [
-              {
-                "id": "custom.hideFrom",
-                "value": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": true
-                }
-              }
-            ]
-          }
-        ]
+        "overrides": []
       },
       "gridPos": {
         "h": 8,
@@ -1522,5 +1497,5 @@
   "timezone": "",
   "title": "Kolibri Dashboard",
   "uid": "4w3cI1m7z",
-  "version": 23
+  "version": 25
 }
