@@ -16,7 +16,7 @@
   "gnetId": null,
   "graphTooltip": 0,
   "id": 4,
-  "iteration": 1626287680811,
+  "iteration": 1626297254947,
   "links": [],
   "panels": [
     {
@@ -799,16 +799,16 @@
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
-            "drawStyle": "bars",
-            "fillOpacity": 65,
+            "drawStyle": "line",
+            "fillOpacity": 36,
             "gradientMode": "none",
             "hideFrom": {
               "legend": false,
               "tooltip": false,
               "viz": false
             },
-            "lineInterpolation": "linear",
-            "lineWidth": 3,
+            "lineInterpolation": "stepBefore",
+            "lineWidth": 1,
             "pointSize": 5,
             "scaleDistribution": {
               "type": "linear"
@@ -861,7 +861,6 @@
         {
           "exemplar": true,
           "expr": "sum by (operation, instance)(rate(span_processing_time_seconds_count{error=\"false\", span_kind=\"client\"}[1m]))",
-          "hide": false,
           "interval": "",
           "legendFormat": "{{operation}} on {{instance}} with no error",
           "refId": "A"
@@ -1111,15 +1110,15 @@
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
-            "drawStyle": "bars",
-            "fillOpacity": 65,
+            "drawStyle": "line",
+            "fillOpacity": 31,
             "gradientMode": "none",
             "hideFrom": {
               "legend": false,
               "tooltip": false,
               "viz": false
             },
-            "lineInterpolation": "linear",
+            "lineInterpolation": "stepBefore",
             "lineWidth": 1,
             "pointSize": 5,
             "scaleDistribution": {
@@ -1193,7 +1192,7 @@
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
-            "drawStyle": "bars",
+            "drawStyle": "line",
             "fillOpacity": 66,
             "gradientMode": "none",
             "hideFrom": {
@@ -1201,8 +1200,8 @@
               "tooltip": false,
               "viz": false
             },
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
+            "lineInterpolation": "stepBefore",
+            "lineWidth": 2,
             "pointSize": 5,
             "scaleDistribution": {
               "type": "linear"
@@ -1275,7 +1274,7 @@
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
-            "drawStyle": "bars",
+            "drawStyle": "line",
             "fillOpacity": 36,
             "gradientMode": "none",
             "hideFrom": {
@@ -1283,7 +1282,7 @@
               "tooltip": false,
               "viz": false
             },
-            "lineInterpolation": "linear",
+            "lineInterpolation": "stepBefore",
             "lineWidth": 1,
             "pointSize": 5,
             "scaleDistribution": {
@@ -1344,6 +1343,146 @@
       ],
       "title": "GC time (per second)",
       "type": "timeseries"
+    },
+    {
+      "datasource": "${DATASOURCE}",
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "__systemRef": "hideSeriesFrom",
+            "matcher": {
+              "id": "byNames",
+              "options": {
+                "mode": "exclude",
+                "names": [
+                  "Used (MB) - kolibri2:9096"
+                ],
+                "prefix": "All except:",
+                "readOnly": true
+              }
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": true
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 59
+      },
+      "id": 33,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "targets": [
+        {
+          "exemplar": true,
+          "expr": "jvm_memory_max_bytes * 0.000001",
+          "interval": "",
+          "legendFormat": "Total (MB) - {{instance}}",
+          "refId": "A"
+        },
+        {
+          "exemplar": true,
+          "expr": "rate(jvm_memory_free_bytes_sum[2m]) / rate(jvm_memory_free_bytes_count[2m]) * 0.000001",
+          "hide": true,
+          "interval": "",
+          "legendFormat": "Free (MB) - {{instance}}",
+          "refId": "B"
+        },
+        {
+          "exemplar": true,
+          "expr": "jvm_memory_committed_bytes * 0.000001",
+          "hide": false,
+          "interval": "",
+          "legendFormat": "Commited (MB) - {{instance}}",
+          "refId": "C"
+        },
+        {
+          "exemplar": true,
+          "expr": "rate(jvm_memory_allocation_bytes_total[2m]) * 0.000001",
+          "hide": true,
+          "interval": "",
+          "legendFormat": "Allocated (MB) - {{instance}}",
+          "refId": "D"
+        },
+        {
+          "exemplar": true,
+          "expr": "avg by (instance)(rate(jvm_memory_pool_used_bytes_sum[5m])) * 0.000001",
+          "hide": false,
+          "interval": "",
+          "intervalFactor": 1,
+          "legendFormat": "Used (MB) - {{instance}}",
+          "refId": "E"
+        }
+      ],
+      "title": "JVM Memory",
+      "type": "timeseries"
     }
   ],
   "refresh": "5s",
@@ -1383,5 +1522,5 @@
   "timezone": "",
   "title": "Kolibri Dashboard",
   "uid": "4w3cI1m7z",
-  "version": 20
+  "version": 23
 }
