@@ -85,6 +85,7 @@ object AppConfig {
 
     val requestParallelism: Int = baseConfig.getInt("kolibri.request.parallelism")
     val useRequestTracking: Boolean = baseConfig.getBoolean("kolibri.request.useTracking")
+    val useConnectionPoolFlow: Boolean = baseConfig.getBoolean("kolibri.request.useConnectionPoolFlow")
 
     val jobTimeout: FiniteDuration = FiniteDuration(baseConfig.getInt("kolibri.job.timeoutInSeconds"), SECONDS)
     val jobProcessingCheckResourcesInterval: FiniteDuration = FiniteDuration(baseConfig.getInt("kolibri.job.processingCheckResourcesIntervalInMillis"),

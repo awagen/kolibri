@@ -91,6 +91,16 @@ context.system.actorOf(
 )
 ```
 
+## Local docker-compose setup
+The docker-compose.yml can be found in the project root. Following setup is provided:
+- prometheus: http://localhost:9000
+- grafana: http://localhost:3000
+- 3 node Kolibri cluster, with metrics endpoint on http://localhost:9095/metrics (exposed by Kamon lib)
+
+An example grid search evaluation can be performed as given in the ```scripts/start_searcheval.sh```. You will need 
+to adjust paths where appropriate. The example fires requests to a search instance on the local machine, which is not provided here.
+
+
 ## License
 
 The kolibri-base code is licensed under APL 2.0.
