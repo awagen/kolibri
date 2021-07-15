@@ -21,7 +21,7 @@ import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Cancellable, Pois
 import de.awagen.kolibri.base.actors.work.worker.AggregatingActor._
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages._
 import de.awagen.kolibri.base.config.AppConfig.config
-import de.awagen.kolibri.base.config.AppConfig.config.useAggregatorBackpressure
+import de.awagen.kolibri.base.config.AppConfig.config.{kolibriDispatcherName, useAggregatorBackpressure}
 import de.awagen.kolibri.base.io.writer.Writers.Writer
 import de.awagen.kolibri.base.processing.execution.expectation.ExecutionExpectation
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
@@ -39,6 +39,7 @@ object AggregatingActor {
                   writer: Option[Writer[V, Tag, _]],
                   sendResultDataToSender: Boolean): Props =
     Props(new AggregatingActor[U, V](aggregatorSupplier, expectationSupplier, owner, jobPartIdentifier, writer, sendResultDataToSender))
+      .withDispatcher(kolibriDispatcherName)
 
   trait AggregatingActorCmd extends KolibriSerializable
 

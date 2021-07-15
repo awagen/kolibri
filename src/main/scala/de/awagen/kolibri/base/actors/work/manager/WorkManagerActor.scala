@@ -27,6 +27,7 @@ import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.ProcessingMe
 import de.awagen.kolibri.base.actors.work.worker.TaskExecutionWorkerActor.ProcessTaskExecution
 import de.awagen.kolibri.base.actors.work.worker.TaskWorkerActor.ProcessTasks
 import de.awagen.kolibri.base.actors.work.worker.{RunnableExecutionActor, TaskExecutionWorkerActor, TaskWorkerActor}
+import de.awagen.kolibri.base.config.AppConfig.config.kolibriDispatcherName
 import de.awagen.kolibri.base.io.writer.Writers
 import de.awagen.kolibri.base.processing.JobMessages.{SearchEvaluation, TestPiCalculation}
 import de.awagen.kolibri.base.processing.JobMessagesImplicits._
@@ -50,7 +51,7 @@ import scala.concurrent.ExecutionContext
 
 object WorkManagerActor {
 
-  def props: Props = Props[WorkManagerActor]
+  def props: Props = Props[WorkManagerActor].withDispatcher(kolibriDispatcherName)
 
   sealed trait WorkManagerMsg extends KolibriSerializable
 

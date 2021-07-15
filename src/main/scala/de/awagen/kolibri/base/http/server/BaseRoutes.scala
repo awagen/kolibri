@@ -29,7 +29,7 @@ import de.awagen.kolibri.base.actors.clusterinfo.ClusterMetricsListenerActor.{Me
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor._
 import de.awagen.kolibri.base.cluster.ClusterStatus
-import de.awagen.kolibri.base.config.AppConfig.config.internalJobStatusRequestTimeout
+import de.awagen.kolibri.base.config.AppConfig.config.{internalJobStatusRequestTimeout, kolibriDispatcherName}
 import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions
 import de.awagen.kolibri.base.io.json.SearchEvaluationJsonProtocol._
 import de.awagen.kolibri.base.processing.JobMessages.{SearchEvaluation, TestPiCalculation}
@@ -54,7 +54,7 @@ object BaseRoutes {
     this.synchronized {
       if (Objects.isNull(supervisorActor)) {
         supervisorActor = system.actorOf(SupervisorActor.props(true)
-          .withDispatcher("kolibri-dispatcher"))
+          .withDispatcher(kolibriDispatcherName))
       }
     }
   }

@@ -142,6 +142,8 @@ object AppConfig {
 
     val internalJobStatusRequestTimeout: FiniteDuration = getFiniteDuration(config = baseConfig,
       key = "kolibri.internal.jobStatusRequestTimeoutInSeconds", SECONDS)
+
+    val kolibriDispatcherName = "kolibri-dispatcher"
   }
 
 }
