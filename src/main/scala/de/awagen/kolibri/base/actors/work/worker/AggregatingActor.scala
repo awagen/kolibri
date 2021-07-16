@@ -26,13 +26,14 @@ import de.awagen.kolibri.base.io.writer.Writers.Writer
 import de.awagen.kolibri.base.processing.execution.expectation.ExecutionExpectation
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}
+import de.awagen.kolibri.datatypes.types.WithCount
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 
 import scala.concurrent.ExecutionContextExecutor
 
 object AggregatingActor {
 
-  def props[U, V](aggregatorSupplier: () => Aggregator[ProcessingMessage[U], V],
+  def props[U, V <: WithCount](aggregatorSupplier: () => Aggregator[ProcessingMessage[U], V],
                   expectationSupplier: () => ExecutionExpectation,
                   owner: ActorRef,
                   jobPartIdentifier: JobPartIdentifiers.JobPartIdentifier,
@@ -57,12 +58,12 @@ object AggregatingActor {
 
 }
 
-class AggregatingActor[U, V](val aggregatorSupplier: () => Aggregator[ProcessingMessage[U], V],
-                             val expectationSupplier: () => ExecutionExpectation,
-                             val owner: ActorRef,
-                             val jobPartIdentifier: JobPartIdentifiers.JobPartIdentifier,
-                             val writerOpt: Option[Writer[V, Tag, _]],
-                             val sendResultDataToSender: Boolean = true)
+class AggregatingActor[U, V <: WithCount](val aggregatorSupplier: () => Aggregator[ProcessingMessage[U], V],
+                                          val expectationSupplier: () => ExecutionExpectation,
+                                          val owner: ActorRef,
+                                          val jobPartIdentifier: JobPartIdentifiers.JobPartIdentifier,
+                                          val writerOpt: Option[Writer[V, Tag, _]],
+                                          val sendResultDataToSender: Boolean = true)
   extends Actor with ActorLogging {
 
   implicit val system: ActorSystem = context.system
@@ -104,6 +105,15 @@ class AggregatingActor[U, V](val aggregatorSupplier: () => Aggregator[Processing
   def openState: Receive = {
     case e: BadCorn[U] =>
       aggregator.add(e)
+      if (useAggregatorBackpressure) sender() ! ACK
+    case aggregationResult: AggregationState[V] =>
+      log.info("received aggregation result event with count: {}", aggregationResult.data.count)
+      aggregator.addAggregate(aggregationResult.data)
+      expectation.accept(aggregationResult)
+      log.info("overall partial result count: {}", aggregator.aggregation.count)
+      log.debug("expectation state: {}", expectation.statusDesc)
+      log.debug(s"expectation: $expectation")
+      handleExpectationStateAndCloseIfFinished(true)
       if (useAggregatorBackpressure) sender() ! ACK
     case result: Corn[U] =>
       log.debug("received single result event: {}", result)

@@ -17,8 +17,9 @@
 
 package de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts
 
-import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.Corn
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationState, Corn}
 import de.awagen.kolibri.base.processing.execution.expectation._
+import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
 
 import scala.concurrent.duration._
 
@@ -33,15 +34,31 @@ object Expectations {
   def expectationPerBatchSupplier[T](timeout: FiniteDuration,
                                      minOverallElementCount: Int = 10,
                                      maxAllowedFailFraction: Float = 0.2F): Int => ExecutionExpectation = v1 => {
-    BaseExecutionExpectation(
-      fulfillAllForSuccess = Seq(ClassifyingCountExpectation(classifier = Map("finishResponse" -> {
-        case Corn(e) if e.isInstanceOf[T] => true
-        case _ => false
-      }), expectedClassCounts = Map("finishResponse" -> v1))),
-      fulfillAnyForFail = Seq(StopExpectation(v1, {
-        _ => false
-      }, x => v1 > minOverallElementCount && x._2.toFloat / x._1 > maxAllowedFailFraction),
-        TimeExpectation(timeout))
+    AnySucceedsOrAllFailExecutionExpectation(
+      Seq(
+        // expectation for the single results
+        BaseExecutionExpectation(
+          fulfillAllForSuccess = Seq(ClassifyingCountExpectation(classifier = Map("finishResponse" -> {
+            case Corn(e) if e.isInstanceOf[T] => true
+            case _ => false
+          }), expectedClassCounts = Map("finishResponse" -> v1))),
+          fulfillAnyForFail = Seq(StopExpectation(v1, {
+            _ => false
+          }, x => v1 > minOverallElementCount && x._2.toFloat / x._1 > maxAllowedFailFraction),
+            TimeExpectation(timeout))
+        ),
+        // expectation for the AggregationState results to allow either aggregation
+        // on single results or split and based on single subaggregations
+        BaseExecutionExpectation(
+          fulfillAllForSuccess = Seq(ElementCountingExpectation(
+            countPerElementFunc = {
+              case AggregationState(data: MetricAggregation[T],_,_,_) =>
+                data.count
+              case _ => 0
+            }, v1)
+          ),
+          fulfillAnyForFail = Seq(TimeExpectation(timeout))
+        ))
     )
   }
 
