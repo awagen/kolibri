@@ -23,8 +23,9 @@ import de.awagen.kolibri.base.actors.clusterinfo.ClusterMetricsListenerActor
 import de.awagen.kolibri.base.actors.clusterinfo.ClusterMetricsListenerActor.{MetricsProvided, ProvideMetrics}
 import de.awagen.kolibri.base.actors.resources.BatchFreeSlotResourceCheckingActor.{AddToRunningBaselineCount, CheckAndUpdateResources}
 import de.awagen.kolibri.base.config.AppConfig.config
+import de.awagen.kolibri.base.config.AppConfig.config.kolibriDispatcherName
 
-import scala.concurrent.{ExecutionContextExecutor, Future}
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Success
 
 
@@ -42,8 +43,9 @@ object BatchFreeSlotResourceCheckingActor {
 class BatchFreeSlotResourceCheckingActor(val resourceChecker: ResourceChecker) extends Actor with ActorLogging {
 
   implicit val system: ActorSystem = context.system
-  implicit val ec: ExecutionContextExecutor = system.dispatcher
   // TODO: wed need to collect an average over a certain time to avoid short-time-spike scaling
+  implicit val ec: ExecutionContext = context.system.dispatchers.lookup(kolibriDispatcherName)
+
   val clusterStatusActor: ActorRef = system.actorOf(ClusterMetricsListenerActor.props)
 
   override def receive: Receive = {

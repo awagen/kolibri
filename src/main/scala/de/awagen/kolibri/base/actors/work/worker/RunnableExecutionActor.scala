@@ -65,7 +65,7 @@ class RunnableExecutionActor[U <: WithCount](maxBatchDuration: FiniteDuration,
                                              val writerOpt: Option[Writer[U, Tag, _]]) extends Actor with ActorLogging with KolibriSerializable {
 
   implicit val system: ActorSystem = context.system
-  implicit val ec: ExecutionContextExecutor = system.dispatcher
+  implicit val ec: ExecutionContextExecutor = context.system.dispatchers.lookup(kolibriDispatcherName)
   // actual actor config to be able to pass actors for certain functions along
   // e.g actor for sink, actor to be passed as single execution sender and such
   private[this] var actorConfig: JobActorConfig = _
@@ -125,6 +125,13 @@ class RunnableExecutionActor[U <: WithCount](maxBatchDuration: FiniteDuration,
         fulfillAnyForFail = failExpectations)
       expectation.init
       val outcome: (UniqueKillSwitch, Future[Done]) = runnableGraph.run()
+      // when complete, send the aggregation to the aggregatig actor (well, aggregating actor actually not needed in that case)
+      outcome._2.onComplete(_ => {
+//        aggregatingActor ! AggregationState(runnable.aggregator.aggregation, runningJobId, runningJobBatchNr, expectation)
+        log.info("graph completed, notifying aggregator to send results and stop aggregating")
+        aggregatingActor ! ProvideStateAndStop
+        ()
+      })
       killSwitch = outcome._1
       executionFuture = outcome._2
       context.become(processing)
@@ -151,7 +158,7 @@ class RunnableExecutionActor[U <: WithCount](maxBatchDuration: FiniteDuration,
       else if (expectation.failed) {
         log.info("Expectation failed, shutting down stream and killing actor")
         killSwitch.abort(new RuntimeException(s"Expectation failed:\n${expectation.statusDesc}"))
-        aggregatingActor ! ProvideStateAndStop(self)
+        aggregatingActor ! ProvideStateAndStop
       }
     case e: AggregationState[_] =>
       log.debug("received aggregation (batch finished): {}", e)

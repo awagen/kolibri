@@ -26,7 +26,7 @@ import akka.stream.Materializer
 import de.awagen.kolibri.base.actors.routing.RoutingActor
 import de.awagen.kolibri.base.config.AppConfig
 import de.awagen.kolibri.base.config.AppConfig.config
-import de.awagen.kolibri.base.config.AppConfig.config.node_roles
+import de.awagen.kolibri.base.config.AppConfig.config.{kolibriDispatcherName, node_roles}
 import de.awagen.kolibri.base.http.server.BaseRoutes._
 import de.awagen.kolibri.base.http.server.{BaseRoutes, HttpServer}
 import kamon.Kamon
@@ -88,7 +88,7 @@ object ClusterNode extends App {
 
     implicit val actorSystem: ActorSystem = startSystem()
     implicit val mat: Materializer = Materializer(actorSystem)
-    implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
+    implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatchers.lookup(kolibriDispatcherName)
     // need to initialiize the BaseRoutes to start Supervisor actor in current actorSystem
     BaseRoutes.init
     val usedRoute: Route = route.getOrElse(simpleHelloRoute ~ streamingUserRoutes ~ clusterStatusRoutee ~ killAllJobs

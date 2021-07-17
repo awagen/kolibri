@@ -33,6 +33,8 @@ import scala.concurrent.ExecutionContextExecutor
 
 object AggregatingActor {
 
+  // TODO: we might wannna have a RateExpectation, meaning elements to aggregate must be there at least every
+  // given time step
   def props[U, V <: WithCount](aggregatorSupplier: () => Aggregator[ProcessingMessage[U], V],
                   expectationSupplier: () => ExecutionExpectation,
                   owner: ActorRef,
@@ -48,7 +50,7 @@ object AggregatingActor {
 
   case object Close extends AggregatingActorCmd
 
-  case class ProvideStateAndStop(reportTo: ActorRef)
+  case object ProvideStateAndStop
 
   case object ReportResults extends AggregatingActorCmd
 
@@ -67,7 +69,7 @@ class AggregatingActor[U, V <: WithCount](val aggregatorSupplier: () => Aggregat
   extends Actor with ActorLogging {
 
   implicit val system: ActorSystem = context.system
-  implicit val ec: ExecutionContextExecutor = system.dispatcher
+  implicit val ec: ExecutionContextExecutor = context.system.dispatchers.lookup(kolibriDispatcherName)
 
   val expectation: ExecutionExpectation = expectationSupplier.apply()
   expectation.init
@@ -137,10 +139,10 @@ class AggregatingActor[U, V <: WithCount](val aggregatorSupplier: () => Aggregat
       context.become(closedState)
     case ReportResults =>
       handleExpectationStateAndCloseIfFinished(true)
-    case ProvideStateAndStop(reportTo) =>
+    case ProvideStateAndStop =>
       log.debug("Providing aggregation state and stopping aggregator")
       cancellableSchedule.cancel()
-      reportTo ! AggregationState(aggregator.aggregation, jobPartIdentifier.jobId,
+      owner ! AggregationState(aggregator.aggregation, jobPartIdentifier.jobId,
         jobPartIdentifier.batchNr, expectation.deepCopy)
       self ! PoisonPill
     case Housekeeping =>

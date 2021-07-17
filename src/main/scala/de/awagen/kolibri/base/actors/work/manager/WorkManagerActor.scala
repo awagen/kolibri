@@ -145,7 +145,7 @@ class WorkManagerActor() extends Actor with ActorLogging with KolibriSerializabl
         .getOrElse(log.warning(s"job for message '$e' does not contain batch '${e.batchNr}', not executing anything for batch"))
     case e: JobBatchMsg[SearchEvaluation] if e.msg.isInstanceOf[SearchEvaluation] =>
       log.info("received SearchEvaluation msg")
-      implicit val ec: ExecutionContext = context.system.dispatcher
+      implicit val ec: ExecutionContext = context.system.dispatchers.lookup(kolibriDispatcherName)
       implicit val actorSystem: ActorSystem = context.system
       val runnableMsg: SupervisorActor.ProcessActorRunnableJobCmd[RequestTemplateBuilderModifier, MetricRow, MetricRow, MetricAggregation[Tag]] = e.msg.toRunnable
       // TODO: adjust passed flags to regulate whether nodes write single batch results

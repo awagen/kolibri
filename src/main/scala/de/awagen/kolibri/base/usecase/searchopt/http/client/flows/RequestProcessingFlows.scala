@@ -30,6 +30,7 @@ import de.awagen.kolibri.base.config.AppConfig.config
 import de.awagen.kolibri.base.config.AppConfig.config.useConnectionPoolFlow
 import de.awagen.kolibri.base.domain.Connection
 import de.awagen.kolibri.base.http.client.request.RequestTemplate
+import de.awagen.kolibri.base.processing.decider.Deciders.allResumeDecider
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.Flows.connectionFunc
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.tagging.TagType
@@ -118,7 +119,7 @@ object RequestProcessingFlows {
           }
           e
         }
-      )
+      ).withAttributes(ActorAttributes.supervisionStrategy(allResumeDecider))
     flowResult.via(Flow.fromFunction(y => {
       // map to processing message of tuple
       Corn((y._1, y._2.data)).withTags(TagType.AGGREGATION, y._2.getTagsForType(AGGREGATION))
@@ -150,7 +151,7 @@ object RequestProcessingFlows {
           parsingFunc.apply(e).map(v => (v, y._2))
         case y@(Failure(e), _) =>
           Future.successful(Left(e)).map(v => (v, y._2))
-      }
+      }.withAttributes(ActorAttributes.supervisionStrategy(allResumeDecider))
     flowResult.via(Flow.fromFunction(y => {
       // map to processing message of tuple
       Corn((y._1, y._2.data)).withTags(TagType.AGGREGATION, y._2.getTagsForType(AGGREGATION))

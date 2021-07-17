@@ -86,6 +86,8 @@ case class ActorRunnable[U, V, V1, Y](jobId: String,
 
   val log: Logger = LoggerFactory.getLogger(ActorRunnable.getClass)
 
+  //  val aggregator: Aggregator[ProcessingMessage[V1], Y] = aggregationSupplier.apply()
+
   def groupingAggregationFlow(aggregatingActor: ActorRef): Flow[ProcessingMessage[V1], Any, NotUsed] = {
     Flow.fromFunction[ProcessingMessage[V1], ProcessingMessage[V1]](identity)
       //.mapAsync[ProcessingMessage[V1]](resultElementGroupingParallelism)(x => Future.successful(x))
@@ -125,6 +127,16 @@ case class ActorRunnable[U, V, V1, Y](jobId: String,
     override def apply(actorRef: ActorRef): Sink[ProcessingMessage[V1], Future[Done]] = {
       val flow = if (useResultElementGrouping) groupingAggregationFlow(actorRef) else singleElementAggregatorFlow(actorRef)
       flow.toMat(Sink.foreach[Any](_ => ()))(Keep.right)
+
+      //      Flow.fromFunction[ProcessingMessage[V1], ProcessingMessage[V1]](identity)
+      //        .groupedWithin(resultElementGroupingCount, resultElementGroupingInterval)
+      //        .map(messages => {
+      //          val partAggregator: Aggregator[ProcessingMessage[V1], Y] = aggregationSupplier.apply()
+      //          messages.foreach(msg => partAggregator.add(msg))
+      //          AggregationState(partAggregator.aggregation, jobId, batchNr, expectationGenerator.apply(messages.size))
+      //        })
+      //        .map(x => aggregator.addAggregate(x.data))
+      //        .toMat(Sink.foreach[Any](_ => ()))(Keep.right)
     }
   }
 
