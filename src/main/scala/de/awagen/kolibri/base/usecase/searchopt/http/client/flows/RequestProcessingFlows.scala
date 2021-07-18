@@ -130,28 +130,30 @@ object RequestProcessingFlows {
     * Alternative to singleRequestFlow, using connectionPool flow. Be cautious when using this though since
     * your processing flow should be composed to avoid HttpResponse's being available but timing out due to not being consumed
     * in time. This can happen e.g when causing backpressure / buffering of ready responses.
-    * @param connection - Connection object specifying connection details
+    *
+    * @param connection  - Connection object specifying connection details
     * @param parsingFunc - response parsing function
-    * @param as - implicit ActorSystem
-    * @param ec - implicit ExecutionContext
+    * @param as          - implicit ActorSystem
+    * @param ec          - implicit ExecutionContext
     * @tparam T - The type of the parsed response
     * @return
     */
   def connectionPoolFlow[T](connection: Connection, parsingFunc: HttpResponse => Future[Either[Throwable, T]])(implicit as: ActorSystem,
                                                                                                                ec: ExecutionContext): Flow[ProcessingMessage[RequestTemplate], ProcessingMessage[(Either[Throwable, T], RequestTemplate)], NotUsed] = {
-    val throughConnectionFlow: Flow[(HttpRequest, ProcessingMessage[RequestTemplate]), (Try[HttpResponse], ProcessingMessage[RequestTemplate]), _] =
+    val throughConnectionFlow: Flow[(HttpRequest, ProcessingMessage[RequestTemplate]), (Either[Throwable, T], ProcessingMessage[RequestTemplate]), _] =
       connectionFunc.apply(connection)
+        .mapAsyncUnordered[(Either[Throwable, T], ProcessingMessage[RequestTemplate])](config.requestParallelism) {
+          case y@(Success(e), _) =>
+            parsingFunc.apply(e).map(v => (v, y._2))
+          case y@(Failure(e), _) =>
+            Future.successful(Left(e)).map(v => (v, y._2))
+        }.withAttributes(ActorAttributes.supervisionStrategy(allResumeDecider))
+
     val flowResult: Flow[ProcessingMessage[RequestTemplate], (Either[Throwable, T], ProcessingMessage[RequestTemplate]), NotUsed] = Flow.fromFunction[ProcessingMessage[RequestTemplate], (HttpRequest, ProcessingMessage[RequestTemplate])](
       y => (y.data.getRequest, y)
     )
       // change that, should requested and directly consumed
       .via(throughConnectionFlow)
-      .mapAsyncUnordered[(Either[Throwable, T], ProcessingMessage[RequestTemplate])](config.requestParallelism) {
-        case y@(Success(e), _) =>
-          parsingFunc.apply(e).map(v => (v, y._2))
-        case y@(Failure(e), _) =>
-          Future.successful(Left(e)).map(v => (v, y._2))
-      }.withAttributes(ActorAttributes.supervisionStrategy(allResumeDecider))
     flowResult.via(Flow.fromFunction(y => {
       // map to processing message of tuple
       Corn((y._1, y._2.data)).withTags(TagType.AGGREGATION, y._2.getTagsForType(AGGREGATION))
@@ -201,7 +203,7 @@ object RequestProcessingFlows {
     // if singleRequestFlow is used, its its consumed when available and thus not prone to timeout in buffer
     val connectionFlows: Seq[Flow[ProcessingMessage[RequestTemplate], ProcessingMessage[(Either[Throwable, T], RequestTemplate)], NotUsed]] = connections
       .map(x => {
-        if (useConnectionPoolFlow)  connectionPoolFlow(x, parsingFunc)
+        if (useConnectionPoolFlow) connectionPoolFlow(x, parsingFunc)
         else singleRequestFlow(x, parsingFunc)
       })
 
