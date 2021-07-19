@@ -21,7 +21,6 @@ import akka.stream.scaladsl.Flow
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{Corn, ProcessingMessage}
 import de.awagen.kolibri.base.domain.jobdefinitions.provider.data.BatchGenerators.IntNumberBatchGenerator
-import de.awagen.kolibri.base.http.server.BaseRoutes.logger
 import de.awagen.kolibri.base.io.writer.base.LocalDirectoryFileFileWriter
 import de.awagen.kolibri.base.processing.classifier.Mapper.AcceptAllAsIdentityMapper
 import de.awagen.kolibri.base.processing.execution.expectation._
@@ -30,35 +29,63 @@ import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.tagging.TagType.AGGREGATION
 import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}
 import de.awagen.kolibri.datatypes.types.SerializableCallable.{SerializableFunction1, SerializableSupplier}
+import de.awagen.kolibri.datatypes.types.WithCount
 import de.awagen.kolibri.datatypes.values.AggregateValue
 import de.awagen.kolibri.datatypes.values.RunningValue.doubleAvgRunningValue
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
+import org.slf4j.LoggerFactory
 
 import scala.collection.mutable
 import scala.concurrent.duration.DurationInt
 
 object TestJobDefinitions {
 
-  class RunningDoubleAvgPerTagAggregator() extends Aggregator[ProcessingMessage[Double], Map[Tag, AggregateValue[Double]]] {
+  private[this] val logger = LoggerFactory.getLogger(this.getClass)
+
+  case class MapWithCount[U, V](map: Map[U, V], count: Int) extends WithCount
+
+  case class MutableMapWithCount[U, V](map: mutable.Map[U, V], var count: Int) extends WithCount
+
+  object Implicits {
+    // adding implicits only to transform normal Map to Mao implementing WithCount
+    // for testing purposes the count value just remains 0
+    implicit class MapWithCountImplicit[U, V](map: Map[U, V]) {
+      def toCountMap(count: Int): MapWithCount[U, V] = MapWithCount(map, count)
+    }
+
+    // adding implicits only to transform normal Map to Mao implementing WithCount
+    // for testing purposes the count value just remains 0
+    implicit class MutableMapWithCountImplicit[U, V](map: mutable.Map[U, V]) {
+      def toCountMap(count: Int): MutableMapWithCount[U, V] = MutableMapWithCount(map, count)
+    }
+  }
+
+  import Implicits._
+
+
+  class RunningDoubleAvgPerTagAggregator() extends Aggregator[ProcessingMessage[Double], MapWithCount[Tag, AggregateValue[Double]]] {
     val map: mutable.Map[Tag, AggregateValue[Double]] = mutable.Map.empty
+    var count: Int = 0
 
     override def add(sample: ProcessingMessage[Double]): Unit = {
       val keys: Set[Tag] = sample.getTagsForType(AGGREGATION)
       keys.foreach(key => {
         map(key) = map.getOrElse(key, doubleAvgRunningValue(count = 0, value = 0.0)).add(sample.data)
+        count += 1
       })
     }
 
-    override def aggregation: Map[Tag, AggregateValue[Double]] = Map(map.toSeq: _*)
+    override def aggregation: MapWithCount[Tag, AggregateValue[Double]] = Map(map.toSeq: _*).toCountMap(count)
 
-    override def addAggregate(aggregatedValue: Map[Tag, AggregateValue[Double]]): Unit = {
-      aggregatedValue.keys.foreach(key => {
-        map(key) = map.getOrElse(key, doubleAvgRunningValue(count = 0, value = 0.0)).add(aggregatedValue(key))
+    override def addAggregate(aggregatedValue: MapWithCount[Tag, AggregateValue[Double]]): Unit = {
+      aggregatedValue.map.keys.foreach(key => {
+        map(key) = map.getOrElse(key, doubleAvgRunningValue(count = 0, value = 0.0)).add(aggregatedValue.map(key))
+        count += aggregatedValue.count
       })
     }
   }
 
-  def piEstimationJob(jobName: String, nrThrows: Int, batchSize: Int, resultDir: String): SupervisorActor.ProcessActorRunnableJobCmd[Int, Double, Double, Map[Tag, AggregateValue[Double]]] = {
+  def piEstimationJob(jobName: String, nrThrows: Int, batchSize: Int, resultDir: String): SupervisorActor.ProcessActorRunnableJobCmd[Int, Double, Double, MapWithCount[Tag, AggregateValue[Double]]] = {
     assert(batchSize <= nrThrows)
     val flowFunct: SerializableFunction1[Int, ProcessingMessage[Double]] = new SerializableFunction1[Int, ProcessingMessage[Double]]() {
       override def apply(v1: Int): ProcessingMessage[Double] = {
@@ -87,11 +114,11 @@ object TestJobDefinitions {
       )
     }
 
-    val aggregatorSupplier = new SerializableSupplier[Aggregator[ProcessingMessage[Double], Map[Tag, AggregateValue[Double]]]]() {
-      override def apply(): Aggregator[ProcessingMessage[Double], Map[Tag, AggregateValue[Double]]] = new RunningDoubleAvgPerTagAggregator()
+    val aggregatorSupplier = new SerializableSupplier[Aggregator[ProcessingMessage[Double], MapWithCount[Tag, AggregateValue[Double]]]]() {
+      override def apply(): Aggregator[ProcessingMessage[Double], MapWithCount[Tag, AggregateValue[Double]]] = new RunningDoubleAvgPerTagAggregator()
     }
 
-    JobMsgFactory.createActorRunnableJobCmd[Int, Int, Double, Double, Map[Tag, AggregateValue[Double]]](
+    JobMsgFactory.createActorRunnableJobCmd[Int, Int, Double, Double, MapWithCount[Tag, AggregateValue[Double]]](
       jobId = jobName,
       nrThrows,
       dataBatchGenerator = batchGenerator,
@@ -100,16 +127,16 @@ object TestJobDefinitions {
       perBatchExpectationGenerator = expectationGen,
       perBatchAggregatorSupplier = aggregatorSupplier,
       perJobAggregatorSupplier = aggregatorSupplier,
-      writer = (data: Map[Tag, AggregateValue[Double]], _: Tag) => {
+      writer = (data: MapWithCount[Tag, AggregateValue[Double]], _: Tag) => {
         logger.info("writing result: {}", data)
-        logger.info("result is '{}' on '{}' samples; writing result", data, data(StringTag("ALL")).count)
+        logger.info("result is '{}' on '{}' samples; writing result", data.map, data.map(StringTag("ALL")).count)
         val fileWriter = LocalDirectoryFileFileWriter(resultDir)
-        val resultString = data.keys.map(x => s"$x\t${data(x).count}\t${data(x).value.toString}").toSeq.mkString("\n")
+        val resultString = data.map.keys.map(x => s"$x\t${data.map(x).count}\t${data.map(x).value.toString}").toSeq.mkString("\n")
         fileWriter.write(resultString, "dartThrowResult.txt")
       },
       filteringSingleElementMapperForAggregator = new AcceptAllAsIdentityMapper[ProcessingMessage[Double]],
-      filterAggregationMapperForAggregator = new AcceptAllAsIdentityMapper[Map[Tag, AggregateValue[Double]]],
-      filteringMapperForResultSending = new AcceptAllAsIdentityMapper[Map[Tag, AggregateValue[Double]]],
+      filterAggregationMapperForAggregator = new AcceptAllAsIdentityMapper[MapWithCount[Tag, AggregateValue[Double]]],
+      filteringMapperForResultSending = new AcceptAllAsIdentityMapper[MapWithCount[Tag, AggregateValue[Double]]],
       returnType = ActorRunnableSinkType.REPORT_TO_ACTOR_SINK,
       allowedTimePerElementInMillis = 10,
       allowedTimeForJobInSeconds = 600,

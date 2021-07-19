@@ -47,7 +47,7 @@ import scala.util.Random
   */
 object BaseRoutes {
 
-  val logger: Logger = LoggerFactory.getLogger(BaseRoutes.getClass)
+  private[this] val logger: Logger = LoggerFactory.getLogger(BaseRoutes.getClass)
   private[this] var supervisorActor: ActorRef = _
 
   def init(implicit system: ActorSystem): Unit = {

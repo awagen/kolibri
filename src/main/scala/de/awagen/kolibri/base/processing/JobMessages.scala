@@ -21,6 +21,7 @@ import akka.actor.ActorSystem
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor
 import de.awagen.kolibri.base.domain.Connection
 import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions
+import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions.MapWithCount
 import de.awagen.kolibri.base.processing.JobMessages.{SearchEvaluation, TestPiCalculation}
 import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.SearchJobDefinitions
@@ -63,7 +64,7 @@ object JobMessagesImplicits {
 
   implicit class TestPiCalcToRunnable(calc: TestPiCalculation) {
 
-    def toRunnable: SupervisorActor.ProcessActorRunnableJobCmd[Int, Double, Double, Map[Tag, AggregateValue[Double]]] = {
+    def toRunnable: SupervisorActor.ProcessActorRunnableJobCmd[Int, Double, Double, MapWithCount[Tag, AggregateValue[Double]]] = {
       TestJobDefinitions.piEstimationJob(
         jobName = calc.jobName,
         nrThrows = calc.nrThrows,

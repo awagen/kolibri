@@ -22,6 +22,8 @@ import de.awagen.kolibri.base.actors.testactors.TestTransformActor
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.{ProcessActorRunnableJobCmd, ProcessActorRunnableTaskJobCmd, TaggedTypeTaggedMapBatch}
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{Corn, ProcessingMessage}
 import de.awagen.kolibri.base.domain.jobdefinitions.Batch
+import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions.MapWithCount
+import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions.Implicits._
 import de.awagen.kolibri.base.io.writer.Writers.Writer
 import de.awagen.kolibri.base.processing.TestTaskHelper.{concatIdsTask, productIdResult, reverseIdsTaskPM, reversedIdKeyPM}
 import de.awagen.kolibri.base.processing.classifier.Mapper.AcceptAllAsIdentityMapper
@@ -36,7 +38,6 @@ import de.awagen.kolibri.datatypes.tagging.TagType.AGGREGATION
 import de.awagen.kolibri.datatypes.tagging.TaggedWithType
 import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSupplier
-import de.awagen.kolibri.datatypes.types.WithCount
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -44,25 +45,10 @@ import scala.collection.{immutable, mutable}
 import scala.concurrent.duration._
 import scala.reflect.runtime.universe
 
+
 object TestMessages {
 
   val log: Logger = LoggerFactory.getLogger(TestMessages.getClass)
-
-  case class MapWithCount[U, V](map: Map[U, V], count: Int) extends WithCount
-
-  case class MutableMapWithCount[U, V](map: mutable.Map[U, V], var count: Int) extends WithCount
-
-  // adding implicits only to transform normal Map to Mao implementing WithCount
-  // for testing purposes the count value just remains 0
-  implicit class MapWithCountImplicit[U, V](map: Map[U, V]) {
-    def toCountMap(count: Int): MapWithCount[U, V] = MapWithCount(map, count)
-  }
-
-  // adding implicits only to transform normal Map to Mao implementing WithCount
-  // for testing purposes the count value just remains 0
-  implicit class MutableMapWithCountImplicit[U, V](map: mutable.Map[U, V]) {
-    def toCountMap(count: Int): MutableMapWithCount[U, V] = MutableMapWithCount(map, count)
-  }
 
   def messagesToActorRefRunnable(jobId: String): ActorRunnable[Int, Int, Int, MapWithCount[Tag, Double]] = ActorRunnable(
     jobId = jobId,

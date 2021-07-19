@@ -28,6 +28,7 @@ import de.awagen.kolibri.base.actors.work.worker.TaskExecutionWorkerActor
 import de.awagen.kolibri.base.config.AppConfig._
 import de.awagen.kolibri.base.config.AppConfig.config.kolibriDispatcherName
 import de.awagen.kolibri.base.domain.jobdefinitions.Batch
+import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions.MapWithCount
 import de.awagen.kolibri.base.io.writer.Writers.Writer
 import de.awagen.kolibri.base.processing.JobMessages.{SearchEvaluation, TestPiCalculation}
 import de.awagen.kolibri.base.processing.classifier.Mapper.FilteringMapper
@@ -275,7 +276,7 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
       else {
         log.info("Creating and sending job to JobManager, jobId: {}", jobId)
         import de.awagen.kolibri.base.processing.JobMessagesImplicits._
-        val runnableJob: ProcessActorRunnableJobCmd[Int, Double, Double, Map[Tag, AggregateValue[Double]]] = e.toRunnable
+        val runnableJob: ProcessActorRunnableJobCmd[Int, Double, Double, MapWithCount[Tag, AggregateValue[Double]]] = e.toRunnable
         val actor = createJobManagerActor(
           jobId,
           runnableJob.perBatchAggregatorSupplier,
