@@ -22,6 +22,7 @@ import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.BatchTypeTagg
 import de.awagen.kolibri.base.actors.work.worker.JobPartIdentifiers.BaseJobPartIdentifier
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{Corn, ProcessingMessage}
 import de.awagen.kolibri.base.actors.work.worker.TaskExecutionWorkerActor.ProcessTaskExecution
+import de.awagen.kolibri.base.processing.classifier.Mapper.AcceptAllAsIdentityMapper
 import de.awagen.kolibri.base.processing.execution.SimpleTaskExecution
 import de.awagen.kolibri.base.processing.execution.expectation.{BaseExecutionExpectation, ClassifyingCountExpectation, StopExpectation, TimeExpectation}
 import de.awagen.kolibri.base.processing.execution.job.{ActorRunnable, ActorRunnableSinkType}
@@ -64,6 +65,9 @@ object TaskUtils {
             TimeExpectation(timeoutPerRunnable))
         ),
         aggregationSupplier = aggregatorSupplier,
+        filteringSingleElementMapperForAggregator = new AcceptAllAsIdentityMapper[ProcessingMessage[Any]],
+        filterAggregationMapperForAggregator = new AcceptAllAsIdentityMapper[U],
+        filteringMapperForResultSending = new AcceptAllAsIdentityMapper[U],
         sinkType = ActorRunnableSinkType.REPORT_TO_ACTOR_SINK,
         timeoutPerRunnable,
         timeoutPerElement)

@@ -23,6 +23,7 @@ import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{Corn, Proce
 import de.awagen.kolibri.base.domain.jobdefinitions.provider.data.BatchGenerators.IntNumberBatchGenerator
 import de.awagen.kolibri.base.http.server.BaseRoutes.logger
 import de.awagen.kolibri.base.io.writer.base.LocalDirectoryFileFileWriter
+import de.awagen.kolibri.base.processing.classifier.Mapper.AcceptAllAsIdentityMapper
 import de.awagen.kolibri.base.processing.execution.expectation._
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnableSinkType
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
@@ -86,7 +87,7 @@ object TestJobDefinitions {
       )
     }
 
-    val aggregatorSupplier = new SerializableSupplier[Aggregator[ProcessingMessage[Double], Map[Tag, AggregateValue[Double]]]](){
+    val aggregatorSupplier = new SerializableSupplier[Aggregator[ProcessingMessage[Double], Map[Tag, AggregateValue[Double]]]]() {
       override def apply(): Aggregator[ProcessingMessage[Double], Map[Tag, AggregateValue[Double]]] = new RunningDoubleAvgPerTagAggregator()
     }
 
@@ -106,6 +107,9 @@ object TestJobDefinitions {
         val resultString = data.keys.map(x => s"$x\t${data(x).count}\t${data(x).value.toString}").toSeq.mkString("\n")
         fileWriter.write(resultString, "dartThrowResult.txt")
       },
+      filteringSingleElementMapperForAggregator = new AcceptAllAsIdentityMapper[ProcessingMessage[Double]],
+      filterAggregationMapperForAggregator = new AcceptAllAsIdentityMapper[Map[Tag, AggregateValue[Double]]],
+      filteringMapperForResultSending = new AcceptAllAsIdentityMapper[Map[Tag, AggregateValue[Double]]],
       returnType = ActorRunnableSinkType.REPORT_TO_ACTOR_SINK,
       allowedTimePerElementInMillis = 10,
       allowedTimeForJobInSeconds = 600,

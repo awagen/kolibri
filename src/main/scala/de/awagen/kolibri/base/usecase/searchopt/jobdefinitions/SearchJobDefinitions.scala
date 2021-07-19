@@ -19,9 +19,11 @@ package de.awagen.kolibri.base.usecase.searchopt.jobdefinitions
 
 import akka.actor.{ActorRef, ActorSystem}
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.ProcessingMessage
 import de.awagen.kolibri.base.domain.jobdefinitions.JobMsgFactory
 import de.awagen.kolibri.base.http.client.request.RequestTemplateBuilder
 import de.awagen.kolibri.base.processing.JobMessages.SearchEvaluation
+import de.awagen.kolibri.base.processing.classifier.Mapper.AcceptAllAsIdentityMapper
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnableSinkType
 import de.awagen.kolibri.base.processing.modifiers.Modifier
 import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
@@ -38,6 +40,7 @@ import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
+import de.awagen.kolibri.datatypes.values.AggregateValue
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
@@ -80,6 +83,9 @@ object SearchJobDefinitions {
         "\t",
         searchEvaluation.jobName,
         x => x.toString),
+      filteringSingleElementMapperForAggregator = new AcceptAllAsIdentityMapper[ProcessingMessage[MetricRow]],
+      filterAggregationMapperForAggregator = new AcceptAllAsIdentityMapper[MetricAggregation[Tag]],
+      filteringMapperForResultSending = new AcceptAllAsIdentityMapper[MetricAggregation[Tag]],
       returnType = ActorRunnableSinkType.REPORT_TO_ACTOR_SINK,
       allowedTimePerElementInMillis = searchEvaluation.allowedTimePerElementInMillis,
       allowedTimePerBatchInSeconds = searchEvaluation.allowedTimePerBatchInSeconds,

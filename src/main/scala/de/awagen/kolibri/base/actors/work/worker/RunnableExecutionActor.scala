@@ -96,14 +96,16 @@ class RunnableExecutionActor[U <: WithCount](maxBatchDuration: FiniteDuration,
       runningJobId = runnable.jobId
       runningJobBatchNr = runnable.batchNr
       aggregatingActor = context.actorOf(AggregatingActor.props(
+        runnable.filteringSingleElementMapperForAggregator,
+        runnable.filterAggregationMapperForAggregator,
+        runnable.filterAggregationMapperForAggregator,
         runnable.aggregationSupplier,
         () => runnable.expectationGenerator.apply(runnable.supplier.size),
         owner = this.self,
         jobPartIdentifier = BaseJobPartIdentifier(jobId = runningJobId, batchNr = runningJobBatchNr),
         // TODO: those two following are quick hack to send the writer around, draft state,
         // TODO: thus make sendResultDataToSender configurable
-        writerOpt,
-        sendResultDataToSender = true
+        writerOpt
       ))
       // we set the aggregatingActor as receiver of all messages
       // (whether graph sink is used or setting the aggregator as sender when sending
@@ -127,7 +129,7 @@ class RunnableExecutionActor[U <: WithCount](maxBatchDuration: FiniteDuration,
       val outcome: (UniqueKillSwitch, Future[Done]) = runnableGraph.run()
       // when complete, send the aggregation to the aggregatig actor (well, aggregating actor actually not needed in that case)
       outcome._2.onComplete(_ => {
-//        aggregatingActor ! AggregationState(runnable.aggregator.aggregation, runningJobId, runningJobBatchNr, expectation)
+        //        aggregatingActor ! AggregationState(runnable.aggregator.aggregation, runningJobId, runningJobBatchNr, expectation)
         log.info("graph completed, notifying aggregator to send results and stop aggregating")
         aggregatingActor ! ProvideStateAndStop
         ()

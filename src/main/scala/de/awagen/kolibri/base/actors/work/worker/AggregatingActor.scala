@@ -23,6 +23,7 @@ import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages._
 import de.awagen.kolibri.base.config.AppConfig.config
 import de.awagen.kolibri.base.config.AppConfig.config.{kolibriDispatcherName, useAggregatorBackpressure}
 import de.awagen.kolibri.base.io.writer.Writers.Writer
+import de.awagen.kolibri.base.processing.classifier.Mapper.FilteringMapper
 import de.awagen.kolibri.base.processing.execution.expectation.ExecutionExpectation
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}
@@ -35,13 +36,16 @@ object AggregatingActor {
 
   // TODO: we might wannna have a RateExpectation, meaning elements to aggregate must be there at least every
   // given time step
-  def props[U, V <: WithCount](aggregatorSupplier: () => Aggregator[ProcessingMessage[U], V],
-                  expectationSupplier: () => ExecutionExpectation,
-                  owner: ActorRef,
-                  jobPartIdentifier: JobPartIdentifiers.JobPartIdentifier,
-                  writer: Option[Writer[V, Tag, _]],
-                  sendResultDataToSender: Boolean): Props =
-    Props(new AggregatingActor[U, V](aggregatorSupplier, expectationSupplier, owner, jobPartIdentifier, writer, sendResultDataToSender))
+  def props[U, V <: WithCount](filteringSingleElementMapperForAggregator: FilteringMapper[ProcessingMessage[U], ProcessingMessage[U]],
+                               filterAggregationMapperForAggregator: FilteringMapper[V, V],
+                               filteringMapperForResultSending: FilteringMapper[V, V],
+                               aggregatorSupplier: () => Aggregator[ProcessingMessage[U], V],
+                               expectationSupplier: () => ExecutionExpectation,
+                               owner: ActorRef,
+                               jobPartIdentifier: JobPartIdentifiers.JobPartIdentifier,
+                               writer: Option[Writer[V, Tag, _]]): Props =
+    Props(new AggregatingActor[U, V](filteringSingleElementMapperForAggregator, filterAggregationMapperForAggregator,
+      filteringMapperForResultSending, aggregatorSupplier, expectationSupplier, owner, jobPartIdentifier, writer))
       .withDispatcher(kolibriDispatcherName)
 
   trait AggregatingActorCmd extends KolibriSerializable
@@ -60,12 +64,39 @@ object AggregatingActor {
 
 }
 
-class AggregatingActor[U, V <: WithCount](val aggregatorSupplier: () => Aggregator[ProcessingMessage[U], V],
+
+/**
+  * The actor taking care of keeping state of the aggregations.
+  * To be able to flexibly react to incoming tagged results (ProcessingMessage objects) and already aggregated incoming
+  * partial data, the actor takes as arguments mapper for those, e.g which allows e.g changing of tags based on the incoming
+  * tags, e.g in case aggregations shall be grouped based on tags instead of grouping per single tags.
+  * Also, before sending results back to the receiver of the aggregated result, a mapper is provided that is applied
+  * to the final aggregation before it is send back to receiver (e.g in case certain results need to be filtered out
+  * or the tags have to be changed (e.g from many to simply ALL-tag, causing only aggregation of the overall data on receiver).
+  * Note that result sending overhead can be limited this way, e.g in case an aggregator state reflects a complete partial result that
+  * can already be stored to persistence, while on the receiving actor we might only be interested in incorporatimg all results and
+  * not the single result tags).
+  * // TODO: add filtering function to single element classifier
+  *
+  * @param filteringSingleElementMapperForAggregator
+  * @param filterAggregationMapperForAggregator
+  * @param filteringMapperForResultSending
+  * @param aggregatorSupplier
+  * @param expectationSupplier
+  * @param owner
+  * @param jobPartIdentifier
+  * @param writerOpt
+  * @tparam U
+  * @tparam V
+  */
+class AggregatingActor[U, V <: WithCount](val filteringSingleElementMapperForAggregator: FilteringMapper[ProcessingMessage[U], ProcessingMessage[U]],
+                                          val filterAggregationMapperForAggregator: FilteringMapper[V, V],
+                                          val filteringMapperForResultSending: FilteringMapper[V, V],
+                                          val aggregatorSupplier: () => Aggregator[ProcessingMessage[U], V],
                                           val expectationSupplier: () => ExecutionExpectation,
                                           val owner: ActorRef,
                                           val jobPartIdentifier: JobPartIdentifiers.JobPartIdentifier,
-                                          val writerOpt: Option[Writer[V, Tag, _]],
-                                          val sendResultDataToSender: Boolean = true)
+                                          val writerOpt: Option[Writer[V, Tag, _]])
   extends Actor with ActorLogging {
 
   implicit val system: ActorSystem = context.system
@@ -85,13 +116,11 @@ class AggregatingActor[U, V <: WithCount](val aggregatorSupplier: () => Aggregat
       cancellableSchedule.cancel()
       log.info(s"expectation succeeded: ${expectation.succeeded}, expectation failed: ${expectation.failed}")
       log.info(s"sending aggregation state for batch: ${jobPartIdentifier.batchNr}")
-      if (sendResultDataToSender) {
-        owner ! AggregationState(aggregator.aggregation, jobPartIdentifier.jobId, jobPartIdentifier.batchNr, expectation.deepCopy)
-      }
-      else {
-        // TODO: use alternative msg here, setting data to null is bad idea
-        owner ! AggregationState(null, jobPartIdentifier.jobId, jobPartIdentifier.batchNr, expectation.deepCopy)
-      }
+
+      // apply the mapper first to decide which parts of the data to be send to the result receiver
+      val filteredMappedData = filteringMapperForResultSending.map(aggregator.aggregation)
+      owner ! AggregationState(filteredMappedData, jobPartIdentifier.jobId, jobPartIdentifier.batchNr, expectation.deepCopy)
+
       writerOpt.foreach(writer => {
         writer.write(aggregator.aggregation, StringTag(jobPartIdentifier.jobId))
       })
@@ -101,38 +130,36 @@ class AggregatingActor[U, V <: WithCount](val aggregatorSupplier: () => Aggregat
     }
   }
 
+  def handleSingleMsg(msg: ProcessingMessage[U]): Unit = {
+    log.debug("received single result event: {}", msg)
+    aggregator.add(filteringSingleElementMapperForAggregator.map(msg))
+    expectation.accept(msg)
+    log.debug("expectation state: {}", expectation.statusDesc)
+    log.debug(s"expectation: $expectation")
+    handleExpectationStateAndCloseIfFinished(true)
+    if (useAggregatorBackpressure) sender() ! ACK
+  }
+
+  def handleAggregationStateMsg(msg: AggregationState[V]): Unit = {
+    log.info("received aggregation result event with count: {}", msg.data.count)
+    aggregator.addAggregate(filterAggregationMapperForAggregator.map(msg.data))
+    expectation.accept(msg)
+    log.info("overall partial result count: {}", aggregator.aggregation.count)
+    log.debug("expectation state: {}", expectation.statusDesc)
+    log.debug(s"expectation: $expectation")
+    handleExpectationStateAndCloseIfFinished(true)
+    if (useAggregatorBackpressure) sender() ! ACK
+  }
 
   override def receive: Receive = openState
 
   def openState: Receive = {
     case e: BadCorn[U] =>
-      aggregator.add(e)
-      if (useAggregatorBackpressure) sender() ! ACK
+      handleSingleMsg(e)
     case aggregationResult: AggregationState[V] =>
-      log.info("received aggregation result event with count: {}", aggregationResult.data.count)
-      aggregator.addAggregate(aggregationResult.data)
-      expectation.accept(aggregationResult)
-      log.info("overall partial result count: {}", aggregator.aggregation.count)
-      log.debug("expectation state: {}", expectation.statusDesc)
-      log.debug(s"expectation: $expectation")
-      handleExpectationStateAndCloseIfFinished(true)
-      if (useAggregatorBackpressure) sender() ! ACK
+      handleAggregationStateMsg(aggregationResult)
     case result: Corn[U] =>
-      log.debug("received single result event: {}", result)
-      log.debug("expectation state: {}", expectation.statusDesc)
-      log.debug(s"expectation: $expectation")
-      aggregator.add(result)
-      expectation.accept(result)
-      handleExpectationStateAndCloseIfFinished(true)
-      if (useAggregatorBackpressure) sender() ! ACK
-    case result@Corn(aggregator: Aggregator[ProcessingMessage[U], V]) =>
-      log.debug("received aggregated result event: {}", result)
-      log.debug("expectation state: {}", expectation.statusDesc)
-      log.debug(s"expectation: $expectation")
-      aggregator.addAggregate(aggregator.aggregation)
-      expectation.accept(aggregator)
-      handleExpectationStateAndCloseIfFinished(true)
-      if (useAggregatorBackpressure) sender() ! ACK
+      handleSingleMsg(result)
     case Close =>
       log.debug("aggregator switched to closed state")
       cancellableSchedule.cancel()

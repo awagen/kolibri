@@ -22,6 +22,7 @@ import akka.stream.scaladsl.Flow
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.{ProcessActorRunnableJobCmd, ProcessActorRunnableTaskJobCmd}
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.ProcessingMessage
 import de.awagen.kolibri.base.io.writer.Writers.Writer
+import de.awagen.kolibri.base.processing.classifier.Mapper.FilteringMapper
 import de.awagen.kolibri.base.processing.execution.expectation.ExecutionExpectation
 import de.awagen.kolibri.base.processing.execution.job.{ActorRunnable, ActorRunnableSinkType}
 import de.awagen.kolibri.base.processing.execution.task.Task
@@ -53,6 +54,9 @@ object JobMsgFactory {
                                                  perBatchAggregatorSupplier: () => Aggregator[ProcessingMessage[V2], W],
                                                  perJobAggregatorSupplier: () => Aggregator[ProcessingMessage[V2], W],
                                                  writer: Writer[W, Tag, Any],
+                                                 filteringSingleElementMapperForAggregator: FilteringMapper[ProcessingMessage[V2], ProcessingMessage[V2]],
+                                                 filterAggregationMapperForAggregator: FilteringMapper[W, W],
+                                                 filteringMapperForResultSending: FilteringMapper[W, W],
                                                  returnType: ActorRunnableSinkType.Value,
                                                  allowedTimePerElementInMillis: Long,
                                                  allowedTimePerBatchInSeconds: Long,
@@ -68,6 +72,9 @@ object JobMsgFactory {
         processingActorProps = processingActorProps,
         expectationGenerator = perBatchExpectationGenerator,
         aggregationSupplier = perBatchAggregatorSupplier,
+        filteringSingleElementMapperForAggregator,
+        filterAggregationMapperForAggregator,
+        filteringMapperForResultSending,
         sinkType = returnType,
         allowedTimePerElementInMillis millis,
         allowedTimePerBatchInSeconds seconds)
@@ -93,6 +100,9 @@ object JobMsgFactory {
                                           perBatchAggregatorSupplier: () => Aggregator[ProcessingMessage[Any], W],
                                           perJobAggregatorSupplier: () => Aggregator[ProcessingMessage[Any], W],
                                           writer: Writer[W, Tag, Any],
+                                          filteringSingleElementMapperForAggregator: FilteringMapper[ProcessingMessage[Any], ProcessingMessage[Any]],
+                                          filterAggregationMapperForAggregator: FilteringMapper[W, W],
+                                          filteringMapperForResultSending: FilteringMapper[W, W],
                                           allowedTimePerBatchInSeconds: Long,
                                           allowedTimeForJobInSeconds: Long): ProcessActorRunnableTaskJobCmd[W] = {
     val batches: IndexedGenerator[Batch[TypeTaggedMap with TaggedWithType[Tag]]] = dataBatchGenerator.apply(data)
@@ -107,6 +117,9 @@ object JobMsgFactory {
       perBatchAggregatorSupplier = perBatchAggregatorSupplier,
       perJobAggregatorSupplier = perJobAggregatorSupplier,
       writer = writer,
+      filteringSingleElementMapperForAggregator = filteringSingleElementMapperForAggregator,
+      filterAggregationMapperForAggregator = filterAggregationMapperForAggregator,
+      filteringMapperForResultSending = filteringMapperForResultSending,
       allowedTimePerBatch = FiniteDuration(allowedTimePerBatchInSeconds, SECONDS),
       allowedTimeForJob = FiniteDuration(allowedTimeForJobInSeconds, SECONDS)
     )

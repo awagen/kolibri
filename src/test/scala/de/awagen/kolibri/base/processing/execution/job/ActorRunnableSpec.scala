@@ -22,6 +22,7 @@ import akka.stream.scaladsl.Flow
 import akka.testkit.{ImplicitSender, TestKit}
 import de.awagen.kolibri.base.actors.KolibriTestKitNoCluster
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{Corn, ProcessingMessage}
+import de.awagen.kolibri.base.processing.classifier.Mapper.AcceptAllAsIdentityMapper
 import de.awagen.kolibri.base.processing.execution.expectation.{BaseExecutionExpectation, ExecutionExpectation}
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnableSinkType.REPORT_TO_ACTOR_SINK
 import de.awagen.kolibri.datatypes.collections.generators.ByFunctionNrLimitedIndexedGenerator
@@ -74,7 +75,11 @@ class ActorRunnableSpec extends KolibriTestKitNoCluster
 
           override def addAggregate(aggregatedValue: Double): Unit = ()
         }
-      }, sinkType = REPORT_TO_ACTOR_SINK, 1 minute, 1 minute)
+      },
+      filteringSingleElementMapperForAggregator = new AcceptAllAsIdentityMapper[ProcessingMessage[Int]],
+      filterAggregationMapperForAggregator = new AcceptAllAsIdentityMapper[Double],
+      filteringMapperForResultSending = new AcceptAllAsIdentityMapper[Double],
+      sinkType = REPORT_TO_ACTOR_SINK, 1 minute, 1 minute)
   }
 
   "ActorRunnable" should {

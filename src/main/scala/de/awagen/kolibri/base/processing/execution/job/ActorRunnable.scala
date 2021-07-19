@@ -25,6 +25,7 @@ import akka.{Done, NotUsed}
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationState, BadCorn, ProcessingMessage}
 import de.awagen.kolibri.base.config.AppConfig.config
 import de.awagen.kolibri.base.config.AppConfig.config._
+import de.awagen.kolibri.base.processing.classifier.Mapper.FilteringMapper
 import de.awagen.kolibri.base.processing.decider.Deciders.allResumeDecider
 import de.awagen.kolibri.base.processing.execution.expectation.ExecutionExpectation
 import de.awagen.kolibri.base.processing.execution.job
@@ -80,6 +81,9 @@ case class ActorRunnable[U, V, V1, Y](jobId: String,
                                       processingActorProps: Option[Props],
                                       expectationGenerator: Int => ExecutionExpectation,
                                       aggregationSupplier: () => Aggregator[ProcessingMessage[V1], Y],
+                                      filteringSingleElementMapperForAggregator: FilteringMapper[ProcessingMessage[V1], ProcessingMessage[V1]],
+                                      filterAggregationMapperForAggregator: FilteringMapper[Y, Y],
+                                      filteringMapperForResultSending: FilteringMapper[Y, Y],
                                       sinkType: job.ActorRunnableSinkType.Value,
                                       waitTimePerElement: FiniteDuration,
                                       maxExecutionDuration: FiniteDuration) extends KolibriSerializable with WithBatchNr {
