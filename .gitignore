@@ -15,3 +15,6 @@ tmp
 public
 *.log
 kolibri-test/
+prometheus/data
+grafana/*
+!grafana/dashboards/

@@ -26,9 +26,10 @@ import akka.stream.Materializer
 import de.awagen.kolibri.base.actors.routing.RoutingActor
 import de.awagen.kolibri.base.config.AppConfig
 import de.awagen.kolibri.base.config.AppConfig.config
-import de.awagen.kolibri.base.config.AppConfig.config.node_roles
+import de.awagen.kolibri.base.config.AppConfig.config.{kolibriDispatcherName, node_roles}
 import de.awagen.kolibri.base.http.server.BaseRoutes._
 import de.awagen.kolibri.base.http.server.{BaseRoutes, HttpServer}
+import kamon.Kamon
 import org.slf4j.{Logger, LoggerFactory}
 
 import java.lang.management.ManagementFactory
@@ -43,6 +44,10 @@ import scala.util.{Failure, Success}
 object ClusterNode extends App {
 
   val logger: Logger = LoggerFactory.getLogger(ClusterNode.getClass.toString)
+
+  // This line initializes all Kamon components
+  // needs to happen before start of actor system
+  Kamon.init()
 
   val mb = 1024 * 1024
   val memoryBean = ManagementFactory.getMemoryMXBean
@@ -83,7 +88,7 @@ object ClusterNode extends App {
 
     implicit val actorSystem: ActorSystem = startSystem()
     implicit val mat: Materializer = Materializer(actorSystem)
-    implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
+    implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatchers.lookup(kolibriDispatcherName)
     // need to initialiize the BaseRoutes to start Supervisor actor in current actorSystem
     BaseRoutes.init
     val usedRoute: Route = route.getOrElse(simpleHelloRoute ~ streamingUserRoutes ~ clusterStatusRoutee ~ killAllJobs

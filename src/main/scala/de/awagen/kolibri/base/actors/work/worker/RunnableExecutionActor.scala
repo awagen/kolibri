@@ -18,19 +18,23 @@ package de.awagen.kolibri.base.actors.work.worker
 
 import akka.Done
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Cancellable, PoisonPill, Props}
-import akka.stream.UniqueKillSwitch
 import akka.stream.scaladsl.RunnableGraph
+import akka.stream.{ActorAttributes, UniqueKillSwitch}
 import de.awagen.kolibri.base.actors.work.worker.AggregatingActor.{ProvideStateAndStop, ReportResults}
 import de.awagen.kolibri.base.actors.work.worker.JobPartIdentifiers.BaseJobPartIdentifier
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.AggregationState
 import de.awagen.kolibri.base.actors.work.worker.RunnableExecutionActor.{ProvideAggregationState, RunnableHousekeeping}
 import de.awagen.kolibri.base.config.AppConfig.config
+import de.awagen.kolibri.base.config.AppConfig.config.kolibriDispatcherName
 import de.awagen.kolibri.base.io.writer.Writers.Writer
+import de.awagen.kolibri.base.processing.consume.AggregatorConfig
+import de.awagen.kolibri.base.processing.decider.Deciders.allResumeDecider
 import de.awagen.kolibri.base.processing.execution.expectation._
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnable.JobActorConfig
 import de.awagen.kolibri.base.processing.execution.job.{ActorRunnable, ActorType}
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
+import de.awagen.kolibri.datatypes.types.WithCount
 
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContextExecutor, Future}
@@ -38,8 +42,8 @@ import scala.concurrent.{ExecutionContextExecutor, Future}
 
 object RunnableExecutionActor {
 
-  def probs[U](maxBatchDurationInSeconds: FiniteDuration, writerOpt: Option[Writer[U, Tag, _]]): Props =
-    Props(new RunnableExecutionActor[U](maxBatchDurationInSeconds, writerOpt))
+  def probs[U <: WithCount](maxBatchDurationInSeconds: FiniteDuration, writerOpt: Option[Writer[U, Tag, _]]): Props =
+    Props(new RunnableExecutionActor[U](maxBatchDurationInSeconds, writerOpt)).withDispatcher(kolibriDispatcherName)
 
   trait RunnableExecutionActorCmd extends KolibriSerializable
 
@@ -58,12 +62,11 @@ object RunnableExecutionActor {
   * This is send to the ActorRef given in JobActorConfig actor corresponding to ACTOR_SINK type
   * if set and within ActorRunnable the sink type is NOT IGNORE_SINK.
   */
-// TODO: the specific writer type is not suitable, just temporary for testing the writing and not response returning by aggregation actors
-class RunnableExecutionActor[U](maxBatchDuration: FiniteDuration,
-                             val writerOpt: Option[Writer[U, Tag, _]]) extends Actor with ActorLogging with KolibriSerializable {
+class RunnableExecutionActor[U <: WithCount](maxBatchDuration: FiniteDuration,
+                                             val writerOpt: Option[Writer[U, Tag, _]]) extends Actor with ActorLogging with KolibriSerializable {
 
   implicit val system: ActorSystem = context.system
-  implicit val ec: ExecutionContextExecutor = system.dispatcher
+  implicit val ec: ExecutionContextExecutor = context.system.dispatchers.lookup(kolibriDispatcherName)
   // actual actor config to be able to pass actors for certain functions along
   // e.g actor for sink, actor to be passed as single execution sender and such
   private[this] var actorConfig: JobActorConfig = _
@@ -94,14 +97,11 @@ class RunnableExecutionActor[U](maxBatchDuration: FiniteDuration,
       runningJobId = runnable.jobId
       runningJobBatchNr = runnable.batchNr
       aggregatingActor = context.actorOf(AggregatingActor.props(
-        runnable.aggregationSupplier,
+        runnable.aggregatorConfig,
         () => runnable.expectationGenerator.apply(runnable.supplier.size),
         owner = this.self,
         jobPartIdentifier = BaseJobPartIdentifier(jobId = runningJobId, batchNr = runningJobBatchNr),
-        // TODO: those two following are quick hack to send the writer around, draft state,
-        // TODO: thus make sendResultDataToSender configurable
-        writerOpt,
-        sendResultDataToSender = true
+        writerOpt
       ))
       // we set the aggregatingActor as receiver of all messages
       // (whether graph sink is used or setting the aggregator as sender when sending
@@ -109,7 +109,10 @@ class RunnableExecutionActor[U](maxBatchDuration: FiniteDuration,
       actorConfig = JobActorConfig(self,
         Map(ActorType.ACTOR_SINK -> aggregatingActor))
       log.debug(s"RunnableExecutionActor received actor runnable to process, jobId: ${runnable.jobId}, batchNr: ${runnable.batchNr}")
+
       val runnableGraph: RunnableGraph[(UniqueKillSwitch, Future[Done])] = runnable.getRunnableGraph(actorConfig)
+        .withAttributes(ActorAttributes.supervisionStrategy(allResumeDecider))
+
       // the time allowed per execution is actually defined within the expectation
       // passed to the aggregation actor, thus if time ran out there the aggregation
       // state will be reported back, thus we only set expectation on receiving
@@ -120,6 +123,13 @@ class RunnableExecutionActor[U](maxBatchDuration: FiniteDuration,
         fulfillAnyForFail = failExpectations)
       expectation.init
       val outcome: (UniqueKillSwitch, Future[Done]) = runnableGraph.run()
+      // when complete, send the aggregation to the aggregatig actor (well, aggregating actor actually not needed in that case)
+      outcome._2.onComplete(_ => {
+        //        aggregatingActor ! AggregationState(runnable.aggregator.aggregation, runningJobId, runningJobBatchNr, expectation)
+        log.info("graph completed, notifying aggregator to send results and stop aggregating")
+        aggregatingActor ! ProvideStateAndStop
+        ()
+      })
       killSwitch = outcome._1
       executionFuture = outcome._2
       context.become(processing)
@@ -139,12 +149,14 @@ class RunnableExecutionActor[U](maxBatchDuration: FiniteDuration,
   val processing: Receive = {
     case RunnableHousekeeping =>
       if (expectation.succeeded) {
+        log.info("Expectation succeeded, shutting down stream and killing actor")
         killSwitch.shutdown()
         self ! PoisonPill
       }
       else if (expectation.failed) {
+        log.info("Expectation failed, shutting down stream and killing actor")
         killSwitch.abort(new RuntimeException(s"Expectation failed:\n${expectation.statusDesc}"))
-        aggregatingActor ! ProvideStateAndStop(self)
+        aggregatingActor ! ProvideStateAndStop
       }
     case e: AggregationState[_] =>
       log.debug("received aggregation (batch finished): {}", e)

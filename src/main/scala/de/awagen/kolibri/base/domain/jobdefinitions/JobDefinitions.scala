@@ -23,6 +23,7 @@ import de.awagen.kolibri.base.domain.jobdefinitions.ProcessingActorProps.Process
 import de.awagen.kolibri.base.domain.jobdefinitions.provider.data.BatchGenerators.{OrderedMultiValuesBatchGenerator, OrderedMultiValuesTypedTagBatchGenerator}
 import de.awagen.kolibri.base.domain.jobdefinitions.provider.data.DataProviders.OrderedMultiValuesProvider
 import de.awagen.kolibri.base.io.writer.Writers.Writer
+import de.awagen.kolibri.base.processing.classifier.Mapper.FilteringMapper
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnableSinkType.ActorRunnableSinkType
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
@@ -61,6 +62,9 @@ object JobDefinitions {
                                                      perBatchAggregatorSupplier: () => Aggregator[ProcessingMessage[MetricRow], MetricAggregation[Tag]],
                                                      perJobAggregatorSupplier: () => Aggregator[ProcessingMessage[MetricRow], MetricAggregation[Tag]],
                                                      writer: Writer[MetricAggregation[Tag], Tag, Any],
+                                                     filteringSingleElementMapperForAggregator: FilteringMapper[ProcessingMessage[MetricRow], ProcessingMessage[MetricRow]],
+                                                     filterAggregationMapperForAggregator: FilteringMapper[MetricAggregation[Tag], MetricAggregation[Tag]],
+                                                     filteringMapperForResultSending: FilteringMapper[MetricAggregation[Tag], MetricAggregation[Tag]],
                                                      allowedTimePerElementInMillis: Long,
                                                      allowedTimePerBatchInSeconds: Long,
                                                      allowedTimeForJobInSeconds: Long,
@@ -78,6 +82,9 @@ object JobDefinitions {
         perBatchAggregatorSupplier = perBatchAggregatorSupplier,
         perJobAggregatorSupplier = perJobAggregatorSupplier,
         writer = writer,
+        filteringSingleElementMapperForAggregator = filteringSingleElementMapperForAggregator,
+        filterAggregationMapperForAggregator = filterAggregationMapperForAggregator,
+        filteringMapperForResultSending = filteringMapperForResultSending,
         returnType = returnType,
         allowedTimePerElementInMillis = allowedTimePerElementInMillis,
         allowedTimePerBatchInSeconds = allowedTimePerBatchInSeconds,
@@ -94,6 +101,9 @@ object JobDefinitions {
                                                          perBatchAggregatorSupplier: () => Aggregator[ProcessingMessage[Any], MetricAggregation[Tag]],
                                                          perJobAggregatorSupplier: () => Aggregator[ProcessingMessage[Any], MetricAggregation[Tag]],
                                                          writer: Writer[MetricAggregation[Tag], Tag, Any],
+                                                         filteringSingleElementMapperForAggregator: FilteringMapper[ProcessingMessage[Any], ProcessingMessage[Any]],
+                                                         filterAggregationMapperForAggregator: FilteringMapper[MetricAggregation[Tag], MetricAggregation[Tag]],
+                                                         filteringMapperForResultSending: FilteringMapper[MetricAggregation[Tag], MetricAggregation[Tag]],
                                                          allowedTimePerBatchInSeconds: Long,
                                                          allowedTimeForJobInSeconds: Long
                                                         ) extends ActorRunnableTaskJobDefinition[MetricAggregation[Tag]] {
@@ -110,6 +120,9 @@ object JobDefinitions {
         perBatchAggregatorSupplier = perBatchAggregatorSupplier,
         perJobAggregatorSupplier = perJobAggregatorSupplier,
         writer = writer,
+        filteringSingleElementMapperForAggregator = filteringSingleElementMapperForAggregator,
+        filterAggregationMapperForAggregator = filterAggregationMapperForAggregator,
+        filteringMapperForResultSending = filteringMapperForResultSending,
         allowedTimePerBatchInSeconds = allowedTimePerBatchInSeconds,
         allowedTimeForJobInSeconds = allowedTimeForJobInSeconds
       )

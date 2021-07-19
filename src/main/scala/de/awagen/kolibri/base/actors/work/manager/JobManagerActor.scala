@@ -30,6 +30,8 @@ import de.awagen.kolibri.base.actors.work.manager.JobManagerActor._
 import de.awagen.kolibri.base.actors.work.manager.WorkManagerActor.{ExecutionType, GetWorkerStatus, JobBatchMsg}
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationState, ProcessingMessage, ResultSummary}
 import de.awagen.kolibri.base.config.AppConfig._
+import de.awagen.kolibri.base.config.AppConfig.config.kolibriDispatcherName
+import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions.MapWithCount
 import de.awagen.kolibri.base.io.writer.Writers.Writer
 import de.awagen.kolibri.base.processing.JobMessages.{SearchEvaluation, TestPiCalculation}
 import de.awagen.kolibri.base.processing.JobMessagesImplicits._
@@ -127,7 +129,7 @@ class JobManagerActor[T, U](val jobId: String,
                             val maxNumRetries: Int) extends Actor with ActorLogging with KolibriSerializable {
 
   implicit val system: ActorSystem = context.system
-  implicit val ec: ExecutionContextExecutor = system.dispatcher
+  implicit val ec: ExecutionContextExecutor = context.system.dispatchers.lookup(kolibriDispatcherName)
 
   val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
@@ -366,7 +368,7 @@ class JobManagerActor[T, U](val jobId: String,
     case testJobMsg: TestPiCalculation =>
       log.debug(s"received job to process: $testJobMsg")
       reportResultsTo = sender()
-      val jobMsg: SupervisorActor.ProcessActorRunnableJobCmd[Int, Double, Double, Map[Tag, AggregateValue[Double]]] = testJobMsg.toRunnable
+      val jobMsg: SupervisorActor.ProcessActorRunnableJobCmd[Int, Double, Double, MapWithCount[Tag, AggregateValue[Double]]] = testJobMsg.toRunnable
       val numberBatches: Int = jobMsg.processElements.size
       jobToProcess = ByFunctionNrLimitedIndexedGenerator(numberBatches, batchNr => Some(JobBatchMsg(jobMsg.jobId, batchNr, testJobMsg)))
       log.debug(s"job contains ${jobToProcess.size} batches")

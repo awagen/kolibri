@@ -3,7 +3,7 @@ import sbt.url
 
 val sl4jApiVersion = "1.7.30"
 val scalaTestVersion = "3.2.2"
-val kolibriDatatypesVersion = "0.1.0-alpha2"
+val kolibriDatatypesVersion = "0.1.0-alpha3"
 
 val akkaVersion = "2.6.14"
 val akkaContribVersion = "2.5.31"
@@ -14,9 +14,10 @@ val logbackVersion = "1.2.3"
 val kryoSerializationVersion = "2.2.0"
 val awsSdkVersion = "1.11.713"
 val apacheCommonsIOVersion = "2.8.0"
+val kamonVersion = "2.2.0"
 
 ThisBuild / scalaVersion := "2.13.2"
-ThisBuild / version := "0.1.0-alpha2"
+ThisBuild / version := "0.1.0-alpha3"
 
 lazy val jvmOptions = Seq(
   "-Xms1G",
@@ -98,7 +99,8 @@ val additionalResolvers = Seq(
   ("scalaz-bintray" at "https://dl.bintray.com/scalaz/releases").withAllowInsecureProtocol(false),
   ("Akka Snapshot Repository" at "https://repo.akka.io/snapshots/").withAllowInsecureProtocol(false),
   Resolver.sonatypeRepo("releases"),
-  Resolver.sonatypeRepo("snapshots"))
+  Resolver.sonatypeRepo("snapshots"),
+  Resolver.bintrayIvyRepo("kamon-io", "sbt-plugins"))
 //  Resolver.mavenLocal)
 
 
@@ -151,6 +153,8 @@ val additionalDependencies = Seq(
   "de.awagen.kolibri" %% "kolibri-datatypes" % kolibriDatatypesVersion,
   "org.slf4j" % "slf4j-api" % sl4jApiVersion,
   "commons-io" % "commons-io" % apacheCommonsIOVersion,
+  "io.kamon" %% "kamon-bundle" % kamonVersion,
+  "io.kamon" %% "kamon-prometheus" % kamonVersion
 )
 
 
@@ -175,10 +179,10 @@ ThisBuild / scmInfo := Some(
 )
 ThisBuild / developers := List(
   Developer(
-    id    = "awagen",
-    name  = "Andreas Wagenmann",
+    id = "awagen",
+    name = "Andreas Wagenmann",
     email = "awagen@posteo.net",
-    url   = url("https://github.com/awagen")
+    url = url("https://github.com/awagen")
   )
 )
 

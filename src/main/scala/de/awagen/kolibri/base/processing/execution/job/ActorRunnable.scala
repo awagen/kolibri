@@ -22,9 +22,11 @@ import akka.stream._
 import akka.stream.scaladsl.{Flow, GraphDSL, Keep, RunnableGraph, Sink, Source}
 import akka.util.Timeout
 import akka.{Done, NotUsed}
-import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{BadCorn, ProcessingMessage}
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationState, BadCorn, ProcessingMessage}
 import de.awagen.kolibri.base.config.AppConfig.config
-import de.awagen.kolibri.base.config.AppConfig.config.{aggregatorResultReceiveParallelism, useAggregatorBackpressure}
+import de.awagen.kolibri.base.config.AppConfig.config._
+import de.awagen.kolibri.base.processing.consume.AggregatorConfig
+import de.awagen.kolibri.base.processing.decider.Deciders.allResumeDecider
 import de.awagen.kolibri.base.processing.execution.expectation.ExecutionExpectation
 import de.awagen.kolibri.base.processing.execution.job
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnable._
@@ -34,7 +36,6 @@ import de.awagen.kolibri.base.traits.Traits.WithBatchNr
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
-import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.immutable
@@ -77,30 +78,52 @@ case class ActorRunnable[U, V, V1, Y](jobId: String,
                                       supplier: IndexedGenerator[U],
                                       transformer: Flow[U, ProcessingMessage[V], NotUsed],
                                       processingActorProps: Option[Props],
+                                      aggregatorConfig: AggregatorConfig[V1, Y],
                                       expectationGenerator: Int => ExecutionExpectation,
-                                      aggregationSupplier: () => Aggregator[ProcessingMessage[V1], Y],
                                       sinkType: job.ActorRunnableSinkType.Value,
                                       waitTimePerElement: FiniteDuration,
                                       maxExecutionDuration: FiniteDuration) extends KolibriSerializable with WithBatchNr {
 
   val log: Logger = LoggerFactory.getLogger(ActorRunnable.getClass)
 
+  def groupingAggregationFlow(aggregatingActor: ActorRef): Flow[ProcessingMessage[V1], Any, NotUsed] = {
+    Flow.fromFunction[ProcessingMessage[V1], ProcessingMessage[V1]](identity)
+      .groupedWithin(resultElementGroupingCount, resultElementGroupingInterval)
+      .mapAsync[Any](aggregatorResultReceiveParallelism)(messages => {
+        val aggregator = aggregatorConfig.aggregatorSupplier.apply()
+        messages.foreach(element => aggregator.add(element))
+        val aggState = AggregationState(aggregator.aggregation, jobId, batchNr, expectationGenerator.apply(messages.size))
+        if (useAggregatorBackpressure) {
+          implicit val timeout: Timeout = Timeout(10 seconds)
+          aggregatingActor ? aggState
+        }
+        else {
+          aggregatingActor ! aggState
+          Future.successful[Any](())
+        }
+      }).withAttributes(ActorAttributes.supervisionStrategy(allResumeDecider))
+  }
+
+  def singleElementAggregatorFlow(aggregatingActor: ActorRef): Flow[ProcessingMessage[V1], Any, NotUsed] = {
+    if (useAggregatorBackpressure) {
+      implicit val timeout: Timeout = Timeout(10 seconds)
+      Flow.fromFunction[ProcessingMessage[V1], ProcessingMessage[V1]](identity)
+        .mapAsync[Any](aggregatorResultReceiveParallelism)(e => aggregatingActor ? e)
+        .withAttributes(ActorAttributes.supervisionStrategy(allResumeDecider))
+    }
+    else {
+      Flow.fromFunction(x => {
+        aggregatingActor ! x
+        Future.successful[Any](())
+      })
+    }
+  }
+
   val actorSink: SerializableFunction1[ActorRef, Sink[ProcessingMessage[V1], Future[Done]]] = new SerializableFunction1[ActorRef, Sink[ProcessingMessage[V1], Future[Done]]] {
 
     override def apply(actorRef: ActorRef): Sink[ProcessingMessage[V1], Future[Done]] = {
-      if (useAggregatorBackpressure) {
-        implicit val timeout: Timeout = Timeout(10 seconds)
-        val flow: Flow[ProcessingMessage[V1], Any, NotUsed] = Flow.fromFunction[ProcessingMessage[V1], ProcessingMessage[V1]](identity)
-          .mapAsyncUnordered[Any](aggregatorResultReceiveParallelism)(e => actorRef ? e)
-        val sink: Sink[Any, Future[Done]] = Sink.foreach[Any](_ => ())
-        flow.toMat(sink)(Keep.right)
-      }
-      else {
-        Sink.foreach[ProcessingMessage[V1]](element => {
-          actorRef ! element
-          ()
-        })
-      }
+      val flow = if (useResultElementGrouping) groupingAggregationFlow(actorRef) else singleElementAggregatorFlow(actorRef)
+      flow.toMat(Sink.foreach[Any](_ => ()))(Keep.right)
     }
   }
 
@@ -132,6 +155,7 @@ case class ActorRunnable[U, V, V1, Y](jobId: String,
     * @return
     */
   def getRunnableGraph(actorConfig: JobActorConfig)(implicit actorSystem: ActorSystem, actorContext: ActorContext, mat: Materializer, ec: ExecutionContext): RunnableGraph[(UniqueKillSwitch, Future[Done])] = {
+
     val sinkInst: Sink[ProcessingMessage[V1], (UniqueKillSwitch, Future[Done])] = getSink(actorConfig)
     RunnableGraph.fromGraph(GraphDSL.create(sinkInst) {
       implicit builder =>
@@ -154,7 +178,7 @@ case class ActorRunnable[U, V, V1, Y](jobId: String,
                     Success(BadCorn(TaskFailType.UnknownResponseClass(e.getClass.getName)))
                 })
                 mappedResponseFuture
-              })
+              }).withAttributes(ActorAttributes.supervisionStrategy(allResumeDecider))
           }).getOrElse(Flow.fromFunction[ProcessingMessage[V], ProcessingMessage[V1]](x => x.asInstanceOf[ProcessingMessage[V1]]))
           val sendStage: FlowShape[ProcessingMessage[V], ProcessingMessage[V1]] = builder.add(sendFlow)
           // connect graph

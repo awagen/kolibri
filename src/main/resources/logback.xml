@@ -26,7 +26,7 @@
   </appender>
 
   <logger name="play" level="INFO" />
-  <logger name="application" level="DEBUG" />
+  <logger name="application" level="INFO" />
 
   <!-- Off these ones as they are annoying, and anyway we manage configuration ourselves -->
   <logger name="com.avaje.ebean.config.PropertyMapLoader" level="OFF" />
@@ -51,6 +51,6 @@
   <logger name="de.awagen.kolibri" level="INFO" />
   <logger name="akka.cluster.singleton" level="INFO" />
   <logger name="com.esotericsoftware.kryo" level="INFO" />
-  <logger name="io.altoo.akka.serialization.kryo" level="DEBUG" />
+  <logger name="io.altoo.akka.serialization.kryo" level="INFO" />
 
 </configuration>

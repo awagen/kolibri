@@ -26,6 +26,7 @@ import de.awagen.kolibri.base.actors.TestMessages.{TaggedInt, messagesToActorRef
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.{FinishedJobEvent, ProcessingResult}
 import de.awagen.kolibri.base.actors.work.manager.JobManagerActor.ProcessJobCmd
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationState, ProcessingMessage, ResultSummary}
+import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions.MapWithCount
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnable
 import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator}
 import de.awagen.kolibri.datatypes.tagging.TagType.AGGREGATION
@@ -36,7 +37,6 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 
-import scala.collection.mutable
 import scala.concurrent.duration._
 
 class JobManagerActorSpec extends KolibriTestKit
@@ -62,26 +62,26 @@ class JobManagerActorSpec extends KolibriTestKit
 
   "JobManagerActor" must {
 
-    val aggregatorSupplier = new SerializableSupplier[Aggregator[ProcessingMessage[Int], Map[Tag, Double]]] {
-      override def apply(): Aggregator[ProcessingMessage[Int], Map[Tag, Double]] =
-        new Aggregator[ProcessingMessage[Int], Map[Tag, Double]]() {
-          val map: mutable.Map[Tag, Double] = mutable.Map.empty
+    val aggregatorSupplier = new SerializableSupplier[Aggregator[ProcessingMessage[Int], MapWithCount[Tag, Double]]] {
+      override def apply(): Aggregator[ProcessingMessage[Int], MapWithCount[Tag, Double]] =
+        new Aggregator[ProcessingMessage[Int], MapWithCount[Tag, Double]]() {
+          var map: MapWithCount[Tag, Double] = MapWithCount(Map.empty[Tag, Double], 0)
 
           override def add(sample: ProcessingMessage[Int]): Unit = {
             sample match {
               case _: AggregationState[Int] =>
                 val keys = sample.getTagsForType(AGGREGATION)
                 keys.foreach(x => {
-                  map(x) = map.getOrElse(x, 0.0) + sample.data
+                  map = MapWithCount(map.map + (x -> (map.map.getOrElse(x, 0.0) + sample.data)), map.count + 1)
                 })
             }
           }
 
-          override def aggregation: Map[Tag, Double] = Map(map.toSeq: _*)
+          override def aggregation: MapWithCount[Tag, Double] = MapWithCount(Map(map.map.toSeq: _*), map.count)
 
-          override def addAggregate(other: Map[Tag, Double]): Unit = {
-            other.keys.foreach(x => {
-              map(x) = map.getOrElse(x, 0.0) + other.getOrElse(x, 0.0)
+          override def addAggregate(other: MapWithCount[Tag, Double]): Unit = {
+            other.map.keys.foreach(x => {
+              map = MapWithCount(map.map + (x -> (map.map.getOrElse(x, 0.0) + other.map(x))), map.count + other.count)
             })
           }
         }
@@ -95,17 +95,17 @@ class JobManagerActorSpec extends KolibriTestKit
         runningTaskBaselineCount = 10,
         perBatchAggregatorSupplier = aggregatorSupplier,
         perJobAggregatorSupplier = aggregatorSupplier,
-        writer = (_: Map[Tag, Double], _: Tag) => Right(()),
+        writer = (_: MapWithCount[Tag, Double], _: Tag) => Right(()),
         maxProcessDuration = 10 minutes,
         maxBatchDuration = 1 minute,
         2)
       val jobManagerActor: ActorRef = system.actorOf(managerProps)
-      val jobGenerator: IndexedGenerator[ActorRunnable[TaggedInt, Int, Int, Map[Tag, Double]]] = ByFunctionNrLimitedIndexedGenerator(
+      val jobGenerator: IndexedGenerator[ActorRunnable[TaggedInt, Int, Int, MapWithCount[Tag, Double]]] = ByFunctionNrLimitedIndexedGenerator(
         nrOfElements = 4,
         genFunc = x => Some(messagesToActorRefRunnableGenFunc("testId").apply(x))
       )
       // when
-      val msg: ProcessJobCmd[TaggedInt, Int, Int, Map[Tag, Double]] = ProcessJobCmd(job = jobGenerator)
+      val msg: ProcessJobCmd[TaggedInt, Int, Int, MapWithCount[Tag, Double]] = ProcessJobCmd(job = jobGenerator)
       jobManagerActor.tell(msg, testProbe.ref)
       val expectedResult = ResultSummary(
         result = ProcessingResult.SUCCESS,

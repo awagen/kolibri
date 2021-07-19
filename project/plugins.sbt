@@ -8,3 +8,6 @@ addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.9.2")
 
 // signing artefacts
 addSbtPlugin("com.github.sbt" % "sbt-pgp" % "2.1.2")
+
+// aspectj instrumentation (https://kamon.io/docs/latest/guides/installation/plain-application/#the-sbt-plugin)
+addSbtPlugin("io.kamon" % "sbt-kanela-runner" % "2.0.9")

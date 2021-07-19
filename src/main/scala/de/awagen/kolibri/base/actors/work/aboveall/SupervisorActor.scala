@@ -26,9 +26,12 @@ import de.awagen.kolibri.base.actors.work.manager.JobManagerActor._
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{ProcessingMessage, ResultSummary}
 import de.awagen.kolibri.base.actors.work.worker.TaskExecutionWorkerActor
 import de.awagen.kolibri.base.config.AppConfig._
+import de.awagen.kolibri.base.config.AppConfig.config.kolibriDispatcherName
 import de.awagen.kolibri.base.domain.jobdefinitions.Batch
+import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions.MapWithCount
 import de.awagen.kolibri.base.io.writer.Writers.Writer
 import de.awagen.kolibri.base.processing.JobMessages.{SearchEvaluation, TestPiCalculation}
+import de.awagen.kolibri.base.processing.classifier.Mapper.FilteringMapper
 import de.awagen.kolibri.base.processing.execution.SimpleTaskExecution
 import de.awagen.kolibri.base.processing.execution.expectation._
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnable
@@ -90,6 +93,9 @@ object SupervisorActor {
                                                perBatchAggregatorSupplier: () => Aggregator[ProcessingMessage[Any], U],
                                                perJobAggregatorSupplier: () => Aggregator[ProcessingMessage[Any], U],
                                                writer: Writer[U, Tag, _],
+                                               filteringSingleElementMapperForAggregator: FilteringMapper[ProcessingMessage[Any], ProcessingMessage[Any]],
+                                               filterAggregationMapperForAggregator: FilteringMapper[U, U],
+                                               filteringMapperForResultSending: FilteringMapper[U, U],
                                                allowedTimePerBatch: FiniteDuration,
                                                allowedTimeForJob: FiniteDuration) extends SupervisorCmd
 
@@ -119,7 +125,7 @@ object SupervisorActor {
 case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with ActorLogging with KolibriSerializable {
 
   implicit val system: ActorSystem = context.system
-  implicit val ec: ExecutionContextExecutor = system.dispatcher
+  implicit val ec: ExecutionContextExecutor = context.system.dispatchers.lookup(kolibriDispatcherName)
 
   case class ActorSetup(executing: ActorRef, jobSender: ActorRef)
 
@@ -140,7 +146,7 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
       writer = writer,
       maxProcessDuration = allowedTimeForJob,
       maxBatchDuration = allowedTimeForBatch,
-      maxNumRetries),
+      maxNumRetries).withDispatcher(kolibriDispatcherName),
       name = JobManagerActor.name(jobId))
   }
 
@@ -270,7 +276,7 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
       else {
         log.info("Creating and sending job to JobManager, jobId: {}", jobId)
         import de.awagen.kolibri.base.processing.JobMessagesImplicits._
-        val runnableJob: ProcessActorRunnableJobCmd[Int, Double, Double, Map[Tag, AggregateValue[Double]]] = e.toRunnable
+        val runnableJob: ProcessActorRunnableJobCmd[Int, Double, Double, MapWithCount[Tag, AggregateValue[Double]]] = e.toRunnable
         val actor = createJobManagerActor(
           jobId,
           runnableJob.perBatchAggregatorSupplier,

@@ -85,6 +85,7 @@ object AppConfig {
 
     val requestParallelism: Int = baseConfig.getInt("kolibri.request.parallelism")
     val useRequestTracking: Boolean = baseConfig.getBoolean("kolibri.request.useTracking")
+    val useConnectionPoolFlow: Boolean = baseConfig.getBoolean("kolibri.request.useConnectionPoolFlow")
 
     val jobTimeout: FiniteDuration = FiniteDuration(baseConfig.getInt("kolibri.job.timeoutInSeconds"), SECONDS)
     val jobProcessingCheckResourcesInterval: FiniteDuration = FiniteDuration(baseConfig.getInt("kolibri.job.processingCheckResourcesIntervalInMillis"),
@@ -141,6 +142,13 @@ object AppConfig {
 
     val internalJobStatusRequestTimeout: FiniteDuration = getFiniteDuration(config = baseConfig,
       key = "kolibri.internal.jobStatusRequestTimeoutInSeconds", SECONDS)
+
+    val kolibriDispatcherName = "kolibri-dispatcher"
+
+    val useResultElementGrouping: Boolean = baseConfig.getBoolean("kolibri.execution.useResultElementGrouping")
+    val resultElementGroupingCount: Int = baseConfig.getInt("kolibri.execution.resultElementGroupingCount")
+    val resultElementGroupingInterval: FiniteDuration = getFiniteDuration(baseConfig, "kolibri.execution.resultElementGroupingIntervalInMs", MILLISECONDS)
+    val resultElementGroupingParallelism: Int = baseConfig.getInt("kolibri.execution.resultElementGroupingParallelism")
   }
 
 }

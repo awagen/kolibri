@@ -29,7 +29,7 @@ import de.awagen.kolibri.base.actors.clusterinfo.ClusterMetricsListenerActor.{Me
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor._
 import de.awagen.kolibri.base.cluster.ClusterStatus
-import de.awagen.kolibri.base.config.AppConfig.config.internalJobStatusRequestTimeout
+import de.awagen.kolibri.base.config.AppConfig.config.{internalJobStatusRequestTimeout, kolibriDispatcherName}
 import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions
 import de.awagen.kolibri.base.io.json.SearchEvaluationJsonProtocol._
 import de.awagen.kolibri.base.processing.JobMessages.{SearchEvaluation, TestPiCalculation}
@@ -47,14 +47,14 @@ import scala.util.Random
   */
 object BaseRoutes {
 
-  val logger: Logger = LoggerFactory.getLogger(BaseRoutes.getClass)
+  private[this] val logger: Logger = LoggerFactory.getLogger(BaseRoutes.getClass)
   private[this] var supervisorActor: ActorRef = _
 
   def init(implicit system: ActorSystem): Unit = {
     this.synchronized {
       if (Objects.isNull(supervisorActor)) {
         supervisorActor = system.actorOf(SupervisorActor.props(true)
-          .withDispatcher("kolibri-dispatcher"))
+          .withDispatcher(kolibriDispatcherName))
       }
     }
   }
@@ -133,7 +133,7 @@ object BaseRoutes {
   def executeDistributedPiCalculationExample(implicit system: ActorSystem): Route = {
 
     implicit val timeout: Timeout = Timeout(1 minute)
-    implicit val ec: ExecutionContextExecutor = system.dispatcher
+    implicit val ec: ExecutionContextExecutor = system.dispatchers.lookup(kolibriDispatcherName)
     path("pi_calc") {
       parameters("jobName", "nrThrows", "batchSize", "resultDir") { (jobName, nrThrows, batchSize, resultDir) => {
         val actorRunnableJob = TestJobDefinitions.piEstimationJob(jobName, nrThrows.toInt, batchSize.toInt, resultDir)
@@ -147,7 +147,7 @@ object BaseRoutes {
   def executeDistributedPiCalculationExampleWithoutSerialization(implicit system: ActorSystem): Route = {
 
     implicit val timeout: Timeout = Timeout(1 minute)
-    implicit val ec: ExecutionContextExecutor = system.dispatcher
+    implicit val ec: ExecutionContextExecutor = system.dispatchers.lookup(kolibriDispatcherName)
     path("pi_calc_no_ser") {
       parameters("jobName", "nrThrows", "batchSize", "resultDir") { (jobName, nrThrows, batchSize, resultDir) => {
         val msg = TestPiCalculation(jobName, nrThrows.toInt, batchSize.toInt, resultDir)
@@ -161,7 +161,7 @@ object BaseRoutes {
   def getJobWorkerStatus(implicit system: ActorSystem): Route = {
 
     implicit val timeout: Timeout = Timeout(1 minute)
-    implicit val ec: ExecutionContextExecutor = system.dispatcher
+    implicit val ec: ExecutionContextExecutor = system.dispatchers.lookup(kolibriDispatcherName)
     path("job_worker_status") {
       parameters("jobId") { jobId => {
         onSuccess(supervisorActor ? GetJobWorkerStatus(jobId)) {
@@ -175,7 +175,7 @@ object BaseRoutes {
   def getRunningJobIds(implicit system: ActorSystem): Route = {
 
     implicit val timeout: Timeout = Timeout(internalJobStatusRequestTimeout)
-    implicit val ec: ExecutionContextExecutor = system.dispatcher
+    implicit val ec: ExecutionContextExecutor = system.dispatchers.lookup(kolibriDispatcherName)
     path("getRunningJobIDs") {
       onSuccess(supervisorActor ? ProvideAllRunningJobIDs) {
         e => complete(e.toString)
@@ -187,7 +187,7 @@ object BaseRoutes {
   def getJobStatus(implicit system: ActorSystem): Route = {
 
     implicit val timeout: Timeout = Timeout(internalJobStatusRequestTimeout)
-    implicit val ec: ExecutionContextExecutor = system.dispatcher
+    implicit val ec: ExecutionContextExecutor = system.dispatchers.lookup(kolibriDispatcherName)
     path("getJobStatus") {
       parameters("jobId") {
         jobId => {
@@ -202,7 +202,7 @@ object BaseRoutes {
   def killJob(implicit system: ActorSystem): Route = {
 
     implicit val timeout: Timeout = Timeout(internalJobStatusRequestTimeout)
-    implicit val ec: ExecutionContextExecutor = system.dispatcher
+    implicit val ec: ExecutionContextExecutor = system.dispatchers.lookup(kolibriDispatcherName)
     path("stopJob") {
       parameters("jobId") {
         jobId => {
@@ -215,7 +215,7 @@ object BaseRoutes {
   }
 
   def startSearchEval(implicit system: ActorSystem): Route = {
-    implicit val ec: ExecutionContextExecutor = system.dispatcher
+    implicit val ec: ExecutionContextExecutor = system.dispatchers.lookup(kolibriDispatcherName)
     path("search_eval") {
       entity(as[SearchEvaluation]) { searchEvaluation =>
         supervisorActor ! SearchJobDefinitions.searchEvaluationToRunnableJobCmd(searchEvaluation)
@@ -225,7 +225,7 @@ object BaseRoutes {
   }
 
   def startSearchEvalNoSerialize(implicit system: ActorSystem): Route = {
-    implicit val ec: ExecutionContextExecutor = system.dispatcher
+    implicit val ec: ExecutionContextExecutor = system.dispatchers.lookup(kolibriDispatcherName)
     path("search_eval_no_ser") {
       entity(as[SearchEvaluation]) { searchEvaluation =>
         supervisorActor ! searchEvaluation

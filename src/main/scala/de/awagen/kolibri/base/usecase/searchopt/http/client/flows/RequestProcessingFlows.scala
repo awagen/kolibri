@@ -27,8 +27,10 @@ import de.awagen.kolibri.base.actors.flows.GenericRequestFlows.flowThroughActorM
 import de.awagen.kolibri.base.actors.tracking.ThroughputActor.AddForStage
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{Corn, ProcessingMessage}
 import de.awagen.kolibri.base.config.AppConfig.config
+import de.awagen.kolibri.base.config.AppConfig.config.useConnectionPoolFlow
 import de.awagen.kolibri.base.domain.Connection
 import de.awagen.kolibri.base.http.client.request.RequestTemplate
+import de.awagen.kolibri.base.processing.decider.Deciders.allResumeDecider
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.Flows.connectionFunc
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.tagging.TagType
@@ -91,15 +93,17 @@ object RequestProcessingFlows {
 
   /**
     * Creates request execution and parsing flow based on single requests, just picking the protocol, host, port details
-    * from the passed connection
-    * @param connection: Connection object providing connection details to use
-    * @param parsingFunc: Parsing function applied to the retrieved response to yield result
+    * from the passed connection.
+    * Note that opposed to connectionPoolFlow, this does not suffer from timeouts of response consumption, e.g response
+    * is directly consumed.
+    *
+    * @param connection  : Connection object providing connection details to use
+    * @param parsingFunc : Parsing function applied to the retrieved response to yield result
     * @param as
     * @param ec
     * @tparam T
     * @return
     */
-  @deprecated
   def singleRequestFlow[T](connection: Connection, parsingFunc: HttpResponse => Future[Either[Throwable, T]])(implicit as: ActorSystem,
                                                                                                               ec: ExecutionContext): Flow[ProcessingMessage[RequestTemplate], ProcessingMessage[(Either[Throwable, T], RequestTemplate)], NotUsed] = {
     val flowResult: Flow[ProcessingMessage[RequestTemplate], (Either[Throwable, T], ProcessingMessage[RequestTemplate]), NotUsed] =
@@ -115,7 +119,7 @@ object RequestProcessingFlows {
           }
           e
         }
-      )
+      ).withAttributes(ActorAttributes.supervisionStrategy(allResumeDecider))
     flowResult.via(Flow.fromFunction(y => {
       // map to processing message of tuple
       Corn((y._1, y._2.data)).withTags(TagType.AGGREGATION, y._2.getTagsForType(AGGREGATION))
@@ -123,30 +127,34 @@ object RequestProcessingFlows {
   }
 
   /**
-    * Flow based requesting based on connection pool for the given connection
-    * @param connection: Connection providing details for the connection pool
-    * @param parsingFunc: Parse function applied to the response to yield the result
-    * @param as: implicit ActorSystem
-    * @param ec: implicit ExecutionContext
-    * @tparam T: type of the parsed result
+    * Alternative to singleRequestFlow, using connectionPool flow. Be cautious when using this though since
+    * your processing flow should be composed to avoid HttpResponse's being available but timing out due to not being consumed
+    * in time. This can happen e.g when causing backpressure / buffering of ready responses.
+    *
+    * @param connection  - Connection object specifying connection details
+    * @param parsingFunc - response parsing function
+    * @param as          - implicit ActorSystem
+    * @param ec          - implicit ExecutionContext
+    * @tparam T - The type of the parsed response
     * @return
     */
-  def connectionRequestFlow[T](connection: Connection, parsingFunc: HttpResponse => Future[Either[Throwable, T]])(implicit as: ActorSystem,
-                                                                                                                  ec: ExecutionContext): Flow[ProcessingMessage[RequestTemplate], ProcessingMessage[(Either[Throwable, T], RequestTemplate)], NotUsed] = {
-    val throughConnectionFlow: Flow[(HttpRequest, ProcessingMessage[RequestTemplate]), (Try[HttpResponse], ProcessingMessage[RequestTemplate]), _] =
+  def connectionPoolFlow[T](connection: Connection, parsingFunc: HttpResponse => Future[Either[Throwable, T]])(implicit as: ActorSystem,
+                                                                                                               ec: ExecutionContext): Flow[ProcessingMessage[RequestTemplate], ProcessingMessage[(Either[Throwable, T], RequestTemplate)], NotUsed] = {
+    val throughConnectionFlow: Flow[(HttpRequest, ProcessingMessage[RequestTemplate]), (Either[Throwable, T], ProcessingMessage[RequestTemplate]), _] =
       connectionFunc.apply(connection)
-    val flow =
-      Flow.fromFunction[ProcessingMessage[RequestTemplate], (HttpRequest, ProcessingMessage[RequestTemplate])](
-        y => (y.data.getRequest, y)
-      )
-        .via(throughConnectionFlow)
         .mapAsyncUnordered[(Either[Throwable, T], ProcessingMessage[RequestTemplate])](config.requestParallelism) {
           case y@(Success(e), _) =>
             parsingFunc.apply(e).map(v => (v, y._2))
           case y@(Failure(e), _) =>
             Future.successful(Left(e)).map(v => (v, y._2))
-        }
-    flow.via(Flow.fromFunction(y => {
+        }.withAttributes(ActorAttributes.supervisionStrategy(allResumeDecider))
+
+    val flowResult: Flow[ProcessingMessage[RequestTemplate], (Either[Throwable, T], ProcessingMessage[RequestTemplate]), NotUsed] = Flow.fromFunction[ProcessingMessage[RequestTemplate], (HttpRequest, ProcessingMessage[RequestTemplate])](
+      y => (y.data.getRequest, y)
+    )
+      // change that, should requested and directly consumed
+      .via(throughConnectionFlow)
+    flowResult.via(Flow.fromFunction(y => {
       // map to processing message of tuple
       Corn((y._1, y._2.data)).withTags(TagType.AGGREGATION, y._2.getTagsForType(AGGREGATION))
     }))
@@ -187,8 +195,18 @@ object RequestProcessingFlows {
     val balance: UniformFanOutShape[ProcessingMessage[RequestTemplate], ProcessingMessage[RequestTemplate]] = b
       .add(Balance.apply[ProcessingMessage[RequestTemplate]](connections.size, waitForAllDownstreams = false))
 
+    // NOTE: if useConnectionPoolFlow = true, make sure to have proper setting of parallelism in mapAsync calls lateron and
+    // tune the timeouts properly, otherwise youll see messages of the following type:
+    // [warn] a.h.i.e.c.PoolId - [56 (WaitingForResponseEntitySubscription)]Response entity was not subscribed after 3 seconds. Make sure to read the response `entity` body or call `entity.discardBytes()` on it -- in case you deal with `HttpResponse`, use the shortcut `response.discardEntityBytes()`. GET /search Empty -> 200 OK Default(433 bytes)
+    // which means the available response was not consumed in time
+    // see discussions like the following: https://discuss.lightbend.com/t/a-lot-requests-results-in-response-entity-was-not-subscribed-after/7797/4
+    // if singleRequestFlow is used, its its consumed when available and thus not prone to timeout in buffer
     val connectionFlows: Seq[Flow[ProcessingMessage[RequestTemplate], ProcessingMessage[(Either[Throwable, T], RequestTemplate)], NotUsed]] = connections
-      .map(x => connectionRequestFlow(x, parsingFunc))
+      .map(x => {
+        if (useConnectionPoolFlow) connectionPoolFlow(x, parsingFunc)
+        else singleRequestFlow(x, parsingFunc)
+      })
+
     val merge = b.add(Merge[ProcessingMessage[(Either[Throwable, T], RequestTemplate)]](connections.size))
     val identityFlow: Flow[ProcessingMessage[(Either[Throwable, T], RequestTemplate)], ProcessingMessage[(Either[Throwable, T], RequestTemplate)], NotUsed] = Flow.fromFunction(identity)
     val throughputFlow: FlowShape[ProcessingMessage[(Either[Throwable, T], RequestTemplate)], ProcessingMessage[(Either[Throwable, T], RequestTemplate)]] = b
