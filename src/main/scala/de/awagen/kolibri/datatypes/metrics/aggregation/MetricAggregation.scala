@@ -19,6 +19,7 @@ package de.awagen.kolibri.datatypes.metrics.aggregation
 import de.awagen.kolibri.datatypes.functions.GeneralSerializableFunctions._
 import de.awagen.kolibri.datatypes.stores.{MetricDocument, MetricRow}
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
+import de.awagen.kolibri.datatypes.types.WithCount
 
 import scala.collection.mutable
 
@@ -35,7 +36,11 @@ object MetricAggregation {
 
 
 case class MetricAggregation[A <: AnyRef](aggregationStateMap: mutable.Map[A, MetricDocument[A]] = mutable.Map.empty[A, MetricDocument[A]],
-                                          keyMapFunction: SerializableFunction1[A, A] = identity) {
+                                          keyMapFunction: SerializableFunction1[A, A] = identity) extends WithCount {
+
+  private[this] var aggregatedElementsCount: Int = _
+
+  override def count: Int = aggregatedElementsCount
 
   def addResults(tags: Set[A], record: MetricRow): Unit = {
     val mappedTags = tags.map(tag => keyMapFunction.apply(tag))
@@ -48,6 +53,7 @@ case class MetricAggregation[A <: AnyRef](aggregationStateMap: mutable.Map[A, Me
         aggregationStateMap(x).add(record)
       }
     )
+    aggregatedElementsCount += 1
   }
 
   def add(aggregation: MetricAggregation[A], ignoreIdDiff: Boolean = false): Unit = {
@@ -61,6 +67,7 @@ case class MetricAggregation[A <: AnyRef](aggregationStateMap: mutable.Map[A, Me
         newDoc.add(aggregation.aggregationStateMap(originalKeys(e)), ignoreIdDiff = ignoreIdDiff)
         aggregationStateMap(mappedKeys(e)) = newDoc
     }
+    aggregatedElementsCount += aggregation.count
   }
 
 }
