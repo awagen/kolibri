@@ -27,6 +27,7 @@ import de.awagen.kolibri.base.actors.work.worker.RunnableExecutionActor.{Provide
 import de.awagen.kolibri.base.config.AppConfig.config
 import de.awagen.kolibri.base.config.AppConfig.config.kolibriDispatcherName
 import de.awagen.kolibri.base.io.writer.Writers.Writer
+import de.awagen.kolibri.base.processing.consume.AggregatorConfig
 import de.awagen.kolibri.base.processing.decider.Deciders.allResumeDecider
 import de.awagen.kolibri.base.processing.execution.expectation._
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnable.JobActorConfig
@@ -96,15 +97,10 @@ class RunnableExecutionActor[U <: WithCount](maxBatchDuration: FiniteDuration,
       runningJobId = runnable.jobId
       runningJobBatchNr = runnable.batchNr
       aggregatingActor = context.actorOf(AggregatingActor.props(
-        runnable.filteringSingleElementMapperForAggregator,
-        runnable.filterAggregationMapperForAggregator,
-        runnable.filterAggregationMapperForAggregator,
-        runnable.aggregationSupplier,
+        runnable.aggregatorConfig,
         () => runnable.expectationGenerator.apply(runnable.supplier.size),
         owner = this.self,
         jobPartIdentifier = BaseJobPartIdentifier(jobId = runningJobId, batchNr = runningJobBatchNr),
-        // TODO: those two following are quick hack to send the writer around, draft state,
-        // TODO: thus make sendResultDataToSender configurable
         writerOpt
       ))
       // we set the aggregatingActor as receiver of all messages

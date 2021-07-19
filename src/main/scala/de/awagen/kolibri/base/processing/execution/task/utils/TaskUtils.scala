@@ -23,6 +23,7 @@ import de.awagen.kolibri.base.actors.work.worker.JobPartIdentifiers.BaseJobPartI
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{Corn, ProcessingMessage}
 import de.awagen.kolibri.base.actors.work.worker.TaskExecutionWorkerActor.ProcessTaskExecution
 import de.awagen.kolibri.base.processing.classifier.Mapper.AcceptAllAsIdentityMapper
+import de.awagen.kolibri.base.processing.consume.AggregatorConfig
 import de.awagen.kolibri.base.processing.execution.SimpleTaskExecution
 import de.awagen.kolibri.base.processing.execution.expectation.{BaseExecutionExpectation, ClassifyingCountExpectation, StopExpectation, TimeExpectation}
 import de.awagen.kolibri.base.processing.execution.job.{ActorRunnable, ActorRunnableSinkType}
@@ -56,6 +57,12 @@ object TaskUtils {
         // send single TaskExecutions to TaskExecutionWorkerActor for processing
         transformer = Flow.fromFunction[SimpleTaskExecution[Any], ProcessingMessage[Any]](x => Corn(ProcessTaskExecution(taskExecution = x, BaseJobPartIdentifier(jobId, batchNr)))),
         processingActorProps = Some(taskExecutionWorkerProps),
+        AggregatorConfig(
+          filteringSingleElementMapperForAggregator = new AcceptAllAsIdentityMapper[ProcessingMessage[Any]],
+          filterAggregationMapperForAggregator = new AcceptAllAsIdentityMapper[U],
+          filteringMapperForResultSending = new AcceptAllAsIdentityMapper[U],
+          aggregatorSupplier = aggregatorSupplier
+        ),
         // right now the expectation bound to each ActorRunnable is to provide one result per processed element
         // back to the actor executing the runnable, without StopExpectation. TimeExpectation set to threshold of 10 min
         expectationGenerator = _ => BaseExecutionExpectation(
@@ -64,10 +71,6 @@ object TaskUtils {
           Seq(StopExpectation(x.nrOfElements, _ => false, _ => false),
             TimeExpectation(timeoutPerRunnable))
         ),
-        aggregationSupplier = aggregatorSupplier,
-        filteringSingleElementMapperForAggregator = new AcceptAllAsIdentityMapper[ProcessingMessage[Any]],
-        filterAggregationMapperForAggregator = new AcceptAllAsIdentityMapper[U],
-        filteringMapperForResultSending = new AcceptAllAsIdentityMapper[U],
         sinkType = ActorRunnableSinkType.REPORT_TO_ACTOR_SINK,
         timeoutPerRunnable,
         timeoutPerElement)

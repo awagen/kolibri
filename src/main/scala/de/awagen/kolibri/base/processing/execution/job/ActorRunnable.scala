@@ -25,7 +25,7 @@ import akka.{Done, NotUsed}
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationState, BadCorn, ProcessingMessage}
 import de.awagen.kolibri.base.config.AppConfig.config
 import de.awagen.kolibri.base.config.AppConfig.config._
-import de.awagen.kolibri.base.processing.classifier.Mapper.FilteringMapper
+import de.awagen.kolibri.base.processing.consume.AggregatorConfig
 import de.awagen.kolibri.base.processing.decider.Deciders.allResumeDecider
 import de.awagen.kolibri.base.processing.execution.expectation.ExecutionExpectation
 import de.awagen.kolibri.base.processing.execution.job
@@ -36,7 +36,6 @@ import de.awagen.kolibri.base.traits.Traits.WithBatchNr
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
-import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.immutable
@@ -79,25 +78,19 @@ case class ActorRunnable[U, V, V1, Y](jobId: String,
                                       supplier: IndexedGenerator[U],
                                       transformer: Flow[U, ProcessingMessage[V], NotUsed],
                                       processingActorProps: Option[Props],
+                                      aggregatorConfig: AggregatorConfig[V1, Y],
                                       expectationGenerator: Int => ExecutionExpectation,
-                                      aggregationSupplier: () => Aggregator[ProcessingMessage[V1], Y],
-                                      filteringSingleElementMapperForAggregator: FilteringMapper[ProcessingMessage[V1], ProcessingMessage[V1]],
-                                      filterAggregationMapperForAggregator: FilteringMapper[Y, Y],
-                                      filteringMapperForResultSending: FilteringMapper[Y, Y],
                                       sinkType: job.ActorRunnableSinkType.Value,
                                       waitTimePerElement: FiniteDuration,
                                       maxExecutionDuration: FiniteDuration) extends KolibriSerializable with WithBatchNr {
 
   val log: Logger = LoggerFactory.getLogger(ActorRunnable.getClass)
 
-  //  val aggregator: Aggregator[ProcessingMessage[V1], Y] = aggregationSupplier.apply()
-
   def groupingAggregationFlow(aggregatingActor: ActorRef): Flow[ProcessingMessage[V1], Any, NotUsed] = {
     Flow.fromFunction[ProcessingMessage[V1], ProcessingMessage[V1]](identity)
-      //.mapAsync[ProcessingMessage[V1]](resultElementGroupingParallelism)(x => Future.successful(x))
       .groupedWithin(resultElementGroupingCount, resultElementGroupingInterval)
       .mapAsync[Any](aggregatorResultReceiveParallelism)(messages => {
-        val aggregator = aggregationSupplier.apply()
+        val aggregator = aggregatorConfig.aggregatorSupplier.apply()
         messages.foreach(element => aggregator.add(element))
         val aggState = AggregationState(aggregator.aggregation, jobId, batchNr, expectationGenerator.apply(messages.size))
         if (useAggregatorBackpressure) {
@@ -131,16 +124,6 @@ case class ActorRunnable[U, V, V1, Y](jobId: String,
     override def apply(actorRef: ActorRef): Sink[ProcessingMessage[V1], Future[Done]] = {
       val flow = if (useResultElementGrouping) groupingAggregationFlow(actorRef) else singleElementAggregatorFlow(actorRef)
       flow.toMat(Sink.foreach[Any](_ => ()))(Keep.right)
-
-      //      Flow.fromFunction[ProcessingMessage[V1], ProcessingMessage[V1]](identity)
-      //        .groupedWithin(resultElementGroupingCount, resultElementGroupingInterval)
-      //        .map(messages => {
-      //          val partAggregator: Aggregator[ProcessingMessage[V1], Y] = aggregationSupplier.apply()
-      //          messages.foreach(msg => partAggregator.add(msg))
-      //          AggregationState(partAggregator.aggregation, jobId, batchNr, expectationGenerator.apply(messages.size))
-      //        })
-      //        .map(x => aggregator.addAggregate(x.data))
-      //        .toMat(Sink.foreach[Any](_ => ()))(Keep.right)
     }
   }
 

@@ -15,8 +15,8 @@
   "editable": true,
   "gnetId": null,
   "graphTooltip": 0,
-  "id": 4,
-  "iteration": 1626367027346,
+  "id": 6,
+  "iteration": 1626731540390,
   "links": [],
   "panels": [
     {
@@ -971,7 +971,8 @@
                 "value": 80
               }
             ]
-          }
+          },
+          "unit": "rpm"
         },
         "overrides": [
           {
@@ -1020,21 +1021,21 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "sum by (operation, instance)(rate(span_processing_time_seconds_count{error=\"false\", span_kind=\"client\"}[1m]))",
+          "expr": "sum by (operation, instance)(increase(span_processing_time_seconds_count{error=\"false\", span_kind=\"client\"}[1m]))",
           "interval": "",
           "legendFormat": "{{operation}} on {{instance}} with no error",
           "refId": "A"
         },
         {
           "exemplar": true,
-          "expr": "sum by (operation, instance)(rate(span_processing_time_seconds_count{error=\"true\", span_kind=\"client\"}[1m]))",
+          "expr": "sum by (operation, instance)(increase(span_processing_time_seconds_count{error=\"true\", span_kind=\"client\"}[1m]))",
           "hide": false,
           "interval": "",
           "legendFormat": "{operation}} on {{instance}} with error",
           "refId": "B"
         }
       ],
-      "title": "Requests/s",
+      "title": "Requests/min",
       "type": "timeseries"
     },
     {
@@ -1650,12 +1651,12 @@
     ]
   },
   "time": {
-    "from": "now-3h",
+    "from": "now-1h",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "",
   "title": "Kolibri Dashboard",
-  "uid": "4w3cI1m7z",
-  "version": 26
+  "uid": "7wbOMZW7k",
+  "version": 2
 }

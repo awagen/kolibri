@@ -23,6 +23,7 @@ import akka.testkit.{ImplicitSender, TestKit}
 import de.awagen.kolibri.base.actors.KolibriTestKitNoCluster
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{Corn, ProcessingMessage}
 import de.awagen.kolibri.base.processing.classifier.Mapper.AcceptAllAsIdentityMapper
+import de.awagen.kolibri.base.processing.consume.AggregatorConfig
 import de.awagen.kolibri.base.processing.execution.expectation.{BaseExecutionExpectation, ExecutionExpectation}
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnableSinkType.REPORT_TO_ACTOR_SINK
 import de.awagen.kolibri.datatypes.collections.generators.ByFunctionNrLimitedIndexedGenerator
@@ -66,19 +67,21 @@ class ActorRunnableSpec extends KolibriTestKitNoCluster
       supplier = ByFunctionNrLimitedIndexedGenerator(4, generatorFunc),
       transformer = Flow.fromFunction(transformerFunc),
       processingActorProps = None,
-      expectationGenerator = expectationGen,
-      aggregationSupplier = new SerializableSupplier[Aggregator[ProcessingMessage[Int], Double]] {
-        override def apply(): Aggregator[ProcessingMessage[Int], Double] = new Aggregator[ProcessingMessage[Int], Double] {
-          override def add(sample: ProcessingMessage[Int]): Unit = ()
+      AggregatorConfig(
+        filteringSingleElementMapperForAggregator = new AcceptAllAsIdentityMapper[ProcessingMessage[Int]],
+        filterAggregationMapperForAggregator = new AcceptAllAsIdentityMapper[Double],
+        filteringMapperForResultSending = new AcceptAllAsIdentityMapper[Double],
+        aggregatorSupplier = new SerializableSupplier[Aggregator[ProcessingMessage[Int], Double]] {
+          override def apply(): Aggregator[ProcessingMessage[Int], Double] = new Aggregator[ProcessingMessage[Int], Double] {
+            override def add(sample: ProcessingMessage[Int]): Unit = ()
 
-          override def aggregation: Double = 0.0
+            override def aggregation: Double = 0.0
 
-          override def addAggregate(aggregatedValue: Double): Unit = ()
+            override def addAggregate(aggregatedValue: Double): Unit = ()
+          }
         }
-      },
-      filteringSingleElementMapperForAggregator = new AcceptAllAsIdentityMapper[ProcessingMessage[Int]],
-      filterAggregationMapperForAggregator = new AcceptAllAsIdentityMapper[Double],
-      filteringMapperForResultSending = new AcceptAllAsIdentityMapper[Double],
+      ),
+      expectationGenerator = expectationGen,
       sinkType = REPORT_TO_ACTOR_SINK, 1 minute, 1 minute)
   }
 

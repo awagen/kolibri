@@ -23,6 +23,7 @@ import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.{ProcessActor
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.ProcessingMessage
 import de.awagen.kolibri.base.io.writer.Writers.Writer
 import de.awagen.kolibri.base.processing.classifier.Mapper.FilteringMapper
+import de.awagen.kolibri.base.processing.consume.AggregatorConfig
 import de.awagen.kolibri.base.processing.execution.expectation.ExecutionExpectation
 import de.awagen.kolibri.base.processing.execution.job.{ActorRunnable, ActorRunnableSinkType}
 import de.awagen.kolibri.base.processing.execution.task.Task
@@ -70,11 +71,13 @@ object JobMsgFactory {
         supplier = v1.data,
         transformer = transformerFlow,
         processingActorProps = processingActorProps,
+        AggregatorConfig(
+          filteringSingleElementMapperForAggregator,
+          filterAggregationMapperForAggregator,
+          filteringMapperForResultSending,
+          aggregatorSupplier = perBatchAggregatorSupplier,
+        ),
         expectationGenerator = perBatchExpectationGenerator,
-        aggregationSupplier = perBatchAggregatorSupplier,
-        filteringSingleElementMapperForAggregator,
-        filterAggregationMapperForAggregator,
-        filteringMapperForResultSending,
         sinkType = returnType,
         allowedTimePerElementInMillis millis,
         allowedTimePerBatchInSeconds seconds)

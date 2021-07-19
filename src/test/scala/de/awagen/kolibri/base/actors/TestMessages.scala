@@ -27,6 +27,7 @@ import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions.Implicits
 import de.awagen.kolibri.base.io.writer.Writers.Writer
 import de.awagen.kolibri.base.processing.TestTaskHelper.{concatIdsTask, productIdResult, reverseIdsTaskPM, reversedIdKeyPM}
 import de.awagen.kolibri.base.processing.classifier.Mapper.AcceptAllAsIdentityMapper
+import de.awagen.kolibri.base.processing.consume.AggregatorConfig
 import de.awagen.kolibri.base.processing.execution.expectation.{BaseExecutionExpectation, ReceiveCountExpectation, StopExpectation, TimeExpectation}
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnable
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnableSinkType.REPORT_TO_ACTOR_SINK
@@ -54,26 +55,30 @@ object TestMessages {
     jobId = jobId,
     batchNr = 1,
     supplier = ByFunctionNrLimitedIndexedGenerator(
-      11, x => Some(x)), transformer = Flow.fromFunction[Int, Corn[Int]](x => Corn(x + 10)), processingActorProps = Some(Props(TestTransformActor(m => {
+      11, x => Some(x)),
+    transformer = Flow.fromFunction[Int, Corn[Int]](x => Corn(x + 10)),
+    processingActorProps = Some(Props(TestTransformActor(m => {
       Corn(m.data).withTags(AGGREGATION, Set(StringTag("ALL")))
-    }))), expectationGenerator = _ => BaseExecutionExpectation(
+    }))),
+    AggregatorConfig(
+      filteringSingleElementMapperForAggregator = new AcceptAllAsIdentityMapper[ProcessingMessage[Int]],
+      filterAggregationMapperForAggregator = new AcceptAllAsIdentityMapper[MapWithCount[Tag, Double]],
+      filteringMapperForResultSending = new AcceptAllAsIdentityMapper[MapWithCount[Tag, Double]],
+      aggregatorSupplier = new SerializableSupplier[Aggregator[ProcessingMessage[Int], MapWithCount[Tag, Double]]] {
+        override def apply(): Aggregator[ProcessingMessage[Int], MapWithCount[Tag, Double]] = new Aggregator[ProcessingMessage[Int], MapWithCount[Tag, Double]] {
+          override def add(sample: ProcessingMessage[Int]): Unit = ()
+
+          override def aggregation: MapWithCount[Tag, Double] = Map.empty[Tag, Double].toCountMap(0)
+
+          override def addAggregate(other: MapWithCount[Tag, Double]): Unit = ()
+        }
+      }),
+    expectationGenerator = _ => BaseExecutionExpectation(
       fulfillAllForSuccess = Seq(ReceiveCountExpectation(Map(
         Range(0, 11, 1).map(x => Corn(x + 10) -> 1): _*
       ))),
       fulfillAnyForFail = Seq(StopExpectation(0, _ => false, _ => false),
-        TimeExpectation(100 days))), aggregationSupplier = new SerializableSupplier[Aggregator[ProcessingMessage[Int], MapWithCount[Tag, Double]]] {
-      override def apply(): Aggregator[ProcessingMessage[Int], MapWithCount[Tag, Double]] = new Aggregator[ProcessingMessage[Int], MapWithCount[Tag, Double]] {
-        override def add(sample: ProcessingMessage[Int]): Unit = ()
-
-        override def aggregation: MapWithCount[Tag, Double] = Map.empty[Tag, Double].toCountMap(0)
-
-        override def addAggregate(other: MapWithCount[Tag, Double]): Unit = ()
-
-      }
-    },
-    filteringSingleElementMapperForAggregator = new AcceptAllAsIdentityMapper[ProcessingMessage[Int]],
-    filterAggregationMapperForAggregator = new AcceptAllAsIdentityMapper[MapWithCount[Tag, Double]],
-    filteringMapperForResultSending = new AcceptAllAsIdentityMapper[MapWithCount[Tag, Double]],
+        TimeExpectation(100 days))),
     sinkType = REPORT_TO_ACTOR_SINK, 1 minute, 1 minute)
 
   val expectedValuesForMessagesToActorRefRunnable: immutable.Seq[Corn[Int]] = Range(0, 11, 1).map(x => Corn(x + 11))
@@ -86,6 +91,19 @@ object TestMessages {
       Corn(x + 10).withTags(AGGREGATION, Set(StringTag("ALL")))
     }),
     processingActorProps = None,
+    AggregatorConfig(
+      filteringSingleElementMapperForAggregator = new AcceptAllAsIdentityMapper[ProcessingMessage[Int]],
+      filterAggregationMapperForAggregator = new AcceptAllAsIdentityMapper[MapWithCount[Tag, Double]],
+      filteringMapperForResultSending = new AcceptAllAsIdentityMapper[MapWithCount[Tag, Double]],
+      aggregatorSupplier = new SerializableSupplier[Aggregator[ProcessingMessage[Int], MapWithCount[Tag, Double]]] {
+        override def apply(): Aggregator[ProcessingMessage[Int], MapWithCount[Tag, Double]] = new Aggregator[ProcessingMessage[Int], MapWithCount[Tag, Double]] {
+          override def add(sample: ProcessingMessage[Int]): Unit = ()
+
+          override def aggregation: MapWithCount[Tag, Double] = Map.empty[Tag, Double].toCountMap(0)
+
+          override def addAggregate(other: MapWithCount[Tag, Double]): Unit = ()
+        }
+      }),
     expectationGenerator = _ => BaseExecutionExpectation(
       fulfillAllForSuccess = Seq(ReceiveCountExpectation(Map(
         Range(0, 11, 1).map(x => {
@@ -96,19 +114,6 @@ object TestMessages {
       fulfillAnyForFail = Seq(StopExpectation(0, _ => false, _ => false),
         TimeExpectation(100 days))
     ),
-    aggregationSupplier = new SerializableSupplier[Aggregator[ProcessingMessage[Int], MapWithCount[Tag, Double]]] {
-      override def apply(): Aggregator[ProcessingMessage[Int], MapWithCount[Tag, Double]] = new Aggregator[ProcessingMessage[Int], MapWithCount[Tag, Double]] {
-        override def add(sample: ProcessingMessage[Int]): Unit = ()
-
-        override def aggregation: MapWithCount[Tag, Double] = Map.empty[Tag, Double].toCountMap(0)
-
-        override def addAggregate(other: MapWithCount[Tag, Double]): Unit = ()
-
-      }
-    },
-    filteringSingleElementMapperForAggregator = new AcceptAllAsIdentityMapper[ProcessingMessage[Int]],
-    filterAggregationMapperForAggregator = new AcceptAllAsIdentityMapper[MapWithCount[Tag, Double]],
-    filteringMapperForResultSending = new AcceptAllAsIdentityMapper[MapWithCount[Tag, Double]],
     sinkType = REPORT_TO_ACTOR_SINK,
     1 minute,
     1 minute)
@@ -122,41 +127,45 @@ object TestMessages {
       Corn(z.value).withTags(AGGREGATION, z.getTagsForType(AGGREGATION))
     }), processingActorProps = Some(Props(TestTransformActor(m => {
       Corn(m.data + 1).withTags(AGGREGATION, Set(StringTag("ALL")))
-    }))), expectationGenerator = _ => BaseExecutionExpectation(
-      fulfillAllForSuccess = Seq(ReceiveCountExpectation(Map(
-        Corn(x + 1) -> 1,
-        Corn(x + 2) -> 1,
-        Corn(x + 3) -> 1))),
-      fulfillAnyForFail = Seq(StopExpectation(0, _ => false, _ => false),
-        TimeExpectation(100 days))), aggregationSupplier = new SerializableSupplier[Aggregator[ProcessingMessage[Int], MapWithCount[Tag, Double]]] {
-      override def apply(): Aggregator[ProcessingMessage[Int], MapWithCount[Tag, Double]] =
-        new Aggregator[ProcessingMessage[Int], MapWithCount[Tag, Double]]() {
-          var map: MapWithCount[Tag, Double] = Map.empty[Tag, Double].toCountMap(0)
+    }))),
+      AggregatorConfig(
+        aggregatorSupplier = new SerializableSupplier[Aggregator[ProcessingMessage[Int], MapWithCount[Tag, Double]]] {
+          override def apply(): Aggregator[ProcessingMessage[Int], MapWithCount[Tag, Double]] =
+            new Aggregator[ProcessingMessage[Int], MapWithCount[Tag, Double]]() {
+              var map: MapWithCount[Tag, Double] = Map.empty[Tag, Double].toCountMap(0)
 
-          override def add(sample: ProcessingMessage[Int]): Unit = {
-            sample match {
-              case _: Corn[Int] =>
-                val keys: Set[Tag] = sample.getTagsForType(AGGREGATION)
-                keys.foreach(x => {
-                  map = MapWithCount(map.map + (x -> (map.map.getOrElse(x, 0.0) + sample.data)), map.count + 1)
+              override def add(sample: ProcessingMessage[Int]): Unit = {
+                sample match {
+                  case _: Corn[Int] =>
+                    val keys: Set[Tag] = sample.getTagsForType(AGGREGATION)
+                    keys.foreach(x => {
+                      map = MapWithCount(map.map + (x -> (map.map.getOrElse(x, 0.0) + sample.data)), map.count + 1)
+                    })
+                  case e =>
+                    log.warn(s"Expected message of type Corn, got: $e")
+                }
+              }
+
+              override def aggregation: MapWithCount[Tag, Double] = MapWithCount(Map(map.map.toSeq: _*), map.count)
+
+              override def addAggregate(other: MapWithCount[Tag, Double]): Unit = {
+                other.map.keys.foreach(x => {
+                  map = MapWithCount(map.map + (x -> (map.map.getOrElse(x, 0.0) + other.map(x))), map.count + other.count)
                 })
-              case e =>
-                log.warn(s"Expected message of type Corn, got: $e")
+              }
             }
-          }
-
-          override def aggregation: MapWithCount[Tag, Double] = MapWithCount(Map(map.map.toSeq: _*), map.count)
-
-          override def addAggregate(other: MapWithCount[Tag, Double]): Unit = {
-            other.map.keys.foreach(x => {
-              map = MapWithCount(map.map + (x -> (map.map.getOrElse(x, 0.0) + other.map(x))), map.count + other.count)
-            })
-          }
-        }
-    },
-      filteringSingleElementMapperForAggregator = new AcceptAllAsIdentityMapper[ProcessingMessage[Int]],
-      filterAggregationMapperForAggregator = new AcceptAllAsIdentityMapper[MapWithCount[Tag, Double]],
-      filteringMapperForResultSending = new AcceptAllAsIdentityMapper[MapWithCount[Tag, Double]],
+        },
+        filteringSingleElementMapperForAggregator = new AcceptAllAsIdentityMapper[ProcessingMessage[Int]],
+        filterAggregationMapperForAggregator = new AcceptAllAsIdentityMapper[MapWithCount[Tag, Double]],
+        filteringMapperForResultSending = new AcceptAllAsIdentityMapper[MapWithCount[Tag, Double]]
+      ),
+      expectationGenerator = _ => BaseExecutionExpectation(
+        fulfillAllForSuccess = Seq(ReceiveCountExpectation(Map(
+          Corn(x + 1) -> 1,
+          Corn(x + 2) -> 1,
+          Corn(x + 3) -> 1))),
+        fulfillAnyForFail = Seq(StopExpectation(0, _ => false, _ => false),
+          TimeExpectation(100 days))),
       sinkType = REPORT_TO_ACTOR_SINK, 1 minute, 1 minute)
 
   def expectedMessagesForRunnableGenFunc(i: Int) = Seq(
