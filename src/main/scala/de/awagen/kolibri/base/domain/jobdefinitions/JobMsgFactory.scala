@@ -33,6 +33,7 @@ import de.awagen.kolibri.datatypes.mutable.stores.TypeTaggedMap
 import de.awagen.kolibri.datatypes.tagging.TaggedWithType
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
+import de.awagen.kolibri.datatypes.types.WithCount
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 
 import scala.concurrent.duration._
@@ -46,23 +47,23 @@ import scala.concurrent.duration._
 object JobMsgFactory {
 
 
-  def createActorRunnableJobCmd[T, V, V1, V2, W](jobId: String,
-                                                 data: T,
-                                                 dataBatchGenerator: T => IndexedGenerator[Batch[V]],
-                                                 transformerFlow: Flow[V, ProcessingMessage[V1], NotUsed],
-                                                 processingActorProps: Option[Props],
-                                                 perBatchExpectationGenerator: Int => ExecutionExpectation,
-                                                 perBatchAggregatorSupplier: () => Aggregator[ProcessingMessage[V2], W],
-                                                 perJobAggregatorSupplier: () => Aggregator[ProcessingMessage[V2], W],
-                                                 writer: Writer[W, Tag, Any],
-                                                 filteringSingleElementMapperForAggregator: FilteringMapper[ProcessingMessage[V2], ProcessingMessage[V2]],
-                                                 filterAggregationMapperForAggregator: FilteringMapper[W, W],
-                                                 filteringMapperForResultSending: FilteringMapper[W, W],
-                                                 returnType: ActorRunnableSinkType.Value,
-                                                 allowedTimePerElementInMillis: Long,
-                                                 allowedTimePerBatchInSeconds: Long,
-                                                 allowedTimeForJobInSeconds: Long,
-                                                 expectResultsFromBatchCalculations: Boolean): ProcessActorRunnableJobCmd[V, V1, V2, W] = {
+  def createActorRunnableJobCmd[T, V, V1, V2, W <: WithCount](jobId: String,
+                                                              data: T,
+                                                              dataBatchGenerator: T => IndexedGenerator[Batch[V]],
+                                                              transformerFlow: Flow[V, ProcessingMessage[V1], NotUsed],
+                                                              processingActorProps: Option[Props],
+                                                              perBatchExpectationGenerator: Int => ExecutionExpectation,
+                                                              perBatchAggregatorSupplier: () => Aggregator[ProcessingMessage[V2], W],
+                                                              perJobAggregatorSupplier: () => Aggregator[ProcessingMessage[V2], W],
+                                                              writer: Writer[W, Tag, Any],
+                                                              filteringSingleElementMapperForAggregator: FilteringMapper[ProcessingMessage[V2], ProcessingMessage[V2]],
+                                                              filterAggregationMapperForAggregator: FilteringMapper[W, W],
+                                                              filteringMapperForResultSending: FilteringMapper[W, W],
+                                                              returnType: ActorRunnableSinkType.Value,
+                                                              allowedTimePerElementInMillis: Long,
+                                                              allowedTimePerBatchInSeconds: Long,
+                                                              allowedTimeForJobInSeconds: Long,
+                                                              expectResultsFromBatchCalculations: Boolean): ProcessActorRunnableJobCmd[V, V1, V2, W] = {
     val batches: IndexedGenerator[Batch[V]] = dataBatchGenerator.apply(data)
     val mapFunc: SerializableFunction1[Batch[V], ActorRunnable[V, V1, V2, W]] = new SerializableFunction1[Batch[V], ActorRunnable[V, V1, V2, W]] {
       override def apply(v1: Batch[V]): ActorRunnable[V, V1, V2, W] = ActorRunnable(
@@ -95,7 +96,7 @@ object JobMsgFactory {
   }
 
 
-  def createActorRunnableTaskJobCmd[T, W](jobId: String,
+  def createActorRunnableTaskJobCmd[T, W <: WithCount](jobId: String,
                                           data: T,
                                           dataBatchGenerator: T => IndexedGenerator[Batch[TypeTaggedMap with TaggedWithType[Tag]]],
                                           resultDataKey: ClassTyped[ProcessingMessage[Any]],

@@ -36,6 +36,7 @@ import de.awagen.kolibri.base.traits.Traits.WithBatchNr
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
+import de.awagen.kolibri.datatypes.types.WithCount
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.immutable
@@ -73,16 +74,16 @@ object ActorRunnable {
   *                             does not happen in the sink here but messages are send to other processors which then provide the response
   * @param waitTimePerElement   - max time to wait per processing element (in case processingActorProps are not None; only used to set timeout to the respective ask future)
   */
-case class ActorRunnable[U, V, V1, Y](jobId: String,
-                                      batchNr: Int,
-                                      supplier: IndexedGenerator[U],
-                                      transformer: Flow[U, ProcessingMessage[V], NotUsed],
-                                      processingActorProps: Option[Props],
-                                      aggregatorConfig: AggregatorConfig[V1, Y],
-                                      expectationGenerator: Int => ExecutionExpectation,
-                                      sinkType: job.ActorRunnableSinkType.Value,
-                                      waitTimePerElement: FiniteDuration,
-                                      maxExecutionDuration: FiniteDuration) extends KolibriSerializable with WithBatchNr {
+case class ActorRunnable[U, V, V1, Y <: WithCount](jobId: String,
+                                                   batchNr: Int,
+                                                   supplier: IndexedGenerator[U],
+                                                   transformer: Flow[U, ProcessingMessage[V], NotUsed],
+                                                   processingActorProps: Option[Props],
+                                                   aggregatorConfig: AggregatorConfig[V1, Y],
+                                                   expectationGenerator: Int => ExecutionExpectation,
+                                                   sinkType: job.ActorRunnableSinkType.Value,
+                                                   waitTimePerElement: FiniteDuration,
+                                                   maxExecutionDuration: FiniteDuration) extends KolibriSerializable with WithBatchNr {
 
   val log: Logger = LoggerFactory.getLogger(ActorRunnable.getClass)
 
@@ -119,7 +120,7 @@ case class ActorRunnable[U, V, V1, Y](jobId: String,
     }
   }
 
-  val actorSink: SerializableFunction1[ActorRef, Sink[ProcessingMessage[V1], Future[Done]]] = new SerializableFunction1[ActorRef, Sink[ProcessingMessage[V1], Future[Done]]] {
+  val actorSinkFunction: SerializableFunction1[ActorRef, Sink[ProcessingMessage[V1], Future[Done]]] = new SerializableFunction1[ActorRef, Sink[ProcessingMessage[V1], Future[Done]]] {
 
     override def apply(actorRef: ActorRef): Sink[ProcessingMessage[V1], Future[Done]] = {
       val flow = if (useResultElementGrouping) groupingAggregationFlow(actorRef) else singleElementAggregatorFlow(actorRef)
@@ -134,7 +135,7 @@ case class ActorRunnable[U, V, V1, Y](jobId: String,
         killSwitch.toMat(Sink.ignore)(Keep.both)
       case REPORT_TO_ACTOR_SINK =>
         val reportTo: Option[ActorRef] = actorConfig.others.get(ActorType.ACTOR_SINK)
-        val sink: Sink[ProcessingMessage[V1], Future[Done]] = reportTo.map(x => actorSink.apply(x)).getOrElse(Sink.ignore)
+        val sink: Sink[ProcessingMessage[V1], Future[Done]] = reportTo.map(x => actorSinkFunction.apply(x)).getOrElse(Sink.ignore)
         killSwitch.toMat(sink)(Keep.both)
       case e =>
         log.warn(s"return type '$e' not covered, using Sink.ignore")

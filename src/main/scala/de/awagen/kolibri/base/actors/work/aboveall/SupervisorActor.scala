@@ -47,6 +47,7 @@ import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.tagging.TaggedWithType
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
+import de.awagen.kolibri.datatypes.types.WithCount
 import de.awagen.kolibri.datatypes.values.AggregateValue
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 
@@ -69,7 +70,7 @@ object SupervisorActor {
 
   case class GetJobWorkerStatus(job: String)
 
-  type ActorRunnableJobGenerator[U, V, V1, W] = IndexedGenerator[ActorRunnable[U, V, V1, W]]
+  type ActorRunnableJobGenerator[U, V, V1, W <: WithCount] = IndexedGenerator[ActorRunnable[U, V, V1, W]]
   type TaggedTypeTaggedMapBatch = Batch[TypeTaggedMap with TaggedWithType[Tag]]
   type BatchTypeTaggedMapGenerator = IndexedGenerator[TaggedTypeTaggedMapBatch]
 
@@ -77,7 +78,7 @@ object SupervisorActor {
   // e.g by parameter values for selected parameter or batch size and by utilizing OrderedMultiValuesImplicits
   // this can be mapped to actual Iterators over the parameter values contained in the split
   // OrderedMultiValues
-  case class ProcessActorRunnableJobCmd[V, V1, V2, U](jobId: String,
+  case class ProcessActorRunnableJobCmd[V, V1, V2, U <: WithCount](jobId: String,
                                                       processElements: ActorRunnableJobGenerator[V, V1, V2, U],
                                                       perBatchAggregatorSupplier: () => Aggregator[ProcessingMessage[V2], U],
                                                       perJobAggregatorSupplier: () => Aggregator[ProcessingMessage[V2], U],
@@ -86,7 +87,7 @@ object SupervisorActor {
                                                       allowedTimeForJob: FiniteDuration,
                                                       expectResultsFromBatchCalculations: Boolean) extends SupervisorCmd
 
-  case class ProcessActorRunnableTaskJobCmd[U](jobId: String,
+  case class ProcessActorRunnableTaskJobCmd[U <: WithCount](jobId: String,
                                                dataIterable: BatchTypeTaggedMapGenerator,
                                                tasks: Seq[Task[_]],
                                                resultKey: ClassTyped[ProcessingMessage[Any]],
@@ -131,7 +132,7 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
 
   val jobIdToActorRefAndExpectation: mutable.Map[String, (ActorSetup, ExecutionExpectation)] = mutable.Map.empty
 
-  def createJobManagerActor[T, U](jobId: String,
+  def createJobManagerActor[T, U <: WithCount](jobId: String,
                                   perBatchAggregatorSupplier: () => Aggregator[ProcessingMessage[T], U],
                                   perJobAggregatorSupplier: () => Aggregator[ProcessingMessage[T], U],
                                   writer: Writer[U, Tag, _],
@@ -317,7 +318,7 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
         expectation.init
         jobIdToActorRefAndExpectation(jobId) = (ActorSetup(actor, jobSender), expectation)
       }
-    case job: ProcessActorRunnableTaskJobCmd[Any] =>
+    case job: ProcessActorRunnableTaskJobCmd[WithCount] =>
       val jobSender: ActorRef = sender()
       val jobId = job.jobId
       if (jobIdToActorRefAndExpectation.contains(jobId)) {
@@ -325,7 +326,7 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
         ()
       }
       else {
-        val mappedIterable: IndexedGenerator[ActorRunnable[SimpleTaskExecution[_], Any, Any, Any]] =
+        val mappedIterable: IndexedGenerator[ActorRunnable[SimpleTaskExecution[_], Any, Any, WithCount]] =
           TaskUtils.tasksToActorRunnable(
             jobId = jobId,
             resultKey = job.resultKey,

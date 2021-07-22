@@ -34,18 +34,19 @@ import de.awagen.kolibri.datatypes.tagging.MapImplicits._
 import de.awagen.kolibri.datatypes.tagging.TaggedWithType
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
+import de.awagen.kolibri.datatypes.types.WithCount
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 
 
 object JobDefinitions {
 
-  trait ActorRunnableJobDefinition[V, V1, V2, U] {
+  trait ActorRunnableJobDefinition[V, V1, V2, U <: WithCount] {
 
-    def createActorRunnableJobCmd: ProcessActorRunnableJobCmd[V, V1, V2, U]
+    def createActorRunnableJobCmd: ProcessActorRunnableJobCmd[V, V1, V2, U ]
 
   }
 
-  trait ActorRunnableTaskJobDefinition[W] {
+  trait ActorRunnableTaskJobDefinition[W <: WithCount] {
 
     def createActorRunnableTaskJobCmd: ProcessActorRunnableTaskJobCmd[W]
 
