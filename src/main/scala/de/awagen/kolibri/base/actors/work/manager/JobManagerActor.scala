@@ -45,6 +45,7 @@ import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
+import de.awagen.kolibri.datatypes.types.WithCount
 import de.awagen.kolibri.datatypes.values.AggregateValue
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 import org.slf4j.{Logger, LoggerFactory}
@@ -61,7 +62,7 @@ object JobManagerActor {
 
   type BatchType = Any with WithBatchNr
 
-  def props[T, U](experimentId: String,
+  def props[T, U <: WithCount](experimentId: String,
                   runningTaskBaselineCount: Int,
                   perBatchAggregatorSupplier: () => Aggregator[ProcessingMessage[T], U],
                   perJobAggregatorSupplier: () => Aggregator[ProcessingMessage[T], U],
@@ -83,7 +84,7 @@ object JobManagerActor {
   // cmds telling JobManager to do sth
   sealed trait ExternalJobManagerCmd extends KolibriSerializable
 
-  case class ProcessJobCmd[U, V, V1, W](job: ActorRunnableJobGenerator[U, V, V1, W]) extends ExternalJobManagerCmd
+  case class ProcessJobCmd[U, V, V1, W <: WithCount](job: ActorRunnableJobGenerator[U, V, V1, W]) extends ExternalJobManagerCmd
 
   case object ProvideJobStatus extends ExternalJobManagerCmd
 
@@ -119,7 +120,7 @@ object JobManagerActor {
 }
 
 
-class JobManagerActor[T, U](val jobId: String,
+class JobManagerActor[T, U <: WithCount](val jobId: String,
                             runningTaskBaselineCount: Int,
                             val perBatchAggregatorSupplier: () => Aggregator[ProcessingMessage[T], U],
                             val perJobAggregatorSupplier: () => Aggregator[ProcessingMessage[T], U],

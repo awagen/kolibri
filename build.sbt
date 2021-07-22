@@ -27,6 +27,8 @@ lazy val jvmOptions = Seq(
   "-XX:MaxPermSize=256M"
 )
 
+envVars in Test := Map("PROFILE" -> "test")
+
 test in assembly := {} //causes no tests to be executed when calling "sbt assembly" (without this setting executes all)
 assemblyJarName in assembly := s"kolibri-base.${version.value}.jar" //jar name
 //sbt-assembly settings. If it should only hold for specific subproject build, place the 'assemblyMergeStrategy in assembly' within subproject settings

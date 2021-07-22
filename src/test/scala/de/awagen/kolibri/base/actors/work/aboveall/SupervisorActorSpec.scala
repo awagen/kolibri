@@ -25,6 +25,7 @@ import de.awagen.kolibri.base.actors.KolibriTestKit
 import de.awagen.kolibri.base.actors.TestMessages.{generateProcessActorRunnableJobCmd, generateProcessActorRunnableTaskJobCmd}
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.{FinishedJobEvent, ProcessingResult}
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.ResultSummary
+import de.awagen.kolibri.datatypes.types.WithCount
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
@@ -59,7 +60,7 @@ class SupervisorActorSpec extends KolibriTestKit
     "correctly process ProcessActorRunnableJobCmd" in {
       // given
       val supervisor: ActorRef = system.actorOf(SupervisorActor.props(true))
-      val msg: SupervisorActor.ProcessActorRunnableJobCmd[_,_, _, _] = generateProcessActorRunnableJobCmd("testId1")
+      val msg: SupervisorActor.ProcessActorRunnableJobCmd[_,_, _, _ <: WithCount] = generateProcessActorRunnableJobCmd("testId1")
       // when
       supervisor ! msg
       // then
@@ -77,7 +78,7 @@ class SupervisorActorSpec extends KolibriTestKit
     "correctly process ProcessActorRunnableTaskJobCmd" in {
       // given
       val supervisor: ActorRef = system.actorOf(SupervisorActor.props(true))
-      val msg: SupervisorActor.ProcessActorRunnableTaskJobCmd[_] = generateProcessActorRunnableTaskJobCmd("testId2")
+      val msg: SupervisorActor.ProcessActorRunnableTaskJobCmd[_ <: WithCount] = generateProcessActorRunnableTaskJobCmd("testId2")
       // when
       supervisor ! msg
       // then

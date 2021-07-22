@@ -19,6 +19,7 @@ package de.awagen.kolibri.base.processing.consume
 
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.ProcessingMessage
 import de.awagen.kolibri.base.processing.classifier.Mapper.FilteringMapper
+import de.awagen.kolibri.datatypes.types.WithCount
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 
 
@@ -37,7 +38,7 @@ import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
   * @tparam U - type of the single elements that might be received
   * @tparam V - type of partial aggregations that might be received
   */
-case class AggregatorConfig[U, V](filteringSingleElementMapperForAggregator: FilteringMapper[ProcessingMessage[U], ProcessingMessage[U]],
+case class AggregatorConfig[U, V <: WithCount](filteringSingleElementMapperForAggregator: FilteringMapper[ProcessingMessage[U], ProcessingMessage[U]],
                                   filterAggregationMapperForAggregator: FilteringMapper[V, V],
                                   filteringMapperForResultSending: FilteringMapper[V, V],
                                   aggregatorSupplier: () => Aggregator[ProcessingMessage[U], V])

@@ -28,6 +28,7 @@ import de.awagen.kolibri.base.processing.execution.expectation.{BaseExecutionExp
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnableSinkType.REPORT_TO_ACTOR_SINK
 import de.awagen.kolibri.datatypes.collections.generators.ByFunctionNrLimitedIndexedGenerator
 import de.awagen.kolibri.datatypes.types.SerializableCallable.{SerializableFunction1, SerializableSupplier}
+import de.awagen.kolibri.datatypes.types.WithCount
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.must.Matchers
@@ -61,7 +62,10 @@ class ActorRunnableSpec extends KolibriTestKitNoCluster
     val expectationGen: SerializableFunction1[Int, ExecutionExpectation] = new SerializableFunction1[Int, ExecutionExpectation] {
       override def apply(v1: Int): ExecutionExpectation = BaseExecutionExpectation.empty()
     }
-    val msg1: ActorRunnable[Int, Int, Int, Double] = ActorRunnable(
+
+    case class DataWithCount[T](data: T, count: Int) extends WithCount
+
+    val msg1: ActorRunnable[Int, Int, Int, DataWithCount[Double]] = ActorRunnable(
       jobId = "test",
       batchNr = 1,
       supplier = ByFunctionNrLimitedIndexedGenerator(4, generatorFunc),
@@ -69,15 +73,15 @@ class ActorRunnableSpec extends KolibriTestKitNoCluster
       processingActorProps = None,
       AggregatorConfig(
         filteringSingleElementMapperForAggregator = new AcceptAllAsIdentityMapper[ProcessingMessage[Int]],
-        filterAggregationMapperForAggregator = new AcceptAllAsIdentityMapper[Double],
-        filteringMapperForResultSending = new AcceptAllAsIdentityMapper[Double],
-        aggregatorSupplier = new SerializableSupplier[Aggregator[ProcessingMessage[Int], Double]] {
-          override def apply(): Aggregator[ProcessingMessage[Int], Double] = new Aggregator[ProcessingMessage[Int], Double] {
+        filterAggregationMapperForAggregator = new AcceptAllAsIdentityMapper[DataWithCount[Double]],
+        filteringMapperForResultSending = new AcceptAllAsIdentityMapper[DataWithCount[Double]],
+        aggregatorSupplier = new SerializableSupplier[Aggregator[ProcessingMessage[Int], DataWithCount[Double]]] {
+          override def apply(): Aggregator[ProcessingMessage[Int], DataWithCount[Double]] = new Aggregator[ProcessingMessage[Int], DataWithCount[Double]] {
             override def add(sample: ProcessingMessage[Int]): Unit = ()
 
-            override def aggregation: Double = 0.0
+            override def aggregation: DataWithCount[Double] = DataWithCount(0.0, 1)
 
-            override def addAggregate(aggregatedValue: Double): Unit = ()
+            override def addAggregate(aggregatedValue: DataWithCount[Double]): Unit = ()
           }
         }
       ),
@@ -87,6 +91,12 @@ class ActorRunnableSpec extends KolibriTestKitNoCluster
 
   "ActorRunnable" should {
 
+    import TestMessages._
+
+
+    // TODO: the TestActorRunnableActor reacts to the flag of useAggregatorBackpressure by sending the expected ACKs,
+    // otherwise the test would fail
+    // rather than use global config values for test make those settings explicit
     "correctly execute ActorRunnable" in {
       // given
       val runnableExecutorActor: ActorRef = system.actorOf(Props[TestActorRunnableActor])
@@ -99,14 +109,14 @@ class ActorRunnableSpec extends KolibriTestKitNoCluster
 
     "be serializable" in {
       // given
-      val actorRunnable: ActorRunnable[Int, Int, Int, Double] = TestMessages.msg1
+      val actorRunnable: ActorRunnable[Int, Int, Int, DataWithCount[Double]] = TestMessages.msg1
       // when
       val serialization = SerializationExtension(system)
       val bytes = serialization.serialize(actorRunnable).get
       val serializerId = serialization.findSerializerFor(actorRunnable).identifier
       val manifest = Serializers.manifestFor(serialization.findSerializerFor(actorRunnable), actorRunnable)
       // Turn it back into an object
-      val back: ActorRunnable[Int, Int, Int, Double] = serialization.deserialize(bytes, serializerId, manifest).get.asInstanceOf[ActorRunnable[Int, Int, Int, Double]]
+      val back: ActorRunnable[Int, Int, Int, DataWithCount[Double]] = serialization.deserialize(bytes, serializerId, manifest).get.asInstanceOf[ActorRunnable[Int, Int, Int, DataWithCount[Double]]]
       // then
       back.jobId mustBe actorRunnable.jobId
       back.batchNr mustBe actorRunnable.batchNr

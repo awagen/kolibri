@@ -39,6 +39,7 @@ import de.awagen.kolibri.datatypes.tagging.TagType.AGGREGATION
 import de.awagen.kolibri.datatypes.tagging.TaggedWithType
 import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSupplier
+import de.awagen.kolibri.datatypes.types.WithCount
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -186,14 +187,14 @@ object TestMessages {
     }
   }
 
-  def generateProcessActorRunnableJobCmd(jobId: String): ProcessActorRunnableJobCmd[_, _, _, _] = {
+  def generateProcessActorRunnableJobCmd(jobId: String): ProcessActorRunnableJobCmd[_, _, _, _ <: WithCount] = {
     val actorRunnableGenerator: IndexedGenerator[ActorRunnable[TaggedInt, Int, Int, MapWithCount[Tag, Double]]] = ByFunctionNrLimitedIndexedGenerator(
       nrOfElements = 4,
       genFunc = x => Some(messagesToActorRefRunnableGenFunc(jobId)(x))
     )
-    ProcessActorRunnableJobCmd[TaggedInt, Corn[Int], Int, MapWithCount[Tag, Double]](
+    ProcessActorRunnableJobCmd[TaggedInt, ProcessingMessage[Int], Int, MapWithCount[Tag, Double]](
       jobId = jobId,
-      processElements = actorRunnableGenerator.asInstanceOf[IndexedGenerator[ActorRunnable[TaggedInt, Corn[Int], Int, MapWithCount[Tag, Double]]]],
+      processElements = actorRunnableGenerator.asInstanceOf[IndexedGenerator[ActorRunnable[TaggedInt, ProcessingMessage[Int], Int, MapWithCount[Tag, Double]]]],
       perBatchAggregatorSupplier = aggregatorSupplier,
       perJobAggregatorSupplier = aggregatorSupplier,
       writer = (_: MapWithCount[Tag, Double], _: Tag) => Right(()),
@@ -219,17 +220,20 @@ object TestMessages {
     ByFunctionNrLimitedIndexedGenerator(elements.size, x => Some(TaggedTypeTaggedMap(TypedMapStore(mutable.Map(startDataKey -> elements(x))))))
   }
 
-  val aggregatorSupplier1: SerializableSupplier[Aggregator[ProcessingMessage[Any], Any]] = new SerializableSupplier[Aggregator[ProcessingMessage[Any], Any]] {
-    override def apply(): Aggregator[ProcessingMessage[Any], Any] = new Aggregator[ProcessingMessage[Any], Any] {
+  val aggregatorSupplier1: SerializableSupplier[Aggregator[ProcessingMessage[Any], WithCount]] = new SerializableSupplier[Aggregator[ProcessingMessage[Any], WithCount]] {
+    override def apply(): Aggregator[ProcessingMessage[Any], WithCount] = new Aggregator[ProcessingMessage[Any], WithCount] {
+
+      case class AnyWithCount(value: Any, count: Int) extends WithCount
+
       override def add(sample: ProcessingMessage[Any]): Unit = ()
 
-      override def aggregation: Any = ()
+      override def aggregation: WithCount = AnyWithCount("value", 1)
 
-      override def addAggregate(other: Any): Unit = ()
+      override def addAggregate(other: WithCount): Unit = ()
     }
   }
 
-  def generateProcessActorRunnableTaskJobCmd(jobId: String): ProcessActorRunnableTaskJobCmd[Any] = {
+  def generateProcessActorRunnableTaskJobCmd(jobId: String): ProcessActorRunnableTaskJobCmd[_ <: WithCount] = {
     val baseElements = Seq(Seq("1", "2"), Seq("3", "4"), Seq("5", "6"))
     val batchTypeTaggedMapGenerator: IndexedGenerator[TaggedTypeTaggedMapBatch] = ByFunctionNrLimitedIndexedGenerator(
       5,
@@ -243,12 +247,12 @@ object TestMessages {
       reversedIdKeyPM,
       perBatchAggregatorSupplier = aggregatorSupplier1,
       perJobAggregatorSupplier = aggregatorSupplier1,
-      writer = new Writer[Any, Tag, Any] {
-        override def write(data: Any, targetIdentifier: Tag): Either[Exception, Any] = Right(())
+      writer = new Writer[WithCount, Tag, Any] {
+        override def write(data: WithCount, targetIdentifier: Tag): Either[Exception, Any] = Right(())
       },
       filteringSingleElementMapperForAggregator = new AcceptAllAsIdentityMapper[ProcessingMessage[Any]],
-      filterAggregationMapperForAggregator = new AcceptAllAsIdentityMapper[Any],
-      filteringMapperForResultSending = new AcceptAllAsIdentityMapper[Any],
+      filterAggregationMapperForAggregator = new AcceptAllAsIdentityMapper[WithCount],
+      filteringMapperForResultSending = new AcceptAllAsIdentityMapper[WithCount],
       10 seconds,
       1 minute
     )

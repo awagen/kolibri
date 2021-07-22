@@ -135,6 +135,10 @@ class AggregatingActor[U, V <: WithCount](val aggregatorConfig: AggregatorConfig
     if (useAggregatorBackpressure) sender() ! ACK
   }
 
+  // TODO: we use counts on the aggregated state to be able to accept partial aggregations and still
+  // keep the expectations, e.g if we receive an aggregation state incorporating 10 elements,
+  // then this should fulfill receive expectations on 10 elements. We might add this to aggregation state instead
+  // of requiring this on the value of type V
   def handleAggregationStateMsg(msg: AggregationState[V]): Unit = {
     log.info("received aggregation result event with count: {}", msg.data.count)
     aggregator.addAggregate(aggregatorConfig.filterAggregationMapperForAggregator.map(msg.data))

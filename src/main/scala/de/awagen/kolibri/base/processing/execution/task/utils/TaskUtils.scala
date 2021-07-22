@@ -30,6 +30,7 @@ import de.awagen.kolibri.base.processing.execution.job.{ActorRunnable, ActorRunn
 import de.awagen.kolibri.base.processing.execution.task.Task
 import de.awagen.kolibri.datatypes.ClassTyped
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
+import de.awagen.kolibri.datatypes.types.WithCount
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 
 import java.util.concurrent.atomic.AtomicInteger
@@ -37,14 +38,14 @@ import scala.concurrent.duration.FiniteDuration
 
 object TaskUtils {
 
-  def tasksToActorRunnable[U](jobId: String,
-                              resultKey: ClassTyped[ProcessingMessage[Any]],
-                              mapGenerator: BatchTypeTaggedMapGenerator,
-                              tasks: Seq[Task[_]],
-                              aggregatorSupplier: () => Aggregator[ProcessingMessage[Any], U],
-                              taskExecutionWorkerProps: Props,
-                              timeoutPerRunnable: FiniteDuration,
-                              timeoutPerElement: FiniteDuration): IndexedGenerator[ActorRunnable[SimpleTaskExecution[Any], Any, Any, U]] = {
+  def tasksToActorRunnable[U <: WithCount](jobId: String,
+                                           resultKey: ClassTyped[ProcessingMessage[Any]],
+                                           mapGenerator: BatchTypeTaggedMapGenerator,
+                                           tasks: Seq[Task[_]],
+                                           aggregatorSupplier: () => Aggregator[ProcessingMessage[Any], U],
+                                           taskExecutionWorkerProps: Props,
+                                           timeoutPerRunnable: FiniteDuration,
+                                           timeoutPerElement: FiniteDuration): IndexedGenerator[ActorRunnable[SimpleTaskExecution[Any], Any, Any, U]] = {
     val executionIterable: IndexedGenerator[IndexedGenerator[SimpleTaskExecution[Any]]] =
       mapGenerator.mapGen(x => x.data.mapGen(y => SimpleTaskExecution(resultKey, y, tasks)))
     val atomicInt = new AtomicInteger(0)
