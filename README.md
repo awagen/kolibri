@@ -72,6 +72,12 @@ Further, right now assumes responses corresponding to play json selector
 ```{"response": {"docs": [{"product_id": ...}, {"product_id":...}], ...},...}```
 This is changeable in the flow definition and will be added to the available configuration settings shortly.
 
+## Monitoring
+Metrics are collected utilizing the open source lib Kamon and exposed for prometheus to scrape the metrics.
+In the grafana subfolder you'll find an example dashboard for the kolibri system.
+An overview of the represented metrics can be seen in below screenshot:
+![Alt text](images/Kolibri-Dashboard-Grafana.png?raw=true "Kolibri Grafana Dashboard")
+
 ## Serialization
 
 Within definitions of the jobs, care has to be taken to define all parts that are part of any message to be
