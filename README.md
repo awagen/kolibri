@@ -1,3 +1,6 @@
+[![Scala CI](https://github.com/awagen/kolibri-base/actions/workflows/scala.yml/badge.svg?event=push)](https://github.com/awagen/kolibri-base/actions/workflows/scala.yml)
+
+
 # Kolibri Base
 
 This project provides the mechanism to execute jobs based on akka, making use of clustering to distribute job batches.
@@ -29,8 +32,7 @@ Connection refused:
 
 - you might temporarily need to clone kolibri-datatypes and publish locally (see kolibri-datatypes README on instructions)
 - build jar (find it in target folder afterwards): ```./scripts/buildJar.sh```
-- (optional) publish lib locally: ```sbt publishLocal``` (afterwards to be found in ~/.ivy2/local)
-- build docker image for local usage: ```sudo docker build . -t kolibri-base:0.1.0-alpha2```
+- build docker image for local usage: ```sudo docker build . -t kolibri-base:0.1.0-alpha3```
 - run single-node cluster (compute and httpserver role, access via localhost:
   8000): ```./scripts/docker_run_single_node.sh```
     - sets interface of http server to 0.0.0.0 to allow requests from host system to localhost:8000 reach the service
@@ -57,6 +59,18 @@ approximate pi/4. Steps to execute this simple job example:
   need serialization but is done via ref passing.
 - kill job: ```http://localhost:8000/stopJob?jobId=job1```
 - check status of job: ```http://localhost:8000/getJobStatus?jobId=job1```
+
+## Example clustered job execution: grid evaluation search endpoint
+Within the scripts subfolder you find a testSearchEval.json which provides the general outline of the job definition.
+The script start_searcheval.sh fires this json to the correct endpoint, which then starts a grid evaluation on the given
+parameters and writes an overall aggregation as well as per-query results. The results are written within the kolibri-test subfolder
+in project root, and therein in subfolder equal to the job name given in the abovementioned json job definition.
+Note that the json needs the connections to fire requests against to be defined, assuming service with name search-service
+being added to docker-compose on port 80. Adjust to your individual endpoint(s).
+Further, right now assumes responses corresponding to play json selector 
+```"response" \ "docs" \\ "product_id"```, meaning structure at least containing the hierarchies: 
+```{"response": {"docs": [{"product_id": ...}, {"product_id":...}], ...},...}```
+This is changeable in the flow definition and will be added to the available configuration settings shortly.
 
 ## Serialization
 
