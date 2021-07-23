@@ -27,8 +27,18 @@ import de.awagen.kolibri.datatypes.stores.MetricRow
 import scala.collection.immutable
 
 
+/**
+  * Single functions based on TypeTaggedMap, picking type specific data to compute results.
+  */
 object Functions {
 
+  /**
+    * Assuming existence of data for the key for the product id sequence result, query judgements from
+    * judgement provider for given query.
+    * @param provider
+    * @param query
+    * @return
+    */
   def dataToJudgementsFunc(provider: JudgementProvider[Double], query: String): TypeTaggedMap => Either[TaskFailType, Seq[Option[Double]]] = {
     data =>
       val productIds: Option[Seq[String]] = data.get(PRODUCT_ID_RESULT)
@@ -36,6 +46,11 @@ object Functions {
       else Right(provider.retrieveJudgements(query, productIds.get))
   }
 
+  /**
+    * Pick product id sequence and judgement provider from the typed map to retrieve the judgements for given query
+    * @param query
+    * @return
+    */
   def judgementRetrievalFunc(query: String): TypeTaggedMap => Either[TaskFailType, Seq[Option[Double]]] = {
     data =>
       val productResultsOpt: Option[Seq[String]] = data.get(PRODUCT_ID_RESULT)
@@ -45,6 +60,12 @@ object Functions {
       else Right(judgementProviderOpt.get.retrieveJudgements(query, productResultsOpt.get))
   }
 
+  /**
+    * Assuming judgements are available in the typed map, calculate the specified metrics
+    * @param params
+    * @param metricsCalculation
+    * @return
+    */
   def judgementsToMetricsFunc(params: immutable.Map[String, Seq[String]], metricsCalculation: MetricsCalculation): TypeTaggedMap => Either[TaskFailType, MetricRow] = {
     data =>
       val judgementsOpt: Option[Seq[Option[Double]]] = data.get(JUDGEMENTS)
