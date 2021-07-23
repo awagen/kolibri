@@ -33,6 +33,18 @@ object MetricRow {
 
 case class MetricRow(params: Map[String, Seq[String]], metrics: Map[String, MetricValue[Double]]) extends MetricRecord[String, Double] {
 
+  def totalSuccessCount: Int = metrics.keys.map(x => successCountPerMetric(x)).sum
+
+  def totalErrorCount: Int = metrics.keys.map(x => errorCountPerMetric(x)).sum
+
+  def successCountPerMetric(metricName: String): Int = {
+    metrics.get(metricName).map(value => value.biValue.value2.count).getOrElse(0)
+  }
+
+  def errorCountPerMetric(metricName: String): Int = {
+    metrics.get(metricName).map(value => value.biValue.value1.count).getOrElse(0)
+  }
+
   override def metricNames: Seq[String] = metrics.keys.toSeq
 
   def containsMetric(key: String): Boolean = metrics.keys.toSeq.contains(key)
