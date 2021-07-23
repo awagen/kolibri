@@ -25,6 +25,7 @@ import de.awagen.kolibri.base.actors.work.worker.TaskExecutionWorkerActor.Proces
 import de.awagen.kolibri.base.processing.classifier.Mapper.AcceptAllAsIdentityMapper
 import de.awagen.kolibri.base.processing.consume.AggregatorConfig
 import de.awagen.kolibri.base.processing.execution.SimpleTaskExecution
+import de.awagen.kolibri.base.processing.execution.expectation.Expectation.SuccessAndErrorCounts
 import de.awagen.kolibri.base.processing.execution.expectation.{BaseExecutionExpectation, ClassifyingCountExpectation, StopExpectation, TimeExpectation}
 import de.awagen.kolibri.base.processing.execution.job.{ActorRunnable, ActorRunnableSinkType}
 import de.awagen.kolibri.base.processing.execution.task.Task
@@ -69,7 +70,7 @@ object TaskUtils {
         expectationGenerator = _ => BaseExecutionExpectation(
           Seq(ClassifyingCountExpectation(classifier = Map("ALL" -> (_ => true)),
             expectedClassCounts = Map("ALL" -> x.nrOfElements))),
-          Seq(StopExpectation(x.nrOfElements, _ => false, _ => false),
+          Seq(StopExpectation(x.nrOfElements, _ => SuccessAndErrorCounts(1, 0), _ => false),
             TimeExpectation(timeoutPerRunnable))
         ),
         sinkType = ActorRunnableSinkType.REPORT_TO_ACTOR_SINK,

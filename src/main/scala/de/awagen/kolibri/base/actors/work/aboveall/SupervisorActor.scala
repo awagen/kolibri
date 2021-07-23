@@ -33,6 +33,7 @@ import de.awagen.kolibri.base.io.writer.Writers.Writer
 import de.awagen.kolibri.base.processing.JobMessages.{SearchEvaluation, TestPiCalculation}
 import de.awagen.kolibri.base.processing.classifier.Mapper.FilteringMapper
 import de.awagen.kolibri.base.processing.execution.SimpleTaskExecution
+import de.awagen.kolibri.base.processing.execution.expectation.Expectation.SuccessAndErrorCounts
 import de.awagen.kolibri.base.processing.execution.expectation._
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnable
 import de.awagen.kolibri.base.processing.execution.task.Task
@@ -79,26 +80,26 @@ object SupervisorActor {
   // this can be mapped to actual Iterators over the parameter values contained in the split
   // OrderedMultiValues
   case class ProcessActorRunnableJobCmd[V, V1, V2, U <: WithCount](jobId: String,
-                                                      processElements: ActorRunnableJobGenerator[V, V1, V2, U],
-                                                      perBatchAggregatorSupplier: () => Aggregator[ProcessingMessage[V2], U],
-                                                      perJobAggregatorSupplier: () => Aggregator[ProcessingMessage[V2], U],
-                                                      writer: Writer[U, Tag, _],
-                                                      allowedTimePerBatch: FiniteDuration,
-                                                      allowedTimeForJob: FiniteDuration,
-                                                      expectResultsFromBatchCalculations: Boolean) extends SupervisorCmd
+                                                                   processElements: ActorRunnableJobGenerator[V, V1, V2, U],
+                                                                   perBatchAggregatorSupplier: () => Aggregator[ProcessingMessage[V2], U],
+                                                                   perJobAggregatorSupplier: () => Aggregator[ProcessingMessage[V2], U],
+                                                                   writer: Writer[U, Tag, _],
+                                                                   allowedTimePerBatch: FiniteDuration,
+                                                                   allowedTimeForJob: FiniteDuration,
+                                                                   expectResultsFromBatchCalculations: Boolean) extends SupervisorCmd
 
   case class ProcessActorRunnableTaskJobCmd[U <: WithCount](jobId: String,
-                                               dataIterable: BatchTypeTaggedMapGenerator,
-                                               tasks: Seq[Task[_]],
-                                               resultKey: ClassTyped[ProcessingMessage[Any]],
-                                               perBatchAggregatorSupplier: () => Aggregator[ProcessingMessage[Any], U],
-                                               perJobAggregatorSupplier: () => Aggregator[ProcessingMessage[Any], U],
-                                               writer: Writer[U, Tag, _],
-                                               filteringSingleElementMapperForAggregator: FilteringMapper[ProcessingMessage[Any], ProcessingMessage[Any]],
-                                               filterAggregationMapperForAggregator: FilteringMapper[U, U],
-                                               filteringMapperForResultSending: FilteringMapper[U, U],
-                                               allowedTimePerBatch: FiniteDuration,
-                                               allowedTimeForJob: FiniteDuration) extends SupervisorCmd
+                                                            dataIterable: BatchTypeTaggedMapGenerator,
+                                                            tasks: Seq[Task[_]],
+                                                            resultKey: ClassTyped[ProcessingMessage[Any]],
+                                                            perBatchAggregatorSupplier: () => Aggregator[ProcessingMessage[Any], U],
+                                                            perJobAggregatorSupplier: () => Aggregator[ProcessingMessage[Any], U],
+                                                            writer: Writer[U, Tag, _],
+                                                            filteringSingleElementMapperForAggregator: FilteringMapper[ProcessingMessage[Any], ProcessingMessage[Any]],
+                                                            filterAggregationMapperForAggregator: FilteringMapper[U, U],
+                                                            filteringMapperForResultSending: FilteringMapper[U, U],
+                                                            allowedTimePerBatch: FiniteDuration,
+                                                            allowedTimeForJob: FiniteDuration) extends SupervisorCmd
 
   case class ProvideJobState(jobId: String) extends SupervisorCmd
 
@@ -133,12 +134,12 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
   val jobIdToActorRefAndExpectation: mutable.Map[String, (ActorSetup, ExecutionExpectation)] = mutable.Map.empty
 
   def createJobManagerActor[T, U <: WithCount](jobId: String,
-                                  perBatchAggregatorSupplier: () => Aggregator[ProcessingMessage[T], U],
-                                  perJobAggregatorSupplier: () => Aggregator[ProcessingMessage[T], U],
-                                  writer: Writer[U, Tag, _],
-                                  allowedTimeForJob: FiniteDuration,
-                                  allowedTimeForBatch: FiniteDuration,
-                                  maxNumRetries: Int): ActorRef = {
+                                               perBatchAggregatorSupplier: () => Aggregator[ProcessingMessage[T], U],
+                                               perJobAggregatorSupplier: () => Aggregator[ProcessingMessage[T], U],
+                                               writer: Writer[U, Tag, _],
+                                               allowedTimeForJob: FiniteDuration,
+                                               allowedTimeForBatch: FiniteDuration,
+                                               maxNumRetries: Int): ActorRef = {
     context.actorOf(JobManagerActor.props[T, U](
       experimentId = jobId,
       runningTaskBaselineCount = config.runningTasksBaselineCount,
@@ -169,9 +170,9 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
         StopExpectation(
           overallElementCount = 1,
           errorClassifier = {
-            case e: FinishedJobEvent if e.resultSummary.result == ProcessingResult.SUCCESS => false
-            case e: FinishedJobEvent if e.resultSummary.result == ProcessingResult.FAILURE => true
-            case _ => false
+            case e: FinishedJobEvent if e.resultSummary.result == ProcessingResult.SUCCESS => SuccessAndErrorCounts(1, 0)
+            case e: FinishedJobEvent if e.resultSummary.result == ProcessingResult.FAILURE => SuccessAndErrorCounts(0, 1)
+            case _ => SuccessAndErrorCounts(0, 0)
           },
           overallCountToFailCountFailCriterion = new SerializableFunction1[(Int, Int), Boolean] {
             override def apply(v1: (Int, Int)): Boolean = v1._2 > 0

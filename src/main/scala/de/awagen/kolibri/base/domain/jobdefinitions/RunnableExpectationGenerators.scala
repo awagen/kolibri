@@ -17,6 +17,7 @@
 package de.awagen.kolibri.base.domain.jobdefinitions
 
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages
+import de.awagen.kolibri.base.processing.execution.expectation.Expectation.SuccessAndErrorCounts
 import de.awagen.kolibri.base.processing.execution.expectation._
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 
@@ -30,7 +31,7 @@ object RunnableExpectationGenerators extends Enumeration {
 
   val ONE_FOR_ONE: Val = Val(_ => BaseExecutionExpectation(
     fulfillAllForSuccess = Seq(ReceiveCountExpectation(Map(ProcessingMessages.Corn -> 1))),
-    fulfillAnyForFail = Seq(StopExpectation(0, _ => false, _ => false),
+    fulfillAnyForFail = Seq(StopExpectation(0, _ => SuccessAndErrorCounts(1, 0), _ => false),
       TimeExpectation(10 minutes))))
 
 

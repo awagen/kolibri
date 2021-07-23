@@ -16,6 +16,7 @@
 
 package de.awagen.kolibri.base.processing.execution.expectation
 
+import de.awagen.kolibri.base.processing.execution.expectation.Expectation.SuccessAndErrorCounts
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 
 /**
@@ -27,7 +28,7 @@ import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFuncti
   * @param overallCountToFailCountFailCriterion : takes overallElementCount and errorCount to determine if stop criterion is fulfilled
   */
 case class StopExpectation(overallElementCount: Int,
-                           errorClassifier: SerializableFunction1[Any, Boolean],
+                           errorClassifier: SerializableFunction1[Any, SuccessAndErrorCounts],
                            overallCountToFailCountFailCriterion: SerializableFunction1[(Int, Int), Boolean]) extends Expectation[Any] {
 
   private[this] var errorCount: Int = 0
@@ -39,9 +40,7 @@ case class StopExpectation(overallElementCount: Int,
   }
 
   override def accept[TT >: Any](element: TT): Unit = {
-    if (errorClassifier.apply(element)) {
-      errorCount += 1
-    }
+    errorCount += errorClassifier.apply(element).errorCount
   }
 
   override def succeeded: Boolean = overallCountToFailCountFailCriterion.apply(overallElementCount, errorCount)

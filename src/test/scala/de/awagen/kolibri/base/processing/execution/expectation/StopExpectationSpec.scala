@@ -16,6 +16,7 @@
 
 package de.awagen.kolibri.base.processing.execution.expectation
 
+import de.awagen.kolibri.base.processing.execution.expectation.Expectation.SuccessAndErrorCounts
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 
@@ -26,9 +27,9 @@ class StopExpectationSpec extends UnitTestSpec {
     "correctly determine when condition is met" in {
       // given
       // classifier classifying message as error if its Int and even
-      val errorClassifier: SerializableFunction1[Any, Boolean] =  {
-        case e: Int if e % 2 == 0 => true
-        case _ => false
+      val errorClassifier: SerializableFunction1[Any, SuccessAndErrorCounts] =  {
+        case e: Int if e % 2 == 0 => SuccessAndErrorCounts(0, 1)
+        case _ => SuccessAndErrorCounts(1, 0)
       }
       // stopCriterion that is fulfilled if more or less than 40 % of overall expected messages correspond to error
       val stopCriterion: SerializableFunction1[(Int, Int), Boolean] = {

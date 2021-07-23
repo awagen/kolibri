@@ -23,6 +23,7 @@ import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{Corn, Proce
 import de.awagen.kolibri.base.domain.jobdefinitions.provider.data.BatchGenerators.IntNumberBatchGenerator
 import de.awagen.kolibri.base.io.writer.base.LocalDirectoryFileFileWriter
 import de.awagen.kolibri.base.processing.classifier.Mapper.AcceptAllAsIdentityMapper
+import de.awagen.kolibri.base.processing.execution.expectation.Expectation.SuccessAndErrorCounts
 import de.awagen.kolibri.base.processing.execution.expectation._
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnableSinkType
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
@@ -108,7 +109,7 @@ object TestJobDefinitions {
           case _ => false
         }), expectedClassCounts = Map("finishResponse" -> v1))),
         fulfillAnyForFail = Seq(StopExpectation(v1, {
-          _ => false
+          _ => SuccessAndErrorCounts(1, 0)
         }, x => x._2 > 0),
           TimeExpectation(10 seconds))
       )

@@ -19,11 +19,12 @@ package de.awagen.kolibri.base.usecase.searchopt.jobdefinitions
 
 import akka.actor.{ActorRef, ActorSystem}
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor
-import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.ProcessingMessage
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationState, Corn, ProcessingMessage}
 import de.awagen.kolibri.base.domain.jobdefinitions.JobMsgFactory
 import de.awagen.kolibri.base.http.client.request.RequestTemplateBuilder
 import de.awagen.kolibri.base.processing.JobMessages.SearchEvaluation
 import de.awagen.kolibri.base.processing.classifier.Mapper.AcceptAllAsIdentityMapper
+import de.awagen.kolibri.base.processing.execution.expectation.Expectation.SuccessAndErrorCounts
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnableSinkType
 import de.awagen.kolibri.base.processing.modifiers.Modifier
 import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
@@ -40,7 +41,7 @@ import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
-import de.awagen.kolibri.datatypes.values.AggregateValue
+import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
@@ -75,7 +76,18 @@ object SearchJobDefinitions {
       perBatchExpectationGenerator = expectationPerBatchSupplier[MetricRow](
         600 minutes,
         10,
-        0.3F),
+        0.3F,
+        new SerializableFunction1[Any, SuccessAndErrorCounts] {
+          override def apply(v1: Any): SuccessAndErrorCounts = v1 match {
+            case Corn(e) if e.isInstanceOf[MetricRow] =>
+              val result = e.asInstanceOf[MetricRow]
+              SuccessAndErrorCounts(result.totalSuccessCount, result.totalErrorCount)
+            case AggregationState(data: MetricAggregation[Tag], _, _, _) =>
+              SuccessAndErrorCounts(data.totalSuccessCount, data.totalErrorCount)
+            case _ => SuccessAndErrorCounts(0, 0)
+          }
+        }
+      ),
       perBatchAggregatorSupplier = singleBatchAggregatorSupplier,
       perJobAggregatorSupplier = fullJobToSingleTagAggregatorSupplier,
       writer = Writer.localMetricAggregationWriter(

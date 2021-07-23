@@ -37,6 +37,7 @@ import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 import de.awagen.kolibri.datatypes.types.WithCount
+import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.immutable
@@ -91,7 +92,7 @@ case class ActorRunnable[U, V, V1, Y <: WithCount](jobId: String,
     Flow.fromFunction[ProcessingMessage[V1], ProcessingMessage[V1]](identity)
       .groupedWithin(resultElementGroupingCount, resultElementGroupingInterval)
       .mapAsync[Any](aggregatorResultReceiveParallelism)(messages => {
-        val aggregator = aggregatorConfig.aggregatorSupplier.apply()
+        val aggregator: Aggregator[ProcessingMessage[V1], Y] = aggregatorConfig.aggregatorSupplier.apply()
         messages.foreach(element => aggregator.add(element))
         val aggState = AggregationState(aggregator.aggregation, jobId, batchNr, expectationGenerator.apply(messages.size))
         if (useAggregatorBackpressure) {

@@ -18,6 +18,7 @@
 package de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts
 
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationState, Corn}
+import de.awagen.kolibri.base.processing.execution.expectation.Expectation.SuccessAndErrorCounts
 import de.awagen.kolibri.base.processing.execution.expectation._
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
 
@@ -29,22 +30,28 @@ object Expectations {
     * Function taking number of overall element counts and returning ExecutionExpectation reflecting the passed criteria
     * on timeout, failure fraction. Note that the below always assumes that a Corn holds valid ("successfully generated")
     * data, while e.g BadCorn is supposed to be unsuccessful.
-    * TODO: this success/fail criterion needs revision
     */
-  def expectationPerBatchSupplier[T](timeout: FiniteDuration,
-                                     minOverallElementCount: Int = 10,
-                                     maxAllowedFailFraction: Float = 0.2F): Int => ExecutionExpectation = v1 => {
+  def expectationPerBatchSupplier[T <: AnyRef](timeout: FiniteDuration,
+                                               minOverallElementCount: Int = 10,
+                                               maxAllowedFailFraction: Float = 0.2F,
+                                               successAndErrorClassifier: Any => SuccessAndErrorCounts): Int => ExecutionExpectation = v1 => {
     AnySucceedsOrAllFailExecutionExpectation(
       Seq(
         // expectation for the single results
         BaseExecutionExpectation(
           fulfillAllForSuccess = Seq(ClassifyingCountExpectation(classifier = Map("finishResponse" -> {
-            case Corn(e) if e.isInstanceOf[T] => true
+            case Corn(e) if e.isInstanceOf[T] => {
+              val successAndErrorCounts = successAndErrorClassifier.apply(e)
+              successAndErrorCounts.successCount > 0
+            }
             case _ => false
           }), expectedClassCounts = Map("finishResponse" -> v1))),
-          fulfillAnyForFail = Seq(StopExpectation(v1, {
-            _ => false
-          }, x => v1 > minOverallElementCount && x._2.toFloat / x._1 > maxAllowedFailFraction),
+          fulfillAnyForFail = Seq(
+            StopExpectation(
+              v1,
+              x => successAndErrorClassifier.apply(x),
+              x => v1 > minOverallElementCount && x._2.toFloat / x._1 > maxAllowedFailFraction
+            ),
             TimeExpectation(timeout))
         ),
         // expectation for the AggregationState results to allow either aggregation
@@ -52,7 +59,7 @@ object Expectations {
         BaseExecutionExpectation(
           fulfillAllForSuccess = Seq(ElementCountingExpectation(
             countPerElementFunc = {
-              case AggregationState(data: MetricAggregation[T],_,_,_) =>
+              case AggregationState(data: MetricAggregation[T], _, _, _) =>
                 data.count
               case _ => 0
             }, v1)
