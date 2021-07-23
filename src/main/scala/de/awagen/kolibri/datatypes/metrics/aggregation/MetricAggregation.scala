@@ -40,6 +40,12 @@ case class MetricAggregation[A <: AnyRef](aggregationStateMap: mutable.Map[A, Me
 
   private[this] var aggregatedElementsCount: Int = _
 
+  // sums up the successCounts over all aggregationStateMap values
+  def totalSuccessCount: Int = aggregationStateMap.values.map(x => x.totalSuccessCount).sum
+
+  // sums up the errorCounts over all aggregationStateMap values
+  def totalErrorCount: Int = aggregationStateMap.values.map(x => x.totalErrorCount).sum
+
   override def count: Int = aggregatedElementsCount
 
   def addResults(tags: Set[A], record: MetricRow): Unit = {

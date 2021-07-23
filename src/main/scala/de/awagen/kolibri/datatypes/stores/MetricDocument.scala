@@ -42,6 +42,12 @@ case class MetricDocument[A <: AnyRef](id: A, rows: mutable.Map[ParamMap, Metric
   private[this] var paramNames: Set[String] = rows.keySet.flatMap(x => x.keys).toSet
   private[this] var metricNames: Set[String] = rows.values.map(x => x.metricNames.toSet).fold(Set.empty[String])((y, z) => y ++ z)
 
+  // sums up totalSuccessCount over all values in the result nap (MetricRow values)
+  def totalSuccessCount: Int = rows.values.map(x => x.totalSuccessCount).sum
+
+  // sums up totalErrorCount over all values in the result nap (MetricRow values)
+  def totalErrorCount: Int = rows.values.map(x => x.totalErrorCount).sum
+
   def add(row: MetricRow): Unit = {
     rows(row.params) = rows.getOrElse(row.params, MetricRow(row.params, Map.empty)).addRecord(row)
     metricNames = metricNames ++ row.metricNames
