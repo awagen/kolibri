@@ -31,11 +31,31 @@ object MetricRow {
 }
 
 
+/**
+  * single metric row, where each row is identified by set of parameters and metric values that hold for the parameters
+  *
+  * @param params  - Map with key = parameter name, value = sequence of values (assuming a single parameter could have
+  *                multiple values)
+  * @param metrics - Map with key = metric name and value = MetricValue[Double], describing the actual value that might
+  *                be generated from many samples and error types along with the error counts
+  */
 case class MetricRow(params: Map[String, Seq[String]], metrics: Map[String, MetricValue[Double]]) extends MetricRecord[String, Double] {
 
-  def totalSuccessCount: Int = metrics.keys.map(x => successCountPerMetric(x)).sum
+  def totalSuccessCountSum: Int = metrics.keys.map(x => successCountPerMetric(x)).sum
 
-  def totalErrorCount: Int = metrics.keys.map(x => errorCountPerMetric(x)).sum
+  def totalSuccessCountAvg: Double = if (metrics.keys.isEmpty) 0.0 else totalSuccessCountSum / metrics.keys.size.toDouble
+
+  def totalSuccessCountMax: Int = metrics.keys.map(x => successCountPerMetric(x)).max
+
+  def totalSuccessCountMin: Int = metrics.keys.map(x => successCountPerMetric(x)).min
+
+  def totalErrorCountSum: Int = metrics.keys.map(x => errorCountPerMetric(x)).sum
+
+  def totalErrorCountAvg: Double = if (metrics.keys.isEmpty) 0.0 else totalErrorCountSum / metrics.keys.size.toDouble
+
+  def totalErrorCountMax: Int = metrics.keys.map(x => errorCountPerMetric(x)).max
+
+  def totalErrorCountMin: Int = metrics.keys.map(x => errorCountPerMetric(x)).min
 
   def successCountPerMetric(metricName: String): Int = {
     metrics.get(metricName).map(value => value.biValue.value2.count).getOrElse(0)

@@ -42,11 +42,23 @@ case class MetricDocument[A <: AnyRef](id: A, rows: mutable.Map[ParamMap, Metric
   private[this] var paramNames: Set[String] = rows.keySet.flatMap(x => x.keys).toSet
   private[this] var metricNames: Set[String] = rows.values.map(x => x.metricNames.toSet).fold(Set.empty[String])((y, z) => y ++ z)
 
-  // sums up totalSuccessCount over all values in the result nap (MetricRow values)
-  def totalSuccessCount: Int = rows.values.map(x => x.totalSuccessCount).sum
+  // sums up totalSuccessCountSum over all values in the result map (MetricRow values)
+  def totalSuccessCountSum: Int = rows.values.map(x => x.totalSuccessCountSum).sum
 
-  // sums up totalErrorCount over all values in the result nap (MetricRow values)
-  def totalErrorCount: Int = rows.values.map(x => x.totalErrorCount).sum
+  def totalSuccessCountAvg: Double = if (rows.values.isEmpty) 0.0 else rows.values.map(x => x.totalSuccessCountAvg).sum / rows.values.size
+
+  def totalSuccessCountMax: Int = rows.values.map(x => x.totalSuccessCountMax).max
+
+  def totalSuccessCountMin: Int = rows.values.map(x => x.totalSuccessCountMin).min
+
+  // sums up totalErrorCountSum over all values in the result map (MetricRow values)
+  def totalErrorCountSum: Int = rows.values.map(x => x.totalErrorCountSum).sum
+
+  def totalErrorCountAvg: Double = if (rows.values.isEmpty) 0.0 else rows.values.map(x => x.totalErrorCountAvg).sum / rows.values.size
+
+  def totalErrorCountMax: Int = rows.values.map(x => x.totalErrorCountMax).max
+
+  def totalErrorCountMin: Int = rows.values.map(x => x.totalErrorCountMin).min
 
   def add(row: MetricRow): Unit = {
     rows(row.params) = rows.getOrElse(row.params, MetricRow(row.params, Map.empty)).addRecord(row)
