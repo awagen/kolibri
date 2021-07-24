@@ -81,9 +81,9 @@ object SearchJobDefinitions {
           override def apply(v1: Any): SuccessAndErrorCounts = v1 match {
             case Corn(e) if e.isInstanceOf[MetricRow] =>
               val result = e.asInstanceOf[MetricRow]
-              SuccessAndErrorCounts(result.totalSuccessCount, result.totalErrorCount)
+              SuccessAndErrorCounts(result.totalSuccessCountMin, result.totalErrorCountMin)
             case AggregationState(data: MetricAggregation[Tag], _, _, _) =>
-              SuccessAndErrorCounts(data.totalSuccessCount, data.totalErrorCount)
+              SuccessAndErrorCounts(data.totalSuccessCountMin, data.totalErrorCountMin)
             case _ => SuccessAndErrorCounts(0, 0)
           }
         }
