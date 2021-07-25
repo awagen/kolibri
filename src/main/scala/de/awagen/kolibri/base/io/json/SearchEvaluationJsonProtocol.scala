@@ -24,6 +24,8 @@ import ConnectionJsonProtocol._
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import spray.json.{DefaultJsonProtocol, RootJsonFormat}
 import RequestPermutationJsonProtocol._
+import de.awagen.kolibri.base.usecase.searchopt.parse.JsonSelectors.RecursiveValueSelector
+import de.awagen.kolibri.base.usecase.searchopt.io.json.JsonSelectorJsonProtocol._
 
 
 object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSupport {
@@ -37,6 +39,7 @@ object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSu
       requestPermutation: RequestPermutation,
       batchByIndex: Int,
       queryParam: String,
+      productIdSelector: RecursiveValueSelector[String],
       excludeParamsFromMetricRow: Seq[String],
       judgementFileClasspathURI: String,
       tagByParam: String,
@@ -55,6 +58,7 @@ object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSu
         requestPermutation,
         batchByIndex,
         queryParam,
+        productIdSelector,
         excludeParamsFromMetricRow,
         judgementFileClasspathURI,
         tagByParam,
@@ -72,6 +76,7 @@ object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSu
     "requestPermutation",
     "batchByIndex",
     "queryParam",
+    "productIdSelector",
     "excludeParamsFromMetricRow",
     "judgementFileClasspathURI",
     "tagByParam",

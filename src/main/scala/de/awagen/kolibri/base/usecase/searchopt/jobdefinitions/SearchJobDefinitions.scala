@@ -64,7 +64,7 @@ object SearchJobDefinitions {
         groupId = searchEvaluation.jobName,
         connections = searchEvaluation.connections,
         requestTagger = taggerByParameter(searchEvaluation.tagByParam),
-        responseParsingFunc = SolrHttpResponseHandlers.httpToProductIdSeqFuture(_ => true),
+        responseParsingFunc = SolrHttpResponseHandlers.httpResponseToProductIdSeqFutureByParseFunc(_ => true, searchEvaluation.productIdSelector.select),
         judgementProviderFactory = ClassPathFileBasedJudgementProviderFactory(
           searchEvaluation.judgementFileClasspathURI
         ),

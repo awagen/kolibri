@@ -45,7 +45,7 @@
         {
           "name": "o",
           "start": 0.0,
-          "end": 1000.0,
+          "end": 2000.0,
           "stepSize": 1.0
         }
       ]
@@ -58,6 +58,10 @@
   },
   "batchByIndex": 0,
   "queryParam": "q",
+  "productIdSelector": {
+    "plainSelectorKeys": ["response", "docs"],
+    "recursiveSelectorKey": "product_id"
+  },
   "excludeParamsFromMetricRow": [
     "q"
   ],

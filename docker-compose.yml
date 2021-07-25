@@ -23,7 +23,7 @@ services:
     user: "1000:1000"
 
   kolibri1:
-    image: kolibri-base:0.1.0-alpha3
+    image: kolibri-base:0.1.0-alpha4
     ports:
       - "8000:8000"
       - "5266:5266"
@@ -77,7 +77,7 @@ services:
 #    mem_limit: 4200m
 
   kolibri2:
-    image: kolibri-base:0.1.0-alpha3
+    image: kolibri-base:0.1.0-alpha4
     ports:
       - "5267:5267"
       - "9096:9096"

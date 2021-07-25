@@ -26,6 +26,7 @@ import de.awagen.kolibri.base.processing.JobMessages.{SearchEvaluation, TestPiCa
 import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.SearchJobDefinitions
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.RequestModifiers.RequestPermutation
+import de.awagen.kolibri.base.usecase.searchopt.parse.JsonSelectors.RecursiveValueSelector
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
 import de.awagen.kolibri.datatypes.stores.MetricRow
@@ -48,6 +49,7 @@ object JobMessages {
                               requestPermutation: RequestPermutation,
                               batchByIndex: Int,
                               queryParam: String,
+                              productIdSelector: RecursiveValueSelector[String],
                               excludeParamsFromMetricRow: Seq[String],
                               judgementFileClasspathURI: String,
                               tagByParam: String,
