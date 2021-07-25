@@ -17,10 +17,32 @@
 
 package de.awagen.kolibri.base.usecase.searchopt.parse
 
-import play.api.libs.json.{JsDefined, JsLookupResult, JsReadable, JsUndefined, JsValue}
+import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
+import org.slf4j.{Logger, LoggerFactory}
+import play.api.libs.json._
 
 
 object JsonSelectors {
+
+  val logger: Logger = LoggerFactory.getLogger(this.getClass)
+
+  trait Selector[+T] {
+    def select(jsValue: JsValue): T
+
+    def select(jsValue: JsLookupResult): T
+  }
+
+  trait PlainSelector extends Selector[JsLookupResult] {
+    def select(jsValue: JsValue): JsLookupResult
+
+    def select(jsValue: JsLookupResult): JsLookupResult
+  }
+
+  trait SeqSelector extends Selector[collection.Seq[JsValue]] {
+    def select(jsValue: JsValue): collection.Seq[JsValue]
+
+    def select(lookupResult: JsLookupResult): collection.Seq[JsValue]
+  }
 
   /**
     * Single key selector. Keeps JsLookupResult as outcome that can either
@@ -29,10 +51,10 @@ object JsonSelectors {
     *
     * @param key
     */
-  case class SingleKeySelector(key: String) {
-    def select(jsValue: JsValue): JsLookupResult = jsValue \ key
+  case class SingleKeySelector(key: String) extends PlainSelector {
+    override def select(jsValue: JsValue): JsLookupResult = jsValue \ key
 
-    def select(jsValue: JsLookupResult): JsLookupResult = jsValue \ key
+    override def select(jsValue: JsLookupResult): JsLookupResult = jsValue \ key
   }
 
   /**
@@ -41,10 +63,10 @@ object JsonSelectors {
     *
     * @param key - key to collect values for
     */
-  case class RecursiveSelector(key: String) {
-    def select(jsValue: JsValue): collection.Seq[JsValue] = jsValue \\ key
+  case class RecursiveSelector(key: String) extends SeqSelector {
+    override def select(jsValue: JsValue): collection.Seq[JsValue] = jsValue \\ key
 
-    def select(lookupResult: JsLookupResult): collection.Seq[JsValue] = lookupResult \\ key
+    override def select(lookupResult: JsLookupResult): collection.Seq[JsValue] = lookupResult \\ key
   }
 
   /**
@@ -53,9 +75,14 @@ object JsonSelectors {
     *
     * @param selectorKeys - sequential keys
     */
-  case class PlainPathSelector(selectorKeys: Seq[String]) {
+  case class PlainPathSelector(selectorKeys: Seq[String]) extends PlainSelector {
 
     val selectors: Seq[SingleKeySelector] = selectorKeys.map(x => SingleKeySelector(x))
+
+    def select(lookup: JsLookupResult): JsLookupResult = lookup match {
+      case JsDefined(value) => select(value)
+      case undef: JsUndefined => undef
+    }
 
     def select(jsValue: JsValue): JsLookupResult = {
       var currentLookupOpt = Option.empty[JsLookupResult]
@@ -76,7 +103,12 @@ object JsonSelectors {
     * @param recursiveSelectorKey - the key for the recursive selector
     * @param plainSelectorKeys    - the keys for the plain path query before applying the recursive selector
     */
-  case class PlainAndRecursiveSelector(recursiveSelectorKey: String, plainSelectorKeys: String*) {
+  case class PlainAndRecursiveSelector(recursiveSelectorKey: String, plainSelectorKeys: String*) extends SeqSelector {
+    def select(lookup: JsLookupResult): collection.Seq[JsValue] = lookup match {
+      case JsDefined(value) => select(value)
+      case _: JsUndefined => Seq.empty
+    }
+
     def select(jsValue: JsValue): collection.Seq[JsValue] = {
       var lookupResult: JsLookupResult = JsDefined(jsValue)
       if (plainSelectorKeys.nonEmpty) {
@@ -88,17 +120,20 @@ object JsonSelectors {
     }
   }
 
-  /**
-    * Enum reflecting the distinct type conversions
-    */
-  object ResultTypeEnum extends Enumeration {
-    type ResultTypeEnum = Val[_]
+  case class ValueSelector[U, V](selector: Selector[U], mapFunc: SerializableFunction1[U, V]) {
+    def select(jsonValue: JsValue): V = {
+      val selected: U = selector.select(jsonValue)
+      mapFunc.apply(selected)
+    }
+  }
 
-    case class Val[T](parseFunc: JsReadable => T) extends super.Val
+  case class SingleValueSelector[T](plainSelectorKeys: Seq[String])(implicit reads: Reads[T]) {
+    val selector: PlainPathSelector = PlainPathSelector(plainSelectorKeys)
 
-    val STRING: Val[String] = Val(x => x.as[String])
-    val DOUBLE: Val[Double] = Val(x => x.as[Double])
-
+    def select(jsValue: JsValue): T = {
+      val value: JsLookupResult = selector.select(jsValue)
+      value.as[T]
+    }
   }
 
   /**
@@ -107,14 +142,17 @@ object JsonSelectors {
     * the result conversion.
     *
     * @param plainSelectorKeys    - seq of plain selector keys, can be empty
-    * @param recursiveSelectorKey - optional key for recursive selector
-    * @param singleResultType     - result type of the expected result, used to apply
-    *                             type conversion on the result
+    * @param recursiveSelectorKey - key for recursive selector
     */
-  case class SelectorConfig(plainSelectorKeys: Seq[String],
-                            recursiveSelectorKey: Option[String],
-                            singleResultType: ResultTypeEnum.Val[_]) {
+  case class RecursiveValueSelector[T](plainSelectorKeys: Seq[String],
+                                       recursiveSelectorKey: String)(implicit reads: Reads[T]) {
 
+    val selector: PlainAndRecursiveSelector = PlainAndRecursiveSelector(recursiveSelectorKey, plainSelectorKeys: _*)
+
+    def select(jsValue: JsValue): Seq[T] = {
+      val value: collection.Seq[JsValue] = selector.select(jsValue)
+      value.map(x => x.as[T]).toSeq
+    }
   }
 
 }
