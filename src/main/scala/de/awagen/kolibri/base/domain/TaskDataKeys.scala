@@ -27,7 +27,21 @@ import scala.reflect.runtime.universe._
 object TaskDataKeys extends Enumeration {
   type TaskDataKeys = Val[_]
 
-  case class Val[T: TypeTag](identifier: String) extends ClassTyped[T]
+  case class Val[T: TypeTag](identifier: String) extends ClassTyped[T] {
+
+    override def hashCode(): Int = {
+      var hash = 7
+      hash = 31 * hash + super.hashCode()
+      hash = 31 * hash + identifier.hashCode
+      hash
+    }
+
+    override def equals(obj: Any): Boolean = {
+      if (!obj.isInstanceOf[Val[T]] || !(super.equals(obj) && obj.asInstanceOf[Val[T]].identifier == identifier)) false
+      else true
+    }
+
+  }
 
   val METRICS: TaskDataKeys.Val[MetricRow] = Val("metrics")
   val METRICS_PM: TaskDataKeys.Val[ProcessingMessage[MetricRow]] = Val("metrics_message")

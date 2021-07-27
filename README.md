@@ -6,7 +6,13 @@
 This project provides the mechanism to execute jobs based on akka, making use of clustering to distribute job batches.
 ![Alt text](images/kolibri.svg?raw=true "Kolibri Base")
 
-## Writing tests with / without cluster startup
+
+## Tests
+### Execution
+- when executing in intellij, make sure to set env variable PROFILE=test
+- when executed via sbt test, as defined in build.sbt, thie PROFILE env var is already set
+
+### Writing tests with / without cluster startup
 
 - the actor system for tests is started on per-test basis via letting the test extending KolibriTestKit (in case a
   cluster is needed for the test - despite being just 1-node cluster) or KolibriTestKitNoCluster (in case test needs no
