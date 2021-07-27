@@ -42,11 +42,14 @@ import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
+import org.slf4j.{Logger, LoggerFactory}
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
 object SearchJobDefinitions {
+
+  val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
 
   def searchEvaluationToRunnableJobCmd(searchEvaluation: SearchEvaluation)(implicit as: ActorSystem, ec: ExecutionContext):
@@ -83,7 +86,8 @@ object SearchJobDefinitions {
               val result = e.asInstanceOf[MetricRow]
               SuccessAndErrorCounts(result.totalSuccessCountMin, result.totalErrorCountMin)
             case AggregationState(data: MetricAggregation[Tag], _, _, _) =>
-              SuccessAndErrorCounts(data.totalSuccessCountMin, data.totalErrorCountMin)
+              // TODO: check the counts, e.g at the moment sum should be the correct criterium
+              SuccessAndErrorCounts(data.totalSuccessCountSum, data.totalErrorCountSum)
             case _ => SuccessAndErrorCounts(0, 0)
           }
         }

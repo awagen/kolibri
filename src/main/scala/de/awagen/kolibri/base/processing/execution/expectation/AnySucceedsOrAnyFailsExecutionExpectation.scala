@@ -17,19 +17,19 @@
 
 package de.awagen.kolibri.base.processing.execution.expectation
 
-object AnySucceedsOrAllFailExecutionExpectation {
+object AnySucceedsOrAnyFailsExecutionExpectation {
 
-  def empty: AnySucceedsOrAllFailExecutionExpectation = AnySucceedsOrAllFailExecutionExpectation(Seq.empty)
+  def empty: AnySucceedsOrAnyFailsExecutionExpectation = AnySucceedsOrAnyFailsExecutionExpectation(Seq.empty)
 
 }
 
 
 /**
-  * Succeeds if any suceeds and fails only if all fail
+  * Fails if any fails and succeds if any succeeds without failed expectation
   * @param expectations
   */
-case class AnySucceedsOrAllFailExecutionExpectation(expectations: Seq[ExecutionExpectation]) extends ExecutionExpectation {
-  override def failed: Boolean = expectations.count(x => x.failed) == expectations.size
+case class AnySucceedsOrAnyFailsExecutionExpectation(expectations: Seq[ExecutionExpectation]) extends ExecutionExpectation {
+  override def failed: Boolean = !succeeded && expectations.count(x => x.failed) > 0
 
   override def failedWhenMetExpectations: Seq[Expectation[Any]] = expectations.flatMap(x => x.failedWhenMetExpectations)
 
@@ -39,7 +39,7 @@ case class AnySucceedsOrAllFailExecutionExpectation(expectations: Seq[ExecutionE
 
   override def succeededExpectations: Seq[Expectation[Any]] = expectations.flatMap(x => x.succeededExpectations)
 
-  override def deepCopy: ExecutionExpectation = AnySucceedsOrAllFailExecutionExpectation(expectations.map(x => x.deepCopy))
+  override def deepCopy: ExecutionExpectation = AnySucceedsOrAnyFailsExecutionExpectation(expectations.map(x => x.deepCopy))
 
   override def init: Unit = expectations.foreach(x => x.init)
 

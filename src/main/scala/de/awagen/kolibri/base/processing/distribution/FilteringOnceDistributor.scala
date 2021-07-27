@@ -24,8 +24,6 @@ import org.slf4j.{Logger, LoggerFactory}
 
 /**
   * Distributor that distributes once and only accepts leftover results once
-  * TODO: need override of next to filter out batches that are not contained
-  * in acceptOnlyIds anyways
   */
 class FilteringOnceDistributor[T <: WithBatchNr, U](private[this] var maxParallel: Int,
                                                     generator: IndexedGenerator[T],
@@ -41,6 +39,9 @@ class FilteringOnceDistributor[T <: WithBatchNr, U](private[this] var maxParalle
     var didAccept: Boolean = false
     if (acceptOnlyIds.contains(element.batchNr)) {
       acceptOnlyIds = acceptOnlyIds - element.batchNr
+      if (element.executionExpectation.failed) {
+        markAsFail(element.batchNr)
+      }
       didAccept = true
     }
     else {

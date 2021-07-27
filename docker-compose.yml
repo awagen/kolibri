@@ -72,6 +72,7 @@ services:
       RESULT_ELEMENT_GROUPING_PARALLELISM: 1
       USE_AGGREGATOR_BACKPRESSURE: 'true'
       AGGREGATOR_RECEIVE_PARALLELISM: 32
+      MAX_NR_BATCH_RETRIES: 2
     volumes:
       - ./kolibri-test:/app/data
 #    mem_limit: 4200m
@@ -123,6 +124,7 @@ services:
       RESULT_ELEMENT_GROUPING_PARALLELISM: 1
       USE_AGGREGATOR_BACKPRESSURE: 'true'
       AGGREGATOR_RECEIVE_PARALLELISM: 32
+      MAX_NR_BATCH_RETRIES: 2
     volumes:
       - ./kolibri-test:/app/data
 #    mem_limit: 4200m

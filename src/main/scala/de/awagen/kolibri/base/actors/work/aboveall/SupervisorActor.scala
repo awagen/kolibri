@@ -26,7 +26,7 @@ import de.awagen.kolibri.base.actors.work.manager.JobManagerActor._
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{ProcessingMessage, ResultSummary}
 import de.awagen.kolibri.base.actors.work.worker.TaskExecutionWorkerActor
 import de.awagen.kolibri.base.config.AppConfig._
-import de.awagen.kolibri.base.config.AppConfig.config.kolibriDispatcherName
+import de.awagen.kolibri.base.config.AppConfig.config.{kolibriDispatcherName, maxNrBatchRetries}
 import de.awagen.kolibri.base.domain.jobdefinitions.Batch
 import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions.MapWithCount
 import de.awagen.kolibri.base.io.writer.Writers.Writer
@@ -252,7 +252,6 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
       }
       else {
         log.info("Creating and sending job to JobManager, jobId: {}", jobId)
-        // TODO: bake the maxNumRetries into the job definition to execute
         val actor = createJobManagerActor(
           jobId = jobId,
           perBatchAggregatorSupplier = job.perBatchAggregatorSupplier,
@@ -260,7 +259,7 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
           writer = job.writer,
           allowedTimeForJob = job.allowedTimeForJob,
           allowedTimeForBatch = job.allowedTimePerBatch,
-          maxNumRetries = 2)
+          maxNumRetries = maxNrBatchRetries)
         // registering actor to receive Terminated messages in case a
         // job manager actor stopped
         context.watch(actor)
@@ -285,8 +284,7 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
           runnableJob.perJobAggregatorSupplier,
           runnableJob.writer,
           runnableJob.allowedTimeForJob,
-          // TODO: bake the maxNumRetries into the job definition to execute
-          runnableJob.allowedTimePerBatch, 2)
+          runnableJob.allowedTimePerBatch, maxNrBatchRetries)
         context.watch(actor)
         actor ! e
         val expectation = createJobExecutionExpectation(runnableJob.allowedTimeForJob)
@@ -311,8 +309,7 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
           runnableJob.writer,
           runnableJob.allowedTimeForJob,
           runnableJob.allowedTimePerBatch,
-          // TODO: bake the maxNumRetries into the job definition to execute
-          2)
+          maxNrBatchRetries)
         context.watch(actor)
         actor ! e
         val expectation = createJobExecutionExpectation(runnableJob.allowedTimeForJob)
@@ -338,7 +335,6 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
             timeoutPerRunnable = job.allowedTimePerBatch,
             1 minute)
         log.info("Creating and sending job to JobManager, jobId: {}", jobId)
-        // TODO: bake the maxNumRetries into the job definition to execute
         val actor = createJobManagerActor(
           jobId,
           job.perBatchAggregatorSupplier,
@@ -346,7 +342,7 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
           job.writer,
           job.allowedTimeForJob,
           job.allowedTimePerBatch,
-          2)
+          maxNrBatchRetries)
         context.watch(actor)
         actor ! ProcessJobCmd(mappedIterable)
         val expectation = createJobExecutionExpectation(job.allowedTimeForJob)

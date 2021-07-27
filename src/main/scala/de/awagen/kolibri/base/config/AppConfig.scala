@@ -149,6 +149,8 @@ object AppConfig {
     val resultElementGroupingCount: Int = baseConfig.getInt("kolibri.execution.resultElementGroupingCount")
     val resultElementGroupingInterval: FiniteDuration = getFiniteDuration(baseConfig, "kolibri.execution.resultElementGroupingIntervalInMs", MILLISECONDS)
     val resultElementGroupingParallelism: Int = baseConfig.getInt("kolibri.execution.resultElementGroupingParallelism")
+
+    val maxNrBatchRetries: Int = baseConfig.getInt("kolibri.execution.maxNrBatchRetries")
   }
 
 }

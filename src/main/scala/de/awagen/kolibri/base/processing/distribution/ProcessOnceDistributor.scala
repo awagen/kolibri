@@ -30,7 +30,6 @@ import org.slf4j.{Logger, LoggerFactory}
   *
   * @param maxParallel    - max elements to provide as in progress at the same time
   * @param generator      - generator providing the elements of type T
-  * @param resultConsumer - consumer of the aggregated result of tyoe AggregationState[T]
   * @tparam T - type of elements provided by generator
   * @tparam U - type of the aggregation
   */
@@ -79,6 +78,9 @@ class ProcessOnceDistributor[T <: WithBatchNr, U](private[this] var maxParallel:
     if ((failed ++ inProgress).contains(element.batchNr)) {
       removeBatchRecords(element.batchNr)
       numResultsReceivedCount += 1
+      if (element.executionExpectation.failed) {
+        markAsFail(element.batchNr)
+      }
       true
     }
     else {

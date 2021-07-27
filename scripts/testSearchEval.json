@@ -15,6 +15,11 @@
       "host": "search-service",
       "port": 80,
       "useHttps": false
+    },
+    {
+      "host": "search-service1",
+      "port": 81,
+      "useHttps": false
     }
   ],
   "requestPermutation": {
@@ -59,7 +64,10 @@
   "batchByIndex": 0,
   "queryParam": "q",
   "productIdSelector": {
-    "plainSelectorKeys": ["response", "docs"],
+    "plainSelectorKeys": [
+      "response",
+      "docs"
+    ],
     "recursiveSelectorKey": "product_id"
   },
   "excludeParamsFromMetricRow": [
