@@ -32,6 +32,31 @@ class ClassTyped[+T: TypeTag] extends KolibriSerializable {
   val classType: Type = implicitly[TypeTag[T]].tpe
   val castFunc: Any => T = x => x.asInstanceOf[T]
 
+  override def equals(obj: Any): Boolean = {
+    if (!obj.isInstanceOf[ClassTyped[T]] || !(typeOf[T] =:= obj.asInstanceOf[ClassTyped[T]].classType)) false
+    else true
+  }
+
+  override def hashCode(): Int = typeOf[T].hashCode()
+}
+
+case class NamedClassTyped[+T: TypeTag](name: String) extends ClassTyped[T] {
+
+  override def equals(obj: Any): Boolean = {
+    if (!obj.isInstanceOf[NamedClassTyped[T]]) return false
+    val other = obj.asInstanceOf[NamedClassTyped[T]]
+    if (!super.equals(obj)) false
+    else other.name == name
+  }
+
+  override def hashCode(): Int = {
+    var hash = 7
+    hash = 31 * hash + super.hashCode()
+    hash = 31 * hash + name.hashCode
+    hash
+  }
+
+
 }
 
 

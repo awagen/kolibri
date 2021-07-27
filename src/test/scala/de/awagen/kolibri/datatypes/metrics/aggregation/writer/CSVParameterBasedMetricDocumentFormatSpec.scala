@@ -62,19 +62,19 @@ class CSVParameterBasedMetricDocumentFormatSpec extends UnitTestSpec {
       val expectedHeader3 = "p1\tp3\tfail-count-metrics4\tfailReasons-metrics4\tsuccess-count-metrics4\tvalue-metrics4"
       // then
       header1 mustBe expectedHeader1
-      row1 mustBe "v1_1\tv1_2\t0\t\t1\t0.2\t0\t\t1\t0.4"
+      row1 mustBe "v1_1\tv1_2\t0\t\t1\t0.2000\t0\t\t1\t0.4000"
       header2 mustBe expectedHeader2
-      row2 mustBe "v2_1\tv2_2\t0\t\t1\t0.1"
+      row2 mustBe "v2_1\tv2_2\t0\t\t1\t0.1000"
       header3 mustBe expectedHeader3
-      row3 mustBe "v3_1\tv3_2\t0\t\t1\t0.3"
+      row3 mustBe "v3_1\tv3_2\t0\t\t1\t0.3000"
     }
 
     "correctly give formatted representation of the aggregation for full document" in {
       //given
       val expectedHeader1 = "p1\tp2\tp3\tfail-count-metrics1\tfailReasons-metrics1\tsuccess-count-metrics1\tvalue-metrics1\tfail-count-metrics2\tfailReasons-metrics2\tsuccess-count-metrics2\tvalue-metrics2\tfail-count-metrics3\tfailReasons-metrics3\tsuccess-count-metrics3\tvalue-metrics3\tfail-count-metrics4\tfailReasons-metrics4\tsuccess-count-metrics4\tvalue-metrics4"
-      val expectedRow1 = "v1_1\tv1_2\t\t0\t\t1\t0.2\t0\t\t1\t0.4\t0\t\t0\t0.0\t0\t\t0\t0.0"
-      val expectedRow2 = "v2_1\tv2_2\t\t0\t\t0\t0.0\t0\t\t0\t0.0\t0\t\t1\t0.1\t0\t\t0\t0.0"
-      val expectedRow3 = "v3_1\t\tv3_2\t0\t\t0\t0.0\t0\t\t0\t0.0\t0\t\t0\t0.0\t0\t\t1\t0.3"
+      val expectedRow1 = "v1_1\tv1_2\t\t0\t\t1\t0.2000\t0\t\t1\t0.4000\t0\t\t0\t0.0000\t0\t\t0\t0.0000"
+      val expectedRow2 = "v2_1\tv2_2\t\t0\t\t0\t0.0000\t0\t\t0\t0.0000\t0\t\t1\t0.1000\t0\t\t0\t0.0000"
+      val expectedRow3 = "v3_1\t\tv3_2\t0\t\t0\t0.0000\t0\t\t0\t0.0000\t0\t\t0\t0.0000\t0\t\t1\t0.3000"
       val expectedDocString = Seq(expectedHeader1, expectedRow1, expectedRow2, expectedRow3).mkString("\n")
       // when
       val actual = writer.metricDocumentToString(doc)
