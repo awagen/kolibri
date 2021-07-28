@@ -17,6 +17,7 @@
 package de.awagen.kolibri.datatypes
 
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
+import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 
 import scala.reflect.runtime.universe._
 
@@ -30,7 +31,9 @@ object ClassTyped {
 class ClassTyped[+T: TypeTag] extends KolibriSerializable {
 
   val classType: Type = implicitly[TypeTag[T]].tpe
-  val castFunc: Any => T = x => x.asInstanceOf[T]
+  val castFunc: SerializableFunction1[Any, T] = new SerializableFunction1[Any, T] {
+    override def apply(v1: Any): T = v1.asInstanceOf[T]
+  }
 
   override def equals(obj: Any): Boolean = {
     if (!obj.isInstanceOf[ClassTyped[T]] || !(typeOf[T] =:= obj.asInstanceOf[ClassTyped[T]].classType)) false
