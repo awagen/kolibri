@@ -25,21 +25,37 @@ import spray.json._
 class NamedClassTypedKeyJsonProtocolSpec extends UnitTestSpec {
 
   val stringKey = """{"name": "v1", "type": "STRING"}"""
+  val stringValue: NamedClassTyped[String] = NamedClassTyped[String]("v1")
   val doubleKey = """{"name": "v2", "type": "DOUBLE"}"""
+  val doubleValue: NamedClassTyped[Double] = NamedClassTyped[Double]("v2")
   val floatKey = """{"name": "v3", "type": "FLOAT"}"""
+  val floatValue: NamedClassTyped[Float] = NamedClassTyped[Float]("v3")
   val seqFloatKey = """{"name": "v4", "type": "SEQ[FLOAT]"}"""
+  val seqFloatValue: NamedClassTyped[Seq[Float]] = NamedClassTyped[Seq[Float]]("v4")
   val seqStringKey = """{"name": "v5", "type": "SEQ[STRING]"}"""
+  val seqStringValue: NamedClassTyped[Seq[String]] = NamedClassTyped[Seq[String]]("v5")
   val seqDoubleKey = """{"name": "v6", "type": "SEQ[DOUBLE]"}"""
+  val seqDoubleValue: NamedClassTyped[Seq[Double]] = NamedClassTyped[Seq[Double]]("v6")
+
 
   "NamedClassTypedKeyJsonProtocolSpec" must {
 
     "correctly parse NamedClassTyped" in {
-      stringKey.parseJson.convertTo[NamedClassTyped[_]] == NamedClassTyped[String]("v1") mustBe true
-      doubleKey.parseJson.convertTo[NamedClassTyped[_]] == NamedClassTyped[Double]("v2") mustBe true
-      floatKey.parseJson.convertTo[NamedClassTyped[_]] == NamedClassTyped[Float]("v3") mustBe true
-      seqFloatKey.parseJson.convertTo[NamedClassTyped[_]] == NamedClassTyped[Seq[Float]]("v4") mustBe true
-      seqStringKey.parseJson.convertTo[NamedClassTyped[_]] == NamedClassTyped[Seq[String]]("v5") mustBe true
-      seqDoubleKey.parseJson.convertTo[NamedClassTyped[_]] == NamedClassTyped[Seq[Double]]("v6") mustBe true
+      stringKey.parseJson.convertTo[NamedClassTyped[_]] == stringValue mustBe true
+      doubleKey.parseJson.convertTo[NamedClassTyped[_]] == doubleValue mustBe true
+      floatKey.parseJson.convertTo[NamedClassTyped[_]] == floatValue mustBe true
+      seqFloatKey.parseJson.convertTo[NamedClassTyped[_]] == seqFloatValue mustBe true
+      seqStringKey.parseJson.convertTo[NamedClassTyped[_]] == seqStringValue mustBe true
+      seqDoubleKey.parseJson.convertTo[NamedClassTyped[_]] == seqDoubleValue mustBe true
+    }
+
+    "correctly write NamesClassTyped" in {
+      NamedClassTypedKeyFormat.write(stringValue) mustBe stringKey.toJson
+      NamedClassTypedKeyFormat.write(doubleValue) mustBe doubleKey.toJson
+      NamedClassTypedKeyFormat.write(floatValue) mustBe floatKey.toJson
+      NamedClassTypedKeyFormat.write(seqFloatValue) mustBe seqFloatKey.toJson
+      NamedClassTypedKeyFormat.write(seqStringValue) mustBe seqStringKey.toJson
+      NamedClassTypedKeyFormat.write(seqDoubleValue) mustBe seqDoubleKey.toJson
     }
 
   }
