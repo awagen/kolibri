@@ -24,6 +24,10 @@ import play.api.libs.json._
 import scala.util.matching.Regex
 
 
+// TODO: instead of distinct types and combinations of selectors
+// we could utilize a single state machine parser, just looking at the sequence on the fly
+// and applying mappings. Out of the box the play json api does not offer to add selectors
+// after a recursive "\\" selector, while here we want to be able to map
 object JsonSelectors {
 
   val logger: Logger = LoggerFactory.getLogger(this.getClass)
@@ -188,7 +192,7 @@ object JsonSelectors {
     * @param path
     * @return
     */
-  def pathToPlainSelector(path: String): Selector[JsLookupResult] = {
+  def pathToPlainSelector(path: String): PlainSelector = {
     // path must start with "\" and end with some non-empty string that is not only "\" or "\\"
     val normedPath: String = path.trim
     if (!normedPath.startsWith("\\")) {
@@ -204,8 +208,8 @@ object JsonSelectors {
     if (!normedPath.startsWith("\\") && !normedPath.startsWith("\\\\")) {
       throw new RuntimeException(s"recursive path selector needs to start with '\' or '\\', but is: $path")
     }
-    if (normedPath.split("\\\\").length != 2) {
-      throw new RuntimeException(s"plain path selector needs to start with '\', but is: $path")
+    if (normedPath.split("""\\\\""").length != 2) {
+      throw new RuntimeException(s"recursive path selector needs to contain recursive selector '\\\\' once, but is: $path")
     }
     val recursivePathSelectorKeys = findRecursivePathKeys(path)
     recursivePathSelectorKeys.length match {

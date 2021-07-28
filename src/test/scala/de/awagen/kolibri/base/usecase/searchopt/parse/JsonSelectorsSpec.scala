@@ -18,7 +18,7 @@
 package de.awagen.kolibri.base.usecase.searchopt.parse
 
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
-import de.awagen.kolibri.base.usecase.searchopt.parse.JsonSelectors.{PlainAndRecursiveSelector, PlainPathSelector, RecursiveSelector, Selector, SingleKeySelector, findPlainPathKeys, findRecursivePathKeys, pathToPlainSelector, plainPathKeyGroupingRegex, recursivePathKeyGroupingRegex}
+import de.awagen.kolibri.base.usecase.searchopt.parse.JsonSelectors.{JsValueSeqSelector, PlainAndRecursiveSelector, PlainPathSelector, PlainSelector, RecursiveSelector, Selector, SingleKeySelector, classifyPath, findPlainPathKeys, findRecursivePathKeys, pathToPlainSelector, pathToSingleRecursiveSelector, plainPathKeyGroupingRegex, recursivePathKeyGroupingRegex}
 import play.api.libs.json.{DefaultReads, JsDefined, JsLookupResult, JsValue, Json}
 
 
@@ -106,6 +106,21 @@ class JsonSelectorsSpec extends UnitTestSpec with DefaultReads {
         Json.parse("""{"word": {"aaa": {"bbb": "value"}}}""".stripMargin)
       )
       value.as[String] mustBe "value"
+    }
+
+    "correctly apply pathToSingleRecursiveSelector" in {
+      val selector: JsValueSeqSelector = pathToSingleRecursiveSelector("\\ word \\ aaa \\\\ id")
+      val value: collection.Seq[JsValue] = selector.select(
+        Json.parse("""{"word": {"aaa": [{"id": "1"}, {"id": "2"}, {"id": "3"}]}}""".stripMargin)
+      )
+      value.map(x => x.as[String]) mustBe Seq("1", "2", "3")
+    }
+
+    "correctly classify path" in {
+      val path1: String = "\\ p1 \\ p2 \\\\ p3"
+      val path2: String = "\\ p1 \\ p2 \\ p3"
+      classifyPath(path1).isInstanceOf[JsValueSeqSelector] mustBe true
+      classifyPath(path2).isInstanceOf[PlainSelector] mustBe true
     }
 
   }
