@@ -21,10 +21,37 @@ import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFuncti
 import org.slf4j.{Logger, LoggerFactory}
 import play.api.libs.json._
 
+import scala.util.matching.Regex
+
 
 object JsonSelectors {
 
   val logger: Logger = LoggerFactory.getLogger(this.getClass)
+
+  // regex for single elements in the form "\ key1 \ key2 \ key3 ...",
+  // yielding sequential key, here: Seq("key1", "key2", "ley3")
+//  val plainPathKeyGroupingRegex: Regex = """^\\\s+(\w+)(?:\s+\\\s+(\w+))*$""".r
+  val plainPathKeyGroupingRegex: Regex = """^\\\s+(\w+)((?:\s+\\\s+\w+)*)$""".r
+  // regex for recursive elements in the form "\ key1 \ key2 \\ key3 ..."
+  // yielding sequential key, here: Seq("key1", "key2", "ley3"). Assumes arbitrary number
+  // of single keys prepended by "\ " followed by final recursive key prepended with "\\ "
+  val recursivePathKeyGroupingRegex: Regex = """^\\\s+(\w+)((?:\s+\\\s+\w+)*)\s+\\\\\s+(\w+)$""".r
+
+  def findPlainPathKeys(selector: String): Seq[String] = {
+    plainPathKeyGroupingRegex.findAllIn(selector).subgroups
+      .flatMap(x => x.split("""\\""").map(x => x.trim).filter(x => x.nonEmpty) match {
+        case e if e.isEmpty => Seq.empty
+        case e if e.length >= 1 => e
+      })
+  }
+
+  def findRecursivePathKeys(selector: String): Seq[String] = {
+    recursivePathKeyGroupingRegex.findAllIn(selector).subgroups
+      .flatMap(x => x.split("""\\""").map(x => x.trim).filter(x => x.nonEmpty) match {
+        case e if e.isEmpty => Seq.empty
+        case e if e.length >= 1 => e
+      })
+  }
 
   trait Selector[+T] {
     def select(jsValue: JsValue): T
@@ -38,7 +65,7 @@ object JsonSelectors {
     def select(jsValue: JsLookupResult): JsLookupResult
   }
 
-  trait SeqSelector extends Selector[collection.Seq[JsValue]] {
+  trait JsValueSeqSelector extends Selector[collection.Seq[JsValue]] {
     def select(jsValue: JsValue): collection.Seq[JsValue]
 
     def select(lookupResult: JsLookupResult): collection.Seq[JsValue]
@@ -63,7 +90,7 @@ object JsonSelectors {
     *
     * @param key - key to collect values for
     */
-  case class RecursiveSelector(key: String) extends SeqSelector {
+  case class RecursiveSelector(key: String) extends JsValueSeqSelector {
     override def select(jsValue: JsValue): collection.Seq[JsValue] = jsValue \\ key
 
     override def select(lookupResult: JsLookupResult): collection.Seq[JsValue] = lookupResult \\ key
@@ -103,7 +130,7 @@ object JsonSelectors {
     * @param recursiveSelectorKey - the key for the recursive selector
     * @param plainSelectorKeys    - the keys for the plain path query before applying the recursive selector
     */
-  case class PlainAndRecursiveSelector(recursiveSelectorKey: String, plainSelectorKeys: String*) extends SeqSelector {
+  case class PlainAndRecursiveSelector(recursiveSelectorKey: String, plainSelectorKeys: String*) extends JsValueSeqSelector {
     def select(lookup: JsLookupResult): collection.Seq[JsValue] = lookup match {
       case JsDefined(value) => select(value)
       case _: JsUndefined => Seq.empty
@@ -154,5 +181,84 @@ object JsonSelectors {
       value.map(x => x.as[T]).toSeq
     }
   }
+
+  /**
+    * From selection string in the form "\ key1 \ key2 \ key3..." create the Selector
+    *
+    * @param path
+    * @return
+    */
+  def pathToPlainSelector(path: String): Selector[JsLookupResult] = {
+    // path must start with "\" and end with some non-empty string that is not only "\" or "\\"
+    val normedPath: String = path.trim
+    if (!normedPath.startsWith("\\")) {
+      throw new RuntimeException(s"plain path selector needs to start with '\', but is: $path")
+    }
+    val plainPathSelectorKeys: Seq[String] = findPlainPathKeys(path)
+    PlainPathSelector(plainPathSelectorKeys)
+  }
+
+  def pathToSingleRecursiveSelector(path: String): JsValueSeqSelector = {
+    // path must start with "\" and end with some non-empty string that is not only "\" or "\\"
+    val normedPath: String = path.trim
+    if (!normedPath.startsWith("\\") && !normedPath.startsWith("\\\\")) {
+      throw new RuntimeException(s"recursive path selector needs to start with '\' or '\\', but is: $path")
+    }
+    if (normedPath.split("\\\\").length != 2) {
+      throw new RuntimeException(s"plain path selector needs to start with '\', but is: $path")
+    }
+    val recursivePathSelectorKeys = findRecursivePathKeys(path)
+    recursivePathSelectorKeys.length match {
+      case 0 => throw new RuntimeException(s"no selector identified in path: $path")
+      case 1 => RecursiveSelector(recursivePathSelectorKeys.head)
+      case e if e > 1 => PlainAndRecursiveSelector(recursivePathSelectorKeys.last,
+        recursivePathSelectorKeys.slice(0, recursivePathSelectorKeys.size - 1): _*)
+    }
+
+  }
+
+  /**
+    * Generate the right selector. Can be either plain path or path containing a
+    * recursive selector at its end
+    *
+    * @param path
+    * @return
+    */
+  def classifyPath(path: String): Selector[_] = {
+    if (recursivePathKeyGroupingRegex.matches(path)) {
+      pathToSingleRecursiveSelector(path)
+    }
+    else pathToPlainSelector(path)
+  }
+
+  case class RecursiveAndPlainSelector(recursiveSelector: JsValueSeqSelector, plainSelector: PlainSelector) extends JsValueSeqSelector {
+    override def select(jsValue: JsValue): collection.Seq[JsValue] = {
+      recursiveSelector
+        .select(jsValue)
+        .map(x => plainSelector.select(x))
+        .filter(x => x.isDefined)
+        .map(x => x.get).toSeq
+    }
+
+    override def select(lookupResult: JsLookupResult): collection.Seq[JsValue] = {
+      recursiveSelector
+        .select(lookupResult)
+        .map(x => plainSelector.select(x))
+        .filter(x => x.isDefined)
+        .map(x => x.get)
+        .toSeq
+    }
+  }
+
+  case class RecursiveAndRecursiveSelector(recursiveSelector: JsValueSeqSelector, otherRecursiveSelector: JsValueSeqSelector) extends JsValueSeqSelector {
+    override def select(jsValue: JsValue): collection.Seq[JsValue] = {
+      recursiveSelector.select(jsValue).flatMap(x => otherRecursiveSelector.select(x)).toSeq
+    }
+
+    override def select(lookupResult: JsLookupResult): collection.Seq[JsValue] = {
+      recursiveSelector.select(lookupResult).flatMap(x => otherRecursiveSelector.select(x)).toSeq
+    }
+  }
+
 
 }

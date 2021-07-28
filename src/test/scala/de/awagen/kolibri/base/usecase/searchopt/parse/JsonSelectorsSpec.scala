@@ -18,11 +18,11 @@
 package de.awagen.kolibri.base.usecase.searchopt.parse
 
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
-import de.awagen.kolibri.base.usecase.searchopt.parse.JsonSelectors.{PlainAndRecursiveSelector, PlainPathSelector, RecursiveSelector, SingleKeySelector}
-import play.api.libs.json.{JsDefined, JsValue, Json}
+import de.awagen.kolibri.base.usecase.searchopt.parse.JsonSelectors.{PlainAndRecursiveSelector, PlainPathSelector, RecursiveSelector, Selector, SingleKeySelector, findPlainPathKeys, findRecursivePathKeys, pathToPlainSelector, plainPathKeyGroupingRegex, recursivePathKeyGroupingRegex}
+import play.api.libs.json.{DefaultReads, JsDefined, JsLookupResult, JsValue, Json}
 
 
-class JsonSelectorsSpec extends UnitTestSpec {
+class JsonSelectorsSpec extends UnitTestSpec with DefaultReads {
 
   "JsonSelectors" must {
     val json: JsValue = Json.parse(
@@ -73,9 +73,39 @@ class JsonSelectorsSpec extends UnitTestSpec {
 
     "correctly apply PlainAndRecursiveSelector" in {
       // given
-      val selector = PlainAndRecursiveSelector("key5_r", Seq("key5", "key5_1"):_*)
+      val selector = PlainAndRecursiveSelector("key5_r", Seq("key5", "key5_1"): _*)
       // when
       selector.select(json).map(x => x.as[String]).toSeq mustBe Seq("vv1", "vv2", "vv3")
+    }
+
+    "correctly apply regex for valid path check" in {
+      plainPathKeyGroupingRegex.matches("\\") mustBe false
+      plainPathKeyGroupingRegex.matches("\\ word") mustBe true
+      plainPathKeyGroupingRegex.matches("\\ word\\") mustBe false
+      plainPathKeyGroupingRegex.matches("\\ word \\") mustBe false
+      plainPathKeyGroupingRegex.matches("\\ word \\ aaa") mustBe true
+    }
+
+    "correctly match the single words" in {
+      val subgroups1 = findPlainPathKeys("\\ word \\ aaa")
+      val subgroups2 = findPlainPathKeys("\\ word \\ aaa \\ bbb")
+      subgroups1 mustBe Seq("word", "aaa")
+      subgroups2 mustBe Seq("word", "aaa", "bbb")
+    }
+
+    "correctly match recursive selector keys" in {
+      val subgroups1 = findRecursivePathKeys("\\ word \\ aaa \\\\ bbb")
+      val subgroups2 = findRecursivePathKeys("\\ word \\ aaa \\ bbb \\\\ ccc")
+      subgroups1 mustBe Seq("word", "aaa", "bbb")
+      subgroups2 mustBe Seq("word", "aaa", "bbb", "ccc")
+    }
+
+    "correctly apply pathToPlainSelector" in {
+      val selector: Selector[JsLookupResult] = pathToPlainSelector("\\ word \\ aaa \\ bbb")
+      val value: JsLookupResult = selector.select(
+        Json.parse("""{"word": {"aaa": {"bbb": "value"}}}""".stripMargin)
+      )
+      value.as[String] mustBe "value"
     }
 
   }

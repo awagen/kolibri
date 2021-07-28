@@ -36,6 +36,8 @@ class NamedClassTypedKeyJsonProtocolSpec extends UnitTestSpec {
   val seqStringValue: NamedClassTyped[Seq[String]] = NamedClassTyped[Seq[String]]("v5")
   val seqDoubleKey = """{"name": "v6", "type": "SEQ[DOUBLE]"}"""
   val seqDoubleValue: NamedClassTyped[Seq[Double]] = NamedClassTyped[Seq[Double]]("v6")
+  val seqBooleanKey = """{"name": "v7", "type": "SEQ[BOOLEAN]"}"""
+  val seqBooleanValue: NamedClassTyped[Seq[Boolean]] = NamedClassTyped[Seq[Boolean]]("v7")
 
 
   "NamedClassTypedKeyJsonProtocolSpec" must {
@@ -47,6 +49,7 @@ class NamedClassTypedKeyJsonProtocolSpec extends UnitTestSpec {
       seqFloatKey.parseJson.convertTo[NamedClassTyped[_]] == seqFloatValue mustBe true
       seqStringKey.parseJson.convertTo[NamedClassTyped[_]] == seqStringValue mustBe true
       seqDoubleKey.parseJson.convertTo[NamedClassTyped[_]] == seqDoubleValue mustBe true
+      seqBooleanKey.parseJson.convertTo[NamedClassTyped[_]] == seqBooleanValue mustBe true
     }
 
     "correctly write NamesClassTyped" in {
@@ -56,6 +59,7 @@ class NamedClassTypedKeyJsonProtocolSpec extends UnitTestSpec {
       NamedClassTypedKeyFormat.write(seqFloatValue) mustBe seqFloatKey.toJson
       NamedClassTypedKeyFormat.write(seqStringValue) mustBe seqStringKey.toJson
       NamedClassTypedKeyFormat.write(seqDoubleValue) mustBe seqDoubleKey.toJson
+      NamedClassTypedKeyFormat.write(seqBooleanValue) mustBe seqBooleanKey.toJson
     }
 
   }

@@ -31,6 +31,7 @@ object NamedClassTypedKeyJsonProtocol extends DefaultJsonProtocol {
         case "SEQ[STRING]" => NamedClassTyped[Seq[String]](fields("name").convertTo[String])
         case "SEQ[DOUBLE]" => NamedClassTyped[Seq[Double]](fields("name").convertTo[String])
         case "SEQ[FLOAT]" => NamedClassTyped[Seq[Float]](fields("name").convertTo[String])
+        case "SEQ[BOOLEAN]" => NamedClassTyped[Seq[Boolean]](fields("name").convertTo[String])
         case e => throw DeserializationException(s"Expected a defined type for ClassTyped, but got: $e")
       }
       case e => throw DeserializationException(s"Expected a value of type NamedClassType[T] but got value $e")
