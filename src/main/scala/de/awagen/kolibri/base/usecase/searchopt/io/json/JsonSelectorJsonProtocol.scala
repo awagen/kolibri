@@ -43,6 +43,24 @@ object JsonSelectorJsonProtocol extends DefaultJsonProtocol with DefaultReads {
     (plainSelectorKeys: Seq[String]) => PlainPathSelector(plainSelectorKeys),
     "plainSelectorKeys")
 
+  implicit val jsonSingleKeyFormat: RootJsonFormat[SingleKeySelector] = jsonFormat(
+    (key: String) => SingleKeySelector(key),
+    "key")
+
+  implicit object PlainSelectorFormat extends JsonFormat[PlainSelector] {
+    override def read(json: JsValue): PlainSelector = json match {
+      case spray.json.JsObject(fields) if fields.contains("type") => fields("type").convertTo[String] match {
+        case "SINGLE_KEY" =>
+          SingleKeySelector(fields("key").convertTo[String])
+        case "PLAIN_PATH" =>
+          PlainPathSelector(fields("keys").convertTo[Seq[String]])
+      }
+    }
+
+    // TODO
+    override def write(obj: PlainSelector): JsValue = """{}""".toJson
+  }
+
   implicit object JsValueSelectorFormat extends JsonFormat[JsValueSeqSelector] {
     override def read(json: JsValue): JsValueSeqSelector = json match {
       case spray.json.JsObject(fields) if fields.contains("type") => fields("type").convertTo[String] match {
