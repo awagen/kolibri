@@ -24,10 +24,15 @@ import play.api.libs.json._
 import scala.util.matching.Regex
 
 
-// TODO: instead of distinct types and combinations of selectors
-// we could utilize a single state machine parser, just looking at the sequence on the fly
-// and applying mappings. Out of the box the play json api does not offer to add selectors
-// after a recursive "\\" selector, while here we want to be able to map
+/**
+  * Provides objects that represent json path selections. This includes single selections as well as
+  * recursive selections, further either path or recursive selections applied to recursive selections,
+  * to be able to dive into the depth needed.
+  * Note: instead of distinct types and combinations of selectors
+  * we could utilize a single state machine parser, just looking at the sequence on the fly
+  * and applying mappings. Out of the box the play json api does not offer to add selectors
+  * after a recursive "\\" selector, while here we want to be able to map further
+  */
 object JsonSelectors {
 
   val logger: Logger = LoggerFactory.getLogger(this.getClass)
@@ -39,7 +44,7 @@ object JsonSelectors {
   // regex for recursive elements in the form "\ key1 \ key2 \\ key3 ..."
   // yielding sequential key, here: Seq("key1", "key2", "ley3"). Assumes arbitrary number
   // of single keys prepended by "\ " followed by final recursive key prepended with "\\ "
-  val recursivePathKeyGroupingRegex: Regex = """^\\\s+(\w+)((?:\s+\\\s+\w+)*)\s+\\\\\s+(\w+)$""".r
+  val recursivePathKeyGroupingRegex: Regex = """^((?:\s*\\\s+\w+)*)\s*\\\\\s+(\w+)$""".r
 
   def findPlainPathKeys(selector: String): Seq[String] = {
     plainPathKeyGroupingRegex.findAllIn(selector).subgroups
@@ -50,8 +55,8 @@ object JsonSelectors {
   }
 
   def findRecursivePathKeys(selector: String): Seq[String] = {
-    recursivePathKeyGroupingRegex.findAllIn(selector).subgroups
-      .flatMap(x => x.split("""\\""").map(x => x.trim).filter(x => x.nonEmpty) match {
+    val subgroups: Seq[String] = recursivePathKeyGroupingRegex.findAllIn(selector).subgroups
+    subgroups.flatMap(x => x.split("""\\""").map(x => x.trim).filter(x => x.nonEmpty) match {
         case e if e.isEmpty => Seq.empty
         case e if e.length >= 1 => e
       })
