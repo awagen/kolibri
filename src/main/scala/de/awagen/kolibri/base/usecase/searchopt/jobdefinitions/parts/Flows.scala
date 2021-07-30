@@ -137,6 +137,37 @@ object Flows {
     metricRow.addMetric(addValue)
   }
 
+  def metricsCalc(processingMessage: ProcessingMessage[(Either[Throwable, Seq[String]], RequestTemplate)],
+                  judgementProviderFactory: JudgementProviderFactory[Double],
+                  metricsCalculation: MetricsCalculation,
+                  excludeParamsFromMetricRow: Seq[String])(implicit ec: ExecutionContext): Future[ProcessingMessage[MetricRow]] = {
+    processingMessage.data._1 match {
+      case e@Left(_) =>
+        val metricRow = throwableToMetricRowResponse(e.value)
+        val result: ProcessingMessage[MetricRow] = Corn(metricRow)
+        val originalTags: Set[Tag] = processingMessage.getTagsForType(TagType.AGGREGATION)
+        result.addTags(TagType.AGGREGATION, originalTags)
+        Future.successful(result)
+      case e@Right(_) =>
+        judgementProviderFactory.getJudgements.future
+          .map(y => {
+            val judgements: Seq[Option[Double]] = y.retrieveJudgements(processingMessage.data._2.parameters("q").head, e.value)
+            logger.debug(s"retrieved judgements: $judgements")
+            val metricRow: MetricRow = metricsCalculation.calculateAll(immutable.Map(processingMessage.data._2.parameters.toSeq.filter(x => !excludeParamsFromMetricRow.contains(x._1)): _*), judgements)
+            logger.debug(s"calculated metrics: $metricRow")
+            val originalTags: Set[Tag] = processingMessage.getTagsForType(TagType.AGGREGATION)
+            Corn(metricRow).withTags(AGGREGATION, originalTags)
+          })
+          .recover(throwable => {
+            logger.warn(s"failed retrieving judgements: $throwable")
+            val metricRow = throwableToMetricRowResponse(throwable)
+            val result: ProcessingMessage[MetricRow] = Corn(metricRow)
+            val originalTags: Set[Tag] = processingMessage.getTagsForType(TagType.AGGREGATION)
+            result.withTags(TagType.AGGREGATION, originalTags)
+          })
+    }
+  }
+
   /**
     * Full flow definition from RequestTemplateBuilderModifier to ProcessingMessage[MetricRow]
     *
@@ -178,33 +209,11 @@ object Flows {
           groupId = groupId,
           responseParsingFunc = responseParsingFunc,
           throughputActor = throughputActor)))
-
     partialFlow.mapAsyncUnordered[ProcessingMessage[MetricRow]](config.requestParallelism)(x => {
-      x.data._1 match {
-        case e@Left(_) =>
-          val metricRow = throwableToMetricRowResponse(e.value)
-          val result: ProcessingMessage[MetricRow] = Corn(metricRow)
-          val originalTags: Set[Tag] = x.getTagsForType(TagType.AGGREGATION)
-          result.addTags(TagType.AGGREGATION, originalTags)
-          Future.successful(result)
-        case e@Right(_) =>
-          judgementProviderFactory.getJudgements.future
-            .map(y => {
-              val judgements: Seq[Option[Double]] = y.retrieveJudgements(x.data._2.parameters("q").head, e.value)
-              logger.debug(s"retrieved judgements: $judgements")
-              val metricRow: MetricRow = metricsCalculation.calculateAll(immutable.Map(x.data._2.parameters.toSeq.filter(x => !excludeParamsFromMetricRow.contains(x._1)): _*), judgements)
-              logger.debug(s"calculated metrics: $metricRow")
-              val originalTags: Set[Tag] = x.getTagsForType(TagType.AGGREGATION)
-              Corn(metricRow).withTags(AGGREGATION, originalTags)
-            })
-            .recover(throwable => {
-              logger.warn(s"failed retrieving judgements: $throwable")
-              val metricRow = throwableToMetricRowResponse(throwable)
-              val result: ProcessingMessage[MetricRow] = Corn(metricRow)
-              val originalTags: Set[Tag] = x.getTagsForType(TagType.AGGREGATION)
-              result.withTags(TagType.AGGREGATION, originalTags)
-            })
-      }
+      metricsCalc(processingMessage = x,
+        judgementProviderFactory = judgementProviderFactory,
+        metricsCalculation = metricsCalculation,
+        excludeParamsFromMetricRow = excludeParamsFromMetricRow)
     })
   }
 
