@@ -28,6 +28,7 @@ object NamedClassTypedKeyJsonProtocol extends DefaultJsonProtocol {
         case "STRING" => NamedClassTyped[String](fields("name").convertTo[String])
         case "DOUBLE" => NamedClassTyped[Double](fields("name").convertTo[String])
         case "FLOAT" => NamedClassTyped[Float](fields("name").convertTo[String])
+        case "BOOLEAN" => NamedClassTyped[Boolean](fields("name").convertTo[String])
         case "SEQ[STRING]" => NamedClassTyped[Seq[String]](fields("name").convertTo[String])
         case "SEQ[DOUBLE]" => NamedClassTyped[Seq[Double]](fields("name").convertTo[String])
         case "SEQ[FLOAT]" => NamedClassTyped[Seq[Float]](fields("name").convertTo[String])

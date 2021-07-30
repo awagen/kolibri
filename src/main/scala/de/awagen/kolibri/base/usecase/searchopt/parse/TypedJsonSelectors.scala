@@ -19,7 +19,7 @@ package de.awagen.kolibri.base.usecase.searchopt.parse
 
 import de.awagen.kolibri.base.usecase.searchopt.parse.JsonSelectors.{JsValueSeqSelector, PlainSelector}
 import de.awagen.kolibri.datatypes.NamedClassTyped
-import play.api.libs.json.JsValue
+import play.api.libs.json.{JsValue, Reads}
 
 
 /**
@@ -39,12 +39,12 @@ object TypedJsonSelectors {
     def select(jsValue: JsValue): scala.collection.Seq[T]
   }
 
-  case class TypedJsonSeqSelector[T](selector: JsValueSeqSelector, namedClassTyped: NamedClassTyped[T]) extends SeqSelector[T] {
-    def select(jsValue: JsValue): scala.collection.Seq[T] = selector.select(jsValue).map(x => namedClassTyped.castFunc.apply(x))
+  case class TypedJsonSeqSelector[T](selector: JsValueSeqSelector, namedClassTyped: NamedClassTyped[T])(implicit reads: Reads[T]) extends SeqSelector[T] {
+    def select(jsValue: JsValue): scala.collection.Seq[T] = selector.select(jsValue).map(x => x.as[T]).toSeq
   }
 
-  case class TypedJsonSingleValueSelector[T](selector: PlainSelector, namedClassTyped: NamedClassTyped[T]) extends SingleValueSelector[T] {
-    def select(jsValue: JsValue): Option[T] = selector.select(jsValue).toOption.map(x => namedClassTyped.castFunc.apply(x))
+  case class TypedJsonSingleValueSelector[T](selector: PlainSelector, namedClassTyped: NamedClassTyped[T])(implicit reads: Reads[T]) extends SingleValueSelector[T] {
+    def select(jsValue: JsValue): Option[T] = selector.select(jsValue).toOption.map(x => x.as[T])
   }
 
 }
