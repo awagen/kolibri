@@ -35,17 +35,17 @@ class NamedTypeSpec extends UnitTestSpec {
   "NamedType" must {
 
     "correctly cast spray types" in {
-      NamedType.DOUBLE.castString(decimal) mustBe 0.9
-      NamedType.FLOAT.castString(decimal) mustBe 0.9F
-      NamedType.STRING.castString(str) mustBe "0.9"
-      NamedType.BOOLEAN.castString(boolean) mustBe false
+      NamedType.DOUBLE.cast(decimal) mustBe 0.9
+      NamedType.FLOAT.cast(decimal) mustBe 0.9F
+      NamedType.STRING.cast(str) mustBe "0.9"
+      NamedType.BOOLEAN.cast(boolean) mustBe false
     }
 
     "correctly cast play types" in {
-      NamedType.DOUBLE.castString(playDecimal) mustBe 0.9
-      NamedType.FLOAT.castString(playDecimal) mustBe 0.9F
-      NamedType.STRING.castString(playStr) mustBe "0.9"
-      NamedType.BOOLEAN.castString(playBoolean) mustBe true
+      NamedType.DOUBLE.cast(playDecimal) mustBe 0.9
+      NamedType.FLOAT.cast(playDecimal) mustBe 0.9F
+      NamedType.STRING.cast(playStr) mustBe "0.9"
+      NamedType.BOOLEAN.cast(playBoolean) mustBe true
     }
   }
 

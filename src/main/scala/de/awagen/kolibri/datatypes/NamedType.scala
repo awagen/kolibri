@@ -41,7 +41,7 @@ object NamedType extends Enumeration {
       case _ => throw new RuntimeException(s"type $typeName not available")
     }
 
-    def castString(value: JsValue): Any = typeName match {
+    def cast(value: JsValue): Any = typeName match {
       case "STRING" => value.as[String]
       case "DOUBLE" => value.as[Double]
       case "FLOAT" => value.as[Float]
@@ -53,7 +53,7 @@ object NamedType extends Enumeration {
       case e => new RuntimeException(s"value '$value' does not conform to type corresponding to typeName $typeName")
     }
 
-    def castString(value: spray.json.JsValue): Any = typeName match {
+    def cast(value: spray.json.JsValue): Any = typeName match {
       case "STRING" => value.convertTo[String]
       case "DOUBLE" => value.convertTo[Double]
       case "FLOAT" => value.convertTo[Float]
