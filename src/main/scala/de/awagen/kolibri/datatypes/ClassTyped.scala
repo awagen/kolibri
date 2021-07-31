@@ -18,7 +18,6 @@ package de.awagen.kolibri.datatypes
 
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
-
 import scala.reflect.runtime.universe._
 
 
@@ -28,6 +27,11 @@ object ClassTyped {
 
 }
 
+/**
+  * Not serializable due to TypeTag
+  * @param typeTag$T$0
+  * @tparam T
+  */
 class ClassTyped[+T: TypeTag] extends KolibriSerializable {
 
   val classType: Type = implicitly[TypeTag[T]].tpe
@@ -43,6 +47,13 @@ class ClassTyped[+T: TypeTag] extends KolibriSerializable {
   override def hashCode(): Int = typeOf[T].hashCode()
 }
 
+/**
+  * Due to TypeTag not serializable
+  *
+  * @param name
+  * @param typeTag$T$0
+  * @tparam T
+  */
 case class NamedClassTyped[+T: TypeTag](name: String) extends ClassTyped[T] {
 
   override def equals(obj: Any): Boolean = {
