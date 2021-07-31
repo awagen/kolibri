@@ -20,6 +20,7 @@ package de.awagen.kolibri.base.usecase.searchopt.io.json
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
 import de.awagen.kolibri.base.usecase.searchopt.io.json.TypedJsonSelectorJsonProtocol._
 import de.awagen.kolibri.base.usecase.searchopt.parse.TypedJsonSelectors.TypedJsonSeqSelector
+import de.awagen.kolibri.datatypes.JsonTypeCast
 import play.api.libs.json.Json
 import spray.json._
 
@@ -27,11 +28,7 @@ class TypedJsonSelectorJsonProtocolSpec extends UnitTestSpec {
 
   val stringSeqSelector: JsValue =
     """{
-      |"type": "STRING",
-      |"namedType": {
-      | "name": "s1",
-      | "type": "STRING"
-      |},
+      |"castType": "STRING",
       |"selector": {
       |"type": "SINGLEREC",
       |"path": "\\\\ id"
@@ -41,11 +38,7 @@ class TypedJsonSelectorJsonProtocolSpec extends UnitTestSpec {
 
   val doubleSeqSelector: JsValue =
     """{
-      |"type": "DOUBLE",
-      |"namedType": {
-      | "name": "d1",
-      | "type": "DOUBLE"
-      |},
+      |"castType": "DOUBLE",
       |"selector": {
       |"type": "SINGLEREC",
       |"path": "\\\\ id"
@@ -55,11 +48,7 @@ class TypedJsonSelectorJsonProtocolSpec extends UnitTestSpec {
 
   val floatSeqSelector: JsValue =
     """{
-      |"type": "FLOAT",
-      |"namedType": {
-      | "name": "f1",
-      | "type": "FLOAT"
-      |},
+      |"castType": "FLOAT",
       |"selector": {
       |"type": "SINGLEREC",
       |"path": "\\\\ id"
@@ -69,11 +58,7 @@ class TypedJsonSelectorJsonProtocolSpec extends UnitTestSpec {
 
   val booleanSeqSelector: JsValue =
     """{
-      |"type": "BOOLEAN",
-      |"namedType": {
-      | "name": "b1",
-      | "type": "BOOLEAN"
-      |},
+      |"castType": "BOOLEAN",
       |"selector": {
       |"type": "SINGLEREC",
       |"path": "\\\\ id"
@@ -84,31 +69,31 @@ class TypedJsonSelectorJsonProtocolSpec extends UnitTestSpec {
   "TypedJsonSelectorJsonProtocol" must {
 
     "correctly parse TypedJsonSeqSelector of type String" in {
-      val selector: TypedJsonSeqSelector[_] = stringSeqSelector.convertTo[TypedJsonSeqSelector[_]]
+      val selector: TypedJsonSeqSelector = stringSeqSelector.convertTo[TypedJsonSeqSelector]
       val stringSeqParsed: collection.Seq[_] = selector.select(Json.parse("""[{"id": "1"}, {"id": "2"}, {"id": "3"}]"""))
       stringSeqParsed mustBe Seq("1", "2", "3")
-      selector.namedClassTyped.name mustBe "s1"
+      selector.castType mustBe JsonTypeCast.STRING
     }
 
     "correctly parse TypedJsonSeqSelector of type Double" in {
-      val selector: TypedJsonSeqSelector[_] = doubleSeqSelector.convertTo[TypedJsonSeqSelector[_]]
+      val selector: TypedJsonSeqSelector = doubleSeqSelector.convertTo[TypedJsonSeqSelector]
       val stringSeqParsed: collection.Seq[_] = selector.select(Json.parse("""[{"id": 1.1}, {"id": 2.2}, {"id": 3.3}]"""))
       stringSeqParsed mustBe Seq(1.1, 2.2, 3.3)
-      selector.namedClassTyped.name mustBe "d1"
+      selector.castType mustBe JsonTypeCast.DOUBLE
     }
 
     "correctly parse TypedJsonSeqSelector of type Float" in {
-      val selector: TypedJsonSeqSelector[_] = floatSeqSelector.convertTo[TypedJsonSeqSelector[_]]
+      val selector: TypedJsonSeqSelector = floatSeqSelector.convertTo[TypedJsonSeqSelector]
       val stringSeqParsed: collection.Seq[_] = selector.select(Json.parse("""[{"id": 1.1}, {"id": 2.2}, {"id": 3.3}]"""))
       stringSeqParsed mustBe Seq(1.1f, 2.2f, 3.3f)
-      selector.namedClassTyped.name mustBe "f1"
+      selector.castType mustBe JsonTypeCast.FLOAT
     }
 
     "correctly parse TypedJsonSeqSelector of type Boolean" in {
-      val selector: TypedJsonSeqSelector[_] = booleanSeqSelector.convertTo[TypedJsonSeqSelector[_]]
+      val selector: TypedJsonSeqSelector = booleanSeqSelector.convertTo[TypedJsonSeqSelector]
       val stringSeqParsed: collection.Seq[_] = selector.select(Json.parse("""[{"id": true}, {"id": false}, {"id": true}]"""))
       stringSeqParsed mustBe Seq(true, false, true)
-      selector.namedClassTyped.name mustBe "b1"
+      selector.castType mustBe JsonTypeCast.BOOLEAN
     }
   }
 

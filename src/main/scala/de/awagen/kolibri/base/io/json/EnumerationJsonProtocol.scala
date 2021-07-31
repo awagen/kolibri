@@ -24,7 +24,7 @@ import de.awagen.kolibri.base.domain.jobdefinitions.provider.data.DataKeys
 import de.awagen.kolibri.base.domain.jobdefinitions.{MapTransformerFlows, ProcessingActorProps, RunnableExpectationGenerators, TaskDefinitions}
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnableSinkType
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnableSinkType.ActorRunnableSinkType
-import de.awagen.kolibri.datatypes.io.json.EnumerationProtocol
+import de.awagen.kolibri.datatypes.io.json.EnumerationJsonProtocol.EnumerationProtocol
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import spray.json.{DefaultJsonProtocol, DeserializationException, JsString, JsValue}
 

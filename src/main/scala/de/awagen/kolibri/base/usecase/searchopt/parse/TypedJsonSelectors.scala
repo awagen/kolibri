@@ -18,8 +18,9 @@
 package de.awagen.kolibri.base.usecase.searchopt.parse
 
 import de.awagen.kolibri.base.usecase.searchopt.parse.JsonSelectors.{JsValueSeqSelector, PlainSelector}
+import de.awagen.kolibri.datatypes.JsonTypeCast.JsonTypeCast
 import de.awagen.kolibri.datatypes.NamedClassTyped
-import play.api.libs.json.{JsValue, Reads}
+import play.api.libs.json.JsValue
 
 
 /**
@@ -27,24 +28,28 @@ import play.api.libs.json.{JsValue, Reads}
   */
 object TypedJsonSelectors {
 
-  trait Selector[T] {
+  trait Selector[+T] {
     def select(jsValue: JsValue): T
   }
 
-  trait SingleValueSelector[T] extends Selector[Option[T]] {
+  trait SingleValueSelector[+T] extends Selector[Option[T]] {
     def select(jsValue: JsValue): Option[T]
   }
 
-  trait SeqSelector[T] extends Selector[scala.collection.Seq[T]] {
+  trait SeqSelector[+T] extends Selector[scala.collection.Seq[T]] {
     def select(jsValue: JsValue): scala.collection.Seq[T]
   }
 
-  case class TypedJsonSeqSelector[T](selector: JsValueSeqSelector, namedClassTyped: NamedClassTyped[T])(implicit reads: Reads[T]) extends SeqSelector[T] {
-    def select(jsValue: JsValue): scala.collection.Seq[T] = selector.select(jsValue).map(x => x.as[T]).toSeq
+  case class TypedJsonSeqSelector(selector: JsValueSeqSelector, castType: JsonTypeCast) extends SeqSelector[Any] {
+    def classTyped(name: String): NamedClassTyped[_] = castType.toNamedClassType(name)
+
+    def select(jsValue: JsValue): scala.collection.Seq[_] = selector.select(jsValue).map(x => castType.cast(x))
   }
 
-  case class TypedJsonSingleValueSelector[T](selector: PlainSelector, namedClassTyped: NamedClassTyped[T])(implicit reads: Reads[T]) extends SingleValueSelector[T] {
-    def select(jsValue: JsValue): Option[T] = selector.select(jsValue).toOption.map(x => x.as[T])
+  case class TypedJsonSingleValueSelector(selector: PlainSelector, castType: JsonTypeCast) extends SingleValueSelector[Any] {
+    def classTyped(name: String): NamedClassTyped[_] = castType.toNamedClassType(name)
+
+    def select(jsValue: JsValue): Option[Any] = selector.select(jsValue).toOption.map(x => castType.cast(x))
   }
 
 }

@@ -20,7 +20,7 @@ import de.awagen.kolibri.base.usecase.searchopt.metrics.JudgementValidation.Judg
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Metrics.Metrics
 import de.awagen.kolibri.base.usecase.searchopt.metrics.MissingValueStrategy.MissingValueStrategy
 import de.awagen.kolibri.base.usecase.searchopt.metrics.{JudgementValidation, Metrics, MissingValueStrategy}
-import de.awagen.kolibri.datatypes.io.json.EnumerationProtocol
+import de.awagen.kolibri.datatypes.io.json.EnumerationJsonProtocol.EnumerationProtocol
 import spray.json.{DefaultJsonProtocol, DeserializationException, JsString, JsValue}
 
 
