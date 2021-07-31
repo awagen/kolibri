@@ -16,8 +16,8 @@
 
 package de.awagen.kolibri.datatypes.io.json
 
-import de.awagen.kolibri.datatypes.NamedType
-import de.awagen.kolibri.datatypes.NamedType.NamedType
+import de.awagen.kolibri.datatypes.JsonTypeCast
+import de.awagen.kolibri.datatypes.JsonTypeCast.JsonTypeCast
 import spray.json.{DefaultJsonProtocol, DeserializationException, JsString, JsValue, JsonFormat}
 
 object EnumerationJsonProtocol extends DefaultJsonProtocol {
@@ -26,15 +26,15 @@ object EnumerationJsonProtocol extends DefaultJsonProtocol {
     override def write(obj: T): JsValue = JsString(obj.toString)
   }
 
-  implicit object namedTypesFormat extends EnumerationProtocol[NamedType] {
-    override def read(json: JsValue): NamedType.Val = {
+  implicit object namedTypesFormat extends EnumerationProtocol[JsonTypeCast] {
+    override def read(json: JsValue): JsonTypeCast = {
       json match {
-        case JsString(txt) => NamedType.withName(txt).asInstanceOf[NamedType]
+        case JsString(txt) => JsonTypeCast.withName(txt).asInstanceOf[JsonTypeCast]
         case e => throw DeserializationException(s"Expected a value from Metrics but got value $e")
       }
     }
 
-    override def write(value: NamedType): JsValue = JsString(value.typeName)
+    override def write(value: JsonTypeCast): JsValue = JsString(value.typeName)
 
   }
 }

@@ -20,8 +20,8 @@ package de.awagen.kolibri.datatypes.io.json
 import de.awagen.kolibri.datatypes.testclasses.UnitTestSpec
 import spray.json.{JsString, JsValue}
 import EnumerationJsonProtocol._
-import de.awagen.kolibri.datatypes.NamedType
-import de.awagen.kolibri.datatypes.NamedType.NamedType
+import de.awagen.kolibri.datatypes.JsonTypeCast
+import de.awagen.kolibri.datatypes.JsonTypeCast.JsonTypeCast
 
 class EnumerationJsonProtocolSpec extends UnitTestSpec {
 
@@ -38,14 +38,14 @@ class EnumerationJsonProtocolSpec extends UnitTestSpec {
   "EnumerationJsonProtocol" must {
 
     "correctly parse NamedType" in {
-      string.convertTo[NamedType] mustBe NamedType.STRING
-      double.convertTo[NamedType] mustBe NamedType.DOUBLE
-      float.convertTo[NamedType] mustBe NamedType.FLOAT
-      boolean.convertTo[NamedType] mustBe NamedType.BOOLEAN
-      seqString.convertTo[NamedType] mustBe NamedType.SEQ_STRING
-      seqDouble.convertTo[NamedType] mustBe NamedType.SEQ_DOUBLE
-      seqFloat.convertTo[NamedType] mustBe NamedType.SEQ_FLOAT
-      seqBoolean.convertTo[NamedType] mustBe NamedType.SEQ_BOOLEAN
+      string.convertTo[JsonTypeCast] mustBe JsonTypeCast.STRING
+      double.convertTo[JsonTypeCast] mustBe JsonTypeCast.DOUBLE
+      float.convertTo[JsonTypeCast] mustBe JsonTypeCast.FLOAT
+      boolean.convertTo[JsonTypeCast] mustBe JsonTypeCast.BOOLEAN
+      seqString.convertTo[JsonTypeCast] mustBe JsonTypeCast.SEQ_STRING
+      seqDouble.convertTo[JsonTypeCast] mustBe JsonTypeCast.SEQ_DOUBLE
+      seqFloat.convertTo[JsonTypeCast] mustBe JsonTypeCast.SEQ_FLOAT
+      seqBoolean.convertTo[JsonTypeCast] mustBe JsonTypeCast.SEQ_BOOLEAN
     }
   }
 

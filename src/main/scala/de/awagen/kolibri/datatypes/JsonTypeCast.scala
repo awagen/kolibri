@@ -25,8 +25,8 @@ import spray.json.DefaultJsonProtocol.{BooleanJsonFormat, DoubleJsonFormat, Floa
   * Serializable type enum to generate NamedClassTyped instances (e.g usable as keys of TypeTaggedMap).
   * Also provides cast functions to cast a play or spray json JsValue to specific type
   */
-object NamedType extends Enumeration {
-  type NamedType = Val
+object JsonTypeCast extends Enumeration {
+  type JsonTypeCast = Val
 
   case class Val(typeName: String) extends super.Val {
     def toNamedClassType(name: String): NamedClassTyped[_] = typeName match {

@@ -22,7 +22,7 @@ import play.api.libs.json.Json
 import spray.json._
 
 
-class NamedTypeSpec extends UnitTestSpec {
+class JsonTypeCastSpec extends UnitTestSpec {
 
   val decimal: JsValue = """0.9""".parseJson
   val str: JsValue = JsString("0.9")
@@ -35,17 +35,17 @@ class NamedTypeSpec extends UnitTestSpec {
   "NamedType" must {
 
     "correctly cast spray types" in {
-      NamedType.DOUBLE.cast(decimal) mustBe 0.9
-      NamedType.FLOAT.cast(decimal) mustBe 0.9F
-      NamedType.STRING.cast(str) mustBe "0.9"
-      NamedType.BOOLEAN.cast(boolean) mustBe false
+      JsonTypeCast.DOUBLE.cast(decimal) mustBe 0.9
+      JsonTypeCast.FLOAT.cast(decimal) mustBe 0.9F
+      JsonTypeCast.STRING.cast(str) mustBe "0.9"
+      JsonTypeCast.BOOLEAN.cast(boolean) mustBe false
     }
 
     "correctly cast play types" in {
-      NamedType.DOUBLE.cast(playDecimal) mustBe 0.9
-      NamedType.FLOAT.cast(playDecimal) mustBe 0.9F
-      NamedType.STRING.cast(playStr) mustBe "0.9"
-      NamedType.BOOLEAN.cast(playBoolean) mustBe true
+      JsonTypeCast.DOUBLE.cast(playDecimal) mustBe 0.9
+      JsonTypeCast.FLOAT.cast(playDecimal) mustBe 0.9F
+      JsonTypeCast.STRING.cast(playStr) mustBe "0.9"
+      JsonTypeCast.BOOLEAN.cast(playBoolean) mustBe true
     }
   }
 
