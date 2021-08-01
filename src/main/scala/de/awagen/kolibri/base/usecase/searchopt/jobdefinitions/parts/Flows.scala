@@ -24,24 +24,23 @@ import akka.stream.scaladsl.Flow
 import akka.stream.{FlowShape, Graph}
 import de.awagen.kolibri.base.actors.flows.GenericRequestFlows.{Host, getHttpConnectionPoolFlow, getHttpsConnectionPoolFlow}
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{Corn, ProcessingMessage}
-import de.awagen.kolibri.base.config.AppConfig.{config, logger}
+import de.awagen.kolibri.base.config.AppConfig.config
 import de.awagen.kolibri.base.domain.Connection
 import de.awagen.kolibri.base.http.client.request.{RequestTemplate, RequestTemplateBuilder}
 import de.awagen.kolibri.base.processing.failure.TaskFailType
 import de.awagen.kolibri.base.processing.modifiers.Modifier
 import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
 import de.awagen.kolibri.base.usecase.searchopt.http.client.flows.RequestProcessingFlows
+import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.{FutureCalculation, JudgementBasedMetricsCalculation}
 import de.awagen.kolibri.base.usecase.searchopt.metrics.MetricsCalculation
 import de.awagen.kolibri.base.usecase.searchopt.provider.JudgementProviderFactory
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.tagging.TagType
-import de.awagen.kolibri.datatypes.tagging.TagType.AGGREGATION
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.values.MetricValue
 
-import scala.collection.immutable
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 
@@ -151,24 +150,14 @@ object Flows {
         result.addTags(TagType.AGGREGATION, originalTags)
         Future.successful(result)
       case e@Right(_) =>
-        val productIdKey: String = "productIds"
-        val productIds: Seq[String] = e.value.get[Seq[String]](productIdKey).get
-        judgementProviderFactory.getJudgements.future
-          .map(y => {
-            val judgements: Seq[Option[Double]] = y.retrieveJudgements(processingMessage.data._2.parameters("q").head, productIds)
-            logger.debug(s"retrieved judgements: $judgements")
-            val metricRow: MetricRow = metricsCalculation.calculateAll(immutable.Map(processingMessage.data._2.parameters.toSeq.filter(x => !excludeParamsFromMetricRow.contains(x._1)): _*), judgements)
-            logger.debug(s"calculated metrics: $metricRow")
-            val originalTags: Set[Tag] = processingMessage.getTagsForType(TagType.AGGREGATION)
-            Corn(metricRow).withTags(AGGREGATION, originalTags)
-          })
-          .recover(throwable => {
-            logger.warn(s"failed retrieving judgements: $throwable")
-            val metricRow = throwableToMetricRowResponse(throwable)
-            val result: ProcessingMessage[MetricRow] = Corn(metricRow)
-            val originalTags: Set[Tag] = processingMessage.getTagsForType(TagType.AGGREGATION)
-            result.withTags(TagType.AGGREGATION, originalTags)
-          })
+        val calculation: FutureCalculation[(WeaklyTypedMap[String], RequestTemplate), MetricRow] = JudgementBasedMetricsCalculation(
+          "judgementBasedMetrics",
+          judgementProviderFactory,
+          metricsCalculation,
+          excludeParamsFromMetricRow)
+        val result: Future[MetricRow] = calculation.apply((e.value, processingMessage.data._2))
+        val originalTags: Set[Tag] = processingMessage.getTagsForType(TagType.AGGREGATION)
+        result.map(res => Corn(res).withTags(TagType.AGGREGATION, originalTags))
     }
   }
 
