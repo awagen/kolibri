@@ -28,6 +28,7 @@ class TypedJsonSelectorJsonProtocolSpec extends UnitTestSpec {
 
   val stringSeqSelector: JsValue =
     """{
+      |"name": "string1",
       |"castType": "STRING",
       |"selector": {
       |"type": "SINGLEREC",
@@ -38,6 +39,7 @@ class TypedJsonSelectorJsonProtocolSpec extends UnitTestSpec {
 
   val doubleSeqSelector: JsValue =
     """{
+      |"name": "double1",
       |"castType": "DOUBLE",
       |"selector": {
       |"type": "SINGLEREC",
@@ -48,6 +50,7 @@ class TypedJsonSelectorJsonProtocolSpec extends UnitTestSpec {
 
   val floatSeqSelector: JsValue =
     """{
+      |"name": "float1",
       |"castType": "FLOAT",
       |"selector": {
       |"type": "SINGLEREC",
@@ -58,6 +61,7 @@ class TypedJsonSelectorJsonProtocolSpec extends UnitTestSpec {
 
   val booleanSeqSelector: JsValue =
     """{
+      |"name": "boolean1",
       |"castType": "BOOLEAN",
       |"selector": {
       |"type": "SINGLEREC",
@@ -73,6 +77,7 @@ class TypedJsonSelectorJsonProtocolSpec extends UnitTestSpec {
       val stringSeqParsed: collection.Seq[_] = selector.select(Json.parse("""[{"id": "1"}, {"id": "2"}, {"id": "3"}]"""))
       stringSeqParsed mustBe Seq("1", "2", "3")
       selector.castType mustBe JsonTypeCast.STRING
+      selector.name mustBe "string1"
     }
 
     "correctly parse TypedJsonSeqSelector of type Double" in {
@@ -80,6 +85,7 @@ class TypedJsonSelectorJsonProtocolSpec extends UnitTestSpec {
       val stringSeqParsed: collection.Seq[_] = selector.select(Json.parse("""[{"id": 1.1}, {"id": 2.2}, {"id": 3.3}]"""))
       stringSeqParsed mustBe Seq(1.1, 2.2, 3.3)
       selector.castType mustBe JsonTypeCast.DOUBLE
+      selector.name mustBe "double1"
     }
 
     "correctly parse TypedJsonSeqSelector of type Float" in {
@@ -87,6 +93,7 @@ class TypedJsonSelectorJsonProtocolSpec extends UnitTestSpec {
       val stringSeqParsed: collection.Seq[_] = selector.select(Json.parse("""[{"id": 1.1}, {"id": 2.2}, {"id": 3.3}]"""))
       stringSeqParsed mustBe Seq(1.1f, 2.2f, 3.3f)
       selector.castType mustBe JsonTypeCast.FLOAT
+      selector.name mustBe "float1"
     }
 
     "correctly parse TypedJsonSeqSelector of type Boolean" in {
@@ -94,6 +101,7 @@ class TypedJsonSelectorJsonProtocolSpec extends UnitTestSpec {
       val stringSeqParsed: collection.Seq[_] = selector.select(Json.parse("""[{"id": true}, {"id": false}, {"id": true}]"""))
       stringSeqParsed mustBe Seq(true, false, true)
       selector.castType mustBe JsonTypeCast.BOOLEAN
+      selector.name mustBe "boolean1"
     }
   }
 

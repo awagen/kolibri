@@ -17,15 +17,15 @@
 
 package de.awagen.kolibri.base.io.json
 
-import de.awagen.kolibri.base.domain.Connection
-import de.awagen.kolibri.base.processing.JobMessages.SearchEvaluation
-import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.RequestModifiers.RequestPermutation
-import ConnectionJsonProtocol._
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
+import de.awagen.kolibri.base.domain.Connection
+import de.awagen.kolibri.base.io.json.ConnectionJsonProtocol._
+import de.awagen.kolibri.base.io.json.RequestPermutationJsonProtocol._
+import de.awagen.kolibri.base.processing.JobMessages.SearchEvaluation
+import de.awagen.kolibri.base.usecase.searchopt.io.json.ParsingConfigJsonProtocol._
+import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.RequestModifiers.RequestPermutation
+import de.awagen.kolibri.base.usecase.searchopt.parse.ParsingConfig
 import spray.json.{DefaultJsonProtocol, RootJsonFormat}
-import RequestPermutationJsonProtocol._
-import de.awagen.kolibri.base.usecase.searchopt.parse.JsonSelectors.RecursiveValueSelector
-import de.awagen.kolibri.base.usecase.searchopt.io.json.JsonSelectorJsonProtocol._
 
 
 object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSupport {
@@ -39,7 +39,7 @@ object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSu
       requestPermutation: RequestPermutation,
       batchByIndex: Int,
       queryParam: String,
-      productIdSelector: RecursiveValueSelector[String],
+      parsingConfig: ParsingConfig,
       excludeParamsFromMetricRow: Seq[String],
       judgementFileClasspathURI: String,
       tagByParam: String,
@@ -58,7 +58,7 @@ object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSu
         requestPermutation,
         batchByIndex,
         queryParam,
-        productIdSelector,
+        parsingConfig,
         excludeParamsFromMetricRow,
         judgementFileClasspathURI,
         tagByParam,
@@ -76,7 +76,7 @@ object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSu
     "requestPermutation",
     "batchByIndex",
     "queryParam",
-    "productIdSelector",
+    "parsingConfig",
     "excludeParamsFromMetricRow",
     "judgementFileClasspathURI",
     "tagByParam",

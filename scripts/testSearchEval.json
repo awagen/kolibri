@@ -63,12 +63,18 @@
   },
   "batchByIndex": 0,
   "queryParam": "q",
-  "productIdSelector": {
-    "plainSelectorKeys": [
-      "response",
-      "docs"
-    ],
-    "recursiveSelectorKey": "product_id"
+  "parsingConfig": {
+    "singleSelectors": [],
+    "seqSelectors": [
+      {
+        "name": "productIds",
+        "castType": "STRING",
+        "selector": {
+          "type": "PLAINREC",
+          "path": "\\ response \\ docs \\\\ product_id"
+        }
+      }
+    ]
   },
   "excludeParamsFromMetricRow": [
     "q"

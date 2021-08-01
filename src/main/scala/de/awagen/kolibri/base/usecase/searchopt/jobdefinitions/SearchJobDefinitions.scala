@@ -36,14 +36,18 @@ import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.RequestTemp
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.{Flows, Writer}
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Metrics._
 import de.awagen.kolibri.base.usecase.searchopt.metrics.{JudgementHandlingStrategy, MetricsCalculation}
+import de.awagen.kolibri.base.usecase.searchopt.parse.ParsingConfig
 import de.awagen.kolibri.base.usecase.searchopt.provider.ClassPathFileBasedJudgementProviderFactory
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
+import de.awagen.kolibri.datatypes.mutable.stores.{BaseWeaklyTypedMap, WeaklyTypedMap}
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 import org.slf4j.{Logger, LoggerFactory}
+import play.api.libs.json.JsValue
 
+import scala.collection.mutable
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
@@ -51,6 +55,24 @@ object SearchJobDefinitions {
 
   val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
+
+  def jsValueToTypeTaggedMap(parsingConfig: ParsingConfig): SerializableFunction1[JsValue, WeaklyTypedMap[String]] = new SerializableFunction1[JsValue, WeaklyTypedMap[String]] {
+    override def apply(jsValue: JsValue): WeaklyTypedMap[String] = {
+      val typedMap = BaseWeaklyTypedMap(mutable.Map.empty)
+      parsingConfig.seqSelectors.foreach(seqSelector => {
+        val value: Seq[_] = seqSelector.select(jsValue)
+        typedMap.put(seqSelector.name, value)
+      })
+      parsingConfig.singleSelectors.foreach(selector => {
+        val valueOpt: Option[Any] = selector.select(jsValue)
+        valueOpt.foreach(value => typedMap.put(selector.name, value))
+      })
+      if (typedMap.keys.isEmpty) {
+        logger.warn("no data placed in typed map")
+      }
+      typedMap
+    }
+  }
 
   def searchEvaluationToRunnableJobCmd(searchEvaluation: SearchEvaluation)(implicit as: ActorSystem, ec: ExecutionContext):
   SupervisorActor.ProcessActorRunnableJobCmd[RequestTemplateBuilderModifier, MetricRow, MetricRow, MetricAggregation[Tag]] = {
@@ -67,7 +89,7 @@ object SearchJobDefinitions {
         groupId = searchEvaluation.jobName,
         connections = searchEvaluation.connections,
         requestTagger = taggerByParameter(searchEvaluation.tagByParam),
-        responseParsingFunc = SolrHttpResponseHandlers.httpResponseToProductIdSeqFutureByParseFunc(_ => true, searchEvaluation.productIdSelector.select),
+        responseParsingFunc = SolrHttpResponseHandlers.httpResponseToTypeTaggedMapParseFunc(_ => true, jsValueToTypeTaggedMap(searchEvaluation.parsingConfig)),
         judgementProviderFactory = ClassPathFileBasedJudgementProviderFactory(
           searchEvaluation.judgementFileClasspathURI
         ),

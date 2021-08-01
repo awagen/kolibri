@@ -19,7 +19,8 @@ package de.awagen.kolibri.base.usecase.searchopt.parse
 
 import de.awagen.kolibri.base.usecase.searchopt.parse.JsonSelectors.{JsValueSeqSelector, PlainSelector}
 import de.awagen.kolibri.datatypes.JsonTypeCast.JsonTypeCast
-import de.awagen.kolibri.datatypes.NamedClassTyped
+import de.awagen.kolibri.datatypes.io.KolibriSerializable
+import de.awagen.kolibri.datatypes.{JsonTypeCast, NamedClassTyped}
 import play.api.libs.json.JsValue
 
 
@@ -28,7 +29,7 @@ import play.api.libs.json.JsValue
   */
 object TypedJsonSelectors {
 
-  trait Selector[+T] {
+  trait Selector[+T] extends KolibriSerializable {
     def select(jsValue: JsValue): T
   }
 
@@ -36,20 +37,23 @@ object TypedJsonSelectors {
     def select(jsValue: JsValue): Option[T]
   }
 
-  trait SeqSelector[+T] extends Selector[scala.collection.Seq[T]] {
-    def select(jsValue: JsValue): scala.collection.Seq[T]
+  trait SeqSelector[+T] extends Selector[Seq[T]] {
+    def select(jsValue: JsValue): Seq[T]
   }
 
-  case class TypedJsonSeqSelector(selector: JsValueSeqSelector, castType: JsonTypeCast) extends SeqSelector[Any] {
-    def classTyped(name: String): NamedClassTyped[_] = castType.toNamedClassType(name)
+  case class TypedJsonSeqSelector(name: String, selector: JsValueSeqSelector, castType: JsonTypeCast) extends SeqSelector[Any] {
+    // note that here we need to assume the SEQ version of the passed castType. Convention for the respective enum naming
+    // is SEQ_ prepended to the type contained in the seq, e.g SEQ_STRING, SEQ_BOOLEAN, SEQ_DOUBLE, SEQ_FLOAT,... (all uppercase)
+    // The passed castType is for single elements of the Seq
+    def classTyped: NamedClassTyped[_] = JsonTypeCast.withName(s"SEQ_${castType.typeName.toUpperCase}").asInstanceOf[JsonTypeCast].toNamedClassType(name)
 
-    def select(jsValue: JsValue): scala.collection.Seq[_] = selector.select(jsValue).map(x => castType.cast(x))
+    def select(jsValue: JsValue): Seq[_] = selector.select(jsValue).map(x => castType.cast(x)).toSeq
   }
 
-  case class TypedJsonSingleValueSelector(selector: PlainSelector, castType: JsonTypeCast) extends SingleValueSelector[Any] {
-    def classTyped(name: String): NamedClassTyped[_] = castType.toNamedClassType(name)
+  case class TypedJsonSingleValueSelector(name: String, selector: PlainSelector, castType: JsonTypeCast) extends SingleValueSelector[Any] {
+    def classTyped: NamedClassTyped[_] = castType.toNamedClassType(name)
 
-    def select(jsValue: JsValue): Option[Any] = selector.select(jsValue).toOption.map(x => castType.cast(x))
+    def select(jsValue: JsValue): Option[_] = selector.select(jsValue).toOption.map(x => castType.cast(x))
   }
 
 }

@@ -33,6 +33,7 @@ import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifie
 import de.awagen.kolibri.base.usecase.searchopt.http.client.flows.RequestProcessingFlows
 import de.awagen.kolibri.base.usecase.searchopt.metrics.MetricsCalculation
 import de.awagen.kolibri.base.usecase.searchopt.provider.JudgementProviderFactory
+import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.tagging.TagType
@@ -99,8 +100,9 @@ object Flows {
   }
 
   /**
-    * Execution graph from ProcessingMessage[RequestTemplate] to ProcessingMessage[(Either[Throwable, Seq[String]], RequestTemplate)],
-    * where the Either either holds Throwable if request + parsing failed or the Seq of productIds
+    * Execution graph from ProcessingMessage[RequestTemplate] to ProcessingMessage[(Either[Throwable, WeaklyTypedMap[String]], RequestTemplate)],
+    * where the Either either holds Throwable if request + parsing failed or the Map containing
+    * properties parsed from the response
     *
     * @param connections
     * @param queryParam
@@ -113,8 +115,8 @@ object Flows {
   def requestingFlow(connections: Seq[Connection],
                      queryParam: String,
                      groupId: String,
-                     responseParsingFunc: HttpResponse => Future[Either[Throwable, Seq[String]]],
-                     throughputActor: Option[ActorRef])(implicit as: ActorSystem, ec: ExecutionContext): Graph[FlowShape[ProcessingMessage[RequestTemplate], ProcessingMessage[(Either[Throwable, Seq[String]], RequestTemplate)]], NotUsed] =
+                     responseParsingFunc: HttpResponse => Future[Either[Throwable, WeaklyTypedMap[String]]],
+                     throughputActor: Option[ActorRef])(implicit as: ActorSystem, ec: ExecutionContext): Graph[FlowShape[ProcessingMessage[RequestTemplate], ProcessingMessage[(Either[Throwable, WeaklyTypedMap[String]], RequestTemplate)]], NotUsed] =
     RequestProcessingFlows.requestAndParsingFlow(
       throughputActor,
       queryParam,
@@ -137,7 +139,7 @@ object Flows {
     metricRow.addMetric(addValue)
   }
 
-  def metricsCalc(processingMessage: ProcessingMessage[(Either[Throwable, Seq[String]], RequestTemplate)],
+  def metricsCalc(processingMessage: ProcessingMessage[(Either[Throwable, WeaklyTypedMap[String]], RequestTemplate)],
                   judgementProviderFactory: JudgementProviderFactory[Double],
                   metricsCalculation: MetricsCalculation,
                   excludeParamsFromMetricRow: Seq[String])(implicit ec: ExecutionContext): Future[ProcessingMessage[MetricRow]] = {
@@ -149,9 +151,11 @@ object Flows {
         result.addTags(TagType.AGGREGATION, originalTags)
         Future.successful(result)
       case e@Right(_) =>
+        val productIdKey: String = "productIds"
+        val productIds: Seq[String] = e.value.get[Seq[String]](productIdKey).get
         judgementProviderFactory.getJudgements.future
           .map(y => {
-            val judgements: Seq[Option[Double]] = y.retrieveJudgements(processingMessage.data._2.parameters("q").head, e.value)
+            val judgements: Seq[Option[Double]] = y.retrieveJudgements(processingMessage.data._2.parameters("q").head, productIds)
             logger.debug(s"retrieved judgements: $judgements")
             val metricRow: MetricRow = metricsCalculation.calculateAll(immutable.Map(processingMessage.data._2.parameters.toSeq.filter(x => !excludeParamsFromMetricRow.contains(x._1)): _*), judgements)
             logger.debug(s"calculated metrics: $metricRow")
@@ -197,11 +201,11 @@ object Flows {
                          excludeParamsFromMetricRow: Seq[String],
                          groupId: String,
                          requestTagger: ProcessingMessage[RequestTemplate] => ProcessingMessage[RequestTemplate],
-                         responseParsingFunc: HttpResponse => Future[Either[Throwable, Seq[String]]],
+                         responseParsingFunc: HttpResponse => Future[Either[Throwable, WeaklyTypedMap[String]]],
                          judgementProviderFactory: JudgementProviderFactory[Double],
                          metricsCalculation: MetricsCalculation)
                         (implicit as: ActorSystem, ec: ExecutionContext): Flow[RequestTemplateBuilderModifier, ProcessingMessage[MetricRow], NotUsed] = {
-    val partialFlow: Flow[RequestTemplateBuilderModifier, ProcessingMessage[(Either[Throwable, Seq[String]], RequestTemplate)], NotUsed] =
+    val partialFlow: Flow[RequestTemplateBuilderModifier, ProcessingMessage[(Either[Throwable, WeaklyTypedMap[String]], RequestTemplate)], NotUsed] =
       processingFlow(contextPath, fixedParams, requestTagger)
         .via(Flow.fromGraph(requestingFlow(
           connections = connections,

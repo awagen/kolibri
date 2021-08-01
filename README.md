@@ -126,6 +126,23 @@ The docker-compose.yml can be found in the project root. Following setup is prov
 An example grid search evaluation can be performed as given in the ```scripts/start_searcheval.sh```. You will need 
 to adjust paths where appropriate. The example fires requests to a search instance on the local machine, which is not provided here.
 
+## Few notes on the use of TypeTaggedMap
+In case TypeTaggedMap (such as implementation TypedMapStore) is used as type safe map, note that you might see error messages
+indicating a type mismatch of the type that is assumed and the data parsed in case the parsing
+is stored in a variable of generic type Seq[_], e.g where error message will include scala.collection.*.colon::colon as bit unclear description.
+This refers to the unclear type of Seq[_], so you should parse to specific known types in those cases, e.g two samples where the first will yield
+error and the second will be fine (the below assumes that the seqSelector selects a Seq[JsValue] from the JsValue input and casts the single
+elements to type String, while seqSelector.classTyped is of type ClassTyped[Seq[String]]):
+´´´
+val value: Seq[_] = seqSelector.select(jsValue)
+typedMap.put(seqSelector.classTyped, value)
+´´´
+
+´´´
+val value: Seq[String] = seqSelector.select(jsValue).asInstanceOf[Seq[String]]
+typedMap.put(seqSelector.classTyped, value)
+´´´
+
 
 ## License
 

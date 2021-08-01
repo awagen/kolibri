@@ -30,8 +30,9 @@ object TypedJsonSelectorJsonProtocol extends DefaultJsonProtocol {
   implicit object TypedJsonSeqSelectorFormat extends JsonFormat[TypedJsonSeqSelector] {
     override def read(json: JsValue): TypedJsonSeqSelector = json match {
       case spray.json.JsObject(fields) if fields.contains("castType") =>
+        val name: String = fields("name").convertTo[String]
         val selector: JsValueSeqSelector = fields("selector").convertTo[JsValueSeqSelector]
-        TypedJsonSeqSelector(selector, fields("castType").convertTo[JsonTypeCast])
+        TypedJsonSeqSelector(name, selector, fields("castType").convertTo[JsonTypeCast])
     }
 
     // TODO
@@ -41,9 +42,10 @@ object TypedJsonSelectorJsonProtocol extends DefaultJsonProtocol {
   implicit object TypedJsonSingleValueSelectorFormat extends JsonFormat[TypedJsonSingleValueSelector] {
     override def read(json: JsValue): TypedJsonSingleValueSelector = json match {
       case spray.json.JsObject(fields) if fields.contains("castType") =>
+        val name: String = fields("name").convertTo[String]
         val selector: PlainSelector = fields("selector").convertTo[PlainSelector]
         val typeCast: JsonTypeCast = fields("castType").convertTo[JsonTypeCast]
-        TypedJsonSingleValueSelector(selector, typeCast)
+        TypedJsonSingleValueSelector(name, selector, typeCast)
     }
 
     // TODO
