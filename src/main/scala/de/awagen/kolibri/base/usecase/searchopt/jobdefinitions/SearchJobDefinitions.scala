@@ -34,10 +34,7 @@ import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.BatchGenera
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.Expectations.expectationPerBatchSupplier
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.RequestTemplatesAndBuilders.taggerByParameter
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.{Flows, Writer}
-import de.awagen.kolibri.base.usecase.searchopt.metrics.Metrics._
-import de.awagen.kolibri.base.usecase.searchopt.metrics.{JudgementHandlingStrategy, MetricsCalculation}
 import de.awagen.kolibri.base.usecase.searchopt.parse.ParsingConfig
-import de.awagen.kolibri.base.usecase.searchopt.provider.ClassPathFileBasedJudgementProviderFactory
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
 import de.awagen.kolibri.datatypes.mutable.stores.{BaseWeaklyTypedMap, WeaklyTypedMap}
@@ -89,13 +86,10 @@ object SearchJobDefinitions {
         groupId = searchEvaluation.jobName,
         connections = searchEvaluation.connections,
         requestTagger = taggerByParameter(searchEvaluation.tagByParam),
+        requestTemplateStorageKey = searchEvaluation.requestTemplateStorageKey,
         responseParsingFunc = SolrHttpResponseHandlers.httpResponseToTypeTaggedMapParseFunc(_ => true, jsValueToTypeTaggedMap(searchEvaluation.parsingConfig)),
-        judgementProviderFactory = ClassPathFileBasedJudgementProviderFactory(
-          searchEvaluation.judgementFileClasspathURI
-        ),
-        metricsCalculation = MetricsCalculation(
-          metrics = Seq(NDCG_10, PRECISION_4, ERR),
-          judgementHandling = JudgementHandlingStrategy.EXIST_RESULTS_AND_JUDGEMENTS_MISSING_AS_ZEROS)
+        mapFutureMetricRowCalculation = searchEvaluation.mapFutureMetricRowCalculation,
+        singleMapCalculations = searchEvaluation.singleMapCalculations,
       ),
       processingActorProps = None,
       perBatchExpectationGenerator = expectationPerBatchSupplier[MetricRow](

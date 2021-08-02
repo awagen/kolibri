@@ -81,6 +81,25 @@
   ],
   "judgementFileClasspathURI": "data/test_judgements.txt",
   "tagByParam": "q",
+  "requestTemplateStorageKey": "requestTemplate",
+  "mapFutureMetricRowCalculation": {
+    "functionType": "IR_METRICS",
+    "name": "irMetrics",
+    "requestTemplateKey": "requestTemplate",
+    "productIdsKey": "productIds",
+    "judgementProvider": {
+      "filename": "data/test_judgements.txt"
+    },
+    "metricsCalculation": {
+      "metrics": ["DCG_10", "NDCG_10", "PRECISION_4", "ERR"],
+      "judgementHandling": {
+        "validations": ["EXIST_RESULTS", "EXIST_JUDGEMENTS"],
+        "handling":  "AS_ZEROS"
+      }
+    },
+    "excludeParams": ["q"]
+  },
+  "singleMapCalculations": [],
   "writerDir": "/app/data",
   "writerColumnSeparator": "\t",
   "allowedTimePerElementInMillis": 1000,

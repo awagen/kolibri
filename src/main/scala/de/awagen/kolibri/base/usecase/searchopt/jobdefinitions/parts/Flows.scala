@@ -27,19 +27,15 @@ import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{Corn, Proce
 import de.awagen.kolibri.base.config.AppConfig.config
 import de.awagen.kolibri.base.domain.Connection
 import de.awagen.kolibri.base.http.client.request.{RequestTemplate, RequestTemplateBuilder}
-import de.awagen.kolibri.base.processing.failure.TaskFailType
 import de.awagen.kolibri.base.processing.modifiers.Modifier
 import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
 import de.awagen.kolibri.base.usecase.searchopt.http.client.flows.RequestProcessingFlows
-import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.{FutureCalculation, JudgementBasedMetricsCalculation}
-import de.awagen.kolibri.base.usecase.searchopt.metrics.MetricsCalculation
-import de.awagen.kolibri.base.usecase.searchopt.provider.JudgementProviderFactory
+import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.{Calculation, CalculationResult, FutureCalculation}
+import de.awagen.kolibri.base.usecase.searchopt.metrics.Functions.{resultEitherToMetricRowResponse, throwableToMetricRowResponse}
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
-import de.awagen.kolibri.datatypes.reason.ComputeFailReason
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.tagging.TagType
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
-import de.awagen.kolibri.datatypes.values.MetricValue
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
@@ -125,22 +121,10 @@ object Flows {
       responseParsingFunc
     )
 
-  /**
-    * Helper function to generate a MetricRow result from a throwable.
-    *
-    * @param e : The throwable to map to MetricRow
-    * @return
-    */
-  def throwableToMetricRowResponse(e: Throwable): MetricRow = {
-    val metricRow = MetricRow(params = Map.empty[String, Seq[String]], metrics = Map.empty[String, MetricValue[Double]])
-    val failMetricName: String = TaskFailType.FailedByException(e).toString
-    val addValue: MetricValue[Double] = MetricValue.createAvgFailSample(metricName = failMetricName, failMap = Map[ComputeFailReason, Int](ComputeFailReason(s"exception:${e.getClass.toString}") -> 1))
-    metricRow.addMetric(addValue)
-  }
-
   def metricsCalc(processingMessage: ProcessingMessage[(Either[Throwable, WeaklyTypedMap[String]], RequestTemplate)],
-                  judgementProviderFactory: JudgementProviderFactory[Double],
-                  metricsCalculation: MetricsCalculation,
+                  mapFutureMetricRowCalculation: FutureCalculation[WeaklyTypedMap[String], MetricRow],
+                  singleMapCalculations: Seq[Calculation[WeaklyTypedMap[String], CalculationResult[Double]]],
+                  requestTemplateStorageKey: String,
                   excludeParamsFromMetricRow: Seq[String])(implicit ec: ExecutionContext): Future[ProcessingMessage[MetricRow]] = {
     processingMessage.data._1 match {
       case e@Left(_) =>
@@ -150,14 +134,25 @@ object Flows {
         result.addTags(TagType.AGGREGATION, originalTags)
         Future.successful(result)
       case e@Right(_) =>
-        val calculation: FutureCalculation[(WeaklyTypedMap[String], RequestTemplate), MetricRow] = JudgementBasedMetricsCalculation(
-          "judgementBasedMetrics",
-          judgementProviderFactory,
-          metricsCalculation,
-          excludeParamsFromMetricRow)
-        val result: Future[MetricRow] = calculation.apply((e.value, processingMessage.data._2))
+        // add query parameter
+        e.value.put[RequestTemplate](requestTemplateStorageKey, processingMessage.data._2)
+        // apply calculations resulting in MetricRow
+        val rowResultFuture: Future[MetricRow] = mapFutureMetricRowCalculation.apply(e.value)
+        // compute and add single results
+        val singleResults: Seq[MetricRow] = singleMapCalculations
+          .map(x => {
+            val value = x.apply(e.value)
+            resultEitherToMetricRowResponse(x.name, value)
+          })
         val originalTags: Set[Tag] = processingMessage.getTagsForType(TagType.AGGREGATION)
-        result.map(res => Corn(res).withTags(TagType.AGGREGATION, originalTags))
+        val combinedResultFuture: Future[MetricRow] = rowResultFuture.map(resRow => {
+          var result: MetricRow = resRow
+          singleResults.foreach(single => {
+            result = result.addRecord(single)
+          })
+          result
+        })
+        combinedResultFuture.map(res => Corn(res).withTags(TagType.AGGREGATION, originalTags))
     }
   }
 
@@ -191,8 +186,9 @@ object Flows {
                          groupId: String,
                          requestTagger: ProcessingMessage[RequestTemplate] => ProcessingMessage[RequestTemplate],
                          responseParsingFunc: HttpResponse => Future[Either[Throwable, WeaklyTypedMap[String]]],
-                         judgementProviderFactory: JudgementProviderFactory[Double],
-                         metricsCalculation: MetricsCalculation)
+                         requestTemplateStorageKey: String,
+                         mapFutureMetricRowCalculation: FutureCalculation[WeaklyTypedMap[String], MetricRow],
+                         singleMapCalculations: Seq[Calculation[WeaklyTypedMap[String], CalculationResult[Double]]])
                         (implicit as: ActorSystem, ec: ExecutionContext): Flow[RequestTemplateBuilderModifier, ProcessingMessage[MetricRow], NotUsed] = {
     val partialFlow: Flow[RequestTemplateBuilderModifier, ProcessingMessage[(Either[Throwable, WeaklyTypedMap[String]], RequestTemplate)], NotUsed] =
       processingFlow(contextPath, fixedParams, requestTagger)
@@ -204,8 +200,9 @@ object Flows {
           throughputActor = throughputActor)))
     partialFlow.mapAsyncUnordered[ProcessingMessage[MetricRow]](config.requestParallelism)(x => {
       metricsCalc(processingMessage = x,
-        judgementProviderFactory = judgementProviderFactory,
-        metricsCalculation = metricsCalculation,
+        mapFutureMetricRowCalculation,
+        singleMapCalculations,
+        requestTemplateStorageKey = requestTemplateStorageKey,
         excludeParamsFromMetricRow = excludeParamsFromMetricRow)
     })
   }

@@ -143,6 +143,15 @@ val value: Seq[String] = seqSelector.select(jsValue).asInstanceOf[Seq[String]]
 typedMap.put(seqSelector.classTyped, value)
 ´´´
 
+## A few notes on play json lib vs spray json lib
+In the project you will currently find both spray json lib for json parsing and the play json lib.
+At the moment incoming requests (e.g job definitions in json format and so on) are handled by the spray lib, 
+while selectors in the parsed responses when requesting another service (e.g look at the job definitions for the 
+search optimization use case) are handled with the play lib. This has origin in better out of the box functionality of the 
+play lib when parsing elements from a json, single or recursive. 
+For spray there is an additional library providing this functionality (https://github.com/jrudolph/json-lenses), 
+which seems to even provide more functionality. For this sake ayou can expect the play json lib will be removed in 
+further iterations for the sake of only using spray.
 
 ## License
 

@@ -26,9 +26,11 @@ import de.awagen.kolibri.base.processing.JobMessages.{SearchEvaluation, TestPiCa
 import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.SearchJobDefinitions
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.RequestModifiers.RequestPermutation
+import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.{Calculation, CalculationResult, FutureCalculation}
 import de.awagen.kolibri.base.usecase.searchopt.parse.ParsingConfig
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
+import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.values.AggregateValue
@@ -51,7 +53,9 @@ object JobMessages {
                               queryParam: String,
                               parsingConfig: ParsingConfig,
                               excludeParamsFromMetricRow: Seq[String],
-                              judgementFileClasspathURI: String,
+                              requestTemplateStorageKey: String,
+                              mapFutureMetricRowCalculation: FutureCalculation[WeaklyTypedMap[String], MetricRow],
+                              singleMapCalculations: Seq[Calculation[WeaklyTypedMap[String], CalculationResult[Double]]],
                               tagByParam: String,
                               writerDir: String = "/app/data",
                               writerColumnSeparator: String = "\t",
