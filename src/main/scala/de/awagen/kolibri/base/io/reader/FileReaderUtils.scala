@@ -41,6 +41,14 @@ object FileReaderUtils {
       .toVector
   }
 
+  /**
+    * Read lines from source, trim, filter out empty, split by delimiter, filter out those where nr of elements
+    * is smaller than actually selected positions, select element at given position, filter out empty
+    * @param source
+    * @param delimiter
+    * @param position
+    * @return
+    */
   def pickUniquePositionPerLineDeterminedByDelimiter(source: Source, delimiter: String, position: Int): immutable.Seq[String] = {
     source
       .getLines.map(x => x.trim)
@@ -49,7 +57,8 @@ object FileReaderUtils {
       .filter(x => x.length > position)
       .map(x => x(position).trim)
       .filter(x => x.nonEmpty)
-      .toSet[String].toVector
+      .distinct
+      .toVector
   }
 
 

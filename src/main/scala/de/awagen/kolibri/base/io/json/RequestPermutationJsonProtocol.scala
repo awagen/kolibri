@@ -18,7 +18,7 @@
 package de.awagen.kolibri.base.io.json
 
 import akka.http.scaladsl.model.{ContentType, ContentTypes}
-import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.RequestModifiers.RequestPermutation
+import de.awagen.kolibri.base.processing.modifiers.RequestPermutation
 import de.awagen.kolibri.datatypes.io.json.OrderedMultiValuesJsonProtocol._
 import de.awagen.kolibri.datatypes.multivalues.OrderedMultiValues
 import spray.json.{DefaultJsonProtocol, RootJsonFormat}

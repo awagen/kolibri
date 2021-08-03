@@ -14,15 +14,28 @@
   * limitations under the License.
   */
 
+
 package de.awagen.kolibri.base.processing.modifiers
 
-import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
+import de.awagen.kolibri.base.http.client.request.RequestTemplateBuilder
+import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.{BodyModifier, ContextPathModifier, HeaderModifier, RequestParameterModifier}
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
-import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSupplier
 
-object BatchRequestModifierSuppliers {
 
-  type BatchRequestModifierSupplier = SerializableSupplier[IndexedGenerator[RequestTemplateBuilderModifier]]
+object RequestModifierProvider {
 
+  trait ModifierProvider[T <: Modifier[RequestTemplateBuilder]] {
+
+    def modifiers: Seq[IndexedGenerator[T]]
+
+  }
+
+  trait ParamModifierProvider extends ModifierProvider[RequestParameterModifier]
+
+  trait ContextPathModifierProvider extends ModifierProvider[ContextPathModifier]
+
+  trait HeaderModifierProvider extends ModifierProvider[HeaderModifier]
+
+  trait BodyModifierProvider extends ModifierProvider[BodyModifier]
 
 }

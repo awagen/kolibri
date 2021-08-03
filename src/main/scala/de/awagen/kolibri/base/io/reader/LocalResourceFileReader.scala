@@ -25,6 +25,12 @@ case class LocalResourceFileReader(delimiterAndPosition: Option[(String, Int)],
     FileReaderUtils.localResourceSource(fileIdentifier, encoding)
   }
 
+  /**
+    * if delimiterAndPosition is set, split each line by the delimiter and select the nth element,
+    * otherwise just return trimmed lines
+    * @param fileIdentifier
+    * @return
+    */
   override def read(fileIdentifier: String): Seq[String] = {
     val source: Source = getSource(fileIdentifier)
     delimiterAndPosition.fold(FileReaderUtils.trimmedEntriesByLineFromFile(source))(
