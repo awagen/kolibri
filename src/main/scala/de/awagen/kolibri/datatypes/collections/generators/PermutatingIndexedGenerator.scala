@@ -19,6 +19,13 @@ package de.awagen.kolibri.datatypes.collections.generators
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 import de.awagen.kolibri.datatypes.utils.PermutationUtils
 
+/**
+  * Takes a number of generators of same type and returns generator that generates all permutations of all the values
+  * within the distinct generators, keeping the position in the resulting Seq.
+  *
+  * @param generators - the Seq of generators
+  * @tparam T - type of the elements
+  */
 case class PermutatingIndexedGenerator[+T](generators: Seq[IndexedGenerator[T]]) extends IndexedGenerator[Seq[T]] {
 
   val elementsPerParameter: Seq[Int] = generators.map(x => x.nrOfElements)
