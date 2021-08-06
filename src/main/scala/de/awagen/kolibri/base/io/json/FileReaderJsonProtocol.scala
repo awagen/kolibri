@@ -21,9 +21,9 @@ import spray.json.{DefaultJsonProtocol, DeserializationException, JsObject, JsSt
 
 object FileReaderJsonProtocol extends DefaultJsonProtocol {
 
-  implicit object fileReaderFormat extends JsonFormat[FileReader] {
+  implicit object FileReaderFormat extends JsonFormat[FileReader] {
     override def read(json: JsValue): FileReader = json match {
-      case spray.json.JsObject(fields) if (fields.contains("type") && fields("type").convertTo[String] == "LOCAL_FILE_READER") =>
+      case spray.json.JsObject(fields) if fields.contains("type") && fields("type").convertTo[String] == "LOCAL_FILE_READER" =>
         val delimiter = fields.get("delimiter")
         val position = fields.get("position")
         val encoding = fields.get("encoding").map(x => x.convertTo[String])
