@@ -37,6 +37,12 @@ object ModifierMappers {
 
   }
 
+  object ParamsMapper {
+
+    def empty: ParamsMapper = BaseParamsMapper(Map.empty, replace = false)
+
+  }
+
   trait ParamsMapper extends ModifierMapper[Map[String, Seq[String]]] {
 
     val replace: Boolean
@@ -44,6 +50,12 @@ object ModifierMappers {
     def getModifiersForKey(key: String): Option[IndexedGenerator[Modifier[RequestTemplateBuilder]]] =
       getValuesForKey(key).map(generator =>
         generator.mapGen(value => RequestParameterModifier(value, replace)))
+  }
+
+  object HeadersMapper {
+
+    def empty: HeadersMapper = BaseHeadersMapper(Map.empty, replace = false)
+
   }
 
   trait HeadersMapper extends ModifierMapper[Map[String, String]] {
@@ -57,6 +69,12 @@ object ModifierMappers {
           HeaderModifier(headers, replace)
         }))
     }
+  }
+
+  object BodyMapper {
+
+    def empty: BodyMapper = BaseBodyMapper(Map.empty)
+
   }
 
   trait BodyMapper extends ModifierMapper[String] {
