@@ -118,8 +118,10 @@ object ModifierMappers {
         paramsOpt.foreach(x => generators = generators :+ x)
         headersOpt.foreach(x => generators = generators :+ x)
         bodiesOpt.foreach(x => generators = generators :+ x)
-        val permutations: IndexedGenerator[Modifier[RequestTemplateBuilder]] = PermutatingIndexedGenerator(generators).mapGen(x => CombinedModifier(x))
-        perKeyPermutations = perKeyPermutations :+ permutations
+        if (generators.nonEmpty) {
+          val permutations: IndexedGenerator[Modifier[RequestTemplateBuilder]] = PermutatingIndexedGenerator(generators).mapGen(x => CombinedModifier(x))
+          perKeyPermutations = perKeyPermutations :+ permutations
+        }
       })
       OneAfterAnotherIndexedGenerator(perKeyPermutations)
     }

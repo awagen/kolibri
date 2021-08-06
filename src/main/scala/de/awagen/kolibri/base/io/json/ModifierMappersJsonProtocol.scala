@@ -76,7 +76,8 @@ object ModifierMappersJsonProtocol extends DefaultJsonProtocol {
           headersMapper = headersMapper,
           bodyMapper = bodyMapper
         )
-      case e => throw DeserializationException(s"Expected a value of type MappingModifier but got value $e")
+      case e =>
+        throw DeserializationException(s"Expected a value of type MappingModifier but got value $e")
     }
 
     // TODO
