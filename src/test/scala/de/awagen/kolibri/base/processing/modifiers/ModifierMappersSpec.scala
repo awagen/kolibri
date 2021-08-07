@@ -20,8 +20,7 @@ package de.awagen.kolibri.base.processing.modifiers
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity}
 import akka.util.ByteString
 import de.awagen.kolibri.base.http.client.request.{RequestTemplate, RequestTemplateBuilder}
-import de.awagen.kolibri.base.processing.modifiers.ModifierMappers.{BaseBodyMapper, BaseHeadersMapper, BaseParamsMapper, BodyMapper, HeadersMapper, ModifierMapper, ParamsMapper}
-import de.awagen.kolibri.base.processing.modifiers.RequestPermutations.MappingModifier
+import de.awagen.kolibri.base.processing.modifiers.ModifierMappers._
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
 import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator}
 
@@ -139,27 +138,5 @@ class ModifierMappersSpec extends UnitTestSpec {
       )
     }
 
-    "correctly apply MappingModifier" in {
-      // given, when
-      val mappingModifier = MappingModifier(
-        keyGen = ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq("key1", "key2")),
-        paramsMapper = BaseParamsMapper(Map("key1" -> ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq(Map("p1" -> Seq("v1")))),
-          "key2" -> ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq(Map("pp1" -> Seq("vv1"))))), replace = false),
-        headersMapper = BaseHeadersMapper(Map("key1" -> ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq(Map("p1" -> "v1"))),
-          "key2" -> ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq(Map("pp1" -> "vv1")))), replace = false),
-        bodyMapper = BaseBodyMapper(Map("key1" -> ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq("""{"a": "A"}""")),
-          "key2" -> ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq("""{"b": "B"}"""))))
-      )
-      mappingModifier.modifiers.size mustBe 1
-      val results: Seq[RequestTemplate] = mappingModifier.modifiers.head.mapGen(modifier => modifier.apply(emptyRequestTemplateBuilder).build()).iterator.toSeq
-      results.size mustBe 2
-      results.head.getParameter("p1").get mustBe Seq("v1")
-      results(1).getParameter("pp1").get mustBe Seq("vv1")
-      results.head.headers.find(x => x.name() == "p1").get.value() mustBe "v1"
-      results(1).headers.find(x => x.name() == "pp1").get.value() mustBe "vv1"
-      results.head.body mustBe HttpEntity.Strict(ContentTypes.`application/json`, ByteString("""{"a": "A"}"""))
-      results(1).body mustBe HttpEntity.Strict(ContentTypes.`application/json`, ByteString("""{"b": "B"}"""))
-    }
   }
-
 }

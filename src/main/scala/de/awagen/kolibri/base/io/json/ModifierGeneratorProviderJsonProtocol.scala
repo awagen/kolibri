@@ -21,7 +21,7 @@ import akka.http.scaladsl.model.{ContentType, ContentTypes}
 import de.awagen.kolibri.base.io.json.IndexedGeneratorJsonProtocol._
 import de.awagen.kolibri.base.io.json.ModifierMappersJsonProtocol._
 import de.awagen.kolibri.base.processing.modifiers.ModifierMappers.{BodyMapper, HeadersMapper, ParamsMapper}
-import de.awagen.kolibri.base.processing.modifiers.RequestPermutations.{MappingModifier, RequestPermutation}
+import de.awagen.kolibri.base.processing.modifiers.RequestPermutations.{MappingModifier, ModifierGeneratorProvider, RequestPermutation}
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.io.json.OrderedMultiValuesJsonProtocol.OrderedMultiValuesAnyFormat
 import de.awagen.kolibri.datatypes.multivalues.OrderedMultiValues
@@ -71,5 +71,21 @@ object ModifierGeneratorProviderJsonProtocol extends DefaultJsonProtocol {
     "bodies",
     "bodyContentType"
   )
+
+  implicit object ModifierGeneratorProviderJsonProtocol extends JsonFormat[ModifierGeneratorProvider] {
+    override def read(json: JsValue): ModifierGeneratorProvider = json match {
+      case spray.json.JsObject(fields) => fields("type").convertTo[String] match {
+        case "MAPPED" =>
+          fields("value").convertTo[MappingModifier]
+        case "ALL" =>
+          fields("value").convertTo[RequestPermutation]
+      }
+      case e =>
+        throw DeserializationException(s"Expected a value of type ModifierGeneratorProvider but got value $e")
+    }
+
+    // TODO
+    override def write(obj: ModifierGeneratorProvider): JsValue = """{}""".toJson
+  }
 
 }
