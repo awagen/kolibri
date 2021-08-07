@@ -17,7 +17,7 @@
 
 package de.awagen.kolibri.base.io.json
 
-import de.awagen.kolibri.base.processing.modifiers.ModifierMappers.{BaseBodyMapper, BaseHeadersMapper, BaseParamsMapper, BodyMapper, HeadersMapper, MappingModifier, ParamsMapper}
+import de.awagen.kolibri.base.processing.modifiers.ModifierMappers.{BaseBodyMapper, BaseHeadersMapper, BaseParamsMapper, BodyMapper, HeadersMapper, ParamsMapper}
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import spray.json.{DefaultJsonProtocol, DeserializationException, JsValue, JsonFormat, enrichAny}
 import IndexedGeneratorJsonProtocol._
@@ -62,27 +62,5 @@ object ModifierMappersJsonProtocol extends DefaultJsonProtocol {
     // TODO
     override def write(obj: BodyMapper): JsValue = """{}""".toJson
   }
-
-  implicit object MappingModifierJsonProtocol extends JsonFormat[MappingModifier] {
-    override def read(json: JsValue): MappingModifier = json match {
-      case spray.json.JsObject(fields) =>
-        val paramsMapper = fields.get("paramsMapper").map(x => x.convertTo[ParamsMapper]).getOrElse(ParamsMapper.empty)
-        val headersMapper = fields.get("headerMapper").map(x => x.convertTo[HeadersMapper]).getOrElse(HeadersMapper.empty)
-        val bodyMapper = fields.get("bodyMapper").map(x => x.convertTo[BodyMapper]).getOrElse(BodyMapper.empty)
-        val keyGen = fields("keys").convertTo[IndexedGenerator[String]]
-        MappingModifier(
-          keyGen = keyGen,
-          paramsMapper = paramsMapper,
-          headersMapper = headersMapper,
-          bodyMapper = bodyMapper
-        )
-      case e =>
-        throw DeserializationException(s"Expected a value of type MappingModifier but got value $e")
-    }
-
-    // TODO
-    override def write(obj: MappingModifier): JsValue = """{}""".toJson
-  }
-
 
 }

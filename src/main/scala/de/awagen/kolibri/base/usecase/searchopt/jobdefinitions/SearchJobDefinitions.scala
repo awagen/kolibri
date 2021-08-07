@@ -75,7 +75,7 @@ object SearchJobDefinitions {
   SupervisorActor.ProcessActorRunnableJobCmd[RequestTemplateBuilderModifier, MetricRow, MetricRow, MetricAggregation[Tag]] = {
     JobMsgFactory.createActorRunnableJobCmd[Seq[IndexedGenerator[Modifier[RequestTemplateBuilder]]], RequestTemplateBuilderModifier, MetricRow, MetricRow, MetricAggregation[Tag]](
       jobId = searchEvaluation.jobName,
-      data = searchEvaluation.requestPermutation.getModifierSeq,
+      data = searchEvaluation.requestPermutation.modifiers,
       dataBatchGenerator = batchGenerator(batchByIndex = searchEvaluation.batchByIndex),
       transformerFlow = Flows.fullProcessingFlow(
         throughputActor = Option.empty[ActorRef],

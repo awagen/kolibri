@@ -21,8 +21,8 @@ import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.model.{ContentType, ContentTypes, HttpEntity}
 import akka.util.ByteString
 import de.awagen.kolibri.base.http.client.request.RequestTemplateBuilder
-import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.{BodyModifier, CombinedModifier, HeaderModifier, RequestParameterModifier}
-import de.awagen.kolibri.datatypes.collections.generators.{IndexedGenerator, OneAfterAnotherIndexedGenerator, PermutatingIndexedGenerator}
+import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.{BodyModifier, HeaderModifier, RequestParameterModifier}
+import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 
 
 object ModifierMappers {
@@ -93,38 +93,5 @@ object ModifierMappers {
   case class BaseHeadersMapper(map: Map[String, IndexedGenerator[Map[String, String]]], replace: Boolean) extends HeadersMapper
 
   case class BaseBodyMapper(map: Map[String, IndexedGenerator[String]], contentType: ContentType = ContentTypes.`application/json`) extends BodyMapper
-
-
-  /**
-    * Given a generator of key values, generate the correct generators that permutate over all given key-specific combination
-    * of mapper values
-    *
-    * @param keyGen        - the generator generating the keys that are mapped to yield the modifiers
-    * @param paramsMapper  - a mapper to yield parameter modifiers
-    * @param headersMapper -  a mapper to yield header modifiers
-    * @param bodyMapper    - a mapper to yield body modifiers
-    */
-  case class MappingModifier(keyGen: IndexedGenerator[String],
-                             paramsMapper: ParamsMapper,
-                             headersMapper: HeadersMapper,
-                             bodyMapper: BodyMapper) {
-    def modifiers: IndexedGenerator[Modifier[RequestTemplateBuilder]] = {
-      var perKeyPermutations: Seq[IndexedGenerator[Modifier[RequestTemplateBuilder]]] = Seq.empty
-      keyGen.iterator.foreach(key => {
-        val paramsOpt: Option[IndexedGenerator[Modifier[RequestTemplateBuilder]]] = paramsMapper.getModifiersForKey(key)
-        val headersOpt: Option[IndexedGenerator[Modifier[RequestTemplateBuilder]]] = headersMapper.getModifiersForKey(key)
-        val bodiesOpt: Option[IndexedGenerator[Modifier[RequestTemplateBuilder]]] = bodyMapper.getModifiersForKey(key)
-        var generators: Seq[IndexedGenerator[Modifier[RequestTemplateBuilder]]] = Seq.empty
-        paramsOpt.foreach(x => generators = generators :+ x)
-        headersOpt.foreach(x => generators = generators :+ x)
-        bodiesOpt.foreach(x => generators = generators :+ x)
-        if (generators.nonEmpty) {
-          val permutations: IndexedGenerator[Modifier[RequestTemplateBuilder]] = PermutatingIndexedGenerator(generators).mapGen(x => CombinedModifier(x))
-          perKeyPermutations = perKeyPermutations :+ permutations
-        }
-      })
-      OneAfterAnotherIndexedGenerator(perKeyPermutations)
-    }
-  }
 
 }

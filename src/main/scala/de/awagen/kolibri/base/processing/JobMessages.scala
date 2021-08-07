@@ -25,7 +25,7 @@ import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions.MapWithCo
 import de.awagen.kolibri.base.processing.JobMessages.{SearchEvaluation, TestPiCalculation}
 import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.SearchJobDefinitions
-import de.awagen.kolibri.base.processing.modifiers.RequestPermutation
+import de.awagen.kolibri.base.processing.modifiers.RequestPermutations.RequestPermutation
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.{Calculation, CalculationResult, FutureCalculation}
 import de.awagen.kolibri.base.usecase.searchopt.parse.ParsingConfig
 import de.awagen.kolibri.datatypes.io.KolibriSerializable

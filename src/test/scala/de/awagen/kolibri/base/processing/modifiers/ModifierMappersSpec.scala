@@ -20,7 +20,8 @@ package de.awagen.kolibri.base.processing.modifiers
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity}
 import akka.util.ByteString
 import de.awagen.kolibri.base.http.client.request.{RequestTemplate, RequestTemplateBuilder}
-import de.awagen.kolibri.base.processing.modifiers.ModifierMappers.{BaseBodyMapper, BaseHeadersMapper, BaseParamsMapper, BodyMapper, HeadersMapper, MappingModifier, ModifierMapper, ParamsMapper}
+import de.awagen.kolibri.base.processing.modifiers.ModifierMappers.{BaseBodyMapper, BaseHeadersMapper, BaseParamsMapper, BodyMapper, HeadersMapper, ModifierMapper, ParamsMapper}
+import de.awagen.kolibri.base.processing.modifiers.RequestPermutations.MappingModifier
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
 import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator}
 
@@ -149,7 +150,8 @@ class ModifierMappersSpec extends UnitTestSpec {
         bodyMapper = BaseBodyMapper(Map("key1" -> ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq("""{"a": "A"}""")),
           "key2" -> ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq("""{"b": "B"}"""))))
       )
-      val results: Seq[RequestTemplate] = mappingModifier.modifiers.mapGen(modifier => modifier.apply(emptyRequestTemplateBuilder).build()).iterator.toSeq
+      mappingModifier.modifiers.size mustBe 1
+      val results: Seq[RequestTemplate] = mappingModifier.modifiers.head.mapGen(modifier => modifier.apply(emptyRequestTemplateBuilder).build()).iterator.toSeq
       results.size mustBe 2
       results.head.getParameter("p1").get mustBe Seq("v1")
       results(1).getParameter("pp1").get mustBe Seq("vv1")

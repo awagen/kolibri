@@ -17,10 +17,8 @@
 
 package de.awagen.kolibri.base.io.json
 
-import de.awagen.kolibri.base.http.client.request.RequestTemplateBuilder
 import de.awagen.kolibri.base.io.json.ModifierMappersJsonProtocol._
-import de.awagen.kolibri.base.processing.modifiers.Modifier
-import de.awagen.kolibri.base.processing.modifiers.ModifierMappers.{BodyMapper, HeadersMapper, MappingModifier, ParamsMapper}
+import de.awagen.kolibri.base.processing.modifiers.ModifierMappers.{BodyMapper, HeadersMapper, ParamsMapper}
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
 import spray.json._
 
@@ -83,86 +81,6 @@ class ModifierMappersJsonProtocolSpec extends UnitTestSpec {
       |}
       |""".stripMargin.parseJson
 
-  // here we get one key that has a match in all mappings and one that only occurs in one,
-  // resulting in 10 overall permutations
-  val mappingModifierJson: JsValue =
-  """
-    |{
-    |"keys": {"type": "BY_VALUES_SEQ", "values": ["key1", "key2"]},
-    |"paramsMapper": {
-    | "replace": true,
-    | "values": {
-    |   "key1": {
-    |     "type": "BY_MAPSEQ",
-    |     "values": [
-    |       {"test1": ["0.10", "0.11"]},
-    |       {"test2": ["0.21", "0.22"]}
-    |     ]
-    |   }
-    | }
-    |},
-    |"headerMapper": {
-    | "replace": true,
-    | "values": {
-    |   "key1": {
-    |     "type": "BY_VALUES_SEQ",
-    |     "values": [
-    |       {"key1": "value1", "key2": "value2"},
-    |       {"key1": "value3", "key2": "value4"}
-    |     ]
-    |   }
-    | }
-    |},
-    |"bodyMapper": {
-    | "values": {
-    |   "key1": {"type": "BY_VALUES_SEQ", "values": ["val1", "val2"]},
-    |   "key2": {"type": "BY_VALUES_SEQ", "values": ["val3", "val4"]}
-    | }
-    |}
-    |}
-    |""".stripMargin.parseJson
-
-  // here the keys dont match any mapping, thus we dont expect any modifier to come out of it
-  // when parsing to MappingModifier
-  val mappingModifierWithNonMatchingKeysJson: JsValue =
-  """
-    |{
-    |"keys": {"type": "BY_VALUES_SEQ", "values": ["nonmatching1", "nonmatching2"]},
-    |"paramsMapper": {
-    | "replace": true,
-    | "values": {
-    |   "key1": {
-    |     "type": "BY_MAPSEQ",
-    |     "values": [
-    |       {"test1": ["0.10", "0.11"]},
-    |       {"test2": ["0.21", "0.22"]}
-    |     ]
-    |   }
-    | }
-    |},
-    |"headerMapper": {
-    | "replace": true,
-    | "values": {
-    |   "key1": {
-    |     "type": "BY_VALUES_SEQ",
-    |     "values": [
-    |       {"key1": "value1", "key2": "value2"},
-    |       {"key1": "value3", "key2": "value4"}
-    |     ]
-    |   }
-    | }
-    |},
-    |"bodyMapper": {
-    | "values": {
-    |   "key1": {"type": "BY_VALUES_SEQ", "values": ["val1", "val2"]},
-    |   "key2": {"type": "BY_VALUES_SEQ", "values": ["val3", "val4"]}
-    | }
-    |}
-    |}
-    |""".stripMargin.parseJson
-
-  val onlyKeysMappingModifierJson: JsValue =
-    """{"keys": {"type": "BY_VALUES_SEQ", "values": ["val1", "val2"]}}""".stripMargin.parseJson
 
   "ModifierMappersJsonProtocol" must {
 
@@ -201,17 +119,6 @@ class ModifierMappersJsonProtocolSpec extends UnitTestSpec {
       value2 mustBe Seq("val3", "val4")
     }
 
-    "correctly parse MappingModifier" in {
-      val mappingModifier = mappingModifierJson.convertTo[MappingModifier]
-      val modifiers: Seq[Modifier[RequestTemplateBuilder]] = mappingModifier.modifiers.iterator.toSeq
-      modifiers.size mustBe 10
-    }
-
-    "correctly parse MappingModifier with non-matching keys to empty modifier" in {
-      val mappingModifier = mappingModifierWithNonMatchingKeysJson.convertTo[MappingModifier]
-      val modifiers: Seq[Modifier[RequestTemplateBuilder]] = mappingModifier.modifiers.iterator.toSeq
-      modifiers.size mustBe 0
-    }
   }
 
 }
