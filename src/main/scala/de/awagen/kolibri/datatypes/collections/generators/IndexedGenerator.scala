@@ -44,6 +44,18 @@ trait IndexedGenerator[+T] extends KolibriSerializable {
   val nrOfElements: Int
 
   /**
+    * Partitions give a grouping of data belonging together, such that it can be partitioned by.
+    * The default implementation below is that each single element in the generator forms a partitioning.
+    * This has to be overwritten in case the above assumption does not hold, as is the case if several values form
+    * a logical group to group by. In that case each element provided by this generator should be a generator providing all
+    * values belonging to the respective partition / logical grouping
+    * @return
+    */
+  def partitions: IndexedGenerator[IndexedGenerator[T]] = {
+    ByFunctionNrLimitedIndexedGenerator(nrOfElements, x => get(x).map(el => ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq(el))))
+  }
+
+  /**
     * Iterator over contained elements
     *
     * @return
