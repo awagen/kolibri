@@ -22,13 +22,15 @@ import de.awagen.kolibri.base.http.client.request.RequestTemplateBuilder
 import de.awagen.kolibri.base.processing.modifiers.ModifierMappers.{BodyMapper, HeadersMapper, ParamsMapper}
 import de.awagen.kolibri.base.processing.modifiers.RequestModifiersUtils.{bodiesToBodyModifier, multiValuesToHeaderModifiers, multiValuesToRequestParamModifiers}
 import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.{BodyModifier, CombinedModifier, HeaderModifier, RequestParameterModifier}
-import de.awagen.kolibri.datatypes.collections.generators.{IndexedGenerator, OneAfterAnotherIndexedGenerator, PermutatingIndexedGenerator}
+import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator, OneAfterAnotherIndexedGenerator, PermutatingIndexedGenerator}
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.multivalues.OrderedMultiValues
 
 object RequestPermutations {
 
   trait ModifierGeneratorProvider extends KolibriSerializable {
+
+    def partitions: IndexedGenerator[IndexedGenerator[Modifier[RequestTemplateBuilder]]]
 
     def modifiers: Seq[IndexedGenerator[Modifier[RequestTemplateBuilder]]]
 
@@ -48,8 +50,9 @@ object RequestPermutations {
                              paramsMapper: ParamsMapper,
                              headersMapper: HeadersMapper,
                              bodyMapper: BodyMapper) extends ModifierGeneratorProvider {
-    def modifiers: Seq[IndexedGenerator[Modifier[RequestTemplateBuilder]]] = {
-      var perKeyPermutations: Seq[IndexedGenerator[Modifier[RequestTemplateBuilder]]] = Seq.empty
+
+    def perKeyPermutations: Seq[IndexedGenerator[Modifier[RequestTemplateBuilder]]] = {
+      var permutationsPerKeySeq: Seq[IndexedGenerator[Modifier[RequestTemplateBuilder]]] = Seq.empty
       keyGen.iterator.foreach(key => {
         val paramsOpt: Option[IndexedGenerator[Modifier[RequestTemplateBuilder]]] = paramsMapper.getModifiersForKey(key)
         val headersOpt: Option[IndexedGenerator[Modifier[RequestTemplateBuilder]]] = headersMapper.getModifiersForKey(key)
@@ -60,9 +63,20 @@ object RequestPermutations {
         bodiesOpt.foreach(x => generators = generators :+ x)
         if (generators.nonEmpty) {
           val permutations: IndexedGenerator[Modifier[RequestTemplateBuilder]] = PermutatingIndexedGenerator(generators).mapGen(x => CombinedModifier(x))
-          perKeyPermutations = perKeyPermutations :+ permutations
+          permutationsPerKeySeq = permutationsPerKeySeq :+ permutations
         }
       })
+      permutationsPerKeySeq
+    }
+
+    // to allow batching by key, and the parameters for distinct keys shall not be applied at the same time
+    // partitions provide the sequential list of IndexedGenerators that can be mixed in with the other IndexedGenerators
+    // to be permutated with them separately
+    override def partitions: IndexedGenerator[IndexedGenerator[Modifier[RequestTemplateBuilder]]] = {
+      ByFunctionNrLimitedIndexedGenerator.createFromSeq(perKeyPermutations)
+    }
+
+    override def modifiers: Seq[IndexedGenerator[Modifier[RequestTemplateBuilder]]] = {
       Seq(OneAfterAnotherIndexedGenerator(perKeyPermutations))
     }
   }
@@ -88,11 +102,17 @@ object RequestPermutations {
       .filter(gen => gen.size > 0)
     val bodyModifierGenerator: Option[IndexedGenerator[BodyModifier]] = if (bodies.isEmpty) None else Some(bodiesToBodyModifier(bodies, bodyContentType))
 
-    def modifiers: Seq[IndexedGenerator[Modifier[RequestTemplateBuilder]]] = {
+    // here each single element forms its own partition, which means
+    // that the generator is batched on Generator n, each batch will
+    // only contain one value of the values provided by the generator
+    override def partitions: IndexedGenerator[IndexedGenerator[Modifier[RequestTemplateBuilder]]] = {
+      OneAfterAnotherIndexedGenerator(modifiers).mapGen(x => ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq(x)))
+    }
+
+    override def modifiers: Seq[IndexedGenerator[Modifier[RequestTemplateBuilder]]] = {
       val combined: Seq[IndexedGenerator[Modifier[RequestTemplateBuilder]]] = paramModifierGenerators ++ headerModifierGenerators
       bodyModifierGenerator.map(x => combined :+ x).getOrElse(combined)
     }
   }
-
 
 }
