@@ -22,7 +22,7 @@ case class BatchByGeneratorIndexedGenerator[+T](generators: Seq[IndexedGenerator
   assert(batchByIndex < generators.size, s"given index of generator to batch by ($batchByIndex) is not within indices of passed generators" +
     s" with maxIndex ${generators.size - 1}")
 
-  override val nrOfElements: Int = generators(batchByIndex).size
+  override val nrOfElements: Int = generators(batchByIndex).partitions.size
 
   /**
     * create generator that only generates a part of the original generator.
@@ -34,9 +34,13 @@ case class BatchByGeneratorIndexedGenerator[+T](generators: Seq[IndexedGenerator
   override def getPart(startIndex: Int, endIndex: Int): IndexedGenerator[IndexedGenerator[Seq[T]]] = {
     val start = math.min(math.max(0, startIndex), nrOfElements - 1)
     val end = math.min(math.max(0, endIndex), nrOfElements)
-    val batchByPart = generators(batchByIndex).getPart(start, end)
+    // find the partition groups, e.g each generator corresponds to a grouping and the batch is defined by adding the
+    // generator corresponding to the n-th batch (n-th generator in the Seq) to the generators to permutate over in the batch
+    val partitionGroups: Seq[IndexedGenerator[T]] = generators(batchByIndex).partitions.getPart(start, end).iterator.toSeq
     BatchByGeneratorIndexedGenerator(generators.indices.map({
-      case e if e == batchByIndex => batchByPart
+      // keep the groupings. Mapping to PartitionByGroupIndexedGenerator will only make a difference if the partition
+      // generators are bigger than single element
+      case e if e == batchByIndex => PartitionByGroupIndexedGenerator(partitionGroups)
       case e => generators(e)
     }), batchByIndex)
   }
