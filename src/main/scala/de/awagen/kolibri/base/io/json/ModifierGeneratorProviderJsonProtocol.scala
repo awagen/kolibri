@@ -72,7 +72,7 @@ object ModifierGeneratorProviderJsonProtocol extends DefaultJsonProtocol {
     "bodyContentType"
   )
 
-  implicit object ModifierGeneratorProviderJsonProtocol extends JsonFormat[ModifierGeneratorProvider] {
+  implicit object ModifierGeneratorProviderByCaseJsonProtocol extends JsonFormat[ModifierGeneratorProvider] {
     override def read(json: JsValue): ModifierGeneratorProvider = json match {
       case spray.json.JsObject(fields) => fields("type").convertTo[String] match {
         case "MAPPED" =>

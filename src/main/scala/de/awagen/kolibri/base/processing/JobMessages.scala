@@ -22,12 +22,15 @@ import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor
 import de.awagen.kolibri.base.domain.Connection
 import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions
 import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions.MapWithCount
+import de.awagen.kolibri.base.http.client.request.RequestTemplateBuilder
 import de.awagen.kolibri.base.processing.JobMessages.{SearchEvaluation, TestPiCalculation}
+import de.awagen.kolibri.base.processing.modifiers.Modifier
+import de.awagen.kolibri.base.processing.modifiers.RequestPermutations.ModifierGeneratorProvider
 import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.SearchJobDefinitions
-import de.awagen.kolibri.base.processing.modifiers.RequestPermutations.RequestPermutation
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.{Calculation, CalculationResult, FutureCalculation}
 import de.awagen.kolibri.base.usecase.searchopt.parse.ParsingConfig
+import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
@@ -48,7 +51,7 @@ object JobMessages {
                               fixedParams: Map[String, Seq[String]],
                               contextPath: String,
                               connections: Seq[Connection],
-                              requestPermutation: RequestPermutation,
+                              requestPermutation: Seq[ModifierGeneratorProvider],
                               batchByIndex: Int,
                               queryParam: String,
                               parsingConfig: ParsingConfig,
@@ -62,7 +65,9 @@ object JobMessages {
                               allowedTimePerElementInMillis: Int = 1000,
                               allowedTimePerBatchInSeconds: Int = 600,
                               allowedTimeForJobInSeconds: Int = 7200,
-                              expectResultsFromBatchCalculations: Boolean = true) extends JobMessage
+                              expectResultsFromBatchCalculations: Boolean = true) extends JobMessage {
+    val requestTemplateModifiers: Seq[IndexedGenerator[Modifier[RequestTemplateBuilder]]] = requestPermutation.flatMap(x => x.modifiers)
+  }
 }
 
 

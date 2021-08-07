@@ -20,8 +20,9 @@ package de.awagen.kolibri.base.io.json
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import de.awagen.kolibri.base.domain.Connection
 import de.awagen.kolibri.base.io.json.ConnectionJsonProtocol._
+import de.awagen.kolibri.base.io.json.ModifierGeneratorProviderJsonProtocol._
 import de.awagen.kolibri.base.processing.JobMessages.SearchEvaluation
-import de.awagen.kolibri.base.processing.modifiers.RequestPermutations.RequestPermutation
+import de.awagen.kolibri.base.processing.modifiers.RequestPermutations.ModifierGeneratorProvider
 import de.awagen.kolibri.base.usecase.searchopt.io.json.CalculationsJsonProtocol._
 import de.awagen.kolibri.base.usecase.searchopt.io.json.ParsingConfigJsonProtocol._
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.{Calculation, CalculationResult, FutureCalculation}
@@ -29,7 +30,6 @@ import de.awagen.kolibri.base.usecase.searchopt.parse.ParsingConfig
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import spray.json.{DefaultJsonProtocol, RootJsonFormat}
-import ModifierGeneratorProviderJsonProtocol._
 
 
 object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSupport {
@@ -40,7 +40,7 @@ object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSu
       fixedParams: Map[String, Seq[String]],
       contextPath: String,
       connections: Seq[Connection],
-      requestPermutation: RequestPermutation,
+      requestPermutation: Seq[ModifierGeneratorProvider],
       batchByIndex: Int,
       queryParam: String,
       parsingConfig: ParsingConfig,

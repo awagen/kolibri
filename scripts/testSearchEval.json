@@ -22,45 +22,47 @@
       "useHttps": false
     }
   ],
-  "requestPermutation": {
-    "params": {
-      "values": [
-        {
-          "name": "q",
-          "values": [
-            "q1",
-            "q2",
-            "q3",
-            "q4",
-            "q5",
-            "q6",
-            "q7",
-            "q8",
-            "q9",
-            "q10"
-          ]
-        },
-        {
-          "name": "a1",
-          "values": [
-            0.45,
-            0.32
-          ]
-        },
-        {
-          "name": "o",
-          "start": 0.0,
-          "end": 2000.0,
-          "stepSize": 1.0
-        }
-      ]
-    },
-    "headers": {
-      "values": []
-    },
-    "bodies": [],
-    "bodyContentType": "json"
-  },
+  "requestPermutation": [{
+    "type": "ALL",
+    "value": {
+      "params": {
+        "values": [
+          {
+            "name": "q",
+            "values": [
+              "q1",
+              "q2",
+              "q3",
+              "q4",
+              "q5",
+              "q6",
+              "q7",
+              "q8",
+              "q9",
+              "q10"
+            ]
+          },
+          {
+            "name": "a1",
+            "values": [
+              0.45,
+              0.32
+            ]
+          },
+          {
+            "name": "o",
+            "start": 0.0,
+            "end": 2000.0,
+            "stepSize": 1.0
+          }
+        ]
+      },
+      "headers": {
+        "values": []
+      },
+      "bodies": [],
+      "bodyContentType": "json"
+    }}],
   "batchByIndex": 0,
   "queryParam": "q",
   "parsingConfig": {
