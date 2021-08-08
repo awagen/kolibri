@@ -19,7 +19,6 @@ package de.awagen.kolibri.datatypes.metrics.aggregation.writer
 import de.awagen.kolibri.datatypes.metrics.aggregation.writer.CSVParameterBasedMetricDocumentFormat._
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason
 import de.awagen.kolibri.datatypes.stores.{MetricDocument, MetricRow}
-import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.values.RunningValueAdd.{doubleAvgAdd, errorMapAdd}
 import de.awagen.kolibri.datatypes.values.{BiRunningValue, MetricValue, RunningValue}
 
@@ -86,7 +85,7 @@ case class CSVParameterBasedMetricDocumentFormat(columnSeparator: String) extend
   def metricNameToColumnMapForCategoryFromHeaders(categoryPrefix: String, headers: Seq[String]): Map[String, Int] = {
     headers.indices
       .filter(index => headers(index).startsWith(categoryPrefix))
-      .map(index => (headers(index).stripPrefix(s"$categoryPrefix-"), index))
+      .map(index => (headers(index).stripPrefix(s"$categoryPrefix"), index))
       .toMap
   }
 

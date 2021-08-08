@@ -115,15 +115,15 @@ class CSVParameterBasedMetricDocumentFormatSpec extends UnitTestSpec {
 
     val testHeaders = Seq(
       "p1",
-      s"$FAIL_COUNT_COLUMN_PREFIX-M1",
-      s"$FAIL_REASONS_COLUMN_PREFIX-M1",
-      s"$VALUE_COLUMN_PREFIX-M1",
-      s"$SUCCESS_COUNT_COLUMN_PREFIX-M1",
+      s"${FAIL_COUNT_COLUMN_PREFIX}M1",
+      s"${FAIL_REASONS_COLUMN_PREFIX}M1",
+      s"${VALUE_COLUMN_PREFIX}M1",
+      s"${SUCCESS_COUNT_COLUMN_PREFIX}M1",
       "p2",
-      s"$FAIL_COUNT_COLUMN_PREFIX-M2",
-      s"$FAIL_REASONS_COLUMN_PREFIX-M2",
-      s"$VALUE_COLUMN_PREFIX-M2",
-      s"$SUCCESS_COUNT_COLUMN_PREFIX-M2"
+      s"${FAIL_COUNT_COLUMN_PREFIX}M2",
+      s"${FAIL_REASONS_COLUMN_PREFIX}M2",
+      s"${VALUE_COLUMN_PREFIX}M2",
+      s"${SUCCESS_COUNT_COLUMN_PREFIX}M2"
     )
 
     val testParamsMap: Map[String, Seq[String]] = Map("p1" -> Seq("p1_v1"), "p2" -> Seq("p2_v1", "p2_v2"))
