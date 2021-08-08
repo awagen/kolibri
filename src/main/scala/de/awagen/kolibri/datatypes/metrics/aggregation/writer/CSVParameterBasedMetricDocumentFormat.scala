@@ -19,6 +19,7 @@ package de.awagen.kolibri.datatypes.metrics.aggregation.writer
 import de.awagen.kolibri.datatypes.metrics.aggregation.writer.CSVParameterBasedMetricDocumentFormat._
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason
 import de.awagen.kolibri.datatypes.stores.{MetricDocument, MetricRow}
+import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.values.RunningValueAdd.{doubleAvgAdd, errorMapAdd}
 import de.awagen.kolibri.datatypes.values.{BiRunningValue, MetricValue, RunningValue}
 
@@ -130,14 +131,31 @@ case class CSVParameterBasedMetricDocumentFormat(columnSeparator: String) extend
     metricRow
   }
 
-  def readRow(headers: Seq[String], row: String): MetricRow = {
-    val colStrValues: Seq[String] = row.split(columnSeparator).map(x => x.trim).toSeq
+  def getColumnsFromLine(headerLine: String): Seq[String] = {
+    headerLine.split(columnSeparator).map(x => x.trim).toSeq
+  }
+
+  def readRow(headers: Seq[String], paramNamesToColumnIndexMap: Map[String, Int], row: String): MetricRow = {
+    val colStrValues: Seq[String] = getColumnsFromLine(row)
     assert(headers.size == colStrValues.size, s"header key size '${headers.size}' does not match size of column values '${colStrValues.size}'")
-    // map holding the parameter values
-    val paramNamesToColumnIndexMap: Map[String, Int] = paramNameToValueColumnMapFromHeaders(headers)
     val paramsMap: Map[String, Seq[String]] = paramMapFromParamToColumnMap(paramNamesToColumnIndexMap, colStrValues)
     // calculate the values and put in MetricRow
     metricRowFromHeadersAndColumns(headers, paramsMap, colStrValues)
+  }
+
+  def readRow(headers: Seq[String], row: String): MetricRow = {
+    // map holding the parameter values
+    val paramNamesToColumnIndexMap: Map[String, Int] = paramNameToValueColumnMapFromHeaders(headers)
+    readRow(headers, paramNamesToColumnIndexMap, row)
+  }
+
+  def readDocument[T <: AnyRef](headers: Seq[String], rows: Iterable[String], tag: T): MetricDocument[T] = {
+    val document = MetricDocument.empty(tag)
+    rows.foreach(row => {
+      val metricRow: MetricRow = readRow(headers, row)
+      document.add(metricRow)
+    })
+    document
   }
 
   def paramsToValueString(values: Map[String, Seq[String]], paramNames: Seq[String]): String = {
