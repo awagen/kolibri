@@ -24,6 +24,8 @@ object Tags {
 
     def stringId: String
 
+    override def toString: String = s"($stringId)"
+
   }
 
   trait TypedTag[T] extends Tag {
@@ -91,7 +93,7 @@ object Tags {
   }
 
   object StringTag {
-    val ALL = StringTag("ALL")
+    val ALL: StringTag = StringTag("ALL")
   }
 
   case class StringTag(value: String) extends TypedTag[String] {

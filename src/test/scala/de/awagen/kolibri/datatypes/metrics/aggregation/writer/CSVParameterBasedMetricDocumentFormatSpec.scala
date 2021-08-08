@@ -16,6 +16,8 @@
 
 package de.awagen.kolibri.datatypes.metrics.aggregation.writer
 
+import de.awagen.kolibri.datatypes.metrics.aggregation.writer.CSVParameterBasedMetricDocumentFormat.{FAIL_COUNT_COLUMN_PREFIX, FAIL_REASONS_COLUMN_PREFIX, SUCCESS_COUNT_COLUMN_PREFIX, VALUE_COLUMN_PREFIX}
+import de.awagen.kolibri.datatypes.reason.ComputeFailReason
 import de.awagen.kolibri.datatypes.stores.{MetricDocument, MetricRow}
 import de.awagen.kolibri.datatypes.tagging.Tags.ParameterMultiValueTag
 import de.awagen.kolibri.datatypes.testclasses.UnitTestSpec
@@ -46,7 +48,7 @@ class CSVParameterBasedMetricDocumentFormatSpec extends UnitTestSpec {
 
   val writer: CSVParameterBasedMetricDocumentFormat = CSVParameterBasedMetricDocumentFormat("\t")
 
-  "ParameterBasedMetricDocumentFormat" should {
+  "CSVParameterBasedMetricDocumentFormat" should {
 
     "correctly give formatted representation of the aggregation for single rows" in {
       //given, when
@@ -81,6 +83,101 @@ class CSVParameterBasedMetricDocumentFormatSpec extends UnitTestSpec {
       actual mustBe expectedDocString
     }
 
+    "correctly read header" in {
+      val exampleHeader = s"p1\tp2\tp3\t${FAIL_COUNT_COLUMN_PREFIX}-M1\t\t"
+      writer.readHeader(exampleHeader) mustBe Seq("p1", "p2", "p3", s"${FAIL_COUNT_COLUMN_PREFIX}-M1")
+    }
+
+    "correctly infer param names from headers" in {
+      val exampleHeaderValues = Seq(
+        "p1",
+        s"$SUCCESS_COUNT_COLUMN_PREFIX-M1",
+        "p2",
+        s"$FAIL_COUNT_COLUMN_PREFIX-M1",
+        "p3",
+        s"$FAIL_REASONS_COLUMN_PREFIX-M1",
+        "p4",
+        s"$VALUE_COLUMN_PREFIX-M1"
+      )
+      writer.paramNameToValueColumnMapFromHeaders(exampleHeaderValues) mustBe
+        Map("p1" -> 0, "p2" -> 2, "p3" -> 4, "p4" -> 6)
+    }
+
+    "correctly pick values by index map" in {
+      val paramToIndexMap = Map("p1" -> 0, "p2" -> 2, "p3" -> 3)
+      val values = Seq("v1_1", "", "v2_1&v2_2", "v3_1")
+      writer.paramMapFromParamToColumnMap(paramToIndexMap, values) mustBe
+        Map("p1" -> Seq("v1_1"),
+          "p2" -> Seq("v2_1", "v2_2"),
+          "p3" -> Seq("v3_1"))
+    }
+
+    "correctly pick the right indices for category for metric name" in {
+      val headers = Seq(
+        "p1",
+        s"$FAIL_COUNT_COLUMN_PREFIX-M1",
+        s"$FAIL_REASONS_COLUMN_PREFIX-M1",
+        s"$VALUE_COLUMN_PREFIX-M1",
+        s"$SUCCESS_COUNT_COLUMN_PREFIX-M1",
+        "p2",
+        s"$FAIL_COUNT_COLUMN_PREFIX-M2",
+        s"$FAIL_REASONS_COLUMN_PREFIX-M2",
+        s"$VALUE_COLUMN_PREFIX-M2",
+        s"$SUCCESS_COUNT_COLUMN_PREFIX-M2"
+      )
+      val map: Map[String, Int] = writer.metricNameToColumnMapForCategoryFromHeaders(SUCCESS_COUNT_COLUMN_PREFIX, headers)
+      map mustBe Map("M1" -> 4, "M2" -> 9)
+    }
+
+    "correctly parse MetricRow" in {
+      // given
+      val headers = Seq(
+        "p1",
+        s"$FAIL_COUNT_COLUMN_PREFIX-M1",
+        s"$FAIL_REASONS_COLUMN_PREFIX-M1",
+        s"$VALUE_COLUMN_PREFIX-M1",
+        s"$SUCCESS_COUNT_COLUMN_PREFIX-M1",
+        "p2",
+        s"$FAIL_COUNT_COLUMN_PREFIX-M2",
+        s"$FAIL_REASONS_COLUMN_PREFIX-M2",
+        s"$VALUE_COLUMN_PREFIX-M2",
+        s"$SUCCESS_COUNT_COLUMN_PREFIX-M2"
+      )
+      val paramsMap: Map[String, Seq[String]] = Map("p1" -> Seq("p1_v1"), "p2" -> Seq("p2_v1", "p2_v2"))
+      val columns: Seq[String] = Seq(
+        "p1_v1",
+        "2",
+        "JUSTFAILED:1,ANOTHERREASON:2",
+        "0.43",
+        "5",
+        "p2_v1%p2_v2",
+        "0",
+        "",
+        "0.68",
+        "4"
+      )
+      // when
+      val metricRow: MetricRow = writer.metricRowFromHeadersAndColumns(headers, paramsMap, columns)
+      val row1: MetricValue[Double] = metricRow.metrics("M1")
+      val row2: MetricValue[Double] = metricRow.metrics("M2")
+      // then
+      metricRow.metrics.keys.size mustBe 2
+      row1.name mustBe "M1"
+      row2.name mustBe "M2"
+      row1.biValue.value2.count mustBe 5
+      row1.biValue.value2.value mustBe "0.43".toDouble
+      row1.biValue.value1.count mustBe 2
+      row1.biValue.value1.value mustBe Map(ComputeFailReason("JUSTFAILED") -> 1, ComputeFailReason("ANOTHERREASON") -> 2)
+      row2.biValue.value2.count mustBe 4
+      row2.biValue.value2.value mustBe "0.68".toDouble
+      row2.biValue.value1.count mustBe 0
+      row2.biValue.value1.value mustBe Map.empty
+    }
+
+    // TODO
+    "correctly read row to MetricRow" in {
+
+    }
   }
 
 
