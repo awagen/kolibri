@@ -27,9 +27,10 @@ class FileReaderJsonProtocolSpec extends UnitTestSpec {
 
     "parse QueryProvider json" in {
       // given
-      val json = """{"type": "LOCAL_FILE_READER", "delimiter": "/", "position": 1, "encoding": "UTF-8"}""".parseJson
+      val json = """{"type": "LOCAL_FILE_READER", "delimiter": "/", "position": 1, "encoding": "UTF-8", "fromClasspath": true}""".parseJson
       val expectedValue: FileReader = LocalResourceFileReader(
         delimiterAndPosition = Some(("/", 1)),
+        fromClassPath = true,
         encoding = "UTF-8"
       )
       // when

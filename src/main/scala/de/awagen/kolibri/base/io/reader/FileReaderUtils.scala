@@ -25,6 +25,10 @@ object FileReaderUtils {
     Source.fromInputStream(getClass.getClassLoader.getResourceAsStream(filename), encoding)
   }
 
+  def localSource(fullFilePath: String, encoding: String = "UTF-8"): Source = {
+    Source.fromFile(fullFilePath, encoding)
+  }
+
   def trimmedEntriesByLineFromFile(source: Source): immutable.Seq[String] = {
     source
       .getLines
@@ -44,6 +48,7 @@ object FileReaderUtils {
   /**
     * Read lines from source, trim, filter out empty, split by delimiter, filter out those where nr of elements
     * is smaller than actually selected positions, select element at given position, filter out empty
+    *
     * @param source
     * @param delimiter
     * @param position

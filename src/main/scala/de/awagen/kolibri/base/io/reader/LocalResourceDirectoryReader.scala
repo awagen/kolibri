@@ -21,11 +21,17 @@ import scala.io.Source
 
 case class LocalResourceDirectoryReader(baseDir: String,
                                         baseFilenameFilter: String => Boolean = _ => true,
-                                        encoding: String = "UTF-8") extends DirectoryReader[String] {
+                                        encoding: String = "UTF-8") extends DirectoryReader {
   val normedBaseDir: String = baseDir.stripSuffix("/")
 
-  override def listFiles(dir: String, filenameFilter: String => Boolean = _ => true): Seq[String] = {
-    val fullDir = s"$normedBaseDir/$dir".stripSuffix("/")
+  /**
+    * List files in subDir of baseDir that pass the given filenameFilter. Returns full paths of matching files
+    * @param subDir - the sub-directory within the baseDir to look for files
+    * @param filenameFilter - the filter for the filenames
+    * @return Seq of full paths of files within the sub-directory within the baseDir matching the given filter
+    */
+  override def listFiles(subDir: String, filenameFilter: String => Boolean = _ => true): Seq[String] = {
+    val fullDir = s"$normedBaseDir/$subDir".stripSuffix("/")
     Source.fromInputStream(getClass.getClassLoader.getResourceAsStream(fullDir), encoding)
       .getLines()
       .filter(baseFilenameFilter.apply)
@@ -33,4 +39,5 @@ case class LocalResourceDirectoryReader(baseDir: String,
       .map(x => s"$fullDir/$x".stripSuffix("/"))
       .toSeq
   }
+
 }

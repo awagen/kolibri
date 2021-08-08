@@ -16,7 +16,7 @@
 
 package de.awagen.kolibri.base.processing.distribution
 
-import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.AggregationState
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.AggregationStateWithData
 import de.awagen.kolibri.base.processing.distribution.DistributionStates.{AllProvidedWaitingForResults, Completed}
 import de.awagen.kolibri.base.processing.execution.expectation.BaseExecutionExpectation
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
@@ -44,12 +44,12 @@ class FilteringOnceDistributorSpec extends UnitTestSpec {
       // when, then
       intDistributor.next mustBe Right(Seq(2, 3, 4).map(x => IntWithBatch(x,x)))
       intDistributor.next mustBe Left(AllProvidedWaitingForResults)
-      intDistributor.accept(AggregationState(1, "jobId", 2, BaseExecutionExpectation.empty()))
-      intDistributor.accept(AggregationState(1, "jobId", 3, BaseExecutionExpectation.empty()))
-      intDistributor.accept(AggregationState(1, "jobId", 4, BaseExecutionExpectation.empty()))
-      intDistributor.accept(AggregationState(1, "jobId", 0, BaseExecutionExpectation.empty()))
-      intDistributor.accept(AggregationState(1, "jobId", 1, BaseExecutionExpectation.empty()))
-      intDistributor.accept(AggregationState(1, "jobId", 5, BaseExecutionExpectation.empty()))
+      intDistributor.accept(AggregationStateWithData(1, "jobId", 2, BaseExecutionExpectation.empty()))
+      intDistributor.accept(AggregationStateWithData(1, "jobId", 3, BaseExecutionExpectation.empty()))
+      intDistributor.accept(AggregationStateWithData(1, "jobId", 4, BaseExecutionExpectation.empty()))
+      intDistributor.accept(AggregationStateWithData(1, "jobId", 0, BaseExecutionExpectation.empty()))
+      intDistributor.accept(AggregationStateWithData(1, "jobId", 1, BaseExecutionExpectation.empty()))
+      intDistributor.accept(AggregationStateWithData(1, "jobId", 5, BaseExecutionExpectation.empty()))
       intDistributor.next mustBe Left(Completed)
     }
 

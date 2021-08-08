@@ -17,8 +17,8 @@
 
 package de.awagen.kolibri.base.io.reader
 
-trait DirectoryReader[T] {
+trait DirectoryReader {
 
-  def listFiles(dir: String, baseFilenameFilter: String => Boolean): Seq[T]
+  def listFiles(subDir: String, baseFilenameFilter: String => Boolean): Seq[String]
 
 }

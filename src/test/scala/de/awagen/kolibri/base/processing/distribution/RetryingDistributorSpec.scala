@@ -16,7 +16,7 @@
 
 package de.awagen.kolibri.base.processing.distribution
 
-import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.AggregationState
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.AggregationStateWithData
 import de.awagen.kolibri.base.processing.distribution.DistributionStates.{AllProvidedWaitingForResults, Completed, Pausing}
 import de.awagen.kolibri.base.processing.execution.expectation.BaseExecutionExpectation
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
@@ -42,7 +42,7 @@ class RetryingDistributorSpec extends UnitTestSpec {
     "correctly process with retries" in {
       // given
       var elements: Seq[Int] = Seq.empty
-      val aggConsumer: AggregationState[Int] => () = el => {
+      val aggConsumer: AggregationStateWithData[Int] => () = el => {
         elements = elements :+ el.data
       }
       val distributor: Distributor[IntWithBatch, Int] = this.distributor[IntWithBatch, Int](
@@ -53,16 +53,16 @@ class RetryingDistributorSpec extends UnitTestSpec {
       distributor.next mustBe Right(Seq(0, 1, 2).map(x => IntWithBatch(x, x)))
       distributor.next mustBe Left(Pausing)
       distributor.markAsFail(0)
-      distributor.accept(AggregationState(1, "", 1, BaseExecutionExpectation.empty()))
-      distributor.accept(AggregationState(1, "", 2, BaseExecutionExpectation.empty()))
+      distributor.accept(AggregationStateWithData(1, "", 1, BaseExecutionExpectation.empty()))
+      distributor.accept(AggregationStateWithData(1, "", 2, BaseExecutionExpectation.empty()))
       distributor.next mustBe Right(Seq(3, 4, 5).map(x => IntWithBatch(x, x)))
       distributor.next mustBe Left(AllProvidedWaitingForResults)
-      distributor.accept(AggregationState(1, "", 3, BaseExecutionExpectation.empty()))
-      distributor.accept(AggregationState(1, "", 4, BaseExecutionExpectation.empty()))
+      distributor.accept(AggregationStateWithData(1, "", 3, BaseExecutionExpectation.empty()))
+      distributor.accept(AggregationStateWithData(1, "", 4, BaseExecutionExpectation.empty()))
       distributor.next mustBe Left(AllProvidedWaitingForResults)
       distributor.markAsFail(5)
       distributor.next mustBe Right(Seq(0, 5).map(x => IntWithBatch(x, x)))
-      distributor.accept(AggregationState(1, "", 0, BaseExecutionExpectation.empty()))
+      distributor.accept(AggregationStateWithData(1, "", 0, BaseExecutionExpectation.empty()))
       distributor.next mustBe Left(AllProvidedWaitingForResults)
       distributor.markAsFail(5)
       distributor.next mustBe Left(Completed)

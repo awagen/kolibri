@@ -16,7 +16,7 @@
 
 package de.awagen.kolibri.base.processing.distribution
 
-import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.AggregationState
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.AggregationStateWithData
 import de.awagen.kolibri.base.processing.distribution.DistributionStates.{AllProvidedWaitingForResults, Completed, DistributionState, Pausing}
 import de.awagen.kolibri.base.traits.Traits.WithBatchNr
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
@@ -28,8 +28,8 @@ import org.slf4j.{Logger, LoggerFactory}
   * retrieved yet. Result can either be the corresponding AggregationState or
   * marking as failed
   *
-  * @param maxParallel    - max elements to provide as in progress at the same time
-  * @param generator      - generator providing the elements of type T
+  * @param maxParallel - max elements to provide as in progress at the same time
+  * @param generator   - generator providing the elements of type T
   * @tparam T - type of elements provided by generator
   * @tparam U - type of the aggregation
   */
@@ -73,8 +73,10 @@ class ProcessOnceDistributor[T <: WithBatchNr, U](private[this] var maxParallel:
     maxParallel = count
   }
 
-  def accept(element: AggregationState[U]): Boolean = {
-    logger.debug(s"distributor: received aggregation state: $element")
+  // TODO: needs to accept all AggregationState[U]
+  def accept(element: AggregationStateWithData[U]): Boolean = {
+    logger.info(s"distributor: received aggregation state: batchNr=${element.batchNr}, expectation=${element.executionExpectation}," +
+      s"jobId=${element.jobID}")
     if ((failed ++ inProgress).contains(element.batchNr)) {
       removeBatchRecords(element.batchNr)
       numResultsReceivedCount += 1

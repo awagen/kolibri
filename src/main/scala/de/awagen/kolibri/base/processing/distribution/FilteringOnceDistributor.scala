@@ -16,7 +16,7 @@
 
 package de.awagen.kolibri.base.processing.distribution
 
-import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.AggregationState
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.AggregationStateWithData
 import de.awagen.kolibri.base.traits.Traits.WithBatchNr
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import org.slf4j.{Logger, LoggerFactory}
@@ -34,7 +34,8 @@ class FilteringOnceDistributor[T <: WithBatchNr, U](private[this] var maxParalle
 
   val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
-  override def accept(element: AggregationState[U]): Boolean = {
+  // TODO: accept all AggregationState[U]
+  override def accept(element: AggregationStateWithData[U]): Boolean = {
     logger.debug(s"distributor: received aggregation state: $element")
     var didAccept: Boolean = false
     if (acceptOnlyIds.contains(element.batchNr)) {

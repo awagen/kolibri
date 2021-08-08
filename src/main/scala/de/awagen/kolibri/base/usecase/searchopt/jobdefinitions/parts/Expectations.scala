@@ -17,7 +17,7 @@
 
 package de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts
 
-import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationState, Corn}
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationStateWithData, Corn}
 import de.awagen.kolibri.base.processing.execution.expectation.Expectation.SuccessAndErrorCounts
 import de.awagen.kolibri.base.processing.execution.expectation._
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
@@ -32,10 +32,10 @@ object Expectations {
     * on timeout, failure fraction. Note that the below always assumes that a Corn holds valid ("successfully generated")
     * data, while e.g BadCorn is supposed to be unsuccessful.
     */
-  def expectationPerBatchSupplier[T <: AnyRef:ClassTag](timeout: FiniteDuration,
-                                               minOverallElementCount: Int = 10,
-                                               maxAllowedFailFraction: Float = 0.2F,
-                                               successAndErrorClassifier: Any => SuccessAndErrorCounts): Int => ExecutionExpectation = v1 => {
+  def expectationPerBatchSupplier[T <: AnyRef : ClassTag](timeout: FiniteDuration,
+                                                          minOverallElementCount: Int = 10,
+                                                          maxAllowedFailFraction: Float = 0.2F,
+                                                          successAndErrorClassifier: Any => SuccessAndErrorCounts): Int => ExecutionExpectation = v1 => {
     AnySucceedsOrAnyFailsExecutionExpectation(
       Seq(
         // expectation for the AggregationState results to allow either aggregation
@@ -43,7 +43,8 @@ object Expectations {
         BaseExecutionExpectation(
           fulfillAllForSuccess = Seq(ElementCountingExpectation(
             countPerElementFunc = {
-              case AggregationState(data: MetricAggregation[T], _, _, _) =>
+              // TODO: cover all AggregationState[U]
+              case AggregationStateWithData(data: MetricAggregation[T], _, _, _) =>
                 data.count
               case Corn(e) if e.isInstanceOf[T] =>
                 val successAndErrorCounts = successAndErrorClassifier.apply(e)

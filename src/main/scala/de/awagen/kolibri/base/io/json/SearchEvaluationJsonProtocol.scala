@@ -22,6 +22,7 @@ import de.awagen.kolibri.base.domain.Connection
 import de.awagen.kolibri.base.io.json.ConnectionJsonProtocol._
 import de.awagen.kolibri.base.io.json.ModifierGeneratorProviderJsonProtocol._
 import de.awagen.kolibri.base.processing.JobMessages.SearchEvaluation
+import de.awagen.kolibri.base.processing.execution.wrapup.JobWrapUpFunctions.JobWrapUpFunction
 import de.awagen.kolibri.base.processing.modifiers.RequestPermutations.ModifierGeneratorProvider
 import de.awagen.kolibri.base.usecase.searchopt.io.json.CalculationsJsonProtocol._
 import de.awagen.kolibri.base.usecase.searchopt.io.json.ParsingConfigJsonProtocol._
@@ -30,6 +31,7 @@ import de.awagen.kolibri.base.usecase.searchopt.parse.ParsingConfig
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import spray.json.{DefaultJsonProtocol, RootJsonFormat}
+import JobWrapUpFunctionJsonProtocol._
 
 
 object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSupport {
@@ -49,6 +51,7 @@ object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSu
       mapFutureMetricRowCalculation: FutureCalculation[WeaklyTypedMap[String], MetricRow],
       singleMapCalculations: Seq[Calculation[WeaklyTypedMap[String], CalculationResult[Double]]],
       tagByParam: String,
+      wrapUpFunction: Option[JobWrapUpFunction[Unit]],
       writerDir: String,
       writerColumnSeparator: String,
       allowedTimePerElementInMillis: Int,
@@ -70,6 +73,7 @@ object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSu
         mapFutureMetricRowCalculation,
         singleMapCalculations,
         tagByParam,
+        wrapUpFunction,
         writerDir,
         writerColumnSeparator,
         allowedTimePerElementInMillis,
@@ -90,6 +94,7 @@ object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSu
     "mapFutureMetricRowCalculation",
     "singleMapCalculations",
     "tagByParam",
+    "wrapUpFunction",
     "writerDir",
     "writerColumnSeparator",
     "allowedTimePerElementInMillis",

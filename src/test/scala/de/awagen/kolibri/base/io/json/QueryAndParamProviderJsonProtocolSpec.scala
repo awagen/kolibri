@@ -31,12 +31,13 @@ class QueryAndParamProviderJsonProtocolSpec extends UnitTestSpec {
 
     "parse QueryAndParamProvider" in {
       // given
-      val json = """{"contextPath": "testPath", "queryFile": "data/queryterms.txt", "queryFileReader": {"type": "LOCAL_FILE_READER", "delimiter": "/", "position": 1, "encoding": "UTF-8"}, "parameters": {"values": [{"name": "test", "values": [0.45, 0.32]}]}, "defaultParameters": {"p1": ["v1_1", "v1_2"]}}""".parseJson
+      val json = """{"contextPath": "testPath", "queryFile": "data/queryterms.txt", "queryFileReader": {"type": "LOCAL_FILE_READER", "delimiter": "/", "position": 1, "encoding": "UTF-8", "fromClasspath": true}, "parameters": {"values": [{"name": "test", "values": [0.45, 0.32]}]}, "defaultParameters": {"p1": ["v1_1", "v1_2"]}}""".parseJson
       val expectedProvider = QueryAndParamProvider(
         contextPath = "testPath",
         queryFile = "data/queryterms.txt",
         queryFileReader = LocalResourceFileReader(
-          delimiterAndPosition = Some(("/", 1))
+          delimiterAndPosition = Some(("/", 1)),
+          fromClassPath = true
         ),
         parameters = GridOrderedMultiValues(
           values = Seq(DistinctValues("test", Seq(0.45, 0.32)))

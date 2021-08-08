@@ -46,7 +46,8 @@
             "name": "a1",
             "values": [
               0.45,
-              0.32
+              0.32,
+              0.1
             ]
           },
           {
@@ -107,5 +108,22 @@
   "allowedTimePerElementInMillis": 1000,
   "allowedTimePerBatchInSeconds": 600,
   "allowedTimeForJobInSeconds": 7200,
-  "expectResultsFromBatchCalculations": true
+  "expectResultsFromBatchCalculations": true,
+  "wrapUpFunction": {
+    "type": "AGGREGATE_ALL",
+    "directoryReader": {
+      "type": "LOCAL_READER",
+      "baseDir": "/app/data/testJob",
+      "regex": "[(]q=.+[)]",
+      "encoding": "UTF-8"
+    },
+    "fileReader": {
+      "type": "LOCAL_FILE_READER",
+      "fromClasspath": false
+    },
+    "fileWriter": {
+      "directory": "/app/data/testJob"
+    },
+    "outputFilename": "(ALL1)"
+  }
 }

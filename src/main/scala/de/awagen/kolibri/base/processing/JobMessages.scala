@@ -24,6 +24,7 @@ import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions
 import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions.MapWithCount
 import de.awagen.kolibri.base.http.client.request.RequestTemplateBuilder
 import de.awagen.kolibri.base.processing.JobMessages.{SearchEvaluation, TestPiCalculation}
+import de.awagen.kolibri.base.processing.execution.wrapup.JobWrapUpFunctions.JobWrapUpFunction
 import de.awagen.kolibri.base.processing.modifiers.Modifier
 import de.awagen.kolibri.base.processing.modifiers.RequestPermutations.ModifierGeneratorProvider
 import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
@@ -60,6 +61,7 @@ object JobMessages {
                               mapFutureMetricRowCalculation: FutureCalculation[WeaklyTypedMap[String], MetricRow],
                               singleMapCalculations: Seq[Calculation[WeaklyTypedMap[String], CalculationResult[Double]]],
                               tagByParam: String,
+                              wrapUpFunction: Option[JobWrapUpFunction[Unit]],
                               writerDir: String = "/app/data",
                               writerColumnSeparator: String = "\t",
                               allowedTimePerElementInMillis: Int = 1000,

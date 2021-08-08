@@ -23,7 +23,7 @@ import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.{ProcessActor
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.ProcessingMessage
 import de.awagen.kolibri.base.io.writer.Writers.Writer
 import de.awagen.kolibri.base.processing.classifier.Mapper.FilteringMapper
-import de.awagen.kolibri.base.processing.consume.AggregatorConfig
+import de.awagen.kolibri.base.processing.consume.AggregatorConfigurations.AggregatorConfig
 import de.awagen.kolibri.base.processing.execution.expectation.ExecutionExpectation
 import de.awagen.kolibri.base.processing.execution.job.{ActorRunnable, ActorRunnableSinkType}
 import de.awagen.kolibri.base.processing.execution.task.Task
@@ -97,18 +97,18 @@ object JobMsgFactory {
 
 
   def createActorRunnableTaskJobCmd[T, W <: WithCount](jobId: String,
-                                          data: T,
-                                          dataBatchGenerator: T => IndexedGenerator[Batch[TypeTaggedMap with TaggedWithType[Tag]]],
-                                          resultDataKey: ClassTyped[ProcessingMessage[Any]],
-                                          tasks: Seq[TaskDefinitions.Val[Any]],
-                                          perBatchAggregatorSupplier: () => Aggregator[ProcessingMessage[Any], W],
-                                          perJobAggregatorSupplier: () => Aggregator[ProcessingMessage[Any], W],
-                                          writer: Writer[W, Tag, Any],
-                                          filteringSingleElementMapperForAggregator: FilteringMapper[ProcessingMessage[Any], ProcessingMessage[Any]],
-                                          filterAggregationMapperForAggregator: FilteringMapper[W, W],
-                                          filteringMapperForResultSending: FilteringMapper[W, W],
-                                          allowedTimePerBatchInSeconds: Long,
-                                          allowedTimeForJobInSeconds: Long): ProcessActorRunnableTaskJobCmd[W] = {
+                                                       data: T,
+                                                       dataBatchGenerator: T => IndexedGenerator[Batch[TypeTaggedMap with TaggedWithType[Tag]]],
+                                                       resultDataKey: ClassTyped[ProcessingMessage[Any]],
+                                                       tasks: Seq[TaskDefinitions.Val[Any]],
+                                                       perBatchAggregatorSupplier: () => Aggregator[ProcessingMessage[Any], W],
+                                                       perJobAggregatorSupplier: () => Aggregator[ProcessingMessage[Any], W],
+                                                       writer: Writer[W, Tag, Any],
+                                                       filteringSingleElementMapperForAggregator: FilteringMapper[ProcessingMessage[Any], ProcessingMessage[Any]],
+                                                       filterAggregationMapperForAggregator: FilteringMapper[W, W],
+                                                       filteringMapperForResultSending: FilteringMapper[W, W],
+                                                       allowedTimePerBatchInSeconds: Long,
+                                                       allowedTimeForJobInSeconds: Long): ProcessActorRunnableTaskJobCmd[W] = {
     val batches: IndexedGenerator[Batch[TypeTaggedMap with TaggedWithType[Tag]]] = dataBatchGenerator.apply(data)
     val taskMapFunc: SerializableFunction1[TaskDefinitions.Val[Any], Task[_]] = new SerializableFunction1[TaskDefinitions.Val[Any], Task[_]] {
       override def apply(v1: TaskDefinitions.Val[Any]): Task[_] = v1.task

@@ -22,12 +22,11 @@ import akka.stream.scaladsl.RunnableGraph
 import akka.stream.{ActorAttributes, UniqueKillSwitch}
 import de.awagen.kolibri.base.actors.work.worker.AggregatingActor.{ProvideStateAndStop, ReportResults}
 import de.awagen.kolibri.base.actors.work.worker.JobPartIdentifiers.BaseJobPartIdentifier
-import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.AggregationState
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.AggregationStateWithData
 import de.awagen.kolibri.base.actors.work.worker.RunnableExecutionActor.{ProvideAggregationState, RunnableHousekeeping}
 import de.awagen.kolibri.base.config.AppConfig.config
 import de.awagen.kolibri.base.config.AppConfig.config.kolibriDispatcherName
 import de.awagen.kolibri.base.io.writer.Writers.Writer
-import de.awagen.kolibri.base.processing.consume.AggregatorConfig
 import de.awagen.kolibri.base.processing.decider.Deciders.allResumeDecider
 import de.awagen.kolibri.base.processing.execution.expectation._
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnable.JobActorConfig
@@ -118,8 +117,9 @@ class RunnableExecutionActor[U <: WithCount](maxBatchDuration: FiniteDuration,
       // state will be reported back, thus we only set expectation on receiving
       // that one AggregationState
       val failExpectations: Seq[Expectation[Any]] = Seq(TimeExpectation(maxBatchDuration))
+      // TODO: needs to accept all AggregationState[U]
       expectation = BaseExecutionExpectation(
-        fulfillAllForSuccess = Seq(ReceiveCountExpectation(Map(AggregationState -> 1))),
+        fulfillAllForSuccess = Seq(ReceiveCountExpectation(Map(AggregationStateWithData -> 1))),
         fulfillAnyForFail = failExpectations)
       expectation.init
       val outcome: (UniqueKillSwitch, Future[Done]) = runnableGraph.run()
@@ -158,7 +158,8 @@ class RunnableExecutionActor[U <: WithCount](maxBatchDuration: FiniteDuration,
         killSwitch.abort(new RuntimeException(s"Expectation failed:\n${expectation.statusDesc}"))
         aggregatingActor ! ProvideStateAndStop
       }
-    case e: AggregationState[_] =>
+    // TODO: needs to accept all AggregationState[U]
+    case e: AggregationStateWithData[_] =>
       log.debug("received aggregation (batch finished): {}", e)
       expectation.accept(e)
       housekeepingCancellable.cancel()

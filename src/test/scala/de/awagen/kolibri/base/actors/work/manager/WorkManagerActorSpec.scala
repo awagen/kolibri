@@ -21,7 +21,7 @@ import akka.testkit.{TestKit, TestProbe}
 import de.awagen.kolibri.base.actors.work.manager.JobManagerActor.ACK
 import de.awagen.kolibri.base.actors.work.manager.WorkManagerActor.{TaskExecutionWithTypedResult, TasksWithTypedResult}
 import de.awagen.kolibri.base.actors.work.worker.JobPartIdentifiers.BaseJobPartIdentifier
-import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationState, Corn}
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationStateWithData, Corn}
 import de.awagen.kolibri.base.actors.{KolibriTestKitNoCluster, TestMessages}
 import de.awagen.kolibri.base.processing.TestTaskHelper._
 import de.awagen.kolibri.base.processing.execution.SimpleTaskExecution
@@ -64,7 +64,7 @@ class WorkManagerActorSpec extends KolibriTestKitNoCluster
         case e => fail(s"instead of expected received: $e")
       }
       testProbe.expectMsgPF(2 second) {
-        case AggregationState(_, _, _, _) =>
+        case AggregationStateWithData(_, _, _, _) =>
           true
         case e => fail(s"instead of expected received: $e")
       }

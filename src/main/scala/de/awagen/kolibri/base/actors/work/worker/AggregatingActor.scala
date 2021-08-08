@@ -23,7 +23,7 @@ import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages._
 import de.awagen.kolibri.base.config.AppConfig.config
 import de.awagen.kolibri.base.config.AppConfig.config.{kolibriDispatcherName, useAggregatorBackpressure}
 import de.awagen.kolibri.base.io.writer.Writers.Writer
-import de.awagen.kolibri.base.processing.consume.AggregatorConfig
+import de.awagen.kolibri.base.processing.consume.AggregatorConfigurations.AggregatorConfig
 import de.awagen.kolibri.base.processing.execution.expectation.ExecutionExpectation
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}
@@ -114,7 +114,10 @@ class AggregatingActor[U, V <: WithCount](val aggregatorConfig: AggregatorConfig
 
       // apply the mapper first to decide which parts of the data to be send to the result receiver
       val filteredMappedData = aggregatorConfig.filteringMapperForResultSending.map(aggregator.aggregation)
-      owner ! AggregationState(filteredMappedData, jobPartIdentifier.jobId, jobPartIdentifier.batchNr, expectation.deepCopy)
+      // NOTE: in cases of very big responses this doesnt seem to successfully send (probably serialize-deserialize issue)
+      // of expectation, which then is null, as well as jobId for some reason, while the log message above
+      // is logged correctly before, referencing expectation
+      owner ! AggregationStateWithData(filteredMappedData, jobPartIdentifier.jobId, jobPartIdentifier.batchNr, expectation.deepCopy)
 
       writerOpt.foreach(writer => {
         writer.write(aggregator.aggregation, StringTag(jobPartIdentifier.jobId))
@@ -139,7 +142,7 @@ class AggregatingActor[U, V <: WithCount](val aggregatorConfig: AggregatorConfig
   // keep the expectations, e.g if we receive an aggregation state incorporating 10 elements,
   // then this should fulfill receive expectations on 10 elements. We might add this to aggregation state instead
   // of requiring this on the value of type V
-  def handleAggregationStateMsg(msg: AggregationState[V]): Unit = {
+  def handleAggregationStateMsg(msg: AggregationStateWithData[V]): Unit = {
     log.info("received aggregation result event with count: {}", msg.data.count)
     aggregator.addAggregate(aggregatorConfig.filterAggregationMapperForAggregator.map(msg.data))
     expectation.accept(msg)
@@ -155,7 +158,7 @@ class AggregatingActor[U, V <: WithCount](val aggregatorConfig: AggregatorConfig
   def openState: Receive = {
     case e: BadCorn[U] =>
       handleSingleMsg(e)
-    case aggregationResult: AggregationState[V] =>
+    case aggregationResult: AggregationStateWithData[V] =>
       handleAggregationStateMsg(aggregationResult)
     case result: Corn[U] =>
       handleSingleMsg(result)
@@ -168,13 +171,13 @@ class AggregatingActor[U, V <: WithCount](val aggregatorConfig: AggregatorConfig
     case ProvideStateAndStop =>
       log.debug("Providing aggregation state and stopping aggregator")
       cancellableSchedule.cancel()
-      owner ! AggregationState(aggregator.aggregation, jobPartIdentifier.jobId,
+      owner ! AggregationStateWithData(aggregator.aggregation, jobPartIdentifier.jobId,
         jobPartIdentifier.batchNr, expectation.deepCopy)
       self ! PoisonPill
     case Housekeeping =>
       handleExpectationStateAndCloseIfFinished(adjustReceive = true)
     case ReportResults =>
-      sender() ! AggregationState(aggregator.aggregation, jobPartIdentifier.jobId,
+      sender() ! AggregationStateWithData(aggregator.aggregation, jobPartIdentifier.jobId,
         jobPartIdentifier.batchNr, expectation.deepCopy)
     case e =>
       log.warning("Received unmatched msg: {}", e)
@@ -182,7 +185,7 @@ class AggregatingActor[U, V <: WithCount](val aggregatorConfig: AggregatorConfig
 
   def closedState: Receive = {
     case ReportResults =>
-      sender() ! AggregationState(aggregator.aggregation, jobPartIdentifier.jobId,
+      sender() ! AggregationStateWithData(aggregator.aggregation, jobPartIdentifier.jobId,
         jobPartIdentifier.batchNr, expectation.deepCopy)
     case _ =>
   }

@@ -16,7 +16,7 @@
 
 package de.awagen.kolibri.base.processing.distribution
 
-import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.AggregationState
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.AggregationStateWithData
 import de.awagen.kolibri.base.processing.distribution.DistributionStates.{AllProvidedWaitingForResults, Completed, Pausing}
 import de.awagen.kolibri.base.processing.execution.expectation.BaseExecutionExpectation
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
@@ -43,35 +43,35 @@ class ProcessOnceDistributorSpec extends UnitTestSpec {
       // when, then
       intDistributor.next mustBe Right(Seq(0, 1, 2).map(x => IntWithBatch(x, x)))
       intDistributor.next mustBe Left(Pausing)
-      intDistributor.accept(AggregationState(1, "jobId", 0, BaseExecutionExpectation.empty()))
+      intDistributor.accept(AggregationStateWithData(1, "jobId", 0, BaseExecutionExpectation.empty()))
       intDistributor.next mustBe Right(Seq(3).map(x => IntWithBatch(x, x)))
       intDistributor.next mustBe Left(Pausing)
       // should not change anything if we call accept on a state with batchNr that is not
       // in the record anymore
-      intDistributor.accept(AggregationState(1, "", 0, BaseExecutionExpectation.empty()))
+      intDistributor.accept(AggregationStateWithData(1, "", 0, BaseExecutionExpectation.empty()))
       intDistributor.next mustBe Left(Pausing)
       // if we acceot the state for batch that hasnt even been distributed yet,
       // nothing shouzld change in state
-      intDistributor.accept(AggregationState(1, "", 4, BaseExecutionExpectation.empty()))
+      intDistributor.accept(AggregationStateWithData(1, "", 4, BaseExecutionExpectation.empty()))
       intDistributor.next mustBe Left(Pausing)
-      intDistributor.accept(AggregationState(1, "", 1, BaseExecutionExpectation.empty()))
-      intDistributor.accept(AggregationState(1, "", 2, BaseExecutionExpectation.empty()))
+      intDistributor.accept(AggregationStateWithData(1, "", 1, BaseExecutionExpectation.empty()))
+      intDistributor.accept(AggregationStateWithData(1, "", 2, BaseExecutionExpectation.empty()))
       intDistributor.next mustBe Right(Seq(4, 5).map(x => IntWithBatch(x, x)))
       intDistributor.next mustBe Left(Pausing)
       intDistributor.idsInProgress mustBe Seq(3, 4, 5)
       intDistributor.markAsFail(3)
       intDistributor.next mustBe Right(Seq(6).map(x => IntWithBatch(x, x)))
       intDistributor.idsInProgress mustBe Seq(4, 5, 6)
-      intDistributor.accept(AggregationState(1, "", 4, BaseExecutionExpectation.empty()))
-      intDistributor.accept(AggregationState(1, "", 5, BaseExecutionExpectation.empty()))
-      intDistributor.accept(AggregationState(1, "", 6, BaseExecutionExpectation.empty()))
+      intDistributor.accept(AggregationStateWithData(1, "", 4, BaseExecutionExpectation.empty()))
+      intDistributor.accept(AggregationStateWithData(1, "", 5, BaseExecutionExpectation.empty()))
+      intDistributor.accept(AggregationStateWithData(1, "", 6, BaseExecutionExpectation.empty()))
       intDistributor.next mustBe Right(Seq(7, 8, 9).map(x => IntWithBatch(x, x)))
       intDistributor.next mustBe Left(AllProvidedWaitingForResults)
-      intDistributor.accept(AggregationState(1, "", 7, BaseExecutionExpectation.empty()))
+      intDistributor.accept(AggregationStateWithData(1, "", 7, BaseExecutionExpectation.empty()))
       intDistributor.next mustBe Left(AllProvidedWaitingForResults)
-      intDistributor.accept(AggregationState(1, "", 8, BaseExecutionExpectation.empty()))
+      intDistributor.accept(AggregationStateWithData(1, "", 8, BaseExecutionExpectation.empty()))
       intDistributor.next mustBe Left(AllProvidedWaitingForResults)
-      intDistributor.accept(AggregationState(1, "", 9, BaseExecutionExpectation.empty()))
+      intDistributor.accept(AggregationStateWithData(1, "", 9, BaseExecutionExpectation.empty()))
       intDistributor.next mustBe Left(Completed)
     }
 

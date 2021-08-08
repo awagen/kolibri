@@ -17,7 +17,7 @@
 
 package de.awagen.kolibri.base.processing.distribution
 
-import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.AggregationState
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.AggregationStateWithData
 import de.awagen.kolibri.base.processing.distribution.DistributionStates.DistributionState
 
 trait Distributor[T, U] {
@@ -38,7 +38,8 @@ trait Distributor[T, U] {
 
   def markAsFail(identifier: Int): Unit
 
-  def accept(element: AggregationState[U]): Boolean
+  // TODO: adjust this to accept any AggregationState[U]
+  def accept(element: AggregationStateWithData[U]): Boolean
 
   def next: Either[DistributionState, Seq[T]]
 
