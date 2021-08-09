@@ -23,7 +23,7 @@ import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages._
 import de.awagen.kolibri.base.config.AppConfig.config
 import de.awagen.kolibri.base.config.AppConfig.config.{kolibriDispatcherName, useAggregatorBackpressure}
 import de.awagen.kolibri.base.io.writer.Writers.Writer
-import de.awagen.kolibri.base.processing.consume.AggregatorConfig
+import de.awagen.kolibri.base.processing.consume.AggregatorConfigurations.AggregatorConfig
 import de.awagen.kolibri.base.processing.execution.expectation.ExecutionExpectation
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}
@@ -47,8 +47,10 @@ object AggregatingActor {
                                expectationSupplier: () => ExecutionExpectation,
                                owner: ActorRef,
                                jobPartIdentifier: JobPartIdentifiers.JobPartIdentifier,
-                               writer: Option[Writer[V, Tag, _]]): Props =
-    Props(new AggregatingActor[U, V](aggregatorConfig, expectationSupplier, owner, jobPartIdentifier, writer))
+                               writer: Option[Writer[V, Tag, _]],
+                               sendResultBack: Boolean): Props =
+    Props(new AggregatingActor[U, V](aggregatorConfig, expectationSupplier, owner, jobPartIdentifier, writer,
+      sendResultBack))
       .withDispatcher(kolibriDispatcherName)
 
   trait AggregatingActorCmd extends KolibriSerializable
@@ -91,7 +93,8 @@ class AggregatingActor[U, V <: WithCount](val aggregatorConfig: AggregatorConfig
                                           val expectationSupplier: () => ExecutionExpectation,
                                           val owner: ActorRef,
                                           val jobPartIdentifier: JobPartIdentifiers.JobPartIdentifier,
-                                          val writerOpt: Option[Writer[V, Tag, _]])
+                                          val writerOpt: Option[Writer[V, Tag, _]],
+                                          val sendResultDataBackToOwner: Boolean)
   extends Actor with ActorLogging {
 
   implicit val system: ActorSystem = context.system
@@ -106,6 +109,19 @@ class AggregatingActor[U, V <: WithCount](val aggregatorConfig: AggregatorConfig
     receiver = self,
     message = Housekeeping)
 
+  def sendAggregationState(receiver: ActorRef): Unit = {
+    val filteredMappedData: V = aggregatorConfig.filteringMapperForResultSending.map(aggregator.aggregation)
+    if (sendResultDataBackToOwner) {
+      // NOTE: in cases of very big responses this doesnt seem to successfully send (probably serialize-deserialize issue)
+      // of expectation, which then is null, as well as jobId for some reason, while the log message above
+      // is logged correctly before, referencing expectation
+      receiver ! AggregationStateWithData(filteredMappedData, jobPartIdentifier.jobId, jobPartIdentifier.batchNr, expectation.deepCopy)
+    }
+    else {
+      receiver ! AggregationStateWithoutData(filteredMappedData.count, jobPartIdentifier.jobId, jobPartIdentifier.batchNr, expectation.deepCopy)
+    }
+  }
+
   def handleExpectationStateAndCloseIfFinished(adjustReceive: Boolean): Unit = {
     if (expectation.succeeded || expectation.failed) {
       cancellableSchedule.cancel()
@@ -113,8 +129,8 @@ class AggregatingActor[U, V <: WithCount](val aggregatorConfig: AggregatorConfig
       log.info(s"sending aggregation state for batch: ${jobPartIdentifier.batchNr}")
 
       // apply the mapper first to decide which parts of the data to be send to the result receiver
-      val filteredMappedData = aggregatorConfig.filteringMapperForResultSending.map(aggregator.aggregation)
-      owner ! AggregationState(filteredMappedData, jobPartIdentifier.jobId, jobPartIdentifier.batchNr, expectation.deepCopy)
+      // TODO: place fail and success counts within aggregator and then pass them separate from the data (data then doesnt need to be of type WithCount)
+      sendAggregationState(owner)
 
       writerOpt.foreach(writer => {
         writer.write(aggregator.aggregation, StringTag(jobPartIdentifier.jobId))
@@ -135,13 +151,18 @@ class AggregatingActor[U, V <: WithCount](val aggregatorConfig: AggregatorConfig
     if (useAggregatorBackpressure) sender() ! ACK
   }
 
-  // TODO: we use counts on the aggregated state to be able to accept partial aggregations and still
+  // NOTE: we use counts on the aggregated state to be able to accept partial aggregations and still
   // keep the expectations, e.g if we receive an aggregation state incorporating 10 elements,
   // then this should fulfill receive expectations on 10 elements. We might add this to aggregation state instead
   // of requiring this on the value of type V
   def handleAggregationStateMsg(msg: AggregationState[V]): Unit = {
-    log.info("received aggregation result event with count: {}", msg.data.count)
-    aggregator.addAggregate(aggregatorConfig.filterAggregationMapperForAggregator.map(msg.data))
+    msg match {
+      case e: AggregationStateWithData[V] =>
+        log.info("received aggregation result event with count: {}", e.data.count)
+        aggregator.addAggregate(aggregatorConfig.filterAggregationMapperForAggregator.map(e.data))
+      case e: AggregationStateWithoutData[V] =>
+        log.info("received aggregation result event with count: {}", e.containedElementCount)
+    }
     expectation.accept(msg)
     log.info("overall partial result count: {}", aggregator.aggregation.count)
     log.debug("expectation state: {}", expectation.statusDesc)
@@ -168,22 +189,19 @@ class AggregatingActor[U, V <: WithCount](val aggregatorConfig: AggregatorConfig
     case ProvideStateAndStop =>
       log.debug("Providing aggregation state and stopping aggregator")
       cancellableSchedule.cancel()
-      owner ! AggregationState(aggregator.aggregation, jobPartIdentifier.jobId,
-        jobPartIdentifier.batchNr, expectation.deepCopy)
+      sendAggregationState(owner)
       self ! PoisonPill
     case Housekeeping =>
       handleExpectationStateAndCloseIfFinished(adjustReceive = true)
     case ReportResults =>
-      sender() ! AggregationState(aggregator.aggregation, jobPartIdentifier.jobId,
-        jobPartIdentifier.batchNr, expectation.deepCopy)
+      sendAggregationState(sender())
     case e =>
       log.warning("Received unmatched msg: {}", e)
   }
 
   def closedState: Receive = {
     case ReportResults =>
-      sender() ! AggregationState(aggregator.aggregation, jobPartIdentifier.jobId,
-        jobPartIdentifier.batchNr, expectation.deepCopy)
+      sendAggregationState(sender())
     case _ =>
   }
 }

@@ -42,7 +42,7 @@ object JobDefinitions {
 
   trait ActorRunnableJobDefinition[V, V1, V2, U <: WithCount] {
 
-    def createActorRunnableJobCmd: ProcessActorRunnableJobCmd[V, V1, V2, U ]
+    def createActorRunnableJobCmd: ProcessActorRunnableJobCmd[V, V1, V2, U]
 
   }
 
@@ -106,7 +106,8 @@ object JobDefinitions {
                                                          filterAggregationMapperForAggregator: FilteringMapper[MetricAggregation[Tag], MetricAggregation[Tag]],
                                                          filteringMapperForResultSending: FilteringMapper[MetricAggregation[Tag], MetricAggregation[Tag]],
                                                          allowedTimePerBatchInSeconds: Long,
-                                                         allowedTimeForJobInSeconds: Long
+                                                         allowedTimeForJobInSeconds: Long,
+                                                         sendResultsBack: Boolean
                                                         ) extends ActorRunnableTaskJobDefinition[MetricAggregation[Tag]] {
     override def createActorRunnableTaskJobCmd: ProcessActorRunnableTaskJobCmd[MetricAggregation[Tag]] = {
       val serializableBatchGeneratorFunc: SerializableFunction1[OrderedMultiValues, IndexedGenerator[Batch[TypeTaggedMap with TaggedWithType[Tag]]]] = {
@@ -125,7 +126,8 @@ object JobDefinitions {
         filterAggregationMapperForAggregator = filterAggregationMapperForAggregator,
         filteringMapperForResultSending = filteringMapperForResultSending,
         allowedTimePerBatchInSeconds = allowedTimePerBatchInSeconds,
-        allowedTimeForJobInSeconds = allowedTimeForJobInSeconds
+        allowedTimeForJobInSeconds = allowedTimeForJobInSeconds,
+        sendResultsBack = sendResultsBack
       )
     }
   }

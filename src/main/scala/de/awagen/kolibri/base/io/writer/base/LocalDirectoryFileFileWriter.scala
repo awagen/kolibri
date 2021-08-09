@@ -18,6 +18,8 @@ package de.awagen.kolibri.base.io.writer.base
 
 import java.io.{BufferedWriter, File, IOException}
 import java.util.Objects
+import java.nio.file.Files
+import java.nio.file.Paths
 
 import de.awagen.kolibri.base.io.writer.Writers.FileWriter
 import org.slf4j.{Logger, LoggerFactory}
@@ -32,6 +34,7 @@ case class LocalDirectoryFileFileWriter(directory: String) extends FileWriter[St
     logger.info(s"writing data for identifier: $targetIdentifier")
     val fullPath = s"$normedDirectory/$targetIdentifier"
     try {
+      Files.createDirectories(Paths.get(normedDirectory))
       val file = new File(fullPath)
       val bufferedWriter = new BufferedWriter(new java.io.FileWriter(file))
       bufferedWriter.write(data)

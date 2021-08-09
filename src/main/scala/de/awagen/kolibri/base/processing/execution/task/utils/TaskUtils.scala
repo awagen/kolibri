@@ -23,8 +23,9 @@ import de.awagen.kolibri.base.actors.work.worker.JobPartIdentifiers.BaseJobPartI
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{Corn, ProcessingMessage}
 import de.awagen.kolibri.base.actors.work.worker.TaskExecutionWorkerActor.ProcessTaskExecution
 import de.awagen.kolibri.base.processing.classifier.Mapper.AcceptAllAsIdentityMapper
-import de.awagen.kolibri.base.processing.consume.AggregatorConfig
+import de.awagen.kolibri.base.processing.consume.AggregatorConfigurations.AggregatorConfig
 import de.awagen.kolibri.base.processing.execution.SimpleTaskExecution
+import de.awagen.kolibri.base.processing.execution.expectation.Expectation.SuccessAndErrorCounts
 import de.awagen.kolibri.base.processing.execution.expectation.{BaseExecutionExpectation, ClassifyingCountExpectation, StopExpectation, TimeExpectation}
 import de.awagen.kolibri.base.processing.execution.job.{ActorRunnable, ActorRunnableSinkType}
 import de.awagen.kolibri.base.processing.execution.task.Task
@@ -45,7 +46,8 @@ object TaskUtils {
                                            aggregatorSupplier: () => Aggregator[ProcessingMessage[Any], U],
                                            taskExecutionWorkerProps: Props,
                                            timeoutPerRunnable: FiniteDuration,
-                                           timeoutPerElement: FiniteDuration): IndexedGenerator[ActorRunnable[SimpleTaskExecution[Any], Any, Any, U]] = {
+                                           timeoutPerElement: FiniteDuration,
+                                           sendResultsBack: Boolean): IndexedGenerator[ActorRunnable[SimpleTaskExecution[Any], Any, Any, U]] = {
     val executionIterable: IndexedGenerator[IndexedGenerator[SimpleTaskExecution[Any]]] =
       mapGenerator.mapGen(x => x.data.mapGen(y => SimpleTaskExecution(resultKey, y, tasks)))
     val atomicInt = new AtomicInteger(0)
@@ -69,12 +71,13 @@ object TaskUtils {
         expectationGenerator = _ => BaseExecutionExpectation(
           Seq(ClassifyingCountExpectation(classifier = Map("ALL" -> (_ => true)),
             expectedClassCounts = Map("ALL" -> x.nrOfElements))),
-          Seq(StopExpectation(x.nrOfElements, _ => false, _ => false),
+          Seq(StopExpectation(x.nrOfElements, _ => SuccessAndErrorCounts(1, 0), _ => false),
             TimeExpectation(timeoutPerRunnable))
         ),
         sinkType = ActorRunnableSinkType.REPORT_TO_ACTOR_SINK,
         timeoutPerRunnable,
-        timeoutPerElement)
+        timeoutPerElement,
+        sendResultsBack = sendResultsBack)
     })
   }
 

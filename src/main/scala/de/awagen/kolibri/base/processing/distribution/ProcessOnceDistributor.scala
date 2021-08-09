@@ -28,9 +28,8 @@ import org.slf4j.{Logger, LoggerFactory}
   * retrieved yet. Result can either be the corresponding AggregationState or
   * marking as failed
   *
-  * @param maxParallel    - max elements to provide as in progress at the same time
-  * @param generator      - generator providing the elements of type T
-  * @param resultConsumer - consumer of the aggregated result of tyoe AggregationState[T]
+  * @param maxParallel - max elements to provide as in progress at the same time
+  * @param generator   - generator providing the elements of type T
   * @tparam T - type of elements provided by generator
   * @tparam U - type of the aggregation
   */
@@ -75,10 +74,14 @@ class ProcessOnceDistributor[T <: WithBatchNr, U](private[this] var maxParallel:
   }
 
   def accept(element: AggregationState[U]): Boolean = {
-    logger.debug(s"distributor: received aggregation state: $element")
+    logger.info(s"distributor: received aggregation state: batchNr=${element.batchNr}, expectation=${element.executionExpectation}," +
+      s"jobId=${element.jobID}")
     if ((failed ++ inProgress).contains(element.batchNr)) {
       removeBatchRecords(element.batchNr)
       numResultsReceivedCount += 1
+      if (element.executionExpectation.failed) {
+        markAsFail(element.batchNr)
+      }
       true
     }
     else {

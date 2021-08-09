@@ -15,19 +15,17 @@
   */
 
 
-package de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts
+package de.awagen.kolibri.base.processing.modifiers
 
 import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.model.{ContentType, ContentTypes, HttpEntity}
-import de.awagen.kolibri.base.http.client.request.RequestTemplateBuilder
-import de.awagen.kolibri.base.processing.modifiers.Modifier
 import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.{BodyModifier, HeaderModifier, RequestParameterModifier}
 import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator}
 import de.awagen.kolibri.datatypes.multivalues.OrderedMultiValues
 
 import scala.collection.immutable
 
-object RequestModifiers {
+object RequestModifiersUtils {
 
   /**
     * Transform OrderedMultiValues into multiple generators of RequestTemplateBuilder modifiers.
@@ -78,33 +76,5 @@ object RequestModifiers {
       BodyModifier(HttpEntity(contentType, bodyValue.getBytes))
     })
   }
-
-  /**
-    * Container for the distinct values to generate Modifier[RequestTemplateBuilder] from. One single parameter name
-    * in the case of params and headers a generator is created providing all defined values.
-    * For bodies its a single generator providing all distinct body values. bodyContentType determines the format
-    * of the passed body
-    *
-    * @param params
-    * @param headers
-    * @param bodies
-    * @param bodyContentType
-    */
-  case class RequestPermutation(params: OrderedMultiValues,
-                                headers: OrderedMultiValues,
-                                bodies: Seq[String],
-                                bodyContentType: ContentType = ContentTypes.`application/json`) {
-    val paramModifierGenerators: Seq[IndexedGenerator[RequestParameterModifier]] = multiValuesToRequestParamModifiers(params, replace = false)
-      .filter(gen => gen.size > 0)
-    val headerModifierGenerators: Seq[IndexedGenerator[HeaderModifier]] = multiValuesToHeaderModifiers(headers, replace = false)
-      .filter(gen => gen.size > 0)
-    val bodyModifierGenerator: Option[IndexedGenerator[BodyModifier]] = if (bodies.isEmpty) None else Some(bodiesToBodyModifier(bodies, bodyContentType))
-
-    def getModifierSeq: Seq[IndexedGenerator[Modifier[RequestTemplateBuilder]]] = {
-      val combined: Seq[IndexedGenerator[Modifier[RequestTemplateBuilder]]] = paramModifierGenerators ++ headerModifierGenerators
-      bodyModifierGenerator.map(x => combined :+ x).getOrElse(combined)
-    }
-  }
-
 
 }

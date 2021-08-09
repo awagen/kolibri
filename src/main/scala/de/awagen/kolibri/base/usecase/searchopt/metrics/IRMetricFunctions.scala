@@ -16,17 +16,23 @@
 
 package de.awagen.kolibri.base.usecase.searchopt.metrics
 
+import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.CalculationResult
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason
 
 import scala.collection.immutable
 
 
-object MetricFunctions {
+/**
+  * Given a sequence of "quality measures" in the range of [0,1],
+  * defines some information retrieval metrics on a subset of
+  * results
+  */
+object IRMetricFunctions {
 
   val NO_JUDGEMENTS: ComputeFailReason = ComputeFailReason("NO_JUDGEMENTS")
   val ZERO_DENOMINATOR: ComputeFailReason = ComputeFailReason("ZERO_DENOMINATOR")
 
-  def dcgAtK(k: Int): Function[Seq[Double], Either[Seq[ComputeFailReason], Double]] = {
+  def dcgAtK(k: Int): Function[Seq[Double], CalculationResult[Double]] = {
     seq: Seq[Double] => {
       seq match {
         case _ if seq.isEmpty => Left(Seq(NO_JUDGEMENTS))
@@ -40,7 +46,7 @@ object MetricFunctions {
     }
   }
 
-  def ndcgAtK(k: Int): Function[Seq[Double], Either[Seq[ComputeFailReason], Double]] = {
+  def ndcgAtK(k: Int): Function[Seq[Double], CalculationResult[Double]] = {
     seq: Seq[Double] => {
       seq match {
         case e if e.isEmpty => Left(Seq(NO_JUDGEMENTS))
@@ -60,14 +66,14 @@ object MetricFunctions {
     }
   }
 
-  def precisionAtK(n: Int, threshold: Double): Function[Seq[Double], Either[Seq[ComputeFailReason], Double]] = {
+  def precisionAtK(n: Int, threshold: Double): Function[Seq[Double], CalculationResult[Double]] = {
     seq: Seq[Double] => {
       val allN = seq.slice(0, n)
-      if (allN.nonEmpty) Right(allN.count(x => x >= threshold) / allN.size) else Left(Seq(NO_JUDGEMENTS))
+      if (allN.nonEmpty) Right(allN.count(x => x >= threshold).toDouble / allN.size) else Left(Seq(NO_JUDGEMENTS))
     }
   }
 
-  def errAtK(n: Int, maxGrade: Double): Function[Seq[Double], Either[Seq[ComputeFailReason], Double]] = {
+  def errAtK(n: Int, maxGrade: Double): Function[Seq[Double], CalculationResult[Double]] = {
     seq: Seq[Double] => {
       seq match {
         case e if e.isEmpty => Left(Seq(NO_JUDGEMENTS))

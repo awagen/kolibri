@@ -17,7 +17,7 @@
 package de.awagen.kolibri.base.io.json
 
 import de.awagen.kolibri.base.domain.jobdefinitions.provider.QueryAndParamProvider
-import de.awagen.kolibri.base.io.json.FileReaderJsonProtocol.fileReaderFormat
+import de.awagen.kolibri.base.io.json.FileReaderJsonProtocol.FileReaderFormat
 import de.awagen.kolibri.base.io.reader.FileReader
 import de.awagen.kolibri.datatypes.io.json.OrderedMultiValuesJsonProtocol.OrderedMultiValuesAnyFormat
 import de.awagen.kolibri.datatypes.multivalues.OrderedMultiValues

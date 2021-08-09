@@ -25,6 +25,12 @@ object RequestTemplateBuilderModifiers {
 
   type RequestTemplateBuilderModifier = Modifier[RequestTemplateBuilder]
 
+  /**
+    * Modifier to add request parameters
+    *
+    * @param params
+    * @param replace
+    */
   case class RequestParameterModifier(params: immutable.Map[String, Seq[String]], replace: Boolean) extends Modifier[RequestTemplateBuilder] {
 
     def apply(a: RequestTemplateBuilder): RequestTemplateBuilder = {
@@ -33,6 +39,11 @@ object RequestTemplateBuilderModifiers {
 
   }
 
+  /**
+    * Modifier to change context path of the request
+    *
+    * @param contextPath
+    */
   case class ContextPathModifier(contextPath: String) extends Modifier[RequestTemplateBuilder] {
 
     def apply(a: RequestTemplateBuilder): RequestTemplateBuilder = {
@@ -41,6 +52,12 @@ object RequestTemplateBuilderModifiers {
 
   }
 
+  /**
+    * Modifier to add headers
+    *
+    * @param headers
+    * @param replace
+    */
   case class HeaderModifier(headers: Seq[HttpHeader], replace: Boolean) extends Modifier[RequestTemplateBuilder] {
 
     def apply(a: RequestTemplateBuilder): RequestTemplateBuilder = {
@@ -49,6 +66,11 @@ object RequestTemplateBuilderModifiers {
 
   }
 
+  /**
+    * Modifier to set body
+    *
+    * @param body
+    */
   case class BodyModifier(body: MessageEntity) extends Modifier[RequestTemplateBuilder] {
 
     def apply(a: RequestTemplateBuilder): RequestTemplateBuilder = {
@@ -57,6 +79,12 @@ object RequestTemplateBuilderModifiers {
 
   }
 
+  /**
+    * Modifier consisting of multiple other ones. Apply-call will apply all contained modifiers in sequence
+    *
+    * @param modifiers
+    * @tparam T
+    */
   case class CombinedModifier[T](modifiers: Seq[Modifier[T]]) extends Modifier[T] {
 
     def apply(a: T): T = {
@@ -66,7 +94,6 @@ object RequestTemplateBuilderModifiers {
       })
       current
     }
-
   }
 
 }

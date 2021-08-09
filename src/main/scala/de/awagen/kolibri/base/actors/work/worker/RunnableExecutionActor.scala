@@ -27,7 +27,6 @@ import de.awagen.kolibri.base.actors.work.worker.RunnableExecutionActor.{Provide
 import de.awagen.kolibri.base.config.AppConfig.config
 import de.awagen.kolibri.base.config.AppConfig.config.kolibriDispatcherName
 import de.awagen.kolibri.base.io.writer.Writers.Writer
-import de.awagen.kolibri.base.processing.consume.AggregatorConfig
 import de.awagen.kolibri.base.processing.decider.Deciders.allResumeDecider
 import de.awagen.kolibri.base.processing.execution.expectation._
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnable.JobActorConfig
@@ -42,7 +41,8 @@ import scala.concurrent.{ExecutionContextExecutor, Future}
 
 object RunnableExecutionActor {
 
-  def probs[U <: WithCount](maxBatchDurationInSeconds: FiniteDuration, writerOpt: Option[Writer[U, Tag, _]]): Props =
+  def probs[U <: WithCount](maxBatchDurationInSeconds: FiniteDuration,
+                            writerOpt: Option[Writer[U, Tag, _]]): Props =
     Props(new RunnableExecutionActor[U](maxBatchDurationInSeconds, writerOpt)).withDispatcher(kolibriDispatcherName)
 
   trait RunnableExecutionActorCmd extends KolibriSerializable
@@ -88,10 +88,12 @@ class RunnableExecutionActor[U <: WithCount](maxBatchDuration: FiniteDuration,
   private[this] var aggregatingActor: ActorRef = _
   // cancellable of housekeeping schedule
   private[this] var housekeepingCancellable: Cancellable = _
+  var sendResultsBack: Boolean = true
 
 
   val readyForJob: Receive = {
     case runnable: ActorRunnable[_, _, _, U] =>
+      sendResultsBack = runnable.sendResultsBack
       jobSender = sender()
       // jobId and batchNr might be used as identifiers to filter received messages by
       runningJobId = runnable.jobId
@@ -101,7 +103,8 @@ class RunnableExecutionActor[U <: WithCount](maxBatchDuration: FiniteDuration,
         () => runnable.expectationGenerator.apply(runnable.supplier.size),
         owner = this.self,
         jobPartIdentifier = BaseJobPartIdentifier(jobId = runningJobId, batchNr = runningJobBatchNr),
-        writerOpt
+        writerOpt,
+        sendResultBack = runnable.sendResultsBack
       ))
       // we set the aggregatingActor as receiver of all messages
       // (whether graph sink is used or setting the aggregator as sender when sending
@@ -119,7 +122,12 @@ class RunnableExecutionActor[U <: WithCount](maxBatchDuration: FiniteDuration,
       // that one AggregationState
       val failExpectations: Seq[Expectation[Any]] = Seq(TimeExpectation(maxBatchDuration))
       expectation = BaseExecutionExpectation(
-        fulfillAllForSuccess = Seq(ReceiveCountExpectation(Map(AggregationState -> 1))),
+        fulfillAllForSuccess = Seq(
+          ClassifyingCountExpectation(Map("aggregationState" -> {
+            case _: AggregationState[_] => true
+            case _ => false
+          }), expectedClassCounts = Map("aggregationState" -> 1)),
+        ),
         fulfillAnyForFail = failExpectations)
       expectation.init
       val outcome: (UniqueKillSwitch, Future[Done]) = runnableGraph.run()

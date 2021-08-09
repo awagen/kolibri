@@ -14,15 +14,16 @@
   * limitations under the License.
   */
 
-package de.awagen.kolibri.base.processing.modifiers
 
-import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
-import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
-import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSupplier
+package de.awagen.kolibri.base.usecase.searchopt.io.json
 
-object BatchRequestModifierSuppliers {
+import de.awagen.kolibri.base.usecase.searchopt.io.json.TypedJsonSelectorJsonProtocol._
+import de.awagen.kolibri.base.usecase.searchopt.parse.ParsingConfig
+import spray.json.{DefaultJsonProtocol, RootJsonFormat}
 
-  type BatchRequestModifierSupplier = SerializableSupplier[IndexedGenerator[RequestTemplateBuilderModifier]]
+object ParsingConfigJsonProtocol extends DefaultJsonProtocol {
 
+  implicit val parsingConfigJsonFormat: RootJsonFormat[ParsingConfig] =
+    jsonFormat2(ParsingConfig.apply)
 
 }

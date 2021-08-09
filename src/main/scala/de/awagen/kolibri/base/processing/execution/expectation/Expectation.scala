@@ -18,6 +18,11 @@ package de.awagen.kolibri.base.processing.execution.expectation
 
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 
+object Expectation {
+
+  case class SuccessAndErrorCounts(successCount: Int, errorCount: Int)
+
+}
 
 trait Expectation[+T] extends KolibriSerializable {
 

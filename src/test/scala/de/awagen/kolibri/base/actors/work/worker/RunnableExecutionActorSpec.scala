@@ -18,7 +18,7 @@ package de.awagen.kolibri.base.actors.work.worker
 
 import akka.actor.ActorRef
 import akka.testkit.{ImplicitSender, TestKit, TestProbe}
-import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.AggregationState
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.AggregationStateWithData
 import de.awagen.kolibri.base.actors.{KolibriTestKitNoCluster, TestMessages}
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import org.scalatest.BeforeAndAfterAll
@@ -51,7 +51,7 @@ class RunnableExecutionActorSpec extends KolibriTestKitNoCluster
       runnableExecutorActor.tell(TestMessages.msg1, reportToActor.ref)
       // then
       reportToActor.expectMsgPF(2 seconds){
-        case _: AggregationState[Map[Tag, Double]] => true
+        case _: AggregationStateWithData[Map[Tag, Double]] => true
         case _ => false
       }
     }
@@ -64,7 +64,7 @@ class RunnableExecutionActorSpec extends KolibriTestKitNoCluster
       runnableExecutorActor.tell(TestMessages.messagesToActorRefRunnable("testJob"), reportToActor.ref)
       // then
       reportToActor.expectMsgPF(2 seconds){
-        case _: AggregationState[Map[Tag, Double]] => true
+        case _: AggregationStateWithData[Map[Tag, Double]] => true
         case _ => false
       }
     }

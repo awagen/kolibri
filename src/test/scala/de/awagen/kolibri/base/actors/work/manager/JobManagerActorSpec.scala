@@ -25,7 +25,7 @@ import de.awagen.kolibri.base.actors.KolibriTestKit
 import de.awagen.kolibri.base.actors.TestMessages.{TaggedInt, messagesToActorRefRunnableGenFunc}
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.{FinishedJobEvent, ProcessingResult}
 import de.awagen.kolibri.base.actors.work.manager.JobManagerActor.ProcessJobCmd
-import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationState, ProcessingMessage, ResultSummary}
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationStateWithData, ProcessingMessage, ResultSummary}
 import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions.MapWithCount
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnable
 import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator}
@@ -69,7 +69,7 @@ class JobManagerActorSpec extends KolibriTestKit
 
           override def add(sample: ProcessingMessage[Int]): Unit = {
             sample match {
-              case _: AggregationState[Int] =>
+              case _: AggregationStateWithData[Int] =>
                 val keys = sample.getTagsForType(AGGREGATION)
                 keys.foreach(x => {
                   map = MapWithCount(map.map + (x -> (map.map.getOrElse(x, 0.0) + sample.data)), map.count + 1)

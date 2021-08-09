@@ -21,17 +21,21 @@ import spray.json.{DefaultJsonProtocol, DeserializationException, JsObject, JsSt
 
 object FileReaderJsonProtocol extends DefaultJsonProtocol {
 
-  implicit object fileReaderFormat extends JsonFormat[FileReader] {
+  implicit object FileReaderFormat extends JsonFormat[FileReader] {
     override def read(json: JsValue): FileReader = json match {
-      case spray.json.JsObject(fields) if (fields.contains("type") && fields("type").convertTo[String] == "LOCAL_FILE_READER") =>
-        val delimiter = fields.get("delimiter")
-        val position = fields.get("position")
-        val encoding = fields.get("encoding").map(x => x.convertTo[String])
-        val delimiterAndPosition: Option[(String, Int)] = for {x <- delimiter; y <- position} yield (x.convertTo[String], y.convertTo[Int])
-        LocalResourceFileReader(delimiterAndPosition, encoding.getOrElse("UTF-8"))
+      case spray.json.JsObject(fields) => fields("type").convertTo[String] match {
+        case "LOCAL_FILE_READER" =>
+          val delimiter = fields.get("delimiter")
+          val position = fields.get("position")
+          val fromClasspath = fields("fromClasspath").convertTo[Boolean]
+          val encoding = fields.get("encoding").map(x => x.convertTo[String])
+          val delimiterAndPosition: Option[(String, Int)] = for {x <- delimiter; y <- position} yield (x.convertTo[String], y.convertTo[Int])
+          LocalResourceFileReader(delimiterAndPosition, fromClasspath, encoding.getOrElse("UTF-8"))
+      }
       case e => throw DeserializationException(s"Expected a value from ValueProvider but got value $e")
     }
 
+    // TODO: check correctness
     override def write(obj: FileReader): JsValue = obj match {
       case e if e.isInstanceOf[LocalResourceFileReader] =>
         var fieldMap: Map[String, JsValue] = JsString(obj.toString).asJsObject.fields

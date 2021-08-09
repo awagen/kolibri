@@ -148,7 +148,6 @@ class WorkManagerActor() extends Actor with ActorLogging with KolibriSerializabl
       implicit val ec: ExecutionContext = context.system.dispatchers.lookup(kolibriDispatcherName)
       implicit val actorSystem: ActorSystem = context.system
       val runnableMsg: SupervisorActor.ProcessActorRunnableJobCmd[RequestTemplateBuilderModifier, MetricRow, MetricRow, MetricAggregation[Tag]] = e.msg.toRunnable
-      // TODO: adjust passed flags to regulate whether nodes write single batch results
       val writerOpt: Option[Writers.Writer[MetricAggregation[Tag], Tag, _]] = Some(runnableMsg.writer)
       if (runnableGeneratorForJob.isEmpty) {
         runnableGeneratorForJob = Some(e.msg.toRunnable.processElements)

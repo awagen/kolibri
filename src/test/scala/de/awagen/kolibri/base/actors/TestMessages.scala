@@ -27,7 +27,8 @@ import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions.Implicits
 import de.awagen.kolibri.base.io.writer.Writers.Writer
 import de.awagen.kolibri.base.processing.TestTaskHelper.{concatIdsTask, productIdResult, reverseIdsTaskPM, reversedIdKeyPM}
 import de.awagen.kolibri.base.processing.classifier.Mapper.AcceptAllAsIdentityMapper
-import de.awagen.kolibri.base.processing.consume.AggregatorConfig
+import de.awagen.kolibri.base.processing.consume.AggregatorConfigurations.AggregatorConfig
+import de.awagen.kolibri.base.processing.execution.expectation.Expectation.SuccessAndErrorCounts
 import de.awagen.kolibri.base.processing.execution.expectation.{BaseExecutionExpectation, ReceiveCountExpectation, StopExpectation, TimeExpectation}
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnable
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnableSinkType.REPORT_TO_ACTOR_SINK
@@ -78,9 +79,9 @@ object TestMessages {
       fulfillAllForSuccess = Seq(ReceiveCountExpectation(Map(
         Range(0, 11, 1).map(x => Corn(x + 10) -> 1): _*
       ))),
-      fulfillAnyForFail = Seq(StopExpectation(0, _ => false, _ => false),
+      fulfillAnyForFail = Seq(StopExpectation(0, _ => SuccessAndErrorCounts(1, 0), _ => false),
         TimeExpectation(100 days))),
-    sinkType = REPORT_TO_ACTOR_SINK, 1 minute, 1 minute)
+    sinkType = REPORT_TO_ACTOR_SINK, 1 minute, 1 minute, sendResultsBack = true)
 
   val expectedValuesForMessagesToActorRefRunnable: immutable.Seq[Corn[Int]] = Range(0, 11, 1).map(x => Corn(x + 11))
 
@@ -112,12 +113,13 @@ object TestMessages {
           corn -> 1
         }): _*
       ))),
-      fulfillAnyForFail = Seq(StopExpectation(0, _ => false, _ => false),
+      fulfillAnyForFail = Seq(StopExpectation(0, _ => SuccessAndErrorCounts(1, 0), _ => false),
         TimeExpectation(100 days))
     ),
     sinkType = REPORT_TO_ACTOR_SINK,
     1 minute,
-    1 minute)
+    1 minute,
+    sendResultsBack = true)
 
   val expectedValuesForMsg1: immutable.Seq[Corn[Int]] = Range(0, 11, 1).map(x => Corn(x + 10))
 
@@ -165,9 +167,9 @@ object TestMessages {
           Corn(x + 1) -> 1,
           Corn(x + 2) -> 1,
           Corn(x + 3) -> 1))),
-        fulfillAnyForFail = Seq(StopExpectation(0, _ => false, _ => false),
+        fulfillAnyForFail = Seq(StopExpectation(0, _ => SuccessAndErrorCounts(1, 0), _ => false),
           TimeExpectation(100 days))),
-      sinkType = REPORT_TO_ACTOR_SINK, 1 minute, 1 minute)
+      sinkType = REPORT_TO_ACTOR_SINK, 1 minute, 1 minute, sendResultsBack = true)
 
   def expectedMessagesForRunnableGenFunc(i: Int) = Seq(
     Corn(i + 1),
@@ -199,8 +201,7 @@ object TestMessages {
       perJobAggregatorSupplier = aggregatorSupplier,
       writer = (_: MapWithCount[Tag, Double], _: Tag) => Right(()),
       allowedTimePerBatch = 10 seconds,
-      allowedTimeForJob = 2 minutes,
-      expectResultsFromBatchCalculations = true
+      allowedTimeForJob = 2 minutes
     )
   }
 
@@ -254,7 +255,8 @@ object TestMessages {
       filterAggregationMapperForAggregator = new AcceptAllAsIdentityMapper[WithCount],
       filteringMapperForResultSending = new AcceptAllAsIdentityMapper[WithCount],
       10 seconds,
-      1 minute
+      1 minute,
+      sendResultsBack = true
     )
   }
 }

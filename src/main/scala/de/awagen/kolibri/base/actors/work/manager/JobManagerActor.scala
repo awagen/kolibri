@@ -28,7 +28,7 @@ import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.ProcessingRes
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.{ActorRunnableJobGenerator, FinishedJobEvent, ProcessingResult}
 import de.awagen.kolibri.base.actors.work.manager.JobManagerActor._
 import de.awagen.kolibri.base.actors.work.manager.WorkManagerActor.{ExecutionType, GetWorkerStatus, JobBatchMsg}
-import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationState, ProcessingMessage, ResultSummary}
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationState, AggregationStateWithData, AggregationStateWithoutData, ProcessingMessage, ResultSummary}
 import de.awagen.kolibri.base.config.AppConfig._
 import de.awagen.kolibri.base.config.AppConfig.config.kolibriDispatcherName
 import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions.MapWithCount
@@ -38,6 +38,7 @@ import de.awagen.kolibri.base.processing.JobMessagesImplicits._
 import de.awagen.kolibri.base.processing.consume.Consumers.{BaseExecutionConsumer, ExecutionConsumer}
 import de.awagen.kolibri.base.processing.distribution.{DistributionStates, Distributor, RetryingDistributor}
 import de.awagen.kolibri.base.processing.execution.expectation._
+import de.awagen.kolibri.base.processing.execution.wrapup.JobWrapUpFunctions.JobWrapUpFunction
 import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
 import de.awagen.kolibri.base.traits.Traits.WithBatchNr
 import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator}
@@ -63,13 +64,13 @@ object JobManagerActor {
   type BatchType = Any with WithBatchNr
 
   def props[T, U <: WithCount](experimentId: String,
-                  runningTaskBaselineCount: Int,
-                  perBatchAggregatorSupplier: () => Aggregator[ProcessingMessage[T], U],
-                  perJobAggregatorSupplier: () => Aggregator[ProcessingMessage[T], U],
-                  writer: Writer[U, Tag, _],
-                  maxProcessDuration: FiniteDuration,
-                  maxBatchDuration: FiniteDuration,
-                  maxNumRetries: Int): Props =
+                               runningTaskBaselineCount: Int,
+                               perBatchAggregatorSupplier: () => Aggregator[ProcessingMessage[T], U],
+                               perJobAggregatorSupplier: () => Aggregator[ProcessingMessage[T], U],
+                               writer: Writer[U, Tag, _],
+                               maxProcessDuration: FiniteDuration,
+                               maxBatchDuration: FiniteDuration,
+                               maxNumRetries: Int): Props =
     Props(new JobManagerActor[T, U](
       experimentId,
       runningTaskBaselineCount,
@@ -121,13 +122,13 @@ object JobManagerActor {
 
 
 class JobManagerActor[T, U <: WithCount](val jobId: String,
-                            runningTaskBaselineCount: Int,
-                            val perBatchAggregatorSupplier: () => Aggregator[ProcessingMessage[T], U],
-                            val perJobAggregatorSupplier: () => Aggregator[ProcessingMessage[T], U],
-                            val writer: Writer[U, Tag, _],
-                            val maxProcessDuration: FiniteDuration,
-                            val maxBatchDuration: FiniteDuration,
-                            val maxNumRetries: Int) extends Actor with ActorLogging with KolibriSerializable {
+                                         runningTaskBaselineCount: Int,
+                                         val perBatchAggregatorSupplier: () => Aggregator[ProcessingMessage[T], U],
+                                         val perJobAggregatorSupplier: () => Aggregator[ProcessingMessage[T], U],
+                                         val writer: Writer[U, Tag, _],
+                                         val maxProcessDuration: FiniteDuration,
+                                         val maxBatchDuration: FiniteDuration,
+                                         val maxNumRetries: Int) extends Actor with ActorLogging with KolibriSerializable {
 
   implicit val system: ActorSystem = context.system
   implicit val ec: ExecutionContextExecutor = context.system.dispatchers.lookup(kolibriDispatcherName)
@@ -156,6 +157,8 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
   private[this] var batchDistributor: Distributor[BatchType, U] = _
   private[this] var executionConsumer: ExecutionConsumer[U] = _
 
+  var wrapUpFunction: Option[JobWrapUpFunction[Any]] = None
+
   val workerServiceRouter: ActorRef = createWorkerRoutingServiceForJob
 
   var scheduleCancellables: Seq[Cancellable] = Seq.empty
@@ -165,9 +168,6 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
   // (even if its just a case class with primitives, maybe due to disabled
   // java serialization and respective msg not being of KolibriSerializable.
   // Not fully clear yet though
-  // TODO: router actor needs to be configurable, e.g round robin or load based or similar
-  // TODO: wed also need a distribution strategy then, e.g for load based makes sense to wait a few seconds after a batch
-  // is distributed to take the increase in load into account
   def createWorkerRoutingServiceForJob: ActorRef = {
     context.actorOf(
       ClusterRouterPool(
@@ -242,6 +242,10 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
       s"received results: ${batchDistributor.nrResultsAccepted}, " +
       s"failed results: ${batchDistributor.idsFailed.size}, " +
       s"in progress: ${batchDistributor.idsInProgress}")
+    wrapUpFunction.foreach(x => x.execute match {
+      case Left(e) => log.info(s"wrap up function execution failed, result: $e")
+      case Right(e) => log.info(s"wrap up function execution succeeded, result: $e")
+    })
     executionConsumer.wrapUp
     // cancel set schedules
     scheduleCancellables.foreach(x => x.cancel())
@@ -264,8 +268,17 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
     BaseExecutionExpectation(
       fulfillAllForSuccess = Seq(
         ClassifyingCountExpectation(Map("finishResponse" -> {
-          case _: AggregationState[U] if expectResultsFromBatchCalculations => true
-          case _: AggregationState[Any] if !expectResultsFromBatchCalculations => true
+          case _: AggregationStateWithData[_] =>
+            if (!expectResultsFromBatchCalculations) {
+              log.warning(s"received AggregationState with data but expectResultsFromBatchCalculations=$expectResultsFromBatchCalculations")
+            }
+            true
+          case _: AggregationStateWithoutData[_] =>
+            if (expectResultsFromBatchCalculations) {
+              log.warning(s"received AggregationState without data but expectResultsFromBatchCalculations=$expectResultsFromBatchCalculations")
+              false
+            }
+            else true
           case _ => false
         }), Map("finishResponse" -> 1))
       ),
@@ -277,8 +290,17 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
     BaseExecutionExpectation(
       fulfillAllForSuccess = Seq(
         ClassifyingCountExpectation(Map("finishResponse" -> {
-          case _: AggregationState[U] if expectResultsFromBatchCalculations => true
-          case _: AggregationState[Any] if !expectResultsFromBatchCalculations => true
+          case _: AggregationStateWithData[_] =>
+            if (!expectResultsFromBatchCalculations) {
+              log.warning(s"received AggregationState with data but expectResultsFromBatchCalculations=$expectResultsFromBatchCalculations")
+            }
+            true
+          case _: AggregationStateWithoutData[_] =>
+            if (expectResultsFromBatchCalculations) {
+              log.warning(s"received AggregationState without data but expectResultsFromBatchCalculations=$expectResultsFromBatchCalculations")
+              false
+            }
+            else true
           case _ => false
         }), Map("finishResponse" -> numberBatches))
       ),
@@ -306,7 +328,6 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
       val nextExpectation: ExecutionExpectation = expectationForNextBatch()
       nextExpectation.init
       executionExpectationMap(batch.batchNr) = nextExpectation
-
       workerServiceRouter ! batch
       // first place the batch in waiting for acknowledgement for processing by worker
       batchesSentWaitingForACK = batchesSentWaitingForACK + batch.batchNr
@@ -369,6 +390,7 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
     case testJobMsg: TestPiCalculation =>
       log.debug(s"received job to process: $testJobMsg")
       reportResultsTo = sender()
+      expectResultsFromBatchCalculations = true
       val jobMsg: SupervisorActor.ProcessActorRunnableJobCmd[Int, Double, Double, MapWithCount[Tag, AggregateValue[Double]]] = testJobMsg.toRunnable
       val numberBatches: Int = jobMsg.processElements.size
       jobToProcess = ByFunctionNrLimitedIndexedGenerator(numberBatches, batchNr => Some(JobBatchMsg(jobMsg.jobId, batchNr, testJobMsg)))
@@ -385,6 +407,7 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
       ()
     case searchJobMsg: SearchEvaluation =>
       log.debug(s"received job to process: $searchJobMsg")
+      wrapUpFunction = searchJobMsg.wrapUpFunction
       implicit val timeout: Timeout = Timeout(10 minutes)
       reportResultsTo = sender()
       expectResultsFromBatchCalculations = searchJobMsg.expectResultsFromBatchCalculations
@@ -444,7 +467,7 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
     case e: AggregationState[U] =>
       failedACKReceiveBatchNumbers = failedACKReceiveBatchNumbers - e.batchNr
       batchesSentWaitingForACK = batchesSentWaitingForACK - e.batchNr
-      log.debug("received aggregation (batch finished) - aggregation: {}, jobId: {}, batchNr: {} ", e.data, e.jobID, e.batchNr)
+      log.debug("received aggregation (batch finished) - jobId: {}, batchNr: {} ", e.jobID, e.batchNr)
       acceptResultMsg(e)
       if (batchDistributor.nrResultsAccepted % 10 == 0 || batchDistributor.nrResultsAccepted == jobToProcess.size) {
         log.info(s"received nr of results: ${batchDistributor.nrResultsAccepted}")

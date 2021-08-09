@@ -18,6 +18,7 @@ package de.awagen.kolibri.base.actors.work.worker
 
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.ProcessingResult
 import de.awagen.kolibri.base.processing.execution.expectation.ExecutionExpectation
+import de.awagen.kolibri.base.processing.execution.expectation.Expectation.SuccessAndErrorCounts
 import de.awagen.kolibri.base.processing.failure.TaskFailType.TaskFailType
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.tagging.TagType.TagType
@@ -36,21 +37,28 @@ object ProcessingMessages {
     }
   }
 
-  sealed trait BatchProcessingMessage[+T] extends KolibriSerializable with ProcessingMessage[T] {
-    val jobID: String
-    val batchNr: Int
-  }
-
   case class Corn[+T](data: T) extends ProcessingMessage[T]
 
   case class BadCorn[+T](failType: TaskFailType) extends ProcessingMessage[T] {
     override val data: T = null.asInstanceOf[T]
   }
 
-  case class AggregationState[+V](data: V,
-                                  jobID: String,
-                                  batchNr: Int,
-                                  executionExpectation: ExecutionExpectation) extends BatchProcessingMessage[V]
+  sealed trait AggregationState[+T] extends KolibriSerializable with TaggedWithType[Tag] {
+    val jobID: String
+    val batchNr: Int
+    val executionExpectation: ExecutionExpectation
+
+  }
+
+  case class AggregationStateWithoutData[+V](containedElementCount: Int,
+                                             jobID: String,
+                                             batchNr: Int,
+                                             executionExpectation: ExecutionExpectation) extends AggregationState[V]
+
+  case class AggregationStateWithData[+V](data: V,
+                                          jobID: String,
+                                          batchNr: Int,
+                                          executionExpectation: ExecutionExpectation) extends AggregationState[V]
 
 
   case class ResultSummary(result: ProcessingResult.Value,

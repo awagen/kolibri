@@ -22,10 +22,10 @@ import akka.stream._
 import akka.stream.scaladsl.{Flow, GraphDSL, Keep, RunnableGraph, Sink, Source}
 import akka.util.Timeout
 import akka.{Done, NotUsed}
-import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationState, BadCorn, ProcessingMessage}
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationStateWithData, BadCorn, ProcessingMessage}
 import de.awagen.kolibri.base.config.AppConfig.config
 import de.awagen.kolibri.base.config.AppConfig.config._
-import de.awagen.kolibri.base.processing.consume.AggregatorConfig
+import de.awagen.kolibri.base.processing.consume.AggregatorConfigurations.AggregatorConfig
 import de.awagen.kolibri.base.processing.decider.Deciders.allResumeDecider
 import de.awagen.kolibri.base.processing.execution.expectation.ExecutionExpectation
 import de.awagen.kolibri.base.processing.execution.job
@@ -37,6 +37,7 @@ import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 import de.awagen.kolibri.datatypes.types.WithCount
+import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.immutable
@@ -67,7 +68,6 @@ object ActorRunnable {
   * @param processingActorProps - if set, send ProcessingMessage[V] to actor of specified type for processing
   * @param expectationGenerator - the execution expectation. Can be utilized by actor running the actorRunnable to determine whether
   *                             processing succeeded, failed due to processing or due to exceeding timeout
-  * @param aggregationSupplier  - Supplier for aggregator. Typed by type to expect for aggregation (wrapped within ProcessingMessage) and type of aggregation
   * @param sinkType             - only if set not set to IGNORE_SINK and actorConfig passed to getRunnableGraph contains REPORT_TO actor type
   *                             will the result of each transformation (U => V) of type V be send to the actorRef given by REPORT_TO type in the actorConfig.
   *                             Otherwise Sink.ignore is used. Note that the expectation can still be non empty in case the sending of responses
@@ -83,7 +83,8 @@ case class ActorRunnable[U, V, V1, Y <: WithCount](jobId: String,
                                                    expectationGenerator: Int => ExecutionExpectation,
                                                    sinkType: job.ActorRunnableSinkType.Value,
                                                    waitTimePerElement: FiniteDuration,
-                                                   maxExecutionDuration: FiniteDuration) extends KolibriSerializable with WithBatchNr {
+                                                   maxExecutionDuration: FiniteDuration,
+                                                   sendResultsBack: Boolean) extends KolibriSerializable with WithBatchNr {
 
   val log: Logger = LoggerFactory.getLogger(ActorRunnable.getClass)
 
@@ -91,9 +92,9 @@ case class ActorRunnable[U, V, V1, Y <: WithCount](jobId: String,
     Flow.fromFunction[ProcessingMessage[V1], ProcessingMessage[V1]](identity)
       .groupedWithin(resultElementGroupingCount, resultElementGroupingInterval)
       .mapAsync[Any](aggregatorResultReceiveParallelism)(messages => {
-        val aggregator = aggregatorConfig.aggregatorSupplier.apply()
+        val aggregator: Aggregator[ProcessingMessage[V1], Y] = aggregatorConfig.aggregatorSupplier.apply()
         messages.foreach(element => aggregator.add(element))
-        val aggState = AggregationState(aggregator.aggregation, jobId, batchNr, expectationGenerator.apply(messages.size))
+        val aggState = AggregationStateWithData(aggregator.aggregation, jobId, batchNr, expectationGenerator.apply(messages.size))
         if (useAggregatorBackpressure) {
           implicit val timeout: Timeout = Timeout(10 seconds)
           aggregatingActor ? aggState

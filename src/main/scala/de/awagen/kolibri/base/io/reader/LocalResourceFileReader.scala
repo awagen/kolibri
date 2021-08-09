@@ -19,12 +19,21 @@ package de.awagen.kolibri.base.io.reader
 import scala.io.Source
 
 case class LocalResourceFileReader(delimiterAndPosition: Option[(String, Int)],
+                                   fromClassPath: Boolean,
                                    encoding: String = "UTF-8") extends FileReader {
 
   override def getSource(fileIdentifier: String): Source = {
-    FileReaderUtils.localResourceSource(fileIdentifier, encoding)
+    if (fromClassPath) FileReaderUtils.localResourceSource(fileIdentifier, encoding)
+    else FileReaderUtils.localSource(fileIdentifier, encoding)
   }
 
+  /**
+    * if delimiterAndPosition is set, split each line by the delimiter and select the nth element,
+    * otherwise just return trimmed lines
+    *
+    * @param fileIdentifier
+    * @return
+    */
   override def read(fileIdentifier: String): Seq[String] = {
     val source: Source = getSource(fileIdentifier)
     delimiterAndPosition.fold(FileReaderUtils.trimmedEntriesByLineFromFile(source))(

@@ -6,7 +6,13 @@
 This project provides the mechanism to execute jobs based on akka, making use of clustering to distribute job batches.
 ![Alt text](images/kolibri.svg?raw=true "Kolibri Base")
 
-## Writing tests with / without cluster startup
+
+## Tests
+### Execution
+- when executing in intellij, make sure to set env variable PROFILE=test
+- when executed via sbt test, as defined in build.sbt, thie PROFILE env var is already set
+
+### Writing tests with / without cluster startup
 
 - the actor system for tests is started on per-test basis via letting the test extending KolibriTestKit (in case a
   cluster is needed for the test - despite being just 1-node cluster) or KolibriTestKitNoCluster (in case test needs no
@@ -120,6 +126,32 @@ The docker-compose.yml can be found in the project root. Following setup is prov
 An example grid search evaluation can be performed as given in the ```scripts/start_searcheval.sh```. You will need 
 to adjust paths where appropriate. The example fires requests to a search instance on the local machine, which is not provided here.
 
+## Few notes on the use of TypeTaggedMap
+In case TypeTaggedMap (such as implementation TypedMapStore) is used as type safe map, note that you might see error messages
+indicating a type mismatch of the type that is assumed and the data parsed in case the parsing
+is stored in a variable of generic type Seq[_], e.g where error message will include scala.collection.*.colon::colon as bit unclear description.
+This refers to the unclear type of Seq[_], so you should parse to specific known types in those cases, e.g two samples where the first will yield
+error and the second will be fine (the below assumes that the seqSelector selects a Seq[JsValue] from the JsValue input and casts the single
+elements to type String, while seqSelector.classTyped is of type ClassTyped[Seq[String]]):
+´´´
+val value: Seq[_] = seqSelector.select(jsValue)
+typedMap.put(seqSelector.classTyped, value)
+´´´
+
+´´´
+val value: Seq[String] = seqSelector.select(jsValue).asInstanceOf[Seq[String]]
+typedMap.put(seqSelector.classTyped, value)
+´´´
+
+## A few notes on play json lib vs spray json lib
+In the project you will currently find both spray json lib for json parsing and the play json lib.
+At the moment incoming requests (e.g job definitions in json format and so on) are handled by the spray lib, 
+while selectors in the parsed responses when requesting another service (e.g look at the job definitions for the 
+search optimization use case) are handled with the play lib. This has origin in better out of the box functionality of the 
+play lib when parsing elements from a json, single or recursive. 
+For spray there is an additional library providing this functionality (https://github.com/jrudolph/json-lenses), 
+which seems to even provide more functionality. For this sake ayou can expect the play json lib will be removed in 
+further iterations for the sake of only using spray.
 
 ## License
 
