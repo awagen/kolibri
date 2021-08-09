@@ -85,8 +85,7 @@ object SupervisorActor {
                                                                    perJobAggregatorSupplier: () => Aggregator[ProcessingMessage[V2], U],
                                                                    writer: Writer[U, Tag, _],
                                                                    allowedTimePerBatch: FiniteDuration,
-                                                                   allowedTimeForJob: FiniteDuration,
-                                                                   expectResultsFromBatchCalculations: Boolean) extends SupervisorCmd
+                                                                   allowedTimeForJob: FiniteDuration) extends SupervisorCmd
 
   case class ProcessActorRunnableTaskJobCmd[U <: WithCount](jobId: String,
                                                             dataIterable: BatchTypeTaggedMapGenerator,
@@ -99,7 +98,8 @@ object SupervisorActor {
                                                             filterAggregationMapperForAggregator: FilteringMapper[U, U],
                                                             filteringMapperForResultSending: FilteringMapper[U, U],
                                                             allowedTimePerBatch: FiniteDuration,
-                                                            allowedTimeForJob: FiniteDuration) extends SupervisorCmd
+                                                            allowedTimeForJob: FiniteDuration,
+                                                            sendResultsBack: Boolean) extends SupervisorCmd
 
   case class ProvideJobState(jobId: String) extends SupervisorCmd
 
@@ -333,7 +333,8 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
             aggregatorSupplier = job.perBatchAggregatorSupplier,
             taskExecutionWorkerProps = createTaskExecutionWorkerProps(finalResultKey = job.resultKey),
             timeoutPerRunnable = job.allowedTimePerBatch,
-            1 minute)
+            1 minute,
+            job.sendResultsBack)
         log.info("Creating and sending job to JobManager, jobId: {}", jobId)
         val actor = createJobManagerActor(
           jobId,

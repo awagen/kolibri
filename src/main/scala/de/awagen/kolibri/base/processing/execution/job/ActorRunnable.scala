@@ -83,7 +83,8 @@ case class ActorRunnable[U, V, V1, Y <: WithCount](jobId: String,
                                                    expectationGenerator: Int => ExecutionExpectation,
                                                    sinkType: job.ActorRunnableSinkType.Value,
                                                    waitTimePerElement: FiniteDuration,
-                                                   maxExecutionDuration: FiniteDuration) extends KolibriSerializable with WithBatchNr {
+                                                   maxExecutionDuration: FiniteDuration,
+                                                   sendResultsBack: Boolean) extends KolibriSerializable with WithBatchNr {
 
   val log: Logger = LoggerFactory.getLogger(ActorRunnable.getClass)
 

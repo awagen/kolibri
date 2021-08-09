@@ -86,7 +86,10 @@ class ActorRunnableSpec extends KolibriTestKitNoCluster
         }
       ),
       expectationGenerator = expectationGen,
-      sinkType = REPORT_TO_ACTOR_SINK, 1 minute, 1 minute)
+      sinkType = REPORT_TO_ACTOR_SINK,
+      1 minute,
+      1 minute,
+      sendResultsBack = true)
   }
 
   "ActorRunnable" should {

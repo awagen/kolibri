@@ -17,7 +17,7 @@
 
 package de.awagen.kolibri.base.processing.consume
 
-import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationStateWithData, ProcessingMessage}
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationStateWithData, AggregationStateWithoutData, ProcessingMessage}
 import de.awagen.kolibri.base.io.writer.Writers.Writer
 import de.awagen.kolibri.base.processing.execution.expectation.ExecutionExpectation
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
@@ -65,10 +65,12 @@ object Consumers {
     override val applyFunc: PartialFunction[Any, Unit] = {
       case _ if wrappedUp =>
         logger.warn("Consumer already in wrappedUp state, ignoring new element")
-      // TODO: needs to not only accepting the variant with data, but also without -> adjust
       case e: AggregationStateWithData[U] =>
         expectation.accept(e)
         aggregator.addAggregate(e.data)
+        if (hasFinished) wrapUp
+      case e: AggregationStateWithoutData[U] =>
+        expectation.accept(e)
         if (hasFinished) wrapUp
       case e: ProcessingMessage[T] if e.data.isInstanceOf[T] =>
         expectation.accept(e)

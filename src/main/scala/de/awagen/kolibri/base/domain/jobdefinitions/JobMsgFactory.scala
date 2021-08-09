@@ -81,7 +81,8 @@ object JobMsgFactory {
         expectationGenerator = perBatchExpectationGenerator,
         sinkType = returnType,
         allowedTimePerElementInMillis millis,
-        allowedTimePerBatchInSeconds seconds)
+        allowedTimePerBatchInSeconds seconds,
+        expectResultsFromBatchCalculations)
     }
     val actorRunnableBatches: IndexedGenerator[ActorRunnable[V, V1, V2, W]] = batches.mapGen(mapFunc)
     new ProcessActorRunnableJobCmd[V, V1, V2, W](
@@ -91,8 +92,7 @@ object JobMsgFactory {
       perJobAggregatorSupplier = perJobAggregatorSupplier,
       writer = writer,
       allowedTimePerBatch = FiniteDuration(allowedTimePerBatchInSeconds, SECONDS),
-      allowedTimeForJob = FiniteDuration(allowedTimeForJobInSeconds, SECONDS),
-      expectResultsFromBatchCalculations)
+      allowedTimeForJob = FiniteDuration(allowedTimeForJobInSeconds, SECONDS))
   }
 
 
@@ -108,7 +108,8 @@ object JobMsgFactory {
                                                        filterAggregationMapperForAggregator: FilteringMapper[W, W],
                                                        filteringMapperForResultSending: FilteringMapper[W, W],
                                                        allowedTimePerBatchInSeconds: Long,
-                                                       allowedTimeForJobInSeconds: Long): ProcessActorRunnableTaskJobCmd[W] = {
+                                                       allowedTimeForJobInSeconds: Long,
+                                                       sendResultsBack: Boolean): ProcessActorRunnableTaskJobCmd[W] = {
     val batches: IndexedGenerator[Batch[TypeTaggedMap with TaggedWithType[Tag]]] = dataBatchGenerator.apply(data)
     val taskMapFunc: SerializableFunction1[TaskDefinitions.Val[Any], Task[_]] = new SerializableFunction1[TaskDefinitions.Val[Any], Task[_]] {
       override def apply(v1: TaskDefinitions.Val[Any]): Task[_] = v1.task
@@ -125,7 +126,8 @@ object JobMsgFactory {
       filterAggregationMapperForAggregator = filterAggregationMapperForAggregator,
       filteringMapperForResultSending = filteringMapperForResultSending,
       allowedTimePerBatch = FiniteDuration(allowedTimePerBatchInSeconds, SECONDS),
-      allowedTimeForJob = FiniteDuration(allowedTimeForJobInSeconds, SECONDS)
+      allowedTimeForJob = FiniteDuration(allowedTimeForJobInSeconds, SECONDS),
+      sendResultsBack = sendResultsBack
     )
   }
 

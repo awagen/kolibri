@@ -22,7 +22,7 @@ import akka.stream.scaladsl.RunnableGraph
 import akka.stream.{ActorAttributes, UniqueKillSwitch}
 import de.awagen.kolibri.base.actors.work.worker.AggregatingActor.{ProvideStateAndStop, ReportResults}
 import de.awagen.kolibri.base.actors.work.worker.JobPartIdentifiers.BaseJobPartIdentifier
-import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.AggregationStateWithData
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.AggregationState
 import de.awagen.kolibri.base.actors.work.worker.RunnableExecutionActor.{ProvideAggregationState, RunnableHousekeeping}
 import de.awagen.kolibri.base.config.AppConfig.config
 import de.awagen.kolibri.base.config.AppConfig.config.kolibriDispatcherName
@@ -41,7 +41,8 @@ import scala.concurrent.{ExecutionContextExecutor, Future}
 
 object RunnableExecutionActor {
 
-  def probs[U <: WithCount](maxBatchDurationInSeconds: FiniteDuration, writerOpt: Option[Writer[U, Tag, _]]): Props =
+  def probs[U <: WithCount](maxBatchDurationInSeconds: FiniteDuration,
+                            writerOpt: Option[Writer[U, Tag, _]]): Props =
     Props(new RunnableExecutionActor[U](maxBatchDurationInSeconds, writerOpt)).withDispatcher(kolibriDispatcherName)
 
   trait RunnableExecutionActorCmd extends KolibriSerializable
@@ -87,10 +88,12 @@ class RunnableExecutionActor[U <: WithCount](maxBatchDuration: FiniteDuration,
   private[this] var aggregatingActor: ActorRef = _
   // cancellable of housekeeping schedule
   private[this] var housekeepingCancellable: Cancellable = _
+  var sendResultsBack: Boolean = true
 
 
   val readyForJob: Receive = {
     case runnable: ActorRunnable[_, _, _, U] =>
+      sendResultsBack = runnable.sendResultsBack
       jobSender = sender()
       // jobId and batchNr might be used as identifiers to filter received messages by
       runningJobId = runnable.jobId
@@ -100,7 +103,8 @@ class RunnableExecutionActor[U <: WithCount](maxBatchDuration: FiniteDuration,
         () => runnable.expectationGenerator.apply(runnable.supplier.size),
         owner = this.self,
         jobPartIdentifier = BaseJobPartIdentifier(jobId = runningJobId, batchNr = runningJobBatchNr),
-        writerOpt
+        writerOpt,
+        sendResultBack = runnable.sendResultsBack
       ))
       // we set the aggregatingActor as receiver of all messages
       // (whether graph sink is used or setting the aggregator as sender when sending
@@ -117,9 +121,13 @@ class RunnableExecutionActor[U <: WithCount](maxBatchDuration: FiniteDuration,
       // state will be reported back, thus we only set expectation on receiving
       // that one AggregationState
       val failExpectations: Seq[Expectation[Any]] = Seq(TimeExpectation(maxBatchDuration))
-      // TODO: needs to accept all AggregationState[U]
       expectation = BaseExecutionExpectation(
-        fulfillAllForSuccess = Seq(ReceiveCountExpectation(Map(AggregationStateWithData -> 1))),
+        fulfillAllForSuccess = Seq(
+          ClassifyingCountExpectation(Map("aggregationState" -> {
+            case _: AggregationState[_] => true
+            case _ => false
+          }), expectedClassCounts = Map("aggregationState" -> 1)),
+        ),
         fulfillAnyForFail = failExpectations)
       expectation.init
       val outcome: (UniqueKillSwitch, Future[Done]) = runnableGraph.run()
@@ -158,8 +166,7 @@ class RunnableExecutionActor[U <: WithCount](maxBatchDuration: FiniteDuration,
         killSwitch.abort(new RuntimeException(s"Expectation failed:\n${expectation.statusDesc}"))
         aggregatingActor ! ProvideStateAndStop
       }
-    // TODO: needs to accept all AggregationState[U]
-    case e: AggregationStateWithData[_] =>
+    case e: AggregationState[_] =>
       log.debug("received aggregation (batch finished): {}", e)
       expectation.accept(e)
       housekeepingCancellable.cancel()

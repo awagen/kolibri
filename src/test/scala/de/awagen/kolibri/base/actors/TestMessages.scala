@@ -81,7 +81,7 @@ object TestMessages {
       ))),
       fulfillAnyForFail = Seq(StopExpectation(0, _ => SuccessAndErrorCounts(1, 0), _ => false),
         TimeExpectation(100 days))),
-    sinkType = REPORT_TO_ACTOR_SINK, 1 minute, 1 minute)
+    sinkType = REPORT_TO_ACTOR_SINK, 1 minute, 1 minute, sendResultsBack = true)
 
   val expectedValuesForMessagesToActorRefRunnable: immutable.Seq[Corn[Int]] = Range(0, 11, 1).map(x => Corn(x + 11))
 
@@ -118,7 +118,8 @@ object TestMessages {
     ),
     sinkType = REPORT_TO_ACTOR_SINK,
     1 minute,
-    1 minute)
+    1 minute,
+    sendResultsBack = true)
 
   val expectedValuesForMsg1: immutable.Seq[Corn[Int]] = Range(0, 11, 1).map(x => Corn(x + 10))
 
@@ -168,7 +169,7 @@ object TestMessages {
           Corn(x + 3) -> 1))),
         fulfillAnyForFail = Seq(StopExpectation(0, _ => SuccessAndErrorCounts(1, 0), _ => false),
           TimeExpectation(100 days))),
-      sinkType = REPORT_TO_ACTOR_SINK, 1 minute, 1 minute)
+      sinkType = REPORT_TO_ACTOR_SINK, 1 minute, 1 minute, sendResultsBack = true)
 
   def expectedMessagesForRunnableGenFunc(i: Int) = Seq(
     Corn(i + 1),
@@ -200,8 +201,7 @@ object TestMessages {
       perJobAggregatorSupplier = aggregatorSupplier,
       writer = (_: MapWithCount[Tag, Double], _: Tag) => Right(()),
       allowedTimePerBatch = 10 seconds,
-      allowedTimeForJob = 2 minutes,
-      expectResultsFromBatchCalculations = true
+      allowedTimeForJob = 2 minutes
     )
   }
 
@@ -255,7 +255,8 @@ object TestMessages {
       filterAggregationMapperForAggregator = new AcceptAllAsIdentityMapper[WithCount],
       filteringMapperForResultSending = new AcceptAllAsIdentityMapper[WithCount],
       10 seconds,
-      1 minute
+      1 minute,
+      sendResultsBack = true
     )
   }
 }

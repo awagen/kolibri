@@ -108,7 +108,7 @@
   "allowedTimePerElementInMillis": 1000,
   "allowedTimePerBatchInSeconds": 600,
   "allowedTimeForJobInSeconds": 7200,
-  "expectResultsFromBatchCalculations": true,
+  "expectResultsFromBatchCalculations": false,
   "wrapUpFunction": {
     "type": "AGGREGATE_ALL",
     "directoryReader": {

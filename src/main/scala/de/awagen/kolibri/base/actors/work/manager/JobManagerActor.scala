@@ -28,7 +28,7 @@ import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.ProcessingRes
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.{ActorRunnableJobGenerator, FinishedJobEvent, ProcessingResult}
 import de.awagen.kolibri.base.actors.work.manager.JobManagerActor._
 import de.awagen.kolibri.base.actors.work.manager.WorkManagerActor.{ExecutionType, GetWorkerStatus, JobBatchMsg}
-import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationStateWithData, ProcessingMessage, ResultSummary}
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationState, AggregationStateWithData, AggregationStateWithoutData, ProcessingMessage, ResultSummary}
 import de.awagen.kolibri.base.config.AppConfig._
 import de.awagen.kolibri.base.config.AppConfig.config.kolibriDispatcherName
 import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions.MapWithCount
@@ -114,7 +114,7 @@ object JobManagerActor {
 
   case object GetStatusForWorkers extends ExternalJobManagerCmd
 
-  case class WorkerStatusResponse[U](result: Either[Throwable, Seq[AggregationStateWithData[U]]]) extends JobManagerEvent
+  case class WorkerStatusResponse[U](result: Either[Throwable, Seq[AggregationState[U]]]) extends JobManagerEvent
 
   case class WorkerKilled(batchNr: Int) extends JobManagerEvent
 
@@ -168,9 +168,6 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
   // (even if its just a case class with primitives, maybe due to disabled
   // java serialization and respective msg not being of KolibriSerializable.
   // Not fully clear yet though
-  // TODO: router actor needs to be configurable, e.g round robin or load based or similar
-  // TODO: wed also need a distribution strategy then, e.g for load based makes sense to wait a few seconds after a batch
-  // is distributed to take the increase in load into account
   def createWorkerRoutingServiceForJob: ActorRef = {
     context.actorOf(
       ClusterRouterPool(
@@ -202,8 +199,7 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
     })
   }
 
-  // TODO: needs to accept all AggregationState[U]
-  def acceptResultMsg(msg: AggregationStateWithData[U]): Unit = {
+  def acceptResultMsg(msg: AggregationState[U]): Unit = {
     logger.debug(s"received aggregation state: $msg")
     executionConsumer.applyFunc.apply(msg)
     batchDistributor.accept(msg)
@@ -272,9 +268,17 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
     BaseExecutionExpectation(
       fulfillAllForSuccess = Seq(
         ClassifyingCountExpectation(Map("finishResponse" -> {
-          // TODO: needs to accept all AggregationState[U]
-          case _: AggregationStateWithData[U] if expectResultsFromBatchCalculations => true
-          case _: AggregationStateWithData[Any] if !expectResultsFromBatchCalculations => true
+          case _: AggregationStateWithData[_] =>
+            if (!expectResultsFromBatchCalculations) {
+              log.warning(s"received AggregationState with data but expectResultsFromBatchCalculations=$expectResultsFromBatchCalculations")
+            }
+            true
+          case _: AggregationStateWithoutData[_] =>
+            if (expectResultsFromBatchCalculations) {
+              log.warning(s"received AggregationState without data but expectResultsFromBatchCalculations=$expectResultsFromBatchCalculations")
+              false
+            }
+            else true
           case _ => false
         }), Map("finishResponse" -> 1))
       ),
@@ -286,9 +290,17 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
     BaseExecutionExpectation(
       fulfillAllForSuccess = Seq(
         ClassifyingCountExpectation(Map("finishResponse" -> {
-          // TODO: needs to accept all AggregationState[U]
-          case _: AggregationStateWithData[U] if expectResultsFromBatchCalculations => true
-          case _: AggregationStateWithData[Any] if !expectResultsFromBatchCalculations => true
+          case _: AggregationStateWithData[_] =>
+            if (!expectResultsFromBatchCalculations) {
+              log.warning(s"received AggregationState with data but expectResultsFromBatchCalculations=$expectResultsFromBatchCalculations")
+            }
+            true
+          case _: AggregationStateWithoutData[_] =>
+            if (expectResultsFromBatchCalculations) {
+              log.warning(s"received AggregationState without data but expectResultsFromBatchCalculations=$expectResultsFromBatchCalculations")
+              false
+            }
+            else true
           case _ => false
         }), Map("finishResponse" -> numberBatches))
       ),
@@ -316,7 +328,6 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
       val nextExpectation: ExecutionExpectation = expectationForNextBatch()
       nextExpectation.init
       executionExpectationMap(batch.batchNr) = nextExpectation
-
       workerServiceRouter ! batch
       // first place the batch in waiting for acknowledgement for processing by worker
       batchesSentWaitingForACK = batchesSentWaitingForACK + batch.batchNr
@@ -379,6 +390,7 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
     case testJobMsg: TestPiCalculation =>
       log.debug(s"received job to process: $testJobMsg")
       reportResultsTo = sender()
+      expectResultsFromBatchCalculations = true
       val jobMsg: SupervisorActor.ProcessActorRunnableJobCmd[Int, Double, Double, MapWithCount[Tag, AggregateValue[Double]]] = testJobMsg.toRunnable
       val numberBatches: Int = jobMsg.processElements.size
       jobToProcess = ByFunctionNrLimitedIndexedGenerator(numberBatches, batchNr => Some(JobBatchMsg(jobMsg.jobId, batchNr, testJobMsg)))
@@ -452,11 +464,10 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
       log.debug(s"received AddToRunningBaselineCount, count: $count")
       batchDistributor.setMaxParallelCount(batchDistributor.maxInParallel + count)
       fillUpFreeSlots()
-    // TODO: needs to accept all AggregationState[U]
-    case e: AggregationStateWithData[U] =>
+    case e: AggregationState[U] =>
       failedACKReceiveBatchNumbers = failedACKReceiveBatchNumbers - e.batchNr
       batchesSentWaitingForACK = batchesSentWaitingForACK - e.batchNr
-      log.debug("received aggregation (batch finished) - aggregation: {}, jobId: {}, batchNr: {} ", e.data, e.jobID, e.batchNr)
+      log.debug("received aggregation (batch finished) - jobId: {}, batchNr: {} ", e.jobID, e.batchNr)
       acceptResultMsg(e)
       if (batchDistributor.nrResultsAccepted % 10 == 0 || batchDistributor.nrResultsAccepted == jobToProcess.size) {
         log.info(s"received nr of results: ${batchDistributor.nrResultsAccepted}")
@@ -476,7 +487,7 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
       val responseFuture: Future[Seq[Any]] = Future.sequence(messages.map(x => workerServiceRouter.ask(x)))
       responseFuture.onComplete({
         case Success(value) =>
-          reportTo ! WorkerStatusResponse[U](Right(value = value.asInstanceOf[Seq[AggregationStateWithData[U]]]))
+          reportTo ! WorkerStatusResponse[U](Right(value = value.asInstanceOf[Seq[AggregationState[U]]]))
         case Failure(e) =>
           reportTo ! WorkerStatusResponse[U](Left(e))
       })

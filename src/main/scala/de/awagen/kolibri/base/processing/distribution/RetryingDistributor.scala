@@ -16,7 +16,7 @@
 
 package de.awagen.kolibri.base.processing.distribution
 
-import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.AggregationStateWithData
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.AggregationState
 import de.awagen.kolibri.base.processing.distribution.DistributionStates.{AllProvidedWaitingForResults, Completed, Pausing}
 import de.awagen.kolibri.base.traits.Traits.WithBatchNr
 import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator}
@@ -66,8 +66,7 @@ class RetryingDistributor[T <: WithBatchNr, U](private[this] var maxParallel: In
 
   override def markAsFail(identifier: Int): Unit = currentDistributor.markAsFail(identifier)
 
-  // TODO: needs to accept all AggregationState[U]
-  override def accept(element: AggregationStateWithData[U]): Boolean = {
+  override def accept(element: AggregationState[U]): Boolean = {
     val didAccept: Boolean = currentDistributor.accept(element)
     if (didAccept) {
       logger.info(s"accepted result for batch: ${element.batchNr}")

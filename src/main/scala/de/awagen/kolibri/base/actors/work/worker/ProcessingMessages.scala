@@ -18,6 +18,7 @@ package de.awagen.kolibri.base.actors.work.worker
 
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.ProcessingResult
 import de.awagen.kolibri.base.processing.execution.expectation.ExecutionExpectation
+import de.awagen.kolibri.base.processing.execution.expectation.Expectation.SuccessAndErrorCounts
 import de.awagen.kolibri.base.processing.failure.TaskFailType.TaskFailType
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.tagging.TagType.TagType
@@ -49,7 +50,8 @@ object ProcessingMessages {
 
   }
 
-  case class AggregationStateWithoutData[+V](jobID: String,
+  case class AggregationStateWithoutData[+V](containedElementCount: Int,
+                                             jobID: String,
                                              batchNr: Int,
                                              executionExpectation: ExecutionExpectation) extends AggregationState[V]
 

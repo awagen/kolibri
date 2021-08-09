@@ -17,7 +17,7 @@
 
 package de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts
 
-import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationStateWithData, Corn}
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationStateWithData, AggregationStateWithoutData, Corn}
 import de.awagen.kolibri.base.processing.execution.expectation.Expectation.SuccessAndErrorCounts
 import de.awagen.kolibri.base.processing.execution.expectation._
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
@@ -43,9 +43,10 @@ object Expectations {
         BaseExecutionExpectation(
           fulfillAllForSuccess = Seq(ElementCountingExpectation(
             countPerElementFunc = {
-              // TODO: cover all AggregationState[U]
               case AggregationStateWithData(data: MetricAggregation[T], _, _, _) =>
                 data.count
+              case AggregationStateWithoutData(count: Int, _, _, _) =>
+                count
               case Corn(e) if e.isInstanceOf[T] =>
                 val successAndErrorCounts = successAndErrorClassifier.apply(e)
                 if (successAndErrorCounts.successCount > 0) 1 else 0

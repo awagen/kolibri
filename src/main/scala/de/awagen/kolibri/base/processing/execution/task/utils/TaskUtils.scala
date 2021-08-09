@@ -46,7 +46,8 @@ object TaskUtils {
                                            aggregatorSupplier: () => Aggregator[ProcessingMessage[Any], U],
                                            taskExecutionWorkerProps: Props,
                                            timeoutPerRunnable: FiniteDuration,
-                                           timeoutPerElement: FiniteDuration): IndexedGenerator[ActorRunnable[SimpleTaskExecution[Any], Any, Any, U]] = {
+                                           timeoutPerElement: FiniteDuration,
+                                           sendResultsBack: Boolean): IndexedGenerator[ActorRunnable[SimpleTaskExecution[Any], Any, Any, U]] = {
     val executionIterable: IndexedGenerator[IndexedGenerator[SimpleTaskExecution[Any]]] =
       mapGenerator.mapGen(x => x.data.mapGen(y => SimpleTaskExecution(resultKey, y, tasks)))
     val atomicInt = new AtomicInteger(0)
@@ -75,7 +76,8 @@ object TaskUtils {
         ),
         sinkType = ActorRunnableSinkType.REPORT_TO_ACTOR_SINK,
         timeoutPerRunnable,
-        timeoutPerElement)
+        timeoutPerElement,
+        sendResultsBack = sendResultsBack)
     })
   }
 

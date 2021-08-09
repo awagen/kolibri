@@ -19,7 +19,7 @@ package de.awagen.kolibri.base.usecase.searchopt.jobdefinitions
 
 import akka.actor.{ActorRef, ActorSystem}
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor
-import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationStateWithData, Corn, ProcessingMessage}
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationStateWithData, AggregationStateWithoutData, Corn, ProcessingMessage}
 import de.awagen.kolibri.base.domain.jobdefinitions.JobMsgFactory
 import de.awagen.kolibri.base.http.client.request.RequestTemplateBuilder
 import de.awagen.kolibri.base.processing.JobMessages.SearchEvaluation
@@ -101,10 +101,13 @@ object SearchJobDefinitions {
             case Corn(e) if e.isInstanceOf[MetricRow] =>
               val result = e.asInstanceOf[MetricRow]
               SuccessAndErrorCounts(result.totalSuccessCountMin, result.totalErrorCountMin)
-            // TODO: needs to accept all AggregationState[U]
             case AggregationStateWithData(data: MetricAggregation[Tag], _, _, _) =>
               // TODO: check the counts, e.g at the moment sum should be the correct criterium
               SuccessAndErrorCounts(data.totalSuccessCountSum, data.totalErrorCountSum)
+            case AggregationStateWithoutData(elementCount: Int, _, _, _) =>
+              // TODO: need success and error counts here, change elementCount in the message to
+              // SuccessAndErrorCounts
+              SuccessAndErrorCounts(elementCount, 0)
             case _ => SuccessAndErrorCounts(0, 0)
           }
         }
