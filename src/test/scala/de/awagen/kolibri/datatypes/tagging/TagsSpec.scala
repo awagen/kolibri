@@ -58,10 +58,10 @@ class TagsSpec extends UnitTestSpec {
       val header5 = Tags.tagToParameterValues(tag5, "\t")
       // then
       header1 mustBe ""
-      header2 mustBe "v1\tv2//v3"
+      header2 mustBe "v1\tv2&v3"
       header3 mustBe "v1\tv2"
       header4 mustBe "v1\tv2"
-      header5 mustBe "v4//v5\tv1\tv2//v3"
+      header5 mustBe "v4&v5\tv1\tv2&v3"
     }
 
   }
@@ -88,8 +88,8 @@ class TagsSpec extends UnitTestSpec {
       val values1 = tag1.formattedParamValues(",")
       val values2 = tag2.formattedParamValues(",")
       // then
-      values1 mustBe "v1,v2//v3"
-      values2 mustBe "v4//v5,v1,v2//v3"
+      values1 mustBe "v1,v2&v3"
+      values2 mustBe "v4&v5,v1,v2&v3"
     }
 
     "only generate one map key for same values" in {

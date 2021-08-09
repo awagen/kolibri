@@ -21,6 +21,16 @@ import scala.reflect.runtime.universe._
 
 object TestHelper {
 
-  case class TestTypedClass[T: TypeTag](name: String) extends ClassTyped[T]
+  case class TestTypedClass[T: TypeTag](name: String) extends ClassTyped[T] {
+
+    override def equals(obj: Any): Boolean = super.equals(obj) && (obj.isInstanceOf[TestTypedClass[T]] && obj.asInstanceOf[TestTypedClass[T]].name == name)
+
+    override def hashCode(): Int = {
+      var hash = 7
+      hash = 31 * hash + super.hashCode()
+      hash = 31 * hash + name.hashCode
+      hash
+    }
+  }
 
 }

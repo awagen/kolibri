@@ -41,4 +41,16 @@ object MetricValue {
 
 }
 
+/**
+  * Simple container keeping state with BiRunningValue that keeps track of occurring error types and the
+  * respective counts and some aggregated value type to keep track of the successful computations aggregated in the
+  * MetricValue
+  * @param name - the name of the metric value
+  * @param biValue - BiRunningValue keeping track of error types, their occurrence counts, the actual value made of
+  *                successful computations. Note that BiRunningValue keeps track of how many samples went into either by
+  *                utilizing AggregateValue[Map[ComputeFailReason, Int]] and AggregateValue[A]. Thus note that the
+  *                sum of the counts in the error type map will always be >= the actual count of the sampels that went
+  *                into it
+  * @tparam A - type of the aggregated value made of successful computations
+  */
 case class MetricValue[A](name: String, biValue: BiRunningValue[Map[ComputeFailReason, Int], A])

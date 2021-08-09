@@ -16,6 +16,17 @@
 
 package de.awagen.kolibri.datatypes.values
 
+
+/**
+  * Running value of two distinct types, e.g can be used to record occurring errors and successful computation values
+  * in a single record, e.g in case your computation returns Either[SomeFailType, SomeComputationValue] or similar
+  * settings where two values are in some way connected. AggregateValue keeps the count of samples aggregated and
+  * the current value of the aggregation
+  * @param value1 - first aggregate value
+  * @param value2 - second aggregate value
+  * @tparam A - type of the aggregate for value1
+  * @tparam B - type of the aggregate for value2
+  */
 case class BiRunningValue[A, B](value1: AggregateValue[A], value2: AggregateValue[B]) {
   def add(other: BiRunningValue[A, B]): BiRunningValue[A, B] = BiRunningValue(value1.add(other.value1), value2.add(other.value2))
 

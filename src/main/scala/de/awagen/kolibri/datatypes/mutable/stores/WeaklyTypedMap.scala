@@ -14,11 +14,21 @@
   * limitations under the License.
   */
 
-package de.awagen.kolibri.datatypes.io.json
 
-import spray.json.{JsString, JsValue, JsonFormat}
+package de.awagen.kolibri.datatypes.mutable.stores
 
-trait EnumerationProtocol[T] extends JsonFormat[T] {
-  override def write(obj: T): JsValue = JsString(obj.toString)
+import de.awagen.kolibri.datatypes.io.KolibriSerializable
+
+trait WeaklyTypedMap[T] extends KolibriSerializable {
+
+  def put[U](key: T, value: U): Unit
+
+  def remove(key: String): Option[Any]
+
+  def get[U](key: T): Option[U]
+
+  def keys: Iterable[T]
+
+  def keySet: collection.Set[T]
 
 }

@@ -17,7 +17,7 @@
 package de.awagen.kolibri.datatypes
 
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
-
+import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 import scala.reflect.runtime.universe._
 
 
@@ -27,10 +27,49 @@ object ClassTyped {
 
 }
 
+/**
+  * Not serializable due to TypeTag
+  * @param typeTag$T$0
+  * @tparam T
+  */
 class ClassTyped[+T: TypeTag] extends KolibriSerializable {
 
   val classType: Type = implicitly[TypeTag[T]].tpe
-  val castFunc: Any => T = x => x.asInstanceOf[T]
+  val castFunc: SerializableFunction1[Any, T] = new SerializableFunction1[Any, T] {
+    override def apply(v1: Any): T = v1.asInstanceOf[T]
+  }
+
+  override def equals(obj: Any): Boolean = {
+    if (!obj.isInstanceOf[ClassTyped[T]] || !(typeOf[T] =:= obj.asInstanceOf[ClassTyped[T]].classType)) false
+    else true
+  }
+
+  override def hashCode(): Int = typeOf[T].hashCode()
+}
+
+/**
+  * Due to TypeTag not serializable
+  *
+  * @param name
+  * @param typeTag$T$0
+  * @tparam T
+  */
+case class NamedClassTyped[+T: TypeTag](name: String) extends ClassTyped[T] {
+
+  override def equals(obj: Any): Boolean = {
+    if (!obj.isInstanceOf[NamedClassTyped[T]]) return false
+    val other = obj.asInstanceOf[NamedClassTyped[T]]
+    if (!super.equals(obj)) false
+    else other.name == name
+  }
+
+  override def hashCode(): Int = {
+    var hash = 7
+    hash = 31 * hash + super.hashCode()
+    hash = 31 * hash + name.hashCode
+    hash
+  }
+
 
 }
 

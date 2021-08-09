@@ -24,6 +24,8 @@ object Tags {
 
     def stringId: String
 
+    override def toString: String = s"($stringId)"
+
   }
 
   trait TypedTag[T] extends Tag {
@@ -47,15 +49,20 @@ object Tags {
 
     override def formattedParamValues(columnSeparator: String): String = {
       val sortedKeys: Seq[String] = value.keys.toSeq.sorted
-      sortedKeys.map(x => s"${value(x).sorted.mkString("//")}").mkString(columnSeparator)
+      sortedKeys.map(x => s"${value(x).sorted.mkString("&")}").mkString(columnSeparator)
     }
 
     def valueSeqToSet[T](map: Map[String, Seq[T]]): Map[String, Set[T]] = {
       map.to(LazyList).map(x => (x._1, x._2.toSet)).toMap
     }
 
-    override def stringId: String = value.keys.toSeq.sorted.to(LazyList).map(x => s"$x:${value(x).sorted.mkString("//")}").mkString("-")
+    override def stringId: String = {
+      value.keys.toSeq.sorted.to(LazyList).map(x => {
+        value(x).sorted.map(v => s"$x=$v").mkString("&")
+      }).mkString("&")
+    }
   }
+
 
   // maps are equal if they share the same mappings
   case class ParameterSingleValueTag(value: Map[String, String]) extends TypedTag[Map[String, String]] with ParameterTag {
@@ -69,7 +76,8 @@ object Tags {
       sortedKeys.map(x => value(x)).mkString(columnSeparator)
     }
 
-    override def stringId: String = value.keys.toSeq.sorted.to(LazyList).map(x => s"$x:${value(x)}").mkString("-")
+    override def stringId: String = value.keys.toSeq.sorted.to(LazyList).map(x => s"$x=${value(x)}").mkString("&")
+
   }
 
   // tag as used for aggregations of results
@@ -85,7 +93,7 @@ object Tags {
   }
 
   object StringTag {
-    val ALL = StringTag("ALL")
+    val ALL: StringTag = StringTag("ALL")
   }
 
   case class StringTag(value: String) extends TypedTag[String] {
