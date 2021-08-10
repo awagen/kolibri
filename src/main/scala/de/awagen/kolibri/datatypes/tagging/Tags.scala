@@ -17,12 +17,50 @@
 package de.awagen.kolibri.datatypes.tagging
 
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
+import TagImplicits._
 
 object Tags {
 
   trait Tag extends KolibriSerializable {
 
     def stringId: String
+
+    /**
+      * Extend the tag with another tag. Effectively if the tag is already MultiTag, will return new MultiTag where
+      * all contained tags got the new tag added (and by this become MultiTags if theyre not already).
+      * Otherwise returns MultiTag with only element being MultiTag of the current tag and the new tag.
+      *
+      * @param tag - Tag to add
+      * @return
+      */
+    def extendAllWithTag(tag: Tag, filter: Tag => Boolean): Tag = {
+      if (!this.isInstanceOf[MultiTag]) {
+        if (filter.apply(this)) this.toMultiTag.add(tag)
+        else this
+      }
+      else {
+        val tags: Set[Tag] = this.asInstanceOf[MultiTag].value
+        val newTags: Set[Tag] = tags.map(t => {
+          if (filter.apply(t)) t.appendTag(tag)
+          else t
+        })
+        MultiTag(newTags)
+      }
+    }
+
+    /**
+      * If tag is MultiTag, just add to the set of tags, otherwise transform Tag to MultiTag and add new tag to set of tags.
+      * The tag is added as tag by itself, dorming a new grouping, as opposed to calling extend* functions.
+      *
+      * @param tag
+      * @return
+      */
+    def appendTag(tag: Tag): MultiTag = {
+      if (!this.isInstanceOf[MultiTag]) {
+        this.toMultiTag.add(tag)
+      }
+      else this.asInstanceOf[MultiTag].add(tag)
+    }
 
     override def toString: String = s"($stringId)"
 
