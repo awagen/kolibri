@@ -23,7 +23,7 @@ services:
     user: "1000:1000"
 
   kolibri1:
-    image: kolibri-base:0.1.0-alpha4
+    image: kolibri-base:0.1.0-alpha5
     ports:
       - "8000:8000"
       - "5266:5266"
@@ -52,7 +52,7 @@ services:
       DISCOVERY_METHOD: config
       REQUEST_PARALLELISM: 16
       USE_CONNECTION_POOL_FLOW: 'false'
-      RUNNING_TASK_BASELINE_COUNT: 4
+      RUNNING_TASK_BASELINE_COUNT: 2
       KOLIBRI_DISPATCHER_PARALLELISM_MIN: 8
       KOLIBRI_DISPATCHER_PARALLELISM_FACTOR: 8.0
       KOLIBRI_DISPATCHER_PARALLELISM_MAX: 32
@@ -78,7 +78,7 @@ services:
 #    mem_limit: 4200m
 
   kolibri2:
-    image: kolibri-base:0.1.0-alpha4
+    image: kolibri-base:0.1.0-alpha5
     ports:
       - "5267:5267"
       - "9096:9096"
@@ -104,7 +104,7 @@ services:
       DISCOVERY_METHOD: config
       REQUEST_PARALLELISM: 16
       USE_CONNECTION_POOL_FLOW: 'false'
-      RUNNING_TASK_BASELINE_COUNT: 4
+      RUNNING_TASK_BASELINE_COUNT: 2
       KOLIBRI_DISPATCHER_PARALLELISM_MIN: 8
       KOLIBRI_DISPATCHER_PARALLELISM_FACTOR: 8.0
       KOLIBRI_DISPATCHER_PARALLELISM_MAX: 32

@@ -17,7 +17,7 @@ val apacheCommonsIOVersion = "2.8.0"
 val kamonVersion = "2.2.0"
 
 ThisBuild / scalaVersion := "2.13.2"
-ThisBuild / version := "0.1.0-alpha4"
+ThisBuild / version := "0.1.0-alpha5"
 
 lazy val jvmOptions = Seq(
   "-Xms1G",
