@@ -23,7 +23,6 @@ import de.awagen.kolibri.datatypes.ClassTyped
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.mutable.stores.TypeTaggedMap
 import de.awagen.kolibri.datatypes.tagging.TaggedWithType
-import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 
 import scala.concurrent.ExecutionContext
 
@@ -33,7 +32,7 @@ trait TaskExecution[+T] extends KolibriSerializable {
 
   def wasSuccessful: Boolean
 
-  def currentData: TypeTaggedMap with TaggedWithType[Tag]
+  def currentData: TypeTaggedMap with TaggedWithType
 
   val resultKey: ClassTyped[ProcessingMessage[T]]
 

@@ -29,7 +29,6 @@ import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.mutable.stores.TypeTaggedMap
 import de.awagen.kolibri.datatypes.tagging.TagType._
 import de.awagen.kolibri.datatypes.tagging.TaggedWithType
-import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 
 import scala.concurrent.ExecutionContextExecutor
 import scala.util.{Failure, Success}
@@ -39,7 +38,7 @@ object TaskWorkerActor {
 
   def props[T]: Props = Props[TaskWorkerActor[T]]
 
-  case class ProcessTasks[T](data: TypeTaggedMap with TaggedWithType[Tag],
+  case class ProcessTasks[T](data: TypeTaggedMap with TaggedWithType,
                              tasks: Seq[Task[_]],
                              finalResultKey: ClassTyped[ProcessingMessage[T]],
                              identifier: JobPartIdentifier)
@@ -68,7 +67,7 @@ class TaskWorkerActor[T] extends Actor with ActorLogging {
 
   var taskStates: Vector[TaskState] = Vector.empty[TaskState]
   var currentTaskIndex: Int = 0
-  var data: TypeTaggedMap with TaggedWithType[Tag] = _
+  var data: TypeTaggedMap with TaggedWithType = _
   var tasks: Seq[Task[_]] = _
   var executionRequestor: ActorRef = _
   var resultKey: ClassTyped[ProcessingMessage[T]] = _

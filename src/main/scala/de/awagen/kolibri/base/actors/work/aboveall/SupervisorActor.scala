@@ -72,7 +72,7 @@ object SupervisorActor {
   case class GetJobWorkerStatus(job: String)
 
   type ActorRunnableJobGenerator[U, V, V1, W <: WithCount] = IndexedGenerator[ActorRunnable[U, V, V1, W]]
-  type TaggedTypeTaggedMapBatch = Batch[TypeTaggedMap with TaggedWithType[Tag]]
+  type TaggedTypeTaggedMapBatch = Batch[TypeTaggedMap with TaggedWithType]
   type BatchTypeTaggedMapGenerator = IndexedGenerator[TaggedTypeTaggedMapBatch]
 
   // usual starting point for batch executions would be OrderedMultiValues, which by help of BatchGenerator can be split

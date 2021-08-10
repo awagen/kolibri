@@ -24,7 +24,6 @@ import de.awagen.kolibri.datatypes.multivalues.OrderedMultiValuesImplicits.Order
 import de.awagen.kolibri.datatypes.mutable.stores.{TypeTaggedMap, TypedMapStore}
 import de.awagen.kolibri.datatypes.tagging.MapImplicits.MutableTaggedMap
 import de.awagen.kolibri.datatypes.tagging.TaggedWithType
-import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.tagging.TypeTaggedMapImplicits.{TaggedTypeTaggedMap, _}
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 import de.awagen.kolibri.datatypes.utils.OrderedMultiValuesBatchUtils
@@ -54,10 +53,10 @@ object BatchGenerators {
 
   }
 
-  case class OrderedMultiValuesTypedTagBatchGenerator(paramNameToSplitBy: String) extends IndexedBatchGenerator[OrderedMultiValues, TypeTaggedMap with TaggedWithType[Tag]] {
-    override def batchFunc: SerializableFunction1[OrderedMultiValues, IndexedGenerator[Batch[TypeTaggedMap with TaggedWithType[Tag]]]] = {
-      new SerializableFunction1[OrderedMultiValues, IndexedGenerator[Batch[TypeTaggedMap with TaggedWithType[Tag]]]] {
-        override def apply(v1: OrderedMultiValues): IndexedGenerator[Batch[TypeTaggedMap with TaggedWithType[Tag]]] = {
+  case class OrderedMultiValuesTypedTagBatchGenerator(paramNameToSplitBy: String) extends IndexedBatchGenerator[OrderedMultiValues, TypeTaggedMap with TaggedWithType] {
+    override def batchFunc: SerializableFunction1[OrderedMultiValues, IndexedGenerator[Batch[TypeTaggedMap with TaggedWithType]]] = {
+      new SerializableFunction1[OrderedMultiValues, IndexedGenerator[Batch[TypeTaggedMap with TaggedWithType]]] {
+        override def apply(v1: OrderedMultiValues): IndexedGenerator[Batch[TypeTaggedMap with TaggedWithType]] = {
           val seqByQuery: Seq[OrderedMultiValues] = OrderedMultiValuesBatchUtils.splitIntoBatchByParameter(v1, paramNameToSplitBy).toSeq
           ByFunctionNrLimitedIndexedGenerator(seqByQuery.size, batchNr => Some(Batch(batchNr, seqByQuery(batchNr).toParamNameValuesMapIndexedGenerator
             .mapGen(map => TypedMapStore(mutable.Map(DataKeys.TAGGED_MAP.typed -> map)).toTaggedWithTypeMap))))

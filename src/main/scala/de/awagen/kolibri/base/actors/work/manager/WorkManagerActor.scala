@@ -55,7 +55,7 @@ object WorkManagerActor {
 
   sealed trait WorkManagerMsg extends KolibriSerializable
 
-  case class TasksWithTypedResult[T](data: TypeTaggedMap with TaggedWithType[Tag], tasks: Seq[Task[_]], finalResultKey: ClassTyped[ProcessingMessage[T]], partIdentifier: JobPartIdentifier) extends WorkManagerMsg
+  case class TasksWithTypedResult[T](data: TypeTaggedMap with TaggedWithType, tasks: Seq[Task[_]], finalResultKey: ClassTyped[ProcessingMessage[T]], partIdentifier: JobPartIdentifier) extends WorkManagerMsg
 
   case class TaskExecutionWithTypedResult[T](taskExecution: TaskExecution[T], partIdentifier: JobPartIdentifier) extends WorkManagerMsg
 
