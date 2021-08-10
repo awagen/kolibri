@@ -17,53 +17,49 @@
 package de.awagen.kolibri.datatypes.tagging
 
 import de.awagen.kolibri.datatypes.tagging.TagType.{AGGREGATION, DESCRIPTION}
-import de.awagen.kolibri.datatypes.tagging.Tags.{NamedTag, StringTag, Tag}
+import de.awagen.kolibri.datatypes.tagging.Tags.{NamedTag, StringTag}
 import de.awagen.kolibri.datatypes.testclasses.UnitTestSpec
 
 class TaggedWithTypeSpec extends UnitTestSpec {
 
-  case class TestNamedTagged() extends TaggedWithType[NamedTag]
-
-  case class TestStringTagged() extends TaggedWithType[StringTag]
-
-  case class TestTagged() extends TaggedWithType[Tag]
+  case class TestTagged() extends TaggedWithType
 
   "TaggedWithType" must {
 
     "correctly add non-duplicate tags for named tagged" in {
       // given
-      val testNamedTagged = TestNamedTagged()
+      val testTagged = TestTagged()
       // when
-      testNamedTagged.addTag(AGGREGATION, NamedTag("name1", StringTag("s1")))
-      testNamedTagged.addTag(AGGREGATION, NamedTag("name1", StringTag("s1")))
-      testNamedTagged.addTag(AGGREGATION, NamedTag("name2", StringTag("s2")))
-      testNamedTagged.addTag(DESCRIPTION, NamedTag("name3", StringTag("s3")))
-      testNamedTagged.addTag(DESCRIPTION, NamedTag("name4", StringTag("s4")))
-      testNamedTagged.addTag(DESCRIPTION, NamedTag("name4", StringTag("s4")))
+      testTagged.addTag(AGGREGATION, NamedTag("name1", StringTag("s1")))
+      testTagged.addTag(AGGREGATION, NamedTag("name1", StringTag("s1")))
+      testTagged.addTag(AGGREGATION, NamedTag("name2", StringTag("s2")))
+      testTagged.addTag(DESCRIPTION, NamedTag("name3", StringTag("s3")))
+      testTagged.addTag(DESCRIPTION, NamedTag("name4", StringTag("s4")))
+      testTagged.addTag(DESCRIPTION, NamedTag("name4", StringTag("s4")))
       // then
-      testNamedTagged.getTagsForType(AGGREGATION).size mustBe 2
-      testNamedTagged.getTagsForType(AGGREGATION) mustBe Set(NamedTag("name1", StringTag("s1")),
+      testTagged.getTagsForType(AGGREGATION).size mustBe 2
+      testTagged.getTagsForType(AGGREGATION) mustBe Set(NamedTag("name1", StringTag("s1")),
         NamedTag("name2", StringTag("s2")))
-      testNamedTagged.getTagsForType(DESCRIPTION).size mustBe 2
-      testNamedTagged.getTagsForType(DESCRIPTION) mustBe Set(NamedTag("name3", StringTag("s3")),
+      testTagged.getTagsForType(DESCRIPTION).size mustBe 2
+      testTagged.getTagsForType(DESCRIPTION) mustBe Set(NamedTag("name3", StringTag("s3")),
         NamedTag("name4", StringTag("s4")))
     }
 
     "correctly add non-duplicate tags for string tagged" in {
       // given
-      val testStringTagged = TestStringTagged()
+      val testTagged = TestTagged()
       // when
-      testStringTagged.addTag(AGGREGATION, StringTag("s1"))
-      testStringTagged.addTag(AGGREGATION, StringTag("s1"))
-      testStringTagged.addTag(AGGREGATION, StringTag("s2"))
-      testStringTagged.addTag(DESCRIPTION, StringTag("s3"))
-      testStringTagged.addTag(DESCRIPTION, StringTag("s4"))
-      testStringTagged.addTag(DESCRIPTION, StringTag("s4"))
+      testTagged.addTag(AGGREGATION, StringTag("s1"))
+      testTagged.addTag(AGGREGATION, StringTag("s1"))
+      testTagged.addTag(AGGREGATION, StringTag("s2"))
+      testTagged.addTag(DESCRIPTION, StringTag("s3"))
+      testTagged.addTag(DESCRIPTION, StringTag("s4"))
+      testTagged.addTag(DESCRIPTION, StringTag("s4"))
       // then
-      testStringTagged.getTagsForType(AGGREGATION).size mustBe 2
-      testStringTagged.getTagsForType(AGGREGATION) mustBe Set(StringTag("s1"), StringTag("s2"))
-      testStringTagged.getTagsForType(DESCRIPTION).size mustBe 2
-      testStringTagged.getTagsForType(DESCRIPTION) mustBe Set(StringTag("s3"), StringTag("s4"))
+      testTagged.getTagsForType(AGGREGATION).size mustBe 2
+      testTagged.getTagsForType(AGGREGATION) mustBe Set(StringTag("s1"), StringTag("s2"))
+      testTagged.getTagsForType(DESCRIPTION).size mustBe 2
+      testTagged.getTagsForType(DESCRIPTION) mustBe Set(StringTag("s3"), StringTag("s4"))
     }
 
     "correctly add non-duplicate tags for generic tagged" in {

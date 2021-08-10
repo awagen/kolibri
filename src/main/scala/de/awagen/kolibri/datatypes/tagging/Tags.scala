@@ -41,7 +41,7 @@ object Tags {
       else {
         val tags: Set[Tag] = this.asInstanceOf[MultiTag].value
         val newTags: Set[Tag] = tags.map(t => {
-          if (filter.apply(t)) t.appendTag(tag)
+          if (filter.apply(t)) t.addTag(tag)
           else t
         })
         MultiTag(newTags)
@@ -55,7 +55,7 @@ object Tags {
       * @param tag
       * @return
       */
-    def appendTag(tag: Tag): MultiTag = {
+    def addTag(tag: Tag): MultiTag = {
       if (!this.isInstanceOf[MultiTag]) {
         this.toMultiTag.add(tag)
       }
