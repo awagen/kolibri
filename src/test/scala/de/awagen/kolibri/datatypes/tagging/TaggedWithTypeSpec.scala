@@ -17,7 +17,7 @@
 package de.awagen.kolibri.datatypes.tagging
 
 import de.awagen.kolibri.datatypes.tagging.TagType.{AGGREGATION, DESCRIPTION}
-import de.awagen.kolibri.datatypes.tagging.Tags.{NamedTag, StringTag}
+import de.awagen.kolibri.datatypes.tagging.Tags.{MultiTag, NamedTag, StringTag}
 import de.awagen.kolibri.datatypes.testclasses.UnitTestSpec
 
 class TaggedWithTypeSpec extends UnitTestSpec {
@@ -76,6 +76,26 @@ class TaggedWithTypeSpec extends UnitTestSpec {
 
     }
 
-  }
+    "correctly extend tags" in {
+      // given
+      val tagged = TestTagged()
+      tagged.addTag(AGGREGATION, StringTag("t1"))
+      // when
+      tagged.extendAllWithTag(AGGREGATION, StringTag("added"), _ => true)
+      // then
+      tagged.getTags(AGGREGATION) mustBe Set(MultiTag(Set(StringTag("added"), StringTag("t1"))))
+    }
 
+    "correctly extend tags with filter" in {
+      // given
+      val tagged = TestTagged()
+      tagged.addTag(AGGREGATION, StringTag("t1"))
+      tagged.addTag(AGGREGATION, StringTag("t2"))
+      // when
+      tagged.extendAllWithTag(AGGREGATION, StringTag("added"), tag => tag != StringTag("t1"))
+      // then
+      tagged.getTags(AGGREGATION) mustBe Set(StringTag("t1"), MultiTag(Set(StringTag("added"), StringTag("t2"))))
+    }
+
+  }
 }
