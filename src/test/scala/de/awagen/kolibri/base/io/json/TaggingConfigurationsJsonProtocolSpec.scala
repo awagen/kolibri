@@ -20,7 +20,7 @@ package de.awagen.kolibri.base.io.json
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.Corn
 import de.awagen.kolibri.base.http.client.request.RequestTemplate
 import de.awagen.kolibri.base.io.json.TaggingConfigurationsJsonProtocol.{MapKeyTaggerFuncFormat, MetricRowTaggerFuncFormat, RequestTemplateTaggerFuncFormat, taggingConfigurationJsonFormat}
-import de.awagen.kolibri.base.processing.tagging.TaggingConfigurations.{BaseTaggingConfiguration, TaggedMetricRowStore, TaggedRequestTemplateStore, TaggedWeaklyTypedMapStore, TaggingConfiguration}
+import de.awagen.kolibri.base.processing.tagging.TaggingConfigurations.{BaseTaggingConfiguration, TaggedMetricRowStore, TaggedRequestTemplateStore, EitherThrowableOrTaggedWeaklyTypedMapStore, TaggingConfiguration}
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
 import de.awagen.kolibri.datatypes.mutable.stores.{BaseWeaklyTypedMap, WeaklyTypedMap}
 import de.awagen.kolibri.datatypes.stores.MetricRow
@@ -94,10 +94,10 @@ class TaggingConfigurationsJsonProtocolSpec extends UnitTestSpec {
 
     "correctly parse tagger by map value from key" in {
       // given
-      val weaklyTypedMap = BaseWeaklyTypedMap(mutable.Map("seq_key" -> Seq(1, 2, 3, 4)))
+      val weaklyTypedMap = (Right(BaseWeaklyTypedMap(mutable.Map("seq_key" -> Seq(1, 2, 3, 4)))), RequestTemplate.apply("/", Map.empty, Seq.empty))
       val processingMessage = Corn(weaklyTypedMap)
       // when
-      val mapKeyTagger = mapKeyTaggerJson.convertTo[SerializableConsumer[TaggedWeaklyTypedMapStore]]
+      val mapKeyTagger = mapKeyTaggerJson.convertTo[SerializableConsumer[EitherThrowableOrTaggedWeaklyTypedMapStore]]
       mapKeyTagger.apply(processingMessage)
       // then
       processingMessage.getTagsForType(AGGREGATION) mustBe Set(StringTag("seq_key-size=4"))
@@ -111,9 +111,9 @@ class TaggingConfigurationsJsonProtocolSpec extends UnitTestSpec {
     }
 
     "correctly parse TaggingConfiguration" in {
-      val taggingConfig: TaggingConfiguration[RequestTemplate, WeaklyTypedMap[String], MetricRow] =
-        baseTaggingConfiguration.convertTo[BaseTaggingConfiguration[RequestTemplate, WeaklyTypedMap[String], MetricRow]]
-      taggingConfig.isInstanceOf[TaggingConfiguration[RequestTemplate, WeaklyTypedMap[String], MetricRow]] mustBe true
+      val taggingConfig: TaggingConfiguration[RequestTemplate, (Either[Throwable, WeaklyTypedMap[String]], RequestTemplate), MetricRow] =
+        baseTaggingConfiguration.convertTo[BaseTaggingConfiguration[RequestTemplate, (Either[Throwable, WeaklyTypedMap[String]], RequestTemplate), MetricRow]]
+      taggingConfig.isInstanceOf[TaggingConfiguration[RequestTemplate, (Either[Throwable, WeaklyTypedMap[String]], RequestTemplate), MetricRow]] mustBe true
     }
 
   }

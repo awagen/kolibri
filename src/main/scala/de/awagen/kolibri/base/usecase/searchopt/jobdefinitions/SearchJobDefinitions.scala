@@ -32,7 +32,6 @@ import de.awagen.kolibri.base.usecase.searchopt.http.client.flows.responsehandle
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.Aggregators.{fullJobToSingleTagAggregatorSupplier, singleBatchAggregatorSupplier}
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.BatchGenerators.batchGenerator
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.Expectations.expectationPerBatchSupplier
-import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.RequestTemplatesAndBuilders.taggerByParameter
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.{Flows, Writer}
 import de.awagen.kolibri.base.usecase.searchopt.parse.ParsingConfig
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
@@ -85,7 +84,7 @@ object SearchJobDefinitions {
         excludeParamsFromMetricRow = searchEvaluation.excludeParamsFromMetricRow,
         groupId = searchEvaluation.jobName,
         connections = searchEvaluation.connections,
-        requestTagger = taggerByParameter(searchEvaluation.tagByParam),
+        taggingConfiguration = searchEvaluation.taggingConfiguration,
         requestTemplateStorageKey = searchEvaluation.requestTemplateStorageKey,
         responseParsingFunc = SolrHttpResponseHandlers.httpResponseToTypeTaggedMapParseFunc(_ => true, jsValueToTypeTaggedMap(searchEvaluation.parsingConfig)),
         mapFutureMetricRowCalculation = searchEvaluation.mapFutureMetricRowCalculation,

@@ -32,6 +32,9 @@ import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import spray.json.{DefaultJsonProtocol, RootJsonFormat}
 import JobWrapUpFunctionJsonProtocol._
+import de.awagen.kolibri.base.http.client.request.RequestTemplate
+import de.awagen.kolibri.base.processing.tagging.TaggingConfigurations.BaseTaggingConfiguration
+import TaggingConfigurationsJsonProtocol._
 
 
 object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSupport {
@@ -50,7 +53,7 @@ object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSu
       requestTemplateStorageKey: String,
       mapFutureMetricRowCalculation: FutureCalculation[WeaklyTypedMap[String], MetricRow],
       singleMapCalculations: Seq[Calculation[WeaklyTypedMap[String], CalculationResult[Double]]],
-      tagByParam: String,
+      taggingConfiguration: Option[BaseTaggingConfiguration[RequestTemplate, (Either[Throwable, WeaklyTypedMap[String]], RequestTemplate), MetricRow]],
       wrapUpFunction: Option[JobWrapUpFunction[Unit]],
       writerDir: String,
       writerColumnSeparator: String,
@@ -72,7 +75,7 @@ object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSu
         requestTemplateStorageKey,
         mapFutureMetricRowCalculation,
         singleMapCalculations,
-        tagByParam,
+        taggingConfiguration,
         wrapUpFunction,
         writerDir,
         writerColumnSeparator,
@@ -93,7 +96,7 @@ object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSu
     "requestTemplateStorageKey",
     "mapFutureMetricRowCalculation",
     "singleMapCalculations",
-    "tagByParam",
+    "taggingConfiguration",
     "wrapUpFunction",
     "writerDir",
     "writerColumnSeparator",

@@ -49,7 +49,7 @@ object TaggingConfigurations {
   }
 
   type TaggedRequestTemplateStore = ProcessingMessage[RequestTemplate]
-  type TaggedWeaklyTypedMapStore = ProcessingMessage[WeaklyTypedMap[String]]
+  type EitherThrowableOrTaggedWeaklyTypedMapStore = ProcessingMessage[(Either[Throwable, WeaklyTypedMap[String]], RequestTemplate)]
   type TaggedMetricRowStore = ProcessingMessage[MetricRow]
 
   /**
@@ -89,13 +89,15 @@ object TaggingConfigurations {
     * @tparam T - the expected type of the value for the given key
     * @return
     */
-  def valueByKeyAndTypeTagger[T](key: String, tagType: TagType, mapFunc: T => Tag, filterFunc: Tag => Boolean, extend: Boolean): SerializableConsumer[TaggedWeaklyTypedMapStore] = new SerializableConsumer[TaggedWeaklyTypedMapStore] {
-    override def apply(v1: TaggedWeaklyTypedMapStore): Unit = {
-      val value: Option[T] = v1.data.get[T](key)
-      value.map(x => mapFunc.apply(x)).foreach(tag => {
-        if (extend) v1.extendAllWithTag(tagType, tag, filterFunc)
-        else v1.addTag(tagType, tag)
-      })
+  def valueByKeyAndTypeTagger[T](key: String, tagType: TagType, mapFunc: T => Tag, filterFunc: Tag => Boolean, extend: Boolean): SerializableConsumer[EitherThrowableOrTaggedWeaklyTypedMapStore] = new SerializableConsumer[EitherThrowableOrTaggedWeaklyTypedMapStore] {
+    override def apply(v1: EitherThrowableOrTaggedWeaklyTypedMapStore): Unit = v1.data._1 match {
+      case Left(_) => // do nothing
+      case Right(e) =>
+        val value: Option[T] = e.get[T](key)
+        value.map(x => mapFunc.apply(x)).foreach(tag => {
+          if (extend) v1.extendAllWithTag(tagType, tag, filterFunc)
+          else v1.addTag(tagType, tag)
+        })
     }
   }
 
