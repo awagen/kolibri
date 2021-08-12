@@ -1,0 +1,157 @@
+{
+  "jobName": "testJob",
+  "fixedParams": {
+    "k1": [
+      "v1",
+      "v2"
+    ],
+    "k2": [
+      "v3"
+    ]
+  },
+  "contextPath": "search",
+  "connections": [
+    {
+      "host": "search-service",
+      "port": 80,
+      "useHttps": false
+    },
+    {
+      "host": "search-service1",
+      "port": 81,
+      "useHttps": false
+    }
+  ],
+  "requestPermutation": [{
+    "type": "ALL",
+    "value": {
+      "params": {
+        "values": [
+          {
+            "name": "q",
+            "values": [
+              "q1",
+              "q2",
+              "q3",
+              "q4",
+              "q5",
+              "q6",
+              "q7",
+              "q8",
+              "q9",
+              "q10",
+              "q11",
+              "q12",
+              "q13",
+              "q14",
+              "q15",
+              "q16",
+              "q17",
+              "q18",
+              "q19",
+              "q20"
+            ]
+          },
+          {
+            "name": "a1",
+            "values": [
+              0.45,
+              0.32
+            ]
+          },
+          {
+            "name": "o",
+            "start": 0.0,
+            "end": 1000.0,
+            "stepSize": 1.0
+          }
+        ]
+      },
+      "headers": {
+        "values": []
+      },
+      "bodies": [],
+      "bodyContentType": "json"
+    }}],
+  "batchByIndex": 0,
+  "queryParam": "q",
+  "parsingConfig": {
+    "singleSelectors": [],
+    "seqSelectors": [
+      {
+        "name": "productIds",
+        "castType": "STRING",
+        "selector": {
+          "type": "PLAINREC",
+          "path": "\\ response \\ docs \\\\ product_id"
+        }
+      }
+    ]
+  },
+  "excludeParamsFromMetricRow": [
+    "q"
+  ],
+  "judgementFileClasspathURI": "data/test_judgements.txt",
+  "taggingConfiguration": {
+    "initTagger": {
+      "type": "REQUEST_PARAMETER",
+      "parameter": "q",
+      "extend": false
+    },
+    "processedTagger": {
+      "type": "NOTHING"
+    },
+    "resultTagger": {
+      "type": "NOTHING"
+    }
+  },
+  "requestTemplateStorageKey": "requestTemplate",
+  "mapFutureMetricRowCalculation": {
+    "functionType": "IR_METRICS",
+    "name": "irMetrics",
+    "requestTemplateKey": "requestTemplate",
+    "productIdsKey": "productIds",
+    "judgementProvider": {
+      "filename": "data/test_judgements.txt"
+    },
+    "metricsCalculation": {
+      "metrics": ["DCG_10", "NDCG_10", "PRECISION_4", "ERR"],
+      "judgementHandling": {
+        "validations": ["EXIST_RESULTS", "EXIST_JUDGEMENTS"],
+        "handling":  "AS_ZEROS"
+      }
+    },
+    "excludeParams": ["q"]
+  },
+  "singleMapCalculations": [],
+  "writerDir": "/app/data",
+  "writerColumnSeparator": "\t",
+  "allowedTimePerElementInMillis": 1000,
+  "allowedTimePerBatchInSeconds": 6000,
+  "allowedTimeForJobInSeconds": 720000,
+  "expectResultsFromBatchCalculations": false,
+  "wrapUpFunction": {
+    "type": "AGGREGATE_ALL",
+    "directoryReader": {
+      "type": "AWS_READER",
+      "bucketName": "kolibri-dev",
+      "dirPath": "metric_test/testJob",
+      "region": "EU_CENTRAL_1",
+      "delimiter": "/",
+      "regex": "[(]q=.+[)]"
+    },
+    "fileReader": {
+      "type": "AWS_S3_FILE_READER",
+      "bucketName": "kolibri-dev",
+      "dirPath": "",
+      "region": "EU_CENTRAL_1"
+    },
+    "fileWriter": {
+      "bucketName": "kolibri-dev",
+      "dirPath": "metric_test/testJob",
+      "region": "EU_CENTRAL_1",
+      "contentType": "text/plain; charset=UTF-8"
+    },
+    "outputFilename": "(ALL)"
+  }
+}

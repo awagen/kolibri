@@ -16,7 +16,8 @@
 
 package de.awagen.kolibri.base.io.json
 
-import de.awagen.kolibri.base.io.reader.{FileReader, LocalResourceFileReader}
+import com.amazonaws.regions.Regions
+import de.awagen.kolibri.base.io.reader.{AwsS3FileReader, FileReader, LocalResourceFileReader}
 import spray.json.{DefaultJsonProtocol, DeserializationException, JsObject, JsString, JsValue, JsonFormat}
 
 object FileReaderJsonProtocol extends DefaultJsonProtocol {
@@ -31,11 +32,17 @@ object FileReaderJsonProtocol extends DefaultJsonProtocol {
           val encoding = fields.get("encoding").map(x => x.convertTo[String])
           val delimiterAndPosition: Option[(String, Int)] = for {x <- delimiter; y <- position} yield (x.convertTo[String], y.convertTo[Int])
           LocalResourceFileReader(delimiterAndPosition, fromClasspath, encoding.getOrElse("UTF-8"))
+        case "AWS_S3_FILE_READER" =>
+          val bucketName = fields("bucketName").convertTo[String]
+          val dirPath = fields("dirPath").convertTo[String]
+          val region = fields("region").convertTo[String]
+          val regions: Regions = Regions.valueOf(region)
+          AwsS3FileReader(bucketName = bucketName, dirPath = dirPath, region = regions)
       }
       case e => throw DeserializationException(s"Expected a value from ValueProvider but got value $e")
     }
 
-    // TODO: check correctness
+    // TODO: extend to other types and check correctness
     override def write(obj: FileReader): JsValue = obj match {
       case e if e.isInstanceOf[LocalResourceFileReader] =>
         var fieldMap: Map[String, JsValue] = JsString(obj.toString).asJsObject.fields

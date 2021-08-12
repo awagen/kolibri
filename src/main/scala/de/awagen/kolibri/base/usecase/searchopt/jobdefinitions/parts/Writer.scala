@@ -17,9 +17,10 @@
 
 package de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts
 
+import com.amazonaws.regions.Regions
 import de.awagen.kolibri.base.io.writer.Writers.{FileWriter, Writer}
 import de.awagen.kolibri.base.io.writer.aggregation.{BaseMetricAggregationWriter, BaseMetricDocumentWriter}
-import de.awagen.kolibri.base.io.writer.base.LocalDirectoryFileFileWriter
+import de.awagen.kolibri.base.io.writer.base.{AwsS3FileWriter, LocalDirectoryFileFileWriter}
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
 import de.awagen.kolibri.datatypes.metrics.aggregation.writer.CSVParameterBasedMetricDocumentFormat
 import de.awagen.kolibri.datatypes.stores.MetricDocument
@@ -30,11 +31,11 @@ object Writer {
 
   def localDirectoryfileWriter(directory: String): FileWriter[String, Any] = LocalDirectoryFileFileWriter(directory = directory)
 
-  def localDocumentWriter(directory: String,
-                          columnSeparator: "\t",
-                          subFolder: String,
-                          tagToFilenameFunc: Tag => String = x => x.toString): Writer[MetricDocument[Tag], Tag, Any] = BaseMetricDocumentWriter(
-    writer = localDirectoryfileWriter(directory),
+  def documentWriter(fileWriter: FileWriter[String, Any],
+                     columnSeparator: "\t",
+                     subFolder: String,
+                     tagToFilenameFunc: Tag => String = x => x.toString): Writer[MetricDocument[Tag], Tag, Any] = BaseMetricDocumentWriter(
+    writer = fileWriter,
     format = CSVParameterBasedMetricDocumentFormat(columnSeparator = columnSeparator),
     subFolder = subFolder,
     keyToFilenameFunc = tagToFilenameFunc)
@@ -43,11 +44,24 @@ object Writer {
                                    columnSeparator: "\t",
                                    subFolder: String,
                                    tagToFilenameFunc: Tag => String = x => x.toString): Writer[MetricAggregation[Tag], Tag, Any] = BaseMetricAggregationWriter(
-    writer = localDocumentWriter(
-      directory,
+    writer = documentWriter(
+      localDirectoryfileWriter(directory),
       columnSeparator,
       subFolder,
       tagToFilenameFunc)
   )
+
+  def awsCsvMetricDocumentWriter(directory: String,
+                                 columnSeparator: "\t",
+                                 subFolder: String,
+                                 tagToFilenameFunc: Tag => String = x => x.toString): Writer[MetricAggregation[Tag], Tag, Any] = {
+    val awsWriter = AwsS3FileWriter(
+      bucketName = "kolibri-dev",
+      dirPath = directory,
+      region = Regions.EU_CENTRAL_1
+    )
+    val writer: Writer[MetricDocument[Tag], Tag, Any] = documentWriter(awsWriter, columnSeparator, subFolder, tagToFilenameFunc)
+    BaseMetricAggregationWriter(writer = writer)
+  }
 
 }
