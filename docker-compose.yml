@@ -73,6 +73,12 @@ services:
       USE_AGGREGATOR_BACKPRESSURE: 'true'
       AGGREGATOR_RECEIVE_PARALLELISM: 32
       MAX_NR_BATCH_RETRIES: 2
+      PERSISTENCE_MODE: 'AWS'
+      AWS_PROFILE: 'developer'
+      AWS_S3_BUCKET: 'kolibri-dev'
+      AWS_S3_PATH: 'metric_results'
+      AWS_S3_REGION: 'EU_CENTRAL_1'
+      LOCAL_STORAGE_DIR: '/app/data'
     volumes:
       - ./kolibri-test:/app/data
 #    mem_limit: 4200m
@@ -125,6 +131,12 @@ services:
       USE_AGGREGATOR_BACKPRESSURE: 'true'
       AGGREGATOR_RECEIVE_PARALLELISM: 32
       MAX_NR_BATCH_RETRIES: 2
+      PERSISTENCE_MODE: 'AWS'
+      AWS_PROFILE: 'developer'
+      AWS_S3_BUCKET: 'kolibri-dev'
+      AWS_S3_PATH: 'metric_results'
+      AWS_S3_REGION: 'EU_CENTRAL_1'
+      LOCAL_STORAGE_DIR: '/app/data'
     volumes:
       - ./kolibri-test:/app/data
 #    mem_limit: 4200m

@@ -35,6 +35,7 @@ object JobWrapUpFunctions {
 
   }
 
+  // TODO: here we should not need to set DirectoryReader, FileReader and fileWriter, as those would be defined per config
   case class AggregateAllFromDirectory(directoryReader: DirectoryReader,
                                        fileReader: FileReader,
                                        fileWriter: FileWriter[String, Any],

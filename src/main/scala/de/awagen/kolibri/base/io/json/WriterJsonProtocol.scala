@@ -20,7 +20,7 @@ package de.awagen.kolibri.base.io.json
 import com.amazonaws.regions.Regions
 import de.awagen.kolibri.base.io.writer.Writers.{FileWriter, Writer}
 import de.awagen.kolibri.base.io.writer.aggregation.{BaseMetricAggregationWriter, BaseMetricDocumentWriter}
-import de.awagen.kolibri.base.io.writer.base.{AwsS3FileWriter, LocalDirectoryFileFileWriter}
+import de.awagen.kolibri.base.io.writer.base.{AwsS3FileWriter, LocalDirectoryFileWriter}
 import de.awagen.kolibri.datatypes.io.json.MetricDocumentFormatJsonProtocol._
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
 import de.awagen.kolibri.datatypes.metrics.aggregation.writer.MetricDocumentFormat
@@ -44,7 +44,7 @@ object WriterJsonProtocol extends DefaultJsonProtocol {
   implicit object StringFileWriterFormat extends JsonFormat[FileWriter[String, Any]] {
     override def read(json: JsValue): FileWriter[String, Any] = json match {
       case spray.json.JsObject(fields) if fields.contains(DIRECTORY_FIELD) && fields.keys.size == 1 =>
-        LocalDirectoryFileFileWriter(fields(DIRECTORY_FIELD).convertTo[String])
+        LocalDirectoryFileWriter(fields(DIRECTORY_FIELD).convertTo[String])
       case spray.json.JsObject(fields) if fields.contains(BUCKET_NAME_FIELD) &&
         fields.contains(DIR_PATH_FIELD) && fields.contains(REGION_FIELD) && fields.contains(CONTENT_TYPE_FIELD) &&
         fields.keys.size == 4 =>

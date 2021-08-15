@@ -16,6 +16,7 @@
 
 package de.awagen.kolibri.base.config
 
+import com.amazonaws.regions.Regions
 import com.typesafe.config.{Config, ConfigFactory}
 import de.awagen.kolibri.base.actors.resources.{CPUBasedResourceChecker, ResourceChecker}
 import de.awagen.kolibri.base.cluster.ClusterStatus
@@ -151,6 +152,29 @@ object AppConfig {
     val resultElementGroupingParallelism: Int = baseConfig.getInt("kolibri.execution.resultElementGroupingParallelism")
 
     val maxNrBatchRetries: Int = baseConfig.getInt("kolibri.execution.maxNrBatchRetries")
+
+    val awsS3Bucket: Option[String] = {
+      if (baseConfig.hasPath("kolibri.persistence.s3.bucket")) Some(baseConfig.getString("kolibri.persistence.s3.bucket"))
+      else None
+    }
+
+    val awsS3BucketPath: Option[String] = {
+      if (baseConfig.hasPath("kolibri.persistence.s3.bucketPath")) Some(baseConfig.getString("kolibri.persistence.s3.bucketPath"))
+      else None
+    }
+
+    val awsS3Region: Option[Regions] = {
+      if (baseConfig.hasPath("kolibri.persistence.s3.region")) Some(baseConfig.getString("kolibri.persistence.s3.region"))
+        .map(x => Regions.valueOf(x))
+      else None
+    }
+
+    val localPersistenceDir: Option[String] = {
+      if (baseConfig.hasPath("kolibri.persistence.local.dir")) Some(baseConfig.getString("kolibri.persistence.local.dir"))
+      else None
+    }
+
+    val persistenceMode: String = baseConfig.getString("kolibri.persistence.mode")
   }
 
 }

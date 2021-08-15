@@ -61,10 +61,15 @@ object JobMessages {
                               requestTemplateStorageKey: String,
                               mapFutureMetricRowCalculation: FutureCalculation[WeaklyTypedMap[String], MetricRow],
                               singleMapCalculations: Seq[Calculation[WeaklyTypedMap[String], CalculationResult[Double]]],
+                              // TODO: change the second tagged element type to only the Either, and make it return tags which then at the appropriate places
+                              // need to append the tags properly
                               taggingConfiguration: Option[BaseTaggingConfiguration[RequestTemplate, (Either[Throwable, WeaklyTypedMap[String]], RequestTemplate), MetricRow]],
                               wrapUpFunction: Option[JobWrapUpFunction[Unit]],
+
+                              // TODO: writerDir only needed for the local config, and then only needed to define globally per config / env vars
                               writerDir: String = "/app/data",
                               writerColumnSeparator: String = "\t",
+
                               allowedTimePerElementInMillis: Int = 1000,
                               allowedTimePerBatchInSeconds: Int = 600,
                               allowedTimeForJobInSeconds: Int = 7200,

@@ -17,26 +17,29 @@
 
 package de.awagen.kolibri.base.io.json
 
-import de.awagen.kolibri.base.io.writer.Writers.FileWriter
-import de.awagen.kolibri.base.io.writer.base.LocalDirectoryFileWriter
+import de.awagen.kolibri.base.format.Formats
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
+import de.awagen.kolibri.datatypes.stores.MetricDocument
 import spray.json._
+import FormatJsonProtocol._
 
-class WriterJsonProtocolSpec extends UnitTestSpec {
 
-  "WriterJsonProtocol" must {
+class FormatJsonProtocolSpec extends UnitTestSpec {
 
-    "correctly parse FileWriter[String, Any] as LocalDirectoryFileWriter" in {
-      // given
-      import WriterJsonProtocol._
-      val json = """{"directory": "/testdir"}""".parseJson
-      // when
-      val writer: FileWriter[String, Any] = json.convertTo[FileWriter[String, Any]]
-      // then
-      writer.isInstanceOf[LocalDirectoryFileWriter] mustBe true
-      writer.asInstanceOf[LocalDirectoryFileWriter].directory mustBe "/testdir"
+  val metricDocumentStringFormatJson: JsValue =
+    """
+      |{
+      |"type": "CSV",
+      |"columnSeparator": "\t"
+      |}
+      |""".stripMargin.parseJson
+
+  "FormatJsonProtocol" must {
+
+    "correctly parse StringFormat[MetricDocument[_]]" in {
+      val metricDocumentFormat = metricDocumentStringFormatJson.convertTo[Formats.StringFormat[MetricDocument[_]]]
+      metricDocumentFormat.isInstanceOf[Formats.StringFormat[MetricDocument[_]]] mustBe true
     }
-
   }
 
 }

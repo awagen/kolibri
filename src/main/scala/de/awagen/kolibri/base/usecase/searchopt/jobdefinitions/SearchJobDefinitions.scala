@@ -113,11 +113,18 @@ object SearchJobDefinitions {
       ),
       perBatchAggregatorSupplier = singleBatchAggregatorSupplier,
       perJobAggregatorSupplier = fullJobToSingleTagAggregatorSupplier,
+      // TODO: replace the writer with only using a Format[U, V]
+      // from MetricAggregation[Tag] to String
       writer = Writer.localMetricAggregationWriter(
         "/app/data",
         "\t",
         searchEvaluation.jobName,
         x => x.toString),
+//      writer = Writer.awsCsvMetricAggregationWriter(
+//                "metric_test",
+//                "\t",
+//                searchEvaluation.jobName,
+//                x => x.toString),
       filteringSingleElementMapperForAggregator = new AcceptAllAsIdentityMapper[ProcessingMessage[MetricRow]],
       filterAggregationMapperForAggregator = new AcceptAllAsIdentityMapper[MetricAggregation[Tag]],
       filteringMapperForResultSending = new AcceptAllAsIdentityMapper[MetricAggregation[Tag]],
