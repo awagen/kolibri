@@ -27,15 +27,15 @@ import de.awagen.kolibri.datatypes.stores.MetricDocument
 import de.awagen.kolibri.datatypes.tagging.Tags
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 
-object PersistenceModule {
+class PersistenceModule {
 
-  lazy val persistenceModule: PersistenceDIModule = AppConfig.config.persistenceMode match {
+  lazy val persistenceDIModule: PersistenceDIModule = AppConfig.config.persistenceMode match {
     case "AWS" => wire[AwsPersistenceModule]
     case "LOCAL" => wire[LocalPersistenceModule]
     case _ => wire[LocalPersistenceModule]
   }
 
-  import persistenceModule._
+  import persistenceDIModule._
 
   lazy val metricDocFormat: MetricDocumentFormat = CSVParameterBasedMetricDocumentFormat("\t")
 

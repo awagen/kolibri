@@ -17,13 +17,13 @@
 
 package de.awagen.kolibri.base.io.json
 
-import de.awagen.kolibri.base.io.reader.{DirectoryReader, FileReader}
+import com.softwaremill.macwire.wire
+import de.awagen.kolibri.base.config.di.modules.Modules
+import de.awagen.kolibri.base.config.di.modules.persistence.PersistenceModule
 import de.awagen.kolibri.base.processing.execution.wrapup.JobWrapUpFunctions.{AggregateAllFromDirectory, DoNothing, JobWrapUpFunction}
 import spray.json.{DefaultJsonProtocol, JsValue, JsonFormat, enrichAny}
-import DirectoryReaderJsonProtocol._
-import de.awagen.kolibri.base.io.json.FileReaderJsonProtocol.FileReaderFormat
-import de.awagen.kolibri.base.io.json.WriterJsonProtocol.StringFileWriterFormat
-import de.awagen.kolibri.base.io.writer.Writers.FileWriter
+
+import scala.util.matching.Regex
 
 object JobWrapUpFunctionJsonProtocol extends DefaultJsonProtocol {
 
@@ -31,14 +31,15 @@ object JobWrapUpFunctionJsonProtocol extends DefaultJsonProtocol {
     override def read(json: JsValue): JobWrapUpFunction[Unit] = json match {
       case spray.json.JsObject(fields) => fields("type").convertTo[String] match {
         case "AGGREGATE_ALL" =>
-          val directoryReader: DirectoryReader = fields("directoryReader").convertTo[DirectoryReader]
-          val fileReader: FileReader = fields("fileReader").convertTo[FileReader]
-          val fileWriter: FileWriter[String, Any] = fields("fileWriter").convertTo[FileWriter[String, Any]]
+          val regex: Regex = fields("regex").convertTo[String].r
           val outputFilename: String = fields("outputFilename").convertTo[String]
+          val directorySubDir: String = fields("subDir").convertTo[String]
+          val persistenceModule: PersistenceModule = wire[PersistenceModule]
+          val persistenceDIModule: Modules.PersistenceDIModule = persistenceModule.persistenceDIModule
           AggregateAllFromDirectory(
-            directoryReader,
-            fileReader,
-            fileWriter,
+            persistenceDIModule,
+            directorySubDir,
+            regex,
             outputFilename
           )
         case "DO_NOTHING" => DoNothing()

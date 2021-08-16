@@ -17,15 +17,21 @@
 
 package de.awagen.kolibri.base.io.reader
 
+import org.slf4j.{Logger, LoggerFactory}
+
 import java.io.File
 
 case class LocalDirectoryReader(baseDir: String,
                                 baseFilenameFilter: String => Boolean = _ => true,
                                 encoding: String = "UTF-8") extends DirectoryReader {
+  val logger: Logger = LoggerFactory.getLogger(this.getClass)
+
   val normedBaseDir: String = baseDir.stripSuffix("/")
 
   override def listFiles(subDir: String, additionalFilenameFilter: String => Boolean): Seq[String] = {
-    val fullDir = s"$normedBaseDir/$subDir".stripSuffix("/")
+    val normedSubDir = subDir.stripPrefix("/")
+    val fullDir = s"$normedBaseDir/$normedSubDir".stripSuffix("/")
+    logger.info(s"scanning files in directory $fullDir")
     val directory = new File(fullDir)
     directory.listFiles()
       .filter(file => file.isFile)

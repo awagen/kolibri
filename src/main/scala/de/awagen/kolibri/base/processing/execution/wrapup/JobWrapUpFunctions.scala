@@ -17,6 +17,7 @@
 
 package de.awagen.kolibri.base.processing.execution.wrapup
 
+import de.awagen.kolibri.base.config.di.modules.Modules.PersistenceDIModule
 import de.awagen.kolibri.base.io.reader.{DirectoryReader, FileReader}
 import de.awagen.kolibri.base.io.writer.Writers.FileWriter
 import de.awagen.kolibri.base.processing.failure.TaskFailType
@@ -25,7 +26,10 @@ import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.metrics.aggregation.writer.CSVParameterBasedMetricDocumentFormat
 import de.awagen.kolibri.datatypes.stores.MetricDocument
 import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}
+import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 import org.slf4j.{Logger, LoggerFactory}
+
+import scala.util.matching.Regex
 
 object JobWrapUpFunctions {
 
@@ -35,10 +39,9 @@ object JobWrapUpFunctions {
 
   }
 
-  // TODO: here we should not need to set DirectoryReader, FileReader and fileWriter, as those would be defined per config
-  case class AggregateAllFromDirectory(directoryReader: DirectoryReader,
-                                       fileReader: FileReader,
-                                       fileWriter: FileWriter[String, Any],
+  case class AggregateAllFromDirectory(persistenceDIModule: PersistenceDIModule,
+                                       directorySubDir: String,
+                                       filterRegex: Regex,
                                        outputFilename: String) extends JobWrapUpFunction[Unit] {
     val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
@@ -46,11 +49,19 @@ object JobWrapUpFunctions {
 
     val aggregationIdentifier: Tag = StringTag("ALL1")
 
+    val directoryReader: DirectoryReader = persistenceDIModule.directoryReader(
+      new SerializableFunction1[String, Boolean] {
+        override def apply(v1: String): Boolean = filterRegex.matches(v1)
+      }
+    )
+    val fileReader: FileReader = persistenceDIModule.fileReader
+    val fileWriter: FileWriter[String, _] = persistenceDIModule.fileWriter
+
     override def execute: Either[TaskFailType, Unit] = {
       try {
         // find all relevant files, parse them into MetricDocuments on ALL-tag,
         // aggregate all
-        val filteredFiles = directoryReader.listFiles("", _ => true)
+        val filteredFiles = directoryReader.listFiles(directorySubDir, _ => true)
         logger.info(s"found files to aggregate: $filteredFiles")
         val overallDoc: MetricDocument[Tag] = MetricDocument.empty(aggregationIdentifier)
         filteredFiles.foreach(file => {
@@ -65,9 +76,10 @@ object JobWrapUpFunctions {
           logger.info(s"done adding file: $file")
         })
         // now we have the overall document, now we need to write it to file
-        logger.info(s"writing aggregation to file: $outputFilename")
-        fileWriter.write(csvFormat.metricDocumentToString(overallDoc), outputFilename)
-        logger.info(s"done writing aggregation to file: $outputFilename")
+        val relativeWritePath = s"${directorySubDir.stripSuffix("/")}/$outputFilename"
+        logger.info(s"writing aggregation to file: $relativeWritePath")
+        fileWriter.write(csvFormat.metricDocumentToString(overallDoc), relativeWritePath)
+        logger.info(s"done writing aggregation to file: $relativeWritePath")
         Right(())
       }
       catch {
