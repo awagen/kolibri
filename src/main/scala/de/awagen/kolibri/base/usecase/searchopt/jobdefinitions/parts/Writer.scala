@@ -51,12 +51,13 @@ object Writer {
       tagToFilenameFunc)
   )
 
-  def awsCsvMetricAggregationWriter(directory: String,
+  def awsCsvMetricAggregationWriter(bucketName: String,
+                                    directory: String,
                                     columnSeparator: String = "\t",
                                     subFolder: String,
                                     tagToFilenameFunc: Tag => String = x => x.toString): Writer[MetricAggregation[Tag], Tag, Any] = {
     val awsWriter = AwsS3FileWriter(
-      bucketName = "kolibri-dev",
+      bucketName = bucketName,
       dirPath = directory,
       region = Regions.EU_CENTRAL_1
     )

@@ -61,8 +61,6 @@ object JobMessages {
                               requestTemplateStorageKey: String,
                               mapFutureMetricRowCalculation: FutureCalculation[WeaklyTypedMap[String], MetricRow],
                               singleMapCalculations: Seq[Calculation[WeaklyTypedMap[String], CalculationResult[Double]]],
-                              // TODO: change the second tagged element type to only the Either, and make it return tags which then at the appropriate places
-                              // need to append the tags properly
                               taggingConfiguration: Option[BaseTaggingConfiguration[RequestTemplate, (Either[Throwable, WeaklyTypedMap[String]], RequestTemplate), MetricRow]],
                               wrapUpFunction: Option[JobWrapUpFunction[Unit]],
                               allowedTimePerElementInMillis: Int = 1000,

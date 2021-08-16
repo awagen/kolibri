@@ -60,6 +60,7 @@ class AwsPersistenceModule extends PersistenceDIModule with tagging.Tag[AWS_MODU
 
   def csvMetricAggregationWriter(subFolder: String, tagToFilenameFunc: Tags.Tag => String): Writer[MetricAggregation[Tags.Tag], Tags.Tag, Any] = Writer.awsCsvMetricAggregationWriter(
     AppConfig.config.awsS3Bucket.get,
+    AppConfig.config.awsS3BucketPath.get,
     csvColumnSeparator,
     subFolder,
     tagToFilenameFunc
