@@ -20,7 +20,7 @@ import akka.actor.SupervisorStrategy.Stop
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, OneForOneStrategy, PoisonPill, Props, Terminated}
 import akka.pattern.ask
 import akka.util.Timeout
-import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor._
+import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.{ProcessActorRunnableJobCmd, _}
 import de.awagen.kolibri.base.actors.work.manager.JobManagerActor
 import de.awagen.kolibri.base.actors.work.manager.JobManagerActor._
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{ProcessingMessage, ResultSummary}
@@ -189,6 +189,17 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
     message = JobHousekeeping)
 
 
+  def runnableJobCmdToJobManager[M <: WithCount](jobId: String, cmd: ProcessActorRunnableJobCmd[_, _, _, M]): ActorRef = {
+    createJobManagerActor(
+      jobId,
+      cmd.perBatchAggregatorSupplier,
+      cmd.perJobAggregatorSupplier,
+      cmd.writer,
+      cmd.allowedTimeForJob,
+      cmd.allowedTimePerBatch,
+      maxNrBatchRetries)
+  }
+
   override def receive: Receive = {
     case ProvideAllRunningJobIDs =>
       sender() ! RunningJobs(jobIdToActorRefAndExpectation.keys.toSeq)
@@ -278,13 +289,7 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
         log.info("Creating and sending job to JobManager, jobId: {}", jobId)
         import de.awagen.kolibri.base.processing.JobMessagesImplicits._
         val runnableJob: ProcessActorRunnableJobCmd[Int, Double, Double, MapWithCount[Tag, AggregateValue[Double]]] = e.toRunnable
-        val actor = createJobManagerActor(
-          jobId,
-          runnableJob.perBatchAggregatorSupplier,
-          runnableJob.perJobAggregatorSupplier,
-          runnableJob.writer,
-          runnableJob.allowedTimeForJob,
-          runnableJob.allowedTimePerBatch, maxNrBatchRetries)
+        val actor = runnableJobCmdToJobManager(jobId, runnableJob)
         context.watch(actor)
         actor ! e
         val expectation = createJobExecutionExpectation(runnableJob.allowedTimeForJob)
@@ -302,14 +307,7 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
         import de.awagen.kolibri.base.processing.JobMessagesImplicits._
         implicit val timeout: Timeout = 10 minutes
         val runnableJob: ProcessActorRunnableJobCmd[RequestTemplateBuilderModifier, MetricRow, MetricRow, MetricAggregation[Tag]] = e.toRunnable
-        val actor = createJobManagerActor(
-          jobId,
-          runnableJob.perBatchAggregatorSupplier,
-          runnableJob.perJobAggregatorSupplier,
-          runnableJob.writer,
-          runnableJob.allowedTimeForJob,
-          runnableJob.allowedTimePerBatch,
-          maxNrBatchRetries)
+        val actor = runnableJobCmdToJobManager(jobId, runnableJob)
         context.watch(actor)
         actor ! e
         val expectation = createJobExecutionExpectation(runnableJob.allowedTimeForJob)
