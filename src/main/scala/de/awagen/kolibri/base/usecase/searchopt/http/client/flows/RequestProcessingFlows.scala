@@ -23,7 +23,7 @@ import akka.http.scaladsl.model.{HttpRequest, HttpResponse, Uri}
 import akka.stream._
 import akka.stream.scaladsl.{Balance, Flow, GraphDSL, Merge, RunnableGraph, Sink, Source}
 import akka.{Done, NotUsed}
-import de.awagen.kolibri.base.actors.flows.GenericRequestFlows.flowThroughActorMeter
+import de.awagen.kolibri.base.actors.flows.GenericFlows.flowThroughActorMeter
 import de.awagen.kolibri.base.actors.tracking.ThroughputActor.AddForStage
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{Corn, ProcessingMessage}
 import de.awagen.kolibri.base.config.AppConfig.config

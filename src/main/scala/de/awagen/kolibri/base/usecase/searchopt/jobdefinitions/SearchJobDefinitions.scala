@@ -34,7 +34,7 @@ import de.awagen.kolibri.base.usecase.searchopt.http.client.flows.responsehandle
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.Aggregators.{fullJobToSingleTagAggregatorSupplier, singleBatchAggregatorSupplier}
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.BatchGenerators.batchGenerator
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.Expectations.expectationPerBatchSupplier
-import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.{Flows, Writer}
+import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.Flows
 import de.awagen.kolibri.base.usecase.searchopt.parse.ParsingConfig
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
@@ -96,16 +96,15 @@ object SearchJobDefinitions {
       ),
       processingActorProps = None,
       perBatchExpectationGenerator = expectationPerBatchSupplier[MetricRow](
-        600 minutes,
-        10,
-        0.3F,
+        searchEvaluation.allowedTimePerBatchInSeconds seconds,
+        50,
+        0.5F,
         new SerializableFunction1[Any, SuccessAndErrorCounts] {
           override def apply(v1: Any): SuccessAndErrorCounts = v1 match {
             case Corn(e) if e.isInstanceOf[MetricRow] =>
               val result = e.asInstanceOf[MetricRow]
               SuccessAndErrorCounts(result.totalSuccessCountMin, result.totalErrorCountMin)
             case AggregationStateWithData(data: MetricAggregation[Tag], _, _, _) =>
-              // TODO: check the counts, e.g at the moment sum should be the correct criterium
               SuccessAndErrorCounts(data.totalSuccessCountSum, data.totalErrorCountSum)
             case AggregationStateWithoutData(elementCount: Int, _, _, _) =>
               // TODO: need success and error counts here, change elementCount in the message to
