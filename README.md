@@ -38,7 +38,7 @@ Connection refused:
 
 - you might temporarily need to clone kolibri-datatypes and publish locally (see kolibri-datatypes README on instructions)
 - build jar (find it in target folder afterwards): ```./scripts/buildJar.sh```
-- build docker image for local usage: ```sudo docker build . -t kolibri-base:0.1.0-alpha3```
+- build docker image for local usage: ```sudo docker build . -t kolibri-base:0.1.0-alpha5```
 - run single-node cluster (compute and httpserver role, access via localhost:
   8000): ```./scripts/docker_run_single_node.sh```
     - sets interface of http server to 0.0.0.0 to allow requests from host system to localhost:8000 reach the service
@@ -152,6 +152,18 @@ play lib when parsing elements from a json, single or recursive.
 For spray there is an additional library providing this functionality (https://github.com/jrudolph/json-lenses), 
 which seems to even provide more functionality. For this sake ayou can expect the play json lib will be removed in 
 further iterations for the sake of only using spray.
+
+## Notes on local execution with access to AWS account
+One way to enable container access to AWS account (e.g as for writing results into S3 bucket or similar),
+it is enough to mount the local directory where the credentials reside into the root .aws directory in the container,
+by adding to the docker-compose below volume mount (assuming the aws credentials reside in the home folder on the host machine
+within the .aws folder, which is the default location when calling ```aws configure``` (official docs: https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-quickstart.html)):
+```
+volumes:
+  - [path-to-home-on-host-machine]/.aws:/home/kolibri/.aws:ro
+```
+Now configure the AWS_PROFILE env var to any profile name you want to assume (and for which the above mounted folder contains
+credentials). See example within docker-compose.yaml.
 
 ## License
 
