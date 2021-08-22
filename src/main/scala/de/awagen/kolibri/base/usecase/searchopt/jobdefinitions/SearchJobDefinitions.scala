@@ -84,7 +84,6 @@ object SearchJobDefinitions {
         throughputActor = Option.empty[ActorRef],
         contextPath = searchEvaluation.contextPath,
         fixedParams = searchEvaluation.fixedParams,
-        queryParam = searchEvaluation.queryParam,
         excludeParamsFromMetricRow = searchEvaluation.excludeParamsFromMetricRow,
         groupId = searchEvaluation.jobName,
         connections = searchEvaluation.connections,

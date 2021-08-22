@@ -83,7 +83,7 @@ object RequestProcessingFlows {
           // creating the elements that will be part of the sink
           val source: SourceShape[ProcessingMessage[RequestTemplate]] = b.add(Source.fromIterator[ProcessingMessage[RequestTemplate]](() => requestTemplateGenerator.iterator))
           val flow: FlowShape[ProcessingMessage[RequestTemplate], ProcessingMessage[(Either[Throwable, T], RequestTemplate)]] = b.add(
-            requestAndParsingFlow[T](throughputActor, queryParam, groupId, connections, connectionToFlowFunc, parsingFunc)
+            requestAndParsingFlow[T](throughputActor, groupId, connections, connectionToFlowFunc, parsingFunc)
           )
           // creating the graph
           source ~> flow ~> sinkInst
@@ -178,7 +178,6 @@ object RequestProcessingFlows {
     * @return Graph[FlowShape] providing the streaming requesting and parsing logic
     */
   def requestAndParsingFlow[T](throughputActor: Option[ActorRef],
-                               queryParam: String,
                                groupId: String,
                                connections: Seq[Connection],
                                connectionToFlowFunc: Connection => Flow[(HttpRequest, ProcessingMessage[RequestTemplate]), (Try[HttpResponse], ProcessingMessage[RequestTemplate]), _],

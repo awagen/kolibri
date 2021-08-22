@@ -55,7 +55,6 @@ object JobMessages {
                               connections: Seq[Connection],
                               requestPermutation: Seq[ModifierGeneratorProvider],
                               batchByIndex: Int,
-                              queryParam: String,
                               parsingConfig: ParsingConfig,
                               excludeParamsFromMetricRow: Seq[String],
                               requestTemplateStorageKey: String,

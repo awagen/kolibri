@@ -77,7 +77,6 @@
     }
   ],
   "batchByIndex": 0,
-  "queryParam": "q",
   "parsingConfig": {
     "singleSelectors": [],
     "seqSelectors": [

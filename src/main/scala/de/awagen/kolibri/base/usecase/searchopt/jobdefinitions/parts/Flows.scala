@@ -107,13 +107,11 @@ object Flows {
     * @return
     */
   def requestingFlow(connections: Seq[Connection],
-                     queryParam: String,
                      groupId: String,
                      responseParsingFunc: HttpResponse => Future[Either[Throwable, WeaklyTypedMap[String]]],
                      throughputActor: Option[ActorRef])(implicit as: ActorSystem, ec: ExecutionContext): Graph[FlowShape[ProcessingMessage[RequestTemplate], ProcessingMessage[(Either[Throwable, WeaklyTypedMap[String]], RequestTemplate)]], NotUsed] =
     RequestProcessingFlows.requestAndParsingFlow(
       throughputActor,
-      queryParam,
       groupId,
       connections,
       connectionFunc,
@@ -180,7 +178,6 @@ object Flows {
                          connections: Seq[Connection],
                          contextPath: String,
                          fixedParams: Map[String, Seq[String]],
-                         queryParam: String,
                          excludeParamsFromMetricRow: Seq[String],
                          groupId: String,
                          taggingConfiguration: Option[TaggingConfiguration[RequestTemplate, (Either[Throwable, WeaklyTypedMap[String]], RequestTemplate), MetricRow]],
@@ -197,7 +194,6 @@ object Flows {
         }))
         .via(Flow.fromGraph(requestingFlow(
           connections = connections,
-          queryParam = queryParam,
           groupId = groupId,
           responseParsingFunc = responseParsingFunc,
           throughputActor = throughputActor)))
