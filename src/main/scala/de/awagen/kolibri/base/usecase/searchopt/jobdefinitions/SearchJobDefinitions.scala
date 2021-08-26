@@ -18,10 +18,9 @@
 package de.awagen.kolibri.base.usecase.searchopt.jobdefinitions
 
 import akka.actor.{ActorRef, ActorSystem}
-import com.softwaremill.macwire.wire
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationStateWithData, AggregationStateWithoutData, Corn, ProcessingMessage}
-import de.awagen.kolibri.base.config.di.modules.persistence.PersistenceModule
+import de.awagen.kolibri.base.config.AppConfig
 import de.awagen.kolibri.base.domain.jobdefinitions.JobMsgFactory
 import de.awagen.kolibri.base.http.client.request.RequestTemplateBuilder
 import de.awagen.kolibri.base.processing.JobMessages.SearchEvaluation
@@ -74,7 +73,7 @@ object SearchJobDefinitions {
 
   def searchEvaluationToRunnableJobCmd(searchEvaluation: SearchEvaluation)(implicit as: ActorSystem, ec: ExecutionContext):
   SupervisorActor.ProcessActorRunnableJobCmd[RequestTemplateBuilderModifier, MetricRow, MetricRow, MetricAggregation[Tag]] = {
-    val persistenceModule = wire[PersistenceModule]
+    val persistenceModule = AppConfig.persistenceModule
     val writer = persistenceModule.persistenceDIModule.csvMetricAggregationWriter(subFolder = searchEvaluation.jobName, x => x.toString())
     JobMsgFactory.createActorRunnableJobCmd[Seq[IndexedGenerator[Modifier[RequestTemplateBuilder]]], RequestTemplateBuilderModifier, MetricRow, MetricRow, MetricAggregation[Tag]](
       jobId = searchEvaluation.jobName,

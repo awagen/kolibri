@@ -17,8 +17,8 @@
 
 package de.awagen.kolibri.base.io.json
 
-import de.awagen.kolibri.base.processing.modifiers.ModifierMappers.{BaseBodyMapper, BaseHeadersMapper, BaseParamsMapper, BodyMapper, HeadersMapper, ParamsMapper}
-import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
+import de.awagen.kolibri.base.processing.modifiers.ModifierMappers._
+import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator}
 import spray.json.{DefaultJsonProtocol, DeserializationException, JsValue, JsonFormat, enrichAny}
 import IndexedGeneratorJsonProtocol._
 
@@ -29,7 +29,9 @@ object ModifierMappersJsonProtocol extends DefaultJsonProtocol {
     override def read(json: JsValue): ParamsMapper = json match {
       case spray.json.JsObject(fields) =>
         val replace: Boolean = fields("replace").convertTo[Boolean]
-        val values: Map[String, IndexedGenerator[Map[String, Seq[String]]]] = fields("values").convertTo[Map[String, IndexedGenerator[Map[String, Seq[String]]]]]
+        val values: Map[String, Map[String, IndexedGenerator[Seq[String]]]] = fields("values").convertTo[Map[String, Map[String, Seq[Seq[String]]]]]
+          .view
+          .mapValues(values => values.view.mapValues(x => ByFunctionNrLimitedIndexedGenerator.createFromSeq(x)).toMap).toMap
         BaseParamsMapper(values, replace = replace)
       case e => throw DeserializationException(s"Expected a value of type ParamsMapper  but got value $e")
     }
@@ -42,7 +44,7 @@ object ModifierMappersJsonProtocol extends DefaultJsonProtocol {
     override def read(json: JsValue): HeadersMapper = json match {
       case spray.json.JsObject(fields) =>
         val replace: Boolean = fields("replace").convertTo[Boolean]
-        val values: Map[String, IndexedGenerator[Map[String, String]]] = fields("values").convertTo[Map[String, IndexedGenerator[Map[String, String]]]]
+        val values: Map[String, Map[String, IndexedGenerator[String]]] = fields("values").convertTo[Map[String, Map[String, IndexedGenerator[String]]]]
         BaseHeadersMapper(values, replace = replace)
       case e => throw DeserializationException(s"Expected a value of type HeadersMapper  but got value $e")
     }

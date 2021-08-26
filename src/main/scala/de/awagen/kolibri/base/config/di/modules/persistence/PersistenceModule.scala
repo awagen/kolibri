@@ -18,7 +18,7 @@
 package de.awagen.kolibri.base.config.di.modules.persistence
 
 import com.softwaremill.macwire.wire
-import de.awagen.kolibri.base.config.AppConfig
+import de.awagen.kolibri.base.config.AppProperties
 import de.awagen.kolibri.base.config.di.modules.Modules.PersistenceDIModule
 import de.awagen.kolibri.base.io.writer.Writers.Writer
 import de.awagen.kolibri.base.io.writer.aggregation.BaseMetricDocumentWriter
@@ -29,7 +29,7 @@ import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFuncti
 
 class PersistenceModule {
 
-  lazy val persistenceDIModule: PersistenceDIModule = AppConfig.config.persistenceMode match {
+  lazy val persistenceDIModule: PersistenceDIModule = AppProperties.config.persistenceMode match {
     case "AWS" => wire[AwsPersistenceModule]
     case "LOCAL" => wire[LocalPersistenceModule]
     case _ => wire[LocalPersistenceModule]

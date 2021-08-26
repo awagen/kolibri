@@ -69,7 +69,7 @@ object MappingReaders {
     * Split line by column separator,
     * optionally split value field by splitValueBy,
     * otherwise take full column as single value.
-    * Keys for the mapping are picked from column of indec keyColumnIndex
+    * Keys for the mapping are picked from column of index keyColumnIndex
     * and value from valueColumnIndex
     *
     * @param fileReader       - The file reader

@@ -36,11 +36,8 @@ class ModifierGeneratorProviderJsonProtocolSpec extends UnitTestSpec {
     | "replace": true,
     | "values": {
     |   "key1": {
-    |     "type": "BY_MAPSEQ",
-    |     "values": [
-    |       {"test1": ["0.10", "0.11"]},
-    |       {"test2": ["0.21", "0.22"]}
-    |     ]
+    |       "test1": [["0.10", "0.11"]],
+    |       "test2": [["0.21", "0.22"]]
     |   }
     | }
     |},
@@ -48,11 +45,14 @@ class ModifierGeneratorProviderJsonProtocolSpec extends UnitTestSpec {
     | "replace": true,
     | "values": {
     |   "key1": {
-    |     "type": "BY_VALUES_SEQ",
-    |     "values": [
-    |       {"key1": "value1", "key2": "value2"},
-    |       {"key1": "value3", "key2": "value4"}
-    |     ]
+    |     "hname1": {
+    |       "type": "BY_VALUES_SEQ",
+    |       "values": ["value1", "value3"]
+    |     },
+    |     "hname2": {
+    |       "type": "BY_VALUES_SEQ",
+    |       "values": ["value2", "value4"]
+    |     }
     |   }
     | }
     |},
@@ -75,11 +75,8 @@ class ModifierGeneratorProviderJsonProtocolSpec extends UnitTestSpec {
     | "replace": true,
     | "values": {
     |   "key1": {
-    |     "type": "BY_MAPSEQ",
-    |     "values": [
-    |       {"test1": ["0.10", "0.11"]},
-    |       {"test2": ["0.21", "0.22"]}
-    |     ]
+  |       "test1": [["0.10", "0.11"]],
+  |       "test2": [["0.21", "0.22"]]
     |   }
     | }
     |},
@@ -87,11 +84,14 @@ class ModifierGeneratorProviderJsonProtocolSpec extends UnitTestSpec {
     | "replace": true,
     | "values": {
     |   "key1": {
-    |     "type": "BY_VALUES_SEQ",
-    |     "values": [
-    |       {"key1": "value1", "key2": "value2"},
-    |       {"key1": "value3", "key2": "value4"}
-    |     ]
+    |     "hname1": {
+    |       "type": "BY_VALUES_SEQ",
+    |       "values": ["value1", "value3"]
+    |     },
+    |     "hname2": {
+    |       "type": "BY_VALUES_SEQ",
+    |       "values": ["value2", "value4"]
+    |     }
     |   }
     | }
     |},

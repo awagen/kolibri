@@ -19,7 +19,7 @@ package de.awagen.kolibri.base.cluster
 import akka.actor.{ActorRef, ActorSystem, PoisonPill, Props}
 import akka.cluster.singleton.{ClusterSingletonManager, ClusterSingletonManagerSettings}
 import com.typesafe.config.{Config, ConfigFactory}
-import de.awagen.kolibri.base.config.AppConfig.config
+import de.awagen.kolibri.base.config.AppProperties.config
 
 object ClusterSingletonUtils {
 

@@ -21,17 +21,17 @@ import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.model.{ContentType, ContentTypes, HttpEntity}
 import akka.util.ByteString
 import de.awagen.kolibri.base.http.client.request.RequestTemplateBuilder
-import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.{BodyModifier, HeaderModifier, RequestParameterModifier}
-import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
+import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.{BodyModifier, CombinedModifier, HeaderModifier, RequestParameterModifier}
+import de.awagen.kolibri.datatypes.collections.generators.{IndexedGenerator, PermutatingIndexedGenerator}
 
 
 object ModifierMappers {
 
   trait ModifierMapper[T] {
 
-    val map: Map[String, IndexedGenerator[T]]
+    val map: Map[String, T]
 
-    def getValuesForKey(key: String): Option[IndexedGenerator[T]] = map.get(key)
+    def getValuesForKey(key: String): Option[T] = map.get(key)
 
     def getModifiersForKey(key: String): Option[IndexedGenerator[Modifier[RequestTemplateBuilder]]]
 
@@ -43,13 +43,21 @@ object ModifierMappers {
 
   }
 
-  trait ParamsMapper extends ModifierMapper[Map[String, Seq[String]]] {
+  trait ParamsMapper extends ModifierMapper[Map[String, IndexedGenerator[Seq[String]]]] {
 
     val replace: Boolean
 
-    def getModifiersForKey(key: String): Option[IndexedGenerator[Modifier[RequestTemplateBuilder]]] =
-      getValuesForKey(key).map(generator =>
-        generator.mapGen(value => RequestParameterModifier(value, replace)))
+    def getModifiersForKey(key: String): Option[IndexedGenerator[Modifier[RequestTemplateBuilder]]] = {
+      val singleModifiers: Seq[IndexedGenerator[RequestParameterModifier]] = getValuesForKey(key).map(mapping =>
+        mapping.keys
+          .map(paramName => mapping(paramName)
+            .mapGen(paramVariant => RequestParameterModifier(Map(paramName -> paramVariant), replace = replace))
+          )).getOrElse(Seq.empty).toSeq
+      if (singleModifiers.isEmpty) None
+      else Some(PermutatingIndexedGenerator(singleModifiers)
+        .mapGen(modifierSeq => CombinedModifier(modifierSeq))
+      )
+    }
   }
 
   object HeadersMapper {
@@ -58,16 +66,18 @@ object ModifierMappers {
 
   }
 
-  trait HeadersMapper extends ModifierMapper[Map[String, String]] {
+  trait HeadersMapper extends ModifierMapper[Map[String, IndexedGenerator[String]]] {
 
     val replace: Boolean
 
     override def getModifiersForKey(key: String): Option[IndexedGenerator[Modifier[RequestTemplateBuilder]]] = {
-      getValuesForKey(key).map(generator =>
-        generator.mapGen(values => {
-          val headers: Seq[RawHeader] = values.toSeq.map(value => RawHeader(value._1, value._2))
-          HeaderModifier(headers, replace)
-        }))
+      val modifierGenerators: Seq[IndexedGenerator[HeaderModifier]] = getValuesForKey(key).map(headerKeyValueMapping =>
+        headerKeyValueMapping.map(headerNameAndValue => {
+          val headerName = headerNameAndValue._1
+          headerNameAndValue._2.mapGen(headerValue => HeaderModifier(Seq(RawHeader(headerName, headerValue)), replace))
+        })).getOrElse(Seq.empty).toSeq
+      if (modifierGenerators.isEmpty) None
+      else Some(PermutatingIndexedGenerator(modifierGenerators).mapGen(headerSeq => CombinedModifier(headerSeq)))
     }
   }
 
@@ -77,20 +87,18 @@ object ModifierMappers {
 
   }
 
-  trait BodyMapper extends ModifierMapper[String] {
+  trait BodyMapper extends ModifierMapper[IndexedGenerator[String]] {
     val contentType: ContentType
 
     override def getModifiersForKey(key: String): Option[IndexedGenerator[Modifier[RequestTemplateBuilder]]] = {
-      getValuesForKey(key).map(generator =>
-        generator.mapGen(value => {
-          BodyModifier(HttpEntity.Strict(contentType, ByteString(value)))
-        }))
+      getValuesForKey(key).map(bodyValuesGen =>
+        bodyValuesGen.mapGen(value => BodyModifier(HttpEntity.Strict(contentType, ByteString(value)))))
     }
   }
 
-  case class BaseParamsMapper(map: Map[String, IndexedGenerator[Map[String, Seq[String]]]], replace: Boolean) extends ParamsMapper
+  case class BaseParamsMapper(map: Map[String, Map[String, IndexedGenerator[Seq[String]]]], replace: Boolean) extends ParamsMapper
 
-  case class BaseHeadersMapper(map: Map[String, IndexedGenerator[Map[String, String]]], replace: Boolean) extends HeadersMapper
+  case class BaseHeadersMapper(map: Map[String, Map[String, IndexedGenerator[String]]], replace: Boolean) extends HeadersMapper
 
   case class BaseBodyMapper(map: Map[String, IndexedGenerator[String]], contentType: ContentType = ContentTypes.`application/json`) extends BodyMapper
 

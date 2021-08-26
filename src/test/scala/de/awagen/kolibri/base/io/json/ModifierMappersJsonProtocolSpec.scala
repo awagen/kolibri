@@ -31,18 +31,12 @@ class ModifierMappersJsonProtocolSpec extends UnitTestSpec {
       |"replace": true,
       |"values": {
       | "key1": {
-      |   "type": "BY_MAPSEQ",
-      |   "values": [
-      |     {"test1": ["0.10", "0.11"]},
-      |     {"test2": ["0.21", "0.22"]}
-      |   ]
+      |     "test1": [["0.10", "0.11"]],
+      |     "test2": [["0.21", "0.22"]]
       | },
       | "key2": {
-      |   "type": "BY_MAPSEQ",
-      |   "values": [
-      |     {"test1": ["0.4", "0.41"]},
-      |     {"test2": ["0.5", "0.55"]}
-      |   ]
+      |     "test1": [["0.4", "0.41"]],
+      |     "test2": [["0.5", "0.55"]]
       | }
       |}
       |}
@@ -54,18 +48,24 @@ class ModifierMappersJsonProtocolSpec extends UnitTestSpec {
       |"replace": true,
       |"values": {
       | "key1": {
-      |   "type": "BY_VALUES_SEQ",
-      |   "values": [
-      |     {"key1": "value1", "key2": "value2"},
-      |     {"key1": "value3", "key2": "value4"}
-      |   ]
+      |     "hname1": {
+      |       "type": "BY_VALUES_SEQ",
+      |       "values": ["hvalue1", "hvalue3"]
+      |     },
+      |     "hname2": {
+      |       "type": "BY_VALUES_SEQ",
+      |       "values": ["hvalue2", "hvalue4"]
+      |      }
       | },
       | "key2": {
-      |   "type": "BY_VALUES_SEQ",
-      |   "values": [
-      |     {"key1": "value8", "key2": "value9"},
-      |     {"key1": "value10", "key2": "value11"}
-      |   ]
+    |     "hname1": {
+    |       "type": "BY_VALUES_SEQ",
+    |       "values": ["hvalue8", "hvalue10"]
+    |      },
+    |     "hname2": {
+    |       "type": "BY_VALUES_SEQ",
+    |       "values": ["hvalue9", "hvalue11"]
+    |     }
       | }
       |}
       |}
@@ -90,10 +90,10 @@ class ModifierMappersJsonProtocolSpec extends UnitTestSpec {
       // then
       mapper.replace mustBe true
       mapper.map.keys.toSeq mustBe Seq("key1", "key2")
-      val value1: Seq[Map[String, Seq[String]]] = mapper.map("key1").iterator.toSeq
-      val value2: Seq[Map[String, Seq[String]]] = mapper.map("key2").iterator.toSeq
-      value1 mustBe Seq(Map("test1" -> Seq("0.10", "0.11")), Map("test2" -> Seq("0.21", "0.22")))
-      value2 mustBe Seq(Map("test1" -> Seq("0.4", "0.41")), Map("test2" -> Seq("0.5", "0.55")))
+      val value1: Map[String, Seq[Seq[String]]] = mapper.getValuesForKey("key1").get.view.mapValues(x => x.iterator.toSeq).toMap
+      val value2: Map[String, Seq[Seq[String]]] = mapper.getValuesForKey("key2").get.view.mapValues(x => x.iterator.toSeq).toMap
+      value1 mustBe Map("test1" -> Seq(Seq("0.10", "0.11")), "test2" -> Seq(Seq("0.21", "0.22")))
+      value2 mustBe Map("test1" -> Seq(Seq("0.4", "0.41")), "test2" -> Seq(Seq("0.5", "0.55")))
     }
 
     "correctly parse HeadersMapper" in {
@@ -102,10 +102,10 @@ class ModifierMappersJsonProtocolSpec extends UnitTestSpec {
       // then
       mapper.replace mustBe true
       mapper.map.keys.toSeq mustBe Seq("key1", "key2")
-      val value1: Seq[Map[String, String]] = mapper.map("key1").iterator.toSeq
-      val value2: Seq[Map[String, String]] = mapper.map("key2").iterator.toSeq
-      value1 mustBe Seq(Map("key1" -> "value1", "key2" -> "value2"), Map("key1" -> "value3", "key2" -> "value4"))
-      value2 mustBe Seq(Map("key1" -> "value8", "key2" -> "value9"), Map("key1" -> "value10", "key2" -> "value11"))
+      val value1: Map[String, Seq[String]] = mapper.getValuesForKey("key1").get.view.mapValues(x => x.iterator.toSeq).toMap
+      val value2: Map[String, Seq[String]] = mapper.getValuesForKey("key2").get.view.mapValues(x => x.iterator.toSeq).toMap
+      value1 mustBe Map("hname1" -> Seq("hvalue1", "hvalue3"), "hname2" -> Seq("hvalue2", "hvalue4"))
+      value2 mustBe Map("hname1" -> Seq("hvalue8", "hvalue10"), "hname2" -> Seq("hvalue9", "hvalue11"))
     }
 
     "correctly parse BodyMapper" in {

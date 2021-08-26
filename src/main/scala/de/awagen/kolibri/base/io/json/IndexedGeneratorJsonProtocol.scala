@@ -61,7 +61,7 @@ object IndexedGeneratorJsonProtocol extends DefaultJsonProtocol {
     override def write(obj: IndexedGenerator[Map[String, String]]): JsValue = """{}""".toJson
   }
 
-  implicit object SeqIndexedGeneratorFormat extends JsonFormat[IndexedGenerator[String]] {
+  implicit object StringIndexedGeneratorFormat extends JsonFormat[IndexedGenerator[String]] {
     override def read(json: JsValue): IndexedGenerator[String] = json match {
       case spray.json.JsObject(fields) => fields("type").convertTo[String] match {
         case "BY_VALUES_SEQ" =>
@@ -73,6 +73,20 @@ object IndexedGeneratorJsonProtocol extends DefaultJsonProtocol {
 
     // TODO
     override def write(obj: IndexedGenerator[String]): JsValue = """{}""".toJson
+  }
+
+  implicit object SeqStringIndexedGeneratorFormat extends JsonFormat[IndexedGenerator[Seq[String]]] {
+    override def read(json: JsValue): IndexedGenerator[Seq[String]] = json match {
+      case spray.json.JsObject(fields) => fields("type").convertTo[String] match {
+        case "BY_VALUES_SEQ" =>
+          val params: Seq[Seq[String]] = fields("values").convertTo[Seq[Seq[String]]]
+          ByFunctionNrLimitedIndexedGenerator.createFromSeq(params)
+      }
+      case e => throw DeserializationException(s"Expected a value from IndexedGenerator[String]  but got value $e")
+    }
+
+    // TODO
+    override def write(obj: IndexedGenerator[Seq[String]]): JsValue = """{}""".toJson
   }
 
 }

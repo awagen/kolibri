@@ -22,8 +22,8 @@ import akka.util.Timeout
 import de.awagen.kolibri.base.actors.clusterinfo.ClusterMetricsListenerActor
 import de.awagen.kolibri.base.actors.clusterinfo.ClusterMetricsListenerActor.{MetricsProvided, ProvideMetrics}
 import de.awagen.kolibri.base.actors.resources.BatchFreeSlotResourceCheckingActor.{AddToRunningBaselineCount, CheckAndUpdateResources}
-import de.awagen.kolibri.base.config.AppConfig.config
-import de.awagen.kolibri.base.config.AppConfig.config.kolibriDispatcherName
+import de.awagen.kolibri.base.config.AppProperties.config
+import de.awagen.kolibri.base.config.AppProperties.config.kolibriDispatcherName
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Success

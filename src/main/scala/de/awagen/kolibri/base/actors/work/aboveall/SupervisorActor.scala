@@ -25,8 +25,8 @@ import de.awagen.kolibri.base.actors.work.manager.JobManagerActor
 import de.awagen.kolibri.base.actors.work.manager.JobManagerActor._
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{ProcessingMessage, ResultSummary}
 import de.awagen.kolibri.base.actors.work.worker.TaskExecutionWorkerActor
-import de.awagen.kolibri.base.config.AppConfig._
-import de.awagen.kolibri.base.config.AppConfig.config.{kolibriDispatcherName, maxNrBatchRetries}
+import de.awagen.kolibri.base.config.AppProperties._
+import de.awagen.kolibri.base.config.AppProperties.config.{kolibriDispatcherName, maxNrBatchRetries}
 import de.awagen.kolibri.base.domain.jobdefinitions.Batch
 import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions.MapWithCount
 import de.awagen.kolibri.base.io.writer.Writers.Writer

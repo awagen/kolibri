@@ -17,9 +17,8 @@
 
 package de.awagen.kolibri.base.io.json
 
-import com.softwaremill.macwire.wire
+import de.awagen.kolibri.base.config.AppConfig
 import de.awagen.kolibri.base.config.di.modules.Modules
-import de.awagen.kolibri.base.config.di.modules.persistence.PersistenceModule
 import de.awagen.kolibri.base.processing.execution.wrapup.JobWrapUpFunctions.{AggregateAllFromDirectory, DoNothing, JobWrapUpFunction}
 import spray.json.{DefaultJsonProtocol, JsValue, JsonFormat, enrichAny}
 
@@ -34,8 +33,7 @@ object JobWrapUpFunctionJsonProtocol extends DefaultJsonProtocol {
           val regex: Regex = fields("regex").convertTo[String].r
           val outputFilename: String = fields("outputFilename").convertTo[String]
           val directorySubDir: String = fields("subDir").convertTo[String]
-          val persistenceModule: PersistenceModule = wire[PersistenceModule]
-          val persistenceDIModule: Modules.PersistenceDIModule = persistenceModule.persistenceDIModule
+          val persistenceDIModule: Modules.PersistenceDIModule = AppConfig.persistenceModule.persistenceDIModule
           AggregateAllFromDirectory(
             persistenceDIModule,
             directorySubDir,

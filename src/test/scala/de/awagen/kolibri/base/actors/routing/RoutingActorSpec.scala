@@ -27,7 +27,7 @@ import de.awagen.kolibri.base.actors.KolibriTestKit
 import de.awagen.kolibri.base.actors.testactors.TestTransformActor
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.Corn
 import de.awagen.kolibri.base.cluster.ClusterSingletonUtils
-import de.awagen.kolibri.base.config.AppConfig.config
+import de.awagen.kolibri.base.config.AppProperties.config
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.must.Matchers
 

@@ -35,10 +35,10 @@ class RequestPermutationsSpec extends UnitTestSpec {
       // given, when
       val mappingModifier = MappingModifier(
         keyGen = ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq("key1", "key2")),
-        paramsMapper = BaseParamsMapper(Map("key1" -> ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq(Map("p1" -> Seq("v1")))),
-          "key2" -> ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq(Map("pp1" -> Seq("vv1"))))), replace = false),
-        headersMapper = BaseHeadersMapper(Map("key1" -> ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq(Map("p1" -> "v1"))),
-          "key2" -> ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq(Map("pp1" -> "vv1")))), replace = false),
+        paramsMapper = BaseParamsMapper(Map("key1" -> Map("p1" -> ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq(Seq("v1")))),
+          "key2" -> Map("pp1" -> ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq(Seq("vv1"))))), replace = false),
+        headersMapper = BaseHeadersMapper(Map("key1" -> Map("p1" -> ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq("v1"))),
+          "key2" -> Map("pp1" -> ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq("vv1")))), replace = false),
         bodyMapper = BaseBodyMapper(Map("key1" -> ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq("""{"a": "A"}""")),
           "key2" -> ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq("""{"b": "B"}"""))))
       )
