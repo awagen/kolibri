@@ -89,7 +89,7 @@ class ModifierMappersJsonProtocolSpec extends UnitTestSpec {
       val mapper = paramsMapperJson.convertTo[ParamsMapper]
       // then
       mapper.replace mustBe true
-      mapper.map.keys.toSeq mustBe Seq("key1", "key2")
+      mapper.keys.toSeq mustBe Seq("key1", "key2")
       val value1: Map[String, Seq[Seq[String]]] = mapper.getValuesForKey("key1").get.view.mapValues(x => x.iterator.toSeq).toMap
       val value2: Map[String, Seq[Seq[String]]] = mapper.getValuesForKey("key2").get.view.mapValues(x => x.iterator.toSeq).toMap
       value1 mustBe Map("test1" -> Seq(Seq("0.10", "0.11")), "test2" -> Seq(Seq("0.21", "0.22")))
@@ -101,7 +101,7 @@ class ModifierMappersJsonProtocolSpec extends UnitTestSpec {
       val mapper = headersMapperJson.convertTo[HeadersMapper]
       // then
       mapper.replace mustBe true
-      mapper.map.keys.toSeq mustBe Seq("key1", "key2")
+      mapper.keys.toSeq mustBe Seq("key1", "key2")
       val value1: Map[String, Seq[String]] = mapper.getValuesForKey("key1").get.view.mapValues(x => x.iterator.toSeq).toMap
       val value2: Map[String, Seq[String]] = mapper.getValuesForKey("key2").get.view.mapValues(x => x.iterator.toSeq).toMap
       value1 mustBe Map("hname1" -> Seq("hvalue1", "hvalue3"), "hname2" -> Seq("hvalue2", "hvalue4"))
@@ -112,9 +112,9 @@ class ModifierMappersJsonProtocolSpec extends UnitTestSpec {
       // given, when
       val mapper = bodyMapperJson.convertTo[BodyMapper]
       // then
-      mapper.map.keys.size mustBe 2
-      val value1: Seq[String] = mapper.map("key1").iterator.toSeq
-      val value2: Seq[String] = mapper.map("key2").iterator.toSeq
+      mapper.keys.size mustBe 2
+      val value1: Seq[String] = mapper.getValuesForKey("key1").get.iterator.toSeq
+      val value2: Seq[String] = mapper.getValuesForKey("key2").get.iterator.toSeq
       value1 mustBe Seq("val1", "val2")
       value2 mustBe Seq("val3", "val4")
     }

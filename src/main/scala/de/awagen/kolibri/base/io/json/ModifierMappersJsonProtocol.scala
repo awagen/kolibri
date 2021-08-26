@@ -65,4 +65,22 @@ object ModifierMappersJsonProtocol extends DefaultJsonProtocol {
     override def write(obj: BodyMapper): JsValue = """{}""".toJson
   }
 
+  implicit object MappedModifierMapperJsonProtocol extends JsonFormat[MappedModifierMapper[_]] {
+    override def write(obj: MappedModifierMapper[_]): JsValue = """{}""".toJson
+
+    override def read(json: JsValue): MappedModifierMapper[_] = json match {
+      case spray.json.JsObject(fields) =>
+        val mapper: ModifierMapper[_] = fields("type").convertTo[String] match {
+          case "PARAMS_MAPPER" => fields("mapper").convertTo[ParamsMapper]
+          case "HEADER_MAPPER" => fields("mapper").convertTo[HeadersMapper]
+          case "BODY_MAPPER" => fields("mapper").convertTo[BodyMapper]
+          case e => throw DeserializationException(s"Expected a value of valid mapper type, but got value $e")
+        }
+        val keyMapping = fields("keyMapping").convertTo[Map[String, String]]
+        MappedModifierMapper(keyMapping, mapper)
+      case e => throw DeserializationException(s"Expected a value of type MappedModifierMapper[_] but got value $e")
+
+    }
+  }
+
 }

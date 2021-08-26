@@ -72,7 +72,7 @@ class ModifierMappersSpec extends UnitTestSpec {
   def emptyRequestTemplateBuilder: RequestTemplateBuilder = new RequestTemplateBuilder()
 
   def applyModifiersOnEmptyTemplateBuilderAndReturn(modifierMapper: ModifierMapper[_]): Seq[RequestTemplate] = {
-    val keys = modifierMapper.map.keys
+    val keys = modifierMapper.keys
     keys.map(key => {
       var templateBuilder = emptyRequestTemplateBuilder
       modifierMapper.getModifiersForKey(key).get.iterator.foreach(mod => {

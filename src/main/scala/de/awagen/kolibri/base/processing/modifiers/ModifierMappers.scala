@@ -27,11 +27,11 @@ import de.awagen.kolibri.datatypes.collections.generators.{IndexedGenerator, Per
 
 object ModifierMappers {
 
-  trait ModifierMapper[T] {
+  trait ModifierMapper[+T] {
 
-    val map: Map[String, T]
+    def keys: Set[String]
 
-    def getValuesForKey(key: String): Option[T] = map.get(key)
+    def getValuesForKey(key: String): Option[T]
 
     def getModifiersForKey(key: String): Option[IndexedGenerator[Modifier[RequestTemplateBuilder]]]
 
@@ -96,10 +96,39 @@ object ModifierMappers {
     }
   }
 
-  case class BaseParamsMapper(map: Map[String, Map[String, IndexedGenerator[Seq[String]]]], replace: Boolean) extends ParamsMapper
+  /**
+    * Given a key mapping, map the requested key to retrieve by that key the data from the actualMapper
+    * @param keyMapping - the mapping of keys to the values to be used to retrieve data from th actualMapper
+    * @param actualMapper - the mapper delivering data for the mapped key
+    * @tparam T - the type of value delivered by actualMapper for the mapped key
+    */
+  case class MappedModifierMapper[+T](keyMapping: Map[String, String],  actualMapper: ModifierMapper[T]) extends ModifierMapper[T] {
 
-  case class BaseHeadersMapper(map: Map[String, Map[String, IndexedGenerator[String]]], replace: Boolean) extends HeadersMapper
+    override def getModifiersForKey(key: String): Option[IndexedGenerator[Modifier[RequestTemplateBuilder]]] = {
+      keyMapping.get(key).flatMap(x => actualMapper.getModifiersForKey(x))
+    }
 
-  case class BaseBodyMapper(map: Map[String, IndexedGenerator[String]], contentType: ContentType = ContentTypes.`application/json`) extends BodyMapper
+    override def getValuesForKey(key: String): Option[T] = keyMapping.get(key).flatMap(key => actualMapper.getValuesForKey(key))
+
+    override def keys: Set[String] = keyMapping.keySet
+  }
+
+  case class BaseParamsMapper(map: Map[String, Map[String, IndexedGenerator[Seq[String]]]], replace: Boolean) extends ParamsMapper {
+    override def getValuesForKey(key: String): Option[Map[String, IndexedGenerator[Seq[String]]]] = map.get(key)
+
+    override def keys: Set[String] = map.keySet
+  }
+
+  case class BaseHeadersMapper(map: Map[String, Map[String, IndexedGenerator[String]]], replace: Boolean) extends HeadersMapper {
+    override def getValuesForKey(key: String): Option[Map[String, IndexedGenerator[String]]] = map.get(key)
+
+    override def keys: Set[String] = map.keySet
+  }
+
+  case class BaseBodyMapper(map: Map[String, IndexedGenerator[String]], contentType: ContentType = ContentTypes.`application/json`) extends BodyMapper {
+    override def getValuesForKey(key: String): Option[IndexedGenerator[String]] = map.get(key)
+
+    override def keys: Set[String] = map.keySet
+  }
 
 }
