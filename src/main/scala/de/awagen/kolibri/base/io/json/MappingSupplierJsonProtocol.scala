@@ -63,7 +63,7 @@ object MappingSupplierJsonProtocol extends DefaultJsonProtocol {
     fields(VALUE_FIELD).convertTo[Map[String, Map[String, IndexedGenerator[T]]]]
   }
 
-  def extractParamMapsFromDirs[T](fields: Map[String, JsValue], lineToValueFunc: String => T): Map[String, Map[String, IndexedGenerator[T]]] = {
+  def extractParamMapsFromDirs[T](fields: Map[String, JsValue], lineToValueFunc: String => T, normFunc: T => T): Map[String, Map[String, IndexedGenerator[T]]] = {
     val paramNamesToDirMap = fields("paramNamesToDirMap").convertTo[Map[String, String]]
     val filesSuffix = fields("filesSuffix").convertTo[String]
     val directoryReader = AppConfig.persistenceModule.persistenceDIModule.directoryReader(x => x.endsWith(filesSuffix))
@@ -79,7 +79,8 @@ object MappingSupplierJsonProtocol extends DefaultJsonProtocol {
           fileReader.read(file)
             .map(x => x.trim)
             .filter(x => x.nonEmpty)
-            .map(x => lineToValueFunc.apply(x)))
+            .map(x => lineToValueFunc.apply(x))
+            .map(x => normFunc.apply(x)))
         if (!keyToParamMap.contains(key)) keyToParamMap(key) = mutable.Map.empty
         keyToParamMap(key)(paramName) = values
       })
@@ -89,7 +90,7 @@ object MappingSupplierJsonProtocol extends DefaultJsonProtocol {
 
   def extractParamMapsFromDirs(fields: Map[String, JsValue]): Map[String, Map[String, IndexedGenerator[Seq[String]]]] = {
     val rowSeparator = fields("rowSeparator").convertTo[String]
-    extractParamMapsFromDirs[Seq[String]](fields, x => x.split(rowSeparator))
+    extractParamMapsFromDirs[Seq[String]](fields, x => x.split(rowSeparator), x => x.map(x => x.trim))
   }
 
   implicit object StringToStringJsonProtocol extends JsonFormat[() => Map[String, String]] {
@@ -147,7 +148,7 @@ object MappingSupplierJsonProtocol extends DefaultJsonProtocol {
         // by removing suffix from filename, and for each top-level key reads the respective file
         // picking one value per line
         case FROM_DIRECTORY_FILES =>
-          () => extractParamMapsFromDirs[String](fields, identity)
+          () => extractParamMapsFromDirs[String](fields, identity, x => x.trim)
       }
     }
 

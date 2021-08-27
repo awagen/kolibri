@@ -31,7 +31,7 @@ case class LocalResourceDirectoryReader(baseDir: String,
     * @return Seq of full paths of files within the sub-directory within the baseDir matching the given filter
     */
   override def listFiles(subDir: String, filenameFilter: String => Boolean = _ => true): Seq[String] = {
-    val fullDir = s"$normedBaseDir/$subDir".stripSuffix("/")
+    val fullDir = s"$normedBaseDir/$subDir".stripSuffix("/").stripPrefix("/")
     Source.fromInputStream(getClass.getClassLoader.getResourceAsStream(fullDir), encoding)
       .getLines()
       .filter(baseFilenameFilter.apply)

@@ -32,6 +32,8 @@ object Modules {
 
   trait LOCAL_MODULE extends ENV_MODULE
 
+  trait RESOURCE_MODULE extends ENV_MODULE
+
   trait PersistenceDIModule {
 
     def fileWriter: FileWriter[String, _]
