@@ -30,13 +30,16 @@ class ModifierMappersJsonProtocolSpec extends UnitTestSpec {
       |{
       |"replace": true,
       |"values": {
-      | "key1": {
-      |     "test1": [["0.10", "0.11"]],
-      |     "test2": [["0.21", "0.22"]]
-      | },
-      | "key2": {
-      |     "test1": [["0.4", "0.41"]],
-      |     "test2": [["0.5", "0.55"]]
+      | "type": "FROM_JSON_MAP",
+      | "value": {
+      |   "key1": {
+      |     "test1": {"type": "BY_VALUES_SEQ", "values": [["0.10", "0.11"]]},
+      |     "test2": {"type": "BY_VALUES_SEQ", "values": [["0.21", "0.22"]]}
+      |   },
+      |   "key2": {
+      |     "test1": {"type": "BY_VALUES_SEQ", "values": [["0.4", "0.41"]]},
+      |     "test2": {"type": "BY_VALUES_SEQ", "values": [["0.5", "0.55"]]}
+      |   }
       | }
       |}
       |}
@@ -47,7 +50,9 @@ class ModifierMappersJsonProtocolSpec extends UnitTestSpec {
       |{
       |"replace": true,
       |"values": {
-      | "key1": {
+      | "type": "FROM_JSON_MAP",
+      | "value": {
+      |   "key1": {
       |     "hname1": {
       |       "type": "BY_VALUES_SEQ",
       |       "values": ["hvalue1", "hvalue3"]
@@ -55,17 +60,18 @@ class ModifierMappersJsonProtocolSpec extends UnitTestSpec {
       |     "hname2": {
       |       "type": "BY_VALUES_SEQ",
       |       "values": ["hvalue2", "hvalue4"]
-      |      }
-      | },
-      | "key2": {
-    |     "hname1": {
-    |       "type": "BY_VALUES_SEQ",
-    |       "values": ["hvalue8", "hvalue10"]
-    |      },
-    |     "hname2": {
-    |       "type": "BY_VALUES_SEQ",
-    |       "values": ["hvalue9", "hvalue11"]
-    |     }
+      |     }
+      |   },
+      |   "key2": {
+      |     "hname1": {
+      |       "type": "BY_VALUES_SEQ",
+      |       "values": ["hvalue8", "hvalue10"]
+      |     },
+      |     "hname2": {
+      |       "type": "BY_VALUES_SEQ",
+      |       "values": ["hvalue9", "hvalue11"]
+      |     }
+      |   }
       | }
       |}
       |}
@@ -87,11 +93,11 @@ class ModifierMappersJsonProtocolSpec extends UnitTestSpec {
     "correctly parse ParamsMapper" in {
       // given, when
       val mapper = paramsMapperJson.convertTo[ParamsMapper]
+      val value1: Map[String, Seq[Seq[String]]] = mapper.getValuesForKey("key1").get.view.mapValues(x => x.iterator.toSeq).toMap
+      val value2: Map[String, Seq[Seq[String]]] = mapper.getValuesForKey("key2").get.view.mapValues(x => x.iterator.toSeq).toMap
       // then
       mapper.replace mustBe true
       mapper.keys.toSeq mustBe Seq("key1", "key2")
-      val value1: Map[String, Seq[Seq[String]]] = mapper.getValuesForKey("key1").get.view.mapValues(x => x.iterator.toSeq).toMap
-      val value2: Map[String, Seq[Seq[String]]] = mapper.getValuesForKey("key2").get.view.mapValues(x => x.iterator.toSeq).toMap
       value1 mustBe Map("test1" -> Seq(Seq("0.10", "0.11")), "test2" -> Seq(Seq("0.21", "0.22")))
       value2 mustBe Map("test1" -> Seq(Seq("0.4", "0.41")), "test2" -> Seq(Seq("0.5", "0.55")))
     }
@@ -118,7 +124,6 @@ class ModifierMappersJsonProtocolSpec extends UnitTestSpec {
       value1 mustBe Seq("val1", "val2")
       value2 mustBe Seq("val3", "val4")
     }
-
   }
 
 }
