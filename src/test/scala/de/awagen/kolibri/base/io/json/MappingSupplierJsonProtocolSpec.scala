@@ -71,6 +71,29 @@ class MappingSupplierJsonProtocolSpec extends UnitTestSpec {
       )
     }
 
+    "provide supplier of Map[String, Map[String, IndexedGenerator[Seq[String]]]] from directory file key identity" in {
+      // given
+      val json =
+        """
+          |{
+          | "type": "FROM_DIRECTORY_IDENTITY",
+          | "directory": "data/fileMappingValueSeqTest",
+          | "filesSuffix": ".txt",
+          | "paramName": "testParam"
+          |}
+          |""".stripMargin.parseJson
+      // when
+      val supplier = json.convertTo[() => Map[String, Map[String, IndexedGenerator[Seq[String]]]]]
+      val values: Map[String, Map[String, Seq[Seq[String]]]] = supplier.apply().view.mapValues(x => x.view.mapValues(v => v.iterator.toSeq).toMap).toMap
+      // then
+      values mustBe Map(
+        "key1" -> Map("testParam" -> Seq(Seq("key1"))),
+        "key2" -> Map("testParam" -> Seq(Seq("key2"))),
+        "key3" -> Map("testParam" -> Seq(Seq("key3"))),
+        "key4" -> Map("testParam" -> Seq(Seq("key4")))
+      )
+    }
+
     "provide supplier of Map[String, Map[String, IndexedGenerator[Seq[String]]]] from json" in {
       // given
       val json =
@@ -138,6 +161,28 @@ class MappingSupplierJsonProtocolSpec extends UnitTestSpec {
   }
 
 
+  "provide supplier of Map[String, Map[String, IndexedGenerator[String]]] from directory file key identity" in {
+    // given
+    val json =
+      """
+        |{
+        | "type": "FROM_DIRECTORY_IDENTITY",
+        | "directory": "data/fileMappingValueSeqTest",
+        | "filesSuffix": ".txt",
+        | "paramName": "testParam"
+        |}
+        |""".stripMargin.parseJson
+    // when
+    val supplier = json.convertTo[() => Map[String, Map[String, IndexedGenerator[String]]]]
+    val values: Map[String, Map[String, Seq[String]]] = supplier.apply().view.mapValues(x => x.view.mapValues(v => v.iterator.toSeq).toMap).toMap
+    // then
+    values mustBe Map(
+      "key1" -> Map("testParam" -> Seq("key1")),
+      "key2" -> Map("testParam" -> Seq("key2")),
+      "key3" -> Map("testParam" -> Seq("key3")),
+      "key4" -> Map("testParam" -> Seq("key4"))
+    )
+  }
 
   "provide supplier of Map[String, Map[String, IndexedGenerator[String]]] from json" in {
     // given
