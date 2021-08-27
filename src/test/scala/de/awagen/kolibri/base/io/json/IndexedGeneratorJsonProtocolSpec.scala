@@ -65,6 +65,14 @@ class IndexedGeneratorJsonProtocolSpec extends UnitTestSpec {
       |}
       |""".stripMargin.parseJson
 
+  val fromDirectoryFilenames: JsValue =
+    """{
+      |"type": "BY_FILENAME_KEYS",
+      |"directory": "data/fileMappingValueSeqTest",
+      |"filesSuffix": ".txt"
+      |}
+      |""".stripMargin.parseJson
+
   "IndexedGeneratorJsonProtocol" must {
 
     "correctly parse IndexedGenerator[Map[String, Seq[String]]] from OrderedMultiValues" in {
@@ -95,6 +103,12 @@ class IndexedGeneratorJsonProtocolSpec extends UnitTestSpec {
       val gen = singleValueSeqFromStringSeq.convertTo[IndexedGenerator[String]]
       val valueSeq = gen.iterator.toSeq
       valueSeq mustBe Seq("value1", "value2", "value3")
+    }
+
+    "correctly parse IndexedGenerator[String] from filenames without suffix" in {
+      val gen = fromDirectoryFilenames.convertTo[IndexedGenerator[String]]
+      val valuesSeq = gen.iterator.toSeq
+      valuesSeq mustBe Seq("key1", "key2", "key3", "key4")
     }
 
   }

@@ -17,6 +17,7 @@
 
 package de.awagen.kolibri.base.io.json
 
+import de.awagen.kolibri.base.config.AppConfig
 import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator}
 import de.awagen.kolibri.datatypes.multivalues.OrderedMultiValues
 import spray.json.{DefaultJsonProtocol, DeserializationException, JsValue, JsonFormat, enrichAny}
@@ -65,6 +66,13 @@ object IndexedGeneratorJsonProtocol extends DefaultJsonProtocol {
         case "BY_VALUES_SEQ" =>
           val params: Seq[String] = fields("values").convertTo[Seq[String]]
           ByFunctionNrLimitedIndexedGenerator.createFromSeq(params)
+        case "BY_FILENAME_KEYS" =>
+          val directory: String = fields("directory").convertTo[String]
+          val filesSuffix: String = fields("filesSuffix").convertTo[String]
+          val directoryReader = AppConfig.persistenceModule.persistenceDIModule.directoryReader(x => x.endsWith(filesSuffix))
+          val keys: Seq[String] = directoryReader.listFiles(directory, _ => true)
+            .map(file => file.split("/").last.stripSuffix(filesSuffix))
+          ByFunctionNrLimitedIndexedGenerator.createFromSeq(keys)
       }
       case e => throw DeserializationException(s"Expected a value from IndexedGenerator[String]  but got value $e")
     }
