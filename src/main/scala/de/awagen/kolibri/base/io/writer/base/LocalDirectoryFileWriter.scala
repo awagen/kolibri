@@ -33,8 +33,10 @@ case class LocalDirectoryFileWriter(directory: String) extends FileWriter[String
   override def write(data: String, targetIdentifier: String): Either[Exception, Unit] = {
     logger.info(s"writing data for identifier: $targetIdentifier")
     val fullPath = s"$normedDirectory/$targetIdentifier"
+    val fileName = fullPath.split("/").last
+    val fullPathWithoutFile = fullPath.stripSuffix(fileName).stripSuffix("/")
     try {
-      Files.createDirectories(Paths.get(normedDirectory))
+      Files.createDirectories(Paths.get(fullPathWithoutFile))
       val file = new File(fullPath)
       val bufferedWriter = new BufferedWriter(new java.io.FileWriter(file))
       bufferedWriter.write(data)

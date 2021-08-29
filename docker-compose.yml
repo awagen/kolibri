@@ -5,7 +5,7 @@ services:
   prometheus:
     image: prom/prometheus:v2.28.1
     ports:
-      - 9000:9090
+      - "9000:9090"
     user: "1000:1000"
     volumes:
       - ./prometheus:/etc/prometheus
@@ -18,7 +18,7 @@ services:
     volumes:
       - ./grafana:/var/lib/grafana
     ports:
-      - 3000:3000
+      - "3000:3000"
     # user setting needed to be set to owner/group of the volume (above grafana folder on host machine)
     user: "1000:1000"
 
@@ -28,6 +28,7 @@ services:
       - "8000:8000"
       - "5266:5266"
       - "9095:9095"
+    user: "1000:1000"
     environment:
       JVM_OPTS: >
         -XX:+UseG1GC
@@ -73,21 +74,21 @@ services:
       USE_AGGREGATOR_BACKPRESSURE: 'true'
       AGGREGATOR_RECEIVE_PARALLELISM: 32
       MAX_NR_BATCH_RETRIES: 2
-      PERSISTENCE_MODE: 'AWS'
+      PERSISTENCE_MODE: 'LOCAL'
       AWS_PROFILE: 'developer'
       AWS_S3_BUCKET: 'kolibri-dev'
-      AWS_S3_PATH: 'metric_results'
+      AWS_S3_PATH: 'metric_test'
       AWS_S3_REGION: 'EU_CENTRAL_1'
       LOCAL_STORAGE_DIR: '/app/data'
     volumes:
       - ./kolibri-test:/app/data
-#    mem_limit: 4200m
 
   kolibri2:
     image: kolibri-base:0.1.0-alpha5
     ports:
       - "5267:5267"
       - "9096:9096"
+    user: "1000:1000"
     environment:
       JVM_OPTS: >
         -XX:+UseG1GC
@@ -131,12 +132,41 @@ services:
       USE_AGGREGATOR_BACKPRESSURE: 'true'
       AGGREGATOR_RECEIVE_PARALLELISM: 32
       MAX_NR_BATCH_RETRIES: 2
-      PERSISTENCE_MODE: 'AWS'
+      PERSISTENCE_MODE: 'LOCAL'
       AWS_PROFILE: 'developer'
       AWS_S3_BUCKET: 'kolibri-dev'
-      AWS_S3_PATH: 'metric_results'
+      AWS_S3_PATH: 'metric_test'
       AWS_S3_REGION: 'EU_CENTRAL_1'
       LOCAL_STORAGE_DIR: '/app/data'
     volumes:
       - ./kolibri-test:/app/data
-#    mem_limit: 4200m
+
+  search-service:
+    image: response-juggler:0.1.0
+    user: "1000:1000"
+    environment:
+      PORT: 80
+      RESPONSE_SEARCH_MIN_PRODUCTS: 5
+      RESPONSE_SEARCH_MAX_PRODUCTS: 20
+      RESPONSE_SEARCH_VAR_DOCS_KEY: "#DOCS"
+      RESPONSE_SEARCH_VAR_PID_KEY: "#PID"
+      RESPONSE_SEARCH_VAR_PID_SAMPLE: "p0,p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12,p13,p14,p15,p16,p17,p18,p19"
+      RESPONSE_SEARCH_TEMPLATE: "searchresponse.json"
+      RESPONSE_SEARCH_DOC_PARTIAL: "doc.json"
+    ports:
+      - "80:80"
+
+  search-service1:
+    image: response-juggler:0.1.0
+    user: "1000:1000"
+    environment:
+      PORT: 81
+      RESPONSE_SEARCH_MIN_PRODUCTS: 5
+      RESPONSE_SEARCH_MAX_PRODUCTS: 20
+      RESPONSE_SEARCH_VAR_DOCS_KEY: "#DOCS"
+      RESPONSE_SEARCH_VAR_PID_KEY: "#PID"
+      RESPONSE_SEARCH_VAR_PID_SAMPLE: "p0,p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12,p13,p14,p15,p16,p17,p18,p19"
+      RESPONSE_SEARCH_TEMPLATE: "searchresponse.json"
+      RESPONSE_SEARCH_DOC_PARTIAL: "doc.json"
+    ports:
+      - "81:81"
