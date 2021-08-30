@@ -114,7 +114,7 @@
     "productIdsKey": "productIds",
     "judgementProvider": {
       "type": "FILE_BASED",
-      "filename": "data/test_judgements.txt"
+      "filename": "/app/test-files/test-judgements/test_judgements.txt"
     },
     "metricsCalculation": {
       "metrics": [

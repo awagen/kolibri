@@ -6,6 +6,7 @@ ENV JVM_OPTS "-XX:+UseG1GC -Xms512m -Xmx1024m"
 
 RUN mkdir -p /app/logs
 RUN mkdir -p /app/data
+RUN mkdir -p /app/test-files
 # we create the home directory for kolibri in case any credentials shall be mounted for local
 # test, which sometimes by default is searched for in home directory subfolders (e.g the case for AWS SDK)
 RUN mkdir -p /home/kolibri

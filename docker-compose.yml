@@ -82,6 +82,7 @@ services:
       LOCAL_STORAGE_DIR: '/app/data'
     volumes:
       - ./kolibri-test:/app/data
+      - ./test-files:/app/test-files
 
   kolibri2:
     image: kolibri-base:0.1.0-beta1
@@ -140,6 +141,7 @@ services:
       LOCAL_STORAGE_DIR: '/app/data'
     volumes:
       - ./kolibri-test:/app/data
+      - ./test-files:/app/test-files
 
   # NOTE: starting response-juggler requires cloning https://github.com/awagen/response-juggler and building
   # the image locally via 'docker build -t response-juggler:0.1.0 .'. It will respond to each request with a random

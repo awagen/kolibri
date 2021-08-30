@@ -45,6 +45,13 @@ Connection refused:
       within the container
 - start local 3-node cluster (one compute and httpserver node, two 'compute'-only nodes, access via localhost:
   8000): ```sudo docker-compose up```
+  - NOTE: starting response-juggler as used in the docker-compose.yaml requires cloning ```https://github.com/awagen/response-juggler``` and building
+  the image locally via ```docker build -t response-juggler:0.1.0 .```. 
+  This service provides a basic response fake to avoid having to have a real search system running, and the parameters defined in the docker-compose
+  file contain the same product_ids that are used within the test-judgements.txt referenced in the example job definition.
+  The response-juggler will respond to each request with a random
+  sampling of the comma-separated PID_SAMPLEs, each result containing between MIN_PRODUCTS and MAX_PRODUCTS.
+  If another response structure needed, this can easily be adjusted within the response-juggler 
 
 ## Example clustered job execution: pi-estimation with dart throws
 
@@ -76,7 +83,7 @@ being added to docker-compose on port 80. Adjust to your individual endpoint(s).
 Further, right now assumes responses corresponding to play json selector 
 ```"response" \ "docs" \\ "product_id"```, meaning structure at least containing the hierarchies: 
 ```{"response": {"docs": [{"product_id": ...}, {"product_id":...}], ...},...}```
-This is changeable in the flow definition and will be added to the available configuration settings shortly.
+This is changeable in the json job definition.
 
 ## Monitoring
 Metrics are collected utilizing the open source lib Kamon and exposed for prometheus to scrape the metrics.
