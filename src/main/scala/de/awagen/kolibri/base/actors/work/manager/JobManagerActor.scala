@@ -38,7 +38,7 @@ import de.awagen.kolibri.base.processing.JobMessagesImplicits._
 import de.awagen.kolibri.base.processing.consume.Consumers.{BaseExecutionConsumer, ExecutionConsumer}
 import de.awagen.kolibri.base.processing.distribution.{DistributionStates, Distributor, RetryingDistributor}
 import de.awagen.kolibri.base.processing.execution.expectation._
-import de.awagen.kolibri.base.processing.execution.wrapup.JobWrapUpFunctions.JobWrapUpFunction
+import de.awagen.kolibri.base.processing.execution.functions.Execution
 import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
 import de.awagen.kolibri.base.traits.Traits.WithBatchNr
 import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator}
@@ -157,7 +157,7 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
   private[this] var batchDistributor: Distributor[BatchType, U] = _
   private[this] var executionConsumer: ExecutionConsumer[U] = _
 
-  var wrapUpFunction: Option[JobWrapUpFunction[Any]] = None
+  var wrapUpFunction: Option[Execution[Any]] = None
 
   val workerServiceRouter: ActorRef = createWorkerRoutingServiceForJob
 

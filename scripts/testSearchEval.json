@@ -141,7 +141,7 @@
   "allowedTimeForJobInSeconds": 720000,
   "expectResultsFromBatchCalculations": false,
   "wrapUpFunction": {
-    "type": "AGGREGATE_ALL",
+    "type": "AGGREGATE_FROM_DIR_BY_REGEX",
     "regex": "[(]q=.+[)]",
     "outputFilename": "(ALL1)",
     "subDir": "testJob"

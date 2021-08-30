@@ -15,45 +15,65 @@
   */
 
 
-package de.awagen.kolibri.base.processing.execution.wrapup
+package de.awagen.kolibri.base.processing.execution.functions
 
 import de.awagen.kolibri.base.config.di.modules.Modules.PersistenceDIModule
 import de.awagen.kolibri.base.io.reader.{DirectoryReader, FileReader}
 import de.awagen.kolibri.base.io.writer.Writers.FileWriter
+import de.awagen.kolibri.base.processing.execution.functions.FileUtils.regexDirectoryReader
 import de.awagen.kolibri.base.processing.failure.TaskFailType
 import de.awagen.kolibri.base.processing.failure.TaskFailType.TaskFailType
-import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.metrics.aggregation.writer.CSVParameterBasedMetricDocumentFormat
 import de.awagen.kolibri.datatypes.stores.MetricDocument
 import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}
-import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.util.matching.Regex
 
-object JobWrapUpFunctions {
+object AggregationFunctions {
 
-  trait JobWrapUpFunction[+T] extends KolibriSerializable {
+  /**
+    * Within the given directorySubDir (the reader within persistenceDIModule already refers to some folder/bucket),
+    * filter files by regex and aggregate those partial csv results, store the result in file named by outputFilename,
+    * in the directorySubDir
+    *
+    * @param persistenceDIModule - module holding the persistence objects
+    * @param directorySubDir     - sub-directory where to filter the files and relative to which to store the outputFilename
+    * @param filterRegex         - the regex to filter the files by
+    * @param outputFilename      - the output filename (might contain additional path prefix relative to directorySubDir)
+    */
+  case class AggregateFromDirectoryByRegex(persistenceDIModule: PersistenceDIModule,
+                                           directorySubDir: String,
+                                           filterRegex: Regex,
+                                           outputFilename: String) extends Execution[Unit] {
 
-    def execute: Either[TaskFailType, T]
+    val directoryReader: DirectoryReader = regexDirectoryReader(filterRegex)
 
+    override def execute: Either[TaskFailType, Unit] = {
+      val filteredFiles = directoryReader.listFiles(directorySubDir, _ => true)
+      val aggregator = AggregateFiles(persistenceDIModule, directorySubDir, filteredFiles, outputFilename)
+      aggregator.execute
+    }
   }
 
-  case class AggregateAllFromDirectory(persistenceDIModule: PersistenceDIModule,
-                                       directorySubDir: String,
-                                       filterRegex: Regex,
-                                       outputFilename: String) extends JobWrapUpFunction[Unit] {
+  /**
+    * Similar to AggregateFromDirectoryByRegex above, but takes specific filenames (full paths) to aggregate instead of regex
+    *
+    * @param persistenceDIModule - module holding the persistence objects
+    * @param directorySubDir     - sub-directory where to filter the files and relative to which to store the outputFilename
+    * @param files               - the regex to filter the files by
+    * @param outputFilename      - the output filename (might contain additional path prefix relative to directorySubDir)
+    */
+  case class AggregateFiles(persistenceDIModule: PersistenceDIModule,
+                            directorySubDir: String,
+                            files: Seq[String],
+                            outputFilename: String) extends Execution[Unit] {
     val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
     val csvFormat: CSVParameterBasedMetricDocumentFormat = CSVParameterBasedMetricDocumentFormat("\t")
 
     val aggregationIdentifier: Tag = StringTag("ALL1")
 
-    val directoryReader: DirectoryReader = persistenceDIModule.directoryReader(
-      new SerializableFunction1[String, Boolean] {
-        override def apply(v1: String): Boolean = filterRegex.matches(v1)
-      }
-    )
     val fileReader: FileReader = persistenceDIModule.fileReader
     val fileWriter: FileWriter[String, _] = persistenceDIModule.fileWriter
 
@@ -61,17 +81,11 @@ object JobWrapUpFunctions {
       try {
         // find all relevant files, parse them into MetricDocuments on ALL-tag,
         // aggregate all
-        val filteredFiles = directoryReader.listFiles(directorySubDir, _ => true)
-        logger.info(s"found files to aggregate: $filteredFiles")
+        logger.info(s"files to aggregate: $files")
         val overallDoc: MetricDocument[Tag] = MetricDocument.empty(aggregationIdentifier)
-        filteredFiles.foreach(file => {
+        files.foreach(file => {
           logger.info(s"adding file: $file")
-          val lines: Seq[String] = fileReader.getSource(file).getLines()
-            .filter(line => !line.startsWith("#") && line.trim.nonEmpty)
-            .toSeq
-          val headerColumns: Seq[String] = csvFormat.readHeader(lines.head)
-          val rows: Seq[String] = lines.slice(1, lines.length)
-          val doc: MetricDocument[Tag] = csvFormat.readDocument(headerColumns, rows, aggregationIdentifier)
+          val doc: MetricDocument[Tag] = FileUtils.fileToMetricDocument(file, fileReader, aggregationIdentifier)
           overallDoc.add(doc, ignoreIdDiff = true)
           logger.info(s"done adding file: $file")
         })
@@ -90,7 +104,7 @@ object JobWrapUpFunctions {
     }
   }
 
-  case class DoNothing() extends JobWrapUpFunction[Unit] {
+  case class DoNothing() extends Execution[Unit] {
     override def execute: Either[TaskFailType, Unit] = Right(())
   }
 
