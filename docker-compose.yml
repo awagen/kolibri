@@ -23,7 +23,7 @@ services:
     user: "1000:1000"
 
   kolibri1:
-    image: kolibri-base:0.1.0-alpha5
+    image: kolibri-base:0.1.0-beta1
     ports:
       - "8000:8000"
       - "5266:5266"
@@ -84,7 +84,7 @@ services:
       - ./kolibri-test:/app/data
 
   kolibri2:
-    image: kolibri-base:0.1.0-alpha5
+    image: kolibri-base:0.1.0-beta1
     ports:
       - "5267:5267"
       - "9096:9096"
@@ -141,6 +141,10 @@ services:
     volumes:
       - ./kolibri-test:/app/data
 
+  # NOTE: starting response-juggler requires cloning https://github.com/awagen/response-juggler and building
+  # the image locally via 'docker build -t response-juggler:0.1.0 .'. It will respond to each request with a random
+  # sampling of the comma-separated PID_SAMPLEs, each result containing between MIN_PRODUCTS and MAX_PRODUCTS.
+  # If another response structure needed, this can easily be adjusted within the response-juggler
   search-service:
     image: response-juggler:0.1.0
     user: "1000:1000"

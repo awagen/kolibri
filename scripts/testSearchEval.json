@@ -93,7 +93,6 @@
   "excludeParamsFromMetricRow": [
     "q"
   ],
-  "judgementFileClasspathURI": "data/test_judgements.txt",
   "taggingConfiguration": {
     "initTagger": {
       "type": "REQUEST_PARAMETER",
@@ -114,6 +113,7 @@
     "requestTemplateKey": "requestTemplate",
     "productIdsKey": "productIds",
     "judgementProvider": {
+      "type": "FILE_BASED",
       "filename": "data/test_judgements.txt"
     },
     "metricsCalculation": {

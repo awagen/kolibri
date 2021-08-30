@@ -16,7 +16,7 @@
 
 package de.awagen.kolibri.base.usecase.searchopt.io.json
 
-import de.awagen.kolibri.base.usecase.searchopt.provider.{ClassPathFileBasedJudgementProviderFactory, JudgementProviderFactory}
+import de.awagen.kolibri.base.usecase.searchopt.provider.{FileBasedJudgementProviderFactory, JudgementProviderFactory}
 import spray.json.{DefaultJsonProtocol, DeserializationException, JsString, JsValue, JsonFormat}
 
 
@@ -24,9 +24,12 @@ object JudgementProviderFactoryJsonProtocol extends DefaultJsonProtocol {
 
   implicit object JudgementProviderFactoryDoubleFormat extends JsonFormat[JudgementProviderFactory[Double]] {
     override def read(json: JsValue): JudgementProviderFactory[Double] = json match {
-      case spray.json.JsObject(fields) if fields.contains("filename") =>
-        ClassPathFileBasedJudgementProviderFactory(fields("filename").convertTo[String])
-      case e => throw DeserializationException(s"Expected a value from Credentials but got value $e")
+      case spray.json.JsObject(fields) if fields.contains("type") => fields("type").convertTo[String] match {
+        case "FILE_BASED" =>
+          FileBasedJudgementProviderFactory(fields("filename").convertTo[String])
+        case e => throw DeserializationException(s"Expected a valid type for JudgementProviderFactory but got value $e")
+      }
+      case e => throw DeserializationException(s"Expected a value from JudgementProviderFactory but got value $e")
     }
 
     override def write(obj: JudgementProviderFactory[Double]): JsValue = JsString(obj.toString)
