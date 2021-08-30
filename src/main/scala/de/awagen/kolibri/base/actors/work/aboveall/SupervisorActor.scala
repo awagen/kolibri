@@ -39,6 +39,7 @@ import de.awagen.kolibri.base.processing.execution.functions.Execution
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnable
 import de.awagen.kolibri.base.processing.execution.task.Task
 import de.awagen.kolibri.base.processing.execution.task.utils.TaskUtils
+import de.awagen.kolibri.base.processing.failure.TaskFailType
 import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
 import de.awagen.kolibri.datatypes.ClassTyped
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
@@ -54,7 +55,7 @@ import de.awagen.kolibri.datatypes.values.AggregateValue
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 
 import scala.collection.mutable
-import scala.concurrent.ExecutionContextExecutor
+import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
 
 
@@ -350,7 +351,11 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
         jobIdToActorRefAndExpectation(jobId) = (ActorSetup(actor, jobSender), expectation)
       }
     case execution: Execution[Any] =>
-      sender() ! execution.execute
+      val replyTo: ActorRef = sender()
+      val responseFuture: Future[Either[TaskFailType.TaskFailType, Any]] = Future {
+        execution.execute
+      }
+      responseFuture.onComplete(x => replyTo ! x)
     case event: FinishedJobEvent =>
       log.info("Experiment with id {} finished processing", event.jobId)
       jobIdToActorRefAndExpectation.get(event.jobId).foreach(x => x._2.accept(event))

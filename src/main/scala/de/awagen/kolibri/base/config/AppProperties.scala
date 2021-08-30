@@ -144,6 +144,9 @@ object AppProperties {
     val internalJobStatusRequestTimeout: FiniteDuration = getFiniteDuration(config = baseConfig,
       key = "kolibri.internal.jobStatusRequestTimeoutInSeconds", SECONDS)
 
+    val analyzeTimeout: FiniteDuration = getFiniteDuration(config = baseConfig,
+      key = "kolibri.internal.analyzeTimeoutInSeconds", SECONDS)
+
     val kolibriDispatcherName = "kolibri-dispatcher"
 
     val useResultElementGrouping: Boolean = baseConfig.getBoolean("kolibri.execution.useResultElementGrouping")

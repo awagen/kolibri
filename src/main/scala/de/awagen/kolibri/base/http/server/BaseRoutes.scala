@@ -29,7 +29,7 @@ import de.awagen.kolibri.base.actors.clusterinfo.ClusterMetricsListenerActor.{Me
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor._
 import de.awagen.kolibri.base.cluster.ClusterStatus
-import de.awagen.kolibri.base.config.AppProperties.config.{internalJobStatusRequestTimeout, kolibriDispatcherName}
+import de.awagen.kolibri.base.config.AppProperties.config.{analyzeTimeout, internalJobStatusRequestTimeout, kolibriDispatcherName}
 import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions
 import de.awagen.kolibri.base.processing.JobMessages.{SearchEvaluation, TestPiCalculation}
 import de.awagen.kolibri.base.processing.execution.functions.Execution
@@ -237,7 +237,7 @@ object BaseRoutes {
   }
 
   def startExecution(implicit system: ActorSystem): Route = {
-    implicit val timeout: Timeout = Timeout(internalJobStatusRequestTimeout)
+    implicit val timeout: Timeout = Timeout(analyzeTimeout)
     implicit val ec: ExecutionContextExecutor = system.dispatchers.lookup(kolibriDispatcherName)
     import de.awagen.kolibri.base.io.json.ExecutionJsonProtocol._
     path("execution") {
