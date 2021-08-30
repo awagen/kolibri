@@ -29,6 +29,7 @@
     }
   ],
   "metricName": "NDCG_10",
+  "queryParamName": "q",
   "n_best": 5,
   "n_worst": 4
 }

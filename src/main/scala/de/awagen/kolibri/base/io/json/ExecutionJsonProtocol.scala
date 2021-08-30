@@ -21,6 +21,7 @@ import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import de.awagen.kolibri.base.config.AppConfig
 import de.awagen.kolibri.base.config.AppConfig.persistenceModule.persistenceDIModule
 import de.awagen.kolibri.base.config.di.modules.Modules
+import de.awagen.kolibri.base.format.RegexUtils
 import de.awagen.kolibri.base.processing.execution.functions.AggregationFunctions.{AggregateFiles, AggregateFromDirectoryByRegex, DoNothing}
 import de.awagen.kolibri.base.processing.execution.functions.AnalyzeFunctions.{GetImprovingAndLoosing, GetImprovingAndLoosingFromDirPerRegex}
 import de.awagen.kolibri.base.processing.execution.functions.Execution
@@ -61,6 +62,7 @@ object ExecutionJsonProtocol extends DefaultJsonProtocol with SprayJsonSupport {
           val currentParams: Map[String, Seq[String]] = fields("currentParams").convertTo[Map[String, Seq[String]]]
           val compareParams: Seq[Map[String, Seq[String]]] = fields("compareParams").convertTo[Seq[Map[String, Seq[String]]]]
           val metricName: String = fields("metricName").convertTo[String]
+          val queryParamName: String = fields("queryParamName").convertTo[String]
           val n_best: Int = fields("n_best").convertTo[Int]
           val n_worst: Int = fields("n_worst").convertTo[Int]
           GetImprovingAndLoosingFromDirPerRegex(
@@ -70,7 +72,8 @@ object ExecutionJsonProtocol extends DefaultJsonProtocol with SprayJsonSupport {
             currentParams,
             compareParams,
             metricName,
-            queryFromFilename = x => x.split("/").last.stripSuffix(")").stripPrefix("(q="),
+            queryFromFilename = x => RegexUtils.findParamValueInString(param = queryParamName,
+              string = x, defaultValue = "MISSING_VALUE"),
             n_best,
             n_worst
           )
@@ -79,6 +82,7 @@ object ExecutionJsonProtocol extends DefaultJsonProtocol with SprayJsonSupport {
           val currentParams: Map[String, Seq[String]] = fields("currentParams").convertTo[Map[String, Seq[String]]]
           val compareParams: Seq[Map[String, Seq[String]]] = fields("compareParams").convertTo[Seq[Map[String, Seq[String]]]]
           val metricName: String = fields("metricName").convertTo[String]
+          val queryParamName: String = fields("queryParamName").convertTo[String]
           val n_best: Int = fields("n_best").convertTo[Int]
           val n_worst: Int = fields("n_worst").convertTo[Int]
           GetImprovingAndLoosing(
@@ -87,7 +91,8 @@ object ExecutionJsonProtocol extends DefaultJsonProtocol with SprayJsonSupport {
             currentParams,
             compareParams,
             metricName,
-            queryFromFilename = x => x.split("/").last.stripSuffix(")").stripPrefix("(q="),
+            queryFromFilename = x => RegexUtils.findParamValueInString(param = queryParamName,
+              string = x, defaultValue = "MISSING_VALUE"),
             n_best,
             n_worst
           )
