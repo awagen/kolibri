@@ -17,19 +17,20 @@
 
 package de.awagen.kolibri.base.io.json
 
+import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import de.awagen.kolibri.base.config.AppConfig
 import de.awagen.kolibri.base.config.AppConfig.persistenceModule.persistenceDIModule
 import de.awagen.kolibri.base.config.di.modules.Modules
 import de.awagen.kolibri.base.processing.execution.functions.AggregationFunctions.{AggregateFiles, AggregateFromDirectoryByRegex, DoNothing}
 import de.awagen.kolibri.base.processing.execution.functions.AnalyzeFunctions.{GetImprovingAndLoosing, GetImprovingAndLoosingFromDirPerRegex}
 import de.awagen.kolibri.base.processing.execution.functions.Execution
-import spray.json.{DefaultJsonProtocol, JsValue, JsonFormat, enrichAny}
+import spray.json.{DefaultJsonProtocol, JsValue, RootJsonFormat, enrichAny}
 
 import scala.util.matching.Regex
 
-object ExecutionJsonProtocol extends DefaultJsonProtocol {
+object ExecutionJsonProtocol extends DefaultJsonProtocol with SprayJsonSupport {
 
-  implicit object UnitWrapUpFunctionFormat extends JsonFormat[Execution[Any]] {
+  implicit object ExecutionFormat extends RootJsonFormat[Execution[Any]] {
     override def read(json: JsValue): Execution[Any] = json match {
       case spray.json.JsObject(fields) => fields("type").convertTo[String] match {
         case "AGGREGATE_FROM_DIR_BY_REGEX" =>
@@ -60,7 +61,6 @@ object ExecutionJsonProtocol extends DefaultJsonProtocol {
           val currentParams: Map[String, Seq[String]] = fields("currentParams").convertTo[Map[String, Seq[String]]]
           val compareParams: Seq[Map[String, Seq[String]]] = fields("compareParams").convertTo[Seq[Map[String, Seq[String]]]]
           val metricName: String = fields("metricName").convertTo[String]
-          val queryParamName: String = fields("queryParamName").convertTo[String]
           val n_best: Int = fields("n_best").convertTo[Int]
           val n_worst: Int = fields("n_worst").convertTo[Int]
           GetImprovingAndLoosingFromDirPerRegex(
@@ -70,7 +70,7 @@ object ExecutionJsonProtocol extends DefaultJsonProtocol {
             currentParams,
             compareParams,
             metricName,
-            queryParamName,
+            queryFromFilename = x => x.split("/").last.stripSuffix(")").stripPrefix("(q="),
             n_best,
             n_worst
           )
@@ -79,7 +79,6 @@ object ExecutionJsonProtocol extends DefaultJsonProtocol {
           val currentParams: Map[String, Seq[String]] = fields("currentParams").convertTo[Map[String, Seq[String]]]
           val compareParams: Seq[Map[String, Seq[String]]] = fields("compareParams").convertTo[Seq[Map[String, Seq[String]]]]
           val metricName: String = fields("metricName").convertTo[String]
-          val queryParamName: String = fields("queryParamName").convertTo[String]
           val n_best: Int = fields("n_best").convertTo[Int]
           val n_worst: Int = fields("n_worst").convertTo[Int]
           GetImprovingAndLoosing(
@@ -88,7 +87,7 @@ object ExecutionJsonProtocol extends DefaultJsonProtocol {
             currentParams,
             compareParams,
             metricName,
-            queryParamName,
+            queryFromFilename = x => x.split("/").last.stripSuffix(")").stripPrefix("(q="),
             n_best,
             n_worst
           )

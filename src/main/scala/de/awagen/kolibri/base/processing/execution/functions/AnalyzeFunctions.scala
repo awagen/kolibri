@@ -67,12 +67,12 @@ object AnalyzeFunctions {
                                                    currentParams: Map[String, Seq[String]],
                                                    compareParams: Seq[Map[String, Seq[String]]],
                                                    metricName: String,
-                                                   queryParamName: String,
+                                                   queryFromFilename: String => String,
                                                    n_best: Int,
-                                                   n_worst: Int) extends Execution[ExecutionSummary[KeepNBestAndKWorst]] {
+                                                   n_worst: Int) extends Execution[ExecutionSummary[Map[String, Map[Map[String, Seq[String]], Seq[(String, String)]]]]] {
     val directoryReader: DirectoryReader = regexDirectoryReader(fileRegex)
 
-    override def execute: Either[TaskFailType.TaskFailType, ExecutionSummary[KeepNBestAndKWorst]] = {
+    override def execute: Either[TaskFailType.TaskFailType, ExecutionSummary[Map[String, Map[Map[String, Seq[String]], Seq[(String, String)]]]]] = {
       val filteredFiles = directoryReader.listFiles(dir, _ => true)
       val execution = GetImprovingAndLoosing(
         persistenceDIModule,
@@ -80,7 +80,7 @@ object AnalyzeFunctions {
         currentParams,
         compareParams,
         metricName,
-        queryParamName,
+        queryFromFilename,
         n_best,
         n_worst)
       execution.execute
@@ -93,13 +93,13 @@ object AnalyzeFunctions {
                                     currentParams: Map[String, Seq[String]],
                                     compareParams: Seq[Map[String, Seq[String]]],
                                     metricName: String,
-                                    queryParamName: String,
+                                    queryFromFilename: String => String,
                                     n_best: Int,
-                                    n_worst: Int) extends Execution[ExecutionSummary[KeepNBestAndKWorst]] {
+                                    n_worst: Int) extends Execution[ExecutionSummary[Map[String, Map[Map[String, Seq[String]], Seq[(String, String)]]]]] {
     val fileReader: FileReader = persistenceDIModule.fileReader
     val fileWriter: FileWriter[String, _] = persistenceDIModule.fileWriter
 
-    override def execute: Either[TaskFailType.TaskFailType, ExecutionSummary[KeepNBestAndKWorst]] = {
+    override def execute: Either[TaskFailType.TaskFailType, ExecutionSummary[Map[String, Map[Map[String, Seq[String]], Seq[(String, String)]]]]] = {
       val result = KeepNBestAndKWorst(n_best, n_worst)
       val seq: Seq[Either[TaskFailType.TaskFailType, Seq[QueryParamValue]]] = compareFiles.map(file => {
         val document: MetricDocument[Tag] = FileUtils.fileToMetricDocument(file, fileReader, StringTag(""))
@@ -108,6 +108,7 @@ object AnalyzeFunctions {
         document.rows.foreach({
           case e if e._1 == currentParams => currentValueOpt = e._2.getMetricsValue(metricName)
           case e if compareParams.contains(e._1) => compareRows = compareRows :+ e._2
+          case _ => // do nothing
         })
         // need to have currentRow set and any nr of rows in compareRows to be able to compare
         if (currentValueOpt.isEmpty) {
@@ -123,7 +124,7 @@ object AnalyzeFunctions {
             .map(row => {
               val value: MetricValue[Double] = row.metrics(metricName)
               val diffRelativeToCurrent = value.biValue.value2.value - currentValue.biValue.value2.value
-              QueryParamValue(row.params(queryParamName).head, row.params, diffRelativeToCurrent)
+              QueryParamValue(queryFromFilename.apply(file), row.params, diffRelativeToCurrent)
             })
           Right(settingsToDiff)
         }
@@ -139,7 +140,8 @@ object AnalyzeFunctions {
           successCount += 1
           e.foreach(r => result.accept(r))
       })
-      Right(ExecutionSummary(result, failCount, successCount, immutable.Map(failCountMap.toSeq: _*)))
+      val resultValue = ExecutionSummary(result.result, failCount, successCount, immutable.Map(failCountMap.toSeq: _*))
+      Right(resultValue)
     }
   }
 

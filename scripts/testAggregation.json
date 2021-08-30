@@ -1,0 +1,6 @@
+{
+  "type": "AGGREGATE_FROM_DIR_BY_REGEX",
+  "regex": "[(]q=.+[)]",
+  "outputFilename": "(ALL2)",
+  "subDir": "testJob"
+}

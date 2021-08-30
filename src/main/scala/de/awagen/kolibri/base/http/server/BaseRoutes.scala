@@ -31,8 +31,8 @@ import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor._
 import de.awagen.kolibri.base.cluster.ClusterStatus
 import de.awagen.kolibri.base.config.AppProperties.config.{internalJobStatusRequestTimeout, kolibriDispatcherName}
 import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions
-import de.awagen.kolibri.base.io.json.SearchEvaluationJsonProtocol._
 import de.awagen.kolibri.base.processing.JobMessages.{SearchEvaluation, TestPiCalculation}
+import de.awagen.kolibri.base.processing.execution.functions.Execution
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.SearchJobDefinitions
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -216,6 +216,7 @@ object BaseRoutes {
 
   def startSearchEval(implicit system: ActorSystem): Route = {
     implicit val ec: ExecutionContextExecutor = system.dispatchers.lookup(kolibriDispatcherName)
+    import de.awagen.kolibri.base.io.json.SearchEvaluationJsonProtocol._
     path("search_eval") {
       entity(as[SearchEvaluation]) { searchEvaluation =>
         supervisorActor ! SearchJobDefinitions.searchEvaluationToRunnableJobCmd(searchEvaluation)
@@ -226,10 +227,24 @@ object BaseRoutes {
 
   def startSearchEvalNoSerialize(implicit system: ActorSystem): Route = {
     implicit val ec: ExecutionContextExecutor = system.dispatchers.lookup(kolibriDispatcherName)
+    import de.awagen.kolibri.base.io.json.SearchEvaluationJsonProtocol._
     path("search_eval_no_ser") {
       entity(as[SearchEvaluation]) { searchEvaluation =>
         supervisorActor ! searchEvaluation
         complete(StatusCodes.Accepted, "Starting search evaluation example")
+      }
+    }
+  }
+
+  def startExecution(implicit system: ActorSystem): Route = {
+    implicit val timeout: Timeout = Timeout(internalJobStatusRequestTimeout)
+    implicit val ec: ExecutionContextExecutor = system.dispatchers.lookup(kolibriDispatcherName)
+    import de.awagen.kolibri.base.io.json.ExecutionJsonProtocol._
+    path("execution") {
+      entity(as[Execution[Any]]) { execution =>
+        onSuccess(supervisorActor ? execution) {
+          e => complete(e.toString)
+        }
       }
     }
   }
