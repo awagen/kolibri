@@ -32,29 +32,29 @@ class AggregatorsJsonProtocolSpec extends UnitTestSpec {
     import spray.json._
     import AggregatorsJsonProtocol._
 
-    "correctly parse Aggregator[TaggedWithType[Tag] with DataStore[Double], Map[Tag, AggregateValue[Double]]]" in {
+    "correctly parse Aggregator[TaggedWithType with DataStore[Double], Map[Tag, AggregateValue[Double]]]" in {
       // given
       val json = """{"type": "perClassDouble"}""".parseJson
       // when
-      val aggregator: Aggregator[TaggedWithType[Tag] with DataStore[Double], Map[Tag, AggregateValue[Double]]] = json.convertTo[Aggregator[TaggedWithType[Tag] with DataStore[Double], Map[Tag, AggregateValue[Double]]]]
+      val aggregator: Aggregator[TaggedWithType with DataStore[Double], Map[Tag, AggregateValue[Double]]] = json.convertTo[Aggregator[TaggedWithType with DataStore[Double], Map[Tag, AggregateValue[Double]]]]
       // then
       aggregator.isInstanceOf[TagKeyRunningDoubleAvgPerClassAggregator]
     }
 
-    "correctly parse Aggregator[TaggedWithType[Tag] with DataStore[MetricRow], Map[Tag, MetricDocument[Tag]]]" in {
+    "correctly parse Aggregator[TaggedWithType with DataStore[MetricRow], Map[Tag, MetricDocument[Tag]]]" in {
       // given
       val json = """{"type": "perClassMetricRow"}""".parseJson
       // when
-      val aggregator: Aggregator[TaggedWithType[Tag] with DataStore[MetricRow], Map[Tag, MetricDocument[Tag]]] = json.convertTo[Aggregator[TaggedWithType[Tag] with DataStore[MetricRow], Map[Tag, MetricDocument[Tag]]]]
+      val aggregator: Aggregator[TaggedWithType with DataStore[MetricRow], Map[Tag, MetricDocument[Tag]]] = json.convertTo[Aggregator[TaggedWithType with DataStore[MetricRow], Map[Tag, MetricDocument[Tag]]]]
       // then
       aggregator.isInstanceOf[TagKeyMetricDocumentPerClassAggregator]
     }
 
-    "correctly parse Aggregator[TaggedWithType[Tag] with DataStore[MetricRow], MetricAggregation[Tag]]" in {
+    "correctly parse Aggregator[TaggedWithType with DataStore[MetricRow], MetricAggregation[Tag]]" in {
       // given
       val json = """{"type": "metricAggregation"}""".parseJson
       // when
-      val aggregator: Aggregator[TaggedWithType[Tag] with DataStore[MetricRow], MetricAggregation[Tag]] = json.convertTo[Aggregator[TaggedWithType[Tag] with DataStore[MetricRow], MetricAggregation[Tag]]]
+      val aggregator: Aggregator[TaggedWithType with DataStore[MetricRow], MetricAggregation[Tag]] = json.convertTo[Aggregator[TaggedWithType with DataStore[MetricRow], MetricAggregation[Tag]]]
       // then
       aggregator.isInstanceOf[TagKeyMetricAggregationPerClassAggregator]
     }

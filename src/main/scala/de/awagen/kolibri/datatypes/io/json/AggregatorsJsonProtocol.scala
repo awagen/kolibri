@@ -35,43 +35,43 @@ object AggregatorsJsonProtocol {
   val TYPE_METRIC_AGGREGATION = "metricAggregation"
   val TYPE_FIELD = "type"
 
-  implicit object PerClassDoubleAggregatorFormat extends JsonFormat[Aggregator[TaggedWithType[Tag] with DataStore[Double], Map[Tag, AggregateValue[Double]]]] {
+  implicit object PerClassDoubleAggregatorFormat extends JsonFormat[Aggregator[TaggedWithType with DataStore[Double], Map[Tag, AggregateValue[Double]]]] {
 
-    override def read(json: JsValue): Aggregator[TaggedWithType[Tag] with DataStore[Double], Map[Tag, AggregateValue[Double]]] = json match {
+    override def read(json: JsValue): Aggregator[TaggedWithType with DataStore[Double], Map[Tag, AggregateValue[Double]]] = json match {
       case spray.json.JsObject(fields) if fields.contains(TYPE_FIELD) && fields(TYPE_FIELD).convertTo[String] == TYPE_PER_CLASS_DOUBLE =>
         new TagKeyRunningDoubleAvgPerClassAggregator(identity)
       case e => throw DeserializationException(s"Expected a value from Aggregator[Tag, Double, Map[Tag, AggregateValue[Double]]] but got value $e")
     }
 
-    override def write(obj: Aggregator[TaggedWithType[Tag] with DataStore[Double], Map[Tag, AggregateValue[Double]]]): JsValue = {
+    override def write(obj: Aggregator[TaggedWithType with DataStore[Double], Map[Tag, AggregateValue[Double]]]): JsValue = {
       s"""{"$TYPE_FIELD": "$TYPE_PER_CLASS_DOUBLE"}""".parseJson
     }
   }
 
 
-  implicit object PerClassMetricRowAggregatorFormat extends JsonFormat[Aggregator[TaggedWithType[Tag] with DataStore[MetricRow], Map[Tag, MetricDocument[Tag]]]] {
+  implicit object PerClassMetricRowAggregatorFormat extends JsonFormat[Aggregator[TaggedWithType with DataStore[MetricRow], Map[Tag, MetricDocument[Tag]]]] {
 
-    override def read(json: JsValue): Aggregator[TaggedWithType[Tag] with DataStore[MetricRow], Map[Tag, MetricDocument[Tag]]] = json match {
+    override def read(json: JsValue): Aggregator[TaggedWithType with DataStore[MetricRow], Map[Tag, MetricDocument[Tag]]] = json match {
       case spray.json.JsObject(fields) if fields.contains(TYPE_FIELD) && fields(TYPE_FIELD).convertTo[String] == TYPE_PER_CLASS_METRIC_ROW =>
         new TagKeyMetricDocumentPerClassAggregator(identity)
       case e => throw DeserializationException(s"Expected a value from Aggregator[Tag, MetricRow, Map[Tag, MetricDocument[Tag]]] but got value $e")
     }
 
-    override def write(obj: Aggregator[TaggedWithType[Tag] with DataStore[MetricRow], Map[Tag, MetricDocument[Tag]]]): JsValue = {
+    override def write(obj: Aggregator[TaggedWithType with DataStore[MetricRow], Map[Tag, MetricDocument[Tag]]]): JsValue = {
       s"""{"$TYPE_FIELD": "$TYPE_PER_CLASS_METRIC_ROW"}""".parseJson
     }
   }
 
 
-  implicit object MetricAggregationAggregatorFormat extends JsonFormat[Aggregator[TaggedWithType[Tag] with DataStore[MetricRow], MetricAggregation[Tag]]] {
+  implicit object MetricAggregationAggregatorFormat extends JsonFormat[Aggregator[TaggedWithType with DataStore[MetricRow], MetricAggregation[Tag]]] {
 
-    override def read(json: JsValue): Aggregator[TaggedWithType[Tag] with DataStore[MetricRow], MetricAggregation[Tag]] = json match {
+    override def read(json: JsValue): Aggregator[TaggedWithType with DataStore[MetricRow], MetricAggregation[Tag]] = json match {
       case spray.json.JsObject(fields) if fields.contains(TYPE_FIELD) && fields(TYPE_FIELD).convertTo[String] == TYPE_METRIC_AGGREGATION =>
         new TagKeyMetricAggregationPerClassAggregator(identity)
       case e => throw DeserializationException(s"Expected a value from Aggregator[Tag, MetricRow, MetricAggregation[Tag]] but got value $e")
     }
 
-    override def write(obj: Aggregator[TaggedWithType[Tag] with DataStore[MetricRow], MetricAggregation[Tag]]): JsValue = {
+    override def write(obj: Aggregator[TaggedWithType with DataStore[MetricRow], MetricAggregation[Tag]]): JsValue = {
       s"""{"$TYPE_FIELD": "$TYPE_METRIC_AGGREGATION"}""".parseJson
     }
   }

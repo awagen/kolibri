@@ -244,4 +244,34 @@ class TagsSpec extends UnitTestSpec {
 
   }
 
+  "Tags generally" must {
+
+    "extend single tags" in {
+      val stringTag = StringTag("test")
+      val newTag = stringTag.extendAllWithTag(StringTag("test1"), _ => true)
+      newTag mustBe MultiTag(Set(StringTag("test"), StringTag("test1")))
+    }
+
+    "not extend filtered out tags" in {
+      val stringTag = StringTag("test")
+      val newTag = stringTag.extendAllWithTag(StringTag("test1"), tag => {
+        !(tag == StringTag("test"))
+      })
+      newTag mustBe StringTag("test")
+    }
+
+    "correctly extend MultiTag" in {
+      val multiTag = MultiTag(Set(StringTag("test"), StringTag("test1")))
+      val newTag = multiTag.extendAllWithTag(StringTag("test2"), _ => true)
+      newTag mustBe MultiTag(Set(MultiTag(Set(StringTag("test"), StringTag("test2"))), MultiTag(Set(StringTag("test1"), StringTag("test2")))))
+    }
+
+    "correctly extend filtered MultiTag" in {
+      val multiTag = MultiTag(Set(StringTag("test"), StringTag("test1")))
+      val newTag = multiTag.extendAllWithTag(StringTag("test2"), tag => tag == StringTag("test1"))
+      newTag mustBe MultiTag(Set(StringTag("test"), MultiTag(Set(StringTag("test1"), StringTag("test2")))))
+    }
+
+  }
+
 }

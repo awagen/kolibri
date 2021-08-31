@@ -57,20 +57,20 @@ object Aggregators {
     }
   }
 
-  class BasePerClassAggregator[T <: Tag: TypeTag, TT <: TaggedWithType[T] : TypeTag, V: TypeTag](aggFunc: SerializableFunction2[TT, V, V],
-                                                                                                 startValueForKey: SerializableFunction1[T, V],
+  class BasePerClassAggregator[TT <: TaggedWithType : TypeTag, V: TypeTag](aggFunc: SerializableFunction2[TT, V, V],
+                                                                                                 startValueForKey: SerializableFunction1[Tag, V],
                                                                                                  mergeFunc: SerializableFunction2[V, V, V],
-                                                                                                 keyMapFunction: SerializableFunction1[T, T]) extends Aggregator[TT, Map[T, V]] {
-    val map: mutable.Map[T, V] = mutable.Map.empty
+                                                                                                 keyMapFunction: SerializableFunction1[Tag, Tag]) extends Aggregator[TT, Map[Tag, V]] {
+    val map: mutable.Map[Tag, V] = mutable.Map.empty
 
     override def add(sample: TT): Unit = {
-      val keys: Set[T] = sample.getTags(AGGREGATION).map(tag => keyMapFunction.apply(tag))
+      val keys: Set[Tag] = sample.getTags(AGGREGATION).map(tag => keyMapFunction.apply(tag))
       keys.foreach(x => map(x) = aggFunc.apply(sample, map.getOrElse(x, startValueForKey.apply(x))))
     }
 
-    override def aggregation: Map[T, V] = Map(map.toSeq: _*)
+    override def aggregation: Map[Tag, V] = Map(map.toSeq: _*)
 
-    override def addAggregate(aggregatedValue: Map[T, V]): Unit = {
+    override def addAggregate(aggregatedValue: Map[Tag, V]): Unit = {
       aggregatedValue.foreach(x => {
         val key = keyMapFunction.apply(x._1)
         map += (key -> mergeFunc.apply(map.getOrElse(key, startValueForKey.apply(key)), x._2))
@@ -78,7 +78,7 @@ object Aggregators {
     }
   }
 
-  class TagKeyRunningDoubleAvgPerClassAggregator(keyMapFunction: SerializableFunction1[Tag, Tag]) extends BasePerClassAggregator[Tag, TaggedWithType[Tag] with DataStore[Double], AggregateValue[Double]](
+  class TagKeyRunningDoubleAvgPerClassAggregator(keyMapFunction: SerializableFunction1[Tag, Tag]) extends BasePerClassAggregator[TaggedWithType with DataStore[Double], AggregateValue[Double]](
     aggFunc = (x, y) => y.add(x.data),
     startValueForKey = _ => doubleAvgRunningValue(count = 0, value = 0.0),
     mergeFunc = (x, y) => x.add(y),
@@ -97,7 +97,7 @@ object Aggregators {
     * @param keyMapFunction
     * @param ignoreIdDiff
     */
-  class TagKeyMetricDocumentPerClassAggregator(keyMapFunction: SerializableFunction1[Tag, Tag], ignoreIdDiff: Boolean = false) extends BasePerClassAggregator[Tag, TaggedWithType[Tag] with DataStore[MetricRow], MetricDocument[Tag]](
+  class TagKeyMetricDocumentPerClassAggregator(keyMapFunction: SerializableFunction1[Tag, Tag], ignoreIdDiff: Boolean = false) extends BasePerClassAggregator[TaggedWithType with DataStore[MetricRow], MetricDocument[Tag]](
     aggFunc = (x, y) => {
       y.add(x.data)
       y
@@ -116,12 +116,12 @@ object Aggregators {
     * @param keyMapFunction
     * @param ignoreIdDiff
     */
-  class TagKeyMetricAggregationPerClassAggregator(keyMapFunction: SerializableFunction1[Tag, Tag], ignoreIdDiff: Boolean = false) extends Aggregator[TaggedWithType[Tag] with DataStore[MetricRow], MetricAggregation[Tag]] {
+  class TagKeyMetricAggregationPerClassAggregator(keyMapFunction: SerializableFunction1[Tag, Tag], ignoreIdDiff: Boolean = false) extends Aggregator[TaggedWithType with DataStore[MetricRow], MetricAggregation[Tag]] {
     val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
     val aggregationState: MetricAggregation[Tag] = MetricAggregation.empty[Tag](keyMapFunction)
 
-    override def add(sample: TaggedWithType[Tag] with DataStore[MetricRow]): Unit = {
+    override def add(sample: TaggedWithType with DataStore[MetricRow]): Unit = {
       logger.debug(s"adding sample to aggregation (for keys: ${sample.getTagsForType(AGGREGATION)}: $sample")
       val keys = sample.getTagsForType(AGGREGATION)
       aggregationState.addResults(keys, sample.data)

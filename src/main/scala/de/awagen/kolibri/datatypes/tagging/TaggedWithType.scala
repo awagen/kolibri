@@ -20,9 +20,20 @@ import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.tagging.TagType.TagType
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 
-trait TaggedWithType[T <: Tag] extends KolibriSerializable {
+trait TaggedWithType extends KolibriSerializable {
 
-  private[this] var tags: Map[TagType, Set[T]] = Map.empty[TagType, Set[T]]
+  private[this] var tags: Map[TagType, Set[Tag]] = Map.empty[TagType, Set[Tag]]
+
+  def extendAllWithTag(tagType: TagType, tag: Tag, filter: Tag => Boolean): Unit = {
+    if (!tags.contains(tagType)) {
+      tags = tags + (tagType -> Set(tag))
+    }
+    else {
+      val tagSet: Set[Tag] = tags(tagType)
+      val newTagSet: Set[Tag] = tagSet.map(t => t.extendAllWithTag(tag, filter))
+      tags = tags + (tagType -> newTagSet)
+    }
+  }
 
   /**
     * add single tag for given type
@@ -30,12 +41,12 @@ trait TaggedWithType[T <: Tag] extends KolibriSerializable {
     * @param tagType
     * @param tag
     */
-  def addTag(tagType: TagType, tag: T): Unit = {
+  def addTag(tagType: TagType, tag: Tag): Unit = {
     if (!tags.contains(tagType)) {
       tags = tags + (tagType -> Set(tag))
     }
     else {
-      val set: Set[T] = tags(tagType).+(tag)
+      val set: Set[Tag] = tags(tagType).+(tag)
       tags = tags + (tagType -> set)
     }
   }
@@ -46,7 +57,7 @@ trait TaggedWithType[T <: Tag] extends KolibriSerializable {
     * @param tagType
     * @param tags
     */
-  def addTags(tagType: TagType, tags: Set[T]): Unit = {
+  def addTags(tagType: TagType, tags: Set[Tag]): Unit = {
     tags.foreach(tag => addTag(tagType, tag))
   }
 
@@ -55,7 +66,7 @@ trait TaggedWithType[T <: Tag] extends KolibriSerializable {
     *
     * @return
     */
-  def getTags: Map[TagType, Set[T]] = tags
+  def getTags: Map[TagType, Set[Tag]] = tags
 
   /**
     * get tags for specific type
@@ -63,6 +74,6 @@ trait TaggedWithType[T <: Tag] extends KolibriSerializable {
     * @param tagType
     * @return
     */
-  def getTagsForType(tagType: TagType): Set[T] = tags.getOrElse(tagType, Set.empty)
+  def getTagsForType(tagType: TagType): Set[Tag] = tags.getOrElse(tagType, Set.empty)
 
 }

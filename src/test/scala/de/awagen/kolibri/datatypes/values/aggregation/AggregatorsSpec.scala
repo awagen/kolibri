@@ -32,7 +32,7 @@ import de.awagen.kolibri.datatypes.tagging.Tags.StringTag
 
 class AggregatorsSpec extends UnitTestSpec {
 
-  case class TaggedData[T](data: T) extends TaggedWithType[Tag] with DataStore[T] {
+  case class TaggedData[T](data: T) extends TaggedWithType with DataStore[T] {
 
     def withAggregationTags(tags: Set[Tag]): TaggedData[T] = {
       this.addTags(AGGREGATION, tags)
@@ -45,7 +45,7 @@ class AggregatorsSpec extends UnitTestSpec {
 
     "correctly add values" in {
       // given
-      val aggregator: Aggregator[TaggedWithType[Tag] with DataStore[Double], Map[Tag, AggregateValue[Double]]] = new TagKeyRunningDoubleAvgPerClassAggregator(identity)
+      val aggregator: Aggregator[TaggedWithType with DataStore[Double], Map[Tag, AggregateValue[Double]]] = new TagKeyRunningDoubleAvgPerClassAggregator(identity)
       // when
       val v1 = TaggedData[Double](1).withAggregationTags(Set(StringTag("t1"), StringTag("t2")))
       val v2 = TaggedData[Double](3).withAggregationTags(Set(StringTag("t1"), StringTag("t2")))
@@ -67,8 +67,8 @@ class AggregatorsSpec extends UnitTestSpec {
 
     "correctly add other AggregateValues" in {
       // given
-      val aggregator1: Aggregator[TaggedWithType[Tag] with DataStore[Double], Map[Tag, AggregateValue[Double]]] = new TagKeyRunningDoubleAvgPerClassAggregator(identity)
-      val aggregator2: Aggregator[TaggedWithType[Tag] with DataStore[Double], Map[Tag, AggregateValue[Double]]] = new TagKeyRunningDoubleAvgPerClassAggregator(identity)
+      val aggregator1: Aggregator[TaggedWithType with DataStore[Double], Map[Tag, AggregateValue[Double]]] = new TagKeyRunningDoubleAvgPerClassAggregator(identity)
+      val aggregator2: Aggregator[TaggedWithType with DataStore[Double], Map[Tag, AggregateValue[Double]]] = new TagKeyRunningDoubleAvgPerClassAggregator(identity)
       // when
       val v1 = TaggedData[Double](1).withAggregationTags(Set(StringTag("t1"), StringTag("t2")))
       val v2 = TaggedData[Double](3).withAggregationTags(Set(StringTag("t1"), StringTag("t2")))
