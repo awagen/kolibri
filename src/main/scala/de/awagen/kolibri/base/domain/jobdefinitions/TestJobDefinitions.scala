@@ -21,7 +21,7 @@ import akka.stream.scaladsl.Flow
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{Corn, ProcessingMessage}
 import de.awagen.kolibri.base.domain.jobdefinitions.provider.data.BatchGenerators.IntNumberBatchGenerator
-import de.awagen.kolibri.base.io.writer.base.LocalDirectoryFileFileWriter
+import de.awagen.kolibri.base.io.writer.base.LocalDirectoryFileWriter
 import de.awagen.kolibri.base.processing.classifier.Mapper.AcceptAllAsIdentityMapper
 import de.awagen.kolibri.base.processing.execution.expectation.Expectation.SuccessAndErrorCounts
 import de.awagen.kolibri.base.processing.execution.expectation._
@@ -131,7 +131,7 @@ object TestJobDefinitions {
       writer = (data: MapWithCount[Tag, AggregateValue[Double]], _: Tag) => {
         logger.info("writing result: {}", data)
         logger.info("result is '{}' on '{}' samples; writing result", data.map, data.map(StringTag("ALL")).count)
-        val fileWriter = LocalDirectoryFileFileWriter(resultDir)
+        val fileWriter = LocalDirectoryFileWriter(resultDir)
         val resultString = data.map.keys.map(x => s"$x\t${data.map(x).count}\t${data.map(x).value.toString}").toSeq.mkString("\n")
         fileWriter.write(resultString, "dartThrowResult.txt")
       },

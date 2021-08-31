@@ -20,13 +20,13 @@ import akka.actor.SupervisorStrategy.Stop
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, OneForOneStrategy, PoisonPill, Props, Terminated}
 import akka.pattern.ask
 import akka.util.Timeout
-import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor._
+import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.{ProcessActorRunnableJobCmd, _}
 import de.awagen.kolibri.base.actors.work.manager.JobManagerActor
 import de.awagen.kolibri.base.actors.work.manager.JobManagerActor._
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{ProcessingMessage, ResultSummary}
 import de.awagen.kolibri.base.actors.work.worker.TaskExecutionWorkerActor
-import de.awagen.kolibri.base.config.AppConfig._
-import de.awagen.kolibri.base.config.AppConfig.config.{kolibriDispatcherName, maxNrBatchRetries}
+import de.awagen.kolibri.base.config.AppProperties._
+import de.awagen.kolibri.base.config.AppProperties.config.{kolibriDispatcherName, maxNrBatchRetries}
 import de.awagen.kolibri.base.domain.jobdefinitions.Batch
 import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions.MapWithCount
 import de.awagen.kolibri.base.io.writer.Writers.Writer
@@ -35,9 +35,11 @@ import de.awagen.kolibri.base.processing.classifier.Mapper.FilteringMapper
 import de.awagen.kolibri.base.processing.execution.SimpleTaskExecution
 import de.awagen.kolibri.base.processing.execution.expectation.Expectation.SuccessAndErrorCounts
 import de.awagen.kolibri.base.processing.execution.expectation._
+import de.awagen.kolibri.base.processing.execution.functions.Execution
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnable
 import de.awagen.kolibri.base.processing.execution.task.Task
 import de.awagen.kolibri.base.processing.execution.task.utils.TaskUtils
+import de.awagen.kolibri.base.processing.failure.TaskFailType
 import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
 import de.awagen.kolibri.datatypes.ClassTyped
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
@@ -53,7 +55,7 @@ import de.awagen.kolibri.datatypes.values.AggregateValue
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 
 import scala.collection.mutable
-import scala.concurrent.ExecutionContextExecutor
+import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
 
 
@@ -72,7 +74,7 @@ object SupervisorActor {
   case class GetJobWorkerStatus(job: String)
 
   type ActorRunnableJobGenerator[U, V, V1, W <: WithCount] = IndexedGenerator[ActorRunnable[U, V, V1, W]]
-  type TaggedTypeTaggedMapBatch = Batch[TypeTaggedMap with TaggedWithType[Tag]]
+  type TaggedTypeTaggedMapBatch = Batch[TypeTaggedMap with TaggedWithType]
   type BatchTypeTaggedMapGenerator = IndexedGenerator[TaggedTypeTaggedMapBatch]
 
   // usual starting point for batch executions would be OrderedMultiValues, which by help of BatchGenerator can be split
@@ -189,6 +191,17 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
     message = JobHousekeeping)
 
 
+  def runnableJobCmdToJobManager[M <: WithCount](jobId: String, cmd: ProcessActorRunnableJobCmd[_, _, _, M]): ActorRef = {
+    createJobManagerActor(
+      jobId,
+      cmd.perBatchAggregatorSupplier,
+      cmd.perJobAggregatorSupplier,
+      cmd.writer,
+      cmd.allowedTimeForJob,
+      cmd.allowedTimePerBatch,
+      maxNrBatchRetries)
+  }
+
   override def receive: Receive = {
     case ProvideAllRunningJobIDs =>
       sender() ! RunningJobs(jobIdToActorRefAndExpectation.keys.toSeq)
@@ -278,13 +291,7 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
         log.info("Creating and sending job to JobManager, jobId: {}", jobId)
         import de.awagen.kolibri.base.processing.JobMessagesImplicits._
         val runnableJob: ProcessActorRunnableJobCmd[Int, Double, Double, MapWithCount[Tag, AggregateValue[Double]]] = e.toRunnable
-        val actor = createJobManagerActor(
-          jobId,
-          runnableJob.perBatchAggregatorSupplier,
-          runnableJob.perJobAggregatorSupplier,
-          runnableJob.writer,
-          runnableJob.allowedTimeForJob,
-          runnableJob.allowedTimePerBatch, maxNrBatchRetries)
+        val actor = runnableJobCmdToJobManager(jobId, runnableJob)
         context.watch(actor)
         actor ! e
         val expectation = createJobExecutionExpectation(runnableJob.allowedTimeForJob)
@@ -302,14 +309,7 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
         import de.awagen.kolibri.base.processing.JobMessagesImplicits._
         implicit val timeout: Timeout = 10 minutes
         val runnableJob: ProcessActorRunnableJobCmd[RequestTemplateBuilderModifier, MetricRow, MetricRow, MetricAggregation[Tag]] = e.toRunnable
-        val actor = createJobManagerActor(
-          jobId,
-          runnableJob.perBatchAggregatorSupplier,
-          runnableJob.perJobAggregatorSupplier,
-          runnableJob.writer,
-          runnableJob.allowedTimeForJob,
-          runnableJob.allowedTimePerBatch,
-          maxNrBatchRetries)
+        val actor = runnableJobCmdToJobManager(jobId, runnableJob)
         context.watch(actor)
         actor ! e
         val expectation = createJobExecutionExpectation(runnableJob.allowedTimeForJob)
@@ -350,6 +350,12 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
         expectation.init
         jobIdToActorRefAndExpectation(jobId) = (ActorSetup(actor, jobSender), expectation)
       }
+    case execution: Execution[Any] =>
+      val replyTo: ActorRef = sender()
+      val responseFuture: Future[Either[TaskFailType.TaskFailType, Any]] = Future {
+        execution.execute
+      }
+      responseFuture.onComplete(x => replyTo ! x)
     case event: FinishedJobEvent =>
       log.info("Experiment with id {} finished processing", event.jobId)
       jobIdToActorRefAndExpectation.get(event.jobId).foreach(x => x._2.accept(event))

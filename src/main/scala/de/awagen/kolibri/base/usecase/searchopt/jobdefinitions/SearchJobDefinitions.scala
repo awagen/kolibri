@@ -20,6 +20,7 @@ package de.awagen.kolibri.base.usecase.searchopt.jobdefinitions
 import akka.actor.{ActorRef, ActorSystem}
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationStateWithData, AggregationStateWithoutData, Corn, ProcessingMessage}
+import de.awagen.kolibri.base.config.AppConfig
 import de.awagen.kolibri.base.domain.jobdefinitions.JobMsgFactory
 import de.awagen.kolibri.base.http.client.request.RequestTemplateBuilder
 import de.awagen.kolibri.base.processing.JobMessages.SearchEvaluation
@@ -32,8 +33,7 @@ import de.awagen.kolibri.base.usecase.searchopt.http.client.flows.responsehandle
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.Aggregators.{fullJobToSingleTagAggregatorSupplier, singleBatchAggregatorSupplier}
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.BatchGenerators.batchGenerator
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.Expectations.expectationPerBatchSupplier
-import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.RequestTemplatesAndBuilders.taggerByParameter
-import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.{Flows, Writer}
+import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.Flows
 import de.awagen.kolibri.base.usecase.searchopt.parse.ParsingConfig
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
@@ -73,6 +73,8 @@ object SearchJobDefinitions {
 
   def searchEvaluationToRunnableJobCmd(searchEvaluation: SearchEvaluation)(implicit as: ActorSystem, ec: ExecutionContext):
   SupervisorActor.ProcessActorRunnableJobCmd[RequestTemplateBuilderModifier, MetricRow, MetricRow, MetricAggregation[Tag]] = {
+    val persistenceModule = AppConfig.persistenceModule
+    val writer = persistenceModule.persistenceDIModule.csvMetricAggregationWriter(subFolder = searchEvaluation.jobName, x => x.toString())
     JobMsgFactory.createActorRunnableJobCmd[Seq[IndexedGenerator[Modifier[RequestTemplateBuilder]]], RequestTemplateBuilderModifier, MetricRow, MetricRow, MetricAggregation[Tag]](
       jobId = searchEvaluation.jobName,
       data = searchEvaluation.requestTemplateModifiers,
@@ -81,11 +83,10 @@ object SearchJobDefinitions {
         throughputActor = Option.empty[ActorRef],
         contextPath = searchEvaluation.contextPath,
         fixedParams = searchEvaluation.fixedParams,
-        queryParam = searchEvaluation.queryParam,
         excludeParamsFromMetricRow = searchEvaluation.excludeParamsFromMetricRow,
         groupId = searchEvaluation.jobName,
         connections = searchEvaluation.connections,
-        requestTagger = taggerByParameter(searchEvaluation.tagByParam),
+        taggingConfiguration = searchEvaluation.taggingConfiguration,
         requestTemplateStorageKey = searchEvaluation.requestTemplateStorageKey,
         responseParsingFunc = SolrHttpResponseHandlers.httpResponseToTypeTaggedMapParseFunc(_ => true, jsValueToTypeTaggedMap(searchEvaluation.parsingConfig)),
         mapFutureMetricRowCalculation = searchEvaluation.mapFutureMetricRowCalculation,
@@ -93,16 +94,15 @@ object SearchJobDefinitions {
       ),
       processingActorProps = None,
       perBatchExpectationGenerator = expectationPerBatchSupplier[MetricRow](
-        600 minutes,
-        10,
-        0.3F,
+        searchEvaluation.allowedTimePerBatchInSeconds seconds,
+        50,
+        0.5F,
         new SerializableFunction1[Any, SuccessAndErrorCounts] {
           override def apply(v1: Any): SuccessAndErrorCounts = v1 match {
             case Corn(e) if e.isInstanceOf[MetricRow] =>
               val result = e.asInstanceOf[MetricRow]
               SuccessAndErrorCounts(result.totalSuccessCountMin, result.totalErrorCountMin)
             case AggregationStateWithData(data: MetricAggregation[Tag], _, _, _) =>
-              // TODO: check the counts, e.g at the moment sum should be the correct criterium
               SuccessAndErrorCounts(data.totalSuccessCountSum, data.totalErrorCountSum)
             case AggregationStateWithoutData(elementCount: Int, _, _, _) =>
               // TODO: need success and error counts here, change elementCount in the message to
@@ -114,11 +114,7 @@ object SearchJobDefinitions {
       ),
       perBatchAggregatorSupplier = singleBatchAggregatorSupplier,
       perJobAggregatorSupplier = fullJobToSingleTagAggregatorSupplier,
-      writer = Writer.localMetricAggregationWriter(
-        "/app/data",
-        "\t",
-        searchEvaluation.jobName,
-        x => x.toString),
+      writer = writer,
       filteringSingleElementMapperForAggregator = new AcceptAllAsIdentityMapper[ProcessingMessage[MetricRow]],
       filterAggregationMapperForAggregator = new AcceptAllAsIdentityMapper[MetricAggregation[Tag]],
       filteringMapperForResultSending = new AcceptAllAsIdentityMapper[MetricAggregation[Tag]],

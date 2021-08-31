@@ -17,7 +17,8 @@
 
 package de.awagen.kolibri.base.io.json
 
-import de.awagen.kolibri.base.io.reader.{DirectoryReader, LocalDirectoryReader, LocalResourceDirectoryReader}
+import com.amazonaws.regions.Regions
+import de.awagen.kolibri.base.io.reader.{AwsS3DirectoryReader, DirectoryReader, LocalDirectoryReader, LocalResourceDirectoryReader}
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 import spray.json.{DefaultJsonProtocol, JsValue, JsonFormat, enrichAny}
 
@@ -44,6 +45,19 @@ object DirectoryReaderJsonProtocol extends DefaultJsonProtocol {
             override def apply(filename: String): Boolean = regex.matches(filename)
           }
           LocalDirectoryReader(baseDir, baseFilenameFilter, encoding)
+        case "AWS_READER" =>
+          val bucketName: String = fields("bucketName").convertTo[String]
+          val dirPath: String = fields("dirPath").convertTo[String]
+          val regionStr: String = fields("region").convertTo[String]
+          val regions: Regions = Regions.valueOf(regionStr)
+          val delimiter: String = fields("delimiter").convertTo[String]
+          val regex: Regex = fields("regex").convertTo[String].r
+          val baseFilenameFilter: String => Boolean = new SerializableFunction1[String, Boolean] {
+            override def apply(filename: String): Boolean = regex.matches(filename)
+          }
+          AwsS3DirectoryReader(bucketName, dirPath, regions, delimiter,
+            baseFilenameFilter)
+
       }
     }
 

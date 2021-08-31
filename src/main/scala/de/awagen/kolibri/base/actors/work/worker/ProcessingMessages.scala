@@ -18,7 +18,6 @@ package de.awagen.kolibri.base.actors.work.worker
 
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.ProcessingResult
 import de.awagen.kolibri.base.processing.execution.expectation.ExecutionExpectation
-import de.awagen.kolibri.base.processing.execution.expectation.Expectation.SuccessAndErrorCounts
 import de.awagen.kolibri.base.processing.failure.TaskFailType.TaskFailType
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.tagging.TagType.TagType
@@ -28,7 +27,7 @@ import de.awagen.kolibri.datatypes.types.DataStore
 
 object ProcessingMessages {
 
-  sealed trait ProcessingMessage[+T] extends KolibriSerializable with TaggedWithType[Tag] with DataStore[T] {
+  sealed trait ProcessingMessage[+T] extends KolibriSerializable with TaggedWithType with DataStore[T] {
     val data: T
 
     def withTags(tagType: TagType, tags: Set[Tag]): ProcessingMessage[T] = {
@@ -43,7 +42,7 @@ object ProcessingMessages {
     override val data: T = null.asInstanceOf[T]
   }
 
-  sealed trait AggregationState[+T] extends KolibriSerializable with TaggedWithType[Tag] {
+  sealed trait AggregationState[+T] extends KolibriSerializable with TaggedWithType {
     val jobID: String
     val batchNr: Int
     val executionExpectation: ExecutionExpectation

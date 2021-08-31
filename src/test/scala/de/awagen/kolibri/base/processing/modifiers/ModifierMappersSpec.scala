@@ -26,36 +26,33 @@ import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIn
 
 class ModifierMappersSpec extends UnitTestSpec {
 
-  val paramsGenerator1: IndexedGenerator[Map[String, Seq[String]]] = ByFunctionNrLimitedIndexedGenerator.createFromSeq(
-    Seq(
-      Map("p1" -> Seq("v1_1", "v1_2")),
-      Map("p2" -> Seq("v2_1", "v2_2")),
-      Map("p3" -> Seq("v3_1", "v3_2", "v3_3"))
+  val paramsGenerator1: Map[String, IndexedGenerator[Seq[String]]] = {
+    Map("p1" -> ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq(Seq("v1_1", "v1_2"))),
+      "p2" -> ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq(Seq("v2_1", "v2_2"))),
+      "p3" -> ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq(Seq("v3_1", "v3_2", "v3_3")))
     )
-  )
+  }
 
-  val paramsGenerator2: IndexedGenerator[Map[String, Seq[String]]] = ByFunctionNrLimitedIndexedGenerator.createFromSeq(
-    Seq(
-      Map("v1" -> Seq("k1_1", "k1_2")),
-      Map("v2" -> Seq("k2_1", "k2_2")),
-      Map("v3" -> Seq("k3_1"))
+  val paramsGenerator2: Map[String, IndexedGenerator[Seq[String]]] =
+    Map("v1" -> ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq(Seq("k1_1", "k1_2"))),
+      "v2" -> ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq(Seq("k2_1", "k2_2"))),
+      "v3" -> ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq(Seq("k3_1")))
     )
-  )
 
-  val headersGenerator1: IndexedGenerator[Map[String, String]] = ByFunctionNrLimitedIndexedGenerator.createFromSeq(
-    Seq(
-      Map("header1" -> "headerValue1_1"),
-      Map("header2" -> "headerValue1_2"),
-      Map("header3" -> "headerValue1_3")
+  val headersGenerator1: Map[String, IndexedGenerator[String]] = {
+    Map(
+      "header1" -> ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq("headerValue1_1")),
+      "header2" -> ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq("headerValue1_2")),
+      "header3" -> ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq("headerValue1_3"))
     )
-  )
-  val headersGenerator2: IndexedGenerator[Map[String, String]] = ByFunctionNrLimitedIndexedGenerator.createFromSeq(
-    Seq(
-      Map("header1" -> "headerValue2_1"),
-      Map("header2" -> "headerValue2_2"),
-      Map("header3" -> "headerValue2_3")
+  }
+
+  val headersGenerator2: Map[String, IndexedGenerator[String]] =
+    Map(
+      "header1" -> ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq("headerValue2_1")),
+      "header2" -> ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq("headerValue2_2")),
+      "header3" -> ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq("headerValue2_3"))
     )
-  )
 
   val bodiesGenerator1: IndexedGenerator[String] = ByFunctionNrLimitedIndexedGenerator.createFromSeq(
     Seq(
@@ -75,7 +72,7 @@ class ModifierMappersSpec extends UnitTestSpec {
   def emptyRequestTemplateBuilder: RequestTemplateBuilder = new RequestTemplateBuilder()
 
   def applyModifiersOnEmptyTemplateBuilderAndReturn(modifierMapper: ModifierMapper[_]): Seq[RequestTemplate] = {
-    val keys = modifierMapper.map.keys
+    val keys = modifierMapper.keys
     keys.map(key => {
       var templateBuilder = emptyRequestTemplateBuilder
       modifierMapper.getModifiersForKey(key).get.iterator.foreach(mod => {

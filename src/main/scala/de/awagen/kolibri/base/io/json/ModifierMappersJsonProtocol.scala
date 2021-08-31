@@ -17,24 +17,30 @@
 
 package de.awagen.kolibri.base.io.json
 
-import de.awagen.kolibri.base.processing.modifiers.ModifierMappers.{BaseBodyMapper, BaseHeadersMapper, BaseParamsMapper, BodyMapper, HeadersMapper, ParamsMapper}
+import de.awagen.kolibri.base.io.json.IndexedGeneratorJsonProtocol._
+import de.awagen.kolibri.base.io.json.MappingSupplierJsonProtocol._
+import de.awagen.kolibri.base.processing.modifiers.ModifierMappers._
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import spray.json.{DefaultJsonProtocol, DeserializationException, JsValue, JsonFormat, enrichAny}
-import IndexedGeneratorJsonProtocol._
 
 
+/**
+  * Json read/write protocols to write/read ModifierMappers to/from json definition
+  */
 object ModifierMappersJsonProtocol extends DefaultJsonProtocol {
+
+  val REPLACE_KEY: String = "replace"
+  val VALUES_KEY: String = "values"
 
   implicit object ParamsMapperJsonProtocol extends JsonFormat[ParamsMapper] {
     override def read(json: JsValue): ParamsMapper = json match {
       case spray.json.JsObject(fields) =>
-        val replace: Boolean = fields("replace").convertTo[Boolean]
-        val values: Map[String, IndexedGenerator[Map[String, Seq[String]]]] = fields("values").convertTo[Map[String, IndexedGenerator[Map[String, Seq[String]]]]]
-        BaseParamsMapper(values, replace = replace)
+        val replace: Boolean = fields(REPLACE_KEY).convertTo[Boolean]
+        val values: () => Map[String, Map[String, IndexedGenerator[Seq[String]]]] = fields(VALUES_KEY).convertTo[() => Map[String, Map[String, IndexedGenerator[Seq[String]]]]]
+        BaseParamsMapper(values.apply(), replace)
       case e => throw DeserializationException(s"Expected a value of type ParamsMapper  but got value $e")
     }
 
-    // TODO
     override def write(obj: ParamsMapper): JsValue = """{}""".toJson
   }
 
@@ -42,12 +48,11 @@ object ModifierMappersJsonProtocol extends DefaultJsonProtocol {
     override def read(json: JsValue): HeadersMapper = json match {
       case spray.json.JsObject(fields) =>
         val replace: Boolean = fields("replace").convertTo[Boolean]
-        val values: Map[String, IndexedGenerator[Map[String, String]]] = fields("values").convertTo[Map[String, IndexedGenerator[Map[String, String]]]]
-        BaseHeadersMapper(values, replace = replace)
+        val valuesGen: () => Map[String, Map[String, IndexedGenerator[String]]] = fields("values").convertTo[() => Map[String, Map[String, IndexedGenerator[String]]]]
+        BaseHeadersMapper(valuesGen.apply(), replace = replace)
       case e => throw DeserializationException(s"Expected a value of type HeadersMapper  but got value $e")
     }
 
-    // TODO
     override def write(obj: HeadersMapper): JsValue = """{}""".toJson
   }
 
@@ -59,8 +64,24 @@ object ModifierMappersJsonProtocol extends DefaultJsonProtocol {
       case e => throw DeserializationException(s"Expected a value of type BodyMapper but got value $e")
     }
 
-    // TODO
     override def write(obj: BodyMapper): JsValue = """{}""".toJson
+  }
+
+  implicit object MappedModifierMapperJsonProtocol extends JsonFormat[MappedModifierMapper[_]] {
+    override def read(json: JsValue): MappedModifierMapper[_] = json match {
+      case spray.json.JsObject(fields) =>
+        val mapper: ModifierMapper[_] = fields("type").convertTo[String] match {
+          case "PARAMS_MAPPER" => fields("mapper").convertTo[ParamsMapper]
+          case "HEADER_MAPPER" => fields("mapper").convertTo[HeadersMapper]
+          case "BODY_MAPPER" => fields("mapper").convertTo[BodyMapper]
+          case e => throw DeserializationException(s"Expected a value of valid mapper type, but got value $e")
+        }
+        val keyMapping = fields("keyMapping").convertTo[Map[String, String]]
+        MappedModifierMapper(keyMapping, mapper)
+      case e => throw DeserializationException(s"Expected a value of type MappedModifierMapper[_] but got value $e")
+    }
+
+    override def write(obj: MappedModifierMapper[_]): JsValue = """{}""".toJson
   }
 
 }

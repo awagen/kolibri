@@ -38,13 +38,20 @@ Connection refused:
 
 - you might temporarily need to clone kolibri-datatypes and publish locally (see kolibri-datatypes README on instructions)
 - build jar (find it in target folder afterwards): ```./scripts/buildJar.sh```
-- build docker image for local usage: ```sudo docker build . -t kolibri-base:0.1.0-alpha3```
+- build docker image for local usage: ```sudo docker build . -t kolibri-base:0.1.0-beta1```
 - run single-node cluster (compute and httpserver role, access via localhost:
   8000): ```./scripts/docker_run_single_node.sh```
     - sets interface of http server to 0.0.0.0 to allow requests from host system to localhost:8000 reach the service
       within the container
 - start local 3-node cluster (one compute and httpserver node, two 'compute'-only nodes, access via localhost:
   8000): ```sudo docker-compose up```
+  - NOTE: starting response-juggler as used in the docker-compose.yaml requires cloning ```https://github.com/awagen/response-juggler``` and building
+  the image locally via ```docker build -t response-juggler:0.1.0 .```. 
+  This service provides a basic response fake to avoid having to have a real search system running, and the parameters defined in the docker-compose
+  file contain the same product_ids that are used within the test-judgements.txt referenced in the example job definition.
+  The response-juggler will respond to each request with a random
+  sampling of the comma-separated PID_SAMPLEs, each result containing between MIN_PRODUCTS and MAX_PRODUCTS.
+  If another response structure needed, this can easily be adjusted within the response-juggler 
 
 ## Example clustered job execution: pi-estimation with dart throws
 
@@ -76,7 +83,7 @@ being added to docker-compose on port 80. Adjust to your individual endpoint(s).
 Further, right now assumes responses corresponding to play json selector 
 ```"response" \ "docs" \\ "product_id"```, meaning structure at least containing the hierarchies: 
 ```{"response": {"docs": [{"product_id": ...}, {"product_id":...}], ...},...}```
-This is changeable in the flow definition and will be added to the available configuration settings shortly.
+This is changeable in the json job definition.
 
 ## Monitoring
 Metrics are collected utilizing the open source lib Kamon and exposed for prometheus to scrape the metrics.
@@ -152,6 +159,18 @@ play lib when parsing elements from a json, single or recursive.
 For spray there is an additional library providing this functionality (https://github.com/jrudolph/json-lenses), 
 which seems to even provide more functionality. For this sake ayou can expect the play json lib will be removed in 
 further iterations for the sake of only using spray.
+
+## Notes on local execution with access to AWS account
+One way to enable container access to AWS account (e.g as for writing results into S3 bucket or similar),
+it is enough to mount the local directory where the credentials reside into the root .aws directory in the container,
+by adding to the docker-compose below volume mount (assuming the aws credentials reside in the home folder on the host machine
+within the .aws folder, which is the default location when calling ```aws configure``` (official docs: https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-quickstart.html)):
+```
+volumes:
+  - [path-to-home-on-host-machine]/.aws:/home/kolibri/.aws:ro
+```
+Now configure the AWS_PROFILE env var to any profile name you want to assume (and for which the above mounted folder contains
+credentials). See example within docker-compose.yaml.
 
 ## License
 

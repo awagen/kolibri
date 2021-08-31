@@ -18,7 +18,7 @@
 package de.awagen.kolibri.base.io.json
 
 import de.awagen.kolibri.base.io.writer.Writers.FileWriter
-import de.awagen.kolibri.base.io.writer.base.LocalDirectoryFileFileWriter
+import de.awagen.kolibri.base.io.writer.base.LocalDirectoryFileWriter
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
 import spray.json._
 
@@ -33,8 +33,8 @@ class WriterJsonProtocolSpec extends UnitTestSpec {
       // when
       val writer: FileWriter[String, Any] = json.convertTo[FileWriter[String, Any]]
       // then
-      writer.isInstanceOf[LocalDirectoryFileFileWriter] mustBe true
-      writer.asInstanceOf[LocalDirectoryFileFileWriter].directory mustBe "/testdir"
+      writer.isInstanceOf[LocalDirectoryFileWriter] mustBe true
+      writer.asInstanceOf[LocalDirectoryFileWriter].directory mustBe "/testdir"
     }
 
   }

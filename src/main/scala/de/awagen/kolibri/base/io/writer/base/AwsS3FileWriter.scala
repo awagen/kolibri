@@ -24,16 +24,27 @@ import de.awagen.kolibri.base.io.writer.Writers.FileWriter
 import org.apache.commons.io.IOUtils
 import org.slf4j.{Logger, LoggerFactory}
 
+import java.nio.charset.StandardCharsets
+import java.util.Objects
+
 
 case class AwsS3FileWriter(bucketName: String,
                            dirPath: String,
                            region: Regions,
-                           contentType: String = "text/csv") extends FileWriter[String, PutObjectResult] {
+                           contentType: String = "text/plain; charset=UTF-8") extends FileWriter[String, PutObjectResult] {
 
   private val logger: Logger = LoggerFactory.getLogger(AwsS3FileWriter.getClass)
 
-  val s3Client: AmazonS3 = AmazonS3ClientBuilder.standard().withRegion(region).build()
+  private[this] var s3Client: AmazonS3 = null
 
+  // workaround for serialization
+  def setS3ClientIfNotSet(): Unit = {
+    synchronized {
+      if (Objects.isNull(s3Client)) {
+        s3Client = AmazonS3ClientBuilder.standard().withRegion(region).build()
+      }
+    }
+  }
   def baseMetaData(): ObjectMetadata = {
     val metaData: ObjectMetadata = new ObjectMetadata()
     metaData.setContentType(contentType)
@@ -48,12 +59,17 @@ case class AwsS3FileWriter(bucketName: String,
     */
   override def write(data: String, targetIdentifier: String): Either[Exception, PutObjectResult] = {
     try {
+      setS3ClientIfNotSet()
+      logger.info(s"writing data for identifier: $targetIdentifier")
       //file upload as new object with ContentType and title
       val metaData: ObjectMetadata = baseMetaData()
-      val putObjectRequest: PutObjectRequest = new PutObjectRequest(bucketName,
-        s"${dirPath.stripSuffix("/")}/$targetIdentifier",
-        IOUtils.toInputStream(data, "UTF-8"), metaData)
-      Right(s3Client.putObject(putObjectRequest))
+      metaData.setContentLength(data.getBytes(StandardCharsets.UTF_8).length)
+      val contentStream = IOUtils.toInputStream(data, "UTF-8")
+      val key = s"${dirPath.stripSuffix("/")}/$targetIdentifier"
+      val putObjectRequest: PutObjectRequest = new PutObjectRequest(bucketName, key , contentStream, metaData)
+      val result = s3Client.putObject(putObjectRequest)
+      logger.info(s"write result: $result")
+      Right(result)
     }
     catch {
       case e: AmazonServiceException =>

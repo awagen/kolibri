@@ -16,9 +16,11 @@
 
 package de.awagen.kolibri.base.io.reader
 
+import de.awagen.kolibri.datatypes.io.KolibriSerializable
+
 import scala.io.Source
 
-trait FileReader {
+trait FileReader extends KolibriSerializable {
 
   def getSource(fileIdentifier: String): Source
 

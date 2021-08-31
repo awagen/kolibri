@@ -28,7 +28,7 @@ import de.awagen.kolibri.base.processing.execution.{SimpleTaskExecution, TaskExe
 import de.awagen.kolibri.datatypes.mutable.stores.{TypeTaggedMap, TypedMapStore}
 import de.awagen.kolibri.datatypes.tagging.TagType.AGGREGATION
 import de.awagen.kolibri.datatypes.tagging.TaggedWithType
-import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}
+import de.awagen.kolibri.datatypes.tagging.Tags.StringTag
 import de.awagen.kolibri.datatypes.tagging.TypeTaggedMapImplicits._
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.must.Matchers
@@ -55,7 +55,7 @@ class TaskExecutionWorkerActorSpec extends KolibriTestKitNoCluster
 
     "correctly process syncronous tasks in task execution" in {
       // given
-      val data: TypeTaggedMap with TaggedWithType[Tag] = TypedMapStore.empty.toTaggedWithTypeMap
+      val data: TypeTaggedMap with TaggedWithType = TypedMapStore.empty.toTaggedWithTypeMap
       data.addTag(AGGREGATION, StringTag("ALL"))
       data.put(productIdResult, Seq("p3", "p4", "p21"))
       val tasks: Seq[Task[_]] = Seq(concatIdsTask, reverseIdsTaskPM)
@@ -80,7 +80,7 @@ class TaskExecutionWorkerActorSpec extends KolibriTestKitNoCluster
       // given
       implicit val ec: ExecutionContext = ExecutionContext.global
       val ExecutionWorker: ActorRef = system.actorOf(TaskExecutionWorkerActor.props)
-      val data: TypeTaggedMap with TaggedWithType[Tag] = TypedMapStore.empty.toTaggedWithTypeMap
+      val data: TypeTaggedMap with TaggedWithType = TypedMapStore.empty.toTaggedWithTypeMap
       data.addTag(AGGREGATION, StringTag("ALL"))
       data.put(productIdResult, Seq("p3", "p4", "p21"))
       val tasks: Seq[Task[_]] = Seq(concatIdsTask, asyncReverseIdsTask)

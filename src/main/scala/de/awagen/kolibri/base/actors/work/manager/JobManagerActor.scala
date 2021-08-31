@@ -29,8 +29,8 @@ import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.{ActorRunnabl
 import de.awagen.kolibri.base.actors.work.manager.JobManagerActor._
 import de.awagen.kolibri.base.actors.work.manager.WorkManagerActor.{ExecutionType, GetWorkerStatus, JobBatchMsg}
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationState, AggregationStateWithData, AggregationStateWithoutData, ProcessingMessage, ResultSummary}
-import de.awagen.kolibri.base.config.AppConfig._
-import de.awagen.kolibri.base.config.AppConfig.config.kolibriDispatcherName
+import de.awagen.kolibri.base.config.AppProperties._
+import de.awagen.kolibri.base.config.AppProperties.config.kolibriDispatcherName
 import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions.MapWithCount
 import de.awagen.kolibri.base.io.writer.Writers.Writer
 import de.awagen.kolibri.base.processing.JobMessages.{SearchEvaluation, TestPiCalculation}
@@ -38,7 +38,7 @@ import de.awagen.kolibri.base.processing.JobMessagesImplicits._
 import de.awagen.kolibri.base.processing.consume.Consumers.{BaseExecutionConsumer, ExecutionConsumer}
 import de.awagen.kolibri.base.processing.distribution.{DistributionStates, Distributor, RetryingDistributor}
 import de.awagen.kolibri.base.processing.execution.expectation._
-import de.awagen.kolibri.base.processing.execution.wrapup.JobWrapUpFunctions.JobWrapUpFunction
+import de.awagen.kolibri.base.processing.execution.functions.Execution
 import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
 import de.awagen.kolibri.base.traits.Traits.WithBatchNr
 import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator}
@@ -157,7 +157,7 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
   private[this] var batchDistributor: Distributor[BatchType, U] = _
   private[this] var executionConsumer: ExecutionConsumer[U] = _
 
-  var wrapUpFunction: Option[JobWrapUpFunction[Any]] = None
+  var wrapUpFunction: Option[Execution[Any]] = None
 
   val workerServiceRouter: ActorRef = createWorkerRoutingServiceForJob
 

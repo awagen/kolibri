@@ -22,13 +22,14 @@ import akka.actor.{ActorRef, ActorSystem}
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.stream.scaladsl.Flow
 import akka.stream.{FlowShape, Graph}
-import de.awagen.kolibri.base.actors.flows.GenericRequestFlows.{Host, getHttpConnectionPoolFlow, getHttpsConnectionPoolFlow}
+import de.awagen.kolibri.base.actors.flows.GenericFlows.{Host, getHttpConnectionPoolFlow, getHttpsConnectionPoolFlow}
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{Corn, ProcessingMessage}
-import de.awagen.kolibri.base.config.AppConfig.config
+import de.awagen.kolibri.base.config.AppProperties.config
 import de.awagen.kolibri.base.domain.Connection
 import de.awagen.kolibri.base.http.client.request.{RequestTemplate, RequestTemplateBuilder}
 import de.awagen.kolibri.base.processing.modifiers.Modifier
 import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
+import de.awagen.kolibri.base.processing.tagging.TaggingConfigurations.TaggingConfiguration
 import de.awagen.kolibri.base.usecase.searchopt.http.client.flows.RequestProcessingFlows
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.{Calculation, CalculationResult, FutureCalculation}
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Functions.{resultEitherToMetricRowResponse, throwableToMetricRowResponse}
@@ -51,11 +52,10 @@ object Flows {
     * @return
     */
   def modifierToProcessingMessage(contextPath: String,
-                                  fixedParams: Map[String, Seq[String]],
-                                  tagger: ProcessingMessage[RequestTemplate] => ProcessingMessage[RequestTemplate]): Modifier[RequestTemplateBuilder] => ProcessingMessage[RequestTemplate] = v1 => {
+                                  fixedParams: Map[String, Seq[String]]): Modifier[RequestTemplateBuilder] => ProcessingMessage[RequestTemplate] = v1 => {
     val requestTemplateBuilder: RequestTemplateBuilder = RequestTemplatesAndBuilders.getRequestTemplateBuilderSupplier(contextPath, fixedParams).apply()
     val requestTemplate: RequestTemplate = v1.apply(requestTemplateBuilder).build()
-    tagger.apply(Corn(requestTemplate))
+    Corn(requestTemplate)
   }
 
   /**
@@ -67,10 +67,9 @@ object Flows {
     * @return
     */
   def processingFlow(contextPath: String,
-                     fixedParams: Map[String, Seq[String]],
-                     tagger: ProcessingMessage[RequestTemplate] => ProcessingMessage[RequestTemplate]): Flow[Modifier[RequestTemplateBuilder], ProcessingMessage[RequestTemplate], NotUsed] =
+                     fixedParams: Map[String, Seq[String]]): Flow[Modifier[RequestTemplateBuilder], ProcessingMessage[RequestTemplate], NotUsed] =
     Flow.fromFunction[RequestTemplateBuilderModifier, ProcessingMessage[RequestTemplate]](
-      modifierToProcessingMessage(contextPath, fixedParams, tagger)
+      modifierToProcessingMessage(contextPath, fixedParams)
     )
 
   /**
@@ -108,13 +107,11 @@ object Flows {
     * @return
     */
   def requestingFlow(connections: Seq[Connection],
-                     queryParam: String,
                      groupId: String,
                      responseParsingFunc: HttpResponse => Future[Either[Throwable, WeaklyTypedMap[String]]],
                      throughputActor: Option[ActorRef])(implicit as: ActorSystem, ec: ExecutionContext): Graph[FlowShape[ProcessingMessage[RequestTemplate], ProcessingMessage[(Either[Throwable, WeaklyTypedMap[String]], RequestTemplate)]], NotUsed] =
     RequestProcessingFlows.requestAndParsingFlow(
       throughputActor,
-      queryParam,
       groupId,
       connections,
       connectionFunc,
@@ -181,23 +178,30 @@ object Flows {
                          connections: Seq[Connection],
                          contextPath: String,
                          fixedParams: Map[String, Seq[String]],
-                         queryParam: String,
                          excludeParamsFromMetricRow: Seq[String],
                          groupId: String,
-                         requestTagger: ProcessingMessage[RequestTemplate] => ProcessingMessage[RequestTemplate],
+                         taggingConfiguration: Option[TaggingConfiguration[RequestTemplate, (Either[Throwable, WeaklyTypedMap[String]], RequestTemplate), MetricRow]],
                          responseParsingFunc: HttpResponse => Future[Either[Throwable, WeaklyTypedMap[String]]],
                          requestTemplateStorageKey: String,
                          mapFutureMetricRowCalculation: FutureCalculation[WeaklyTypedMap[String], MetricRow],
                          singleMapCalculations: Seq[Calculation[WeaklyTypedMap[String], CalculationResult[Double]]])
                         (implicit as: ActorSystem, ec: ExecutionContext): Flow[RequestTemplateBuilderModifier, ProcessingMessage[MetricRow], NotUsed] = {
     val partialFlow: Flow[RequestTemplateBuilderModifier, ProcessingMessage[(Either[Throwable, WeaklyTypedMap[String]], RequestTemplate)], NotUsed] =
-      processingFlow(contextPath, fixedParams, requestTagger)
+      processingFlow(contextPath, fixedParams)
+        .via(Flow.fromFunction(el => {
+          taggingConfiguration.foreach(config => config.tagInit(el))
+          el
+        }))
         .via(Flow.fromGraph(requestingFlow(
           connections = connections,
-          queryParam = queryParam,
           groupId = groupId,
           responseParsingFunc = responseParsingFunc,
           throughputActor = throughputActor)))
+        // tagging
+        .via(Flow.fromFunction(el => {
+          taggingConfiguration.foreach(config => config.tagProcessed(el))
+          el
+        }))
     partialFlow.mapAsyncUnordered[ProcessingMessage[MetricRow]](config.requestParallelism)(x => {
       metricsCalc(processingMessage = x,
         mapFutureMetricRowCalculation,
@@ -205,6 +209,11 @@ object Flows {
         requestTemplateStorageKey = requestTemplateStorageKey,
         excludeParamsFromMetricRow = excludeParamsFromMetricRow)
     })
+      // tagging
+      .via(Flow.fromFunction(el => {
+        taggingConfiguration.foreach(config => config.tagResult(el))
+        el
+      }))
   }
 
 }

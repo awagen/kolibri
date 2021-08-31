@@ -29,7 +29,7 @@ import de.awagen.kolibri.base.processing.execution.task.Task
 import de.awagen.kolibri.datatypes.mutable.stores.{TypeTaggedMap, TypedMapStore}
 import de.awagen.kolibri.datatypes.tagging.TagType.AGGREGATION
 import de.awagen.kolibri.datatypes.tagging.TaggedWithType
-import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}
+import de.awagen.kolibri.datatypes.tagging.Tags.StringTag
 import de.awagen.kolibri.datatypes.tagging.TypeTaggedMapImplicits._
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.must.Matchers
@@ -74,7 +74,7 @@ class WorkManagerActorSpec extends KolibriTestKitNoCluster
       // given
       val workManager: ActorRef = system.actorOf(Props[WorkManagerActor])
       val testProbe = TestProbe()
-      val data: TypeTaggedMap with TaggedWithType[Tag] = TypedMapStore.empty.toTaggedWithTypeMap
+      val data: TypeTaggedMap with TaggedWithType = TypedMapStore.empty.toTaggedWithTypeMap
       data.addTag(AGGREGATION, StringTag("ALL"))
       data.put(productIdResult, Seq("p3", "p4", "p21"))
       val tasks: Seq[Task[_]] = Seq(concatIdsTask, reverseIdsTaskPM)
@@ -94,7 +94,7 @@ class WorkManagerActorSpec extends KolibriTestKitNoCluster
       // given
       val workManager: ActorRef = system.actorOf(Props[WorkManagerActor])
       val testProbe = TestProbe()
-      val data: TypeTaggedMap with TaggedWithType[Tag] = TypedMapStore.empty.toTaggedWithTypeMap
+      val data: TypeTaggedMap with TaggedWithType = TypedMapStore.empty.toTaggedWithTypeMap
       data.addTag(AGGREGATION, StringTag("ALL"))
       data.put(productIdResult, Seq("p3", "p4", "p21"))
       val tasks: Seq[Task[_]] = Seq(concatIdsTask, reverseIdsTaskPM)

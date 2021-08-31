@@ -27,7 +27,7 @@ import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.ProcessingMe
 import de.awagen.kolibri.base.actors.work.worker.TaskExecutionWorkerActor.ProcessTaskExecution
 import de.awagen.kolibri.base.actors.work.worker.TaskWorkerActor.ProcessTasks
 import de.awagen.kolibri.base.actors.work.worker.{RunnableExecutionActor, TaskExecutionWorkerActor, TaskWorkerActor}
-import de.awagen.kolibri.base.config.AppConfig.config.kolibriDispatcherName
+import de.awagen.kolibri.base.config.AppProperties.config.kolibriDispatcherName
 import de.awagen.kolibri.base.io.writer.Writers
 import de.awagen.kolibri.base.processing.JobMessages.{SearchEvaluation, TestPiCalculation}
 import de.awagen.kolibri.base.processing.JobMessagesImplicits._
@@ -55,7 +55,7 @@ object WorkManagerActor {
 
   sealed trait WorkManagerMsg extends KolibriSerializable
 
-  case class TasksWithTypedResult[T](data: TypeTaggedMap with TaggedWithType[Tag], tasks: Seq[Task[_]], finalResultKey: ClassTyped[ProcessingMessage[T]], partIdentifier: JobPartIdentifier) extends WorkManagerMsg
+  case class TasksWithTypedResult[T](data: TypeTaggedMap with TaggedWithType, tasks: Seq[Task[_]], finalResultKey: ClassTyped[ProcessingMessage[T]], partIdentifier: JobPartIdentifier) extends WorkManagerMsg
 
   case class TaskExecutionWithTypedResult[T](taskExecution: TaskExecution[T], partIdentifier: JobPartIdentifier) extends WorkManagerMsg
 

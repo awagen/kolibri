@@ -23,11 +23,11 @@ import akka.http.scaladsl.model.{HttpRequest, HttpResponse, Uri}
 import akka.stream._
 import akka.stream.scaladsl.{Balance, Flow, GraphDSL, Merge, RunnableGraph, Sink, Source}
 import akka.{Done, NotUsed}
-import de.awagen.kolibri.base.actors.flows.GenericRequestFlows.flowThroughActorMeter
+import de.awagen.kolibri.base.actors.flows.GenericFlows.flowThroughActorMeter
 import de.awagen.kolibri.base.actors.tracking.ThroughputActor.AddForStage
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{Corn, ProcessingMessage}
-import de.awagen.kolibri.base.config.AppConfig.config
-import de.awagen.kolibri.base.config.AppConfig.config.useConnectionPoolFlow
+import de.awagen.kolibri.base.config.AppProperties.config
+import de.awagen.kolibri.base.config.AppProperties.config.useConnectionPoolFlow
 import de.awagen.kolibri.base.domain.Connection
 import de.awagen.kolibri.base.http.client.request.RequestTemplate
 import de.awagen.kolibri.base.processing.decider.Deciders.allResumeDecider
@@ -83,7 +83,7 @@ object RequestProcessingFlows {
           // creating the elements that will be part of the sink
           val source: SourceShape[ProcessingMessage[RequestTemplate]] = b.add(Source.fromIterator[ProcessingMessage[RequestTemplate]](() => requestTemplateGenerator.iterator))
           val flow: FlowShape[ProcessingMessage[RequestTemplate], ProcessingMessage[(Either[Throwable, T], RequestTemplate)]] = b.add(
-            requestAndParsingFlow[T](throughputActor, queryParam, groupId, connections, connectionToFlowFunc, parsingFunc)
+            requestAndParsingFlow[T](throughputActor, groupId, connections, connectionToFlowFunc, parsingFunc)
           )
           // creating the graph
           source ~> flow ~> sinkInst
@@ -178,7 +178,6 @@ object RequestProcessingFlows {
     * @return Graph[FlowShape] providing the streaming requesting and parsing logic
     */
   def requestAndParsingFlow[T](throughputActor: Option[ActorRef],
-                               queryParam: String,
                                groupId: String,
                                connections: Seq[Connection],
                                connectionToFlowFunc: Connection => Flow[(HttpRequest, ProcessingMessage[RequestTemplate]), (Try[HttpResponse], ProcessingMessage[RequestTemplate]), _],

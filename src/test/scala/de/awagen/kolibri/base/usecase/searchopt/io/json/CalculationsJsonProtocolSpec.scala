@@ -34,6 +34,7 @@ class CalculationsJsonProtocolSpec extends UnitTestSpec {
       |"requestTemplateKey": "requestTemplate",
       |"productIdsKey": "productIds",
       |"judgementProvider": {
+      | "type": "FILE_BASED",
       | "filename": "data/testjudgements.txt"
       |},
       |"metricsCalculation": {

@@ -3,7 +3,7 @@ import sbt.url
 
 val sl4jApiVersion = "1.7.30"
 val scalaTestVersion = "3.2.2"
-val kolibriDatatypesVersion = "0.1.0-alpha4"
+val kolibriDatatypesVersion = "0.1.0-beta1"
 
 val akkaVersion = "2.6.14"
 val akkaContribVersion = "2.5.31"
@@ -15,9 +15,10 @@ val kryoSerializationVersion = "2.2.0"
 val awsSdkVersion = "1.11.713"
 val apacheCommonsIOVersion = "2.8.0"
 val kamonVersion = "2.2.0"
+val macwireVersion = "2.4.0"
 
 ThisBuild / scalaVersion := "2.13.2"
-ThisBuild / version := "0.1.0-alpha4"
+ThisBuild / version := "0.1.0-beta1"
 
 lazy val jvmOptions = Seq(
   "-Xms1G",
@@ -156,7 +157,9 @@ val additionalDependencies = Seq(
   "org.slf4j" % "slf4j-api" % sl4jApiVersion,
   "commons-io" % "commons-io" % apacheCommonsIOVersion,
   "io.kamon" %% "kamon-bundle" % kamonVersion,
-  "io.kamon" %% "kamon-prometheus" % kamonVersion
+  "io.kamon" %% "kamon-prometheus" % kamonVersion,
+  "com.softwaremill.macwire" %% "macros" % macwireVersion,
+  "com.softwaremill.macwire" %% "util" % macwireVersion
 )
 
 

@@ -23,7 +23,6 @@ import de.awagen.kolibri.base.processing.failure.TaskFailType.{FailedByException
 import de.awagen.kolibri.datatypes.ClassTyped
 import de.awagen.kolibri.datatypes.mutable.stores.TypeTaggedMap
 import de.awagen.kolibri.datatypes.tagging.TaggedWithType
-import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.ExecutionContext
@@ -36,7 +35,7 @@ import scala.util.{Failure, Success}
   * @param currentData
   * @param tasks
   */
-case class SimpleTaskExecution[+T](resultKey: ClassTyped[ProcessingMessage[T]], currentData: TypeTaggedMap with TaggedWithType[Tag], tasks: Seq[Task[_]]) extends TaskExecution[T] {
+case class SimpleTaskExecution[+T](resultKey: ClassTyped[ProcessingMessage[T]], currentData: TypeTaggedMap with TaggedWithType, tasks: Seq[Task[_]]) extends TaskExecution[T] {
 
   assert(tasks.nonEmpty)
 

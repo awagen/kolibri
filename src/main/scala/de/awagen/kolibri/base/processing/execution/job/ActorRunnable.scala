@@ -23,8 +23,8 @@ import akka.stream.scaladsl.{Flow, GraphDSL, Keep, RunnableGraph, Sink, Source}
 import akka.util.Timeout
 import akka.{Done, NotUsed}
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationStateWithData, BadCorn, ProcessingMessage}
-import de.awagen.kolibri.base.config.AppConfig.config
-import de.awagen.kolibri.base.config.AppConfig.config._
+import de.awagen.kolibri.base.config.AppProperties.config
+import de.awagen.kolibri.base.config.AppProperties.config._
 import de.awagen.kolibri.base.processing.consume.AggregatorConfigurations.AggregatorConfig
 import de.awagen.kolibri.base.processing.decider.Deciders.allResumeDecider
 import de.awagen.kolibri.base.processing.execution.expectation.ExecutionExpectation

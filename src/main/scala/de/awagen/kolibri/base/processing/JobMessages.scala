@@ -22,12 +22,13 @@ import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor
 import de.awagen.kolibri.base.domain.Connection
 import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions
 import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions.MapWithCount
-import de.awagen.kolibri.base.http.client.request.RequestTemplateBuilder
+import de.awagen.kolibri.base.http.client.request.{RequestTemplate, RequestTemplateBuilder}
 import de.awagen.kolibri.base.processing.JobMessages.{SearchEvaluation, TestPiCalculation}
-import de.awagen.kolibri.base.processing.execution.wrapup.JobWrapUpFunctions.JobWrapUpFunction
+import de.awagen.kolibri.base.processing.execution.functions.Execution
 import de.awagen.kolibri.base.processing.modifiers.Modifier
 import de.awagen.kolibri.base.processing.modifiers.RequestPermutations.ModifierGeneratorProvider
 import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
+import de.awagen.kolibri.base.processing.tagging.TaggingConfigurations.BaseTaggingConfiguration
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.SearchJobDefinitions
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.{Calculation, CalculationResult, FutureCalculation}
 import de.awagen.kolibri.base.usecase.searchopt.parse.ParsingConfig
@@ -54,16 +55,13 @@ object JobMessages {
                               connections: Seq[Connection],
                               requestPermutation: Seq[ModifierGeneratorProvider],
                               batchByIndex: Int,
-                              queryParam: String,
                               parsingConfig: ParsingConfig,
                               excludeParamsFromMetricRow: Seq[String],
                               requestTemplateStorageKey: String,
                               mapFutureMetricRowCalculation: FutureCalculation[WeaklyTypedMap[String], MetricRow],
                               singleMapCalculations: Seq[Calculation[WeaklyTypedMap[String], CalculationResult[Double]]],
-                              tagByParam: String,
-                              wrapUpFunction: Option[JobWrapUpFunction[Unit]],
-                              writerDir: String = "/app/data",
-                              writerColumnSeparator: String = "\t",
+                              taggingConfiguration: Option[BaseTaggingConfiguration[RequestTemplate, (Either[Throwable, WeaklyTypedMap[String]], RequestTemplate), MetricRow]],
+                              wrapUpFunction: Option[Execution[Any]],
                               allowedTimePerElementInMillis: Int = 1000,
                               allowedTimePerBatchInSeconds: Int = 600,
                               allowedTimeForJobInSeconds: Int = 7200,

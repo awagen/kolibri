@@ -123,7 +123,7 @@ object TestMessages {
 
   val expectedValuesForMsg1: immutable.Seq[Corn[Int]] = Range(0, 11, 1).map(x => Corn(x + 10))
 
-  case class TaggedInt(value: Int) extends TaggedWithType[Tag]
+  case class TaggedInt(value: Int) extends TaggedWithType
 
   def messagesToActorRefRunnableGenFunc(jobId: String): Int => ActorRunnable[TaggedInt, Int, Int, MapWithCount[Tag, Double]] = x =>
     ActorRunnable(jobId = jobId, batchNr = x, supplier = ByFunctionNrLimitedIndexedGenerator(3, y => Some(TaggedInt(y + x))), transformer = Flow.fromFunction[TaggedInt, ProcessingMessage[Int]](z => {
@@ -205,7 +205,7 @@ object TestMessages {
     )
   }
 
-  case class TaggedTypeTaggedMap(d: TypedMapStore) extends TypeTaggedMap with TaggedWithType[Tag] {
+  case class TaggedTypeTaggedMap(d: TypedMapStore) extends TypeTaggedMap with TaggedWithType {
     override def put[T, V](key: ClassTyped[V], value: T)(implicit evidence$2: universe.TypeTag[T]): Option[Any] = d.put(key, value)
 
     override def remove[T](key: ClassTyped[T]): Option[T] = d.remove(key)
@@ -217,7 +217,7 @@ object TestMessages {
     override def keySet: collection.Set[ClassTyped[Any]] = d.keySet
   }
 
-  def typeTaggedMapIterator[T](elements: Seq[T], startDataKey: ClassTyped[T]): IndexedGenerator[TypeTaggedMap with TaggedWithType[Tag]] = {
+  def typeTaggedMapIterator[T](elements: Seq[T], startDataKey: ClassTyped[T]): IndexedGenerator[TypeTaggedMap with TaggedWithType] = {
     ByFunctionNrLimitedIndexedGenerator(elements.size, x => Some(TaggedTypeTaggedMap(TypedMapStore(mutable.Map(startDataKey -> elements(x))))))
   }
 

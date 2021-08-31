@@ -25,16 +25,18 @@ import de.awagen.kolibri.base.io.writer.Writers.FileWriter
 import org.slf4j.{Logger, LoggerFactory}
 
 
-case class LocalDirectoryFileFileWriter(directory: String) extends FileWriter[String, Unit] {
-  private val logger: Logger = LoggerFactory.getLogger(LocalDirectoryFileFileWriter.getClass)
+case class LocalDirectoryFileWriter(directory: String) extends FileWriter[String, Unit] {
+  private val logger: Logger = LoggerFactory.getLogger(LocalDirectoryFileWriter.getClass)
   assert(Objects.nonNull(directory) && directory.startsWith("/"), "directory must start with '/' (must start from root)")
   val normedDirectory: String = directory.stripSuffix("/")
 
   override def write(data: String, targetIdentifier: String): Either[Exception, Unit] = {
     logger.info(s"writing data for identifier: $targetIdentifier")
     val fullPath = s"$normedDirectory/$targetIdentifier"
+    val fileName = fullPath.split("/").last
+    val fullPathWithoutFile = fullPath.stripSuffix(fileName).stripSuffix("/")
     try {
-      Files.createDirectories(Paths.get(normedDirectory))
+      Files.createDirectories(Paths.get(fullPathWithoutFile))
       val file = new File(fullPath)
       val bufferedWriter = new BufferedWriter(new java.io.FileWriter(file))
       bufferedWriter.write(data)

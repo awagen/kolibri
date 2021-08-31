@@ -98,7 +98,7 @@ object JobMsgFactory {
 
   def createActorRunnableTaskJobCmd[T, W <: WithCount](jobId: String,
                                                        data: T,
-                                                       dataBatchGenerator: T => IndexedGenerator[Batch[TypeTaggedMap with TaggedWithType[Tag]]],
+                                                       dataBatchGenerator: T => IndexedGenerator[Batch[TypeTaggedMap with TaggedWithType]],
                                                        resultDataKey: ClassTyped[ProcessingMessage[Any]],
                                                        tasks: Seq[TaskDefinitions.Val[Any]],
                                                        perBatchAggregatorSupplier: () => Aggregator[ProcessingMessage[Any], W],
@@ -110,7 +110,7 @@ object JobMsgFactory {
                                                        allowedTimePerBatchInSeconds: Long,
                                                        allowedTimeForJobInSeconds: Long,
                                                        sendResultsBack: Boolean): ProcessActorRunnableTaskJobCmd[W] = {
-    val batches: IndexedGenerator[Batch[TypeTaggedMap with TaggedWithType[Tag]]] = dataBatchGenerator.apply(data)
+    val batches: IndexedGenerator[Batch[TypeTaggedMap with TaggedWithType]] = dataBatchGenerator.apply(data)
     val taskMapFunc: SerializableFunction1[TaskDefinitions.Val[Any], Task[_]] = new SerializableFunction1[TaskDefinitions.Val[Any], Task[_]] {
       override def apply(v1: TaskDefinitions.Val[Any]): Task[_] = v1.task
     }

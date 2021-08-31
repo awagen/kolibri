@@ -110,7 +110,7 @@ object JobDefinitions {
                                                          sendResultsBack: Boolean
                                                         ) extends ActorRunnableTaskJobDefinition[MetricAggregation[Tag]] {
     override def createActorRunnableTaskJobCmd: ProcessActorRunnableTaskJobCmd[MetricAggregation[Tag]] = {
-      val serializableBatchGeneratorFunc: SerializableFunction1[OrderedMultiValues, IndexedGenerator[Batch[TypeTaggedMap with TaggedWithType[Tag]]]] = {
+      val serializableBatchGeneratorFunc: SerializableFunction1[OrderedMultiValues, IndexedGenerator[Batch[TypeTaggedMap with TaggedWithType]]] = {
         (v1: OrderedMultiValues) => batchGenerator.batchFunc.apply(v1)
       }
       JobMsgFactory.createActorRunnableTaskJobCmd[OrderedMultiValues, MetricAggregation[Tag]](

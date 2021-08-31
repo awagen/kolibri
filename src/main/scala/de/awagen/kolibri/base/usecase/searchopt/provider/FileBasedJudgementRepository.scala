@@ -16,18 +16,16 @@
 
 package de.awagen.kolibri.base.usecase.searchopt.provider
 
-import scala.concurrent.{ExecutionContext, Promise}
+import de.awagen.kolibri.base.config.AppConfig
+import de.awagen.kolibri.datatypes.AtomicMapPromiseStore
+import org.slf4j.{Logger, LoggerFactory}
 
-object ClassPathFileBasedJudgementProviderFactory {
+object FileBasedJudgementRepository extends AtomicMapPromiseStore[String, JudgementProvider[Double]] {
 
-  def apply(filename: String): ClassPathFileBasedJudgementProviderFactory = new ClassPathFileBasedJudgementProviderFactory(filename)
+  val logger: Logger = LoggerFactory.getLogger(FileBasedJudgementRepository.toString)
 
-}
-
-case class ClassPathFileBasedJudgementProviderFactory(filename: String)
-  extends JudgementProviderFactory[Double] with Serializable {
-
-  override def getJudgements(implicit ec: ExecutionContext): Promise[JudgementProvider[Double]] = {
-    ClassPathFileBasedJudgementRepository.retrieveValue(filename)
+  override def calculateValue(key: String): JudgementProvider[Double] = {
+    logger.debug("calculateValue")
+    FileBasedJudgementProvider(key, AppConfig.judgementFileFormatConfig)
   }
 }

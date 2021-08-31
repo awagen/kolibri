@@ -22,50 +22,61 @@
       "useHttps": false
     }
   ],
-  "requestPermutation": [{
-    "type": "ALL",
-    "value": {
-      "params": {
-        "values": [
-          {
-            "name": "q",
-            "values": [
-              "q1",
-              "q2",
-              "q3",
-              "q4",
-              "q5",
-              "q6",
-              "q7",
-              "q8",
-              "q9",
-              "q10"
-            ]
-          },
-          {
-            "name": "a1",
-            "values": [
-              0.45,
-              0.32,
-              0.1
-            ]
-          },
-          {
-            "name": "o",
-            "start": 0.0,
-            "end": 2000.0,
-            "stepSize": 1.0
-          }
-        ]
-      },
-      "headers": {
-        "values": []
-      },
-      "bodies": [],
-      "bodyContentType": "json"
-    }}],
+  "requestPermutation": [
+    {
+      "type": "ALL",
+      "value": {
+        "params": {
+          "values": [
+            {
+              "name": "q",
+              "values": [
+                "q1",
+                "q2",
+                "q3",
+                "q4",
+                "q5",
+                "q6",
+                "q7",
+                "q8",
+                "q9",
+                "q10",
+                "q11",
+                "q12",
+                "q13",
+                "q14",
+                "q15",
+                "q16",
+                "q17",
+                "q18",
+                "q19",
+                "q20"
+              ]
+            },
+            {
+              "name": "a1",
+              "values": [
+                0.45,
+                0.32
+              ]
+            },
+            {
+              "name": "o",
+              "start": 0.0,
+              "end": 2000.0,
+              "stepSize": 1.0
+            }
+          ]
+        },
+        "headers": {
+          "values": []
+        },
+        "bodies": [],
+        "bodyContentType": "json"
+      }
+    }
+  ],
   "batchByIndex": 0,
-  "queryParam": "q",
   "parsingConfig": {
     "singleSelectors": [],
     "seqSelectors": [
@@ -82,8 +93,19 @@
   "excludeParamsFromMetricRow": [
     "q"
   ],
-  "judgementFileClasspathURI": "data/test_judgements.txt",
-  "tagByParam": "q",
+  "taggingConfiguration": {
+    "initTagger": {
+      "type": "REQUEST_PARAMETER",
+      "parameter": "q",
+      "extend": false
+    },
+    "processedTagger": {
+      "type": "NOTHING"
+    },
+    "resultTagger": {
+      "type": "NOTHING"
+    }
+  },
   "requestTemplateStorageKey": "requestTemplate",
   "mapFutureMetricRowCalculation": {
     "functionType": "IR_METRICS",
@@ -91,39 +113,37 @@
     "requestTemplateKey": "requestTemplate",
     "productIdsKey": "productIds",
     "judgementProvider": {
-      "filename": "data/test_judgements.txt"
+      "type": "FILE_BASED",
+      "filename": "/app/test-files/test-judgements/test_judgements.txt"
     },
     "metricsCalculation": {
-      "metrics": ["DCG_10", "NDCG_10", "PRECISION_4", "ERR"],
+      "metrics": [
+        "DCG_10",
+        "NDCG_10",
+        "PRECISION_4",
+        "ERR"
+      ],
       "judgementHandling": {
-        "validations": ["EXIST_RESULTS", "EXIST_JUDGEMENTS"],
-        "handling":  "AS_ZEROS"
+        "validations": [
+          "EXIST_RESULTS",
+          "EXIST_JUDGEMENTS"
+        ],
+        "handling": "AS_ZEROS"
       }
     },
-    "excludeParams": ["q"]
+    "excludeParams": [
+      "q"
+    ]
   },
   "singleMapCalculations": [],
-  "writerDir": "/app/data",
-  "writerColumnSeparator": "\t",
   "allowedTimePerElementInMillis": 1000,
-  "allowedTimePerBatchInSeconds": 600,
-  "allowedTimeForJobInSeconds": 7200,
+  "allowedTimePerBatchInSeconds": 6000,
+  "allowedTimeForJobInSeconds": 720000,
   "expectResultsFromBatchCalculations": false,
   "wrapUpFunction": {
-    "type": "AGGREGATE_ALL",
-    "directoryReader": {
-      "type": "LOCAL_READER",
-      "baseDir": "/app/data/testJob",
-      "regex": "[(]q=.+[)]",
-      "encoding": "UTF-8"
-    },
-    "fileReader": {
-      "type": "LOCAL_FILE_READER",
-      "fromClasspath": false
-    },
-    "fileWriter": {
-      "directory": "/app/data/testJob"
-    },
-    "outputFilename": "(ALL1)"
+    "type": "AGGREGATE_FROM_DIR_BY_REGEX",
+    "regex": "[(]q=.+[)]",
+    "outputFilename": "(ALL1)",
+    "subDir": "testJob"
   }
 }

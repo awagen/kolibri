@@ -14,17 +14,15 @@
   * limitations under the License.
   */
 
-package de.awagen.kolibri.base.usecase.searchopt.provider
 
-import de.awagen.kolibri.datatypes.AtomicMapPromiseStore
-import org.slf4j.{Logger, LoggerFactory}
+package de.awagen.kolibri.base.processing.execution.functions
 
-object ClassPathFileBasedJudgementRepository extends AtomicMapPromiseStore[String, JudgementProvider[Double]] {
+import de.awagen.kolibri.base.processing.failure.TaskFailType.TaskFailType
+import de.awagen.kolibri.datatypes.io.KolibriSerializable
 
-  val logger: Logger = LoggerFactory.getLogger(ClassPathFileBasedJudgementRepository.toString)
 
-  override def calculateValue(key: String): JudgementProvider[Double] = {
-    logger.debug("calculateValue")
-    ClassPathFileBasedJudgementProvider(key)
-  }
+trait Execution[+T] extends KolibriSerializable {
+
+  def execute: Either[TaskFailType, T]
+
 }

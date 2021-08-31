@@ -24,9 +24,9 @@ import akka.management.cluster.bootstrap.ClusterBootstrap
 import akka.management.scaladsl.AkkaManagement
 import akka.stream.Materializer
 import de.awagen.kolibri.base.actors.routing.RoutingActor
-import de.awagen.kolibri.base.config.AppConfig
-import de.awagen.kolibri.base.config.AppConfig.config
-import de.awagen.kolibri.base.config.AppConfig.config.{kolibriDispatcherName, node_roles}
+import de.awagen.kolibri.base.config.AppProperties
+import de.awagen.kolibri.base.config.AppProperties.config
+import de.awagen.kolibri.base.config.AppProperties.config.{kolibriDispatcherName, node_roles}
 import de.awagen.kolibri.base.http.server.BaseRoutes._
 import de.awagen.kolibri.base.http.server.{BaseRoutes, HttpServer}
 import kamon.Kamon
@@ -93,7 +93,8 @@ object ClusterNode extends App {
     BaseRoutes.init
     val usedRoute: Route = route.getOrElse(simpleHelloRoute ~ streamingUserRoutes ~ clusterStatusRoutee ~ killAllJobs
       ~ getJobStatus ~ killJob ~ getJobWorkerStatus ~ getRunningJobIds ~ executeDistributedPiCalculationExample
-      ~ executeDistributedPiCalculationExampleWithoutSerialization ~ startSearchEval ~ startSearchEvalNoSerialize)
+      ~ executeDistributedPiCalculationExampleWithoutSerialization ~ startSearchEval ~ startSearchEvalNoSerialize
+      ~ startExecution)
     val isHttpServerNode: Boolean = node_roles.contains(config.HTTP_SERVER_ROLE)
 
     logger.info(s"Node roles: $node_roles")
@@ -111,7 +112,7 @@ object ClusterNode extends App {
       * @return
       */
     def startSystem(): ActorSystem = {
-      val system = ActorSystem(config.applicationName, AppConfig.config.baseConfig)
+      val system = ActorSystem(config.applicationName, AppProperties.config.baseConfig)
       AkkaManagement(system).start()
       ClusterBootstrap(system).start()
       Cluster(system).registerOnMemberUp({

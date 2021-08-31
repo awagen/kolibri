@@ -18,7 +18,7 @@ package de.awagen.kolibri.base.processing.execution.job
 
 import akka.actor.{Actor, ActorLogging, ActorSystem}
 import de.awagen.kolibri.base.actors.work.worker.AggregatingActor
-import de.awagen.kolibri.base.config.AppConfig
+import de.awagen.kolibri.base.config.AppProperties
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnable.JobActorConfig
 
 import scala.collection.immutable
@@ -40,7 +40,7 @@ class TestActorRunnableActor() extends Actor with ActorLogging {
       val actorConfig = JobActorConfig(self, immutable.Map(ActorType.ACTOR_SINK -> sender()))
       val runnableGraph = e.getRunnableGraph(actorConfig)
       runnableGraph.run()
-    case _ if AppConfig.config.useAggregatorBackpressure =>
+    case _ if AppProperties.config.useAggregatorBackpressure =>
       sender() ! AggregatingActor.ACK
   }
 

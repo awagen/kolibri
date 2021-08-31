@@ -1,0 +1,35 @@
+{
+  "type": "ANALYZE_BEST_WORST_REGEX",
+  "directory": "testJob",
+  "regex": "[(]q=.+[)]",
+  "currentParams": {
+    "a1": ["0.45"],
+    "k1": ["v1", "v2"],
+    "k2": ["v3"],
+    "o": ["479.0"]
+  },
+  "compareParams": [
+    {
+      "a1": ["0.32"],
+      "k1": ["v1", "v2"],
+      "k2": ["v3"],
+      "o": ["1760.0"]
+    },
+    {
+      "a1": ["0.45"],
+      "k1": ["v1", "v2"],
+      "k2": ["v3"],
+      "o": ["384.0"]
+    },
+    {
+      "a1": ["0.45"],
+      "k1": ["v1", "v2"],
+      "k2": ["v3"],
+      "o": ["1325.0"]
+    }
+  ],
+  "metricName": "NDCG_10",
+  "queryParamName": "q",
+  "n_best": 5,
+  "n_worst": 4
+}
