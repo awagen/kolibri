@@ -142,15 +142,15 @@ is stored in a variable of generic type Seq[_], e.g where error message will inc
 This refers to the unclear type of Seq[_], so you should parse to specific known types in those cases, e.g two samples where the first will yield
 error and the second will be fine (the below assumes that the seqSelector selects a Seq[JsValue] from the JsValue input and casts the single
 elements to type String, while seqSelector.classTyped is of type ClassTyped[Seq[String]]):
-´´´
+```
 val value: Seq[_] = seqSelector.select(jsValue)
 typedMap.put(seqSelector.classTyped, value)
-´´´
+```
 
-´´´
+```
 val value: Seq[String] = seqSelector.select(jsValue).asInstanceOf[Seq[String]]
 typedMap.put(seqSelector.classTyped, value)
-´´´
+```
 
 ## A few notes on play json lib vs spray json lib
 In the project you will currently find both spray json lib for json parsing and the play json lib.
