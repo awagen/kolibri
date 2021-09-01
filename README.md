@@ -6,6 +6,8 @@
 This project provides the mechanism to execute jobs based on akka, making use of clustering to distribute job batches.
 ![Alt text](images/kolibri.svg?raw=true "Kolibri Base")
 
+Documentation link: https://awagen.github.io/kolibri/ \
+Doc converging towards completion, getting there (check for updates).
 
 ## Tests
 ### Execution
