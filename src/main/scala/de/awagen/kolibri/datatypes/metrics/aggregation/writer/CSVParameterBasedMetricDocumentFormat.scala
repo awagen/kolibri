@@ -123,7 +123,7 @@ case class CSVParameterBasedMetricDocumentFormat(columnSeparator: String) extend
       val metricValueObj = MetricValue.createEmptyAveragingMetricValue(metricName)
       val newRunningValue: BiRunningValue[Map[ComputeFailReason, Int], Double] = metricValueObj
         .biValue
-        .addFirst(RunningValue(failCount, failReasonsCountMap, errorMapAdd.addFunc)) //metricValueObj.biValue.value1.add(failAggregateValue)
+        .addFirst(RunningValue(failCount, failReasonsCountMap, errorMapAdd.addFunc))
         .addSecond(RunningValue(successCount, metricValue, doubleAvgAdd.addFunc))
       metricRow = metricRow.addMetric(metricValueObj.copy(biValue = newRunningValue))
     })
@@ -169,12 +169,12 @@ case class CSVParameterBasedMetricDocumentFormat(columnSeparator: String) extend
     }
     metricNames.foreach(x => {
       val metricValue: MetricValue[Double] = row.metrics.getOrElse(x, MetricValue.createEmptyAveragingMetricValue(x))
-      val value: Map[ComputeFailReason, Int] = metricValue.biValue.value1.value
+      val failMapValue: Map[ComputeFailReason, Int] = metricValue.biValue.value1.value
       val totalErrors = metricValue.biValue.value1.count
       val totalSuccess = metricValue.biValue.value2.count
-      val errorString = value.keys.toSeq
+      val errorString = failMapValue.keys.toSeq
         .sorted[ComputeFailReason]((x, y) => x.description compare y.description)
-        .map(failReason => s"${failReason.description}:${value(failReason)}")
+        .map(failReason => s"${failReason.description}:${failMapValue(failReason)}")
         .mkString(",")
       data = data ++ Seq(
         s"$totalErrors",
