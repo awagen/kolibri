@@ -18,7 +18,6 @@
 package de.awagen.kolibri.base.usecase.searchopt.metrics
 
 import de.awagen.kolibri.base.http.client.request.RequestTemplate
-import de.awagen.kolibri.base.processing.failure.TaskFailType
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.CalculationResult
 import de.awagen.kolibri.base.usecase.searchopt.metrics.ComputeFailReason.missingKeyFailReason
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Functions.{countValues, findFirstValue, throwableToMetricRowResponse}
@@ -52,6 +51,7 @@ object Calculations {
 
   trait FutureCalculation[In, Out] extends KolibriSerializable {
     val name: String
+    val calculationValueNames: Set[String]
 
     def apply(in: In)(implicit ec: ExecutionContext): Future[Out]
   }
@@ -62,6 +62,9 @@ object Calculations {
                                               judgementProviderFactory: JudgementProviderFactory[Double],
                                               metricsCalculation: MetricsCalculation,
                                               excludeParamsFromMetricRow: Seq[String]) extends FutureCalculation[WeaklyTypedMap[String], MetricRow] {
+
+    override val calculationValueNames: Set[String] = metricsCalculation.metrics.map(x => x.name).toSet
+
     override def apply(msg: WeaklyTypedMap[String])(implicit ec: ExecutionContext): Future[MetricRow] = {
       judgementProviderFactory.getJudgements.future
         .map(y => {
@@ -77,9 +80,10 @@ object Calculations {
         })
         .recover(throwable => {
           logger.warn(s"failed retrieving judgements: $throwable")
-          throwableToMetricRowResponse(throwable)
+          throwableToMetricRowResponse(throwable, calculationValueNames)
         })
     }
+
   }
 
   case class BaseBooleanCalculation(name: String, function: SerializableFunction1[Seq[Boolean], CalculationResult[Double]]) extends Calculation[Seq[Boolean], CalculationResult[Double]] {
@@ -96,7 +100,7 @@ object Calculations {
     }
   }
 
-  case class FromMapFutureCalculation[U](name: String, function: FutureCalculation[WeaklyTypedMap[String], U]) extends FutureCalculation[WeaklyTypedMap[String], U] {
+  case class FromMapFutureCalculation[U](name: String, calculationValueNames: Set[String], function: FutureCalculation[WeaklyTypedMap[String], U]) extends FutureCalculation[WeaklyTypedMap[String], U] {
     override def apply(msg: WeaklyTypedMap[String])(implicit ec: ExecutionContext): Future[U] = {
       function.apply(msg)
     }
@@ -119,11 +123,13 @@ object Functions {
     * @param e : The throwable to map to MetricRow
     * @return
     */
-  def throwableToMetricRowResponse(e: Throwable): MetricRow = {
+  def throwableToMetricRowResponse(e: Throwable, valueNames: Set[String]): MetricRow = {
     val metricRow = MetricRow(params = Map.empty[String, Seq[String]], metrics = Map.empty[String, MetricValue[Double]])
-    val failMetricName: String = TaskFailType.FailedByException(e).toString
-    val addValue: MetricValue[Double] = MetricValue.createAvgFailSample(metricName = failMetricName, failMap = Map[ComputeFailReason, Int](ComputeFailReason(s"exception:${e.getClass.toString}") -> 1))
-    metricRow.addMetric(addValue)
+    valueNames.foreach(x => {
+      val addValue: MetricValue[Double] = MetricValue.createAvgFailSample(metricName = x, failMap = Map[ComputeFailReason, Int](ComputeFailReason(s"${e.getClass.getName}") -> 1))
+      metricRow.addMetric(addValue)
+    })
+    metricRow
   }
 
   /**

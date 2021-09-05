@@ -116,6 +116,10 @@ object RequestProcessingFlows {
             Http().singleRequest(y._1.withUri(Uri(s"$protocol://${connection.host}:${connection.port}${y._1.uri.toString()}")))
               .flatMap { response => parsingFunc.apply(response) }
               .map(v => (v, y._2))
+              .recover(e => {
+                logger.warn("Exception on single request", e)
+                (Left(e), y._2)
+              })
           }
           e
         }
@@ -140,14 +144,22 @@ object RequestProcessingFlows {
     */
   def connectionPoolFlow[T](connection: Connection, parsingFunc: HttpResponse => Future[Either[Throwable, T]])(implicit as: ActorSystem,
                                                                                                                ec: ExecutionContext): Flow[ProcessingMessage[RequestTemplate], ProcessingMessage[(Either[Throwable, T], RequestTemplate)], NotUsed] = {
-    val throughConnectionFlow: Flow[(HttpRequest, ProcessingMessage[RequestTemplate]), (Either[Throwable, T], ProcessingMessage[RequestTemplate]), _] =
+    val throughConnectionFlow: Flow[(HttpRequest, ProcessingMessage[RequestTemplate]), (Either[Throwable, T], ProcessingMessage[RequestTemplate]), _] = {
       connectionFunc.apply(connection)
-        .mapAsyncUnordered[(Either[Throwable, T], ProcessingMessage[RequestTemplate])](config.requestParallelism) {
-          case y@(Success(e), _) =>
-            parsingFunc.apply(e).map(v => (v, y._2))
-          case y@(Failure(e), _) =>
-            Future.successful(Left(e)).map(v => (v, y._2))
-        }.withAttributes(ActorAttributes.supervisionStrategy(allResumeDecider))
+        .mapAsyncUnordered[(Either[Throwable, T], ProcessingMessage[RequestTemplate])](config.requestParallelism)(
+          x => {
+            x match {
+              case y@(Success(e), _) =>
+                parsingFunc.apply(e).map(v => (v, y._2))
+              case y@(Failure(e), _) =>
+                Future.successful(Left(e)).map(v => (v, y._2))
+            }
+          }.recover(e => {
+            logger.warn("Exception on flow request", e)
+            (Left(e), x._2)
+          })
+        ).withAttributes(ActorAttributes.supervisionStrategy(allResumeDecider))
+    }
 
     val flowResult: Flow[ProcessingMessage[RequestTemplate], (Either[Throwable, T], ProcessingMessage[RequestTemplate]), NotUsed] = Flow.fromFunction[ProcessingMessage[RequestTemplate], (HttpRequest, ProcessingMessage[RequestTemplate])](
       y => (y.data.getRequest, y)
@@ -193,7 +205,6 @@ object RequestProcessingFlows {
     }).log("after fromSource throughput meter"))
     val balance: UniformFanOutShape[ProcessingMessage[RequestTemplate], ProcessingMessage[RequestTemplate]] = b
       .add(Balance.apply[ProcessingMessage[RequestTemplate]](connections.size, waitForAllDownstreams = false))
-
     // NOTE: if useConnectionPoolFlow = true, make sure to have proper setting of parallelism in mapAsync calls lateron and
     // tune the timeouts properly, otherwise youll see messages of the following type:
     // [warn] a.h.i.e.c.PoolId - [56 (WaitingForResponseEntitySubscription)]Response entity was not subscribed after 3 seconds. Make sure to read the response `entity` body or call `entity.discardBytes()` on it -- in case you deal with `HttpResponse`, use the shortcut `response.discardEntityBytes()`. GET /search Empty -> 200 OK Default(433 bytes)

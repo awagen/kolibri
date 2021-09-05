@@ -3,7 +3,7 @@ import sbt.url
 
 val sl4jApiVersion = "1.7.30"
 val scalaTestVersion = "3.2.2"
-val kolibriDatatypesVersion = "0.1.0-beta1"
+val kolibriDatatypesVersion = "0.1.0-beta2"
 
 val akkaVersion = "2.6.14"
 val akkaContribVersion = "2.5.31"
@@ -18,7 +18,7 @@ val kamonVersion = "2.2.0"
 val macwireVersion = "2.4.0"
 
 ThisBuild / scalaVersion := "2.13.2"
-ThisBuild / version := "0.1.0-beta1"
+ThisBuild / version := "0.1.0-beta2"
 
 lazy val jvmOptions = Seq(
   "-Xms1G",

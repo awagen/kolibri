@@ -38,7 +38,7 @@ case class MetricsCalculation(metrics: Seq[Metrics], judgementHandling: Judgemen
       MetricValue.createAvgFailSample(metric.name, RunningValue.mapFromFailReasons(failedValidations.map(x => x.reason)))
     }
     else {
-      val preparedValues = judgementHandling.extractValues(values)
+      val preparedValues: Seq[Double] = judgementHandling.extractValues(values)
       val result: Either[Seq[ComputeFailReason], Double] = metric.function.apply(preparedValues)
       result match {
         case Right(score) =>

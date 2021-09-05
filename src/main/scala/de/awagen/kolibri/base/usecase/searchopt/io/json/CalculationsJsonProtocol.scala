@@ -49,7 +49,7 @@ object CalculationsJsonProtocol extends DefaultJsonProtocol {
               metricsCalculation,
               excludeParamsFromMetricRow
             )
-            FromMapFutureCalculation(name, calculation)
+            FromMapFutureCalculation(name, metricsCalculation.metrics.map(x => x.name).toSet, calculation)
         }
     }
 

@@ -32,7 +32,11 @@ object TaskFailType {
 
   case object NotYetStartedTask extends TaskFailType
 
-  sealed case class FailedByException(e: Throwable) extends TaskFailType
+  sealed case class FailedByException(e: Throwable) extends TaskFailType {
+    override def toString: String = {
+      s"FailedByException(${e.getClass.getName})"
+    }
+  }
 
   sealed case class MissingPrerequisites(failedKeys: Seq[ClassTyped[_]]) extends TaskFailType
 

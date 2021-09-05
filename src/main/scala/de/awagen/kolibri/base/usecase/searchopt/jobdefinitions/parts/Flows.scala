@@ -125,7 +125,9 @@ object Flows {
                   excludeParamsFromMetricRow: Seq[String])(implicit ec: ExecutionContext): Future[ProcessingMessage[MetricRow]] = {
     processingMessage.data._1 match {
       case e@Left(_) =>
-        val metricRow = throwableToMetricRowResponse(e.value)
+        // need to add paramNames here to set the fail reasons for each
+        val allParamNames: Set[String] = singleMapCalculations.map(x => x.name).toSet ++ mapFutureMetricRowCalculation.calculationValueNames
+        val metricRow = throwableToMetricRowResponse(e.value, allParamNames)
         val result: ProcessingMessage[MetricRow] = Corn(metricRow)
         val originalTags: Set[Tag] = processingMessage.getTagsForType(TagType.AGGREGATION)
         result.addTags(TagType.AGGREGATION, originalTags)
