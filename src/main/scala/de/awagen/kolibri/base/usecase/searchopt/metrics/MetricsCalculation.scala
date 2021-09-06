@@ -17,7 +17,6 @@
 package de.awagen.kolibri.base.usecase.searchopt.metrics
 
 import de.awagen.kolibri.base.usecase.searchopt.metrics.JudgementValidation.JudgementValidation
-import de.awagen.kolibri.base.usecase.searchopt.metrics.Metrics.Metrics
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.values.{MetricValue, RunningValue}
@@ -25,13 +24,13 @@ import de.awagen.kolibri.datatypes.values.{MetricValue, RunningValue}
 import scala.collection.immutable
 
 
-case class MetricsCalculation(metrics: Seq[Metrics], judgementHandling: JudgementHandlingStrategy) {
+case class MetricsCalculation(metrics: Seq[Metric], judgementHandling: JudgementHandlingStrategy) {
 
   def validateAndReturnFailedJudgements(judgements: Seq[Option[Double]]): Seq[JudgementValidation] = {
     judgementHandling.validateAndReturnFailed(judgements)
   }
 
-  def calculateMetric(metric: Metrics, values: Seq[Option[Double]]): MetricValue[Double] = {
+  def calculateMetric(metric: Metric, values: Seq[Option[Double]]): MetricValue[Double] = {
     val failedValidations: Seq[JudgementValidation] = validateAndReturnFailedJudgements(values)
 
     if (failedValidations.nonEmpty) {

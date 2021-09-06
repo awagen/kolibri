@@ -18,6 +18,7 @@ package de.awagen.kolibri.base.usecase.searchopt.metrics
 
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.CalculationResult
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason
+import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 
 import scala.collection.immutable
 
@@ -32,8 +33,8 @@ object IRMetricFunctions {
   val NO_JUDGEMENTS: ComputeFailReason = ComputeFailReason("NO_JUDGEMENTS")
   val ZERO_DENOMINATOR: ComputeFailReason = ComputeFailReason("ZERO_DENOMINATOR")
 
-  def dcgAtK(k: Int): Function[Seq[Double], CalculationResult[Double]] = {
-    seq: Seq[Double] => {
+  def dcgAtK(k: Int): SerializableFunction1[Seq[Double], CalculationResult[Double]] = new SerializableFunction1[Seq[Double], CalculationResult[Double]] {
+    override def apply(seq: Seq[Double]): CalculationResult[Double] = {
       seq match {
         case _ if seq.isEmpty => Left(Seq(NO_JUDGEMENTS))
         case _ if seq.size == 1 => Right(seq.head)
@@ -46,8 +47,8 @@ object IRMetricFunctions {
     }
   }
 
-  def ndcgAtK(k: Int): Function[Seq[Double], CalculationResult[Double]] = {
-    seq: Seq[Double] => {
+  def ndcgAtK(k: Int): SerializableFunction1[Seq[Double], CalculationResult[Double]] = new SerializableFunction1[Seq[Double], CalculationResult[Double]] {
+    override def apply(seq: Seq[Double]): CalculationResult[Double] = {
       seq match {
         case e if e.isEmpty => Left(Seq(NO_JUDGEMENTS))
         case e if e.size == 1 =>
@@ -66,15 +67,15 @@ object IRMetricFunctions {
     }
   }
 
-  def precisionAtK(n: Int, threshold: Double): Function[Seq[Double], CalculationResult[Double]] = {
-    seq: Seq[Double] => {
+  def precisionAtK(n: Int, threshold: Double): SerializableFunction1[Seq[Double], CalculationResult[Double]] = new SerializableFunction1[Seq[Double], CalculationResult[Double]] {
+    override def apply(seq: Seq[Double]): CalculationResult[Double] = {
       val allN = seq.slice(0, n)
       if (allN.nonEmpty) Right(allN.count(x => x >= threshold).toDouble / allN.size) else Left(Seq(NO_JUDGEMENTS))
     }
   }
 
-  def errAtK(n: Int, maxGrade: Double): Function[Seq[Double], CalculationResult[Double]] = {
-    seq: Seq[Double] => {
+  def errAtK(n: Int, maxGrade: Double): SerializableFunction1[Seq[Double], CalculationResult[Double]] = new SerializableFunction1[Seq[Double], CalculationResult[Double]] {
+    override def apply(seq: Seq[Double]): CalculationResult[Double] = {
       seq match {
         case e if e.isEmpty => Left(Seq(NO_JUDGEMENTS))
         case _ =>
@@ -92,7 +93,6 @@ object IRMetricFunctions {
           )
           Right(err)
       }
-
     }
   }
 }

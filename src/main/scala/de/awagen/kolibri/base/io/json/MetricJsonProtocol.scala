@@ -14,15 +14,16 @@
   * limitations under the License.
   */
 
-package de.awagen.kolibri.base.usecase.searchopt.io.json
 
-import de.awagen.kolibri.base.io.json.MetricJsonProtocol._
-import de.awagen.kolibri.base.usecase.searchopt.io.json.JudgementHandlingStrategyJsonProtocol._
-import de.awagen.kolibri.base.usecase.searchopt.metrics.MetricsCalculation
-import spray.json.{DefaultJsonProtocol, RootJsonFormat}
+package de.awagen.kolibri.base.io.json
 
-object MetricsCalculationJsonProtocol extends DefaultJsonProtocol {
+import de.awagen.kolibri.base.io.json.MetricFunctionJsonProtocol.MetricFunctionFormat
+import de.awagen.kolibri.base.usecase.searchopt.metrics.Metric
+import spray.json.DefaultJsonProtocol.{StringJsonFormat, jsonFormat2}
+import spray.json.RootJsonFormat
 
-  implicit val metricsCalculationFormat: RootJsonFormat[MetricsCalculation] = jsonFormat2(MetricsCalculation)
+object MetricJsonProtocol {
+
+  implicit val metricFormat: RootJsonFormat[Metric] = jsonFormat2(Metric)
 
 }

@@ -19,7 +19,7 @@ package de.awagen.kolibri.base.usecase.searchopt.io.json
 
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
 import de.awagen.kolibri.base.usecase.searchopt.io.json.CalculationsJsonProtocol.{FromMapCalculationSeqBooleanToDoubleFormat, FromMapFutureCalculationSeqStringToMetricRowFormat}
-import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.{Calculation, CalculationResult, FromMapCalculation, FutureCalculation}
+import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.{Calculation, CalculationResult, FutureCalculation}
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import spray.json._
@@ -38,7 +38,12 @@ class CalculationsJsonProtocolSpec extends UnitTestSpec {
       | "filename": "data/testjudgements.txt"
       |},
       |"metricsCalculation": {
-      | "metrics": ["DCG_10", "NDCG_10", "PRECISION_4", "ERR"],
+      | "metrics": [
+      | {"name": "DCG_10", "function": {"type": "DCG", "k": 10}},
+      | {"name": "NDCG_10", "function": {"type": "NDCG", "k": 10}},
+      | {"name": "PRECISION_4", "function": {"type": "PRECISION", "k": 4, "threshold": 0.1}},
+      | {"name": "ERR", "function": {"type": "ERR", "k": 4}}
+      | ],
       | "judgementHandling": {
       |   "validations": ["EXIST_RESULTS", "EXIST_JUDGEMENTS"],
       |   "handling":  "AS_ZEROS"

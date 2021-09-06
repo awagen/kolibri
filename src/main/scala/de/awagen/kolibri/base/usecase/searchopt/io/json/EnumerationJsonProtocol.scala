@@ -17,23 +17,13 @@
 package de.awagen.kolibri.base.usecase.searchopt.io.json
 
 import de.awagen.kolibri.base.usecase.searchopt.metrics.JudgementValidation.JudgementValidation
-import de.awagen.kolibri.base.usecase.searchopt.metrics.Metrics.Metrics
 import de.awagen.kolibri.base.usecase.searchopt.metrics.MissingValueStrategy.MissingValueStrategy
-import de.awagen.kolibri.base.usecase.searchopt.metrics.{JudgementValidation, Metrics, MissingValueStrategy}
+import de.awagen.kolibri.base.usecase.searchopt.metrics.{JudgementValidation, MissingValueStrategy}
 import de.awagen.kolibri.datatypes.io.json.EnumerationJsonProtocol.EnumerationProtocol
 import spray.json.{DefaultJsonProtocol, DeserializationException, JsString, JsValue}
 
 
 object EnumerationJsonProtocol extends DefaultJsonProtocol {
-
-  implicit object metricsFormat extends EnumerationProtocol[Metrics] {
-    override def read(json: JsValue): Metrics = {
-      json match {
-        case JsString(txt) => Metrics.withName(txt).asInstanceOf[Metrics]
-        case e => throw DeserializationException(s"Expected a value from Metrics but got value $e")
-      }
-    }
-  }
 
   implicit object missingValueStrategyFormat extends EnumerationProtocol[MissingValueStrategy] {
     override def read(json: JsValue): MissingValueStrategy = {

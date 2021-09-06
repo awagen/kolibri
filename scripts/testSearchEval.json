@@ -118,10 +118,10 @@
     },
     "metricsCalculation": {
       "metrics": [
-        "DCG_10",
-        "NDCG_10",
-        "PRECISION_4",
-        "ERR"
+        {"name": "DCG_10", "function": {"type": "DCG", "k": 10}},
+        {"name": "NDCG_10", "function": {"type": "NDCG", "k": 10}},
+        {"name": "PRECISION_4", "function": {"type": "PRECISION", "k": 4, "threshold":  0.1}},
+        {"name": "ERR_10", "function": {"type": "ERR", "k": 10}}
       ],
       "judgementHandling": {
         "validations": [
