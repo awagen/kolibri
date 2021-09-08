@@ -16,23 +16,27 @@
 
 package de.awagen.kolibri.datatypes.io.json
 
+import de.awagen.kolibri.datatypes.io.json.OrderedValuesJsonProtocol._
 import de.awagen.kolibri.datatypes.multivalues
 import de.awagen.kolibri.datatypes.multivalues.{GridOrderedMultiValues, GridOrderedMultiValuesBatch, OrderedMultiValues}
 import de.awagen.kolibri.datatypes.values.OrderedValues
-import spray.json.{DefaultJsonProtocol, JsValue, JsonFormat, RootJsonFormat}
-import OrderedValuesJsonProtocol._
+import spray.json.{DefaultJsonProtocol, DeserializationException, JsValue, JsonFormat, RootJsonFormat}
 
 
 object OrderedMultiValuesJsonProtocol extends DefaultJsonProtocol {
 
   implicit object OrderedMultiValuesAnyFormat extends JsonFormat[OrderedMultiValues] {
     override def read(json: JsValue): OrderedMultiValues = json match {
-      case spray.json.JsObject(fields) if fields.contains("values") =>
-        multivalues.GridOrderedMultiValues(fields("values").convertTo[Seq[OrderedValues[_]]])
-      case spray.json.JsObject(fields) if fields.contains("multivalues") && fields.contains("batchSize") &&
-        fields.contains("batchNr") =>
-        multivalues.GridOrderedMultiValuesBatch(multivalues.GridOrderedMultiValues(fields("multivalues").asJsObject.getFields("values").head.convertTo[Seq[OrderedValues[_]]]),
-          fields("batchSize").convertTo[Int], fields("batchNr").convertTo[Int])
+      case spray.json.JsObject(fields) => fields("type").convertTo[String] match {
+        case "GRID_FROM_VALUES_SEQ" =>
+          val values: Seq[OrderedValues[_]] = fields("values").convertTo[Seq[OrderedValues[_]]]
+          multivalues.GridOrderedMultiValues(values)
+        case "GRID_BATCH_FROM_VALUES_SEQ" =>
+          multivalues.GridOrderedMultiValuesBatch(multivalues.GridOrderedMultiValues(fields("multiValues").asJsObject.getFields("values").head.convertTo[Seq[OrderedValues[_]]]),
+            fields("batchSize").convertTo[Int], fields("batchNr").convertTo[Int])
+        case e =>  throw DeserializationException(s"Expected a valid type for OrderedMultiValues but got $e")
+      }
+      case e =>  throw DeserializationException(s"Expected a value for OrderedMultiValues but got $e")
     }
 
     override def write(obj: OrderedMultiValues): JsValue = obj match {
@@ -46,6 +50,6 @@ object OrderedMultiValuesJsonProtocol extends DefaultJsonProtocol {
     jsonFormat(GridOrderedMultiValues, "values")
 
   implicit def gridOrderedMultiValuesBatchFormat: RootJsonFormat[GridOrderedMultiValuesBatch] =
-    jsonFormat(GridOrderedMultiValuesBatch, "multivalues", "batchSize", "batchNr")
+    jsonFormat(GridOrderedMultiValuesBatch, "multiValues", "batchSize", "batchNr")
 
 }
