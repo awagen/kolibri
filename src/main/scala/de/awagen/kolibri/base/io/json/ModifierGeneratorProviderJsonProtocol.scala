@@ -20,11 +20,11 @@ package de.awagen.kolibri.base.io.json
 import akka.http.scaladsl.model.{ContentType, ContentTypes}
 import de.awagen.kolibri.base.io.json.IndexedGeneratorJsonProtocol._
 import de.awagen.kolibri.base.io.json.ModifierMappersJsonProtocol._
+import de.awagen.kolibri.base.io.json.OrderedMultiValuesJsonProtocol.OrderedMultiValuesAnyFormat
 import de.awagen.kolibri.base.processing.modifiers.ModifierMappers.{BodyMapper, HeadersMapper, ParamsMapper}
 import de.awagen.kolibri.base.processing.modifiers.RequestPermutations.{MappingModifier, ModifierGeneratorProvider, RequestPermutation}
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
-import de.awagen.kolibri.datatypes.io.json.OrderedMultiValuesJsonProtocol.OrderedMultiValuesAnyFormat
-import de.awagen.kolibri.datatypes.multivalues.OrderedMultiValues
+import de.awagen.kolibri.datatypes.multivalues.{GridOrderedMultiValues, OrderedMultiValues}
 import spray.json.{DefaultJsonProtocol, DeserializationException, JsValue, JsonFormat, RootJsonFormat, enrichAny}
 
 object ModifierGeneratorProviderJsonProtocol extends DefaultJsonProtocol {
@@ -61,11 +61,15 @@ object ModifierGeneratorProviderJsonProtocol extends DefaultJsonProtocol {
 
   implicit val requestPermutationFormat: RootJsonFormat[RequestPermutation] = jsonFormat(
     (
-      params: OrderedMultiValues,
-      headers: OrderedMultiValues,
-      bodies: Seq[String],
-      bodyContentType: String
-    ) => RequestPermutation.apply(params, headers, bodies, stringToContentType(bodyContentType)),
+      params: Option[OrderedMultiValues],
+      headers: Option[OrderedMultiValues],
+      bodies: Option[Seq[String]],
+      bodyContentType: Option[String]
+    ) => RequestPermutation.apply(
+      params.getOrElse(GridOrderedMultiValues(Seq.empty)),
+      headers.getOrElse(GridOrderedMultiValues(Seq.empty)),
+      bodies.getOrElse(Seq.empty),
+      stringToContentType(bodyContentType.getOrElse("json"))),
     "params",
     "headers",
     "bodies",
