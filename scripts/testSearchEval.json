@@ -27,6 +27,7 @@
       "type": "ALL",
       "value": {
         "params": {
+          "type": "GRID_FROM_VALUES_SEQ",
           "values": [
             {
               "name": "q",
@@ -69,6 +70,7 @@
           ]
         },
         "headers": {
+          "type": "GRID_FROM_VALUES_SEQ",
           "values": []
         },
         "bodies": [],
