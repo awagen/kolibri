@@ -17,12 +17,12 @@
 
 package de.awagen.kolibri.base.usecase.searchopt.http.client.flows
 
-import akka.actor.{ActorContext, ActorRef, ActorSystem}
+import akka.NotUsed
+import akka.actor.{ActorRef, ActorSystem}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse, Uri}
 import akka.stream._
-import akka.stream.scaladsl.{Balance, Flow, GraphDSL, Merge, RunnableGraph, Sink, Source}
-import akka.{Done, NotUsed}
+import akka.stream.scaladsl.{Balance, Flow, GraphDSL, Merge}
 import de.awagen.kolibri.base.actors.flows.GenericFlows.flowThroughActorMeter
 import de.awagen.kolibri.base.actors.tracking.ThroughputActor.AddForStage
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{Corn, ProcessingMessage}
@@ -31,8 +31,6 @@ import de.awagen.kolibri.base.config.AppProperties.config.useConnectionPoolFlow
 import de.awagen.kolibri.base.domain.Connection
 import de.awagen.kolibri.base.http.client.request.RequestTemplate
 import de.awagen.kolibri.base.processing.decider.Deciders.allResumeDecider
-import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.Flows.connectionFunc
-import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.tagging.TagType
 import de.awagen.kolibri.datatypes.tagging.TagType.AGGREGATION
 import org.slf4j.{Logger, LoggerFactory}
@@ -43,53 +41,6 @@ import scala.util.{Failure, Success, Try}
 object RequestProcessingFlows {
 
   val logger: Logger = LoggerFactory.getLogger(RequestProcessingFlows.getClass)
-
-  /**
-    * Create a graph that is closed and thus can be run.
-    * It uses Balance, meaning each request just goes to one of the given connection pool. If just one connection is
-    * given, all will go that way.
-    * Connect processing of the parsed result by passing the respective sink that takes care of it
-    *
-    * @param connections              Seq[Connection]: providing connection information for distinct hosts to send requests to
-    * @param requestTemplateGenerator IndexedGenerator[ProcessingMessage[RequestTemplate]]: providing the wrapped RequestTemplates defining the requests to execute
-    * @param queryParam               String - the parameter providing the query
-    * @param groupId                  String - groupId
-    * @param connectionToFlowFunc     Connection => Flow[(HttpRequest, ProcessingMessage[RequestTemplate]), (Try[HttpResponse], ProcessingMessage[RequestTemplate]), _] - function from connection to processing flow
-    * @param parsingFunc              HttpResponse => Future[Either[Throwable, T]] - parsing function for responses
-    * @param throughputActor          ActorRef - actor to which throughput information is sent
-    * @param sink                     Sink[(Either[Throwable, T], ProcessingMessage[RequestTemplate]), Future[Done]] - Sink for the parsed result
-    * @param as                       implicit ActorSystem
-    * @param mat                      implicit Materializer
-    * @param ec                       implicit ExecutionContext
-    * @param ac                       implicit ActorContext
-    * @return
-    */
-  def createBalancedRunnableSearchResponseHandlingGraph[T](connections: Seq[Connection],
-                                                           requestTemplateGenerator: IndexedGenerator[ProcessingMessage[RequestTemplate]],
-                                                           queryParam: String,
-                                                           groupId: String,
-                                                           connectionToFlowFunc: Connection => Flow[(HttpRequest, ProcessingMessage[RequestTemplate]), (Try[HttpResponse], ProcessingMessage[RequestTemplate]), _],
-                                                           parsingFunc: HttpResponse => Future[Either[Throwable, T]],
-                                                           throughputActor: Option[ActorRef],
-                                                           sink: Sink[ProcessingMessage[(Either[Throwable, T], RequestTemplate)], Future[Done]])
-                                                          (implicit as: ActorSystem,
-                                                           mat: Materializer,
-                                                           ec: ExecutionContext,
-                                                           ac: ActorContext): RunnableGraph[Future[Done]] = {
-    RunnableGraph.fromGraph(GraphDSL.create(sink) {
-      implicit b =>
-        sinkInst =>
-          import GraphDSL.Implicits._
-          // creating the elements that will be part of the sink
-          val source: SourceShape[ProcessingMessage[RequestTemplate]] = b.add(Source.fromIterator[ProcessingMessage[RequestTemplate]](() => requestTemplateGenerator.iterator))
-          val flow: FlowShape[ProcessingMessage[RequestTemplate], ProcessingMessage[(Either[Throwable, T], RequestTemplate)]] = b.add(
-            requestAndParsingFlow[T](throughputActor, groupId, connections, connectionToFlowFunc, parsingFunc)
-          )
-          // creating the graph
-          source ~> flow ~> sinkInst
-          ClosedShape
-    })
-  }
 
   /**
     * Creates request execution and parsing flow based on single requests, just picking the protocol, host, port details
@@ -104,8 +55,10 @@ object RequestProcessingFlows {
     * @tparam T
     * @return
     */
-  def singleRequestFlow[T](connection: Connection, parsingFunc: HttpResponse => Future[Either[Throwable, T]])(implicit as: ActorSystem,
-                                                                                                              ec: ExecutionContext): Flow[ProcessingMessage[RequestTemplate], ProcessingMessage[(Either[Throwable, T], RequestTemplate)], NotUsed] = {
+  def singleRequestFlow[T](requestFunc: HttpRequest => Future[HttpResponse],
+                           connection: Connection,
+                           parsingFunc: HttpResponse => Future[Either[Throwable, T]])(implicit as: ActorSystem,
+                                                                                      ec: ExecutionContext): Flow[ProcessingMessage[RequestTemplate], ProcessingMessage[(Either[Throwable, T], RequestTemplate)], NotUsed] = {
     val flowResult: Flow[ProcessingMessage[RequestTemplate], (Either[Throwable, T], ProcessingMessage[RequestTemplate]), NotUsed] =
       Flow.fromFunction[ProcessingMessage[RequestTemplate], (HttpRequest, ProcessingMessage[RequestTemplate])](
         y => (y.data.getRequest, y)
@@ -113,11 +66,12 @@ object RequestProcessingFlows {
         y => {
           val e: Future[(Either[Throwable, T], ProcessingMessage[RequestTemplate])] = {
             val protocol: String = if (connection.useHttps) "https" else "http"
-            Http().singleRequest(y._1.withUri(Uri(s"$protocol://${connection.host}:${connection.port}${y._1.uri.toString()}")))
+            val request = y._1.withUri(Uri(s"$protocol://${connection.host}:${connection.port}${y._1.uri.toString()}"))
+            requestFunc.apply(request)
               .flatMap { response => parsingFunc.apply(response) }
               .map(v => (v, y._2))
               .recover(e => {
-                logger.warn("Exception on single request", e)
+                logger.error("Exception on single request", e)
                 (Left(e), y._2)
               })
           }
@@ -142,20 +96,30 @@ object RequestProcessingFlows {
     * @tparam T - The type of the parsed response
     * @return
     */
-  def connectionPoolFlow[T](connection: Connection, parsingFunc: HttpResponse => Future[Either[Throwable, T]])(implicit as: ActorSystem,
-                                                                                                               ec: ExecutionContext): Flow[ProcessingMessage[RequestTemplate], ProcessingMessage[(Either[Throwable, T], RequestTemplate)], NotUsed] = {
+  def connectionPoolFlow[T](connectionToRequestFlowFunc: Connection => Flow[(HttpRequest, ProcessingMessage[RequestTemplate]), (Try[HttpResponse], ProcessingMessage[RequestTemplate]), _],
+                            connection: Connection,
+                            parsingFunc: HttpResponse => Future[Either[Throwable, T]])(implicit as: ActorSystem,
+                                                                                       ec: ExecutionContext): Flow[ProcessingMessage[RequestTemplate], ProcessingMessage[(Either[Throwable, T], RequestTemplate)], NotUsed] = {
     val throughConnectionFlow: Flow[(HttpRequest, ProcessingMessage[RequestTemplate]), (Either[Throwable, T], ProcessingMessage[RequestTemplate]), _] = {
-      connectionFunc.apply(connection)
+      connectionToRequestFlowFunc.apply(connection)
         .mapAsyncUnordered[(Either[Throwable, T], ProcessingMessage[RequestTemplate])](config.requestParallelism)(
           x => {
             x match {
               case y@(Success(e), _) =>
-                parsingFunc.apply(e).map(v => (v, y._2))
+                try {
+                  parsingFunc.apply(e).map(v => (v, y._2))
+                }
+                catch {
+                  case t: Throwable =>
+                    logger.error("Exception on response parsing", t)
+                    Future.successful(Left(t)).map(v => (v, y._2))
+                }
               case y@(Failure(e), _) =>
+                logger.error("Exception on requesting", e)
                 Future.successful(Left(e)).map(v => (v, y._2))
             }
           }.recover(e => {
-            logger.warn("Exception on flow request", e)
+            logger.error("Exception on flow request", e)
             (Left(e), x._2)
           })
         ).withAttributes(ActorAttributes.supervisionStrategy(allResumeDecider))
@@ -177,7 +141,6 @@ object RequestProcessingFlows {
     * Return Graph[FlowShape] with flow of processing single ProcessingMessage[RequestTemplate] elements
     *
     * @param throughputActor      ActorRef - actor to which throughput information is sent
-    * @param queryParam           String - the parameter providing the query
     * @param groupId              String - groupId
     * @param connections          Seq[Connection]: providing connection information for distinct hosts to send requests to
     * @param connectionToFlowFunc Connection => Flow[(HttpRequest, ProcessingMessage[RequestTemplate]), (Try[HttpResponse], ProcessingMessage[RequestTemplate]), _] - function from connection to processing flow
@@ -185,7 +148,6 @@ object RequestProcessingFlows {
     * @param as                   implicit ActorSystem
     * @param mat                  implicit Materializer
     * @param ec                   implicit ExecutionContext
-    * @param ac                   implicit ActorContext
     * @tparam T type of the parsed result
     * @return Graph[FlowShape] providing the streaming requesting and parsing logic
     */
@@ -213,8 +175,8 @@ object RequestProcessingFlows {
     // if singleRequestFlow is used, its its consumed when available and thus not prone to timeout in buffer
     val connectionFlows: Seq[Flow[ProcessingMessage[RequestTemplate], ProcessingMessage[(Either[Throwable, T], RequestTemplate)], NotUsed]] = connections
       .map(x => {
-        if (useConnectionPoolFlow) connectionPoolFlow(x, parsingFunc)
-        else singleRequestFlow(x, parsingFunc)
+        if (useConnectionPoolFlow) connectionPoolFlow(connectionToFlowFunc, x, parsingFunc)
+        else singleRequestFlow(x => Http().singleRequest(x), x, parsingFunc)
       })
 
     val merge = b.add(Merge[ProcessingMessage[(Either[Throwable, T], RequestTemplate)]](connections.size))

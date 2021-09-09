@@ -3,6 +3,7 @@ import sbt.url
 
 val sl4jApiVersion = "1.7.30"
 val scalaTestVersion = "3.2.2"
+val scalaMockVersion = "5.1.0"
 val kolibriDatatypesVersion = "0.1.0-beta2"
 
 val akkaVersion = "2.6.14"
@@ -159,7 +160,8 @@ val additionalDependencies = Seq(
   "io.kamon" %% "kamon-bundle" % kamonVersion,
   "io.kamon" %% "kamon-prometheus" % kamonVersion,
   "com.softwaremill.macwire" %% "macros" % macwireVersion,
-  "com.softwaremill.macwire" %% "util" % macwireVersion
+  "com.softwaremill.macwire" %% "util" % macwireVersion,
+  "org.scalamock" %% "scalamock" % scalaMockVersion % Test
 )
 
 
