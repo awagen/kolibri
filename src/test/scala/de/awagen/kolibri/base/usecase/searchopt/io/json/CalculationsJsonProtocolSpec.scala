@@ -31,6 +31,7 @@ class CalculationsJsonProtocolSpec extends UnitTestSpec {
       |{
       |"functionType": "IR_METRICS",
       |"name": "irMetrics",
+      |"queryParamName": "q",
       |"requestTemplateKey": "requestTemplate",
       |"productIdsKey": "productIds",
       |"judgementProvider": {

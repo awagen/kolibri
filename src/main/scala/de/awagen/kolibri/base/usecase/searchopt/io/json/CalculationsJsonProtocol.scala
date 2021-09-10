@@ -36,6 +36,7 @@ object CalculationsJsonProtocol extends DefaultJsonProtocol {
         fields("functionType").convertTo[String] match {
           case "IR_METRICS" =>
             val name = fields("name").convertTo[String]
+            val queryParamName = fields("queryParamName").convertTo[String]
             val requestTemplateKey = fields("requestTemplateKey").convertTo[String]
             val productIdsKey = fields("productIdsKey").convertTo[String]
             val judgementProviderFactory = fields("judgementProvider").convertTo[JudgementProviderFactory[Double]]
@@ -43,6 +44,7 @@ object CalculationsJsonProtocol extends DefaultJsonProtocol {
             val excludeParamsFromMetricRow = fields("excludeParams").convertTo[Seq[String]]
             val calculation = JudgementBasedMetricsCalculation(
               name,
+              queryParamName,
               requestTemplateKey,
               productIdsKey,
               judgementProviderFactory,

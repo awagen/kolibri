@@ -57,6 +57,7 @@ object Calculations {
   }
 
   case class JudgementBasedMetricsCalculation(name: String,
+                                              queryParamName: String,
                                               requestTemplateKey: String,
                                               productIdsKey: String,
                                               judgementProviderFactory: JudgementProviderFactory[Double],
@@ -70,7 +71,7 @@ object Calculations {
         .map(y => {
           val requestTemplate: RequestTemplate = msg.get[RequestTemplate](requestTemplateKey).get
           val productIds: Seq[String] = msg.get[Seq[String]](productIdsKey).get
-          val query: String = requestTemplate.getParameter("q").map(x => x.head).getOrElse("")
+          val query: String = requestTemplate.getParameter(queryParamName).map(x => x.head).getOrElse("")
           val parameters: Map[String, Seq[String]] = requestTemplate.parameters
           val judgements: Seq[Option[Double]] = y.retrieveJudgements(query, productIds)
           logger.debug(s"retrieved judgements: $judgements")
@@ -79,8 +80,16 @@ object Calculations {
           metricRow
         })
         .recover(throwable => {
+          var params: Map[String, Seq[String]] = Map.empty
+          try {
+            params = Map(msg.get[RequestTemplate](requestTemplateKey).get.parameters.toSeq.filter(x => !excludeParamsFromMetricRow.contains(x._1)):_*)
+          }
+          catch {
+            case _: Throwable =>
+              logger.warn("failed retrieving parameters from sample")
+          }
           logger.warn(s"failed retrieving judgements: $throwable")
-          throwableToMetricRowResponse(throwable, calculationValueNames)
+          throwableToMetricRowResponse(throwable, calculationValueNames, params)
         })
     }
 
@@ -115,19 +124,23 @@ object Calculations {
 
 }
 
+
 object Functions {
 
   /**
     * Helper function to generate a MetricRow result from a throwable.
+    * Since the scope of the exception might affect multiple metrics
+    * (e.g such as when a request fails, which affects all metrics),
+    * thus it takes a set of metric names
     *
     * @param e : The throwable to map to MetricRow
     * @return
     */
-  def throwableToMetricRowResponse(e: Throwable, valueNames: Set[String]): MetricRow = {
-    val metricRow = MetricRow(params = Map.empty[String, Seq[String]], metrics = Map.empty[String, MetricValue[Double]])
+  def throwableToMetricRowResponse(e: Throwable, valueNames: Set[String], params: Map[String, Seq[String]]): MetricRow = {
+    var metricRow = MetricRow.empty.copy(params = params)
     valueNames.foreach(x => {
       val addValue: MetricValue[Double] = MetricValue.createAvgFailSample(metricName = x, failMap = Map[ComputeFailReason, Int](ComputeFailReason(s"${e.getClass.getName}") -> 1))
-      metricRow.addMetric(addValue)
+      metricRow = metricRow.addMetric(addValue)
     })
     metricRow
   }
@@ -138,23 +151,20 @@ object Functions {
     * @param failReason - ComputeFailReason
     * @return
     */
-  def computeFailReasonsToMetricRowResponse(failReason: Seq[ComputeFailReason]): MetricRow = {
-    val metricRow = MetricRow(params = Map.empty[String, Seq[String]], metrics = Map.empty[String, MetricValue[Double]])
+  def computeFailReasonsToMetricRowResponse(failReason: Seq[ComputeFailReason], metricName: String, params: Map[String, Seq[String]]): MetricRow = {
+    var metricRow = MetricRow.empty.copy(params = params)
     failReason.foreach(reason => {
-      val failMetricName: String = reason.description
-      val addValue: MetricValue[Double] = MetricValue.createAvgFailSample(metricName = failMetricName, failMap = Map[ComputeFailReason, Int](reason -> 1))
-      metricRow.addMetric(addValue)
+      val addValue: MetricValue[Double] = MetricValue.createAvgFailSample(metricName = metricName, failMap = Map[ComputeFailReason, Int](reason -> 1))
+      metricRow = metricRow.addMetric(addValue)
     })
     metricRow
   }
 
-  def resultEitherToMetricRowResponse(metricName: String, result: CalculationResult[Double]): MetricRow = result match {
-    case Left(e) => computeFailReasonsToMetricRowResponse(e)
+  def resultEitherToMetricRowResponse(metricName: String, result: CalculationResult[Double], params: Map[String, Seq[String]]): MetricRow = result match {
+    case Left(e) => computeFailReasonsToMetricRowResponse(e, metricName, params)
     case Right(e) =>
-      val metricRow = MetricRow(params = Map.empty[String, Seq[String]], metrics = Map.empty[String, MetricValue[Double]])
       val addValue: MetricValue[Double] = MetricValue.createAvgSuccessSample(metricName, e)
-      metricRow.addMetric(addValue)
-      metricRow
+      MetricRow.empty.copy(params = params).addMetric(addValue)
   }
 
   def findFirstValue(findTrue: Boolean): SerializableFunction1[Seq[Boolean], CalculationResult[Double]] = new SerializableFunction1[Seq[Boolean], CalculationResult[Double]] {

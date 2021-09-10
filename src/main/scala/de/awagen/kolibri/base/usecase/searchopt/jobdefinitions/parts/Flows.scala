@@ -97,11 +97,12 @@ object Flows {
                   singleMapCalculations: Seq[Calculation[WeaklyTypedMap[String], CalculationResult[Double]]],
                   requestTemplateStorageKey: String,
                   excludeParamsFromMetricRow: Seq[String])(implicit ec: ExecutionContext): Future[ProcessingMessage[MetricRow]] = {
+    val metricRowParams: Map[String, Seq[String]] = Map(processingMessage.data._2.parameters.toSeq.filter(x => !excludeParamsFromMetricRow.contains(x)):_*)
     processingMessage.data._1 match {
       case e@Left(_) =>
         // need to add paramNames here to set the fail reasons for each
         val allParamNames: Set[String] = singleMapCalculations.map(x => x.name).toSet ++ mapFutureMetricRowCalculation.calculationValueNames
-        val metricRow = throwableToMetricRowResponse(e.value, allParamNames)
+        val metricRow = throwableToMetricRowResponse(e.value, allParamNames, metricRowParams)
         val result: ProcessingMessage[MetricRow] = Corn(metricRow)
         val originalTags: Set[Tag] = processingMessage.getTagsForType(TagType.AGGREGATION)
         result.addTags(TagType.AGGREGATION, originalTags)
@@ -115,7 +116,7 @@ object Flows {
         val singleResults: Seq[MetricRow] = singleMapCalculations
           .map(x => {
             val value = x.apply(e.value)
-            resultEitherToMetricRowResponse(x.name, value)
+            resultEitherToMetricRowResponse(x.name, value, metricRowParams)
           })
         val originalTags: Set[Tag] = processingMessage.getTagsForType(TagType.AGGREGATION)
         val combinedResultFuture: Future[MetricRow] = rowResultFuture.map(resRow => {
