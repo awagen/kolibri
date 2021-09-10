@@ -24,9 +24,10 @@ import akka.stream.Materializer
 import akka.stream.scaladsl.Flow
 import akka.util.ByteString
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages
-import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.ProcessingMessage
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{Corn, ProcessingMessage}
 import de.awagen.kolibri.base.domain.Connection
 import de.awagen.kolibri.base.http.client.request.RequestTemplate
+import org.slf4j.{Logger, LoggerFactory}
 
 import scala.concurrent.ExecutionContext.global
 import scala.concurrent.{Await, ExecutionContext, Future}
@@ -34,6 +35,8 @@ import scala.util.{Success, Try}
 import scala.concurrent.duration._
 
 object FlowTestHelper {
+
+  val logger: Logger = LoggerFactory.getLogger(this.getClass.getName)
 
   implicit val ec: ExecutionContext = global
 
@@ -62,14 +65,18 @@ object FlowTestHelper {
     )
   }
 
+  def eitherHttpResponse(value: Either[Throwable, String], trafoFunc: String => String = identity): HttpResponse = {
+    value match {
+      case Right(value) => createHttpResponse(trafoFunc(value))
+      case Left(e) => createHttpResponse(e.getClass.getName)
+    }
+  }
+
   def singleRequestProcessingFlow(parsingFunc: HttpResponse => Future[Either[Throwable, String]])(implicit mat: Materializer, ac: ActorSystem): Flow[ProcessingMessages.ProcessingMessage[RequestTemplate], ProcessingMessages.ProcessingMessage[(Either[Throwable, String], RequestTemplate)], NotUsed] = {
     RequestProcessingFlows.singleRequestFlow(
       x => {
-        val parsedRequestEntity: Future[Either[Throwable, String]] = parseHttpEntity[String](x.entity, identity)
-        parsedRequestEntity.map({
-          case Right(value) => createHttpResponse(value)
-          case Left(e) => createHttpResponse(e.getClass.getName)
-        })
+        parseHttpEntity[String](x.entity, identity)
+          .map(x => eitherHttpResponse(x))
       },
       Connection("testhost", 0, useHttps = false, None),
       parsingFunc
@@ -82,16 +89,31 @@ object FlowTestHelper {
         Flow.fromFunction[(HttpRequest, ProcessingMessage[RequestTemplate]), (Try[HttpResponse], ProcessingMessage[RequestTemplate])](
           x => {
             val parsedRequestEntity: Future[Either[Throwable, String]] = parseHttpEntity[String](x._1.entity, identity)
-            val httpResponseFut = parsedRequestEntity.map({
-              case Right(value) => createHttpResponse(value)
-              case Left(e) => createHttpResponse(e.getClass.getName)
-            })
+            val httpResponseFut: Future[HttpResponse] = parsedRequestEntity.map(x => eitherHttpResponse(x))
             (Success(Await.result(httpResponseFut, 1 second)), x._2)
           })
       },
       connection = Connection("testhost", 0, useHttps = false, None),
       parsingFunc = parsingFunc
     )
+  }
+
+  def connectionToResponseBodyIsTransformedResponseBodyFlowFunc(trafoFunc: String => String)(implicit mat: Materializer): Connection => Flow[(HttpRequest, ProcessingMessage[RequestTemplate]), (Try[HttpResponse], ProcessingMessage[RequestTemplate]), _] = {
+    _ =>
+      Flow.fromFunction(tuple => {
+        val parsed: Either[Throwable, String] = Await.result(parseHttpEntity[String](tuple._1.entity, identity), 1 second)
+        val response: HttpResponse = eitherHttpResponse(parsed, trafoFunc)
+        logger.info(s"parsed response string: $response")
+        (Success(response), tuple._2)
+      })
+  }
+
+  def connectionToRequestTemplateProcessingAndParsing(implicit mat: Materializer): Connection => Flow[ProcessingMessage[RequestTemplate], ProcessingMessage[(Either[Throwable, String], RequestTemplate)], NotUsed] = {
+    _ =>
+      Flow.fromFunction(msg => {
+        val valueFromTemplate: Either[Throwable, String] = Await.result(parseHttpEntity[String](msg.data.body, identity), 1 second)
+        Corn((valueFromTemplate, msg.data))
+      })
   }
 
 }

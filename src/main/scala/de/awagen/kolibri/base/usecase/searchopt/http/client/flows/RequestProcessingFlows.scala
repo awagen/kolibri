@@ -29,6 +29,7 @@ import de.awagen.kolibri.base.config.AppProperties.config.useConnectionPoolFlow
 import de.awagen.kolibri.base.domain.Connection
 import de.awagen.kolibri.base.http.client.request.RequestTemplate
 import de.awagen.kolibri.base.processing.decider.Deciders.allResumeDecider
+import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.Flows
 import de.awagen.kolibri.datatypes.tagging.TagType
 import de.awagen.kolibri.datatypes.tagging.TagType.AGGREGATION
 import org.slf4j.{Logger, LoggerFactory}
@@ -88,10 +89,10 @@ object RequestProcessingFlows {
     * in time. This can happen e.g when causing backpressure / buffering of ready responses.
     *
     * @param connectionToRequestFlowFunc - function to convert Connection to request flow
-    * @param connection  - Connection object specifying connection details
-    * @param parsingFunc - response parsing function
-    * @param as          - implicit ActorSystem
-    * @param ec          - implicit ExecutionContext
+    * @param connection                  - Connection object specifying connection details
+    * @param parsingFunc                 - response parsing function
+    * @param as                          - implicit ActorSystem
+    * @param ec                          - implicit ExecutionContext
     * @tparam T - The type of the parsed response
     * @return
     */
@@ -135,25 +136,28 @@ object RequestProcessingFlows {
     }))
   }
 
+  def connectionToProcessingFunc[T](parsingFunc: HttpResponse => Future[Either[Throwable, T]])(implicit ac: ActorSystem, ec: ExecutionContext): Connection => Flow[ProcessingMessage[RequestTemplate], ProcessingMessage[(Either[Throwable, T], RequestTemplate)], NotUsed] = x => {
+    if (useConnectionPoolFlow) connectionPoolFlow(Flows.connectionFunc, x, parsingFunc)
+    else singleRequestFlow(x => Http().singleRequest(x), x, parsingFunc)
+  }
+
 
   /**
     * Return Graph[FlowShape] with flow of processing single ProcessingMessage[RequestTemplate] elements
     *
     * @param connections          Seq[Connection]: providing connection information for distinct hosts to send requests to
     * @param connectionToFlowFunc Connection => Flow[(HttpRequest, ProcessingMessage[RequestTemplate]), (Try[HttpResponse], ProcessingMessage[RequestTemplate]), _] - function from connection to processing flow
-    * @param parsingFunc          HttpResponse => Future[Either[Throwable, T]] - parsing function for responses
     * @param as                   implicit ActorSystem
     * @param mat                  implicit Materializer
     * @param ec                   implicit ExecutionContext
     * @tparam T type of the parsed result
     * @return Graph[FlowShape] providing the streaming requesting and parsing logic
     */
-  def requestAndParsingFlow[T](connections: Seq[Connection],
-                               connectionToFlowFunc: Connection => Flow[(HttpRequest, ProcessingMessage[RequestTemplate]), (Try[HttpResponse], ProcessingMessage[RequestTemplate]), _],
-                               parsingFunc: HttpResponse => Future[Either[Throwable, T]]
-                              )(implicit as: ActorSystem,
-                                mat: Materializer,
-                                ec: ExecutionContext): Graph[FlowShape[ProcessingMessage[RequestTemplate], ProcessingMessage[(Either[Throwable, T], RequestTemplate)]], NotUsed] = GraphDSL.create() { implicit b =>
+  def balancingRequestAndParsingFlow[T](connections: Seq[Connection],
+                                        connectionToFlowFunc: Connection => Flow[ProcessingMessage[RequestTemplate], ProcessingMessage[(Either[Throwable, T], RequestTemplate)], NotUsed]
+                                       )(implicit as: ActorSystem,
+                                         mat: Materializer,
+                                         ec: ExecutionContext): Graph[FlowShape[ProcessingMessage[RequestTemplate], ProcessingMessage[(Either[Throwable, T], RequestTemplate)]], NotUsed] = GraphDSL.create() { implicit b =>
     import GraphDSL.Implicits._
     // now define the single elements
     val balance: UniformFanOutShape[ProcessingMessage[RequestTemplate], ProcessingMessage[RequestTemplate]] = b
@@ -165,11 +169,7 @@ object RequestProcessingFlows {
     // see discussions like the following: https://discuss.lightbend.com/t/a-lot-requests-results-in-response-entity-was-not-subscribed-after/7797/4
     // if singleRequestFlow is used, its its consumed when available and thus not prone to timeout in buffer
     val connectionFlows: Seq[Flow[ProcessingMessage[RequestTemplate], ProcessingMessage[(Either[Throwable, T], RequestTemplate)], NotUsed]] = connections
-      .map(x => {
-        if (useConnectionPoolFlow) connectionPoolFlow(connectionToFlowFunc, x, parsingFunc)
-        else singleRequestFlow(x => Http().singleRequest(x), x, parsingFunc)
-      })
-
+      .map(x => connectionToFlowFunc(x))
     val merge = b.add(Merge[ProcessingMessage[(Either[Throwable, T], RequestTemplate)]](connections.size))
     connectionFlows.foreach(x => balance ~> x ~> merge)
     FlowShape(balance.in, merge.out)

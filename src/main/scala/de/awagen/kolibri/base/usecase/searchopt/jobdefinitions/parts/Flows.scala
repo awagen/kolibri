@@ -21,7 +21,6 @@ import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.stream.scaladsl.Flow
-import akka.stream.{FlowShape, Graph}
 import de.awagen.kolibri.base.actors.flows.GenericFlows.{Host, getHttpConnectionPoolFlow, getHttpsConnectionPoolFlow}
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{Corn, ProcessingMessage}
 import de.awagen.kolibri.base.config.AppProperties.config
@@ -31,6 +30,7 @@ import de.awagen.kolibri.base.processing.modifiers.Modifier
 import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
 import de.awagen.kolibri.base.processing.tagging.TaggingConfigurations.TaggingConfiguration
 import de.awagen.kolibri.base.usecase.searchopt.http.client.flows.RequestProcessingFlows
+import de.awagen.kolibri.base.usecase.searchopt.http.client.flows.RequestProcessingFlows.connectionToProcessingFunc
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.{Calculation, CalculationResult, FutureCalculation}
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Functions.{resultEitherToMetricRowResponse, throwableToMetricRowResponse}
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
@@ -91,25 +91,6 @@ object Flows {
     }
     else getHttpConnectionPoolFlow[ProcessingMessage[RequestTemplate]].apply(Host(v1.host, v1.port))
   }
-
-  /**
-    * Execution graph from ProcessingMessage[RequestTemplate] to ProcessingMessage[(Either[Throwable, WeaklyTypedMap[String]], RequestTemplate)],
-    * where the Either either holds Throwable if request + parsing failed or the Map containing
-    * properties parsed from the response
-    *
-    * @param connections         - connections to balance requests on
-    * @param responseParsingFunc :
-    * @param as
-    * @param ec
-    * @return
-    */
-  def requestingFlow(connections: Seq[Connection],
-                     responseParsingFunc: HttpResponse => Future[Either[Throwable, WeaklyTypedMap[String]]])(implicit as: ActorSystem, ec: ExecutionContext): Graph[FlowShape[ProcessingMessage[RequestTemplate], ProcessingMessage[(Either[Throwable, WeaklyTypedMap[String]], RequestTemplate)]], NotUsed] =
-    RequestProcessingFlows.requestAndParsingFlow(
-      connections,
-      connectionFunc,
-      responseParsingFunc
-    )
 
   def metricsCalc(processingMessage: ProcessingMessage[(Either[Throwable, WeaklyTypedMap[String]], RequestTemplate)],
                   mapFutureMetricRowCalculation: FutureCalculation[WeaklyTypedMap[String], MetricRow],
@@ -181,9 +162,12 @@ object Flows {
           taggingConfiguration.foreach(config => config.tagInit(el))
           el
         }))
-        .via(Flow.fromGraph(requestingFlow(
-          connections = connections,
-          responseParsingFunc = responseParsingFunc)))
+        .via(Flow.fromGraph(
+          RequestProcessingFlows.balancingRequestAndParsingFlow(
+            connections,
+            connectionToProcessingFunc(responseParsingFunc)
+          )
+        ))
         // tagging
         .via(Flow.fromFunction(el => {
           taggingConfiguration.foreach(config => config.tagProcessed(el))
