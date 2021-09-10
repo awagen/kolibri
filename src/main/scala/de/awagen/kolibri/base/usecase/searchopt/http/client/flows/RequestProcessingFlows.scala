@@ -18,13 +18,11 @@
 package de.awagen.kolibri.base.usecase.searchopt.http.client.flows
 
 import akka.NotUsed
-import akka.actor.{ActorRef, ActorSystem}
+import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse, Uri}
 import akka.stream._
 import akka.stream.scaladsl.{Balance, Flow, GraphDSL, Merge}
-import de.awagen.kolibri.base.actors.flows.GenericFlows.flowThroughActorMeter
-import de.awagen.kolibri.base.actors.tracking.ThroughputActor.AddForStage
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{Corn, ProcessingMessage}
 import de.awagen.kolibri.base.config.AppProperties.config
 import de.awagen.kolibri.base.config.AppProperties.config.useConnectionPoolFlow
@@ -89,6 +87,7 @@ object RequestProcessingFlows {
     * your processing flow should be composed to avoid HttpResponse's being available but timing out due to not being consumed
     * in time. This can happen e.g when causing backpressure / buffering of ready responses.
     *
+    * @param connectionToRequestFlowFunc - function to convert Connection to request flow
     * @param connection  - Connection object specifying connection details
     * @param parsingFunc - response parsing function
     * @param as          - implicit ActorSystem
@@ -140,8 +139,6 @@ object RequestProcessingFlows {
   /**
     * Return Graph[FlowShape] with flow of processing single ProcessingMessage[RequestTemplate] elements
     *
-    * @param throughputActor      ActorRef - actor to which throughput information is sent
-    * @param groupId              String - groupId
     * @param connections          Seq[Connection]: providing connection information for distinct hosts to send requests to
     * @param connectionToFlowFunc Connection => Flow[(HttpRequest, ProcessingMessage[RequestTemplate]), (Try[HttpResponse], ProcessingMessage[RequestTemplate]), _] - function from connection to processing flow
     * @param parsingFunc          HttpResponse => Future[Either[Throwable, T]] - parsing function for responses
@@ -151,9 +148,7 @@ object RequestProcessingFlows {
     * @tparam T type of the parsed result
     * @return Graph[FlowShape] providing the streaming requesting and parsing logic
     */
-  def requestAndParsingFlow[T](throughputActor: Option[ActorRef],
-                               groupId: String,
-                               connections: Seq[Connection],
+  def requestAndParsingFlow[T](connections: Seq[Connection],
                                connectionToFlowFunc: Connection => Flow[(HttpRequest, ProcessingMessage[RequestTemplate]), (Try[HttpResponse], ProcessingMessage[RequestTemplate]), _],
                                parsingFunc: HttpResponse => Future[Either[Throwable, T]]
                               )(implicit as: ActorSystem,
@@ -161,10 +156,6 @@ object RequestProcessingFlows {
                                 ec: ExecutionContext): Graph[FlowShape[ProcessingMessage[RequestTemplate], ProcessingMessage[(Either[Throwable, T], RequestTemplate)]], NotUsed] = GraphDSL.create() { implicit b =>
     import GraphDSL.Implicits._
     // now define the single elements
-    val initThroughputFlow = b.add(Flow.fromFunction[ProcessingMessage[RequestTemplate], ProcessingMessage[RequestTemplate]](x => {
-      throughputActor.foreach(x => x ! AddForStage("fromSource"))
-      x
-    }).log("after fromSource throughput meter"))
     val balance: UniformFanOutShape[ProcessingMessage[RequestTemplate], ProcessingMessage[RequestTemplate]] = b
       .add(Balance.apply[ProcessingMessage[RequestTemplate]](connections.size, waitForAllDownstreams = false))
     // NOTE: if useConnectionPoolFlow = true, make sure to have proper setting of parallelism in mapAsync calls lateron and
@@ -180,15 +171,8 @@ object RequestProcessingFlows {
       })
 
     val merge = b.add(Merge[ProcessingMessage[(Either[Throwable, T], RequestTemplate)]](connections.size))
-    val identityFlow: Flow[ProcessingMessage[(Either[Throwable, T], RequestTemplate)], ProcessingMessage[(Either[Throwable, T], RequestTemplate)], NotUsed] = Flow.fromFunction(identity)
-    val throughputFlow: FlowShape[ProcessingMessage[(Either[Throwable, T], RequestTemplate)], ProcessingMessage[(Either[Throwable, T], RequestTemplate)]] = b
-      .add(
-        throughputActor.map(ta => flowThroughActorMeter[ProcessingMessage[(Either[Throwable, T], RequestTemplate)]](ta, "toMetricsCalc")).getOrElse(identityFlow)
-      )
-    initThroughputFlow ~> balance
     connectionFlows.foreach(x => balance ~> x ~> merge)
-    merge ~> throughputFlow
-    FlowShape(initThroughputFlow.in, throughputFlow.out)
+    FlowShape(balance.in, merge.out)
   }
 
 }

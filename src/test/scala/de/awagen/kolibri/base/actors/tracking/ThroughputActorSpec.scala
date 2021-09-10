@@ -44,13 +44,13 @@ class ThroughputActorSpec extends KolibriTestKitNoCluster
 
     "correctly track throughput" in {
       // given
-      val throughputActor = system.actorOf(Props(new ThroughputActor(10 milliseconds, 50)))
+      val throughputActor = system.actorOf(Props(new ThroughputActor(20 milliseconds, 50)))
       throughputActor ! AddForStage("stage1")
       throughputActor ! AddForStage("stage1")
       throughputActor ! AddForStage("stage1")
       throughputActor ! AddForStage("stage1")
       throughputActor ! AddForStage("stage1")
-      Thread.sleep(11)
+      Thread.sleep(21)
       throughputActor ! AddForStage("stage1")
       throughputActor ! AddForStage("stage2")
       throughputActor ! AddForStage("stage2")
@@ -58,7 +58,7 @@ class ThroughputActorSpec extends KolibriTestKitNoCluster
       throughputActor ! ProvideThroughputForStage("stage1")
       throughputActor ! ProvideThroughputForStage("stage2")
       // then
-      val receivedMessages: Seq[ThroughputForStage] = receiveWhile[ThroughputForStage](1 second, 10 millis, 2)({
+      val receivedMessages: Seq[ThroughputForStage] = receiveWhile[ThroughputForStage](1 second, 20 millis, 2)({
         case e => e.asInstanceOf[ThroughputForStage]
       })
       receivedMessages.head.throughputPerTimeUnit.count(x => x.value == 5) mustBe 1

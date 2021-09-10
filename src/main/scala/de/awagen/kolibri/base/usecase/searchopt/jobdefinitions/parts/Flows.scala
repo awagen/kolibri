@@ -18,7 +18,7 @@
 package de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts
 
 import akka.NotUsed
-import akka.actor.{ActorRef, ActorSystem}
+import akka.actor.ActorSystem
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.stream.scaladsl.Flow
 import akka.stream.{FlowShape, Graph}
@@ -47,8 +47,8 @@ object Flows {
   /**
     * Transform single modifier to ProcessingMessage[RequestTemplate], the actual processing unit
     *
-    * @param fixedParams
-    * @param tagger
+    * @param contextPath - contextPath to set in RequestTemplate
+    * @param fixedParams - fixed parameters to set in RequestTemplate
     * @return
     */
   def modifierToProcessingMessage(contextPath: String,
@@ -63,7 +63,6 @@ object Flows {
     *
     * @param contextPath : contextPath of the request
     * @param fixedParams : mapping of parameter names to possible multiple values
-    * @param tagger      : function adding tags to ProcessingMessage[RequestTemplate]
     * @return
     */
   def processingFlow(contextPath: String,
@@ -98,21 +97,15 @@ object Flows {
     * where the Either either holds Throwable if request + parsing failed or the Map containing
     * properties parsed from the response
     *
-    * @param connections
-    * @param queryParam
-    * @param groupId
-    * @param throughputActor
+    * @param connections         - connections to balance requests on
+    * @param responseParsingFunc :
     * @param as
     * @param ec
     * @return
     */
   def requestingFlow(connections: Seq[Connection],
-                     groupId: String,
-                     responseParsingFunc: HttpResponse => Future[Either[Throwable, WeaklyTypedMap[String]]],
-                     throughputActor: Option[ActorRef])(implicit as: ActorSystem, ec: ExecutionContext): Graph[FlowShape[ProcessingMessage[RequestTemplate], ProcessingMessage[(Either[Throwable, WeaklyTypedMap[String]], RequestTemplate)]], NotUsed] =
+                     responseParsingFunc: HttpResponse => Future[Either[Throwable, WeaklyTypedMap[String]]])(implicit as: ActorSystem, ec: ExecutionContext): Graph[FlowShape[ProcessingMessage[RequestTemplate], ProcessingMessage[(Either[Throwable, WeaklyTypedMap[String]], RequestTemplate)]], NotUsed] =
     RequestProcessingFlows.requestAndParsingFlow(
-      throughputActor,
-      groupId,
       connections,
       connectionFunc,
       responseParsingFunc
@@ -158,30 +151,24 @@ object Flows {
   /**
     * Full flow definition from RequestTemplateBuilderModifier to ProcessingMessage[MetricRow]
     *
-    * @param throughputActor          : optional ActorRef to receive throughput information
-    * @param connections              : connections to be utilized for the requests. Requests will be balanced across all given connections
-    * @param contextPath              : context path to be used for requests
-    * @param fixedParams              : fixed parameters to use for every request
-    * @param queryParam               : the parameter name of the query parameter
-    * @param groupId                  : group id, usually the same as the jobId
-    * @param requestTagger            : the tagger to tag ProcessingMessage[RequestTemplate]
-    * @param responseParsingFunc      : the parsing function to map HttpResponse to Future of either Throwable (in case of error)
-    *                                 or Seq[String] giving the productIds in order (in case of successful execution)
-    * @param judgementProviderFactory : the factory providing judgement provider, which is used to retrieve judgements for
-    *                                 the productIds
-    * @param metricsCalculation       : definition of metrics to calculate and how to handle judgements (validations of judgements and
-    *                                 handling of missing values)
-    * @param as                       : implicit ActorSystem
-    * @param ec                       : implicit ExecutionContext
-    * @param timeout                  : implicit timeout for the requests
+    * @param connections                   : connections to be utilized for the requests. Requests will be balanced across all given connections
+    * @param contextPath                   : context path to be used for requests
+    * @param fixedParams                   : fixed parameters to use for every request
+    * @param excludeParamsFromMetricRow    : the parameters to exclude from single metric entries (e.g useful for aggregations over distinct values, such as queries)
+    * @param taggingConfiguration          : configuration to tag the processed elements based on input, parsed value and final result
+    * @param responseParsingFunc           : the parsing function to map HttpResponse to Future of either Throwable (in case of error)
+    *                                      or Seq[String] giving the productIds in order (in case of successful execution)
+    * @param requestTemplateStorageKey     : the key under which to store the RequestTemplate in the value map
+    * @param mapFutureMetricRowCalculation : definition of metric calculations
+    * @param singleMapCalculations         : additional value calculations
+    * @param as                            : implicit ActorSystem
+    * @param ec                            : implicit ExecutionContext
     * @return
     */
-  def fullProcessingFlow(throughputActor: Option[ActorRef],
-                         connections: Seq[Connection],
+  def fullProcessingFlow(connections: Seq[Connection],
                          contextPath: String,
                          fixedParams: Map[String, Seq[String]],
                          excludeParamsFromMetricRow: Seq[String],
-                         groupId: String,
                          taggingConfiguration: Option[TaggingConfiguration[RequestTemplate, (Either[Throwable, WeaklyTypedMap[String]], RequestTemplate), MetricRow]],
                          responseParsingFunc: HttpResponse => Future[Either[Throwable, WeaklyTypedMap[String]]],
                          requestTemplateStorageKey: String,
@@ -196,9 +183,7 @@ object Flows {
         }))
         .via(Flow.fromGraph(requestingFlow(
           connections = connections,
-          groupId = groupId,
-          responseParsingFunc = responseParsingFunc,
-          throughputActor = throughputActor)))
+          responseParsingFunc = responseParsingFunc)))
         // tagging
         .via(Flow.fromFunction(el => {
           taggingConfiguration.foreach(config => config.tagProcessed(el))

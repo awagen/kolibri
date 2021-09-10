@@ -17,7 +17,7 @@
 
 package de.awagen.kolibri.base.usecase.searchopt.jobdefinitions
 
-import akka.actor.{ActorRef, ActorSystem}
+import akka.actor.ActorSystem
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationStateWithData, AggregationStateWithoutData, Corn, ProcessingMessage}
 import de.awagen.kolibri.base.config.AppConfig
@@ -80,11 +80,9 @@ object SearchJobDefinitions {
       data = searchEvaluation.requestTemplateModifiers,
       dataBatchGenerator = batchGenerator(batchByIndex = searchEvaluation.batchByIndex),
       transformerFlow = Flows.fullProcessingFlow(
-        throughputActor = Option.empty[ActorRef],
         contextPath = searchEvaluation.contextPath,
         fixedParams = searchEvaluation.fixedParams,
         excludeParamsFromMetricRow = searchEvaluation.excludeParamsFromMetricRow,
-        groupId = searchEvaluation.jobName,
         connections = searchEvaluation.connections,
         taggingConfiguration = searchEvaluation.taggingConfiguration,
         requestTemplateStorageKey = searchEvaluation.requestTemplateStorageKey,

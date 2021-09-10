@@ -54,7 +54,11 @@ class RequestProcessingFlowsSpec extends KolibriTestKitNoCluster
   implicit val ec: ExecutionContext = global
 
   def parseResponse[T](response: HttpResponse, parseFunc: String => T): Future[Either[Throwable, T]] = {
-    response.entity.toStrict(3.seconds) flatMap { e =>
+    parseHttpEntity(response.entity, parseFunc)
+  }
+
+  def parseHttpEntity[T](entity: HttpEntity, parseFunc: String => T): Future[Either[Throwable, T]] = {
+    entity.toStrict(3.seconds) flatMap { e =>
       e.dataBytes
         .runFold(ByteString.empty) { case (acc, b) => acc ++ b }
         .map(x => {
@@ -64,12 +68,12 @@ class RequestProcessingFlowsSpec extends KolibriTestKitNoCluster
     }
   }
 
-  def createHttpResponse: HttpResponse = {
+  def createHttpResponse(content: String): HttpResponse = {
     new HttpResponse(
       status = StatusCode.int2StatusCode(200),
       headers = Seq.empty,
       attributes = Map.empty,
-      entity = HttpEntity(""),
+      entity = HttpEntity(content),
       protocol = HttpProtocols.`HTTP/1.1`
     )
   }
@@ -78,7 +82,7 @@ class RequestProcessingFlowsSpec extends KolibriTestKitNoCluster
 
     "correctly react to exception in singleRequestFlow" in {
       // given
-      val httpResponse: HttpResponse = createHttpResponse
+      val httpResponse: HttpResponse = createHttpResponse("")
       val singleRequestValueFlow: Flow[ProcessingMessages.ProcessingMessage[RequestTemplate], ProcessingMessages.ProcessingMessage[(Either[Throwable, String], RequestTemplate)], NotUsed] = RequestProcessingFlows.singleRequestFlow(
         _ => Future.successful(httpResponse),
         Connection("testhost", 0, useHttps = false, None),
@@ -97,13 +101,39 @@ class RequestProcessingFlowsSpec extends KolibriTestKitNoCluster
       isCorrectExceptionType mustBe true
     }
 
+    "correctly process elements in singleRequestFlow" in {
+      // given
+      val singleRequestValueFlow: Flow[ProcessingMessages.ProcessingMessage[RequestTemplate], ProcessingMessages.ProcessingMessage[(Either[Throwable, String], RequestTemplate)], NotUsed] = RequestProcessingFlows.singleRequestFlow(
+        x => {
+          val parsedRequestEntity: Future[Either[Throwable, String]] = parseHttpEntity[String](x.entity, identity)
+          parsedRequestEntity.map({
+            case Right(value) => createHttpResponse(value)
+            case Left(e) => createHttpResponse(e.getClass.getName)
+          })
+        },
+        Connection("testhost", 0, useHttps = false, None),
+        x => parseResponse[String](x, x => s"${x}Post")
+      )
+      // when
+      val resultsFut: Future[Seq[ProcessingMessages.ProcessingMessage[(Either[Throwable, String], RequestTemplate)]]] =
+        Source.apply(Seq(
+          Corn(RequestTemplate("/", Map.empty, Seq.empty, body = HttpEntity("request1"))),
+          Corn(RequestTemplate("/", Map.empty, Seq.empty, body = HttpEntity("request2")))
+        ))
+        .via(singleRequestValueFlow)
+        .runWith(Sink.seq)
+      val result: Seq[Either[Throwable, String]] = Await.result(resultsFut, 1 second).map(x => x.data._1)
+      // then
+      Set(result:_*) mustBe Set(Right("request1Post"), Right("request2Post"))
+    }
+
     "correctly react to exception in connectionPoolFlow" in {
       // given
       val requestTemplate = RequestTemplate("/", Map.empty, Seq.empty)
       val flow: Flow[ProcessingMessage[RequestTemplate], ProcessingMessage[(Either[Throwable, String], RequestTemplate)], NotUsed] = RequestProcessingFlows.connectionPoolFlow[String](
         connectionToRequestFlowFunc = _ => {
           Flow.fromFunction[(HttpRequest, ProcessingMessage[RequestTemplate]), (Try[HttpResponse], ProcessingMessage[RequestTemplate])](
-            _ => (Success(createHttpResponse), Corn(requestTemplate)))
+            _ => (Success(createHttpResponse("")), Corn(requestTemplate)))
         },
         connection = Connection("testhost", 0, useHttps = false, None),
         parsingFunc = _ => throw new RuntimeException("")
@@ -120,6 +150,36 @@ class RequestProcessingFlowsSpec extends KolibriTestKitNoCluster
       // then
       isCorrectException mustBe true
     }
+
+    "correctly process requests in connectionPoolFlow" in {
+      // given
+      val flow: Flow[ProcessingMessage[RequestTemplate], ProcessingMessage[(Either[Throwable, String], RequestTemplate)], NotUsed] = RequestProcessingFlows.connectionPoolFlow[String](
+        connectionToRequestFlowFunc = _ => {
+          Flow.fromFunction[(HttpRequest, ProcessingMessage[RequestTemplate]), (Try[HttpResponse], ProcessingMessage[RequestTemplate])](
+            x => {
+              val parsedRequestEntity: Future[Either[Throwable, String]] = parseHttpEntity[String](x._1.entity, identity)
+              val httpResponseFut = parsedRequestEntity.map({
+                case Right(value) => createHttpResponse(value)
+                case Left(e) => createHttpResponse(e.getClass.getName)
+              })
+              (Success(Await.result(httpResponseFut, 1 second)), x._2)
+            })
+        },
+        connection = Connection("testhost", 0, useHttps = false, None),
+        parsingFunc = resp => parseResponse[String](resp, content => s"${content}Post")
+      )
+      // when
+      val resultFuture: Future[Seq[ProcessingMessage[(Either[Throwable, String], RequestTemplate)]]] = Source.apply(Seq(
+        Corn(RequestTemplate("/", Map.empty, Seq.empty, body = HttpEntity("request1"))),
+        Corn(RequestTemplate("/", Map.empty, Seq.empty, body = HttpEntity("request2")))
+      ))
+        .via(flow)
+        .runWith(Sink.seq)
+      val result: Seq[Either[Throwable, String]] = Await.result(resultFuture, 3 second).map(x => x.data._1)
+      // then
+      Set(result:_*) mustBe Set(Right("request1Post"), Right("request2Post"))
+    }
   }
+
 
 }
