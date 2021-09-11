@@ -14,9 +14,8 @@
   * limitations under the License.
   */
 
-package de.awagen.kolibri.base.io
+package de.awagen.kolibri.base.io.reader
 
-import de.awagen.kolibri.base.io.reader.FileReaderUtils
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
 import de.awagen.kolibri.datatypes.utils.MathUtils
 

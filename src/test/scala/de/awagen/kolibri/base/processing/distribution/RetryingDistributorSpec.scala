@@ -40,11 +40,6 @@ class RetryingDistributorSpec extends UnitTestSpec {
   "RetryingDistributor" should {
 
     "correctly process with retries" in {
-      // given
-      var elements: Seq[Int] = Seq.empty
-      val aggConsumer: AggregationStateWithData[Int] => () = el => {
-        elements = elements :+ el.data
-      }
       val distributor: Distributor[IntWithBatch, Int] = this.distributor[IntWithBatch, Int](
         Range(0, 6).map(x => IntWithBatch(x, x)),
         1

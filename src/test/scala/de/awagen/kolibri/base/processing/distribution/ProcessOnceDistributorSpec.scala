@@ -37,8 +37,6 @@ class ProcessOnceDistributorSpec extends UnitTestSpec {
   "ProcessOnceDistributor" should {
 
     "correctly provide elements" in {
-      // given
-      var elements: Seq[Int] = Seq.empty
       val intDistributor = distributor[IntWithBatch, Int](Range(0, 10).map(x => IntWithBatch(x, x)))
       // when, then
       intDistributor.next mustBe Right(Seq(0, 1, 2).map(x => IntWithBatch(x, x)))

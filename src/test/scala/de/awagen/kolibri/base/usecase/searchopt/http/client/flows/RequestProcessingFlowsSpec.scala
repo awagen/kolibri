@@ -18,7 +18,7 @@
 package de.awagen.kolibri.base.usecase.searchopt.http.client.flows
 
 import akka.NotUsed
-import akka.http.scaladsl.model.{HttpEntity, HttpResponse}
+import akka.http.scaladsl.model.HttpEntity
 import akka.stream.scaladsl.{Flow, Sink, Source}
 import akka.stream.{FlowShape, Graph}
 import akka.testkit.{ImplicitSender, TestKit}
@@ -27,7 +27,7 @@ import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{Corn, ProcessingMessage}
 import de.awagen.kolibri.base.domain.Connection
 import de.awagen.kolibri.base.http.client.request.RequestTemplate
-import de.awagen.kolibri.base.usecase.searchopt.http.client.flows.FlowTestHelper.{connectionPoolRequestFlow, connectionToRequestTemplateProcessingAndParsing, createHttpResponse, parseResponse, singleRequestProcessingFlow}
+import de.awagen.kolibri.base.usecase.searchopt.http.client.flows.FlowTestHelper.{connectionPoolRequestFlow, connectionToRequestTemplateProcessingAndParsing, parseResponse, singleRequestProcessingFlow}
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.must.Matchers
@@ -141,7 +141,7 @@ class RequestProcessingFlowsSpec extends KolibriTestKitNoCluster
         .runWith(Sink.seq)
       val result: Seq[Either[Throwable, String]] = Await.result(resultFut, 2 second).map(x => x.data._1)
       // then
-      Set(result:_*) mustBe Set(Right("request1"), Right("request2"))
+      Set(result: _*) mustBe Set(Right("request1"), Right("request2"))
     }
   }
 
