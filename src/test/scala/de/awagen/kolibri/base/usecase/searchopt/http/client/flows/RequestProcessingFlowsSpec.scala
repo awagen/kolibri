@@ -56,8 +56,6 @@ class RequestProcessingFlowsSpec extends KolibriTestKitNoCluster
   "RequestProcessingFlows" should {
 
     "correctly react to exception in singleRequestFlow" in {
-      // given
-      val httpResponse: HttpResponse = createHttpResponse("")
       val singleRequestValueFlow: Flow[ProcessingMessages.ProcessingMessage[RequestTemplate], ProcessingMessages.ProcessingMessage[(Either[Throwable, String], RequestTemplate)], NotUsed] =
         singleRequestProcessingFlow(_ => throw new RuntimeException(""))
       // when

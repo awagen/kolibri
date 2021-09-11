@@ -29,8 +29,6 @@ import de.awagen.kolibri.base.http.client.request.{RequestTemplate, RequestTempl
 import de.awagen.kolibri.base.processing.modifiers.Modifier
 import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
 import de.awagen.kolibri.base.processing.tagging.TaggingConfigurations.TaggingConfiguration
-import de.awagen.kolibri.base.usecase.searchopt.http.client.flows.RequestProcessingFlows
-import de.awagen.kolibri.base.usecase.searchopt.http.client.flows.RequestProcessingFlows.connectionToProcessingFunc
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.{Calculation, CalculationResult, FutureCalculation}
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Functions.{resultEitherToMetricRowResponse, throwableToMetricRowResponse}
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
@@ -42,7 +40,6 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 
 object Flows {
-
 
   /**
     * Transform single modifier to ProcessingMessage[RequestTemplate], the actual processing unit
@@ -97,7 +94,7 @@ object Flows {
                   singleMapCalculations: Seq[Calculation[WeaklyTypedMap[String], CalculationResult[Double]]],
                   requestTemplateStorageKey: String,
                   excludeParamsFromMetricRow: Seq[String])(implicit ec: ExecutionContext): Future[ProcessingMessage[MetricRow]] = {
-    val metricRowParams: Map[String, Seq[String]] = Map(processingMessage.data._2.parameters.toSeq.filter(x => !excludeParamsFromMetricRow.contains(x._1)):_*)
+    val metricRowParams: Map[String, Seq[String]] = Map(processingMessage.data._2.parameters.toSeq.filter(x => !excludeParamsFromMetricRow.contains(x._1)): _*)
     processingMessage.data._1 match {
       case e@Left(_) =>
         // need to add paramNames here to set the fail reasons for each
@@ -136,10 +133,9 @@ object Flows {
     * @param connections                   : connections to be utilized for the requests. Requests will be balanced across all given connections
     * @param contextPath                   : context path to be used for requests
     * @param fixedParams                   : fixed parameters to use for every request
+    * @param requestAndParsingFlow         : flow to execute request and parse relevant response parts into WeaklyTypedMap[String]
     * @param excludeParamsFromMetricRow    : the parameters to exclude from single metric entries (e.g useful for aggregations over distinct values, such as queries)
     * @param taggingConfiguration          : configuration to tag the processed elements based on input, parsed value and final result
-    * @param responseParsingFunc           : the parsing function to map HttpResponse to Future of either Throwable (in case of error)
-    *                                      or Seq[String] giving the productIds in order (in case of successful execution)
     * @param requestTemplateStorageKey     : the key under which to store the RequestTemplate in the value map
     * @param mapFutureMetricRowCalculation : definition of metric calculations
     * @param singleMapCalculations         : additional value calculations
@@ -150,9 +146,9 @@ object Flows {
   def fullProcessingFlow(connections: Seq[Connection],
                          contextPath: String,
                          fixedParams: Map[String, Seq[String]],
+                         requestAndParsingFlow: Flow[ProcessingMessage[RequestTemplate], ProcessingMessage[(Either[Throwable, WeaklyTypedMap[String]], RequestTemplate)], NotUsed],
                          excludeParamsFromMetricRow: Seq[String],
                          taggingConfiguration: Option[TaggingConfiguration[RequestTemplate, (Either[Throwable, WeaklyTypedMap[String]], RequestTemplate), MetricRow]],
-                         responseParsingFunc: HttpResponse => Future[Either[Throwable, WeaklyTypedMap[String]]],
                          requestTemplateStorageKey: String,
                          mapFutureMetricRowCalculation: FutureCalculation[WeaklyTypedMap[String], Set[String], MetricRow],
                          singleMapCalculations: Seq[Calculation[WeaklyTypedMap[String], CalculationResult[Double]]])
@@ -163,12 +159,7 @@ object Flows {
           taggingConfiguration.foreach(config => config.tagInit(el))
           el
         }))
-        .via(Flow.fromGraph(
-          RequestProcessingFlows.balancingRequestAndParsingFlow(
-            connections,
-            connectionToProcessingFunc(responseParsingFunc)
-          )
-        ))
+        .via(requestAndParsingFlow)
         // tagging
         .via(Flow.fromFunction(el => {
           taggingConfiguration.foreach(config => config.tagProcessed(el))

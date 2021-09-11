@@ -17,11 +17,10 @@
 
 package de.awagen.kolibri.base.usecase.searchopt.metrics
 
-import de.awagen.kolibri.base.http.client.request.RequestTemplate
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations._
+import de.awagen.kolibri.base.usecase.searchopt.metrics.CalculationsTestHelper._
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Functions._
-import de.awagen.kolibri.base.usecase.searchopt.provider.FileBasedJudgementProviderFactory
 import de.awagen.kolibri.datatypes.mutable.stores.{BaseWeaklyTypedMap, WeaklyTypedMap}
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason
 import de.awagen.kolibri.datatypes.stores.MetricRow
@@ -34,34 +33,6 @@ import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
 
 class CalculationsSpec extends UnitTestSpec {
-
-  val CALCULATION_NAME = "testCalc"
-  val QUERY_PARAM = "q"
-  val REQUEST_TEMPLATE_KEY = "template"
-  val PRODUCT_IDS_KEY = "pids"
-  val NDCG2_NAME = "NDCG_2"
-  val NDCG5_NAME = "NDCG_5"
-  val NDCG10_NAME = "NDCG_10"
-
-  def getJudgementBasedMetricsCalculation(judgementFilePath: String,
-                                          metrics: Seq[Metric]): JudgementBasedMetricsCalculation = {
-    JudgementBasedMetricsCalculation(
-      CALCULATION_NAME,
-      QUERY_PARAM,
-      REQUEST_TEMPLATE_KEY,
-      PRODUCT_IDS_KEY,
-      FileBasedJudgementProviderFactory(judgementFilePath),
-      MetricsCalculation(
-        metrics,
-        JudgementHandlingStrategy.EXIST_RESULTS_AND_JUDGEMENTS_MISSING_AS_ZEROS
-      ),
-      excludeParamsFromMetricRow = Seq(QUERY_PARAM)
-    )
-  }
-
-  def requestTemplateForQuery(query: String): RequestTemplate = {
-    RequestTemplate("/", Map(QUERY_PARAM -> Seq(query)), Seq.empty)
-  }
 
   "JudgementBasedMetricsCalculation" must {
     implicit val ec: ExecutionContext = global
