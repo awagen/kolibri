@@ -39,11 +39,14 @@ import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.values.AggregateValue
+import org.slf4j.{Logger, LoggerFactory}
 
 import scala.concurrent.ExecutionContext
 import scala.language.implicitConversions
 
 object JobMessages {
+
+  val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
   trait JobMessage extends KolibriSerializable
 
@@ -58,7 +61,7 @@ object JobMessages {
                               parsingConfig: ParsingConfig,
                               excludeParamsFromMetricRow: Seq[String],
                               requestTemplateStorageKey: String,
-                              mapFutureMetricRowCalculation: FutureCalculation[WeaklyTypedMap[String], MetricRow],
+                              mapFutureMetricRowCalculation: FutureCalculation[WeaklyTypedMap[String], Set[String], MetricRow],
                               singleMapCalculations: Seq[Calculation[WeaklyTypedMap[String], CalculationResult[Double]]],
                               taggingConfiguration: Option[BaseTaggingConfiguration[RequestTemplate, (Either[Throwable, WeaklyTypedMap[String]], RequestTemplate), MetricRow]],
                               wrapUpFunction: Option[Execution[Any]],
@@ -67,6 +70,7 @@ object JobMessages {
                               allowedTimeForJobInSeconds: Int = 7200,
                               expectResultsFromBatchCalculations: Boolean = true) extends JobMessage {
     val requestTemplateModifiers: Seq[IndexedGenerator[Modifier[RequestTemplateBuilder]]] = requestPermutation.flatMap(x => x.modifiers)
+    logger.debug(s"found modifier generators: ${requestTemplateModifiers.size}")
   }
 }
 

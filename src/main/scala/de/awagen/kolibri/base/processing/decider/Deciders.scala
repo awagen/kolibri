@@ -17,6 +17,7 @@
 
 package de.awagen.kolibri.base.processing.decider
 
+import akka.actor.{OneForOneStrategy, SupervisorStrategy}
 import akka.stream.Supervision
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -25,9 +26,13 @@ object Deciders {
   val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
   val allResumeDecider: Supervision.Decider = {
-    case e: Throwable =>
+    e: Throwable =>
       logger.warn(s"throwable in stream execution: $e - resuming")
       Supervision.Resume
+  }
+
+  def restartDecider(maxNrOfRetries: Int, loggingEnabled: Boolean): OneForOneStrategy = OneForOneStrategy(maxNrOfRetries = maxNrOfRetries, loggingEnabled = loggingEnabled) {
+    case _ => SupervisorStrategy.Restart
   }
 
 }

@@ -17,7 +17,8 @@
 
 package de.awagen.kolibri.base.usecase.searchopt.jobdefinitions
 
-import akka.actor.{ActorRef, ActorSystem}
+import akka.actor.ActorSystem
+import akka.stream.scaladsl.Flow
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationStateWithData, AggregationStateWithoutData, Corn, ProcessingMessage}
 import de.awagen.kolibri.base.config.AppConfig
@@ -29,6 +30,8 @@ import de.awagen.kolibri.base.processing.execution.expectation.Expectation.Succe
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnableSinkType
 import de.awagen.kolibri.base.processing.modifiers.Modifier
 import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
+import de.awagen.kolibri.base.usecase.searchopt.http.client.flows.RequestProcessingFlows
+import de.awagen.kolibri.base.usecase.searchopt.http.client.flows.RequestProcessingFlows.connectionToProcessingFunc
 import de.awagen.kolibri.base.usecase.searchopt.http.client.flows.responsehandlers.SolrHttpResponseHandlers
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.Aggregators.{fullJobToSingleTagAggregatorSupplier, singleBatchAggregatorSupplier}
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.BatchGenerators.batchGenerator
@@ -80,15 +83,20 @@ object SearchJobDefinitions {
       data = searchEvaluation.requestTemplateModifiers,
       dataBatchGenerator = batchGenerator(batchByIndex = searchEvaluation.batchByIndex),
       transformerFlow = Flows.fullProcessingFlow(
-        throughputActor = Option.empty[ActorRef],
         contextPath = searchEvaluation.contextPath,
         fixedParams = searchEvaluation.fixedParams,
         excludeParamsFromMetricRow = searchEvaluation.excludeParamsFromMetricRow,
-        groupId = searchEvaluation.jobName,
         connections = searchEvaluation.connections,
+        requestAndParsingFlow = Flow.fromGraph(
+          RequestProcessingFlows.balancingRequestAndParsingFlow(
+            searchEvaluation.connections,
+            connectionToProcessingFunc(
+              SolrHttpResponseHandlers.httpResponseToTypeTaggedMapParseFunc(_ => true, jsValueToTypeTaggedMap(searchEvaluation.parsingConfig))
+            )
+          )
+        ),
         taggingConfiguration = searchEvaluation.taggingConfiguration,
         requestTemplateStorageKey = searchEvaluation.requestTemplateStorageKey,
-        responseParsingFunc = SolrHttpResponseHandlers.httpResponseToTypeTaggedMapParseFunc(_ => true, jsValueToTypeTaggedMap(searchEvaluation.parsingConfig)),
         mapFutureMetricRowCalculation = searchEvaluation.mapFutureMetricRowCalculation,
         singleMapCalculations = searchEvaluation.singleMapCalculations,
       ),

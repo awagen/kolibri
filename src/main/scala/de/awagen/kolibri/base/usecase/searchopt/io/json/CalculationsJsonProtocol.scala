@@ -30,12 +30,13 @@ import spray.json.{DefaultJsonProtocol, JsValue, JsonFormat, enrichAny}
 
 object CalculationsJsonProtocol extends DefaultJsonProtocol {
 
-  implicit object FromMapFutureCalculationSeqStringToMetricRowFormat extends JsonFormat[FutureCalculation[WeaklyTypedMap[String], MetricRow]] {
-    override def read(json: JsValue): FutureCalculation[WeaklyTypedMap[String], MetricRow] = json match {
+  implicit object FromMapFutureCalculationSeqStringToMetricRowFormat extends JsonFormat[FutureCalculation[WeaklyTypedMap[String], Set[String], MetricRow]] {
+    override def read(json: JsValue): FutureCalculation[WeaklyTypedMap[String], Set[String], MetricRow] = json match {
       case spray.json.JsObject(fields) =>
         fields("functionType").convertTo[String] match {
           case "IR_METRICS" =>
             val name = fields("name").convertTo[String]
+            val queryParamName = fields("queryParamName").convertTo[String]
             val requestTemplateKey = fields("requestTemplateKey").convertTo[String]
             val productIdsKey = fields("productIdsKey").convertTo[String]
             val judgementProviderFactory = fields("judgementProvider").convertTo[JudgementProviderFactory[Double]]
@@ -43,18 +44,19 @@ object CalculationsJsonProtocol extends DefaultJsonProtocol {
             val excludeParamsFromMetricRow = fields("excludeParams").convertTo[Seq[String]]
             val calculation = JudgementBasedMetricsCalculation(
               name,
+              queryParamName,
               requestTemplateKey,
               productIdsKey,
               judgementProviderFactory,
               metricsCalculation,
               excludeParamsFromMetricRow
             )
-            FromMapFutureCalculation(name, calculation)
+            FromMapFutureCalculation(name, metricsCalculation.metrics.map(x => x.name).toSet, calculation)
         }
     }
 
     // TODO
-    override def write(obj: FutureCalculation[WeaklyTypedMap[String], MetricRow]): JsValue = """{}""".toJson
+    override def write(obj: FutureCalculation[WeaklyTypedMap[String], Set[String], MetricRow]): JsValue = """{}""".toJson
 
   }
 

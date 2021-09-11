@@ -27,33 +27,19 @@
       "type": "ALL",
       "value": {
         "params": {
+          "type": "FROM_FILES_LINES",
+          "values": {
+            "q": "/app/test-files/test-paramfiles/test_queries.txt"
+          }
+        }
+      }
+    },
+    {
+      "type": "ALL",
+      "value": {
+        "params": {
           "type": "GRID_FROM_VALUES_SEQ",
           "values": [
-            {
-              "name": "q",
-              "values": [
-                "q1",
-                "q2",
-                "q3",
-                "q4",
-                "q5",
-                "q6",
-                "q7",
-                "q8",
-                "q9",
-                "q10",
-                "q11",
-                "q12",
-                "q13",
-                "q14",
-                "q15",
-                "q16",
-                "q17",
-                "q18",
-                "q19",
-                "q20"
-              ]
-            },
             {
               "name": "a1",
               "values": [
@@ -68,13 +54,7 @@
               "stepSize": 1.0
             }
           ]
-        },
-        "headers": {
-          "type": "GRID_FROM_VALUES_SEQ",
-          "values": []
-        },
-        "bodies": [],
-        "bodyContentType": "json"
+        }
       }
     }
   ],

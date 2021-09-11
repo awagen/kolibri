@@ -14,10 +14,10 @@
   * limitations under the License.
   */
 
-package de.awagen.kolibri.base.processing
+package de.awagen.kolibri.base.processing.execution.task
 
 import de.awagen.kolibri.base.processing.TestTaskHelper.{concatIdsTask, productIdResult}
-import de.awagen.kolibri.base.processing.execution.task.SimpleSyncTask
+import de.awagen.kolibri.base.processing.execution
 import de.awagen.kolibri.base.processing.failure.TaskFailType.{NotYetStartedTask, TaskFailType}
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
 import de.awagen.kolibri.base.utils.TestHelper._

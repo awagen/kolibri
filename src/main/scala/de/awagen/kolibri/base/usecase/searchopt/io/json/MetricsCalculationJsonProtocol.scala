@@ -16,8 +16,8 @@
 
 package de.awagen.kolibri.base.usecase.searchopt.io.json
 
-import EnumerationJsonProtocol._
-import JudgementHandlingStrategyJsonProtocol._
+import de.awagen.kolibri.base.io.json.MetricJsonProtocol._
+import de.awagen.kolibri.base.usecase.searchopt.io.json.JudgementHandlingStrategyJsonProtocol._
 import de.awagen.kolibri.base.usecase.searchopt.metrics.MetricsCalculation
 import spray.json.{DefaultJsonProtocol, RootJsonFormat}
 

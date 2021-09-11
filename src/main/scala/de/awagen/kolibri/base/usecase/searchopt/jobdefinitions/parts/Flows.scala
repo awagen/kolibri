@@ -18,10 +18,9 @@
 package de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts
 
 import akka.NotUsed
-import akka.actor.{ActorRef, ActorSystem}
+import akka.actor.ActorSystem
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.stream.scaladsl.Flow
-import akka.stream.{FlowShape, Graph}
 import de.awagen.kolibri.base.actors.flows.GenericFlows.{Host, getHttpConnectionPoolFlow, getHttpsConnectionPoolFlow}
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{Corn, ProcessingMessage}
 import de.awagen.kolibri.base.config.AppProperties.config
@@ -30,7 +29,6 @@ import de.awagen.kolibri.base.http.client.request.{RequestTemplate, RequestTempl
 import de.awagen.kolibri.base.processing.modifiers.Modifier
 import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
 import de.awagen.kolibri.base.processing.tagging.TaggingConfigurations.TaggingConfiguration
-import de.awagen.kolibri.base.usecase.searchopt.http.client.flows.RequestProcessingFlows
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.{Calculation, CalculationResult, FutureCalculation}
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Functions.{resultEitherToMetricRowResponse, throwableToMetricRowResponse}
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
@@ -43,12 +41,11 @@ import scala.util.Try
 
 object Flows {
 
-
   /**
     * Transform single modifier to ProcessingMessage[RequestTemplate], the actual processing unit
     *
-    * @param fixedParams
-    * @param tagger
+    * @param contextPath - contextPath to set in RequestTemplate
+    * @param fixedParams - fixed parameters to set in RequestTemplate
     * @return
     */
   def modifierToProcessingMessage(contextPath: String,
@@ -63,7 +60,6 @@ object Flows {
     *
     * @param contextPath : contextPath of the request
     * @param fixedParams : mapping of parameter names to possible multiple values
-    * @param tagger      : function adding tags to ProcessingMessage[RequestTemplate]
     * @return
     */
   def processingFlow(contextPath: String,
@@ -93,39 +89,17 @@ object Flows {
     else getHttpConnectionPoolFlow[ProcessingMessage[RequestTemplate]].apply(Host(v1.host, v1.port))
   }
 
-  /**
-    * Execution graph from ProcessingMessage[RequestTemplate] to ProcessingMessage[(Either[Throwable, WeaklyTypedMap[String]], RequestTemplate)],
-    * where the Either either holds Throwable if request + parsing failed or the Map containing
-    * properties parsed from the response
-    *
-    * @param connections
-    * @param queryParam
-    * @param groupId
-    * @param throughputActor
-    * @param as
-    * @param ec
-    * @return
-    */
-  def requestingFlow(connections: Seq[Connection],
-                     groupId: String,
-                     responseParsingFunc: HttpResponse => Future[Either[Throwable, WeaklyTypedMap[String]]],
-                     throughputActor: Option[ActorRef])(implicit as: ActorSystem, ec: ExecutionContext): Graph[FlowShape[ProcessingMessage[RequestTemplate], ProcessingMessage[(Either[Throwable, WeaklyTypedMap[String]], RequestTemplate)]], NotUsed] =
-    RequestProcessingFlows.requestAndParsingFlow(
-      throughputActor,
-      groupId,
-      connections,
-      connectionFunc,
-      responseParsingFunc
-    )
-
   def metricsCalc(processingMessage: ProcessingMessage[(Either[Throwable, WeaklyTypedMap[String]], RequestTemplate)],
-                  mapFutureMetricRowCalculation: FutureCalculation[WeaklyTypedMap[String], MetricRow],
+                  mapFutureMetricRowCalculation: FutureCalculation[WeaklyTypedMap[String], Set[String], MetricRow],
                   singleMapCalculations: Seq[Calculation[WeaklyTypedMap[String], CalculationResult[Double]]],
                   requestTemplateStorageKey: String,
                   excludeParamsFromMetricRow: Seq[String])(implicit ec: ExecutionContext): Future[ProcessingMessage[MetricRow]] = {
+    val metricRowParams: Map[String, Seq[String]] = Map(processingMessage.data._2.parameters.toSeq.filter(x => !excludeParamsFromMetricRow.contains(x._1)): _*)
     processingMessage.data._1 match {
       case e@Left(_) =>
-        val metricRow = throwableToMetricRowResponse(e.value)
+        // need to add paramNames here to set the fail reasons for each
+        val allParamNames: Set[String] = singleMapCalculations.map(x => x.name).toSet ++ mapFutureMetricRowCalculation.calculationResultIdentifier
+        val metricRow = throwableToMetricRowResponse(e.value, allParamNames, metricRowParams)
         val result: ProcessingMessage[MetricRow] = Corn(metricRow)
         val originalTags: Set[Tag] = processingMessage.getTagsForType(TagType.AGGREGATION)
         result.addTags(TagType.AGGREGATION, originalTags)
@@ -139,7 +113,7 @@ object Flows {
         val singleResults: Seq[MetricRow] = singleMapCalculations
           .map(x => {
             val value = x.apply(e.value)
-            resultEitherToMetricRowResponse(x.name, value)
+            resultEitherToMetricRowResponse(x.name, value, metricRowParams)
           })
         val originalTags: Set[Tag] = processingMessage.getTagsForType(TagType.AGGREGATION)
         val combinedResultFuture: Future[MetricRow] = rowResultFuture.map(resRow => {
@@ -156,34 +130,27 @@ object Flows {
   /**
     * Full flow definition from RequestTemplateBuilderModifier to ProcessingMessage[MetricRow]
     *
-    * @param throughputActor          : optional ActorRef to receive throughput information
-    * @param connections              : connections to be utilized for the requests. Requests will be balanced across all given connections
-    * @param contextPath              : context path to be used for requests
-    * @param fixedParams              : fixed parameters to use for every request
-    * @param queryParam               : the parameter name of the query parameter
-    * @param groupId                  : group id, usually the same as the jobId
-    * @param requestTagger            : the tagger to tag ProcessingMessage[RequestTemplate]
-    * @param responseParsingFunc      : the parsing function to map HttpResponse to Future of either Throwable (in case of error)
-    *                                 or Seq[String] giving the productIds in order (in case of successful execution)
-    * @param judgementProviderFactory : the factory providing judgement provider, which is used to retrieve judgements for
-    *                                 the productIds
-    * @param metricsCalculation       : definition of metrics to calculate and how to handle judgements (validations of judgements and
-    *                                 handling of missing values)
-    * @param as                       : implicit ActorSystem
-    * @param ec                       : implicit ExecutionContext
-    * @param timeout                  : implicit timeout for the requests
+    * @param connections                   : connections to be utilized for the requests. Requests will be balanced across all given connections
+    * @param contextPath                   : context path to be used for requests
+    * @param fixedParams                   : fixed parameters to use for every request
+    * @param requestAndParsingFlow         : flow to execute request and parse relevant response parts into WeaklyTypedMap[String]
+    * @param excludeParamsFromMetricRow    : the parameters to exclude from single metric entries (e.g useful for aggregations over distinct values, such as queries)
+    * @param taggingConfiguration          : configuration to tag the processed elements based on input, parsed value and final result
+    * @param requestTemplateStorageKey     : the key under which to store the RequestTemplate in the value map
+    * @param mapFutureMetricRowCalculation : definition of metric calculations
+    * @param singleMapCalculations         : additional value calculations
+    * @param as                            : implicit ActorSystem
+    * @param ec                            : implicit ExecutionContext
     * @return
     */
-  def fullProcessingFlow(throughputActor: Option[ActorRef],
-                         connections: Seq[Connection],
+  def fullProcessingFlow(connections: Seq[Connection],
                          contextPath: String,
                          fixedParams: Map[String, Seq[String]],
+                         requestAndParsingFlow: Flow[ProcessingMessage[RequestTemplate], ProcessingMessage[(Either[Throwable, WeaklyTypedMap[String]], RequestTemplate)], NotUsed],
                          excludeParamsFromMetricRow: Seq[String],
-                         groupId: String,
                          taggingConfiguration: Option[TaggingConfiguration[RequestTemplate, (Either[Throwable, WeaklyTypedMap[String]], RequestTemplate), MetricRow]],
-                         responseParsingFunc: HttpResponse => Future[Either[Throwable, WeaklyTypedMap[String]]],
                          requestTemplateStorageKey: String,
-                         mapFutureMetricRowCalculation: FutureCalculation[WeaklyTypedMap[String], MetricRow],
+                         mapFutureMetricRowCalculation: FutureCalculation[WeaklyTypedMap[String], Set[String], MetricRow],
                          singleMapCalculations: Seq[Calculation[WeaklyTypedMap[String], CalculationResult[Double]]])
                         (implicit as: ActorSystem, ec: ExecutionContext): Flow[RequestTemplateBuilderModifier, ProcessingMessage[MetricRow], NotUsed] = {
     val partialFlow: Flow[RequestTemplateBuilderModifier, ProcessingMessage[(Either[Throwable, WeaklyTypedMap[String]], RequestTemplate)], NotUsed] =
@@ -192,11 +159,7 @@ object Flows {
           taggingConfiguration.foreach(config => config.tagInit(el))
           el
         }))
-        .via(Flow.fromGraph(requestingFlow(
-          connections = connections,
-          groupId = groupId,
-          responseParsingFunc = responseParsingFunc,
-          throughputActor = throughputActor)))
+        .via(requestAndParsingFlow)
         // tagging
         .via(Flow.fromFunction(el => {
           taggingConfiguration.foreach(config => config.tagProcessed(el))

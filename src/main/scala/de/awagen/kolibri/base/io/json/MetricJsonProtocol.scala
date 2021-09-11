@@ -14,13 +14,16 @@
   * limitations under the License.
   */
 
-package de.awagen.kolibri.base.domain.jobdefinitions.provider
 
-import de.awagen.kolibri.base.io.reader.FileReader
-import de.awagen.kolibri.datatypes.multivalues.OrderedMultiValues
+package de.awagen.kolibri.base.io.json
 
-case class QueryAndParamProvider(contextPath: String,
-                                 queryFile: String,
-                                 queryFileReader: FileReader,
-                                 parameters: OrderedMultiValues,
-                                 defaultParameters: Map[String, Seq[String]])
+import de.awagen.kolibri.base.io.json.MetricFunctionJsonProtocol.MetricFunctionFormat
+import de.awagen.kolibri.base.usecase.searchopt.metrics.Metric
+import spray.json.DefaultJsonProtocol.{StringJsonFormat, jsonFormat2}
+import spray.json.RootJsonFormat
+
+object MetricJsonProtocol {
+
+  implicit val metricFormat: RootJsonFormat[Metric] = jsonFormat2(Metric)
+
+}

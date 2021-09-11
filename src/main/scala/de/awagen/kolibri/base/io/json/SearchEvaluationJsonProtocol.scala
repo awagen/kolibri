@@ -50,7 +50,7 @@ object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSu
       parsingConfig: ParsingConfig,
       excludeParamsFromMetricRow: Seq[String],
       requestTemplateStorageKey: String,
-      mapFutureMetricRowCalculation: FutureCalculation[WeaklyTypedMap[String], MetricRow],
+      mapFutureMetricRowCalculation: FutureCalculation[WeaklyTypedMap[String], Set[String], MetricRow],
       singleMapCalculations: Seq[Calculation[WeaklyTypedMap[String], CalculationResult[Double]]],
       taggingConfiguration: Option[BaseTaggingConfiguration[RequestTemplate, (Either[Throwable, WeaklyTypedMap[String]], RequestTemplate), MetricRow]],
       wrapUpFunction: Option[Execution[Any]],
