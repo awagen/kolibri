@@ -93,7 +93,7 @@ object Flows {
   }
 
   def metricsCalc(processingMessage: ProcessingMessage[(Either[Throwable, WeaklyTypedMap[String]], RequestTemplate)],
-                  mapFutureMetricRowCalculation: FutureCalculation[WeaklyTypedMap[String], MetricRow],
+                  mapFutureMetricRowCalculation: FutureCalculation[WeaklyTypedMap[String], Set[String], MetricRow],
                   singleMapCalculations: Seq[Calculation[WeaklyTypedMap[String], CalculationResult[Double]]],
                   requestTemplateStorageKey: String,
                   excludeParamsFromMetricRow: Seq[String])(implicit ec: ExecutionContext): Future[ProcessingMessage[MetricRow]] = {
@@ -101,7 +101,7 @@ object Flows {
     processingMessage.data._1 match {
       case e@Left(_) =>
         // need to add paramNames here to set the fail reasons for each
-        val allParamNames: Set[String] = singleMapCalculations.map(x => x.name).toSet ++ mapFutureMetricRowCalculation.calculationValueNames
+        val allParamNames: Set[String] = singleMapCalculations.map(x => x.name).toSet ++ mapFutureMetricRowCalculation.calculationResultIdentifier
         val metricRow = throwableToMetricRowResponse(e.value, allParamNames, metricRowParams)
         val result: ProcessingMessage[MetricRow] = Corn(metricRow)
         val originalTags: Set[Tag] = processingMessage.getTagsForType(TagType.AGGREGATION)
@@ -154,7 +154,7 @@ object Flows {
                          taggingConfiguration: Option[TaggingConfiguration[RequestTemplate, (Either[Throwable, WeaklyTypedMap[String]], RequestTemplate), MetricRow]],
                          responseParsingFunc: HttpResponse => Future[Either[Throwable, WeaklyTypedMap[String]]],
                          requestTemplateStorageKey: String,
-                         mapFutureMetricRowCalculation: FutureCalculation[WeaklyTypedMap[String], MetricRow],
+                         mapFutureMetricRowCalculation: FutureCalculation[WeaklyTypedMap[String], Set[String], MetricRow],
                          singleMapCalculations: Seq[Calculation[WeaklyTypedMap[String], CalculationResult[Double]]])
                         (implicit as: ActorSystem, ec: ExecutionContext): Flow[RequestTemplateBuilderModifier, ProcessingMessage[MetricRow], NotUsed] = {
     val partialFlow: Flow[RequestTemplateBuilderModifier, ProcessingMessage[(Either[Throwable, WeaklyTypedMap[String]], RequestTemplate)], NotUsed] =

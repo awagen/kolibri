@@ -30,8 +30,8 @@ import spray.json.{DefaultJsonProtocol, JsValue, JsonFormat, enrichAny}
 
 object CalculationsJsonProtocol extends DefaultJsonProtocol {
 
-  implicit object FromMapFutureCalculationSeqStringToMetricRowFormat extends JsonFormat[FutureCalculation[WeaklyTypedMap[String], MetricRow]] {
-    override def read(json: JsValue): FutureCalculation[WeaklyTypedMap[String], MetricRow] = json match {
+  implicit object FromMapFutureCalculationSeqStringToMetricRowFormat extends JsonFormat[FutureCalculation[WeaklyTypedMap[String], Set[String], MetricRow]] {
+    override def read(json: JsValue): FutureCalculation[WeaklyTypedMap[String], Set[String], MetricRow] = json match {
       case spray.json.JsObject(fields) =>
         fields("functionType").convertTo[String] match {
           case "IR_METRICS" =>
@@ -56,7 +56,7 @@ object CalculationsJsonProtocol extends DefaultJsonProtocol {
     }
 
     // TODO
-    override def write(obj: FutureCalculation[WeaklyTypedMap[String], MetricRow]): JsValue = """{}""".toJson
+    override def write(obj: FutureCalculation[WeaklyTypedMap[String], Set[String], MetricRow]): JsValue = """{}""".toJson
 
   }
 

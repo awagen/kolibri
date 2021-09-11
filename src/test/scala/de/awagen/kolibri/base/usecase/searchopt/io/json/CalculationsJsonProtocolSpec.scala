@@ -64,7 +64,7 @@ class CalculationsJsonProtocolSpec extends UnitTestSpec {
     "FromMapFutureCalculationSeqStringToMetricRowFormat" must {
 
       "correctly parse FutureCalculation[WeaklyTypedMap[String], MetricRow]" in {
-        val calc: FutureCalculation[WeaklyTypedMap[String], MetricRow] = IR_METRICS_FUTURE_CALCULATION.convertTo[FutureCalculation[WeaklyTypedMap[String], MetricRow]]
+        val calc: FutureCalculation[WeaklyTypedMap[String], Set[String], MetricRow] = IR_METRICS_FUTURE_CALCULATION.convertTo[FutureCalculation[WeaklyTypedMap[String], Set[String], MetricRow]]
         calc.name mustBe "irMetrics"
       }
 

@@ -19,9 +19,11 @@ package de.awagen.kolibri.base.usecase.searchopt.metrics
 
 import de.awagen.kolibri.base.http.client.request.RequestTemplate
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
-import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.{CalculationResult, JudgementBasedMetricsCalculation}
+import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations._
+import de.awagen.kolibri.base.usecase.searchopt.metrics.Functions._
 import de.awagen.kolibri.base.usecase.searchopt.provider.FileBasedJudgementProviderFactory
 import de.awagen.kolibri.datatypes.mutable.stores.{BaseWeaklyTypedMap, WeaklyTypedMap}
+import de.awagen.kolibri.datatypes.reason.ComputeFailReason
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.utils.MathUtils
 import de.awagen.kolibri.datatypes.values.AggregateValue
@@ -29,7 +31,7 @@ import de.awagen.kolibri.datatypes.values.AggregateValue
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.global
 import scala.concurrent.duration._
-import scala.concurrent.{Await, ExecutionContext}
+import scala.concurrent.{Await, ExecutionContext, Future}
 
 class CalculationsSpec extends UnitTestSpec {
 
@@ -91,7 +93,143 @@ class CalculationsSpec extends UnitTestSpec {
       MathUtils.equalWithPrecision[Double](ndcg5Result.value, expectedNDCG5Result.getOrElse(-1.0), 0.0001) mustBe true
       MathUtils.equalWithPrecision[Double](ndcg5Result.value, ndcg10Result.value, 0.0001) mustBe true
     }
+  }
 
+  "BaseBooleanCalculation" must {
+
+    "correctly calculate metrics" in {
+      // given
+      val calculation = BaseBooleanCalculation("testCalc", x => Right(x.count(y => y)))
+      // when
+      val result: CalculationResult[Double] = calculation.apply(Seq(true, true, false, false))
+      // then
+      result.getOrElse(-1) mustBe 2
+    }
+
+  }
+
+  "FromMapCalculation" must {
+
+    "correctly calculate metrics" in {
+      // given
+      val calculation = FromMapCalculation[Seq[Int], Int]("testCalc", "key1", x => Right(x.sum))
+      // when, then
+      calculation.apply(BaseWeaklyTypedMap(mutable.Map("key1" -> Seq(1, 2, 3)))).getOrElse(-1) mustBe 6
+    }
+
+  }
+
+  "FromMapFutureCalculation" must {
+    implicit val ec: ExecutionContext = global
+
+    "correctly calculate metrics" in {
+      // given
+      val calculation: FutureCalculation[WeaklyTypedMap[String], String, Int] = new FutureCalculation[WeaklyTypedMap[String], String, Int] {
+        override val name: String = "testCalc"
+        override val calculationResultIdentifier: String = "key1Sum"
+
+        override def apply(in: WeaklyTypedMap[String])(implicit ec: ExecutionContext): Future[Int] = {
+          Future {
+            in.get[Seq[Int]]("key1").get.sum
+          }
+        }
+      }
+      val futureCalculation = FromMapFutureCalculation("testCalc", "key1Sum", calculation)
+      // when
+      val futureResult: Future[Int] = futureCalculation.apply(BaseWeaklyTypedMap(mutable.Map("key1" -> Seq(3, 2))))
+      Await.result(futureResult, 1 second) mustBe 5
+    }
+
+  }
+
+  "Functions" must {
+
+    "correctly apply throwableToMetricRowResponse" in {
+      // given, when
+      val params = Map("p1" -> Seq("p1v1"), "p2" -> Seq("p2v1"))
+      val result: MetricRow = throwableToMetricRowResponse(
+        e = new RuntimeException("ups"),
+        valueNames = Set("val1", "val2"),
+        params = params)
+      val val1Result = result.metrics("val1").biValue
+      val val2Result = result.metrics("val2").biValue
+      val val1FailReasonKey = val1Result.value1.value.keySet.head
+      val val2FailReasonKey = val2Result.value1.value.keySet.head
+      // then
+      result.params mustBe params
+      result.metrics.keySet mustBe Set("val1", "val2")
+      val1Result.value2.count mustBe 0
+      val2Result.value2.count mustBe 0
+      val1Result.value1.count mustBe 1
+      val1FailReasonKey.description mustBe "java.lang.RuntimeException"
+      val1Result.value1.value(val1FailReasonKey) mustBe 1
+      val2Result.value1.count mustBe 1
+      val2FailReasonKey.description mustBe "java.lang.RuntimeException"
+      val2Result.value1.value(val2FailReasonKey) mustBe 1
+    }
+
+    "correctly apply computeFailReasonsToMetricRowResponse" in {
+      // given
+      val failReasons = Seq(
+        de.awagen.kolibri.datatypes.reason.ComputeFailReason.NO_RESULTS,
+        de.awagen.kolibri.datatypes.reason.ComputeFailReason.ZERO_DENOMINATOR
+      )
+      val params = Map("p1" -> Seq("p1v1"), "p2" -> Seq("p2v1"))
+      // when
+      val metricRow: MetricRow = computeFailReasonsToMetricRowResponse(failReasons, "testMetric", params)
+      val metricResult = metricRow.metrics("testMetric").biValue
+      // then
+      metricResult.value1.count mustBe 2
+      metricResult.value2.count mustBe 0
+      metricResult.value1.value(de.awagen.kolibri.datatypes.reason.ComputeFailReason.NO_RESULTS) mustBe 1
+      metricResult.value1.value(de.awagen.kolibri.datatypes.reason.ComputeFailReason.ZERO_DENOMINATOR) mustBe 1
+    }
+
+    "correctly apply resultEitherToMetricRowResponse" in {
+      // given
+      val params = Map("p1" -> Seq("p1v1"), "p2" -> Seq("p2v1"))
+      // when
+      val metricRow1 = resultEitherToMetricRowResponse(
+        "testMetric",
+        Right(0.2),
+        params
+      )
+      val metricRow2 = resultEitherToMetricRowResponse(
+        "testMetric",
+        Left[Seq[ComputeFailReason], Double](Seq(new ComputeFailReason("runtimeException"))),
+        params
+      )
+      val row1Result = metricRow1.metrics("testMetric").biValue
+      val row2Result = metricRow2.metrics("testMetric").biValue
+      // then
+      row1Result.value1.count mustBe 0
+      row1Result.value2.count mustBe 1
+      row2Result.value1.count mustBe 1
+      row2Result.value2.count mustBe 0
+      row1Result.value2.value mustBe 0.2
+      row2Result.value1.value.keySet.map(x => x.description) mustBe Set("runtimeException")
+
+    }
+
+    "correctly apply findFirstValue" in {
+      findFirstValue(false).apply(Seq(true, true, false, true)).getOrElse(-1) mustBe 2
+      findFirstValue(true).apply(Seq(true, true, false, true)).getOrElse(-1) mustBe 0
+    }
+
+    "correctly apply countValues" in {
+      countValues(false).apply(Seq(true, false, false, true, true)).getOrElse(-1) mustBe 2
+      countValues(true).apply(Seq(true, false, false, true, true)).getOrElse(-1) mustBe 3
+    }
+
+    "correctly apply binarizeBooleanSeq" in {
+      binarizeBooleanSeq(invert = false, Seq(true, true, false)) mustBe Seq(1.0, 1.0, 0.0)
+      binarizeBooleanSeq(invert = true, Seq(true, true, false)) mustBe Seq(0.0, 0.0, 1.0)
+    }
+
+    "correctly apply booleanPrecision" in {
+      booleanPrecision(useTrue = true, 3).apply(Seq(true, true, false, true)).getOrElse(-1) mustBe 2.0 / 3.0
+      booleanPrecision(useTrue = false, 2).apply(Seq(true, false, false, true)).getOrElse(-1) mustBe 0.5
+    }
 
   }
 
