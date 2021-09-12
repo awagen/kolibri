@@ -40,7 +40,7 @@ Connection refused:
 
 - you might temporarily need to clone kolibri-datatypes and publish locally (see kolibri-datatypes README on instructions)
 - build jar (find it in target folder afterwards): ```./scripts/buildJar.sh```
-- build docker image for local usage: ```sudo docker build . -t kolibri-base:0.1.0-beta2```
+- build docker image for local usage: ```sudo docker build . -t kolibri-base:0.1.0-beta3```
 - run single-node cluster (compute and httpserver role, access via localhost:
   8000): ```./scripts/docker_run_single_node.sh```
     - sets interface of http server to 0.0.0.0 to allow requests from host system to localhost:8000 reach the service
@@ -173,6 +173,15 @@ volumes:
 ```
 Now configure the AWS_PROFILE env var to any profile name you want to assume (and for which the above mounted folder contains
 credentials). See example within docker-compose.yaml.
+
+## Code coverage 
+To calculate code coverage, the sbt-scoverage plugin is used (https://github.com/scoverage/sbt-scoverage).
+The commands to generate the reports are as follows:
+- run tests with coverage: ```sbt clean coverage test``` (or in case project contains integration tests: ```sbt clean coverage it:test```)
+- generate coverage report: ```sbt coverageReport``` (reports to be found in ```target/scala-<scala-version>/scoverage-report```)
+
+Its also possible to enable coverage for each build via sbt setting ```coverageEnabled := true```.
+For more settings (such as minimal coverage criteria for build to succeed), see above-referenced project page.
 
 ## License
 

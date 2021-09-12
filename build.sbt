@@ -19,7 +19,7 @@ val kamonVersion = "2.2.0"
 val macwireVersion = "2.4.0"
 
 ThisBuild / scalaVersion := "2.13.2"
-ThisBuild / version := "0.1.0-beta2"
+ThisBuild / version := "0.1.0-beta3"
 
 lazy val jvmOptions = Seq(
   "-Xms1G",
@@ -28,6 +28,9 @@ lazy val jvmOptions = Seq(
   "-XX:+CMSClassUnloadingEnabled",
   "-XX:MaxPermSize=256M"
 )
+
+// scoverage plugin setting to exclude classes from coverage report
+coverageExcludedPackages := "de\\.awagen\\.kolibri\\.base\\.config\\.*;.*\\.ClusterNode;.*\\.ClusterStates\\..*"
 
 envVars in Test := Map("PROFILE" -> "test")
 

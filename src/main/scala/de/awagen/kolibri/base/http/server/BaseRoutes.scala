@@ -28,7 +28,7 @@ import de.awagen.kolibri.base.actors.clusterinfo.ClusterMetricsListenerActor
 import de.awagen.kolibri.base.actors.clusterinfo.ClusterMetricsListenerActor.{MetricsProvided, ProvideMetrics}
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor._
-import de.awagen.kolibri.base.cluster.ClusterStatus
+import de.awagen.kolibri.base.cluster.ClusterStates.ClusterStatus
 import de.awagen.kolibri.base.config.AppProperties.config.{analyzeTimeout, internalJobStatusRequestTimeout, kolibriDispatcherName}
 import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions
 import de.awagen.kolibri.base.processing.JobMessages.{SearchEvaluation, TestPiCalculation}
@@ -105,7 +105,7 @@ object BaseRoutes {
 
     import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
     import akka.http.scaladsl.server.Directives._
-    import de.awagen.kolibri.base.cluster.ClusterStatusImplicits._
+    import de.awagen.kolibri.base.cluster.ClusterStates.ClusterStatusImplicits._
     import spray.json.DefaultJsonProtocol._
 
     path("clusterstatus") {

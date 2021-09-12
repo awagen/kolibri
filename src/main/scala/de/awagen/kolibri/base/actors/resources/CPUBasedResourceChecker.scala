@@ -16,7 +16,7 @@
 
 package de.awagen.kolibri.base.actors.resources
 
-import de.awagen.kolibri.base.cluster.ClusterStatus
+import de.awagen.kolibri.base.cluster.ClusterStates.ClusterStatus
 
 class CPUBasedResourceChecker extends ResourceChecker {
 

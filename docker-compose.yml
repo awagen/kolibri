@@ -23,7 +23,7 @@ services:
     user: "1000:1000"
 
   kolibri1:
-    image: kolibri-base:0.1.0-beta2
+    image: kolibri-base:0.1.0-beta3
     ports:
       - "8000:8000"
       - "5266:5266"
@@ -85,7 +85,7 @@ services:
       - ./test-files:/app/test-files
 
   kolibri2:
-    image: kolibri-base:0.1.0-beta2
+    image: kolibri-base:0.1.0-beta3
     ports:
       - "5267:5267"
       - "9096:9096"
