@@ -27,7 +27,7 @@ object RunningValueAdd extends Enumeration with KolibriSerializable {
 
   val doubleAvgAdd: RVal[Double] = RVal[Double](new SerializableFunction2[AggregateValue[Double], AggregateValue[Double], Double] {
     override def apply(v1: AggregateValue[Double], v2: AggregateValue[Double]): Double = {
-      val totalCount: Int = v1.count + v2.count
+      val totalCount: Double = v1.count + v2.count
       if (totalCount == 0) 0.0 else (v1.value * v1.count + v2.count * v2.value) / (v1.count + v2.count)
 
     }
@@ -47,9 +47,9 @@ object RunningValueAdd extends Enumeration with KolibriSerializable {
 
 object RunningValue {
 
-  def doubleAvgRunningValue(count: Int, value: Double): RunningValue[Double] = RunningValue(count, value, doubleAvgAdd.addFunc)
+  def doubleAvgRunningValue(count: Double, value: Double): RunningValue[Double] = RunningValue(count, value, doubleAvgAdd.addFunc)
 
-  def calcErrorRunningValue(count: Int, value: Map[ComputeFailReason, Int]): RunningValue[Map[ComputeFailReason, Int]] = RunningValue(count, value, errorMapAdd.addFunc)
+  def calcErrorRunningValue(count: Double, value: Map[ComputeFailReason, Int]): RunningValue[Map[ComputeFailReason, Int]] = RunningValue(count, value, errorMapAdd.addFunc)
 
   def mapFromFailReasons(as: Seq[ComputeFailReason]): Map[ComputeFailReason, Int] = {
     as.toSet[ComputeFailReason]
@@ -58,7 +58,7 @@ object RunningValue {
   }
 }
 
-case class RunningValue[A](count: Int,
+case class RunningValue[A](count: Double,
                            value: A,
                            addFunc: SerializableFunction2[AggregateValue[A], AggregateValue[A], A]) extends AggregateValue[A] {
 

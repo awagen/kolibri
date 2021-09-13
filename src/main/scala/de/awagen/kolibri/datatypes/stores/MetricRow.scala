@@ -41,27 +41,27 @@ object MetricRow {
   */
 case class MetricRow(params: Map[String, Seq[String]], metrics: Map[String, MetricValue[Double]]) extends MetricRecord[String, Double] {
 
-  def totalSuccessCountSum: Int = metrics.keys.map(x => successCountPerMetric(x)).sum
+  def totalSuccessCountSum: Double = metrics.keys.map(x => successCountPerMetric(x)).sum
 
   def totalSuccessCountAvg: Double = if (metrics.keys.isEmpty) 0.0 else totalSuccessCountSum / metrics.keys.size.toDouble
 
-  def totalSuccessCountMax: Int = metrics.keys.map(x => successCountPerMetric(x)).max
+  def totalSuccessCountMax: Double = metrics.keys.map(x => successCountPerMetric(x)).max
 
-  def totalSuccessCountMin: Int = metrics.keys.map(x => successCountPerMetric(x)).min
+  def totalSuccessCountMin: Double = metrics.keys.map(x => successCountPerMetric(x)).min
 
-  def totalErrorCountSum: Int = metrics.keys.map(x => errorCountPerMetric(x)).sum
+  def totalErrorCountSum: Double = metrics.keys.map(x => errorCountPerMetric(x)).sum
 
   def totalErrorCountAvg: Double = if (metrics.keys.isEmpty) 0.0 else totalErrorCountSum / metrics.keys.size.toDouble
 
-  def totalErrorCountMax: Int = metrics.keys.map(x => errorCountPerMetric(x)).max
+  def totalErrorCountMax: Double = metrics.keys.map(x => errorCountPerMetric(x)).max
 
-  def totalErrorCountMin: Int = metrics.keys.map(x => errorCountPerMetric(x)).min
+  def totalErrorCountMin: Double = metrics.keys.map(x => errorCountPerMetric(x)).min
 
-  def successCountPerMetric(metricName: String): Int = {
+  def successCountPerMetric(metricName: String): Double = {
     metrics.get(metricName).map(value => value.biValue.value2.count).getOrElse(0)
   }
 
-  def errorCountPerMetric(metricName: String): Int = {
+  def errorCountPerMetric(metricName: String): Double = {
     metrics.get(metricName).map(value => value.biValue.value1.count).getOrElse(0)
   }
 

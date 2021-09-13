@@ -20,7 +20,7 @@ import de.awagen.kolibri.datatypes.io.KolibriSerializable
 
 trait AggregateValue[A] extends KolibriSerializable {
 
-  val count: Int
+  val count: Double
   val value: A
 
   def add(other: AggregateValue[A]): AggregateValue[A]

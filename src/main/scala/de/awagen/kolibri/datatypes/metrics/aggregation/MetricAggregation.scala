@@ -52,22 +52,22 @@ case class MetricAggregation[A <: AnyRef](aggregationStateMap: mutable.Map[A, Me
   private[this] var aggregatedElementsCount: Int = _
 
   // sums up the successCounts over all aggregationStateMap values
-  def totalSuccessCountSum: Int = aggregationStateMap.values.map(x => x.totalSuccessCountSum).sum
+  def totalSuccessCountSum: Double = aggregationStateMap.values.map(x => x.totalSuccessCountSum).sum
 
   def totalSuccessCountAvg: Double = if (aggregationStateMap.values.isEmpty) 0.0 else aggregationStateMap.values.map(x => x.totalSuccessCountAvg).sum / aggregationStateMap.values.size
 
-  def totalSuccessCountMax: Int = aggregationStateMap.values.map(x => x.totalSuccessCountMax).max
+  def totalSuccessCountMax: Double = aggregationStateMap.values.map(x => x.totalSuccessCountMax).max
 
-  def totalSuccessCountMin: Int = aggregationStateMap.values.map(x => x.totalSuccessCountMin).min
+  def totalSuccessCountMin: Double = aggregationStateMap.values.map(x => x.totalSuccessCountMin).min
 
   // sums up the errorCounts over all aggregationStateMap values
-  def totalErrorCountSum: Int = aggregationStateMap.values.map(x => x.totalErrorCountSum).sum
+  def totalErrorCountSum: Double = aggregationStateMap.values.map(x => x.totalErrorCountSum).sum
 
   def totalErrorCountAvg: Double = if (aggregationStateMap.values.isEmpty) 0.0 else aggregationStateMap.values.map(x => x.totalErrorCountAvg).sum / aggregationStateMap.values.size
 
-  def totalErrorCountMax: Int = aggregationStateMap.values.map(x => x.totalErrorCountMax).max
+  def totalErrorCountMax: Double = aggregationStateMap.values.map(x => x.totalErrorCountMax).max
 
-  def totalErrorCountMin: Int = aggregationStateMap.values.map(x => x.totalErrorCountMin).min
+  def totalErrorCountMin: Double = aggregationStateMap.values.map(x => x.totalErrorCountMin).min
 
 
   override def count: Int = aggregatedElementsCount
