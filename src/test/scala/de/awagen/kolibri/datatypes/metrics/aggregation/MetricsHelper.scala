@@ -24,19 +24,19 @@ object MetricsHelper {
 
   def createMetricsCalculationSuccess(name: String, score: Double): MetricValue[Double] = {
     MetricValue(name, BiRunningValue(value1 = RunningValue.calcErrorRunningValue(0, Map.empty),
-      value2 = RunningValue.doubleAvgRunningValue(1, score)))
+      value2 = RunningValue.doubleAvgRunningValue(1.0, 1, score)))
   }
 
   def createMetricsCalculationFailure(name: String, fails: Seq[ComputeFailReason]): MetricValue[Double] = {
     MetricValue(name, BiRunningValue(value1 = RunningValue.calcErrorRunningValue(1, RunningValue.mapFromFailReasons(fails)),
-      value2 = RunningValue.doubleAvgRunningValue(0, 0.0)))
+      value2 = RunningValue.doubleAvgRunningValue(0.0, 0, 0.0)))
   }
 
-  val metricsSuccess1: MetricValue[Double] = MetricValue.createAvgSuccessSample("metrics1", 0.2)
-  val metricsSuccess2: MetricValue[Double] = MetricValue.createAvgSuccessSample("metrics2", 0.4)
-  val metricsSuccess3: MetricValue[Double] = MetricValue.createAvgSuccessSample("metrics3", 0.1)
-  val metricsSuccess4: MetricValue[Double] = MetricValue.createAvgSuccessSample("metrics4", 0.3)
-  val metricsSuccess5: MetricValue[Double] = MetricValue.createAvgSuccessSample("metrics5", 0.6)
+  val metricsSuccess1: MetricValue[Double] = MetricValue.createAvgSuccessSample("metrics1", 0.2, 1.0)
+  val metricsSuccess2: MetricValue[Double] = MetricValue.createAvgSuccessSample("metrics2", 0.4, 1.0)
+  val metricsSuccess3: MetricValue[Double] = MetricValue.createAvgSuccessSample("metrics3", 0.1, 1.0)
+  val metricsSuccess4: MetricValue[Double] = MetricValue.createAvgSuccessSample("metrics4", 0.3, 1.0)
+  val metricsSuccess5: MetricValue[Double] = MetricValue.createAvgSuccessSample("metrics5", 0.6, 1.0)
 
   val metricsFailed1: MetricValue[Double] = MetricValue
     .createAvgFailSample("metrics1", Map(ComputeFailReason("ZERO_DENOMINATOR") -> 1, ComputeFailReason("NO_RESULTS") -> 1))

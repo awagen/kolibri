@@ -19,7 +19,7 @@ package de.awagen.kolibri.datatypes.metrics.aggregation
 import de.awagen.kolibri.datatypes.functions.GeneralSerializableFunctions._
 import de.awagen.kolibri.datatypes.stores.{MetricDocument, MetricRow}
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
-import de.awagen.kolibri.datatypes.types.WithCount
+import de.awagen.kolibri.datatypes.types.Types.WithCount
 
 import scala.collection.mutable
 
@@ -41,34 +41,15 @@ object MetricAggregation {
   *
   * @param aggregationStateMap - map with key = key of defined type A, value = MetricDocument, which maps a ParamMap to
   *                            a MetricRow, which carries all relevant parameters and corresponding metrics
-  * @param keyMapFunction - optional function to map result keys to before adding to aggregation. E.g can be used in case
-  *                       all incoming results shall only be aggregated under a single "ALL" aggregation instead of
-  *                       keeping track of distinct results per key
+  * @param keyMapFunction      - optional function to map result keys to before adding to aggregation. E.g can be used in case
+  *                            all incoming results shall only be aggregated under a single "ALL" aggregation instead of
+  *                            keeping track of distinct results per key
   * @tparam A - type of the keys that describe the aggregation groups
   */
 case class MetricAggregation[A <: AnyRef](aggregationStateMap: mutable.Map[A, MetricDocument[A]] = mutable.Map.empty[A, MetricDocument[A]],
                                           keyMapFunction: SerializableFunction1[A, A] = identity) extends WithCount {
 
   private[this] var aggregatedElementsCount: Int = _
-
-  // sums up the successCounts over all aggregationStateMap values
-  def totalSuccessCountSum: Int = aggregationStateMap.values.map(x => x.totalSuccessCountSum).sum
-
-  def totalSuccessCountAvg: Double = if (aggregationStateMap.values.isEmpty) 0.0 else aggregationStateMap.values.map(x => x.totalSuccessCountAvg).sum / aggregationStateMap.values.size
-
-  def totalSuccessCountMax: Int = aggregationStateMap.values.map(x => x.totalSuccessCountMax).max
-
-  def totalSuccessCountMin: Int = aggregationStateMap.values.map(x => x.totalSuccessCountMin).min
-
-  // sums up the errorCounts over all aggregationStateMap values
-  def totalErrorCountSum: Int = aggregationStateMap.values.map(x => x.totalErrorCountSum).sum
-
-  def totalErrorCountAvg: Double = if (aggregationStateMap.values.isEmpty) 0.0 else aggregationStateMap.values.map(x => x.totalErrorCountAvg).sum / aggregationStateMap.values.size
-
-  def totalErrorCountMax: Int = aggregationStateMap.values.map(x => x.totalErrorCountMax).max
-
-  def totalErrorCountMin: Int = aggregationStateMap.values.map(x => x.totalErrorCountMin).min
-
 
   override def count: Int = aggregatedElementsCount
 

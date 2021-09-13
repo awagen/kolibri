@@ -19,17 +19,19 @@ package de.awagen.kolibri.datatypes.values
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction2
-import de.awagen.kolibri.datatypes.values.RunningValueAdd.{doubleAvgAdd, errorMapAdd}
+import de.awagen.kolibri.datatypes.values.RunningValue.RunningValueAdd.{doubleAvgAdd, errorMapAdd}
 
-object RunningValueAdd extends Enumeration with KolibriSerializable {
 
-  case class RVal[A](addFunc: SerializableFunction2[AggregateValue[A], AggregateValue[A], A]) extends Val with KolibriSerializable
+object RunningValue {
+
+  object RunningValueAdd extends Enumeration with KolibriSerializable {
+
+    case class RVal[A](addFunc: SerializableFunction2[AggregateValue[A], AggregateValue[A], A]) extends Val with KolibriSerializable
 
   val doubleAvgAdd: RVal[Double] = RVal[Double](new SerializableFunction2[AggregateValue[Double], AggregateValue[Double], Double] {
     override def apply(v1: AggregateValue[Double], v2: AggregateValue[Double]): Double = {
-      val totalCount: Int = v1.count + v2.count
-      if (totalCount == 0) 0.0 else (v1.value * v1.count + v2.count * v2.value) / (v1.count + v2.count)
-
+      val totalWeight: Double = v1.weight + v2.weight
+      if (totalWeight == 0) 0.0 else (v1.value * v1.weight + v2.weight * v2.value) / totalWeight
     }
   })
 
@@ -45,11 +47,11 @@ object RunningValueAdd extends Enumeration with KolibriSerializable {
 
 }
 
-object RunningValue {
+  def doubleAvgRunningValue(weightedCount: Double, count: Int, value: Double): RunningValue[Double] =
+    RunningValue(weightedCount, count, value, doubleAvgAdd.addFunc)
 
-  def doubleAvgRunningValue(count: Int, value: Double): RunningValue[Double] = RunningValue(count, value, doubleAvgAdd.addFunc)
-
-  def calcErrorRunningValue(count: Int, value: Map[ComputeFailReason, Int]): RunningValue[Map[ComputeFailReason, Int]] = RunningValue(count, value, errorMapAdd.addFunc)
+  def calcErrorRunningValue(count: Int, value: Map[ComputeFailReason, Int]): RunningValue[Map[ComputeFailReason, Int]] =
+    RunningValue(count, count, value, errorMapAdd.addFunc)
 
   def mapFromFailReasons(as: Seq[ComputeFailReason]): Map[ComputeFailReason, Int] = {
     as.toSet[ComputeFailReason]
@@ -58,15 +60,17 @@ object RunningValue {
   }
 }
 
-case class RunningValue[A](count: Int,
+case class RunningValue[A](weight: Double,
+                           numSamples: Int,
                            value: A,
                            addFunc: SerializableFunction2[AggregateValue[A], AggregateValue[A], A]) extends AggregateValue[A] {
 
-  override def add(other: AggregateValue[A]): AggregateValue[A] = {
-    RunningValue(count = this.count + other.count, value = addFunc.apply(this, other), addFunc = addFunc)
+  override def add(other: DataPoint[A]): AggregateValue[A] = {
+    this.add(RunningValue(other.weight, 1, other.data, addFunc))
   }
 
-  override def add(other: A): AggregateValue[A] = {
-    RunningValue(count = this.count + 1, value = addFunc.apply(this, RunningValue(1, other, addFunc)), addFunc = addFunc)
+  override def add(other: AggregateValue[A]): AggregateValue[A] = {
+    RunningValue(weight + other.weight, numSamples = this.numSamples + other.numSamples, value = addFunc.apply(this, other), addFunc = addFunc)
   }
+
 }

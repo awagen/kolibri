@@ -22,21 +22,20 @@ import de.awagen.kolibri.datatypes.stores.{MetricDocument, MetricRow}
 import de.awagen.kolibri.datatypes.tagging.TaggedWithType
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.testclasses.UnitTestSpec
-import de.awagen.kolibri.datatypes.types.DataStore
-import de.awagen.kolibri.datatypes.values.AggregateValue
+import de.awagen.kolibri.datatypes.values.{AggregateValue, DataPoint}
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.{Aggregator, TagKeyMetricAggregationPerClassAggregator, TagKeyMetricDocumentPerClassAggregator, TagKeyRunningDoubleAvgPerClassAggregator}
 
 class AggregatorsJsonProtocolSpec extends UnitTestSpec {
 
   "AggregatorsJsonProtocol" must {
-    import spray.json._
     import AggregatorsJsonProtocol._
+    import spray.json._
 
     "correctly parse Aggregator[TaggedWithType with DataStore[Double], Map[Tag, AggregateValue[Double]]]" in {
       // given
       val json = """{"type": "perClassDouble"}""".parseJson
       // when
-      val aggregator: Aggregator[TaggedWithType with DataStore[Double], Map[Tag, AggregateValue[Double]]] = json.convertTo[Aggregator[TaggedWithType with DataStore[Double], Map[Tag, AggregateValue[Double]]]]
+      val aggregator: Aggregator[TaggedWithType with DataPoint[Double], Map[Tag, AggregateValue[Double]]] = json.convertTo[Aggregator[TaggedWithType with DataPoint[Double], Map[Tag, AggregateValue[Double]]]]
       // then
       aggregator.isInstanceOf[TagKeyRunningDoubleAvgPerClassAggregator]
     }
@@ -45,7 +44,7 @@ class AggregatorsJsonProtocolSpec extends UnitTestSpec {
       // given
       val json = """{"type": "perClassMetricRow"}""".parseJson
       // when
-      val aggregator: Aggregator[TaggedWithType with DataStore[MetricRow], Map[Tag, MetricDocument[Tag]]] = json.convertTo[Aggregator[TaggedWithType with DataStore[MetricRow], Map[Tag, MetricDocument[Tag]]]]
+      val aggregator: Aggregator[TaggedWithType with DataPoint[MetricRow], Map[Tag, MetricDocument[Tag]]] = json.convertTo[Aggregator[TaggedWithType with DataPoint[MetricRow], Map[Tag, MetricDocument[Tag]]]]
       // then
       aggregator.isInstanceOf[TagKeyMetricDocumentPerClassAggregator]
     }
@@ -54,7 +53,7 @@ class AggregatorsJsonProtocolSpec extends UnitTestSpec {
       // given
       val json = """{"type": "metricAggregation"}""".parseJson
       // when
-      val aggregator: Aggregator[TaggedWithType with DataStore[MetricRow], MetricAggregation[Tag]] = json.convertTo[Aggregator[TaggedWithType with DataStore[MetricRow], MetricAggregation[Tag]]]
+      val aggregator: Aggregator[TaggedWithType with DataPoint[MetricRow], MetricAggregation[Tag]] = json.convertTo[Aggregator[TaggedWithType with DataPoint[MetricRow], MetricAggregation[Tag]]]
       // then
       aggregator.isInstanceOf[TagKeyMetricAggregationPerClassAggregator]
     }

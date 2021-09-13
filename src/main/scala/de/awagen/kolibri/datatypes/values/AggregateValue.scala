@@ -20,16 +20,12 @@ import de.awagen.kolibri.datatypes.io.KolibriSerializable
 
 trait AggregateValue[A] extends KolibriSerializable {
 
-  val count: Int
-  val value: A
+  def numSamples: Int
+  def weight: Double
+  def value: A
 
   def add(other: AggregateValue[A]): AggregateValue[A]
 
-  def add(otherValue: A): AggregateValue[A]
+  def add(otherValue: DataPoint[A]): AggregateValue[A]
 
 }
-
-
-
-
-

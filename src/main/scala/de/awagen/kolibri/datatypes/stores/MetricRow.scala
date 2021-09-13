@@ -13,7 +13,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
 package de.awagen.kolibri.datatypes.stores
 
 import de.awagen.kolibri.datatypes.values.MetricValue
@@ -23,8 +22,8 @@ object MetricRow {
   def empty: MetricRow = new MetricRow(Map.empty[String, Seq[String]], Map.empty[String, MetricValue[Double]])
 
   def metricRow(metrics: MetricValue[Double]*): MetricRow = {
-    val store = empty
-    empty.addMetrics(metrics: _*)
+    var store = empty
+    store = store.addMetrics(metrics: _*)
     store
   }
 
@@ -41,31 +40,21 @@ object MetricRow {
   */
 case class MetricRow(params: Map[String, Seq[String]], metrics: Map[String, MetricValue[Double]]) extends MetricRecord[String, Double] {
 
-  def totalSuccessCountSum: Int = metrics.keys.map(x => successCountPerMetric(x)).sum
-
-  def totalSuccessCountAvg: Double = if (metrics.keys.isEmpty) 0.0 else totalSuccessCountSum / metrics.keys.size.toDouble
-
-  def totalSuccessCountMax: Int = metrics.keys.map(x => successCountPerMetric(x)).max
-
-  def totalSuccessCountMin: Int = metrics.keys.map(x => successCountPerMetric(x)).min
-
-  def totalErrorCountSum: Int = metrics.keys.map(x => errorCountPerMetric(x)).sum
-
-  def totalErrorCountAvg: Double = if (metrics.keys.isEmpty) 0.0 else totalErrorCountSum / metrics.keys.size.toDouble
-
-  def totalErrorCountMax: Int = metrics.keys.map(x => errorCountPerMetric(x)).max
-
-  def totalErrorCountMin: Int = metrics.keys.map(x => errorCountPerMetric(x)).min
-
-  def successCountPerMetric(metricName: String): Int = {
-    metrics.get(metricName).map(value => value.biValue.value2.count).getOrElse(0)
+  def successCountForMetric(metricName: String): Int = {
+    metrics.get(metricName).map(value => value.biValue.value2.numSamples).getOrElse(0)
   }
 
-  def errorCountPerMetric(metricName: String): Int = {
-    metrics.get(metricName).map(value => value.biValue.value1.count).getOrElse(0)
+  def errorCountForMetric(metricName: String): Int = {
+    metrics.get(metricName).map(value => value.biValue.value1.numSamples).getOrElse(0)
+  }
+
+  def weightForMetric(metricName: String): Double = {
+    metrics.get(metricName).map(value => value.biValue.value2.weight).getOrElse(0.0)
   }
 
   override def metricNames: Seq[String] = metrics.keys.toSeq
+
+  override def metricValues: Seq[MetricValue[Double]] = metrics.values.toSeq
 
   def containsMetric(key: String): Boolean = metrics.keys.toSeq.contains(key)
 
@@ -83,11 +72,10 @@ case class MetricRow(params: Map[String, Seq[String]], metrics: Map[String, Metr
     result
   }
 
-  override def metricValues: Seq[MetricValue[Double]] = metrics.values.toSeq
-
   override def addRecord(record: MetricRecord[String, Double]): MetricRow = {
     var result = this
     record.metricValues.foreach(x => result = result.addMetric(x))
     result
   }
+
 }
