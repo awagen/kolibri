@@ -30,7 +30,7 @@ import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.{Aggregator, T
 
 class AggregatorsSpec extends UnitTestSpec {
 
-  case class TaggedData[T](weight: Double, data: T) extends TaggedWithType with DataPoint[T] {
+  case class TaggedData[T](weight: Double, data: T) extends DataPoint[T] with TaggedWithType  {
 
     def withAggregationTags(tags: Set[Tag]): TaggedData[T] = {
       this.addTags(AGGREGATION, tags)
@@ -115,16 +115,19 @@ class AggregatorsSpec extends UnitTestSpec {
       val r2: MetricRow = aggregator.aggregation(StringTag("test2")).rows(Map.empty)
       val r3: MetricRow = aggregator.aggregation(StringTag("test3")).rows(Map.empty)
       val expectedR1: MetricRow = metricRecord1
-      val expectedR2: MetricRow = metricRecord2.addRecord(metricRecord3)
+      val expectedR2: MetricRow = metricRecord2.addRecordAndIncreaseSampleCount(metricRecord3)
       val expectedR3: MetricRow = metricRecord4
       // then
       aggregator.aggregation.size mustBe 3
       aggregator.aggregation.keySet.contains(StringTag("test1")) mustBe true
       aggregator.aggregation.keySet.contains(StringTag("test2")) mustBe true
       aggregator.aggregation.keySet.contains(StringTag("test3")) mustBe true
-      r1 mustBe expectedR1
-      r2 mustBe expectedR2
-      r3 mustBe expectedR3
+      r1.params mustBe expectedR1.params
+      r1.metrics mustBe expectedR1.metrics
+      r2.params mustBe expectedR2.params
+      r2.metrics mustBe expectedR2.metrics
+      r3.params mustBe expectedR3.params
+      r3.metrics mustBe expectedR3.metrics
     }
 
     "correctly add other values" in {

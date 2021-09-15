@@ -45,7 +45,7 @@ class MetricRowSpec extends UnitTestSpec {
       // given
       var store: MetricRow = MetricRow.empty
       // when
-      store = store.addMetrics(metricsValue1, metricsValue2, metricsValue3)
+      store = store.addFullMetricsSampleAndIncreaseSampleCount(metricsValue1, metricsValue2, metricsValue3)
       // then
       store.getMetricsValue("mName1").get mustBe metricsValue1
       store.getMetricsValue("mName2").get mustBe metricsValue2
@@ -61,7 +61,7 @@ class MetricRowSpec extends UnitTestSpec {
       store1 = store1.addMetric(metricsValue1)
       store2 = store2.addMetric(metricsValue3)
       // when
-      val fullStore: MetricRow = store1.addRecord(store2)
+      val fullStore: MetricRow = store1.addRecordAndIncreaseSampleCount(store2)
       // then
       fullStore.getMetricsValue("mName1").get mustBe metricsValue1
       fullStore.getMetricsValue("mName3").get mustBe metricsValue3

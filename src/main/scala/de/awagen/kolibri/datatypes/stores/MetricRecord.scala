@@ -24,9 +24,9 @@ trait MetricRecord[A, B] {
 
   def addMetric(metric: MetricValue[B]): MetricRecord[A, B]
 
-  def addMetrics(metrics: MetricValue[B]*): MetricRecord[A, B]
+  def addFullMetricsSampleAndIncreaseSampleCount(metrics: MetricValue[B]*): MetricRecord[A, B]
 
-  def addRecord(record: MetricRecord[A, B]): MetricRecord[A, B]
+  def addRecordAndIncreaseSampleCount(record: MetricRecord[A, B]): MetricRecord[A, B]
 
   def metricNames: Seq[A]
 

@@ -29,7 +29,7 @@ object MetricAggregation {
   def empty[A <: AnyRef](keyMapFunction: SerializableFunction1[A, A]): MetricAggregation[A] = MetricAggregation[A](mutable.Map.empty, keyMapFunction)
 
   def combineAggregates[A](agg1: MetricRow, agg2: MetricRow): MetricRow = {
-    MetricRow.empty.addRecord(agg1).addRecord(agg2)
+    MetricRow.empty.addRecordAndIncreaseSampleCount(agg1).addRecordAndIncreaseSampleCount(agg2)
   }
 
 }

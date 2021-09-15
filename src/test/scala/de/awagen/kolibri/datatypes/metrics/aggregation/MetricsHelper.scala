@@ -42,9 +42,9 @@ object MetricsHelper {
     .createAvgFailSample("metrics1", Map(ComputeFailReason("ZERO_DENOMINATOR") -> 1, ComputeFailReason("NO_RESULTS") -> 1))
   val metricsFailed2: MetricValue[Double] = MetricValue.createAvgFailSample("metrics2", Map(ComputeFailReason("NO_RESULTS") -> 1))
 
-  val metricRecord1: MetricRow = MetricRow.empty.addMetrics(metricsSuccess1, metricsSuccess2)
-  val metricRecord2: MetricRow = MetricRow.empty.addMetrics(metricsSuccess3)
-  val metricRecord3: MetricRow = MetricRow.empty.addMetrics(metricsSuccess4)
-  val metricRecord4: MetricRow = MetricRow.empty.addMetrics(metricsSuccess5)
+  val metricRecord1: MetricRow = MetricRow.empty.addFullMetricsSampleAndIncreaseSampleCount(metricsSuccess1, metricsSuccess2)
+  val metricRecord2: MetricRow = MetricRow.empty.addFullMetricsSampleAndIncreaseSampleCount(metricsSuccess3)
+  val metricRecord3: MetricRow = MetricRow.empty.addFullMetricsSampleAndIncreaseSampleCount(metricsSuccess4)
+  val metricRecord4: MetricRow = MetricRow.empty.addFullMetricsSampleAndIncreaseSampleCount(metricsSuccess5)
 
 }

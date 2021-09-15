@@ -107,7 +107,7 @@ case class CSVParameterBasedMetricDocumentFormat(columnSeparator: String) extend
     val metricNameToColumnIndex: Map[String, Int] = metricNameToColumnMapForCategoryFromHeaders(VALUE_COLUMN_PREFIX, headers)
 
     // now fill the metric row, initially set the param mapping, then add the single values
-    var metricRow: MetricRow = MetricRow(paramsMap, Map.empty)
+    var metricRow: MetricRow = MetricRow.emptyForParams(paramsMap)
     metricNameToColumnIndex.keys.foreach(metricName => {
       // need to add MetricValue per metricName
       // first determine the indices

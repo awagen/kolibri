@@ -43,7 +43,7 @@ case class MetricDocument[A <: AnyRef](id: A, rows: mutable.Map[ParamMap, Metric
   private[this] var metricNames: Set[String] = rows.values.map(x => x.metricNames.toSet).fold(Set.empty[String])((y, z) => y ++ z)
 
   def add(row: MetricRow): Unit = {
-    rows(row.params) = rows.getOrElse(row.params, MetricRow(row.params, Map.empty)).addRecord(row)
+    rows(row.params) = rows.getOrElse(row.params, MetricRow(new MetricRow.ResultCountStore(0, 0), row.params, Map.empty)).addRecordAndIncreaseSampleCount(row)
     metricNames = metricNames ++ row.metricNames
     paramNames = paramNames ++ row.params.keySet
   }
@@ -56,7 +56,7 @@ case class MetricDocument[A <: AnyRef](id: A, rows: mutable.Map[ParamMap, Metric
     metricNames = metricNames ++ doc.getMetricNames
     doc.rows.keys.foreach {
       case e if rows.contains(e) =>
-        rows(e) = rows(e).addRecord(doc.rows(e))
+        rows(e) = rows(e).addRecordAndIncreaseSampleCount(doc.rows(e))
       case e =>
         rows(e) = doc.rows(e)
     }

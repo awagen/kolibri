@@ -37,9 +37,9 @@ class CSVParameterBasedMetricDocumentFormatSpec extends UnitTestSpec {
   val metricsSuccess5: MetricValue[Double] = MetricValue.createAvgSuccessSample("metrics5", 0.6, 1.0)
 
 
-  val metricRecord1: MetricRow = MetricRow(parameterTag1.value, Map.empty).addMetrics(metricsSuccess1, metricsSuccess2)
-  val metricRecord2: MetricRow = MetricRow(parameterTag2.value, Map.empty).addMetrics(metricsSuccess3)
-  val metricRecord3: MetricRow = MetricRow(parameterTag3.value, Map.empty).addMetrics(metricsSuccess4)
+  val metricRecord1: MetricRow = MetricRow.emptyForParams(parameterTag1.value).addFullMetricsSampleAndIncreaseSampleCount(metricsSuccess1, metricsSuccess2)
+  val metricRecord2: MetricRow = MetricRow.emptyForParams(parameterTag2.value).addFullMetricsSampleAndIncreaseSampleCount(metricsSuccess3)
+  val metricRecord3: MetricRow = MetricRow.emptyForParams(parameterTag3.value).addFullMetricsSampleAndIncreaseSampleCount(metricsSuccess4)
 
   val doc: MetricDocument[String] = MetricDocument.empty[String]("doc1")
   doc.add(metricRecord1)
