@@ -36,12 +36,9 @@ object ProcessingMessages {
     }
   }
 
-  case class Corn[+T](data: T) extends ProcessingMessage[T] {
-    val weight: Double = 1.0
-  }
+  case class Corn[+T](data: T, weight: Double = 1.0) extends ProcessingMessage[T]
 
-  case class BadCorn[+T](failType: TaskFailType) extends ProcessingMessage[T] {
-    val weight: Double = 1.0
+  case class BadCorn[+T](failType: TaskFailType, weight: Double = 1.0) extends ProcessingMessage[T] {
     override val data: T = null.asInstanceOf[T]
   }
 

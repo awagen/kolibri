@@ -107,7 +107,7 @@ object SearchJobDefinitions {
         0.5F,
         new SerializableFunction1[Any, SuccessAndErrorCounts] {
           override def apply(v1: Any): SuccessAndErrorCounts = v1 match {
-            case Corn(e) if e.isInstanceOf[MetricRow] =>
+            case Corn(e, _) if e.isInstanceOf[MetricRow] =>
               val result = e.asInstanceOf[MetricRow]
               SuccessAndErrorCounts(result.countStore.successCount, result.countStore.failCount)
             case AggregationStateWithData(data: MetricAggregation[Tag], _, _, _) =>

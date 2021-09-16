@@ -84,7 +84,7 @@ class WorkManagerActorSpec extends KolibriTestKitNoCluster
       workManager.tell(msg, testProbe.ref)
       // then
       testProbe.expectMsgPF(2 seconds) {
-        case Corn(value) =>
+        case Corn(value, _) =>
           value mustBe "12p,4p,3p"
         case other => fail(s"received message $other instead of expected success msg")
       }
@@ -108,7 +108,7 @@ class WorkManagerActorSpec extends KolibriTestKitNoCluster
         BaseJobPartIdentifier(jobId = "testJob", batchNr = 1)), testProbe.ref)
       // then
       testProbe.expectMsgPF(2 seconds) {
-        case Corn(result) =>
+        case Corn(result, _) =>
           result mustBe "12p,4p,3p"
         case other => fail(s"received message $other instead of expected success msg")
       }

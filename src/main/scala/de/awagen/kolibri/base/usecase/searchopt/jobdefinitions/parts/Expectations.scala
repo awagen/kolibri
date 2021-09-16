@@ -47,7 +47,7 @@ object Expectations {
                 data.count
               case AggregationStateWithoutData(count: Int, _, _, _) =>
                 count
-              case Corn(e) if e.isInstanceOf[T] =>
+              case Corn(e, _) if e.isInstanceOf[T] =>
                 val successAndErrorCounts = successAndErrorClassifier.apply(e)
                 if (successAndErrorCounts.successCount > 0) 1 else 0
               case _ => 0

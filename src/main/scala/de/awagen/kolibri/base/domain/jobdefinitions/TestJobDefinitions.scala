@@ -105,7 +105,7 @@ object TestJobDefinitions {
     val expectationGen: SerializableFunction1[Int, ExecutionExpectation] = new SerializableFunction1[Int, ExecutionExpectation] {
       override def apply(v1: Int): ExecutionExpectation = BaseExecutionExpectation(
         fulfillAllForSuccess = Seq(ClassifyingCountExpectation(classifier = Map("finishResponse" -> {
-          case Corn(e) if e.isInstanceOf[Double] => true
+          case Corn(e, _) if e.isInstanceOf[Double] => true
           case _ => false
         }), expectedClassCounts = Map("finishResponse" -> v1))),
         fulfillAnyForFail = Seq(StopExpectation(v1, {
