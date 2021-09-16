@@ -42,6 +42,10 @@ case class MetricDocument[A <: AnyRef](id: A, rows: mutable.Map[ParamMap, Metric
   private[this] var paramNames: Set[String] = rows.keySet.flatMap(x => x.keys).toSet
   private[this] var metricNames: Set[String] = rows.values.map(x => x.metricNames.toSet).fold(Set.empty[String])((y, z) => y ++ z)
 
+  def weighted(weight: Double): MetricDocument[A] = {
+    MetricDocument(id, mutable.Map(rows.map(x => (x._1, x._2.weighted(weight))).toSeq:_*))
+  }
+
   def add(row: MetricRow): Unit = {
     rows(row.params) = rows.getOrElse(row.params, MetricRow(new MetricRow.ResultCountStore(0, 0), row.params, Map.empty)).addRecordAndIncreaseSampleCount(row)
     metricNames = metricNames ++ row.metricNames

@@ -17,7 +17,7 @@ package de.awagen.kolibri.datatypes.stores
 
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.stores.MetricRow.ResultCountStore
-import de.awagen.kolibri.datatypes.values.MetricValue
+import de.awagen.kolibri.datatypes.values.{BiRunningValue, MetricValue}
 
 object MetricRow {
 
@@ -77,6 +77,13 @@ object MetricRow {
   *                be generated from many samples and error types along with the error counts
   */
 case class MetricRow(countStore: ResultCountStore, params: Map[String, Seq[String]], metrics: Map[String, MetricValue[Double]]) extends MetricRecord[String, Double] {
+
+  def weighted(weight: Double): MetricRow = {
+    val map: Map[String, MetricValue[Double]] = metrics.map(x => {
+      (x._1, MetricValue(x._2.name, BiRunningValue(x._2.biValue.value1, x._2.biValue.value2.weighted(weight))))
+    })
+    MetricRow(new ResultCountStore(countStore.successCount, countStore.failCount), params, map)
+  }
 
   def successCountForMetric(metricName: String): Int = {
     metrics.get(metricName).map(value => value.biValue.value2.numSamples).getOrElse(0)

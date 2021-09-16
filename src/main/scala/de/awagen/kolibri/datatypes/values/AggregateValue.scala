@@ -23,6 +23,7 @@ trait AggregateValue[A] extends KolibriSerializable {
   def numSamples: Int
   def weight: Double
   def value: A
+  def weighted(weight: Double): AggregateValue[A]
 
   def add(other: AggregateValue[A]): AggregateValue[A]
 
