@@ -47,8 +47,7 @@ object RunningValue {
 
     val doubleAvgWeightFunction: SerializableFunction2[AggregateValue[Double], Double, DataPoint[Double]] = new SerializableFunction2[AggregateValue[Double], Double, DataPoint[Double]] {
       override def apply(v1: AggregateValue[Double], v2: Double): DataPoint[Double] = {
-        val newValue: Double = v1.value  / v2
-        DataSample(v1.weight * v2, newValue)
+        DataSample(v1.weight * v2, v1.value)
       }
     }
 
