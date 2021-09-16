@@ -42,16 +42,17 @@ object AggregationFunctions {
     * @param filterRegex         - the regex to filter the files by
     * @param outputFilename      - the output filename (might contain additional path prefix relative to directorySubDir)
     */
-  case class AggregateFromDirectoryByRegex(persistenceDIModule: PersistenceDIModule,
-                                           directorySubDir: String,
-                                           filterRegex: Regex,
-                                           outputFilename: String) extends Execution[Unit] {
+  case class AggregateFromDirectoryByRegexWeighted(persistenceDIModule: PersistenceDIModule,
+                                                   directorySubDir: String,
+                                                   filterRegex: Regex,
+                                                   sampleIdentifierToWeight: String => Double,
+                                                   outputFilename: String) extends Execution[Unit] {
 
     val directoryReader: DirectoryReader = regexDirectoryReader(filterRegex)
 
     override def execute: Either[TaskFailType, Unit] = {
       val filteredFiles = directoryReader.listFiles(directorySubDir, _ => true)
-      val aggregator = AggregateFiles(persistenceDIModule, directorySubDir, filteredFiles, outputFilename)
+      val aggregator = AggregateFilesWeighted(persistenceDIModule, directorySubDir, filteredFiles, sampleIdentifierToWeight, outputFilename)
       aggregator.execute
     }
   }
@@ -64,10 +65,11 @@ object AggregationFunctions {
     * @param files               - the regex to filter the files by
     * @param outputFilename      - the output filename (might contain additional path prefix relative to directorySubDir)
     */
-  case class AggregateFiles(persistenceDIModule: PersistenceDIModule,
-                            directorySubDir: String,
-                            files: Seq[String],
-                            outputFilename: String) extends Execution[Unit] {
+  case class AggregateFilesWeighted(persistenceDIModule: PersistenceDIModule,
+                                    directorySubDir: String,
+                                    files: Seq[String],
+                                    sampleIdentifierToWeight: String => Double,
+                                    outputFilename: String) extends Execution[Unit] {
     val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
     val csvFormat: CSVParameterBasedMetricDocumentFormat = CSVParameterBasedMetricDocumentFormat("\t")
@@ -85,7 +87,8 @@ object AggregationFunctions {
         val overallDoc: MetricDocument[Tag] = MetricDocument.empty(aggregationIdentifier)
         files.foreach(file => {
           logger.info(s"adding file: $file")
-          val doc: MetricDocument[Tag] = FileUtils.fileToMetricDocument(file, fileReader, aggregationIdentifier)
+          val weight: Double = sampleIdentifierToWeight.apply(file.split("/").last)
+          val doc: MetricDocument[Tag] = FileUtils.fileToMetricDocument(file, fileReader, aggregationIdentifier).weighted(weight)
           overallDoc.add(doc, ignoreIdDiff = true)
           logger.info(s"done adding file: $file")
         })

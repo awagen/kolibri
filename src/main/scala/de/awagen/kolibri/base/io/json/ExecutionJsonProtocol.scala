@@ -22,7 +22,7 @@ import de.awagen.kolibri.base.config.AppConfig
 import de.awagen.kolibri.base.config.AppConfig.persistenceModule.persistenceDIModule
 import de.awagen.kolibri.base.config.di.modules.Modules
 import de.awagen.kolibri.base.format.RegexUtils
-import de.awagen.kolibri.base.processing.execution.functions.AggregationFunctions.{AggregateFiles, AggregateFromDirectoryByRegex, DoNothing}
+import de.awagen.kolibri.base.processing.execution.functions.AggregationFunctions.{AggregateFilesWeighted, AggregateFromDirectoryByRegexWeighted, DoNothing}
 import de.awagen.kolibri.base.processing.execution.functions.AnalyzeFunctions.{GetImprovingAndLoosing, GetImprovingAndLoosingFromDirPerRegex}
 import de.awagen.kolibri.base.processing.execution.functions.Execution
 import spray.json.{DefaultJsonProtocol, JsValue, RootJsonFormat, enrichAny}
@@ -39,10 +39,11 @@ object ExecutionJsonProtocol extends DefaultJsonProtocol with SprayJsonSupport {
           val outputFilename: String = fields("outputFilename").convertTo[String]
           val directorySubDir: String = fields("subDir").convertTo[String]
           val persistenceDIModule: Modules.PersistenceDIModule = AppConfig.persistenceModule.persistenceDIModule
-          AggregateFromDirectoryByRegex(
+          AggregateFromDirectoryByRegexWeighted(
             persistenceDIModule,
             directorySubDir,
             regex,
+            _ => 1.0,
             outputFilename
           )
         case "AGGREGATE_FILES" =>
@@ -50,10 +51,11 @@ object ExecutionJsonProtocol extends DefaultJsonProtocol with SprayJsonSupport {
           val outputFilename: String = fields("outputFilename").convertTo[String]
           val directorySubDir: String = fields("subDir").convertTo[String]
           val persistenceDIModule: Modules.PersistenceDIModule = AppConfig.persistenceModule.persistenceDIModule
-          AggregateFiles(
+          AggregateFilesWeighted(
             persistenceDIModule,
             directorySubDir,
             files,
+            _ => 1.0,
             outputFilename
           )
         case "ANALYZE_BEST_WORST_REGEX" =>
