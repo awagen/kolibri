@@ -25,7 +25,7 @@ import de.awagen.kolibri.base.actors.KolibriTestKit
 import de.awagen.kolibri.base.actors.TestMessages.{generateProcessActorRunnableJobCmd, generateProcessActorRunnableTaskJobCmd}
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.{FinishedJobEvent, ProcessingResult}
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.ResultSummary
-import de.awagen.kolibri.datatypes.types.WithCount
+import de.awagen.kolibri.datatypes.types.Types.WithCount
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike

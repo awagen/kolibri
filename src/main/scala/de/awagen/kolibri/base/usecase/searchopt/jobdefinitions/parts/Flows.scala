@@ -119,7 +119,7 @@ object Flows {
         val combinedResultFuture: Future[MetricRow] = rowResultFuture.map(resRow => {
           var result: MetricRow = resRow
           singleResults.foreach(single => {
-            result = result.addRecord(single)
+            result = result.addRecordAndIncreaseSampleCount(single)
           })
           result
         })

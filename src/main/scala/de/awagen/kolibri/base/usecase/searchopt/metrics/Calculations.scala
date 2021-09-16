@@ -170,7 +170,7 @@ object Functions {
   def resultEitherToMetricRowResponse(metricName: String, result: CalculationResult[Double], params: Map[String, Seq[String]]): MetricRow = result match {
     case Left(e) => computeFailReasonsToMetricRowResponse(e, metricName, params)
     case Right(e) =>
-      val addValue: MetricValue[Double] = MetricValue.createAvgSuccessSample(metricName, e)
+      val addValue: MetricValue[Double] = MetricValue.createAvgSuccessSample(metricName, e, 1.0)
       MetricRow.empty.copy(params = params).addMetric(addValue)
   }
 

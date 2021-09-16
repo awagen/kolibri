@@ -36,7 +36,7 @@ import de.awagen.kolibri.base.traits.Traits.WithBatchNr
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
-import de.awagen.kolibri.datatypes.types.WithCount
+import de.awagen.kolibri.datatypes.types.Types.WithCount
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 import org.slf4j.{Logger, LoggerFactory}
 

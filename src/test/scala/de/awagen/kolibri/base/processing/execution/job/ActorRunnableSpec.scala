@@ -28,7 +28,7 @@ import de.awagen.kolibri.base.processing.execution.expectation.{BaseExecutionExp
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnableSinkType.REPORT_TO_ACTOR_SINK
 import de.awagen.kolibri.datatypes.collections.generators.ByFunctionNrLimitedIndexedGenerator
 import de.awagen.kolibri.datatypes.types.SerializableCallable.{SerializableFunction1, SerializableSupplier}
-import de.awagen.kolibri.datatypes.types.WithCount
+import de.awagen.kolibri.datatypes.types.Types.WithCount
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.must.Matchers

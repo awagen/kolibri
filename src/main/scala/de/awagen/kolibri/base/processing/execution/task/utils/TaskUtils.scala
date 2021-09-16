@@ -31,7 +31,7 @@ import de.awagen.kolibri.base.processing.execution.job.{ActorRunnable, ActorRunn
 import de.awagen.kolibri.base.processing.execution.task.Task
 import de.awagen.kolibri.datatypes.ClassTyped
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
-import de.awagen.kolibri.datatypes.types.WithCount
+import de.awagen.kolibri.datatypes.types.Types.WithCount
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 
 import java.util.concurrent.atomic.AtomicInteger

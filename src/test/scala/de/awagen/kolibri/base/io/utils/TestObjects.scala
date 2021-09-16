@@ -28,16 +28,16 @@ object TestObjects {
   val parameterTag2: ParameterMultiValueTag = ParameterMultiValueTag(Map("p1" -> Seq("v2_1"), "p2" -> Seq("v2_2")))
   val parameterTag3: ParameterMultiValueTag = ParameterMultiValueTag(Map("p1" -> Seq("v3_1"), "p3" -> Seq("v3_2")))
 
-  val metricsSuccess1: MetricValue[Double] = MetricValue.createAvgSuccessSample("metrics1", 0.2)
-  val metricsSuccess2: MetricValue[Double] = MetricValue.createAvgSuccessSample("metrics2", 0.4)
-  val metricsSuccess3: MetricValue[Double] = MetricValue.createAvgSuccessSample("metrics3", 0.1)
-  val metricsSuccess4: MetricValue[Double] = MetricValue.createAvgSuccessSample("metrics4", 0.3)
-  val metricsSuccess5: MetricValue[Double] = MetricValue.createAvgSuccessSample("metrics5", 0.6)
+  val metricsSuccess1: MetricValue[Double] = MetricValue.createAvgSuccessSample("metrics1", 0.2, 1.0)
+  val metricsSuccess2: MetricValue[Double] = MetricValue.createAvgSuccessSample("metrics2", 0.4, 1.0)
+  val metricsSuccess3: MetricValue[Double] = MetricValue.createAvgSuccessSample("metrics3", 0.1, 1.0)
+  val metricsSuccess4: MetricValue[Double] = MetricValue.createAvgSuccessSample("metrics4", 0.3, 1.0)
+  val metricsSuccess5: MetricValue[Double] = MetricValue.createAvgSuccessSample("metrics5", 0.6, 1.0)
 
 
-  val metricRecord1: MetricRow = MetricRow(parameterTag1.value, Map.empty).addMetrics(metricsSuccess1, metricsSuccess2)
-  val metricRecord2: MetricRow = MetricRow(parameterTag2.value, Map.empty).addMetrics(metricsSuccess3)
-  val metricRecord3: MetricRow = MetricRow(parameterTag3.value, Map.empty).addMetrics(metricsSuccess4)
+  val metricRecord1: MetricRow = MetricRow.emptyForParams(parameterTag1.value).addFullMetricsSampleAndIncreaseSampleCount(metricsSuccess1, metricsSuccess2)
+  val metricRecord2: MetricRow = MetricRow.emptyForParams(parameterTag2.value).addMetric(metricsSuccess3)
+  val metricRecord3: MetricRow = MetricRow.emptyForParams(parameterTag3.value).addMetric(metricsSuccess4)
 
   val doc1: MetricDocument[String] = MetricDocument.empty[String]("doc1")
   doc1.add(metricRecord1)

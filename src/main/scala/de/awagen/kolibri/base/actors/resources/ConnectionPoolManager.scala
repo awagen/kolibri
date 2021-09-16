@@ -16,14 +16,15 @@
 
 package de.awagen.kolibri.base.actors.resources
 
-import java.util.concurrent.atomic.AtomicReference
 import de.awagen.kolibri.base.http.client.provider
 import de.awagen.kolibri.base.http.client.provider.ConnectionPoolStorage
 import de.awagen.kolibri.base.http.client.request.HttpRequestProvider
-import de.awagen.kolibri.datatypes.types.DataStore
+import de.awagen.kolibri.datatypes.values.DataPoint
+
+import java.util.concurrent.atomic.AtomicReference
 
 object ConnectionPoolManager {
 
-  def connectionPoolStorage[T <: DataStore[HttpRequestProvider]]: ConnectionPoolStorage[T] = provider.ConnectionPoolStorage[T](new AtomicReference(Map.empty))
+  def connectionPoolStorage[T <: DataPoint[HttpRequestProvider]]: ConnectionPoolStorage[T] = provider.ConnectionPoolStorage[T](new AtomicReference(Map.empty))
 
 }

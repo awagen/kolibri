@@ -30,10 +30,10 @@ import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.tagging.TagType.AGGREGATION
 import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}
 import de.awagen.kolibri.datatypes.types.SerializableCallable.{SerializableFunction1, SerializableSupplier}
-import de.awagen.kolibri.datatypes.types.WithCount
-import de.awagen.kolibri.datatypes.values.AggregateValue
+import de.awagen.kolibri.datatypes.types.Types.WithCount
 import de.awagen.kolibri.datatypes.values.RunningValue.doubleAvgRunningValue
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
+import de.awagen.kolibri.datatypes.values.{AggregateValue, DataSample}
 import org.slf4j.LoggerFactory
 
 import scala.collection.mutable
@@ -71,7 +71,7 @@ object TestJobDefinitions {
     override def add(sample: ProcessingMessage[Double]): Unit = {
       val keys: Set[Tag] = sample.getTagsForType(AGGREGATION)
       keys.foreach(key => {
-        map(key) = map.getOrElse(key, doubleAvgRunningValue(count = 0, value = 0.0)).add(sample.data)
+        map(key) = map.getOrElse(key, doubleAvgRunningValue(weightedCount = 0.0, count = 0, value = 0.0)).add(DataSample(1.0, sample.data))
         count += 1
       })
     }
@@ -80,7 +80,7 @@ object TestJobDefinitions {
 
     override def addAggregate(aggregatedValue: MapWithCount[Tag, AggregateValue[Double]]): Unit = {
       aggregatedValue.map.keys.foreach(key => {
-        map(key) = map.getOrElse(key, doubleAvgRunningValue(count = 0, value = 0.0)).add(aggregatedValue.map(key))
+        map(key) = map.getOrElse(key, doubleAvgRunningValue(weightedCount = 0.0, count = 0, value = 0.0)).add(aggregatedValue.map(key))
         count += aggregatedValue.count
       })
     }
@@ -130,9 +130,9 @@ object TestJobDefinitions {
       perJobAggregatorSupplier = aggregatorSupplier,
       writer = (data: MapWithCount[Tag, AggregateValue[Double]], _: Tag) => {
         logger.info("writing result: {}", data)
-        logger.info("result is '{}' on '{}' samples; writing result", data.map, data.map(StringTag("ALL")).count)
+        logger.info("result is '{}' on '{}' samples; writing result", data.map, data.map(StringTag("ALL")).numSamples)
         val fileWriter = LocalDirectoryFileWriter(resultDir)
-        val resultString = data.map.keys.map(x => s"$x\t${data.map(x).count}\t${data.map(x).value.toString}").toSeq.mkString("\n")
+        val resultString = data.map.keys.map(x => s"$x\t${data.map(x).numSamples}\t${data.map(x).value.toString}").toSeq.mkString("\n")
         fileWriter.write(resultString, "dartThrowResult.txt")
       },
       filteringSingleElementMapperForAggregator = new AcceptAllAsIdentityMapper[ProcessingMessage[Double]],

@@ -23,12 +23,12 @@ object MetricsHelper {
 
   def createMetricsCalculationSuccess(name: String, score: Double): MetricValue[Double] = {
     MetricValue(name, BiRunningValue(value1 = RunningValue.calcErrorRunningValue(0, Map.empty),
-      value2 = RunningValue.doubleAvgRunningValue(1, score)))
+      value2 = RunningValue.doubleAvgRunningValue(1.0, 1, score)))
   }
 
   def createMetricsCalculationFailure(name: String, fails: Seq[ComputeFailReason]): MetricValue[Double] = {
     MetricValue(name, BiRunningValue(value1 = RunningValue.calcErrorRunningValue(1, RunningValue.mapFromFailReasons(fails)),
-      value2 = RunningValue.doubleAvgRunningValue(0, 0.0)))
+      value2 = RunningValue.doubleAvgRunningValue(0.0, 0, 0.0)))
   }
 
 }
