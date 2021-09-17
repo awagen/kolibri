@@ -7,3 +7,6 @@ addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.9.2")
 
 // signing artefacts
 addSbtPlugin("com.github.sbt" % "sbt-pgp" % "2.1.2")
+
+// code coverage
+addSbtPlugin("org.scoverage" % "sbt-scoverage" % "1.8.2")

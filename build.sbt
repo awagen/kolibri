@@ -17,6 +17,9 @@ lazy val jvmOptions = Seq(
   "-XX:MaxPermSize=256M"
 )
 
+// scoverage plugin setting to exclude classes from coverage report
+coverageExcludedPackages := ""
+
 test in assembly := {} //causes no tests to be executed when calling "sbt assembly" (without this setting executes all)
 assemblyJarName in assembly := s"kolibri-datatypes.${version.value}.jar" //jar name
 //sbt-assembly settings. If it should only hold for specific subproject build, place the 'assemblyMergeStrategy in assembly' within subproject settings
