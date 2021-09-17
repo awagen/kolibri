@@ -1,5 +1,9 @@
 {
   "type": "AGGREGATE_FROM_DIR_BY_REGEX",
+  "weightProvider": {
+    "type": "CONSTANT",
+    "weight": 1.0
+  },
   "regex": "[(]q=.+[)]",
   "outputFilename": "(ALL2)",
   "subDir": "testJob"

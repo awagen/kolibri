@@ -22,9 +22,11 @@ import de.awagen.kolibri.base.config.AppConfig
 import de.awagen.kolibri.base.config.AppConfig.persistenceModule.persistenceDIModule
 import de.awagen.kolibri.base.config.di.modules.Modules
 import de.awagen.kolibri.base.format.RegexUtils
+import de.awagen.kolibri.base.io.json.WeightProviderJsonProtocol._
 import de.awagen.kolibri.base.processing.execution.functions.AggregationFunctions.{AggregateFilesWeighted, AggregateFromDirectoryByRegexWeighted, DoNothing}
 import de.awagen.kolibri.base.processing.execution.functions.AnalyzeFunctions.{GetImprovingAndLoosing, GetImprovingAndLoosingFromDirPerRegex}
 import de.awagen.kolibri.base.processing.execution.functions.Execution
+import de.awagen.kolibri.base.provider.WeightProviders.WeightProvider
 import spray.json.{DefaultJsonProtocol, JsValue, RootJsonFormat, enrichAny}
 
 import scala.util.matching.Regex
@@ -38,24 +40,26 @@ object ExecutionJsonProtocol extends DefaultJsonProtocol with SprayJsonSupport {
           val regex: Regex = fields("regex").convertTo[String].r
           val outputFilename: String = fields("outputFilename").convertTo[String]
           val directorySubDir: String = fields("subDir").convertTo[String]
+          val weightProvider: WeightProvider[String] = fields("weightProvider").convertTo[WeightProvider[String]]
           val persistenceDIModule: Modules.PersistenceDIModule = AppConfig.persistenceModule.persistenceDIModule
           AggregateFromDirectoryByRegexWeighted(
             persistenceDIModule,
             directorySubDir,
             regex,
-            _ => 1.0,
+            weightProvider,
             outputFilename
           )
         case "AGGREGATE_FILES" =>
           val files: Seq[String] = fields("files").convertTo[Seq[String]]
           val outputFilename: String = fields("outputFilename").convertTo[String]
           val directorySubDir: String = fields("subDir").convertTo[String]
+          val weightProvider: WeightProvider[String] = fields("weightProvider").convertTo[WeightProvider[String]]
           val persistenceDIModule: Modules.PersistenceDIModule = AppConfig.persistenceModule.persistenceDIModule
           AggregateFilesWeighted(
             persistenceDIModule,
             directorySubDir,
             files,
-            _ => 1.0,
+            weightProvider,
             outputFilename
           )
         case "ANALYZE_BEST_WORST_REGEX" =>

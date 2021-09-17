@@ -23,6 +23,7 @@ import de.awagen.kolibri.base.io.writer.Writers.FileWriter
 import de.awagen.kolibri.base.processing.execution.functions.FileUtils.regexDirectoryReader
 import de.awagen.kolibri.base.processing.failure.TaskFailType
 import de.awagen.kolibri.base.processing.failure.TaskFailType.TaskFailType
+import de.awagen.kolibri.base.provider.WeightProviders.WeightProvider
 import de.awagen.kolibri.datatypes.metrics.aggregation.writer.CSVParameterBasedMetricDocumentFormat
 import de.awagen.kolibri.datatypes.stores.MetricDocument
 import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}
@@ -45,7 +46,7 @@ object AggregationFunctions {
   case class AggregateFromDirectoryByRegexWeighted(persistenceDIModule: PersistenceDIModule,
                                                    directorySubDir: String,
                                                    filterRegex: Regex,
-                                                   sampleIdentifierToWeight: String => Double,
+                                                   sampleIdentifierToWeight: WeightProvider[String],
                                                    outputFilename: String) extends Execution[Unit] {
 
     val directoryReader: DirectoryReader = regexDirectoryReader(filterRegex)
@@ -68,7 +69,7 @@ object AggregationFunctions {
   case class AggregateFilesWeighted(persistenceDIModule: PersistenceDIModule,
                                     directorySubDir: String,
                                     files: Seq[String],
-                                    sampleIdentifierToWeight: String => Double,
+                                    sampleIdentifierToWeight: WeightProvider[String],
                                     outputFilename: String) extends Execution[Unit] {
     val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
