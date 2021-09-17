@@ -30,7 +30,8 @@ lazy val jvmOptions = Seq(
 )
 
 // scoverage plugin setting to exclude classes from coverage report
-coverageExcludedPackages := "de\\.awagen\\.kolibri\\.base\\.config\\.*;.*\\.ClusterNode;.*\\.ClusterStates\\..*"
+coverageExcludedPackages := "de\\.awagen\\.kolibri\\.base\\.config\\.*;.*\\.ClusterNode;.*\\.ClusterStates\\..*;de.awagen.kolibri.base.actors.flows.FlowAttributes\\..*;" +
+  "de.awagen.kolibri.base.actors.work.worker.ProcessingMessages;de.awagen.kolibri.base.exceptions\\..*;de.awagen.kolibri.base.traits.Traits\\..*;"
 
 envVars in Test := Map("PROFILE" -> "test")
 
