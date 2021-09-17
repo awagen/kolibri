@@ -19,7 +19,7 @@ package de.awagen.kolibri.datatypes.metrics.aggregation.writer
 import de.awagen.kolibri.datatypes.metrics.aggregation.writer.CSVParameterBasedMetricDocumentFormat._
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason
 import de.awagen.kolibri.datatypes.stores.{MetricDocument, MetricRow}
-import de.awagen.kolibri.datatypes.values.RunningValue.RunningValueAdd.{doubleAvgAdd, doubleAvgWeightFunction, errorMapAdd, failMapWeightFon}
+import de.awagen.kolibri.datatypes.values.RunningValue.RunningValueAdd.{doubleAvgAdd, errorMapAdd, failMapKeepWeightFon, weightMultiplyFunction}
 import de.awagen.kolibri.datatypes.values.{BiRunningValue, MetricValue, RunningValue}
 
 
@@ -137,8 +137,8 @@ case class CSVParameterBasedMetricDocumentFormat(columnSeparator: String) extend
       val metricValueObj = MetricValue.createEmptyAveragingMetricValue(metricName)
       val newRunningValue: BiRunningValue[Map[ComputeFailReason, Int], Double] = metricValueObj
         .biValue
-        .addFirst(RunningValue(weightedFailCount, failCount, failReasonsCountMap, failMapWeightFon,  errorMapAdd.addFunc))
-        .addSecond(RunningValue(weightedSuccessCount, successCount, metricValue, doubleAvgWeightFunction, doubleAvgAdd.addFunc))
+        .addFirst(RunningValue(weightedFailCount, failCount, failReasonsCountMap, failMapKeepWeightFon,  errorMapAdd.addFunc))
+        .addSecond(RunningValue(weightedSuccessCount, successCount, metricValue, weightMultiplyFunction, doubleAvgAdd.addFunc))
       metricRow = metricRow.addMetric(metricValueObj.copy(biValue = newRunningValue))
     })
     metricRow

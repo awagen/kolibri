@@ -19,14 +19,14 @@ package de.awagen.kolibri.datatypes.values
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction2
-import de.awagen.kolibri.datatypes.values.RunningValue.RunningValueAdd.{doubleAvgAdd, doubleAvgWeightFunction, errorMapAdd, failMapWeightFon}
+import de.awagen.kolibri.datatypes.values.RunningValue.RunningValueAdd.{doubleAvgAdd, errorMapAdd, failMapKeepWeightFon, weightMultiplyFunction}
 
 
 object RunningValue {
 
   object RunningValueAdd extends Enumeration with KolibriSerializable {
 
-    case class RVal[A](addFunc: SerializableFunction2[AggregateValue[A], AggregateValue[A], A]) extends Val with KolibriSerializable
+    case class RVal[A](addFunc: (AggregateValue[A], AggregateValue[A]) => A) extends Val with KolibriSerializable
 
     val doubleAvgAdd: RVal[Double] = RVal[Double](new SerializableFunction2[AggregateValue[Double], AggregateValue[Double], Double] {
       override def apply(v1: AggregateValue[Double], v2: AggregateValue[Double]): Double = {
@@ -45,22 +45,22 @@ object RunningValue {
       RVal(func)
     }
 
-    val doubleAvgWeightFunction: SerializableFunction2[AggregateValue[Double], Double, DataPoint[Double]] = new SerializableFunction2[AggregateValue[Double], Double, DataPoint[Double]] {
-      override def apply(v1: AggregateValue[Double], v2: Double): DataPoint[Double] = {
-        DataSample(v1.weight * v2, v1.value)
+    val weightMultiplyFunction: (Double, Double) => Double = new SerializableFunction2[Double, Double, Double] {
+      override def apply(v1: Double, v2: Double): Double = {
+        v1 * v2
       }
     }
 
-    val failMapWeightFon: (AggregateValue[Map[ComputeFailReason, Int]], Double) => DataPoint[Map[ComputeFailReason, Int]] = new SerializableFunction2[AggregateValue[Map[ComputeFailReason, Int]], Double,  DataPoint[Map[ComputeFailReason, Int]]] {
-      override def apply(v1: AggregateValue[Map[ComputeFailReason, Int]], v2: Double): DataPoint[Map[ComputeFailReason, Int]] = DataSample(v1.weight, v1.value)
+    val failMapKeepWeightFon: (Double, Double) => Double = new SerializableFunction2[Double, Double, Double] {
+      override def apply(v1: Double, v2: Double): Double = v1
     }
   }
 
   def doubleAvgRunningValue(weightedCount: Double, count: Int, value: Double): RunningValue[Double] =
-    RunningValue(weightedCount, count, value, doubleAvgWeightFunction, doubleAvgAdd.addFunc)
+    RunningValue(weightedCount, count, value, weightMultiplyFunction, doubleAvgAdd.addFunc)
 
   def calcErrorRunningValue(count: Int, value: Map[ComputeFailReason, Int]): RunningValue[Map[ComputeFailReason, Int]] =
-    RunningValue(count, count, value, failMapWeightFon, errorMapAdd.addFunc)
+    RunningValue(count, count, value, failMapKeepWeightFon, errorMapAdd.addFunc)
 
   def mapFromFailReasons(as: Seq[ComputeFailReason]): Map[ComputeFailReason, Int] = {
     as.toSet[ComputeFailReason]
@@ -72,7 +72,7 @@ object RunningValue {
 case class RunningValue[A](weight: Double,
                            numSamples: Int,
                            value: A,
-                           weightFunction: (AggregateValue[A], Double) => DataPoint[A],
+                           weightFunction: (Double, Double) => Double,
                            addFunc: (AggregateValue[A], AggregateValue[A]) => A) extends AggregateValue[A] {
 
   override def add(other: DataPoint[A]): AggregateValue[A] = {
@@ -84,7 +84,6 @@ case class RunningValue[A](weight: Double,
   }
 
   override def weighted(weight: Double): AggregateValue[A] = {
-    val weightedValue: DataPoint[A] = weightFunction.apply(this, weight)
-    RunningValue(weightedValue.weight, numSamples, weightedValue.data, weightFunction, addFunc)
+    RunningValue(weightFunction.apply(this.weight, weight), numSamples, this.value, weightFunction, addFunc)
   }
 }
