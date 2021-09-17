@@ -22,9 +22,8 @@ import de.awagen.kolibri.datatypes.stores.{MetricDocument, MetricRow}
 import de.awagen.kolibri.datatypes.tagging.TagType.AGGREGATION
 import de.awagen.kolibri.datatypes.tagging.TaggedWithType
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
-import de.awagen.kolibri.datatypes.types.DataStore
 import de.awagen.kolibri.datatypes.types.SerializableCallable.{SerializableFunction1, SerializableFunction2, SerializableSupplier}
-import de.awagen.kolibri.datatypes.values.AggregateValue
+import de.awagen.kolibri.datatypes.values.{AggregateValue, DataPoint}
 import de.awagen.kolibri.datatypes.values.RunningValue.doubleAvgRunningValue
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -58,9 +57,9 @@ object Aggregators {
   }
 
   class BasePerClassAggregator[TT <: TaggedWithType : TypeTag, V: TypeTag](aggFunc: SerializableFunction2[TT, V, V],
-                                                                                                 startValueForKey: SerializableFunction1[Tag, V],
-                                                                                                 mergeFunc: SerializableFunction2[V, V, V],
-                                                                                                 keyMapFunction: SerializableFunction1[Tag, Tag]) extends Aggregator[TT, Map[Tag, V]] {
+                                                                           startValueForKey: SerializableFunction1[Tag, V],
+                                                                           mergeFunc: SerializableFunction2[V, V, V],
+                                                                           keyMapFunction: SerializableFunction1[Tag, Tag]) extends Aggregator[TT, Map[Tag, V]] {
     val map: mutable.Map[Tag, V] = mutable.Map.empty
 
     override def add(sample: TT): Unit = {
@@ -78,26 +77,27 @@ object Aggregators {
     }
   }
 
-  class TagKeyRunningDoubleAvgPerClassAggregator(keyMapFunction: SerializableFunction1[Tag, Tag]) extends BasePerClassAggregator[TaggedWithType with DataStore[Double], AggregateValue[Double]](
-    aggFunc = (x, y) => y.add(x.data),
-    startValueForKey = _ => doubleAvgRunningValue(count = 0, value = 0.0),
+  class TagKeyRunningDoubleAvgPerClassAggregator(keyMapFunction: SerializableFunction1[Tag, Tag]) extends BasePerClassAggregator[TaggedWithType with DataPoint[Double], AggregateValue[Double]](
+    aggFunc = (x, y) => y.add(x),
+    startValueForKey = _ => doubleAvgRunningValue(weightedCount = 0.0, count = 0, value = 0.0),
     mergeFunc = (x, y) => x.add(y),
     keyMapFunction) {
   }
 
-  class TagKeyRunningDoubleAvgAggregator() extends BaseAggregator[Double, AggregateValue[Double]](
+  class TagKeyRunningDoubleAvgAggregator() extends BaseAggregator[DataPoint[Double], AggregateValue[Double]](
     aggFunc = (x, y) => y.add(x),
-    startValueGen = () => doubleAvgRunningValue(count = 0, value = 0.0),
+    startValueGen = () => doubleAvgRunningValue(weightedCount = 0.0, count = 0, value = 0.0),
     mergeFunc = (x, y) => x.add(y)) {
   }
 
   /**
     * In case of a mapping function that alters original tags, ignoreIdDiff would need to be true to avoid conflicts.
     * Setting this attribute to true enables aggregating data for the original tag to data for the mapped tag.
+    *
     * @param keyMapFunction
     * @param ignoreIdDiff
     */
-  class TagKeyMetricDocumentPerClassAggregator(keyMapFunction: SerializableFunction1[Tag, Tag], ignoreIdDiff: Boolean = false) extends BasePerClassAggregator[TaggedWithType with DataStore[MetricRow], MetricDocument[Tag]](
+  class TagKeyMetricDocumentPerClassAggregator(keyMapFunction: SerializableFunction1[Tag, Tag], ignoreIdDiff: Boolean = false) extends BasePerClassAggregator[TaggedWithType with DataPoint[MetricRow], MetricDocument[Tag]](
     aggFunc = (x, y) => {
       y.add(x.data)
       y
@@ -113,15 +113,16 @@ object Aggregators {
   /**
     * In case of a mapping function that alters original tags, ignoreIdDiff would need to be true to avoid conflicts.
     * Setting this attribute to true enables aggregating data for the original tag to data for the mapped tag.
+    *
     * @param keyMapFunction
     * @param ignoreIdDiff
     */
-  class TagKeyMetricAggregationPerClassAggregator(keyMapFunction: SerializableFunction1[Tag, Tag], ignoreIdDiff: Boolean = false) extends Aggregator[TaggedWithType with DataStore[MetricRow], MetricAggregation[Tag]] {
+  class TagKeyMetricAggregationPerClassAggregator(keyMapFunction: SerializableFunction1[Tag, Tag], ignoreIdDiff: Boolean = false) extends Aggregator[TaggedWithType with DataPoint[MetricRow], MetricAggregation[Tag]] {
     val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
     val aggregationState: MetricAggregation[Tag] = MetricAggregation.empty[Tag](keyMapFunction)
 
-    override def add(sample: TaggedWithType with DataStore[MetricRow]): Unit = {
+    override def add(sample: TaggedWithType with DataPoint[MetricRow]): Unit = {
       logger.debug(s"adding sample to aggregation (for keys: ${sample.getTagsForType(AGGREGATION)}: $sample")
       val keys = sample.getTagsForType(AGGREGATION)
       aggregationState.addResults(keys, sample.data)

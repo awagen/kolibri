@@ -42,26 +42,12 @@ case class MetricDocument[A <: AnyRef](id: A, rows: mutable.Map[ParamMap, Metric
   private[this] var paramNames: Set[String] = rows.keySet.flatMap(x => x.keys).toSet
   private[this] var metricNames: Set[String] = rows.values.map(x => x.metricNames.toSet).fold(Set.empty[String])((y, z) => y ++ z)
 
-  // sums up totalSuccessCountSum over all values in the result map (MetricRow values)
-  def totalSuccessCountSum: Int = rows.values.map(x => x.totalSuccessCountSum).sum
-
-  def totalSuccessCountAvg: Double = if (rows.values.isEmpty) 0.0 else rows.values.map(x => x.totalSuccessCountAvg).sum / rows.values.size
-
-  def totalSuccessCountMax: Int = rows.values.map(x => x.totalSuccessCountMax).max
-
-  def totalSuccessCountMin: Int = rows.values.map(x => x.totalSuccessCountMin).min
-
-  // sums up totalErrorCountSum over all values in the result map (MetricRow values)
-  def totalErrorCountSum: Int = rows.values.map(x => x.totalErrorCountSum).sum
-
-  def totalErrorCountAvg: Double = if (rows.values.isEmpty) 0.0 else rows.values.map(x => x.totalErrorCountAvg).sum / rows.values.size
-
-  def totalErrorCountMax: Int = rows.values.map(x => x.totalErrorCountMax).max
-
-  def totalErrorCountMin: Int = rows.values.map(x => x.totalErrorCountMin).min
+  def weighted(weight: Double): MetricDocument[A] = {
+    MetricDocument(id, mutable.Map(rows.map(x => (x._1, x._2.weighted(weight))).toSeq:_*))
+  }
 
   def add(row: MetricRow): Unit = {
-    rows(row.params) = rows.getOrElse(row.params, MetricRow(row.params, Map.empty)).addRecord(row)
+    rows(row.params) = rows.getOrElse(row.params, MetricRow(new MetricRow.ResultCountStore(0, 0), row.params, Map.empty)).addRecordAndIncreaseSampleCount(row)
     metricNames = metricNames ++ row.metricNames
     paramNames = paramNames ++ row.params.keySet
   }
@@ -74,7 +60,7 @@ case class MetricDocument[A <: AnyRef](id: A, rows: mutable.Map[ParamMap, Metric
     metricNames = metricNames ++ doc.getMetricNames
     doc.rows.keys.foreach {
       case e if rows.contains(e) =>
-        rows(e) = rows(e).addRecord(doc.rows(e))
+        rows(e) = rows(e).addRecordAndIncreaseSampleCount(doc.rows(e))
       case e =>
         rows(e) = doc.rows(e)
     }

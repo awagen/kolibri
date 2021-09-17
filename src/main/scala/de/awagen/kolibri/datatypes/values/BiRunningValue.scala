@@ -32,11 +32,11 @@ case class BiRunningValue[A, B](value1: AggregateValue[A], value2: AggregateValu
 
   def addFirst(other: AggregateValue[A]): BiRunningValue[A, B] = BiRunningValue(value1.add(other), value2)
 
-  def addFirst(other: A): BiRunningValue[A, B] = BiRunningValue(value1.add(other), value2)
+  def addFirst(other: DataPoint[A]): BiRunningValue[A, B] = BiRunningValue(value1.add(other), value2)
 
   def addSecond(other: AggregateValue[B]): BiRunningValue[A, B] = BiRunningValue(value1, value2.add(other))
 
-  def addSecond(other: B): BiRunningValue[A, B] = BiRunningValue(value1, value2.add(other))
+  def addSecond(other: DataPoint[B]): BiRunningValue[A, B] = BiRunningValue(value1, value2.add(other))
 
   def addAll(others: BiRunningValue[A, B]*): BiRunningValue[A, B] = {
     var newValue1: AggregateValue[A] = value1
@@ -48,8 +48,7 @@ case class BiRunningValue[A, B](value1: AggregateValue[A], value2: AggregateValu
     BiRunningValue(newValue1, newValue2)
   }
 
-
-  def addEither(either: Either[A, B]): BiRunningValue[A, B] = either match {
+  def addEither(either: Either[DataPoint[A], DataPoint[B]]): BiRunningValue[A, B] = either match {
     case Left(a) => addFirst(a)
     case Right(b) => addSecond(b)
   }

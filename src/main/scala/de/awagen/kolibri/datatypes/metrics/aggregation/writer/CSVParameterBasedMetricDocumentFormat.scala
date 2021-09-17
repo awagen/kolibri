@@ -19,14 +19,16 @@ package de.awagen.kolibri.datatypes.metrics.aggregation.writer
 import de.awagen.kolibri.datatypes.metrics.aggregation.writer.CSVParameterBasedMetricDocumentFormat._
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason
 import de.awagen.kolibri.datatypes.stores.{MetricDocument, MetricRow}
-import de.awagen.kolibri.datatypes.values.RunningValueAdd.{doubleAvgAdd, errorMapAdd}
+import de.awagen.kolibri.datatypes.values.RunningValue.RunningValueAdd.{doubleAvgAdd, errorMapAdd, failMapKeepWeightFon, weightMultiplyFunction}
 import de.awagen.kolibri.datatypes.values.{BiRunningValue, MetricValue, RunningValue}
 
 
 object CSVParameterBasedMetricDocumentFormat {
   val FAIL_COUNT_COLUMN_PREFIX = "fail-count-"
+  val WEIGHTED_FAIL_COUNT_COLUMN_PREFIX = "weighted-fail-count-"
   val FAIL_REASONS_COLUMN_PREFIX = "failReasons-"
   val SUCCESS_COUNT_COLUMN_PREFIX = "success-count-"
+  val WEIGHTED_SUCCESS_COUNT_COLUMN_PREFIX = "weighted-success-count-"
   val VALUE_COLUMN_PREFIX = "value-"
   val INVALID_ID = "invalidID"
   val MULTI_VALUE_SEPARATOR = "&"
@@ -50,8 +52,10 @@ case class CSVParameterBasedMetricDocumentFormat(columnSeparator: String) extend
       .foreach(x => {
         header = header ++ Seq(
           s"$FAIL_COUNT_COLUMN_PREFIX$x",
+          s"$WEIGHTED_FAIL_COUNT_COLUMN_PREFIX$x",
           s"$FAIL_REASONS_COLUMN_PREFIX$x",
           s"$SUCCESS_COUNT_COLUMN_PREFIX$x",
+          s"$WEIGHTED_SUCCESS_COUNT_COLUMN_PREFIX$x",
           s"$VALUE_COLUMN_PREFIX$x"
         )
       })
@@ -67,8 +71,12 @@ case class CSVParameterBasedMetricDocumentFormat(columnSeparator: String) extend
     // determine the parameters
     headers.indices.filter(x => {
       val value: String = headers(x)
-      !value.startsWith(FAIL_REASONS_COLUMN_PREFIX) && !value.startsWith(FAIL_COUNT_COLUMN_PREFIX) &&
-        !value.startsWith(SUCCESS_COUNT_COLUMN_PREFIX) && !value.startsWith(VALUE_COLUMN_PREFIX)
+      !value.startsWith(FAIL_REASONS_COLUMN_PREFIX) &&
+        !value.startsWith(FAIL_COUNT_COLUMN_PREFIX) &&
+        !value.startsWith(WEIGHTED_FAIL_COUNT_COLUMN_PREFIX) &&
+        !value.startsWith(SUCCESS_COUNT_COLUMN_PREFIX) &&
+        !value.startsWith(WEIGHTED_SUCCESS_COUNT_COLUMN_PREFIX) &&
+        !value.startsWith(VALUE_COLUMN_PREFIX)
     }).map(validIndex => {
       (headers(validIndex), validIndex)
     }).toMap
@@ -92,22 +100,27 @@ case class CSVParameterBasedMetricDocumentFormat(columnSeparator: String) extend
   def metricRowFromHeadersAndColumns(headers: Seq[String], paramsMap: Map[String, Seq[String]], columns: Seq[String]): MetricRow = {
     // map holding the match of metric name to the indices of the column
     val successCountColumnIndexForMetricMap: Map[String, Int] = metricNameToColumnMapForCategoryFromHeaders(SUCCESS_COUNT_COLUMN_PREFIX, headers)
+    val weightedSuccessCountColumnIndexForMetricMap: Map[String, Int] = metricNameToColumnMapForCategoryFromHeaders(WEIGHTED_SUCCESS_COUNT_COLUMN_PREFIX, headers)
     val failCountColumnIndexForMetricMap: Map[String, Int] = metricNameToColumnMapForCategoryFromHeaders(FAIL_COUNT_COLUMN_PREFIX, headers)
+    val weightedFailCountColumnIndexForMetricMap: Map[String, Int] = metricNameToColumnMapForCategoryFromHeaders(WEIGHTED_FAIL_COUNT_COLUMN_PREFIX, headers)
     val failReasonsCountColumnIndexForMetricMap: Map[String, Int] = metricNameToColumnMapForCategoryFromHeaders(FAIL_REASONS_COLUMN_PREFIX, headers)
     val metricNameToColumnIndex: Map[String, Int] = metricNameToColumnMapForCategoryFromHeaders(VALUE_COLUMN_PREFIX, headers)
 
     // now fill the metric row, initially set the param mapping, then add the single values
-    var metricRow: MetricRow = MetricRow(paramsMap, Map.empty)
+    var metricRow: MetricRow = MetricRow.emptyForParams(paramsMap)
     metricNameToColumnIndex.keys.foreach(metricName => {
       // need to add MetricValue per metricName
       // first determine the indices
       val metricIndex: Int = metricNameToColumnIndex(metricName)
       val failCountIndex: Int = failCountColumnIndexForMetricMap(metricName)
+      val weightedFailCountIndex: Int = weightedFailCountColumnIndexForMetricMap(metricName)
       val failReasonsIndex: Int = failReasonsCountColumnIndexForMetricMap(metricName)
       val successCountIndex: Int = successCountColumnIndexForMetricMap(metricName)
+      val weightedSuccessCountIndex: Int = weightedSuccessCountColumnIndexForMetricMap(metricName)
       // then determine the values
       val metricValue: Double = columns(metricIndex).toDouble
       val failCount: Int = columns(failCountIndex).toInt
+      val weightedFailCount: Double = columns(weightedFailCountIndex).toDouble
       val failReasonsCountMap: Map[ComputeFailReason, Int] = columns(failReasonsIndex)
         .split(",")
         .map(x => x.strip())
@@ -119,12 +132,13 @@ case class CSVParameterBasedMetricDocumentFormat(columnSeparator: String) extend
           (reason, count)
         }).toMap
       val successCount: Int = columns(successCountIndex).toInt
+      val weightedSuccessCount: Double = columns(weightedSuccessCountIndex).toDouble
       // Map[ComputeFailReason, Int] creason to count map needed beside value, also success and fail counts
       val metricValueObj = MetricValue.createEmptyAveragingMetricValue(metricName)
       val newRunningValue: BiRunningValue[Map[ComputeFailReason, Int], Double] = metricValueObj
         .biValue
-        .addFirst(RunningValue(failCount, failReasonsCountMap, errorMapAdd.addFunc))
-        .addSecond(RunningValue(successCount, metricValue, doubleAvgAdd.addFunc))
+        .addFirst(RunningValue(weightedFailCount, failCount, failReasonsCountMap, failMapKeepWeightFon,  errorMapAdd.addFunc))
+        .addSecond(RunningValue(weightedSuccessCount, successCount, metricValue, weightMultiplyFunction, doubleAvgAdd.addFunc))
       metricRow = metricRow.addMetric(metricValueObj.copy(biValue = newRunningValue))
     })
     metricRow
@@ -170,16 +184,20 @@ case class CSVParameterBasedMetricDocumentFormat(columnSeparator: String) extend
     metricNames.foreach(x => {
       val metricValue: MetricValue[Double] = row.metrics.getOrElse(x, MetricValue.createEmptyAveragingMetricValue(x))
       val failMapValue: Map[ComputeFailReason, Int] = metricValue.biValue.value1.value
-      val totalErrors = metricValue.biValue.value1.count
-      val totalSuccess = metricValue.biValue.value2.count
+      val totalErrors = metricValue.biValue.value1.numSamples
+      val weightedTotalErrors = metricValue.biValue.value1.weight
+      val totalSuccess = metricValue.biValue.value2.numSamples
+      val weightedTotalSuccess = metricValue.biValue.value2.weight
       val errorString = failMapValue.keys.toSeq
         .sorted[ComputeFailReason]((x, y) => x.description compare y.description)
         .map(failReason => s"${failReason.description}:${failMapValue(failReason)}")
         .mkString(",")
       data = data ++ Seq(
         s"$totalErrors",
+        s"${String.format("%.4f",weightedTotalErrors)}",
         s"$errorString",
         s"$totalSuccess",
+        s"${String.format("%.4f",weightedTotalSuccess)}",
         s"${String.format("%.4f", metricValue.biValue.value2.value)}"
       )
     })

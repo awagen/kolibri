@@ -19,6 +19,10 @@ package de.awagen.kolibri.datatypes.stores
 
 import scala.collection.mutable
 
+/**
+  * Priority store backed by PriorityQueue. Allows adding of elements and by some ordering criterium
+  * only keep n elements that are the first according to the ordering
+  */
 object PriorityStores {
 
   abstract class PriorityStore[T, U] {

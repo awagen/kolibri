@@ -39,7 +39,7 @@ class MetricAggregationSpec extends UnitTestSpec {
       val r2: MetricRow = aggregation.aggregationStateMap(StringTag("test2")).rows(Map.empty)
       val r3: MetricRow = aggregation.aggregationStateMap(StringTag("test3")).rows(Map.empty)
       val expectedR1: MetricRow = metricRecord1
-      val expectedR2: MetricRow = metricRecord2.addRecord(metricRecord3)
+      val expectedR2: MetricRow = metricRecord2.addRecordAndIncreaseSampleCount(metricRecord3)
       val expectedR3: MetricRow = metricRecord4
       //then
       aggregation.aggregationStateMap.size mustBe 3

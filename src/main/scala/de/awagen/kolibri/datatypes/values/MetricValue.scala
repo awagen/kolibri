@@ -25,18 +25,18 @@ object MetricValue {
   def createAvgFailSample(metricName: String, failMap: Map[ComputeFailReason, Int]): MetricValue[Double] = {
     MetricValue(name = metricName,
       BiRunningValue(value1 = calcErrorRunningValue(1, failMap),
-        value2 = doubleAvgRunningValue(0, 0.0)))
+        value2 = doubleAvgRunningValue(0.0, 0, 0.0)))
   }
 
-  def createAvgSuccessSample(metricName: String, value: Double): MetricValue[Double] = {
+  def createAvgSuccessSample(metricName: String, value: Double, weight: Double): MetricValue[Double] = {
     MetricValue(name = metricName,
       BiRunningValue(value1 = calcErrorRunningValue(0, Map.empty),
-        value2 = doubleAvgRunningValue(1, value)))
+        value2 = doubleAvgRunningValue(weight, 1, value)))
   }
 
   def createEmptyAveragingMetricValue(name: String): MetricValue[Double] = {
     MetricValue(name = name, BiRunningValue(value1 = calcErrorRunningValue(0, Map.empty),
-      value2 = doubleAvgRunningValue(0, 0.0)))
+      value2 = doubleAvgRunningValue(0.0, 0, 0.0)))
   }
 
 }
@@ -45,7 +45,8 @@ object MetricValue {
   * Simple container keeping state with BiRunningValue that keeps track of occurring error types and the
   * respective counts and some aggregated value type to keep track of the successful computations aggregated in the
   * MetricValue
-  * @param name - the name of the metric value
+  *
+  * @param name    - the name of the metric value
   * @param biValue - BiRunningValue keeping track of error types, their occurrence counts, the actual value made of
   *                successful computations. Note that BiRunningValue keeps track of how many samples went into either by
   *                utilizing AggregateValue[Map[ComputeFailReason, Int]] and AggregateValue[A]. Thus note that the
