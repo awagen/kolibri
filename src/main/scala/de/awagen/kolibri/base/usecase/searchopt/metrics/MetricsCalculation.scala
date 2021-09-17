@@ -41,7 +41,7 @@ case class MetricsCalculation(metrics: Seq[Metric], judgementHandling: Judgement
       val result: Either[Seq[ComputeFailReason], Double] = metric.function.apply(preparedValues)
       result match {
         case Right(score) =>
-          MetricValue.createAvgSuccessSample(metric.name, score)
+          MetricValue.createAvgSuccessSample(metric.name, score, 1.0)
         case Left(failReasons) =>
           MetricValue.createAvgFailSample(metricName = metric.name, RunningValue.mapFromFailReasons(failReasons))
       }
@@ -49,7 +49,7 @@ case class MetricsCalculation(metrics: Seq[Metric], judgementHandling: Judgement
   }
 
   def calculateAll(params: immutable.Map[String, Seq[String]], values: Seq[Option[Double]]): MetricRow = {
-    var metricRow = MetricRow(params = params, metrics = Map.empty)
+    var metricRow = MetricRow.emptyForParams(params = params)
     metrics.foreach(x => metricRow = metricRow.addMetric(calculateMetric(x, values)))
     metricRow
   }

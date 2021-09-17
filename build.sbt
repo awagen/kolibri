@@ -4,7 +4,7 @@ import sbt.url
 val sl4jApiVersion = "1.7.30"
 val scalaTestVersion = "3.2.2"
 val scalaMockVersion = "5.1.0"
-val kolibriDatatypesVersion = "0.1.0-beta2"
+val kolibriDatatypesVersion = "0.1.0-beta3"
 
 val akkaVersion = "2.6.14"
 val akkaContribVersion = "2.5.31"
@@ -19,7 +19,7 @@ val kamonVersion = "2.2.0"
 val macwireVersion = "2.4.0"
 
 ThisBuild / scalaVersion := "2.13.2"
-ThisBuild / version := "0.1.0-beta2"
+ThisBuild / version := "0.1.0-beta3"
 
 lazy val jvmOptions = Seq(
   "-Xms1G",
@@ -28,6 +28,19 @@ lazy val jvmOptions = Seq(
   "-XX:+CMSClassUnloadingEnabled",
   "-XX:MaxPermSize=256M"
 )
+
+// scoverage plugin setting to exclude classes from coverage report
+coverageExcludedPackages := "de\\.awagen\\.kolibri\\.base\\.config\\.*;" +
+  ".*\\.ClusterNode;" +
+  ".*\\.ClusterStates\\..*;" +
+  "de\\.awagen\\.kolibri\\.base\\.actors\\.flows\\.FlowAttributes\\..*;" +
+  "de\\.awagen\\.kolibri\\.base\\.actors\\.work\\.worker\\.ProcessingMessages\\..*;" +
+  "de\\.awagen\\.kolibri\\.base\\.actors\\.work\\.worker\\.JobPartIdentifiers\\..*;" +
+  "de\\.awagen\\.kolibri\\.base\\.exceptions\\..*;" +
+  "de\\.awagen\\.kolibri\\.base\\.traits\\.Traits\\..*;" +
+  "de\\.awagen\\.kolibri\\.base\\.usecase\\.searchopt\\.domain\\..*;" +
+  "de\\.awagen\\.kolibri\\.base\\.usecase\\.searchopt\\.parse\\.ParsingConfig;" +
+  "de\\.awagen\\.kolibri\\.base\\.actors\\.flows\\.GenericFlows\\..*"
 
 envVars in Test := Map("PROFILE" -> "test")
 

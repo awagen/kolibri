@@ -11,3 +11,6 @@ addSbtPlugin("com.github.sbt" % "sbt-pgp" % "2.1.2")
 
 // aspectj instrumentation (https://kamon.io/docs/latest/guides/installation/plain-application/#the-sbt-plugin)
 addSbtPlugin("io.kamon" % "sbt-kanela-runner" % "2.0.9")
+
+// code coverage
+addSbtPlugin("org.scoverage" % "sbt-scoverage" % "1.8.2")

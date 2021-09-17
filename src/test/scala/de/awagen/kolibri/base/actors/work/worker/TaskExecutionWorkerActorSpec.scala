@@ -70,7 +70,7 @@ class TaskExecutionWorkerActorSpec extends KolibriTestKitNoCluster
       executionWorker ! msg
       // then
       expectMsgPF(2 seconds) {
-        case Corn(result) =>
+        case Corn(result, _) =>
           result mustBe "12p,4p,3p"
         case other => fail(s"received message $other instead of expected success msg")
       }
@@ -94,7 +94,7 @@ class TaskExecutionWorkerActorSpec extends KolibriTestKitNoCluster
       ExecutionWorker ! msg
       // then
       expectMsgPF(2 seconds) {
-        case Corn(result) =>
+        case Corn(result, _) =>
           result mustBe "12p,4p,3p"
         case other => fail(s"received message $other instead of expected success msg")
       }

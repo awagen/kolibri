@@ -19,7 +19,7 @@ package de.awagen.kolibri.base.config
 import com.amazonaws.regions.Regions
 import com.typesafe.config.{Config, ConfigFactory}
 import de.awagen.kolibri.base.actors.resources.{CPUBasedResourceChecker, ResourceChecker}
-import de.awagen.kolibri.base.cluster.ClusterStatus
+import de.awagen.kolibri.base.cluster.ClusterStates.ClusterStatus
 import de.awagen.kolibri.base.config.EnvVariableKeys.{IS_SINGLENODE, NODE_ROLES, POD_IP, PROFILE}
 import de.awagen.kolibri.datatypes.metrics.aggregation.writer.{CSVParameterBasedMetricDocumentFormat, MetricDocumentFormat}
 import org.slf4j.{Logger, LoggerFactory}

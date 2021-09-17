@@ -33,7 +33,7 @@ import de.awagen.kolibri.base.processing.execution.job.ActorRunnable.JobActorCon
 import de.awagen.kolibri.base.processing.execution.job.{ActorRunnable, ActorType}
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
-import de.awagen.kolibri.datatypes.types.WithCount
+import de.awagen.kolibri.datatypes.types.Types.WithCount
 
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContextExecutor, Future}

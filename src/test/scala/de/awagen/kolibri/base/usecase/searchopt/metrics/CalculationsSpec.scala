@@ -59,7 +59,7 @@ class CalculationsSpec extends UnitTestSpec {
       val expectedNDCG2Result: CalculationResult[Double] = IRMetricFunctions.ndcgAtK(2).apply(Seq(0.10, 0.4, 0.3, 0.2, 0.0))
       val expectedNDCG5Result: CalculationResult[Double] = IRMetricFunctions.ndcgAtK(5).apply(Seq(0.10, 0.4, 0.3, 0.2, 0.0))
       // then
-      Seq(ndcg2Result.count, ndcg5Result.count, ndcg10Result.count) mustBe Seq(1, 1, 1)
+      Seq(ndcg2Result.numSamples, ndcg5Result.numSamples, ndcg10Result.numSamples) mustBe Seq(1, 1, 1)
       MathUtils.equalWithPrecision[Double](ndcg2Result.value, expectedNDCG2Result.getOrElse(-1.0), 0.0001) mustBe true
       MathUtils.equalWithPrecision[Double](ndcg5Result.value, expectedNDCG5Result.getOrElse(-1.0), 0.0001) mustBe true
       MathUtils.equalWithPrecision[Double](ndcg5Result.value, ndcg10Result.value, 0.0001) mustBe true
@@ -129,12 +129,12 @@ class CalculationsSpec extends UnitTestSpec {
       // then
       result.params mustBe params
       result.metrics.keySet mustBe Set("val1", "val2")
-      val1Result.value2.count mustBe 0
-      val2Result.value2.count mustBe 0
-      val1Result.value1.count mustBe 1
+      val1Result.value2.numSamples mustBe 0
+      val2Result.value2.numSamples mustBe 0
+      val1Result.value1.numSamples mustBe 1
       val1FailReasonKey.description mustBe "java.lang.RuntimeException"
       val1Result.value1.value(val1FailReasonKey) mustBe 1
-      val2Result.value1.count mustBe 1
+      val2Result.value1.numSamples mustBe 1
       val2FailReasonKey.description mustBe "java.lang.RuntimeException"
       val2Result.value1.value(val2FailReasonKey) mustBe 1
     }
@@ -150,8 +150,8 @@ class CalculationsSpec extends UnitTestSpec {
       val metricRow: MetricRow = computeFailReasonsToMetricRowResponse(failReasons, "testMetric", params)
       val metricResult = metricRow.metrics("testMetric").biValue
       // then
-      metricResult.value1.count mustBe 2
-      metricResult.value2.count mustBe 0
+      metricResult.value1.numSamples mustBe 2
+      metricResult.value2.numSamples mustBe 0
       metricResult.value1.value(de.awagen.kolibri.datatypes.reason.ComputeFailReason.NO_RESULTS) mustBe 1
       metricResult.value1.value(de.awagen.kolibri.datatypes.reason.ComputeFailReason.ZERO_DENOMINATOR) mustBe 1
     }
@@ -173,10 +173,10 @@ class CalculationsSpec extends UnitTestSpec {
       val row1Result = metricRow1.metrics("testMetric").biValue
       val row2Result = metricRow2.metrics("testMetric").biValue
       // then
-      row1Result.value1.count mustBe 0
-      row1Result.value2.count mustBe 1
-      row2Result.value1.count mustBe 1
-      row2Result.value2.count mustBe 0
+      row1Result.value1.numSamples mustBe 0
+      row1Result.value2.numSamples mustBe 1
+      row2Result.value1.numSamples mustBe 1
+      row2Result.value2.numSamples mustBe 0
       row1Result.value2.value mustBe 0.2
       row2Result.value1.value.keySet.map(x => x.description) mustBe Set("runtimeException")
 

@@ -23,11 +23,11 @@ import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.tagging.TagType.TagType
 import de.awagen.kolibri.datatypes.tagging.TaggedWithType
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
-import de.awagen.kolibri.datatypes.types.DataStore
+import de.awagen.kolibri.datatypes.values.DataPoint
 
 object ProcessingMessages {
 
-  sealed trait ProcessingMessage[+T] extends KolibriSerializable with TaggedWithType with DataStore[T] {
+  sealed trait ProcessingMessage[+T] extends KolibriSerializable with TaggedWithType with DataPoint[T] {
     val data: T
 
     def withTags(tagType: TagType, tags: Set[Tag]): ProcessingMessage[T] = {
@@ -36,9 +36,9 @@ object ProcessingMessages {
     }
   }
 
-  case class Corn[+T](data: T) extends ProcessingMessage[T]
+  case class Corn[+T](data: T, weight: Double = 1.0) extends ProcessingMessage[T]
 
-  case class BadCorn[+T](failType: TaskFailType) extends ProcessingMessage[T] {
+  case class BadCorn[+T](failType: TaskFailType, weight: Double = 1.0) extends ProcessingMessage[T] {
     override val data: T = null.asInstanceOf[T]
   }
 

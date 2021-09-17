@@ -16,11 +16,10 @@
 
 package de.awagen.kolibri.base.actors.flows
 
-import akka.actor.{ActorRef, ActorSystem}
+import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.stream.scaladsl.Flow
-import de.awagen.kolibri.base.actors.tracking.ThroughputActor.AddForStage
 
 import scala.util.Try
 
@@ -36,12 +35,5 @@ object GenericFlows {
 
   def getHttpsConnectionPoolFlow[T](implicit actorSystem: ActorSystem): Host => Flow[(HttpRequest, T), (Try[HttpResponse], T), Http.HostConnectionPool] =
     x => Http().cachedHostConnectionPoolHttps[T](x.hostname, x.port)
-
-  def flowThroughActorMeter[U](meter: ActorRef, stageName: String): Flow[U, U, _] = {
-    Flow.fromFunction(x => {
-      meter ! AddForStage(stageName)
-      x
-    })
-  }
 
 }

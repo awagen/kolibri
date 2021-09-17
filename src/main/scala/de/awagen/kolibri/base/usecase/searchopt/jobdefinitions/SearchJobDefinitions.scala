@@ -107,11 +107,13 @@ object SearchJobDefinitions {
         0.5F,
         new SerializableFunction1[Any, SuccessAndErrorCounts] {
           override def apply(v1: Any): SuccessAndErrorCounts = v1 match {
-            case Corn(e) if e.isInstanceOf[MetricRow] =>
+            case Corn(e, _) if e.isInstanceOf[MetricRow] =>
               val result = e.asInstanceOf[MetricRow]
-              SuccessAndErrorCounts(result.totalSuccessCountMin, result.totalErrorCountMin)
+              SuccessAndErrorCounts(result.countStore.successCount, result.countStore.failCount)
             case AggregationStateWithData(data: MetricAggregation[Tag], _, _, _) =>
-              SuccessAndErrorCounts(data.totalSuccessCountSum, data.totalErrorCountSum)
+              val successSampleCount: Int = data.aggregationStateMap.values.flatMap(x => x.rows.values.map(y => y.countStore.successCount)).sum
+              val errorSampleCount: Int = data.aggregationStateMap.values.flatMap(x => x.rows.values.map(y => y.countStore.failCount)).sum
+              SuccessAndErrorCounts(successSampleCount, errorSampleCount)
             case AggregationStateWithoutData(elementCount: Int, _, _, _) =>
               // TODO: need success and error counts here, change elementCount in the message to
               // SuccessAndErrorCounts
