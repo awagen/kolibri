@@ -194,10 +194,10 @@ case class CSVParameterBasedMetricDocumentFormat(columnSeparator: String) extend
         .mkString(",")
       data = data ++ Seq(
         s"$totalErrors",
-        s"$weightedTotalErrors",
+        s"${String.format("%.4f",weightedTotalErrors)}",
         s"$errorString",
         s"$totalSuccess",
-        s"$weightedTotalSuccess",
+        s"${String.format("%.4f",weightedTotalSuccess)}",
         s"${String.format("%.4f", metricValue.biValue.value2.value)}"
       )
     })
