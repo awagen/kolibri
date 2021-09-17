@@ -20,8 +20,7 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.model.HttpResponse
 import akka.stream.Materializer
 import de.awagen.kolibri.base.http.client.response.responsehandlers.HttpResponseHandlers
-import de.awagen.kolibri.base.usecase.searchopt.parse.SolrResponseParseUtils
-import de.awagen.kolibri.datatypes.mutable.stores.{TypeTaggedMap, WeaklyTypedMap}
+import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 import org.slf4j.{Logger, LoggerFactory}
 import play.api.libs.json.JsValue
@@ -33,17 +32,6 @@ object SolrHttpResponseHandlers {
 
   val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
-//  def httpResponseToTypeTaggedMapParseFunc(validationFunc: JsValue => Boolean,
-//                                           parseFunc: SerializableFunction1[JsValue, TypeTaggedMap])(implicit actorSystem: ActorSystem, mat: Materializer,
-//                                                                                                     ec: ExecutionContext): HttpResponse => Future[Either[Throwable, TypeTaggedMap]] = {
-//    x =>
-//      logger.debug(s"received http response entity: ${x.entity}")
-//      HttpResponseHandlers.doJSValueParse[TypeTaggedMap](
-//        response = x,
-//        isValidFunc = validationFunc,
-//        parseFunc = parseFunc)
-//  }
-
   def httpResponseToTypeTaggedMapParseFunc(validationFunc: JsValue => Boolean,
                                            parseFunc: SerializableFunction1[JsValue, WeaklyTypedMap[String]])(implicit actorSystem: ActorSystem, mat: Materializer,
                                                                                                     ec: ExecutionContext): HttpResponse => Future[Either[Throwable, WeaklyTypedMap[String]]] = {
@@ -53,22 +41,6 @@ object SolrHttpResponseHandlers {
         response = x,
         isValidFunc = validationFunc,
         parseFunc = parseFunc)
-  }
-
-  def httpResponseToProductIdSeqFutureByParseFunc(validationFunc: JsValue => Boolean,
-                                                  parseFunc: SerializableFunction1[JsValue, Seq[String]])(implicit actorSystem: ActorSystem, mat: Materializer,
-                                                                                                          ec: ExecutionContext): HttpResponse => Future[Either[Throwable, Seq[String]]] = {
-    x =>
-      logger.debug(s"received http response entity: ${x.entity}")
-      HttpResponseHandlers.doJSValueParse[Seq[String]](
-        response = x,
-        isValidFunc = validationFunc,
-        parseFunc = parseFunc)
-  }
-
-  def solrHttpResponseToProductIdSeqFuture(validationFunc: JsValue => Boolean)(implicit actorSystem: ActorSystem, mat: Materializer,
-                                                                               ec: ExecutionContext): HttpResponse => Future[Either[Throwable, Seq[String]]] = {
-    httpResponseToProductIdSeqFutureByParseFunc(validationFunc, SolrResponseParseUtils.retrieveProductIdsInOrderFromFullResponse)
   }
 
 }
