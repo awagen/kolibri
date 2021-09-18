@@ -122,5 +122,15 @@
   "allowedTimePerElementInMillis": 1000,
   "allowedTimePerBatchInSeconds": 6000,
   "allowedTimeForJobInSeconds": 720000,
-  "expectResultsFromBatchCalculations": false
+  "expectResultsFromBatchCalculations": false,
+  "wrapUpFunction": {
+    "type": "AGGREGATE_FROM_DIR_BY_REGEX",
+    "weightProvider": {
+      "type": "CONSTANT",
+      "weight": 1.0
+    },
+    "regex": "[(]q=.+[)]",
+    "outputFilename": "(ALL1)",
+    "subDir": "testJob"
+  }
 }

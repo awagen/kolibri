@@ -17,7 +17,8 @@
 
 package de.awagen.kolibri.base.processing.execution.functions
 
-import de.awagen.kolibri.base.config.di.modules.Modules.PersistenceDIModule
+import com.softwaremill.macwire.wire
+import de.awagen.kolibri.base.config.di.modules.persistence.PersistenceModule
 import de.awagen.kolibri.base.io.reader.{DirectoryReader, FileReader}
 import de.awagen.kolibri.base.io.writer.Writers.FileWriter
 import de.awagen.kolibri.base.processing.execution.functions.FileUtils.regexDirectoryReader
@@ -43,17 +44,17 @@ object AggregationFunctions {
     * @param filterRegex         - the regex to filter the files by
     * @param outputFilename      - the output filename (might contain additional path prefix relative to directorySubDir)
     */
-  case class AggregateFromDirectoryByRegexWeighted(persistenceDIModule: PersistenceDIModule,
-                                                   directorySubDir: String,
+  case class AggregateFromDirectoryByRegexWeighted(directorySubDir: String,
                                                    filterRegex: Regex,
                                                    sampleIdentifierToWeight: WeightProvider[String],
                                                    outputFilename: String) extends Execution[Unit] {
 
-    val directoryReader: DirectoryReader = regexDirectoryReader(filterRegex)
+    lazy val persistenceModule: PersistenceModule = wire[PersistenceModule]
+    lazy val directoryReader: DirectoryReader = regexDirectoryReader(filterRegex)
 
     override def execute: Either[TaskFailType, Unit] = {
       val filteredFiles = directoryReader.listFiles(directorySubDir, _ => true)
-      val aggregator = AggregateFilesWeighted(persistenceDIModule, directorySubDir, filteredFiles, sampleIdentifierToWeight, outputFilename)
+      val aggregator = AggregateFilesWeighted(directorySubDir, filteredFiles, sampleIdentifierToWeight, outputFilename)
       aggregator.execute
     }
   }
@@ -66,19 +67,19 @@ object AggregationFunctions {
     * @param files               - the regex to filter the files by
     * @param outputFilename      - the output filename (might contain additional path prefix relative to directorySubDir)
     */
-  case class AggregateFilesWeighted(persistenceDIModule: PersistenceDIModule,
-                                    directorySubDir: String,
+  case class AggregateFilesWeighted(directorySubDir: String,
                                     files: Seq[String],
                                     sampleIdentifierToWeight: WeightProvider[String],
                                     outputFilename: String) extends Execution[Unit] {
     val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
+    lazy val persistenceModule: PersistenceModule = wire[PersistenceModule]
     val csvFormat: CSVParameterBasedMetricDocumentFormat = CSVParameterBasedMetricDocumentFormat("\t")
 
     val aggregationIdentifier: Tag = StringTag("ALL1")
 
-    val fileReader: FileReader = persistenceDIModule.fileReader
-    val fileWriter: FileWriter[String, _] = persistenceDIModule.fileWriter
+    lazy val fileReader: FileReader = persistenceModule.persistenceDIModule.fileReader
+    lazy val fileWriter: FileWriter[String, _] = persistenceModule.persistenceDIModule.fileWriter
 
     override def execute: Either[TaskFailType, Unit] = {
       try {

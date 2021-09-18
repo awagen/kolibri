@@ -47,15 +47,12 @@ case class GcpGSDirectoryReader(bucketName: String,
       // prefix determines the path prefix of the "filename"
       Storage.BlobListOption.prefix(prefix),
       // delimiter specifies the path delimiter
-      Storage.BlobListOption.delimiter(delimiter),
-      // current directory specifies that if a path is given with specified delimiter,
-      // only those objects in the current directory as per prefix are listed, not all
-      // elements overall that match the prefix
-      Storage.BlobListOption.currentDirectory()
+      Storage.BlobListOption.delimiter(delimiter)
     )
     blobs.iterateAll().iterator().asScala.toSeq
       .filter(x => !x.isDirectory)
-      .map(x => x.getName)
+      // blob contains the full path from bucket root, thus we remove the base path here
+      .map(x => x.getName.stripPrefix(dirPathNormalized).stripPrefix("/"))
       .filter(x => fileFilter.apply(x))
   }
 }

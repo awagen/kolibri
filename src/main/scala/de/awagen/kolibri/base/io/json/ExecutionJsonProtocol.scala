@@ -41,9 +41,7 @@ object ExecutionJsonProtocol extends DefaultJsonProtocol with SprayJsonSupport {
           val outputFilename: String = fields("outputFilename").convertTo[String]
           val directorySubDir: String = fields("subDir").convertTo[String]
           val weightProvider: WeightProvider[String] = fields("weightProvider").convertTo[WeightProvider[String]]
-          val persistenceDIModule: Modules.PersistenceDIModule = AppConfig.persistenceModule.persistenceDIModule
           AggregateFromDirectoryByRegexWeighted(
-            persistenceDIModule,
             directorySubDir,
             regex,
             weightProvider,
@@ -54,9 +52,7 @@ object ExecutionJsonProtocol extends DefaultJsonProtocol with SprayJsonSupport {
           val outputFilename: String = fields("outputFilename").convertTo[String]
           val directorySubDir: String = fields("subDir").convertTo[String]
           val weightProvider: WeightProvider[String] = fields("weightProvider").convertTo[WeightProvider[String]]
-          val persistenceDIModule: Modules.PersistenceDIModule = AppConfig.persistenceModule.persistenceDIModule
           AggregateFilesWeighted(
-            persistenceDIModule,
             directorySubDir,
             files,
             weightProvider,
@@ -72,7 +68,6 @@ object ExecutionJsonProtocol extends DefaultJsonProtocol with SprayJsonSupport {
           val n_best: Int = fields("n_best").convertTo[Int]
           val n_worst: Int = fields("n_worst").convertTo[Int]
           GetImprovingAndLoosingFromDirPerRegex(
-            persistenceDIModule,
             directory,
             regex,
             currentParams,
@@ -92,7 +87,6 @@ object ExecutionJsonProtocol extends DefaultJsonProtocol with SprayJsonSupport {
           val n_best: Int = fields("n_best").convertTo[Int]
           val n_worst: Int = fields("n_worst").convertTo[Int]
           GetImprovingAndLoosing(
-            persistenceDIModule,
             files,
             currentParams,
             compareParams,
