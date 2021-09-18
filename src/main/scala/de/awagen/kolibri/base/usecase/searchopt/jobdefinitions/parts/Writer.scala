@@ -20,7 +20,7 @@ package de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts
 import com.amazonaws.regions.Regions
 import de.awagen.kolibri.base.io.writer.Writers.{FileWriter, Writer}
 import de.awagen.kolibri.base.io.writer.aggregation.{BaseMetricAggregationWriter, BaseMetricDocumentWriter}
-import de.awagen.kolibri.base.io.writer.base.{AwsS3FileWriter, LocalDirectoryFileWriter}
+import de.awagen.kolibri.base.io.writer.base.{AwsS3FileWriter, GcpGSFileWriter, LocalDirectoryFileWriter}
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
 import de.awagen.kolibri.datatypes.metrics.aggregation.writer.CSVParameterBasedMetricDocumentFormat
 import de.awagen.kolibri.datatypes.stores.MetricDocument
@@ -62,6 +62,21 @@ object Writer {
       region = Regions.EU_CENTRAL_1
     )
     val writer: Writer[MetricDocument[Tag], Tag, Any] = documentWriter(awsWriter, columnSeparator, subFolder, tagToFilenameFunc)
+    BaseMetricAggregationWriter(writer = writer)
+  }
+
+  def gcpCsvMetricAggregationWriter(bucketName: String,
+                                    directory: String,
+                                    projectId: String,
+                                    columnSeparator: String = "\t",
+                                    subFolder: String,
+                                    tagToFilenameFunc: Tag => String = x => x.toString): Writer[MetricAggregation[Tag], Tag, Any] = {
+    val gcpWriter = GcpGSFileWriter(
+      bucketName = bucketName,
+      dirPath = directory,
+      projectID = projectId
+    )
+    val writer: Writer[MetricDocument[Tag], Tag, Any] = documentWriter(gcpWriter, columnSeparator, subFolder, tagToFilenameFunc)
     BaseMetricAggregationWriter(writer = writer)
   }
 

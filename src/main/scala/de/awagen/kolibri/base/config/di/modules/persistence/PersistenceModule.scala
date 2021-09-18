@@ -31,6 +31,7 @@ class PersistenceModule {
 
   lazy val persistenceDIModule: PersistenceDIModule = AppProperties.config.persistenceMode match {
     case "AWS" => wire[AwsPersistenceModule]
+    case "GCP" => wire[GCPPersistenceModule]
     case "LOCAL" => wire[LocalPersistenceModule]
     case "RESOURCE" => wire[ResourcePersistenceModule]
     case _ => wire[LocalPersistenceModule]
