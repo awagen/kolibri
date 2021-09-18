@@ -26,6 +26,7 @@ import de.awagen.kolibri.base.io.writer.base.GcpGSFileWriter
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.Writer
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
 import de.awagen.kolibri.datatypes.tagging.Tags
+import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 
 class GCPPersistenceModule extends PersistenceDIModule with tagging.Tag[GCP_MODULE] {
 
@@ -48,12 +49,16 @@ class GCPPersistenceModule extends PersistenceDIModule with tagging.Tag[GCP_MODU
   val directoryPathSeparator: String = "/"
   val csvColumnSeparator: String = "\t"
 
+  val filterNone: String => Boolean = new SerializableFunction1[String, Boolean](){
+    override def apply(v1: String): Boolean = true
+  }
+
   override def directoryReader(fileFilter: String => Boolean): DirectoryReader = GcpGSDirectoryReader(
     AppProperties.config.gcpGSBucket.get,
     AppProperties.config.gcpGSBucketPath.get,
     AppProperties.config.gcpGSProjectID.get,
     directoryPathSeparator,
-    _ => true)
+    filterNone)
 
   override def csvMetricAggregationWriter(subFolder: String, tagToFilenameFunc: Tags.Tag => String): Writers.Writer[MetricAggregation[Tags.Tag], Tags.Tag, Any] = Writer.gcpCsvMetricAggregationWriter(
     bucketName = AppProperties.config.gcpGSBucket.get,
