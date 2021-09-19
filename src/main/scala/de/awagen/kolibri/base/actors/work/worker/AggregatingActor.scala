@@ -36,9 +36,11 @@ object AggregatingActor {
 
   /**
     * @param aggregatorConfig
+    * @param expectationSupplier
     * @param owner
     * @param jobPartIdentifier
     * @param writer
+    * @param sendResultBack
     * @tparam U
     * @tparam V
     * @return
@@ -83,9 +85,11 @@ object AggregatingActor {
   * not the single result tags).
   *
   * @param aggregatorConfig
+  * @param expectationSupplier
   * @param owner
   * @param jobPartIdentifier
   * @param writerOpt
+  * @param sendResultDataBackToOwner
   * @tparam U
   * @tparam V
   */

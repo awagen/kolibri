@@ -18,16 +18,14 @@
 package de.awagen.kolibri.base.io.json
 
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
-import de.awagen.kolibri.base.config.AppConfig
-import de.awagen.kolibri.base.config.AppConfig.persistenceModule.persistenceDIModule
-import de.awagen.kolibri.base.config.di.modules.Modules
 import de.awagen.kolibri.base.format.RegexUtils
 import de.awagen.kolibri.base.io.json.WeightProviderJsonProtocol._
-import de.awagen.kolibri.base.processing.execution.functions.AggregationFunctions.{AggregateFilesWeighted, AggregateFromDirectoryByRegexWeighted, DoNothing}
+import de.awagen.kolibri.base.processing.execution.functions.AggregationFunctions.{AggregateFilesWeighted, AggregateFromDirectoryByRegexWeighted, DoNothing, MultiExecution}
 import de.awagen.kolibri.base.processing.execution.functions.AnalyzeFunctions.{GetImprovingAndLoosing, GetImprovingAndLoosingFromDirPerRegex}
 import de.awagen.kolibri.base.processing.execution.functions.Execution
 import de.awagen.kolibri.base.provider.WeightProviders.WeightProvider
 import spray.json.{DefaultJsonProtocol, JsValue, RootJsonFormat, enrichAny}
+import SupplierJsonProtocol._
 
 import scala.util.matching.Regex
 
@@ -39,10 +37,12 @@ object ExecutionJsonProtocol extends DefaultJsonProtocol with SprayJsonSupport {
         case "AGGREGATE_FROM_DIR_BY_REGEX" =>
           val regex: Regex = fields("regex").convertTo[String].r
           val outputFilename: String = fields("outputFilename").convertTo[String]
-          val directorySubDir: String = fields("subDir").convertTo[String]
+          val readSubDir: String = fields("readSubDir").convertTo[String]
+          val writeSubDir: String = fields("writeSubDir").convertTo[String]
           val weightProvider: WeightProvider[String] = fields("weightProvider").convertTo[WeightProvider[String]]
           AggregateFromDirectoryByRegexWeighted(
-            directorySubDir,
+            readSubDir,
+            writeSubDir,
             regex,
             weightProvider,
             outputFilename
@@ -50,14 +50,28 @@ object ExecutionJsonProtocol extends DefaultJsonProtocol with SprayJsonSupport {
         case "AGGREGATE_FILES" =>
           val files: Seq[String] = fields("files").convertTo[Seq[String]]
           val outputFilename: String = fields("outputFilename").convertTo[String]
-          val directorySubDir: String = fields("subDir").convertTo[String]
+          val writeSubDir: String = fields("writeSubDir").convertTo[String]
           val weightProvider: WeightProvider[String] = fields("weightProvider").convertTo[WeightProvider[String]]
           AggregateFilesWeighted(
-            directorySubDir,
+            writeSubDir,
             files,
             weightProvider,
             outputFilename
           )
+        case "AGGREGATE_GROUPS" =>
+          val groupNameToIdentifierMap: Map[String, Seq[String]] = fields("groupSupplier").convertTo[() => Map[String, Seq[String]]].apply()
+          val readSubDir: String = fields("readSubDir").convertTo[String]
+          val writeSubDir: String = fields("writeSubDir").convertTo[String]
+          val weightProvider: WeightProvider[String] = fields("weightProvider").convertTo[WeightProvider[String]]
+          val executions: Seq[Execution[Any]] = groupNameToIdentifierMap.map(x => {
+            AggregateFilesWeighted(
+              writeSubDir,
+              x._2.map(x => s"${readSubDir.stripSuffix("/")}/$x"),
+              weightProvider,
+              x._1
+            )
+          }).toSeq
+          MultiExecution(executions)
         case "ANALYZE_BEST_WORST_REGEX" =>
           val directory: String = fields("directory").convertTo[String]
           val regex: Regex = fields("regex").convertTo[String].r

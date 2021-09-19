@@ -101,7 +101,7 @@ object AnalyzeFunctions {
     override def execute: Either[TaskFailType.TaskFailType, ExecutionSummary[Map[String, Map[Map[String, Seq[String]], Seq[(String, String)]]]]] = {
       val result = KeepNBestAndKWorst(n_best, n_worst)
       val seq: Seq[Either[TaskFailType.TaskFailType, Seq[QueryParamValue]]] = compareFiles.map(file => {
-        val document: MetricDocument[Tag] = FileUtils.fileToMetricDocument(file, fileReader, StringTag(""))
+        val document: MetricDocument[Tag] = FileUtils.fileToMetricDocument(file, fileReader)
         var currentValueOpt: Option[MetricValue[Double]] = None
         var compareRows: Seq[MetricRow] = Seq.empty
         document.rows.foreach({

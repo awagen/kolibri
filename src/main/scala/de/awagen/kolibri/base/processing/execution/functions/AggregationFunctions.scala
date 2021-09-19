@@ -39,12 +39,14 @@ object AggregationFunctions {
     * filter files by regex and aggregate those partial csv results, store the result in file named by outputFilename,
     * in the directorySubDir
     *
-    * @param persistenceDIModule - module holding the persistence objects
-    * @param directorySubDir     - sub-directory where to filter the files and relative to which to store the outputFilename
+    * @param readSubDir     - sub-directory where to filter the files and relative to which to store the outputFilename
+    * @param writeSubDir
     * @param filterRegex         - the regex to filter the files by
+    * @param sampleIdentifierToWeight
     * @param outputFilename      - the output filename (might contain additional path prefix relative to directorySubDir)
     */
-  case class AggregateFromDirectoryByRegexWeighted(directorySubDir: String,
+  case class AggregateFromDirectoryByRegexWeighted(readSubDir: String,
+                                                   writeSubDir: String,
                                                    filterRegex: Regex,
                                                    sampleIdentifierToWeight: WeightProvider[String],
                                                    outputFilename: String) extends Execution[Unit] {
@@ -53,8 +55,8 @@ object AggregationFunctions {
     lazy val directoryReader: DirectoryReader = regexDirectoryReader(filterRegex)
 
     override def execute: Either[TaskFailType, Unit] = {
-      val filteredFiles = directoryReader.listFiles(directorySubDir, _ => true)
-      val aggregator = AggregateFilesWeighted(directorySubDir, filteredFiles, sampleIdentifierToWeight, outputFilename)
+      val filteredFiles: Seq[String] = directoryReader.listFiles(readSubDir, _ => true)
+      val aggregator = AggregateFilesWeighted(writeSubDir, filteredFiles, sampleIdentifierToWeight, outputFilename)
       aggregator.execute
     }
   }
@@ -62,12 +64,12 @@ object AggregationFunctions {
   /**
     * Similar to AggregateFromDirectoryByRegex above, but takes specific filenames (full paths) to aggregate instead of regex
     *
-    * @param persistenceDIModule - module holding the persistence objects
-    * @param directorySubDir     - sub-directory where to filter the files and relative to which to store the outputFilename
+    * @param writeSubDir     - sub-directory where to filter the files and relative to which to store the outputFilename
     * @param files               - the regex to filter the files by
+    * @param sampleIdentifierToWeight
     * @param outputFilename      - the output filename (might contain additional path prefix relative to directorySubDir)
     */
-  case class AggregateFilesWeighted(directorySubDir: String,
+  case class AggregateFilesWeighted(writeSubDir: String,
                                     files: Seq[String],
                                     sampleIdentifierToWeight: WeightProvider[String],
                                     outputFilename: String) extends Execution[Unit] {
@@ -76,7 +78,8 @@ object AggregationFunctions {
     lazy val persistenceModule: PersistenceModule = wire[PersistenceModule]
     val csvFormat: CSVParameterBasedMetricDocumentFormat = CSVParameterBasedMetricDocumentFormat("\t")
 
-    val aggregationIdentifier: Tag = StringTag("ALL1")
+    // dummy tag to aggregate under
+    val aggregationIdentifier: Tag = StringTag("AGG")
 
     lazy val fileReader: FileReader = persistenceModule.persistenceDIModule.fileReader
     lazy val fileWriter: FileWriter[String, _] = persistenceModule.persistenceDIModule.fileWriter
@@ -90,12 +93,12 @@ object AggregationFunctions {
         files.foreach(file => {
           logger.info(s"adding file: $file")
           val weight: Double = sampleIdentifierToWeight.apply(file.split("/").last)
-          val doc: MetricDocument[Tag] = FileUtils.fileToMetricDocument(file, fileReader, aggregationIdentifier).weighted(weight)
+          val doc: MetricDocument[Tag] = FileUtils.fileToMetricDocument(file, fileReader).weighted(weight)
           overallDoc.add(doc, ignoreIdDiff = true)
           logger.info(s"done adding file: $file")
         })
         // now we have the overall document, now we need to write it to file
-        val relativeWritePath = s"${directorySubDir.stripSuffix("/")}/$outputFilename"
+        val relativeWritePath = s"${writeSubDir.stripSuffix("/")}/$outputFilename"
         logger.info(s"writing aggregation to file: $relativeWritePath")
         fileWriter.write(csvFormat.metricDocumentToString(overallDoc), relativeWritePath)
         logger.info(s"done writing aggregation to file: $relativeWritePath")
@@ -106,6 +109,13 @@ object AggregationFunctions {
           logger.error("failed aggregating all", e)
           Left(TaskFailType.FailedByException(e))
       }
+    }
+  }
+
+  case class MultiExecution(executions: Seq[Execution[Any]]) extends Execution[Any] {
+    override def execute: Either[TaskFailType, Any] = {
+      executions.foreach(x => x.execute)
+      Right(())
     }
   }
 

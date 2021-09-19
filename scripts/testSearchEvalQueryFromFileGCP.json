@@ -131,6 +131,7 @@
     },
     "regex": "[(]q=.+[)]",
     "outputFilename": "(ALL1)",
-    "subDir": "testJob"
+    "readSubDir": "testJob",
+    "writeSubDir": "testJob"
   }
 }
