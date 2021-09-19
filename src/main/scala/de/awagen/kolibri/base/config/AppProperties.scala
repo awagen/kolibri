@@ -172,6 +172,21 @@ object AppProperties {
       else None
     }
 
+    val gcpGSBucket: Option[String] = {
+      if (baseConfig.hasPath("kolibri.persistence.gs.bucket")) Some(baseConfig.getString("kolibri.persistence.gs.bucket"))
+      else None
+    }
+
+    val gcpGSBucketPath: Option[String] = {
+      if (baseConfig.hasPath("kolibri.persistence.gs.bucketPath")) Some(baseConfig.getString("kolibri.persistence.gs.bucketPath"))
+      else None
+    }
+
+    val gcpGSProjectID: Option[String] = {
+      if (baseConfig.hasPath("kolibri.persistence.gs.projectID")) Some(baseConfig.getString("kolibri.persistence.gs.projectID"))
+      else None
+    }
+
     val localPersistenceDir: Option[String] = {
       if (baseConfig.hasPath("kolibri.persistence.local.dir")) Some(baseConfig.getString("kolibri.persistence.local.dir"))
       else None

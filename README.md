@@ -40,7 +40,7 @@ Connection refused:
 
 - you might temporarily need to clone kolibri-datatypes and publish locally (see kolibri-datatypes README on instructions)
 - build jar (find it in target folder afterwards): ```./scripts/buildJar.sh```
-- build docker image for local usage: ```sudo docker build . -t kolibri-base:0.1.0-beta3```
+- build docker image for local usage: ```sudo docker build . -t kolibri-base:0.1.0-beta4```
 - run single-node cluster (compute and httpserver role, access via localhost:
   8000): ```./scripts/docker_run_single_node.sh```
     - sets interface of http server to 0.0.0.0 to allow requests from host system to localhost:8000 reach the service
@@ -173,6 +173,31 @@ volumes:
 ```
 Now configure the AWS_PROFILE env var to any profile name you want to assume (and for which the above mounted folder contains
 credentials). See example within docker-compose.yaml.
+
+## Notes on local execution with access to GCP account
+Analogue to the description of enabling AWS access, which refers to a credentials folder,
+for GCP we have to set the env variable ```GOOGLE_APPLICATION_CREDENTIALS``` to the full path
+to the json service account key file (how to create a service account and respective key file
+you can check in the google cloud documentation, its a matter of a few clicks).
+To make it accessible within docker, you have to mount the directory containing the key file on your local machine
+into the container:
+```
+volumes:
+  - [path-to-dir-containing-key-file-on-local-machine]/:/home/kolibri/gcp:ro
+```
+and then setting env variable
+```
+GOOGLE_APPLICATION_CREDENTIALS: '/home/kolibri/gcp/[sa-key-file-name].json'
+```
+This enables the access for the app running within the docker container.
+To utilize google storage for result reading / writing, a few more env variables are needed:
+```
+GCP_GS_BUCKET: [bucket name without gs:// prefix]
+GCP_GS_PATH: [path from bucket root to append to all paths that are requested]
+GCP_GS_PROJECT_ID: [the project id for which the used service account is defined and for which the gs bucket was created]
+PERSISTENCE_MODE: 'GCP'
+```
+With those settings, execution results are stored and read from google storage bucket.
 
 ## Code coverage 
 To calculate code coverage, the sbt-scoverage plugin is used (https://github.com/scoverage/sbt-scoverage).

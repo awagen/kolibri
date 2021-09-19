@@ -17,7 +17,8 @@
 
 package de.awagen.kolibri.base.processing.execution.functions
 
-import de.awagen.kolibri.base.config.di.modules.Modules.PersistenceDIModule
+import com.softwaremill.macwire.wire
+import de.awagen.kolibri.base.config.di.modules.persistence.PersistenceModule
 import de.awagen.kolibri.base.io.reader.{DirectoryReader, FileReader}
 import de.awagen.kolibri.base.io.writer.Writers.FileWriter
 import de.awagen.kolibri.base.processing.execution.functions.FileUtils.regexDirectoryReader
@@ -61,8 +62,7 @@ object AnalyzeFunctions {
   case class ExecutionSummary[+T](result: T, failed: Int, success: Int, failTypeCounts: Map[TaskFailType, Int])
 
 
-  case class GetImprovingAndLoosingFromDirPerRegex(persistenceDIModule: PersistenceDIModule,
-                                                   dir: String,
+  case class GetImprovingAndLoosingFromDirPerRegex(dir: String,
                                                    fileRegex: Regex,
                                                    currentParams: Map[String, Seq[String]],
                                                    compareParams: Seq[Map[String, Seq[String]]],
@@ -70,12 +70,11 @@ object AnalyzeFunctions {
                                                    queryFromFilename: String => String,
                                                    n_best: Int,
                                                    n_worst: Int) extends Execution[ExecutionSummary[Map[String, Map[Map[String, Seq[String]], Seq[(String, String)]]]]] {
-    val directoryReader: DirectoryReader = regexDirectoryReader(fileRegex)
+    lazy val directoryReader: DirectoryReader = regexDirectoryReader(fileRegex)
 
     override def execute: Either[TaskFailType.TaskFailType, ExecutionSummary[Map[String, Map[Map[String, Seq[String]], Seq[(String, String)]]]]] = {
       val filteredFiles = directoryReader.listFiles(dir, _ => true)
       val execution = GetImprovingAndLoosing(
-        persistenceDIModule,
         filteredFiles,
         currentParams,
         compareParams,
@@ -88,21 +87,21 @@ object AnalyzeFunctions {
 
   }
 
-  case class GetImprovingAndLoosing(persistenceDIModule: PersistenceDIModule,
-                                    compareFiles: Seq[String],
+  case class GetImprovingAndLoosing(compareFiles: Seq[String],
                                     currentParams: Map[String, Seq[String]],
                                     compareParams: Seq[Map[String, Seq[String]]],
                                     metricName: String,
                                     queryFromFilename: String => String,
                                     n_best: Int,
                                     n_worst: Int) extends Execution[ExecutionSummary[Map[String, Map[Map[String, Seq[String]], Seq[(String, String)]]]]] {
-    val fileReader: FileReader = persistenceDIModule.fileReader
-    val fileWriter: FileWriter[String, _] = persistenceDIModule.fileWriter
+    lazy val persistenceModule: PersistenceModule = wire[PersistenceModule]
+    lazy val fileReader: FileReader = persistenceModule.persistenceDIModule.fileReader
+    lazy val fileWriter: FileWriter[String, _] = persistenceModule.persistenceDIModule.fileWriter
 
     override def execute: Either[TaskFailType.TaskFailType, ExecutionSummary[Map[String, Map[Map[String, Seq[String]], Seq[(String, String)]]]]] = {
       val result = KeepNBestAndKWorst(n_best, n_worst)
       val seq: Seq[Either[TaskFailType.TaskFailType, Seq[QueryParamValue]]] = compareFiles.map(file => {
-        val document: MetricDocument[Tag] = FileUtils.fileToMetricDocument(file, fileReader, StringTag(""))
+        val document: MetricDocument[Tag] = FileUtils.fileToMetricDocument(file, fileReader)
         var currentValueOpt: Option[MetricValue[Double]] = None
         var compareRows: Seq[MetricRow] = Seq.empty
         document.rows.foreach({

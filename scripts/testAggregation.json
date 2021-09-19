@@ -6,5 +6,6 @@
   },
   "regex": "[(]q=.+[)]",
   "outputFilename": "(ALL2)",
-  "subDir": "testJob"
+  "readSubDir": "testJob",
+  "writeSubDir": "testJob"
 }
