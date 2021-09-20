@@ -18,6 +18,7 @@ val googleCloudStorageClientVersion = "2.1.1"
 val apacheCommonsIOVersion = "2.8.0"
 val kamonVersion = "2.2.0"
 val macwireVersion = "2.4.0"
+val scalacScoverageRuntimeVersion = "1.4.9"
 
 ThisBuild / scalaVersion := "2.13.2"
 ThisBuild / version := "0.1.0-beta4"
@@ -177,7 +178,8 @@ val additionalDependencies = Seq(
   "io.kamon" %% "kamon-prometheus" % kamonVersion,
   "com.softwaremill.macwire" %% "macros" % macwireVersion,
   "com.softwaremill.macwire" %% "util" % macwireVersion,
-  "org.scalamock" %% "scalamock" % scalaMockVersion % Test
+  "org.scalamock" %% "scalamock" % scalaMockVersion % Test,
+  "org.scoverage" %% "scalac-scoverage-runtime" % scalacScoverageRuntimeVersion % Test
 )
 
 
