@@ -26,14 +26,21 @@ import de.awagen.kolibri.datatypes.metrics.aggregation.writer.{CSVParameterBased
 import de.awagen.kolibri.datatypes.stores.MetricDocument
 import de.awagen.kolibri.datatypes.tagging.Tags
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
+import org.slf4j.{Logger, LoggerFactory}
 
 class PersistenceModule {
+
+  lazy val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
   lazy val persistenceDIModule: PersistenceDIModule = AppProperties.config.persistenceMode match {
     case "AWS" => wire[AwsPersistenceModule]
     case "GCP" => wire[GCPPersistenceModule]
     case "LOCAL" => wire[LocalPersistenceModule]
     case "RESOURCE" => wire[ResourcePersistenceModule]
+    case "CLASS" =>
+      val module: String = AppProperties.config.persistenceModuleClass.get
+      logger.info(s"using classloader to load persistence module: $module")
+      this.getClass.getClassLoader.loadClass(module).getDeclaredConstructor().newInstance().asInstanceOf[PersistenceDIModule]
     case _ => wire[LocalPersistenceModule]
   }
 

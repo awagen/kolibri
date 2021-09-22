@@ -193,6 +193,10 @@ object AppProperties {
     }
 
     val persistenceMode: String = baseConfig.getString("kolibri.persistence.mode")
+    val persistenceModuleClass: Option[String] = {
+      if (baseConfig.hasPath("kolibri.persistence.moduleClass")) Some(baseConfig.getString("kolibri.persistence.moduleClass"))
+      else None
+    }
   }
 
 }

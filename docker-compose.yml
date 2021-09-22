@@ -74,7 +74,8 @@ services:
       USE_AGGREGATOR_BACKPRESSURE: 'true'
       AGGREGATOR_RECEIVE_PARALLELISM: 32
       MAX_NR_BATCH_RETRIES: 2
-      PERSISTENCE_MODE: 'LOCAL'
+      PERSISTENCE_MODE: 'CLASS'
+      PERSISTENCE_MODULE_CLASS: 'de.awagen.kolibri.base.config.di.modules.persistence.LocalPersistenceModule'
       AWS_PROFILE: 'developer'
       AWS_S3_BUCKET: 'kolibri-dev'
       AWS_S3_PATH: 'metric_test'
@@ -133,7 +134,8 @@ services:
       USE_AGGREGATOR_BACKPRESSURE: 'true'
       AGGREGATOR_RECEIVE_PARALLELISM: 32
       MAX_NR_BATCH_RETRIES: 2
-      PERSISTENCE_MODE: 'LOCAL'
+      PERSISTENCE_MODE: 'CLASS'
+      PERSISTENCE_MODULE_CLASS: 'de.awagen.kolibri.base.config.di.modules.persistence.LocalPersistenceModule'
       AWS_PROFILE: 'developer'
       AWS_S3_BUCKET: 'kolibri-dev'
       AWS_S3_PATH: 'metric_test'
