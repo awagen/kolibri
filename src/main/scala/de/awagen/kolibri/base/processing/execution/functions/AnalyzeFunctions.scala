@@ -17,7 +17,7 @@
 
 package de.awagen.kolibri.base.processing.execution.functions
 
-import com.softwaremill.macwire.wire
+import de.awagen.kolibri.base.config.AppConfig
 import de.awagen.kolibri.base.config.di.modules.persistence.PersistenceModule
 import de.awagen.kolibri.base.io.reader.{DirectoryReader, FileReader}
 import de.awagen.kolibri.base.io.writer.Writers.FileWriter
@@ -94,7 +94,7 @@ object AnalyzeFunctions {
                                     queryFromFilename: String => String,
                                     n_best: Int,
                                     n_worst: Int) extends Execution[ExecutionSummary[Map[String, Map[Map[String, Seq[String]], Seq[(String, String)]]]]] {
-    lazy val persistenceModule: PersistenceModule = wire[PersistenceModule]
+    lazy val persistenceModule: PersistenceModule = AppConfig.persistenceModule
     lazy val fileReader: FileReader = persistenceModule.persistenceDIModule.fileReader
     lazy val fileWriter: FileWriter[String, _] = persistenceModule.persistenceDIModule.fileWriter
 

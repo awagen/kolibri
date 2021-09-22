@@ -17,10 +17,8 @@
 
 package de.awagen.kolibri.base.io.json
 
-import com.softwaremill.macwire.wire
-import de.awagen.kolibri.base.config.di.modules.persistence.PersistenceModule
+import de.awagen.kolibri.base.config.AppConfig
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSupplier
-import spray.json.{DefaultJsonProtocol, DeserializationException, JsValue, JsonFormat, enrichAny}
 import spray.json._
 
 import scala.io.Source
@@ -36,7 +34,7 @@ object SupplierJsonProtocol extends DefaultJsonProtocol {
           }
         case "FROM_JSON_FILE" =>
           val file = fields("file").convertTo[String]
-          val persistenceModule = wire[PersistenceModule]
+          val persistenceModule = AppConfig.persistenceModule
           val source: Source = persistenceModule.persistenceDIModule.fileReader.getSource(file)
           val mapping = source.getLines().mkString("\n").parseJson.convertTo[Map[String, Seq[String]]]
           new SerializableSupplier[Map[String, Seq[String]]]() {

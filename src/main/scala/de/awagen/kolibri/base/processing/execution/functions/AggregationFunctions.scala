@@ -17,7 +17,7 @@
 
 package de.awagen.kolibri.base.processing.execution.functions
 
-import com.softwaremill.macwire.wire
+import de.awagen.kolibri.base.config.AppConfig
 import de.awagen.kolibri.base.config.di.modules.persistence.PersistenceModule
 import de.awagen.kolibri.base.io.reader.{DirectoryReader, FileReader}
 import de.awagen.kolibri.base.io.writer.Writers.FileWriter
@@ -51,7 +51,7 @@ object AggregationFunctions {
                                                    sampleIdentifierToWeight: WeightProvider[String],
                                                    outputFilename: String) extends Execution[Unit] {
 
-    lazy val persistenceModule: PersistenceModule = wire[PersistenceModule]
+    lazy val persistenceModule: PersistenceModule = AppConfig.persistenceModule
     lazy val directoryReader: DirectoryReader = regexDirectoryReader(filterRegex)
 
     override def execute: Either[TaskFailType, Unit] = {
@@ -75,7 +75,7 @@ object AggregationFunctions {
                                     outputFilename: String) extends Execution[Unit] {
     val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
-    lazy val persistenceModule: PersistenceModule = wire[PersistenceModule]
+    lazy val persistenceModule: PersistenceModule = AppConfig.persistenceModule
     val csvFormat: CSVParameterBasedMetricDocumentFormat = CSVParameterBasedMetricDocumentFormat("\t")
 
     // dummy tag to aggregate under
