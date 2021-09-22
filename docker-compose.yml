@@ -23,7 +23,7 @@ services:
     user: "1000:1000"
 
   kolibri1:
-    image: kolibri-base:0.1.0-beta3
+    image: kolibri-base:0.1.0-beta4
     ports:
       - "8000:8000"
       - "5266:5266"
@@ -74,7 +74,8 @@ services:
       USE_AGGREGATOR_BACKPRESSURE: 'true'
       AGGREGATOR_RECEIVE_PARALLELISM: 32
       MAX_NR_BATCH_RETRIES: 2
-      PERSISTENCE_MODE: 'LOCAL'
+      PERSISTENCE_MODE: 'CLASS'
+      PERSISTENCE_MODULE_CLASS: 'de.awagen.kolibri.base.config.di.modules.persistence.LocalPersistenceModule'
       AWS_PROFILE: 'developer'
       AWS_S3_BUCKET: 'kolibri-dev'
       AWS_S3_PATH: 'metric_test'
@@ -85,7 +86,7 @@ services:
       - ./test-files:/app/test-files
 
   kolibri2:
-    image: kolibri-base:0.1.0-beta3
+    image: kolibri-base:0.1.0-beta4
     ports:
       - "5267:5267"
       - "9096:9096"
@@ -133,7 +134,8 @@ services:
       USE_AGGREGATOR_BACKPRESSURE: 'true'
       AGGREGATOR_RECEIVE_PARALLELISM: 32
       MAX_NR_BATCH_RETRIES: 2
-      PERSISTENCE_MODE: 'LOCAL'
+      PERSISTENCE_MODE: 'CLASS'
+      PERSISTENCE_MODULE_CLASS: 'de.awagen.kolibri.base.config.di.modules.persistence.LocalPersistenceModule'
       AWS_PROFILE: 'developer'
       AWS_S3_BUCKET: 'kolibri-dev'
       AWS_S3_PATH: 'metric_test'

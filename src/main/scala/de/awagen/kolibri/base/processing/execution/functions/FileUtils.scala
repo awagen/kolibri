@@ -35,8 +35,7 @@ object FileUtils {
     * @return
     */
   def fileToMetricDocument(file: String,
-                           fileReader: FileReader,
-                           tag: Tag): MetricDocument[Tag] = {
+                           fileReader: FileReader): MetricDocument[Tag] = {
     val csvFormat: CSVParameterBasedMetricDocumentFormat = CSVParameterBasedMetricDocumentFormat("\t")
     val lines: Seq[String] = fileReader.getSource(file).getLines()
       .filter(line => !line.startsWith("#") && line.trim.nonEmpty)

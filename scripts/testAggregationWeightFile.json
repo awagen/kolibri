@@ -12,5 +12,6 @@
   },
   "regex": "[(]q=.+[)]",
   "outputFilename": "(ALL-Weighted)",
-  "subDir": "testJob"
+  "readSubDir": "testJob",
+  "writeSubDir": "testJob"
 }

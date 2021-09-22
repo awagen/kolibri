@@ -14,12 +14,14 @@ val shapelessVersion = "2.3.3"
 val logbackVersion = "1.2.3"
 val kryoSerializationVersion = "2.2.0"
 val awsSdkVersion = "1.11.713"
+val googleCloudStorageClientVersion = "2.1.1"
 val apacheCommonsIOVersion = "2.8.0"
 val kamonVersion = "2.2.0"
 val macwireVersion = "2.4.0"
+val scalacScoverageRuntimeVersion = "1.4.9"
 
 ThisBuild / scalaVersion := "2.13.2"
-ThisBuild / version := "0.1.0-beta3"
+ThisBuild / version := "0.1.0-beta4"
 
 lazy val jvmOptions = Seq(
   "-Xms1G",
@@ -30,17 +32,17 @@ lazy val jvmOptions = Seq(
 )
 
 // scoverage plugin setting to exclude classes from coverage report
-coverageExcludedPackages := "de\\.awagen\\.kolibri\\.base\\.config\\.*;" +
+coverageExcludedPackages := "de\\.awagen\\.kolibri\\.base\\.config\\..*;" +
   ".*\\.ClusterNode;" +
-  ".*\\.ClusterStates\\..*;" +
-  "de\\.awagen\\.kolibri\\.base\\.actors\\.flows\\.FlowAttributes\\..*;" +
-  "de\\.awagen\\.kolibri\\.base\\.actors\\.work\\.worker\\.ProcessingMessages\\..*;" +
-  "de\\.awagen\\.kolibri\\.base\\.actors\\.work\\.worker\\.JobPartIdentifiers\\..*;" +
+  ".*\\.ClusterStates;" +
+  "de\\.awagen\\.kolibri\\.base\\.actors\\.flows\\.FlowAttributes;" +
+  "de\\.awagen\\.kolibri\\.base\\.actors\\.work\\.worker\\.ProcessingMessages;" +
+  "de\\.awagen\\.kolibri\\.base\\.actors\\.work\\.worker\\.JobPartIdentifiers;" +
   "de\\.awagen\\.kolibri\\.base\\.exceptions\\..*;" +
-  "de\\.awagen\\.kolibri\\.base\\.traits\\.Traits\\..*;" +
+  "de\\.awagen\\.kolibri\\.base\\.traits\\.Traits;" +
   "de\\.awagen\\.kolibri\\.base\\.usecase\\.searchopt\\.domain\\..*;" +
   "de\\.awagen\\.kolibri\\.base\\.usecase\\.searchopt\\.parse\\.ParsingConfig;" +
-  "de\\.awagen\\.kolibri\\.base\\.actors\\.flows\\.GenericFlows\\..*"
+  "de\\.awagen\\.kolibri\\.base\\.actors\\.flows\\.GenericFlows"
 
 envVars in Test := Map("PROFILE" -> "test")
 
@@ -61,6 +63,8 @@ assemblyMergeStrategy in assembly := {
     MergeStrategy.concat
   //HttpRequest.class included since assembly plugin exited due to conflict on akka-http-core library, but was same version (maybe conflict between test and runtime?)
   case x if x.endsWith("HttpRequest.class") =>
+    MergeStrategy.first
+  case x if x.endsWith(".proto") =>
     MergeStrategy.first
   // same class conflicts (too general but resolving for now)
   case x if x.endsWith(".class") =>
@@ -155,7 +159,6 @@ val additionalDependencies = Seq(
   //scala test framework (scalactic is recommended but not required)(http://www.scalatest.org/install)
   "org.scalactic" %% "scalactic" % scalaTestVersion % Test,
   "org.scalatest" %% "scalatest" % scalaTestVersion % Test,
-  "com.typesafe.akka" %% "akka-stream" % akkaVersion,
   "com.typesafe.akka" %% "akka-http" % akkaHttpVersion,
   "com.typesafe.akka" %% "akka-http-spray-json" % akkaHttpVersion,
   "com.typesafe.akka" %% "akka-http2-support" % akkaHttpVersion,
@@ -166,6 +169,7 @@ val additionalDependencies = Seq(
   "com.chuusai" %% "shapeless" % shapelessVersion,
   "io.altoo" %% "akka-kryo-serialization" % kryoSerializationVersion,
   "com.amazonaws" % "aws-java-sdk" % awsSdkVersion,
+  "com.google.cloud" % "google-cloud-storage" % googleCloudStorageClientVersion,
   // kolibri datatypes
   "de.awagen.kolibri" %% "kolibri-datatypes" % kolibriDatatypesVersion,
   "org.slf4j" % "slf4j-api" % sl4jApiVersion,
@@ -174,7 +178,8 @@ val additionalDependencies = Seq(
   "io.kamon" %% "kamon-prometheus" % kamonVersion,
   "com.softwaremill.macwire" %% "macros" % macwireVersion,
   "com.softwaremill.macwire" %% "util" % macwireVersion,
-  "org.scalamock" %% "scalamock" % scalaMockVersion % Test
+  "org.scalamock" %% "scalamock" % scalaMockVersion % Test,
+  "org.scoverage" %% "scalac-scoverage-runtime" % scalacScoverageRuntimeVersion % Test
 )
 
 

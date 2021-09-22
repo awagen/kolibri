@@ -61,7 +61,6 @@ object DirectoryReaderJsonProtocol extends DefaultJsonProtocol {
       }
     }
 
-    // TODO
     override def write(obj: DirectoryReader): JsValue = """{}""".toJson
   }
 
