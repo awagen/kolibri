@@ -20,7 +20,7 @@
       <td>{{job.name}}</td>
       <td>{{job.type}}</td>
       <td>{{job.startTime}}</td>
-      <td>0.3 %</td>
+      <td>{{job.process}}</td>
       <td><button class="btn btn-primary s-circle kill">Kill</button></td>
     </tr>
     </tbody>
@@ -39,6 +39,18 @@ export default {
   setup(props) {
     const runningJobs = ref([])
 
+    function retrieveRunningJobs() {
+      return axios
+          .get('http://localhost:8000/runningJobs')
+          .then(response => {
+            runningJobs.value =  JSON.parse(response.data)
+          })
+    }
+
+    const computedValue = computed(() => {
+      return props.data[0];
+    })
+
     onMounted(() => {
       // let svg = d3.select("#dataviz_area");
       // svg.append("circle")
@@ -46,28 +58,21 @@ export default {
       //     .attr("cy", 120)
       //     .attr("r", 40)
       //     .style("fill", "blue");
-      runningJobs.value = [
-        {"name": "job1", "type": "Parameter Optimization", "startTime": "14 October 1994"},
-        {"name": "job2", "type": "Parameter Optimization", "startTime": "15 October 1994"},
-        {"name": "job3", "type": "Parameter Optimization", "startTime": "16 October 1994"}
-      ]
-      console.log("data: " + props.data.valueOf())
-      console.log("first: " + computedValue.value)
-    })
 
-    const retrieveRunningJobs = computed(() => {
-      axios
-          .get('localhost:2000/runningJobs')
-          .then(response => (this.runningJobs = response))
-    })
+      // runningJobs.value = [
+      //   {"name": "job1", "type": "Parameter Optimization", "startTime": "14 October 1994"},
+      //   {"name": "job2", "type": "Parameter Optimization", "startTime": "15 October 1994"},
+      //   {"name": "job3", "type": "Parameter Optimization", "startTime": "16 October 1994"}
+      // ]
+      //
+      // console.log("data: " + props.data.valueOf())
+      // console.log("first: " + computedValue.value)
 
-    const computedValue = computed(() => {
-      return props.data[0];
+      retrieveRunningJobs()
     })
 
     return {
       runningJobs,
-      retrieveRunningJobs,
       computedValue
     }
   }
