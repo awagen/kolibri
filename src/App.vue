@@ -3,14 +3,14 @@
     <section class="navbar-section">
       <a href="#" class="btn btn-link">Docs</a>
       <a href="#" class="btn btn-link">Examples</a>
+      <a href="#" class="btn btn-link">GitHub</a>
     </section>
     <section class="navbar-center">
       <!-- centered logo or brand -->
       <img id="menu-logo" alt="Kolibri logo" src="./assets/images/kolibri.svg"/>
     </section>
     <section class="navbar-section">
-      <a href="#" class="btn btn-link">Twitter</a>
-      <a href="#" class="btn btn-link">GitHub</a>
+      <a href="#" class="btn btn-link">Create</a>
     </section>
   </header>
 
@@ -48,18 +48,17 @@ export default {
   padding: 1em 8em 0.2em;
 }
 
-header {
-  font-family: GlutenFont;
-}
-
 .btn.btn-link {
   color: #9C9C9C;
   font-size: x-large;
-
 }
 
 .divider {
   border-color: #353535;
+}
+
+.navbar-section a {
+  padding-right: 2em;
 }
 
 </style>

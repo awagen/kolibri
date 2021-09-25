@@ -3,34 +3,42 @@
 <!--    <circle r="25" cx="100" cy="100" fill="purple;"></circle>-->
 <!--  </svg>-->
 
+  <h2 class="runningJobHeader">Running Jobs</h2>
   <table class="table">
     <thead>
     <tr>
-      <th>job name</th>
-      <th>type</th>
-      <th>start date</th>
+      <th>Job Name</th>
+      <th>Type</th>
+      <th>Start</th>
+      <th>Progress</th>
+      <th>Action</th>
     </tr>
     </thead>
     <tbody>
-    <tr>
-      <td>Job1</td>
-      <td>Parameter Optimization</td>
-      <td>14 October 1994</td>
+    <!-- list all running jobs -->
+    <tr v-for="job in runningJobs">
+      <td>{{job.name}}</td>
+      <td>{{job.type}}</td>
+      <td>{{job.startTime}}</td>
+      <td>0.3 %</td>
+      <td><button class="btn btn-primary s-circle kill">Kill</button></td>
     </tr>
     </tbody>
   </table>
-
 </template>
 
 <script>
 import * as d3 from "d3";
-import {computed, onMounted} from "vue";
+import {computed, onMounted, ref} from "vue";
+import axios from "axios";
 
 export default {
   props: {
     data: Array[String]
   },
   setup(props) {
+    const runningJobs = ref([])
+
     onMounted(() => {
       // let svg = d3.select("#dataviz_area");
       // svg.append("circle")
@@ -38,15 +46,30 @@ export default {
       //     .attr("cy", 120)
       //     .attr("r", 40)
       //     .style("fill", "blue");
+      runningJobs.value = [
+        {"name": "job1", "type": "Parameter Optimization", "startTime": "14 October 1994"},
+        {"name": "job2", "type": "Parameter Optimization", "startTime": "15 October 1994"},
+        {"name": "job3", "type": "Parameter Optimization", "startTime": "16 October 1994"}
+      ]
       console.log("data: " + props.data.valueOf())
       console.log("first: " + computedValue.value)
+    })
+
+    const retrieveRunningJobs = computed(() => {
+      axios
+          .get('localhost:2000/runningJobs')
+          .then(response => (this.runningJobs = response))
     })
 
     const computedValue = computed(() => {
       return props.data[0];
     })
 
-    return {}
+    return {
+      runningJobs,
+      retrieveRunningJobs,
+      computedValue
+    }
   }
 
 }
@@ -59,14 +82,13 @@ export default {
 }
 
 table {
-  font-family: GlutenFont;
   font-size: medium;
   color: #9C9C9C;
   border-color: darkgrey;
 }
 
-tbody > tr {
-  background-color: #313131;
+tbody > tr, thead {
+  background-color: #233038;
 }
 
 th, td {
@@ -75,6 +97,16 @@ th, td {
 
 td, th {
   border-bottom: none !important;
+}
+
+.btn.kill {
+  background-color: #5c0003;
+  color: #9C9C9C ;
+  border: none;
+}
+
+.runningJobHeader {
+  padding-top: 1em;
 }
 
 </style>
