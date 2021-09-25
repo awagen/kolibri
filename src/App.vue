@@ -53,6 +53,10 @@ export default {
   font-size: x-large;
 }
 
+.btn-link:hover {
+  color: black !important;
+}
+
 .divider {
   border-color: #353535;
 }
