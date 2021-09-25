@@ -17,7 +17,7 @@
   <!-- divider element -->
   <div class="divider"></div>
 
-  <KolibriHome :data="data" msg="Hello from Kolibri"/>
+  <KolibriHome :data="data"/>
 </template>
 
 <script>
@@ -40,14 +40,12 @@ export default {
 
 <style scoped>
 #menu-logo {
-  width: 100px;
-  margin-left: 10px;
+  width: 7em;
+  filter: invert(40%) sepia(3%) saturate(2476%) hue-rotate(86deg) brightness(118%) contrast(119%);
 }
 
 .navbar {
-  padding-top: 10px;
-  padding-left: 100px;
-  padding-right: 100px;
+  padding: 1em 8em 0.2em;
 }
 
 header {
@@ -55,10 +53,13 @@ header {
 }
 
 .btn.btn-link {
-
-  color: darkblue;
+  color: #9C9C9C;
   font-size: x-large;
 
+}
+
+.divider {
+  border-color: #353535;
 }
 
 </style>
