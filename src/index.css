@@ -1,6 +1,6 @@
 #app {
-  font-family: GlutenFont;
-  /*font-family: "Novacento Sans Wide", "Helvetica", "Tahoma", "Geneva", "Arial", sans-serif;;*/
+  font-family: JosefinSans;
+
   color: #9C9C9C;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -12,6 +12,28 @@
   font-family: GlutenFont;
   src: url(./assets/fonts/Gluten-VariableFont_wght.ttf);
 }
+
+@font-face {
+  font-family: StickNoBills;
+  src: url(./assets/fonts/StickNoBills-VariableFont_wght.ttf);
+}
+
+@font-face {
+  font-family: JosefinSansItalic;
+  src: url(./assets/fonts/JosefinSans-Italic-VariableFont_wght.ttf);
+}
+
+@font-face {
+  font-family: JosefinSans;
+  src: url(./assets/fonts/JosefinSans-VariableFont_wght.ttf);
+}
+
+@font-face {
+  font-family: ArchitectsDaughter;
+  src: url(./assets/fonts/ArchitectsDaughter-Regular.ttf);
+}
+
+
 
 html, body
 {

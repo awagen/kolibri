@@ -3,7 +3,7 @@
 <!--    <circle r="25" cx="100" cy="100" fill="purple;"></circle>-->
 <!--  </svg>-->
 
-  <h2 class="runningJobHeader">Running Jobs</h2>
+  <h2 class="runningJobHeader">RUNNING JOBS</h2>
   <table class="table">
     <thead>
     <tr>
@@ -29,7 +29,7 @@
 
 <script>
 import * as d3 from "d3";
-import {computed, onMounted, ref} from "vue";
+import {computed, onBeforeUnmount, onMounted, ref} from "vue";
 import axios from "axios";
 
 export default {
@@ -38,8 +38,10 @@ export default {
   },
   setup(props) {
     const runningJobs = ref([])
+    const runningJobsRefreshIntervalInMs = ref(10000)
 
     function retrieveRunningJobs() {
+      console.log("executing retrieveRunningJobs")
       return axios
           .get('http://localhost:8000/runningJobs')
           .then(response => {
@@ -68,7 +70,17 @@ export default {
       // console.log("data: " + props.data.valueOf())
       // console.log("first: " + computedValue.value)
 
+      // execute once initially to fill display
       retrieveRunningJobs()
+
+      // execute scheduled in intervals of given length to refresh display
+      window.setInterval(() => {
+        retrieveRunningJobs()
+      }, runningJobsRefreshIntervalInMs.value)
+    })
+
+    onBeforeUnmount(() => {
+      clearInterval()
     })
 
     return {

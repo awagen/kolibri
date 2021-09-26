@@ -1,16 +1,16 @@
 <template>
   <header class="navbar">
     <section class="navbar-section">
-      <a href="#" class="btn btn-link">Docs</a>
-      <a href="#" class="btn btn-link">Examples</a>
-      <a href="#" class="btn btn-link">GitHub</a>
+      <a href="#" class="btn btn-link">DOCS</a>
+      <a href="#" class="btn btn-link">EXAMPLES</a>
+      <a href="#" class="btn btn-link">GITHUB</a>
     </section>
     <section class="navbar-center">
       <!-- centered logo or brand -->
       <img id="menu-logo" alt="Kolibri logo" src="./assets/images/kolibri.svg"/>
     </section>
     <section class="navbar-section">
-      <a href="#" class="btn btn-link">Create</a>
+      <a href="#" class="btn btn-link">CREATE</a>
     </section>
   </header>
 
