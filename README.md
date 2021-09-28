@@ -199,6 +199,70 @@ PERSISTENCE_MODE: 'GCP'
 ```
 With those settings, execution results are stored and read from google storage bucket.
 
+## Status endpoints example outputs
+- jobStates:
+```
+"
+[
+  {
+    "jobId":"testJob",
+    "jobType":"SearchEvaluation",
+    "resultSummary":{"failedBatches":[],"nrOfBatchesSentForProcessing":2,"nrOfBatchesTotal":24,"nrOfResultsReceived":0,"result":"RUNNING"},
+    "startTime":"2021-09-29T01:32:09.292+02:00[CET]"
+  }
+]
+"
+```
+
+- /nodeState:
+```
+[
+{
+  "capacityInfo":
+    {
+      "cpuCapactiy":-1.0,
+      "heapCapactiy":0.930558969033882,
+      "loadCapacity":0.505,
+      "mixCapacity":0.717779484516941},
+      "cpuInfo":{
+          "cpuCombined":-1.0,
+          "cpuStolen":-1.0,
+          "loadAvg":3.96,
+          "nrProcessors":8
+      },
+     "heapInfo":{
+        "heapCommited":1073741824,
+        "heapMax":4294967296,
+        "heapUsed":298246957
+     },
+     "host":"kolibri1",
+     "port":8001
+    },
+{
+  "capacityInfo":
+    {
+      "cpuCapactiy":-1.0,
+      "heapCapactiy":0.9374729155097157,
+      "loadCapacity":0.5925,
+      "mixCapacity":0.7649864577548579},
+      "cpuInfo":{
+        "cpuCombined":-1.0,
+        "cpuStolen":-1.0,
+        "loadAvg":3.26,
+        "nrProcessors":8
+      },
+      "heapInfo":{
+        "heapCommited":1073741824,
+        "heapMax":4294967296,
+        "heapUsed":268551783
+      },
+      "host":"kolibri2",
+      "port":8001
+    }
+]
+```
+
+
 ## Code coverage 
 To calculate code coverage, the sbt-scoverage plugin is used (https://github.com/scoverage/sbt-scoverage).
 The commands to generate the reports are as follows:

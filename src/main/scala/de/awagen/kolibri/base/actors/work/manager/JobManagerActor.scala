@@ -28,7 +28,7 @@ import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.ProcessingRes
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.{ActorRunnableJobGenerator, FinishedJobEvent, ProcessingResult}
 import de.awagen.kolibri.base.actors.work.manager.JobManagerActor._
 import de.awagen.kolibri.base.actors.work.manager.WorkManagerActor.{ExecutionType, GetWorkerStatus, JobBatchMsg}
-import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationState, AggregationStateWithData, AggregationStateWithoutData, ProcessingMessage, ResultSummary}
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationState, AggregationStateWithData, AggregationStateWithoutData, ProcessingMessage, ResultSummary, ShortResultSummary}
 import de.awagen.kolibri.base.config.AppProperties._
 import de.awagen.kolibri.base.config.AppProperties.config.kolibriDispatcherName
 import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions.MapWithCount
@@ -51,6 +51,10 @@ import de.awagen.kolibri.datatypes.values.AggregateValue
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 import org.slf4j.{Logger, LoggerFactory}
 
+import java.text.SimpleDateFormat
+import java.time.format.DateTimeFormatter
+import java.time.{Instant, ZoneId, ZonedDateTime}
+import java.util.Objects
 import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContextExecutor, Future}
@@ -108,6 +112,11 @@ object JobManagerActor {
 
   case class JobStatusInfo(jobId: String, resultSummary: ResultSummary) extends JobManagerEvent
 
+  case class ShortJobStatusInfo(jobId: String,
+                                jobType: String,
+                                startTime: String,
+                                resultSummary: ShortResultSummary) extends JobManagerEvent
+
   case class ACK(jobId: String, batchNr: Int, sender: ActorRef) extends JobManagerEvent
 
   case class MaxTimeExceededEvent(jobId: String) extends JobManagerEvent
@@ -135,6 +144,9 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
 
   val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
+  // date format to submit job start times
+  val df: SimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd")
+
   // if set to true, job manager will expect batches to send back actual results, otherwise will not look at returned data in messages but only at success criteria
   // e.g makes sense in case sending results back is not needed since each batch corresponds to an result by itself
   var expectResultsFromBatchCalculations: Boolean = true
@@ -151,6 +163,8 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
 
   // the batches to be distributed to the workers
   var jobToProcess: IndexedGenerator[BatchType] = _
+  var executionStartZonedDateTime: ZonedDateTime = _
+  var jobType: String = _
 
   // the batch distributor encapsulating the logic of when to release how many new batches for processing and
   // retrying. Its state has to be updated when result comes in or when a batch can be marked as failed
@@ -232,6 +246,16 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
       nrOfBatchesSentForProcessing = batchDistributor.nrDistributed,
       nrOfResultsReceived = batchDistributor.nrResultsAccepted,
       leftoverExpectationsMap = Map(executionExpectationMap.toSeq: _*),
+      failedBatches = batchDistributor.idsFailed
+    )
+  }
+
+  def shortResultSummary(result: ProcessingResult.Value): ShortResultSummary = {
+    ShortResultSummary(
+      result = result,
+      nrOfBatchesTotal = jobToProcess.size,
+      nrOfBatchesSentForProcessing = batchDistributor.nrDistributed,
+      nrOfResultsReceived = batchDistributor.nrResultsAccepted,
       failedBatches = batchDistributor.idsFailed
     )
   }
@@ -341,6 +365,7 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
     log.debug(s"job contains ${cmd.job.size} batches")
     reportResultsTo = sender()
     jobToProcess = cmd.job
+    executionStartZonedDateTime = currentTimeZonedInstance()
     executionConsumer = getExecutionConsumer(jobExpectation(cmd.job.size))
     batchDistributor = getDistributor(jobToProcess, maxNumRetries)
     context.become(processingState)
@@ -386,6 +411,11 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
       maxNrRetries = numRetries)
   }
 
+  def currentTimeZonedInstance(): ZonedDateTime = {
+    val instant = Instant.ofEpochMilli(System.currentTimeMillis())
+    ZonedDateTime.ofInstant(instant, ZoneId.of("CET"))
+  }
+
   def startState: Receive = {
     case testJobMsg: TestPiCalculation =>
       log.debug(s"received job to process: $testJobMsg")
@@ -394,6 +424,8 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
       val jobMsg: SupervisorActor.ProcessActorRunnableJobCmd[Int, Double, Double, MapWithCount[Tag, AggregateValue[Double]]] = testJobMsg.toRunnable
       val numberBatches: Int = jobMsg.processElements.size
       jobToProcess = ByFunctionNrLimitedIndexedGenerator(numberBatches, batchNr => Some(JobBatchMsg(jobMsg.jobId, batchNr, testJobMsg)))
+      executionStartZonedDateTime = currentTimeZonedInstance()
+      jobType = "TestPiCalculation"
       log.debug(s"job contains ${jobToProcess.size} batches")
       executionConsumer = getExecutionConsumer(jobExpectation(jobMsg.processElements.size))
       batchDistributor = getDistributor(jobToProcess, maxNumRetries)
@@ -411,10 +443,12 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
       implicit val timeout: Timeout = Timeout(10 minutes)
       reportResultsTo = sender()
       expectResultsFromBatchCalculations = searchJobMsg.expectResultsFromBatchCalculations
+      jobType = "SearchEvaluation"
       log.info(s"expectResultsFromBatchCalculations: $expectResultsFromBatchCalculations")
       val jobMsg: SupervisorActor.ProcessActorRunnableJobCmd[RequestTemplateBuilderModifier, MetricRow, MetricRow, MetricAggregation[Tag]] = searchJobMsg.toRunnable
       val numberBatches: Int = jobMsg.processElements.size
       jobToProcess = ByFunctionNrLimitedIndexedGenerator(numberBatches, batchNr => Some(JobBatchMsg(jobMsg.jobId, batchNr, searchJobMsg)))
+      executionStartZonedDateTime = currentTimeZonedInstance()
       executionConsumer = getExecutionConsumer(jobExpectation(jobToProcess.size))
       batchDistributor = getDistributor(jobToProcess, maxNumRetries)
       context.become(processingState)
@@ -438,7 +472,16 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
     case CheckIfJobAckReceivedAndRemoveIfNot(batchNr) =>
       checkIfJobAckReceivedAndRemoveIfNot(batchNr)
     case ProvideJobStatus =>
-      sender() ! JobStatusInfo(jobId = jobId, resultSummary = resultSummary(RUNNING))
+      if (Objects.isNull(jobToProcess)) {
+        // TODO: provide some empty status here
+        sender() ! Seq.empty
+      }
+      else {
+        sender() ! ShortJobStatusInfo(jobId = jobId,
+          jobType = jobType,
+          startTime = DateTimeFormatter.ISO_ZONED_DATE_TIME.format(executionStartZonedDateTime),
+          resultSummary = shortResultSummary(RUNNING))
+      }
     case UpdateStateAndCheckForCompletion =>
       log.debug("received UpdateStateAndCheckForCompletion")
       updateSingleBatchExpectations(executionExpectationMap.keys.toSeq)

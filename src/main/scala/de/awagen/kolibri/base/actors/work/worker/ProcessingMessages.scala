@@ -76,4 +76,10 @@ object ProcessingMessages {
       "failedBatches" -> failedBatches).toString
   }
 
+  case class ShortResultSummary(result: ProcessingResult.Value,
+                                nrOfBatchesTotal: Int,
+                                nrOfBatchesSentForProcessing: Int,
+                                nrOfResultsReceived: Int,
+                                failedBatches: Seq[Int]) extends KolibriSerializable
+
 }

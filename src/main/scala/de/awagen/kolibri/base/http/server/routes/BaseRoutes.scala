@@ -14,7 +14,8 @@
   * limitations under the License.
   */
 
-package de.awagen.kolibri.base.http.server
+
+package de.awagen.kolibri.base.http.server.routes
 
 import akka.NotUsed
 import akka.actor.{ActorRef, ActorSystem}
@@ -34,27 +35,28 @@ import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions
 import de.awagen.kolibri.base.processing.JobMessages.{SearchEvaluation, TestPiCalculation}
 import de.awagen.kolibri.base.processing.execution.functions.Execution
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.SearchJobDefinitions
-import org.slf4j.{Logger, LoggerFactory}
 
 import java.util.Objects
 import scala.concurrent.ExecutionContextExecutor
 import scala.concurrent.duration._
 import scala.util.Random
 
-
 /**
   * route examples: https://doc.akka.io/docs/akka-http/current/introduction.html#using-akka-http
   */
 object BaseRoutes {
 
-  private[this] val logger: Logger = LoggerFactory.getLogger(BaseRoutes.getClass)
-  private[this] var supervisorActor: ActorRef = _
+  private[routes] var supervisorActor: ActorRef = _
+  private[routes] var clusterMetricsListenerActor: ActorRef = _
 
   def init(implicit system: ActorSystem): Unit = {
     this.synchronized {
       if (Objects.isNull(supervisorActor)) {
         supervisorActor = system.actorOf(SupervisorActor.props(true)
           .withDispatcher(kolibriDispatcherName))
+      }
+      if (Objects.isNull(clusterMetricsListenerActor)) {
+        clusterMetricsListenerActor = system.actorOf(ClusterMetricsListenerActor.props)
       }
     }
   }

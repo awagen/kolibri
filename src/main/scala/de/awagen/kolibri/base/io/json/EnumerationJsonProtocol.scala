@@ -16,6 +16,7 @@
 
 package de.awagen.kolibri.base.io.json
 
+import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.ProcessingResult
 import de.awagen.kolibri.base.domain.TaskDataKeys
 import de.awagen.kolibri.base.domain.jobdefinitions.ProcessingActorProps.ProcessingActorProps
 import de.awagen.kolibri.base.domain.jobdefinitions.RunnableExpectationGenerators.ExpectationGenerators
@@ -31,6 +32,14 @@ import spray.json.{DefaultJsonProtocol, DeserializationException, JsString, JsVa
 
 object EnumerationJsonProtocol extends DefaultJsonProtocol {
 
+  implicit object processingResultFormat extends EnumerationProtocol[ProcessingResult.Value] {
+    override def read(json: JsValue): ProcessingResult.Value = {
+      json match {
+        case JsString(txt) => ProcessingResult.withName(txt)
+        case e => throw DeserializationException(s"Expected a value from ProcessingResult.Value but got value $e")
+      }
+    }
+  }
 
   implicit object expectationGeneratorFormat extends EnumerationProtocol[ExpectationGenerators] {
     override def read(json: JsValue): ExpectationGenerators = {

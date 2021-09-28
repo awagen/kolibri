@@ -119,12 +119,7 @@ object AppProperties {
     val waitForSynchronousTaskComplete: FiniteDuration = FiniteDuration(baseConfig.getInt("kolibri.job.tasks.waitForSynchronousTaskCompleteInMs"), MILLISECONDS)
 
     val formatType: String = baseConfig.getString("kolibri.format.metricDocumentFormatType")
-    val metricDocumentFormat: MetricDocumentFormat = formatType match {
-      case "parameter" =>
-        CSVParameterBasedMetricDocumentFormat(columnSeparator = "\t")
-      case _ =>
-        CSVParameterBasedMetricDocumentFormat(columnSeparator = "\t")
-    }
+    val metricDocumentFormat: MetricDocumentFormat = CSVParameterBasedMetricDocumentFormat(columnSeparator = "\t")
 
     val writerType: String = baseConfig.getString("kolibri.writer.type")
 

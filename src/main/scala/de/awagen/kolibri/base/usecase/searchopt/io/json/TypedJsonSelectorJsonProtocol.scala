@@ -35,7 +35,6 @@ object TypedJsonSelectorJsonProtocol extends DefaultJsonProtocol {
         TypedJsonSeqSelector(name, selector, fields("castType").convertTo[JsonTypeCast])
     }
 
-    // TODO
     override def write(obj: TypedJsonSeqSelector): JsValue = """{}""".toJson
   }
 
@@ -48,7 +47,6 @@ object TypedJsonSelectorJsonProtocol extends DefaultJsonProtocol {
         TypedJsonSingleValueSelector(name, selector, typeCast)
     }
 
-    // TODO
     override def write(obj: TypedJsonSingleValueSelector): JsValue = """{}""".toJson
   }
 
