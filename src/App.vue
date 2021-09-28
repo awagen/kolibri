@@ -17,7 +17,7 @@
   <!-- divider element -->
   <div class="divider"></div>
   <ServiceStatus/>
-  <KolibriHome :data="data"/>
+  <KolibriHome/>
 </template>
 
 <script>
