@@ -16,18 +16,20 @@
 
   <!-- divider element -->
   <div class="divider"></div>
-
+  <ServiceStatus/>
   <KolibriHome :data="data"/>
 </template>
 
 <script>
 import {ref} from 'vue';
 import KolibriHome from './components/KolibriHome.vue'
+import ServiceStatus from "./components/ServiceStatus.vue";
 
 export default {
 
   components: {
-    KolibriHome
+    KolibriHome,
+    ServiceStatus
   },
   setup() {
     const data = ref([10, 40, 15, 25, 50])

@@ -46,6 +46,8 @@ export default {
           .get('http://localhost:8000/runningJobs')
           .then(response => {
             runningJobs.value =  JSON.parse(response.data)
+          }).catch(_ => {
+            runningJobs.value = []
           })
     }
 
