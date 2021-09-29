@@ -17,6 +17,7 @@
   <!-- divider element -->
   <div class="divider"></div>
   <ServiceStatus/>
+  <NodeGraph/>
   <KolibriHome/>
 </template>
 
@@ -24,12 +25,14 @@
 import {ref} from 'vue';
 import KolibriHome from './components/KolibriHome.vue'
 import ServiceStatus from "./components/ServiceStatus.vue";
+import NodeGraph from "./components/NodeGraph.vue";
 
 export default {
 
   components: {
     KolibriHome,
-    ServiceStatus
+    ServiceStatus,
+    NodeGraph
   },
   setup() {
     const data = ref([10, 40, 15, 25, 50])
