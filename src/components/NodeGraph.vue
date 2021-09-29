@@ -17,7 +17,7 @@
 
 text {
   pointer-events: none;
-  font: 20px sans-serif;
+  font: 16px sans-serif;
 }
 </style>
 
@@ -81,12 +81,18 @@ export default {
       //     .attr("dy", `${circle_radius_in_em + 0.1}em`)
 
       worker_coordinates.forEach(worker_loc => {
-        svg.append("g")
-            .append("circle")
+        let workerGroup = svg.append("g")
+        workerGroup.append("circle")
             .attr("r", `${circle_radius_in_em}em`)
             .style("fill", "#596460")
             .attr("cx", `${worker_loc[0]}em`)
             .attr("cy", `${worker_loc[1]}em`)
+        workerGroup
+            .append("text")
+            .text('{"load": 0.95, "heap": 80%}')
+            .attr("dx", `${worker_loc[0] + 2}em`)
+            .attr("dy", `${worker_loc[1] + 0.4}em`)
+            .style("fill", "#9C9C9C")
       })
       console.info("created svg")
       console.log(svg)
@@ -94,11 +100,10 @@ export default {
       // hack around sizing of svg, which doesnt dynamically adjust height
       if (worker_coordinates.length > 0) {
         d3.select("#my_dataviz")
-            .html(`<svg style="height:${worker_coordinates.length * 4}em">${svg.html()}</svg>`)
-      }
-      else {
+            .html(`<svg style="height:${worker_coordinates.length * 4}em; width: 600px">${svg.html()}</svg>`)
+      } else {
         d3.select("#my_dataviz")
-            .html(`<svg style="height:${3 * circle_radius_in_em}em">${svg.html()}</svg>`)
+            .html(`<svg style="height:${3 * circle_radius_in_em}em; width: 600px">${svg.html()}</svg>`)
       }
       return svg
     }
