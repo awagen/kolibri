@@ -17,28 +17,52 @@
 
 text {
   pointer-events: none;
-  font: 16px sans-serif;
+  font: 14px sans-serif;
 }
 </style>
 
 <script>
 import * as d3 from "d3";
 import {onMounted, ref} from "vue";
+import axios from "axios";
 
 export default {
   props: {},
   setup() {
+    const refreshIntervalInMs = 5000
+    let nodeStates = []
+
+    function retrieveNodeStatus() {
+      console.log("executing retrieveNodeStatus")
+      return axios
+          .get("http://localhost:8000/nodeState")
+          .then(response => {
+            let data = response.data
+            // TODO: remove, must come from backend itself
+            data[0]["type"] = "supervisor"
+            data.slice(1,data.length).forEach(d => d["type"] = "worker")
+            nodeStates = data
+          }).catch(_ => {
+            nodeStates = []
+          })
+          .finally(() => svgElementFromNodes(nodeStates))
+    }
+
     function svgElementFromNodes(nodes) {
-      console.info("calling svg element creation")
-      console.log(nodes)
       let supervisor = nodes.filter(x => x["type"] === "supervisor")[0];
-      console.log(supervisor)
-      let workers = nodes.filter(x => x["type"] !== "supervisor");
+      let workers = nodes.filter(x => x["type"] !== "supervisor").map(worker => {
+            let worker_state = {}
+            worker_state["avgCpuUsage"] = (worker["cpuInfo"]["loadAvg"] / worker["cpuInfo"]["nrProcessors"]).toFixed(2) + "%"
+            worker_state["heapUsage"] = (worker["heapInfo"]["heapUsed"] / worker["heapInfo"]["heapMax"]).toFixed(2) + "%"
+            worker_state["host"] = worker["host"]
+            worker_state["port"] = worker["port"]
+            return worker_state
+          });
+
       if (supervisor == null) {
         console.info("no supervisor node found")
         return ""
       }
-      console.log(workers)
 
       // create the container svg
       let svg = d3.create("svg")
@@ -52,8 +76,6 @@ export default {
         worker_coordinates.push([worker_start_x_in_em, worker_start_y_in_em])
         worker_start_y_in_em += 4.0
       })
-      console.log(worker_coordinates)
-
       worker_coordinates.forEach(worker_loc => {
         svg
             .append("line")
@@ -74,33 +96,26 @@ export default {
           .style("fill", "#4E616D")
           .attr("cx", `${circle_radius_in_em}em`)
           .attr("cy", `${circle_radius_in_em}em`)
-      // supervisorGroup
-      //     .append("text")
-      //     .text("S")
-      //     .attr("dx", `${circle_radius_in_em / 2.0 + 0.1}em`)
-      //     .attr("dy", `${circle_radius_in_em + 0.1}em`)
 
-      worker_coordinates.forEach(worker_loc => {
+      worker_coordinates.forEach(function (worker_loc, index) {
         let workerGroup = svg.append("g")
         workerGroup.append("circle")
             .attr("r", `${circle_radius_in_em}em`)
             .style("fill", "#596460")
             .attr("cx", `${worker_loc[0]}em`)
             .attr("cy", `${worker_loc[1]}em`)
+        let load_info = workers[index]
         workerGroup
             .append("text")
-            .text('{"load": 0.95, "heap": 80%}')
-            .attr("dx", `${worker_loc[0] + 2}em`)
+            .text(JSON.stringify(load_info))
+            .attr("dx", `${worker_loc[0] + 4}em`)
             .attr("dy", `${worker_loc[1] + 0.4}em`)
             .style("fill", "#9C9C9C")
       })
-      console.info("created svg")
-      console.log(svg)
-      console.info("svg html:" + svg.html())
       // hack around sizing of svg, which doesnt dynamically adjust height
       if (worker_coordinates.length > 0) {
         d3.select("#my_dataviz")
-            .html(`<svg style="height:${worker_coordinates.length * 4}em; width: 600px">${svg.html()}</svg>`)
+            .html(`<svg style="height:${worker_coordinates.length * 4}em; width: 800px">${svg.html()}</svg>`)
       } else {
         d3.select("#my_dataviz")
             .html(`<svg style="height:${3 * circle_radius_in_em}em; width: 600px">${svg.html()}</svg>`)
@@ -109,44 +124,11 @@ export default {
     }
 
     onMounted(() => {
-      // test nodes
-      let nodes = [
-        {
-          "type": "supervisor",
-          "name": "node1"
-        },
-        {
-          "type": "worker",
-          "name": "node2"
-        },
-        {
-          "type": "worker",
-          "name": "node3"
-        },
-        {
-          "type": "worker",
-          "name": "node4"
-        },
-        {
-          "type": "worker",
-          "name": "node4"
-        },
-        {
-          "type": "worker",
-          "name": "node4"
-        },
-        {
-          "type": "worker",
-          "name": "node4"
-        }
-      ];
-      // TODO: instead of fixed element, need to schedule
-      let refreshIntervalInMs = 5000
       // initial call
-      svgElementFromNodes(nodes)
-      // window.setInterval(() => {
-      //   svgElementFromNodes(nodes)
-      // }, refreshIntervalInMs)
+      retrieveNodeStatus()
+      window.setInterval(() => {
+        retrieveNodeStatus()
+      }, refreshIntervalInMs)
 
 
     });
