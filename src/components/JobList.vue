@@ -18,7 +18,7 @@
       <td>{{job.jobType}}</td>
       <td>{{job.startTime}}</td>
       <td>{{job.resultSummary}}</td>
-      <td><button class="btn btn-primary s-circle kill">Kill</button></td>
+      <td><button @click="killJob(job.jobId)" class="btn btn-primary s-circle kill">Kill</button></td>
     </tr>
     </tbody>
   </table>
@@ -46,6 +46,18 @@ export default {
           })
     }
 
+    function killJob(jobId){
+      console.log("executing killJob")
+      return axios
+          .delete('http://localhost:8000/stopJob?jobId=' + jobId)
+          .then(response => {
+            console.info("killJob response: " + response.data)
+          }).catch(e => {
+            console.info("exception on stopJob call: ")
+            console.log(e)
+          })
+    }
+
     onMounted(() => {
       // execute once initially to fill display
       retrieveRunningJobs()
@@ -61,7 +73,8 @@ export default {
     })
 
     return {
-      runningJobs
+      runningJobs,
+      killJob
     }
   }
 

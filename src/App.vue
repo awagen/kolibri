@@ -18,11 +18,11 @@
   <div class="divider"></div>
   <ServiceStatus/>
   <NodeList/>
-  <KolibriHome/>
+  <JobList/>
 </template>
 
 <script>
-import KolibriHome from './components/KolibriHome.vue'
+import JobList from './components/JobList.vue'
 import ServiceStatus from "./components/ServiceStatus.vue";
 import NodeList from "./components/NodeList.vue";
 
@@ -30,7 +30,7 @@ export default {
 
   components: {
     NodeList,
-    KolibriHome,
+    JobList,
     ServiceStatus
   },
   setup() {
