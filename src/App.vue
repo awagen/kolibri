@@ -17,27 +17,24 @@
   <!-- divider element -->
   <div class="divider"></div>
   <ServiceStatus/>
-  <NodeGraph/>
+  <NodeList/>
   <KolibriHome/>
 </template>
 
 <script>
-import {ref} from 'vue';
 import KolibriHome from './components/KolibriHome.vue'
 import ServiceStatus from "./components/ServiceStatus.vue";
-import NodeGraph from "./components/NodeGraph.vue";
+import NodeList from "./components/NodeList.vue";
 
 export default {
 
   components: {
+    NodeList,
     KolibriHome,
-    ServiceStatus,
-    NodeGraph
+    ServiceStatus
   },
   setup() {
-    const data = ref([10, 40, 15, 25, 50])
     return {
-      data
     }
   }
 }
