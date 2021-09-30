@@ -103,9 +103,13 @@ td, th {
 }
 
 .btn.kill {
-  background-color: #5c0003;
+  background-color: #340000;
   color: #9C9C9C ;
   border: none;
+}
+
+.btn.kill:hover {
+  background-color: #5c0003;
 }
 
 .runningJobHeader {
