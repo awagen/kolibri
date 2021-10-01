@@ -45,14 +45,20 @@ After it is executed, images can be pushed and used as follows:
   
 In our case (substitute version accordingly to the version used in docker image tag):
 - ./scripts/kind-with-registry.sh (needed once to create repo and start kind cluster with repo enabled)
-- ```sudo docker tag kolibri-base:0.1.0-alpha2 localhost:5000/kolibri-base:0.1.0-alpha2```
-- ```sudo docker push localhost:5000/kolibri-base:0.1.0-alpha2```
+- Then we tag and push push all images to make them available within kind registry:
+  - ```sudo docker tag kolibri-base:0.1.0-beta5 localhost:5000/kolibri-base:0.1.0-beta5```
+  - ```sudo docker tag response-juggler:0.1.0 localhost:5000/response-juggler:0.1.0```
+  - ```sudo docker push localhost:5000/kolibri-base:0.1.0-beta5```
+  - ```sudo docker push localhost:5000/response-juggler:0.1.0```
 - create namespace: ```sudo kubectl create namespace kolibri```  
 - switch namespace: ```sudo kubens kolibri```  
-- install service: ```sudo helm install kolibri-cluster --debug ./kolibri-service```
+- install kolibri service: ```sudo helm install kolibri-cluster --debug ./kolibri-service```
+- install response-juggler: ```sudo helm install response-juggler --debug ./response-juggler```
 - uninstall service: ``` sudo helm uninstall kolibri-cluster```
+- uninstall response-juggler: ``` sudo helm uninstall response-juggler```
 - to be able to access apps from local host, use port forwarding: 
-e. g ```sudo kubectl port-forward [podName] 80:8000```
+  - service: ```sudo kubectl port-forward [kolibri-service-httpserver-pod-name] 80:8000```
+  - juggler: ```sudo kubectl port-forward [juggler-podName] 81:80```
 so ``` curl localhost:80/hello``` should provide a response (see: https://kubernetes.io/docs/tasks/access-application-cluster/port-forward-access-application-cluster/)
   
   
