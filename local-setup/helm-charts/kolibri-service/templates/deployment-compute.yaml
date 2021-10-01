@@ -29,6 +29,12 @@ spec:
       serviceAccountName: {{ include "kolibri-service.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- if .Values.localVolume.enabled }}
+      volumes:
+        - name: kolibri-pv-local-storage
+          persistentVolumeClaim:
+            claimName: kolibri-pv-claim
+      {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           securityContext:
@@ -42,6 +48,15 @@ spec:
             - name: clusternode
               containerPort: 8001
               protocol: TCP
+            - name: prometheus
+              containerPort: 9095
+            - name: kamonstatus
+              containerPort: 5266
+          {{- if .Values.localVolume.enabled }}
+          volumeMounts:
+            - mountPath: "/home/kolibri/data"
+              name: kolibri-pv-local-storage
+          {{- end }}
           livenessProbe:
             {{- toYaml .Values.service.livenessProbeCompute | nindent 12 }}
           readinessProbe:

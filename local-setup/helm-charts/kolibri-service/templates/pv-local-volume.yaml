@@ -1,0 +1,16 @@
+{{- if .Values.localVolume.enabled }}
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: kolibri-local-volume
+  labels:
+    type: local
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 2Gi
+  accessModes:
+    - ReadWriteMany
+  hostPath:
+    path: {{ .Values.localVolume.hostPath }}
+  {{- end }}
