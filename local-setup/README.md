@@ -66,6 +66,7 @@ In our case (substitute version accordingly to the version used in docker image 
   (located in scripts-folder) to execute an example grid search evaluation (note that both the response-juggler provides randomly
   shuffled results and the judgement list used to evaluate is also just an example with random judgements).
   Note that for this to work, both the install commands for kolibri-cluster and response-juggler need to be executed.
+- for scaling up compute pods: ```sudo kubectl scale --replicas=4 deployment/kolibri-service-compute```
   
 ### Using hpa locally
 - to allow hpa to pickup pod metrics locally, metrics server needs to be installed:
