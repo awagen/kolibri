@@ -60,7 +60,7 @@ environmentalVars:
   MAX_NR_BATCH_RETRIES: '2'
   PERSISTENCE_MODE: 'CLASS'
   PERSISTENCE_MODULE_CLASS: 'de.awagen.kolibri.base.config.di.modules.persistence.LocalPersistenceModule'
-  LOCAL_STORAGE_DIR: '/home/kolibri/data'
+  LOCAL_STORAGE_DIR: '/app/data'
 
 
 environmentalVarsComputeNodes:
@@ -104,7 +104,11 @@ environmentalVarsComputeNodes:
   MAX_NR_BATCH_RETRIES: '2'
   PERSISTENCE_MODE: 'CLASS'
   PERSISTENCE_MODULE_CLASS: 'de.awagen.kolibri.base.config.di.modules.persistence.LocalPersistenceModule'
-  LOCAL_STORAGE_DIR: '/home/kolibri/data'
+  LOCAL_STORAGE_DIR: '/app/data'
+
+volumeMounts:
+  - mountPath: "/app/data"
+    name: kolibri-pv-local-storage
 
 serviceAccount:
   # Specifies whether a service account should be created
@@ -119,16 +123,20 @@ podAnnotations:
   # for faster cluster forming
   service.alpha.kubernetes.io/tolerate-unready-endpoints: "true"
 
-podSecurityContext: { }
-# fsGroup: 2000
+podSecurityContext:
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
 
-securityContext: { }
+securityContext:
   # capabilities:
   #   drop:
   #   - ALL
   # readOnlyRootFilesystem: true
-# runAsNonRoot: true
-# runAsUser: 1000
+#  runAsNonRoot: false
+  runAsUser: 1000
+  runAsGroup: 1000
+  allowPrivilegeEscalation: false
 
 service:
   type: ClusterIP
@@ -216,7 +224,7 @@ autoscalingCompute:
 
 localVolume:
   enabled: true
-  hostPath: [your-local-folder-of-kolibri-base-project]/kolibri-base/kolibri-test/k8sTmp
+  hostPath: /local-data
 
 nodeSelector: { }
 

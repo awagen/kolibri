@@ -19,6 +19,12 @@ containerdConfigPatches:
 - |-
   [plugins."io.containerd.grpc.v1.cri".registry.mirrors."localhost:${reg_port}"]
     endpoint = ["http://${reg_name}:${reg_port}"]
+nodes:
+  - role: control-plane
+    extraMounts:
+      # NOTE: you gotta adjust the path to the folder where kolibri-base is located
+      - hostPath: [your-local-repo-folder]/kolibri-base/kolibri-test/k8sTmp/
+        containerPath: /local-data
 EOF
 
 # connect the registry to the cluster network

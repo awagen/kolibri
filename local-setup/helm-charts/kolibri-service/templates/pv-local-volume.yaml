@@ -3,14 +3,17 @@ apiVersion: v1
 kind: PersistentVolume
 metadata:
   name: kolibri-local-volume
-  labels:
-    type: local
 spec:
-  storageClassName: manual
   capacity:
     storage: 2Gi
+  volumeMode: Filesystem
   accessModes:
-    - ReadWriteMany
+  - ReadWriteMany
+  persistentVolumeReclaimPolicy: Delete
+  storageClassName: standard
+  # for kind setup set path to containerPath the local
+  # node's storage (your local machine's) volume is mounted to
+  # see kind cluster config in kind-with-registry.sh script
   hostPath:
     path: {{ .Values.localVolume.hostPath }}
   {{- end }}

@@ -4,7 +4,7 @@ kind: PersistentVolumeClaim
 metadata:
   name: kolibri-pv-claim
 spec:
-  storageClassName: manual
+  volumeName: kolibri-local-volume
   accessModes:
     - ReadWriteMany
   resources:

@@ -82,8 +82,7 @@ spec:
               containerPort: 5266
           {{- if .Values.localVolume.enabled }}
           volumeMounts:
-            - mountPath: "/home/kolibri/data"
-              name: kolibri-pv-local-storage
+            {{- toYaml .Values.volumeMounts | nindent 12 }}
           {{- end }}
           livenessProbe:
             {{- toYaml .Values.service.livenessProbe | nindent 12 }}
@@ -117,19 +116,3 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
----
-#apiVersion: v1
-#kind: Service
-#metadata:
-#  name: kolibri-service
-#spec:
-#  # The port the Service listens on
-#  ports:
-#    - port: 8080
-#      # The port the traffic is sent to on the Pod
-#      targetPort: 8000
-#  selector:
-#    app: kolibri-service
-#    type: httpserver
-#    # This Service is available for external traffic.
-#  type: LoadBalancer
