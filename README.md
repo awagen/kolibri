@@ -173,6 +173,8 @@ volumes:
 ```
 Now configure the AWS_PROFILE env var to any profile name you want to assume (and for which the above mounted folder contains
 credentials). See example within docker-compose.yaml.
+Note that if the configuration file is not in the default location ```~/.aws/config```, additionally the env variable
+```AWS_CONFIG_FILE``` has to be set to the directory within the container where the config file was mounted to.
 
 ## Notes on local execution with access to GCP account
 Analogue to the description of enabling AWS access, which refers to a credentials folder,
