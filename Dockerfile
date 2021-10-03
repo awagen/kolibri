@@ -3,6 +3,7 @@ FROM adoptopenjdk/openjdk13:jdk-13.0.2_8-alpine-slim
 ENV JVM_OPTS "-XX:+UseG1GC -Xms512m -Xmx1024m"
 
 RUN mkdir -p /app/logs
+RUN chown -R 1000:1000 /app
 RUN apk --no-cache add curl eudev
 WORKDIR /app
 
