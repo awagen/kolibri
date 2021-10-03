@@ -22,9 +22,11 @@ containerdConfigPatches:
 nodes:
   - role: control-plane
     extraMounts:
-      # NOTE: you gotta adjust the path to the folder where kolibri-base is located
+      # NOTE: you gotta adjust the paths to the root folder where kolibri-base project is located
       - hostPath: [your-local-repo-folder]/kolibri-base/kolibri-test/k8s-test/
         containerPath: /local-data
+      - hostPath: [your-local-repo-folder]/kolibri-base/test-files/
+        containerPath: /local-test-files
 EOF
 
 # connect the registry to the cluster network

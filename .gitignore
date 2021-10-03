@@ -17,5 +17,4 @@ public
 prometheus/data
 grafana/*
 !grafana/dashboards/
-kolibri-test/k8s-test/*
-!kolibri-test/k8s-test/test-files/
+kolibri-test/

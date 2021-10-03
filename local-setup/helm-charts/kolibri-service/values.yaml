@@ -106,10 +106,6 @@ environmentalVarsComputeNodes:
   PERSISTENCE_MODULE_CLASS: 'de.awagen.kolibri.base.config.di.modules.persistence.LocalPersistenceModule'
   LOCAL_STORAGE_DIR: '/app/data'
 
-volumeMounts:
-  - mountPath: "/app/data"
-    name: kolibri-pv-local-storage
-
 serviceAccount:
   # Specifies whether a service account should be created
   create: false
@@ -222,9 +218,16 @@ autoscalingCompute:
   targetCPUUtilizationPercentage: 80
   targetMemoryUtilizationPercentage: 90
 
+volumeMounts:
+  - mountPath: "/app/data"
+    name: kolibri-pv-local-storage-readwrite
+  - mountPath: "/data/test-files"
+    name: kolibri-pv-local-storage-readonly
+
 localVolume:
   enabled: true
-  hostPath: /local-data
+  hostPathReadWrite: /local-data
+  hostPathReadOnly: /local-test-files
 
 nodeSelector: { }
 

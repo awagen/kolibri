@@ -56,9 +56,12 @@ spec:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       {{- if .Values.localVolume.enabled }}
       volumes:
-        - name: kolibri-pv-local-storage
+        - name: kolibri-pv-local-storage-readwrite
           persistentVolumeClaim:
-            claimName: kolibri-pv-claim
+            claimName: kolibri-pv-readwrite-claim
+        - name: kolibri-pv-local-storage-readonly
+          persistentVolumeClaim:
+            claimName: kolibri-pv-readonly-claim
       {{- end }}
       containers:
         - name: {{ .Chart.Name }}

@@ -24,7 +24,7 @@
         "params": {
           "type": "FROM_FILES_LINES",
           "values": {
-            "q": "/app/data/test-files/test-paramfiles/test_queries.txt"
+            "q": "/data/test-files/test-paramfiles/test_queries.txt"
           }
         }
       }
@@ -92,7 +92,7 @@
     "productIdsKey": "productIds",
     "judgementProvider": {
       "type": "FILE_BASED",
-      "filename": "/app/data/test-files/test-judgements/test_judgements.txt"
+      "filename": "/data/test-files/test-judgements/test_judgements.txt"
     },
     "metricsCalculation": {
       "metrics": [
