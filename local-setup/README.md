@@ -30,6 +30,8 @@
 As documented here https://kind.sigs.k8s.io/docs/user/local-registry/
 as of now local docker registry has to be created and images pushed to 
 that specific registry. The script located at ```./scripts/kind-with-registry.sh```
+(delete and remove registry when you dont need it anymore with 
+```docker container stop kind-registry && docker container rm -v kind-registry```)
 reflects the script provided in the above link and sets up a local registry
 for kind and starts kind cluster with that registry enabled.
 Note that it also defines extraMounts, mounting a local directory into kind cluster that 
