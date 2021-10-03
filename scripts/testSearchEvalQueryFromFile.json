@@ -1,5 +1,6 @@
 {
   "jobName": "testJob",
+  "requestTasks": 6,
   "fixedParams": {
     "k1": [
       "v1",

@@ -48,11 +48,17 @@ object JobMessages {
 
   val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
-  trait JobMessage extends KolibriSerializable
+  trait JobMessage extends KolibriSerializable {
 
-  case class TestPiCalculation(jobName: String, nrThrows: Int, batchSize: Int, resultDir: String) extends JobMessage
+    def jobName: String
+    def requestTasks: Int
+
+  }
+
+  case class TestPiCalculation(jobName: String, requestTasks: Int, nrThrows: Int, batchSize: Int, resultDir: String) extends JobMessage
 
   case class SearchEvaluation(jobName: String,
+                              requestTasks: Int,
                               fixedParams: Map[String, Seq[String]],
                               contextPath: String,
                               connections: Seq[Connection],

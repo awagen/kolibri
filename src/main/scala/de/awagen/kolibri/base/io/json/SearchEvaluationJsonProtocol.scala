@@ -42,6 +42,7 @@ object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSu
   implicit val queryAndParamProviderFormat: RootJsonFormat[SearchEvaluation] = jsonFormat(
     (
       jobName: String,
+      requestTasks: Int,
       fixedParams: Map[String, Seq[String]],
       contextPath: String,
       connections: Seq[Connection],
@@ -61,6 +62,7 @@ object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSu
     ) =>
       SearchEvaluation.apply(
         jobName,
+        requestTasks,
         fixedParams,
         contextPath,
         connections,
@@ -79,6 +81,7 @@ object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSu
         expectResultsFromBatchCalculations
       ),
     "jobName",
+    "requestTasks",
     "fixedParams",
     "contextPath",
     "connections",

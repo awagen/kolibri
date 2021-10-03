@@ -26,7 +26,7 @@ import de.awagen.kolibri.base.actors.work.manager.JobManagerActor._
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{ProcessingMessage, ResultSummary}
 import de.awagen.kolibri.base.actors.work.worker.TaskExecutionWorkerActor
 import de.awagen.kolibri.base.config.AppProperties._
-import de.awagen.kolibri.base.config.AppProperties.config.{kolibriDispatcherName, maxNrBatchRetries}
+import de.awagen.kolibri.base.config.AppProperties.config.kolibriDispatcherName
 import de.awagen.kolibri.base.domain.jobdefinitions.Batch
 import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions.MapWithCount
 import de.awagen.kolibri.base.io.writer.Writers.Writer
@@ -142,17 +142,14 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
                                                perJobAggregatorSupplier: () => Aggregator[ProcessingMessage[T], U],
                                                writer: Writer[U, Tag, _],
                                                allowedTimeForJob: FiniteDuration,
-                                               allowedTimeForBatch: FiniteDuration,
-                                               maxNumRetries: Int): ActorRef = {
+                                               allowedTimeForBatch: FiniteDuration): ActorRef = {
     context.actorOf(JobManagerActor.props[T, U](
       experimentId = jobId,
-      runningTaskBaselineCount = config.runningTasksBaselineCount,
       perBatchAggregatorSupplier = perBatchAggregatorSupplier,
       perJobAggregatorSupplier = perJobAggregatorSupplier,
       writer = writer,
       maxProcessDuration = allowedTimeForJob,
-      maxBatchDuration = allowedTimeForBatch,
-      maxNumRetries).withDispatcher(kolibriDispatcherName),
+      maxBatchDuration = allowedTimeForBatch).withDispatcher(kolibriDispatcherName),
       name = JobManagerActor.name(jobId))
   }
 
@@ -200,8 +197,7 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
       cmd.perJobAggregatorSupplier,
       cmd.writer,
       cmd.allowedTimeForJob,
-      cmd.allowedTimePerBatch,
-      maxNrBatchRetries)
+      cmd.allowedTimePerBatch)
   }
 
   override def receive: Receive = {
@@ -282,8 +278,7 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
           perJobAggregatorSupplier = job.perJobAggregatorSupplier,
           writer = job.writer,
           allowedTimeForJob = job.allowedTimeForJob,
-          allowedTimeForBatch = job.allowedTimePerBatch,
-          maxNumRetries = maxNrBatchRetries)
+          allowedTimeForBatch = job.allowedTimePerBatch)
         // registering actor to receive Terminated messages in case a
         // job manager actor stopped
         context.watch(actor)
@@ -353,8 +348,7 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
           job.perJobAggregatorSupplier,
           job.writer,
           job.allowedTimeForJob,
-          job.allowedTimePerBatch,
-          maxNrBatchRetries)
+          job.allowedTimePerBatch)
         context.watch(actor)
         actor ! ProcessJobCmd(mappedIterable)
         val expectation = createJobExecutionExpectation(job.allowedTimeForJob)

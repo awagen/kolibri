@@ -162,8 +162,8 @@ object BaseRoutes {
     corsHandler(
       path("pi_calc_no_ser") {
         post {
-          parameters("jobName", "nrThrows", "batchSize", "resultDir") { (jobName, nrThrows, batchSize, resultDir) => {
-            val msg = TestPiCalculation(jobName, nrThrows.toInt, batchSize.toInt, resultDir)
+          parameters("jobName", "requestTasks", "nrThrows", "batchSize", "resultDir") { (jobName, requestTasks, nrThrows, batchSize, resultDir) => {
+            val msg = TestPiCalculation(jobName, requestTasks.toInt, nrThrows.toInt, batchSize.toInt, resultDir)
             supervisorActor ! msg
             complete(StatusCodes.Accepted, "Processing Pi Calculation (without full ActorRunnable serialization) Example")
           }

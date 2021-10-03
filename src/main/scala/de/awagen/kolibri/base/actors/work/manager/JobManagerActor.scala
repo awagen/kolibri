@@ -28,7 +28,7 @@ import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.ProcessingRes
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.{ActorRunnableJobGenerator, FinishedJobEvent, ProcessingResult}
 import de.awagen.kolibri.base.actors.work.manager.JobManagerActor._
 import de.awagen.kolibri.base.actors.work.manager.WorkManagerActor.{ExecutionType, GetWorkerStatus, JobBatchMsg}
-import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationState, AggregationStateWithData, AggregationStateWithoutData, ProcessingMessage, ResultSummary, ShortResultSummary}
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages._
 import de.awagen.kolibri.base.config.AppProperties._
 import de.awagen.kolibri.base.config.AppProperties.config.kolibriDispatcherName
 import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions.MapWithCount
@@ -68,22 +68,12 @@ object JobManagerActor {
   type BatchType = Any with WithBatchNr
 
   def props[T, U <: WithCount](experimentId: String,
-                               runningTaskBaselineCount: Int,
                                perBatchAggregatorSupplier: () => Aggregator[ProcessingMessage[T], U],
                                perJobAggregatorSupplier: () => Aggregator[ProcessingMessage[T], U],
                                writer: Writer[U, Tag, _],
                                maxProcessDuration: FiniteDuration,
-                               maxBatchDuration: FiniteDuration,
-                               maxNumRetries: Int): Props =
-    Props(new JobManagerActor[T, U](
-      experimentId,
-      runningTaskBaselineCount,
-      perBatchAggregatorSupplier,
-      perJobAggregatorSupplier,
-      writer,
-      maxProcessDuration,
-      maxBatchDuration,
-      maxNumRetries))
+                               maxBatchDuration: FiniteDuration): Props =
+    Props(new JobManagerActor[T, U](experimentId, perBatchAggregatorSupplier, perJobAggregatorSupplier, writer, maxProcessDuration, maxBatchDuration))
 
 
   // cmds telling JobManager to do sth
@@ -131,13 +121,11 @@ object JobManagerActor {
 
 
 class JobManagerActor[T, U <: WithCount](val jobId: String,
-                                         runningTaskBaselineCount: Int,
                                          val perBatchAggregatorSupplier: () => Aggregator[ProcessingMessage[T], U],
                                          val perJobAggregatorSupplier: () => Aggregator[ProcessingMessage[T], U],
                                          val writer: Writer[U, Tag, _],
                                          val maxProcessDuration: FiniteDuration,
-                                         val maxBatchDuration: FiniteDuration,
-                                         val maxNumRetries: Int) extends Actor with ActorLogging with KolibriSerializable {
+                                         val maxBatchDuration: FiniteDuration) extends Actor with ActorLogging with KolibriSerializable {
 
   implicit val system: ActorSystem = context.system
   implicit val ec: ExecutionContextExecutor = context.system.dispatchers.lookup(kolibriDispatcherName)
@@ -164,6 +152,7 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
   // the batches to be distributed to the workers
   var jobToProcess: IndexedGenerator[BatchType] = _
   var executionStartZonedDateTime: ZonedDateTime = _
+  var usedTasksCount: Int = config.runningTasksPerJobDefaultCount
   var jobType: String = _
 
   // the batch distributor encapsulating the logic of when to release how many new batches for processing and
@@ -367,7 +356,7 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
     jobToProcess = cmd.job
     executionStartZonedDateTime = currentTimeZonedInstance()
     executionConsumer = getExecutionConsumer(jobExpectation(cmd.job.size))
-    batchDistributor = getDistributor(jobToProcess, maxNumRetries)
+    batchDistributor = getDistributor(jobToProcess, config.maxNrBatchRetries)
     context.become(processingState)
     // if a maximal process duration is set, schedule message to self to
     // write result and send a fail note, then take PoisonPill
@@ -406,7 +395,7 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
     */
   def getDistributor(dataGen: IndexedGenerator[BatchType], numRetries: Int): Distributor[BatchType, U] = {
     new RetryingDistributor[BatchType, U](
-      maxParallel = runningTaskBaselineCount,
+      maxParallel = usedTasksCount,
       generator = dataGen,
       maxNrRetries = numRetries)
   }
@@ -428,7 +417,8 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
       jobType = "TestPiCalculation"
       log.debug(s"job contains ${jobToProcess.size} batches")
       executionConsumer = getExecutionConsumer(jobExpectation(jobMsg.processElements.size))
-      batchDistributor = getDistributor(jobToProcess, maxNumRetries)
+      usedTasksCount = math.min(testJobMsg.requestTasks, config.maxNrBatchRetries)
+      batchDistributor = getDistributor(jobToProcess, config.maxNrBatchRetries)
       context.become(processingState)
       scheduleCancellables = scheduleCancellables :+ context.system.scheduler.scheduleOnce(maxProcessDuration, self,
         WriteResultAndSendFailNoteAndTakePoisonPillCmd)
@@ -450,7 +440,8 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
       jobToProcess = ByFunctionNrLimitedIndexedGenerator(numberBatches, batchNr => Some(JobBatchMsg(jobMsg.jobId, batchNr, searchJobMsg)))
       executionStartZonedDateTime = currentTimeZonedInstance()
       executionConsumer = getExecutionConsumer(jobExpectation(jobToProcess.size))
-      batchDistributor = getDistributor(jobToProcess, maxNumRetries)
+      usedTasksCount = math.min(searchJobMsg.requestTasks, config.runningTasksPerJobMaxCount)
+      batchDistributor = getDistributor(jobToProcess, config.maxNrBatchRetries)
       context.become(processingState)
       scheduleCancellables = scheduleCancellables :+ context.system.scheduler.scheduleOnce(maxProcessDuration, self,
         WriteResultAndSendFailNoteAndTakePoisonPillCmd)

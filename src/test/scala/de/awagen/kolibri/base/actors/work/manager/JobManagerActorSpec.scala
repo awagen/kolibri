@@ -92,13 +92,11 @@ class JobManagerActorSpec extends KolibriTestKit
       val testProbe: TestProbe = TestProbe()
       val managerProps = JobManagerActor.props(
         experimentId = "testId",
-        runningTaskBaselineCount = 10,
         perBatchAggregatorSupplier = aggregatorSupplier,
         perJobAggregatorSupplier = aggregatorSupplier,
         writer = (_: MapWithCount[Tag, Double], _: Tag) => Right(()),
         maxProcessDuration = 10 minutes,
-        maxBatchDuration = 1 minute,
-        2)
+        maxBatchDuration = 1 minute)
       val jobManagerActor: ActorRef = system.actorOf(managerProps)
       val jobGenerator: IndexedGenerator[ActorRunnable[TaggedInt, Int, Int, MapWithCount[Tag, Double]]] = ByFunctionNrLimitedIndexedGenerator(
         nrOfElements = 4,
