@@ -20,6 +20,8 @@ fullnameOverride: ""
 environmentalVars:
   PROFILE: 'prod'
   ROLES: 'httpserver'
+  KAMON_PROMETHEUS_PORT: '9095'
+  KAMON_STATUSPAGE_PORT: '5266'
   CLUSTER_NODE_HOST: '<getHostAddress>'
   CLUSTER_NODE_PORT: '8001'
   CLUSTER_NODE_BIND_HOST: '0.0.0.0'
@@ -33,10 +35,39 @@ environmentalVars:
   DISCOVERY_SERVICE_NAME: 'kolibri-service'
   KOLIBRI_ACTOR_SYSTEM_NAME: 'KolibriAppSystem'
   DISCOVERY_METHOD: 'kubernetes-api'
+  REQUEST_PARALLELISM: '16'
+  USE_CONNECTION_POOL_FLOW: 'false'
+  RUNNING_TASK_BASELINE_COUNT: '2'
+  KOLIBRI_DISPATCHER_PARALLELISM_MIN: '8'
+  KOLIBRI_DISPATCHER_PARALLELISM_FACTOR: '8.0'
+  KOLIBRI_DISPATCHER_PARALLELISM_MAX: '32'
+  KOLIBRI_DISPATCHER_THROUGHPUT: '10'
+  DEFAULT_DISPATCHER_PARALLELISM_FACTOR: '1.0'
+  DEFAULT_DISPATCHER_PARALLELISM_MAX: '2'
+  DEFAULT_DISPATCHER_PARALLELISM_MIN: '1'
+  HTTP_CLIENT_CONNECTION_TIMEOUT: '5s'
+  HTTP_CLIENT_IDLE_TIMEOUT: '10s'
+  HTTP_CONNECTION_POOL_MAX_OPEN_REQUESTS: '1024'
+  HTTP_CONNECTION_POOL_MAX_RETRIES: '3'
+  HTTP_CONNECTION_POOL_MAX_CONNECTIONS: '1024'
+  HTTP_CONNECTION_POOL_SUBSCRIPTION_TIMEOUT: '60 seconds'
+  USE_RESULT_ELEMENT_GROUPING: 'true'
+  RESULT_ELEMENT_GROUPING_COUNT: '2000'
+  RESULT_ELEMENT_GROUPING_INTERVAL_IN_MS: '1000'
+  RESULT_ELEMENT_GROUPING_PARALLELISM: '1'
+  USE_AGGREGATOR_BACKPRESSURE: 'true'
+  AGGREGATOR_RECEIVE_PARALLELISM: '32'
+  MAX_NR_BATCH_RETRIES: '2'
+  PERSISTENCE_MODE: 'CLASS'
+  PERSISTENCE_MODULE_CLASS: 'de.awagen.kolibri.base.config.di.modules.persistence.LocalPersistenceModule'
+  LOCAL_STORAGE_DIR: '/app/data'
+
 
 environmentalVarsComputeNodes:
   PROFILE: 'prod'
   ROLES: 'compute'
+  KAMON_PROMETHEUS_PORT: '9095'
+  KAMON_STATUSPAGE_PORT: '5266'
   CLUSTER_NODE_HOST: '<getHostAddress>'
   CLUSTER_NODE_PORT: '8001'
   CLUSTER_NODE_BIND_HOST: '0.0.0.0'
@@ -48,6 +79,32 @@ environmentalVarsComputeNodes:
   DISCOVERY_SERVICE_NAME: 'kolibri-service'
   KOLIBRI_ACTOR_SYSTEM_NAME: 'KolibriAppSystem'
   DISCOVERY_METHOD: 'kubernetes-api'
+  REQUEST_PARALLELISM: '16'
+  USE_CONNECTION_POOL_FLOW: 'false'
+  RUNNING_TASK_BASELINE_COUNT: '2'
+  KOLIBRI_DISPATCHER_PARALLELISM_MIN: '8'
+  KOLIBRI_DISPATCHER_PARALLELISM_FACTOR: '8.0'
+  KOLIBRI_DISPATCHER_PARALLELISM_MAX: '32'
+  KOLIBRI_DISPATCHER_THROUGHPUT: '10'
+  DEFAULT_DISPATCHER_PARALLELISM_FACTOR: '1.0'
+  DEFAULT_DISPATCHER_PARALLELISM_MAX: '2'
+  DEFAULT_DISPATCHER_PARALLELISM_MIN: '1'
+  HTTP_CLIENT_CONNECTION_TIMEOUT: '5s'
+  HTTP_CLIENT_IDLE_TIMEOUT: '10s'
+  HTTP_CONNECTION_POOL_MAX_OPEN_REQUESTS: '1024'
+  HTTP_CONNECTION_POOL_MAX_RETRIES: '3'
+  HTTP_CONNECTION_POOL_MAX_CONNECTIONS: '1024'
+  HTTP_CONNECTION_POOL_SUBSCRIPTION_TIMEOUT: '60 seconds'
+  USE_RESULT_ELEMENT_GROUPING: 'true'
+  RESULT_ELEMENT_GROUPING_COUNT: '2000'
+  RESULT_ELEMENT_GROUPING_INTERVAL_IN_MS: '1000'
+  RESULT_ELEMENT_GROUPING_PARALLELISM: '1'
+  USE_AGGREGATOR_BACKPRESSURE: 'true'
+  AGGREGATOR_RECEIVE_PARALLELISM: '32'
+  MAX_NR_BATCH_RETRIES: '2'
+  PERSISTENCE_MODE: 'CLASS'
+  PERSISTENCE_MODULE_CLASS: 'de.awagen.kolibri.base.config.di.modules.persistence.LocalPersistenceModule'
+  LOCAL_STORAGE_DIR: '/app/data'
 
 serviceAccount:
   # Specifies whether a service account should be created
@@ -62,16 +119,20 @@ podAnnotations:
   # for faster cluster forming
   service.alpha.kubernetes.io/tolerate-unready-endpoints: "true"
 
-podSecurityContext: { }
-# fsGroup: 2000
+podSecurityContext:
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
 
-securityContext: { }
+securityContext:
   # capabilities:
   #   drop:
   #   - ALL
   # readOnlyRootFilesystem: true
-# runAsNonRoot: true
-# runAsUser: 1000
+#  runAsNonRoot: false
+  runAsUser: 1000
+  runAsGroup: 1000
+  allowPrivilegeEscalation: false
 
 service:
   type: ClusterIP
@@ -156,6 +217,17 @@ autoscalingCompute:
   maxReplicas: 3
   targetCPUUtilizationPercentage: 80
   targetMemoryUtilizationPercentage: 90
+
+volumeMounts:
+  - mountPath: "/app/data"
+    name: kolibri-pv-local-storage-readwrite
+  - mountPath: "/data/test-files"
+    name: kolibri-pv-local-storage-readonly
+
+localVolume:
+  enabled: true
+  hostPathReadWrite: /local-data
+  hostPathReadOnly: /local-test-files
 
 nodeSelector: { }
 

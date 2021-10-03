@@ -21,9 +21,7 @@
 - kolibri namespace: ```kubectl create namespace kolibri```
 - switching to namespace: ```kubens kolibri```
 - installing helm chart for httpserver: 
-  ```
-  helm install kolibri-cluster --debug ./kolibri-service
-  ```
+  ```helm install kolibri-cluster --debug ./kolibri-service```
 - uninstall httpserver install: ```helm uninstall kolibri-cluster```
 - delete kind cluster: ```kind delete cluster```
 
@@ -34,6 +32,9 @@ as of now local docker registry has to be created and images pushed to
 that specific registry. The script located at ```./scripts/kind-with-registry.sh```
 reflects the script provided in the above link and sets up a local registry
 for kind and starts kind cluster with that registry enabled.
+Note that it also defines extraMounts, mounting a local directory into kind cluster that 
+can then be used in persistent volume definition. This is needed to access files from local file
+system on your machine. **Make sure to adjust the _hostPath_ setting in the script before executing!** 
 After it is executed, images can be pushed and used as follows:
 - (Optional) docker pull (random example image), e.g : ```docker pull gcr.io/google-samples/hello-app:1.0```
 - tagging image to use local kind registry: ```docker tag gcr.io/google-samples/hello-app:1.0 localhost:5000/hello-app:1.0```
@@ -45,16 +46,27 @@ After it is executed, images can be pushed and used as follows:
   
 In our case (substitute version accordingly to the version used in docker image tag):
 - ./scripts/kind-with-registry.sh (needed once to create repo and start kind cluster with repo enabled)
-- ```sudo docker tag kolibri-base:0.1.0-alpha2 localhost:5000/kolibri-base:0.1.0-alpha2```
-- ```sudo docker push localhost:5000/kolibri-base:0.1.0-alpha2```
+- Then we tag and push push all images to make them available within kind registry:
+  - ```sudo docker tag kolibri-base:0.1.0-beta5 localhost:5000/kolibri-base:0.1.0-beta5```
+  - ```sudo docker tag response-juggler:0.1.0 localhost:5000/response-juggler:0.1.0```
+  - ```sudo docker push localhost:5000/kolibri-base:0.1.0-beta5```
+  - ```sudo docker push localhost:5000/response-juggler:0.1.0```
 - create namespace: ```sudo kubectl create namespace kolibri```  
 - switch namespace: ```sudo kubens kolibri```  
-- install service: ```sudo helm install kolibri-cluster --debug ./kolibri-service```
+- install kolibri service: ```sudo helm install kolibri-cluster --debug ./kolibri-service```
+- install response-juggler: ```sudo helm install response-juggler --debug ./response-juggler```
 - uninstall service: ``` sudo helm uninstall kolibri-cluster```
+- uninstall response-juggler: ``` sudo helm uninstall response-juggler```
 - to be able to access apps from local host, use port forwarding: 
-e. g ```sudo kubectl port-forward [podName] 80:8000```
-so ``` curl localhost:80/hello``` should provide a response (see: https://kubernetes.io/docs/tasks/access-application-cluster/port-forward-access-application-cluster/)
-  
+  - service: ```sudo kubectl port-forward [kolibri-service-httpserver-pod-name] 80:8000```
+  - juggler: ```sudo kubectl port-forward [juggler-podName] 81:80```
+``` curl localhost:80/hello``` should provide a response (see: https://kubernetes.io/docs/tasks/access-application-cluster/port-forward-access-application-cluster/)
+- if you want to ssh into a pod: ```sudo kubectl exec -it [pod-name] -- sh``` 
+- after you executed the command for port-forward on the kolibri httpserver pod, you can execute ```start_searcheval_qFromFile_kindCluster.sh```
+  (located in scripts-folder) to execute an example grid search evaluation (note that both the response-juggler provides randomly
+  shuffled results and the judgement list used to evaluate is also just an example with random judgements).
+  Note that for this to work, both the install commands for kolibri-cluster and response-juggler need to be executed.
+- for scaling up compute pods: ```sudo kubectl scale --replicas=4 deployment/kolibri-service-compute```
   
 ### Using hpa locally
 - to allow hpa to pickup pod metrics locally, metrics server needs to be installed:

@@ -20,7 +20,7 @@ import akka.actor.SupervisorStrategy.Stop
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, OneForOneStrategy, PoisonPill, Props, Terminated}
 import akka.pattern.ask
 import akka.util.Timeout
-import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.{ProcessActorRunnableJobCmd, _}
+import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor._
 import de.awagen.kolibri.base.actors.work.manager.JobManagerActor
 import de.awagen.kolibri.base.actors.work.manager.JobManagerActor._
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{ProcessingMessage, ResultSummary}
@@ -55,8 +55,8 @@ import de.awagen.kolibri.datatypes.values.AggregateValue
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 
 import scala.collection.mutable
-import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
+import scala.concurrent.{ExecutionContextExecutor, Future}
 
 
 object SupervisorActor {
@@ -106,6 +106,8 @@ object SupervisorActor {
   case class ProvideJobState(jobId: String) extends SupervisorCmd
 
   case object ProvideAllRunningJobIDs extends SupervisorCmd
+
+  case object ProvideAllRunningJobStates extends SupervisorCmd
 
   case class StopJob(jobId: String) extends SupervisorCmd
 
@@ -203,6 +205,15 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
   }
 
   override def receive: Receive = {
+    case ProvideAllRunningJobStates =>
+      // forward the status-requesting message to processing actor, which will send his response to the initial sender
+      val reportTo: ActorRef = sender()
+      implicit val timeout: Timeout = 1 second
+      val results: Iterable[Future[Any]] = jobIdToActorRefAndExpectation.values.map(actorSetupAndExpectation => {
+        actorSetupAndExpectation._1.executing ? ProvideJobStatus
+      })
+      val overallResults: Future[Iterable[Any]] = Future.sequence(results)
+      overallResults.onComplete(x => reportTo ! x)
     case ProvideAllRunningJobIDs =>
       sender() ! RunningJobs(jobIdToActorRefAndExpectation.keys.toSeq)
     case StopJob(jobId) =>

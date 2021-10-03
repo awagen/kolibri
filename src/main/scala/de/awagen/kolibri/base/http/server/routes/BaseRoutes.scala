@@ -14,12 +14,13 @@
   * limitations under the License.
   */
 
-package de.awagen.kolibri.base.http.server
+
+package de.awagen.kolibri.base.http.server.routes
 
 import akka.NotUsed
 import akka.actor.{ActorRef, ActorSystem}
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpHeader, StatusCodes}
-import akka.http.scaladsl.server.Directives.{as, complete, entity, get, onSuccess, parameters, path, post}
+import akka.http.scaladsl.server.Directives.{as, complete, delete, entity, get, onSuccess, parameters, path, post}
 import akka.http.scaladsl.server.Route
 import akka.pattern.ask
 import akka.stream.scaladsl.Source
@@ -31,30 +32,32 @@ import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor._
 import de.awagen.kolibri.base.cluster.ClusterStates.ClusterStatus
 import de.awagen.kolibri.base.config.AppProperties.config.{analyzeTimeout, internalJobStatusRequestTimeout, kolibriDispatcherName}
 import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions
+import de.awagen.kolibri.base.http.server.routes.StatusRoutes.corsHandler
 import de.awagen.kolibri.base.processing.JobMessages.{SearchEvaluation, TestPiCalculation}
 import de.awagen.kolibri.base.processing.execution.functions.Execution
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.SearchJobDefinitions
-import org.slf4j.{Logger, LoggerFactory}
 
 import java.util.Objects
 import scala.concurrent.ExecutionContextExecutor
 import scala.concurrent.duration._
 import scala.util.Random
 
-
 /**
   * route examples: https://doc.akka.io/docs/akka-http/current/introduction.html#using-akka-http
   */
 object BaseRoutes {
 
-  private[this] val logger: Logger = LoggerFactory.getLogger(BaseRoutes.getClass)
-  private[this] var supervisorActor: ActorRef = _
+  private[routes] var supervisorActor: ActorRef = _
+  private[routes] var clusterMetricsListenerActor: ActorRef = _
 
   def init(implicit system: ActorSystem): Unit = {
     this.synchronized {
       if (Objects.isNull(supervisorActor)) {
         supervisorActor = system.actorOf(SupervisorActor.props(true)
           .withDispatcher(kolibriDispatcherName))
+      }
+      if (Objects.isNull(clusterMetricsListenerActor)) {
+        clusterMetricsListenerActor = system.actorOf(ClusterMetricsListenerActor.props)
       }
     }
   }
@@ -67,15 +70,17 @@ object BaseRoutes {
     }
   }
 
-  lazy val simpleHelloRoute: Route =
-    path("hello") {
-      get {
-        complete(
-          HttpEntity(
-            ContentTypes.`text/html(UTF-8)`,
-            "<h1>'Hi' by Kolibri</h1>"))
-      }
-    }
+  lazy val simpleHelloRoute: Route = {
+    corsHandler(
+      path("hello") {
+        get {
+          complete(
+            HttpEntity(
+              ContentTypes.`text/html(UTF-8)`,
+              "<h1>'Hi' by Kolibri</h1>"))
+        }
+      })
+  }
 
 
   val numbers: Source[Int, NotUsed] = Source.fromIterator(() =>
@@ -83,20 +88,21 @@ object BaseRoutes {
 
   // just an example of utilizing streaming response
   lazy val streamingUserRoutes: Route =
-    path("random") {
-      get {
-        complete(
-          HttpEntity(
-            ContentTypes.`text/plain(UTF-8)`,
-            // transform each number to a chunk of bytes
-            numbers.map(n => {
-              println(n)
-              ByteString(s"$n\n")
-            })
+    corsHandler(
+      path("random") {
+        get {
+          complete(
+            HttpEntity(
+              ContentTypes.`text/plain(UTF-8)`,
+              // transform each number to a chunk of bytes
+              numbers.map(n => {
+                println(n)
+                ByteString(s"$n\n")
+              })
+            )
           )
-        )
-      }
-    }
+        }
+      })
 
 
   def clusterStatusRoutee(implicit system: ActorSystem): Route = {
@@ -108,23 +114,25 @@ object BaseRoutes {
     import de.awagen.kolibri.base.cluster.ClusterStates.ClusterStatusImplicits._
     import spray.json.DefaultJsonProtocol._
 
-    path("clusterstatus") {
-      get {
-        onSuccess(clusterStatusLoggingActor ? ProvideMetrics) {
-          case MetricsProvided(stats: Seq[ClusterStatus]) => complete(stats)
-          case _ => complete(StatusCodes.NotFound)
+    corsHandler(
+      path("clusterstatus") {
+        get {
+          onSuccess(clusterStatusLoggingActor ? ProvideMetrics) {
+            case MetricsProvided(stats: Seq[ClusterStatus]) => complete(stats)
+            case _ => complete(StatusCodes.NotFound)
+          }
         }
-      }
-    }
+      })
   }
 
   def killAllJobs(implicit system: ActorSystem): Route = {
-    path("killall") {
-      post {
-        supervisorActor ! KillAllChildren
-        complete(StatusCodes.OK)
-      }
-    }
+    corsHandler(
+      path("killall") {
+        delete {
+          supervisorActor ! KillAllChildren
+          complete(StatusCodes.OK)
+        }
+      })
   }
 
   // the division of pi * r^2 / (2*r)^2 for throwing dart in unit-square with circle of radius 0.5
@@ -134,118 +142,143 @@ object BaseRoutes {
 
     implicit val timeout: Timeout = Timeout(1 minute)
     implicit val ec: ExecutionContextExecutor = system.dispatchers.lookup(kolibriDispatcherName)
-    path("pi_calc") {
-      parameters("jobName", "nrThrows", "batchSize", "resultDir") { (jobName, nrThrows, batchSize, resultDir) => {
-        val actorRunnableJob = TestJobDefinitions.piEstimationJob(jobName, nrThrows.toInt, batchSize.toInt, resultDir)
-        supervisorActor ! actorRunnableJob
-        complete(StatusCodes.Accepted, "Processing Pi Calculation Example")
-      }
-      }
-    }
+    corsHandler(
+      path("pi_calc") {
+        post {
+          parameters("jobName", "nrThrows", "batchSize", "resultDir") { (jobName, nrThrows, batchSize, resultDir) => {
+            val actorRunnableJob = TestJobDefinitions.piEstimationJob(jobName, nrThrows.toInt, batchSize.toInt, resultDir)
+            supervisorActor ! actorRunnableJob
+            complete(StatusCodes.Accepted, "Processing Pi Calculation Example")
+          }
+          }
+        }
+      })
   }
 
   def executeDistributedPiCalculationExampleWithoutSerialization(implicit system: ActorSystem): Route = {
 
     implicit val timeout: Timeout = Timeout(1 minute)
     implicit val ec: ExecutionContextExecutor = system.dispatchers.lookup(kolibriDispatcherName)
-    path("pi_calc_no_ser") {
-      parameters("jobName", "nrThrows", "batchSize", "resultDir") { (jobName, nrThrows, batchSize, resultDir) => {
-        val msg = TestPiCalculation(jobName, nrThrows.toInt, batchSize.toInt, resultDir)
-        supervisorActor ! msg
-        complete(StatusCodes.Accepted, "Processing Pi Calculation (without full ActorRunnable serialization) Example")
-      }
-      }
-    }
+    corsHandler(
+      path("pi_calc_no_ser") {
+        post {
+          parameters("jobName", "nrThrows", "batchSize", "resultDir") { (jobName, nrThrows, batchSize, resultDir) => {
+            val msg = TestPiCalculation(jobName, nrThrows.toInt, batchSize.toInt, resultDir)
+            supervisorActor ! msg
+            complete(StatusCodes.Accepted, "Processing Pi Calculation (without full ActorRunnable serialization) Example")
+          }
+          }
+        }
+      })
   }
 
   def getJobWorkerStatus(implicit system: ActorSystem): Route = {
 
     implicit val timeout: Timeout = Timeout(1 minute)
     implicit val ec: ExecutionContextExecutor = system.dispatchers.lookup(kolibriDispatcherName)
-    path("job_worker_status") {
-      parameters("jobId") { jobId => {
-        onSuccess(supervisorActor ? GetJobWorkerStatus(jobId)) {
-          e => complete(e.toString)
+    corsHandler(
+      path("job_worker_status") {
+        get {
+          parameters("jobId") { jobId => {
+            onSuccess(supervisorActor ? GetJobWorkerStatus(jobId)) {
+              e => complete(e.toString)
+            }
+          }
+          }
         }
-      }
-      }
-    }
+      })
   }
 
   def getRunningJobIds(implicit system: ActorSystem): Route = {
-
     implicit val timeout: Timeout = Timeout(internalJobStatusRequestTimeout)
     implicit val ec: ExecutionContextExecutor = system.dispatchers.lookup(kolibriDispatcherName)
-    path("getRunningJobIDs") {
-      onSuccess(supervisorActor ? ProvideAllRunningJobIDs) {
-        e => complete(e.toString)
-      }
-    }
+    corsHandler(
+      path("getRunningJobIDs") {
+        get {
+          onSuccess(supervisorActor ? ProvideAllRunningJobIDs) {
+            e => complete(e.toString)
+          }
+        }
+      })
   }
 
 
   def getJobStatus(implicit system: ActorSystem): Route = {
-
     implicit val timeout: Timeout = Timeout(internalJobStatusRequestTimeout)
     implicit val ec: ExecutionContextExecutor = system.dispatchers.lookup(kolibriDispatcherName)
-    path("getJobStatus") {
-      parameters("jobId") {
-        jobId => {
-          onSuccess(supervisorActor ? ProvideJobState(jobId)) {
-            e => complete(e.toString)
+    corsHandler(
+      path("getJobStatus") {
+        get {
+          parameters("jobId") {
+            jobId => {
+              onSuccess(supervisorActor ? ProvideJobState(jobId)) {
+                e => complete(e.toString)
+              }
+            }
           }
         }
-      }
-    }
+      })
   }
 
   def killJob(implicit system: ActorSystem): Route = {
 
     implicit val timeout: Timeout = Timeout(internalJobStatusRequestTimeout)
     implicit val ec: ExecutionContextExecutor = system.dispatchers.lookup(kolibriDispatcherName)
-    path("stopJob") {
-      parameters("jobId") {
-        jobId => {
-          onSuccess(supervisorActor ? StopJob(jobId)) {
-            e => complete(e.toString)
+    corsHandler(
+      path("stopJob") {
+        delete {
+          parameters("jobId") {
+            jobId => {
+              onSuccess(supervisorActor ? StopJob(jobId)) {
+                e => complete(e.toString)
+              }
+            }
           }
         }
-      }
-    }
+      })
   }
 
   def startSearchEval(implicit system: ActorSystem): Route = {
     implicit val ec: ExecutionContextExecutor = system.dispatchers.lookup(kolibriDispatcherName)
     import de.awagen.kolibri.base.io.json.SearchEvaluationJsonProtocol._
-    path("search_eval") {
-      entity(as[SearchEvaluation]) { searchEvaluation =>
-        supervisorActor ! SearchJobDefinitions.searchEvaluationToRunnableJobCmd(searchEvaluation)
-        complete(StatusCodes.Accepted, "Starting search evaluation example")
-      }
-    }
+    corsHandler(
+      path("search_eval") {
+        post {
+          entity(as[SearchEvaluation]) { searchEvaluation =>
+            supervisorActor ! SearchJobDefinitions.searchEvaluationToRunnableJobCmd(searchEvaluation)
+            complete(StatusCodes.Accepted, "Starting search evaluation example")
+          }
+        }
+      })
   }
 
   def startSearchEvalNoSerialize(implicit system: ActorSystem): Route = {
     implicit val ec: ExecutionContextExecutor = system.dispatchers.lookup(kolibriDispatcherName)
     import de.awagen.kolibri.base.io.json.SearchEvaluationJsonProtocol._
-    path("search_eval_no_ser") {
-      entity(as[SearchEvaluation]) { searchEvaluation =>
-        supervisorActor ! searchEvaluation
-        complete(StatusCodes.Accepted, "Starting search evaluation example")
-      }
-    }
+    corsHandler(
+      path("search_eval_no_ser") {
+        post {
+          entity(as[SearchEvaluation]) { searchEvaluation =>
+            supervisorActor ! searchEvaluation
+            complete(StatusCodes.Accepted, "Starting search evaluation example")
+          }
+        }
+      })
   }
 
   def startExecution(implicit system: ActorSystem): Route = {
     implicit val timeout: Timeout = Timeout(analyzeTimeout)
     implicit val ec: ExecutionContextExecutor = system.dispatchers.lookup(kolibriDispatcherName)
     import de.awagen.kolibri.base.io.json.ExecutionJsonProtocol._
-    path("execution") {
-      entity(as[Execution[Any]]) { execution =>
-        onSuccess(supervisorActor ? execution) {
-          e => complete(e.toString)
+    corsHandler(
+      path("execution") {
+        post {
+          entity(as[Execution[Any]]) { execution =>
+            onSuccess(supervisorActor ? execution) {
+              e => complete(e.toString)
+            }
+          }
         }
-      }
-    }
+      })
   }
 }

@@ -14,7 +14,7 @@ tmp
 /.settings
 public
 *.log
-kolibri-test/
 prometheus/data
 grafana/*
 !grafana/dashboards/
+kolibri-test/

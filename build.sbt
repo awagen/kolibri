@@ -21,7 +21,7 @@ val macwireVersion = "2.4.0"
 val scalacScoverageRuntimeVersion = "1.4.9"
 
 ThisBuild / scalaVersion := "2.13.2"
-ThisBuild / version := "0.1.0-beta4"
+ThisBuild / version := "0.1.0-beta5"
 
 lazy val jvmOptions = Seq(
   "-Xms1G",

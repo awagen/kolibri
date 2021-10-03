@@ -40,7 +40,7 @@ Connection refused:
 
 - you might temporarily need to clone kolibri-datatypes and publish locally (see kolibri-datatypes README on instructions)
 - build jar (find it in target folder afterwards): ```./scripts/buildJar.sh```
-- build docker image for local usage: ```sudo docker build . -t kolibri-base:0.1.0-beta4```
+- build docker image for local usage: ```sudo docker build . -t kolibri-base:0.1.0-beta5```
 - run single-node cluster (compute and httpserver role, access via localhost:
   8000): ```./scripts/docker_run_single_node.sh```
     - sets interface of http server to 0.0.0.0 to allow requests from host system to localhost:8000 reach the service
@@ -173,6 +173,8 @@ volumes:
 ```
 Now configure the AWS_PROFILE env var to any profile name you want to assume (and for which the above mounted folder contains
 credentials). See example within docker-compose.yaml.
+Note that if the configuration file is not in the default location ```~/.aws/config```, additionally the env variable
+```AWS_CONFIG_FILE``` has to be set to the directory within the container where the config file was mounted to.
 
 ## Notes on local execution with access to GCP account
 Analogue to the description of enabling AWS access, which refers to a credentials folder,
@@ -199,6 +201,70 @@ PERSISTENCE_MODE: 'GCP'
 ```
 With those settings, execution results are stored and read from google storage bucket.
 
+## Status endpoints example outputs
+- jobStates:
+```
+"
+[
+  {
+    "jobId":"testJob",
+    "jobType":"SearchEvaluation",
+    "resultSummary":{"failedBatches":[],"nrOfBatchesSentForProcessing":2,"nrOfBatchesTotal":24,"nrOfResultsReceived":0,"result":"RUNNING"},
+    "startTime":"2021-09-29T01:32:09.292+02:00[CET]"
+  }
+]
+"
+```
+
+- /nodeState:
+```
+[
+{
+  "capacityInfo":
+    {
+      "cpuCapactiy":-1.0,
+      "heapCapactiy":0.930558969033882,
+      "loadCapacity":0.505,
+      "mixCapacity":0.717779484516941},
+      "cpuInfo":{
+          "cpuCombined":-1.0,
+          "cpuStolen":-1.0,
+          "loadAvg":3.96,
+          "nrProcessors":8
+      },
+     "heapInfo":{
+        "heapCommited":1073741824,
+        "heapMax":4294967296,
+        "heapUsed":298246957
+     },
+     "host":"kolibri1",
+     "port":8001
+    },
+{
+  "capacityInfo":
+    {
+      "cpuCapactiy":-1.0,
+      "heapCapactiy":0.9374729155097157,
+      "loadCapacity":0.5925,
+      "mixCapacity":0.7649864577548579},
+      "cpuInfo":{
+        "cpuCombined":-1.0,
+        "cpuStolen":-1.0,
+        "loadAvg":3.26,
+        "nrProcessors":8
+      },
+      "heapInfo":{
+        "heapCommited":1073741824,
+        "heapMax":4294967296,
+        "heapUsed":268551783
+      },
+      "host":"kolibri2",
+      "port":8001
+    }
+]
+```
+
+
 ## Code coverage 
 To calculate code coverage, the sbt-scoverage plugin is used (https://github.com/scoverage/sbt-scoverage).
 The commands to generate the reports are as follows:
@@ -207,6 +273,11 @@ The commands to generate the reports are as follows:
 
 Its also possible to enable coverage for each build via sbt setting ```coverageEnabled := true```.
 For more settings (such as minimal coverage criteria for build to succeed), see above-referenced project page.
+
+## Local execution - Issues and Fixes
+- starting the setup as provided in docker-compose file can be resource intensive. You might experience within the
+cluster heartbeat failures if not enough resources are available within docker. Thus make sure to allow sufficient 
+resources (e.g >= 4gb ram) to avoid this. The mentioned heartbeat failures will lead to loss of inter-node connections.
 
 ## License
 

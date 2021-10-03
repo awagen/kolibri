@@ -5,9 +5,9 @@ metadata:
   namespace: kolibri
   name: pod-reader
 rules:
-  - apiGroups: [""]
-    resources: ["pods"]
-    verbs: ["get", "watch", "list"]
+  - apiGroups: [ "" ]
+    resources: [ "pods" ]
+    verbs: [ "get", "watch", "list" ]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -54,6 +54,15 @@ spec:
       serviceAccountName: {{ include "kolibri-service.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- if .Values.localVolume.enabled }}
+      volumes:
+        - name: kolibri-pv-local-storage-readwrite
+          persistentVolumeClaim:
+            claimName: kolibri-pv-readwrite-claim
+        - name: kolibri-pv-local-storage-readonly
+          persistentVolumeClaim:
+            claimName: kolibri-pv-readonly-claim
+      {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           securityContext:
@@ -70,6 +79,14 @@ spec:
             - name: clusternode
               containerPort: 8001
               protocol: TCP
+            - name: prometheus
+              containerPort: 9095
+            - name: kamonstatus
+              containerPort: 5266
+          {{- if .Values.localVolume.enabled }}
+          volumeMounts:
+            {{- toYaml .Values.volumeMounts | nindent 12 }}
+          {{- end }}
           livenessProbe:
             {{- toYaml .Values.service.livenessProbe | nindent 12 }}
           readinessProbe:
@@ -102,19 +119,3 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
----
-#apiVersion: v1
-#kind: Service
-#metadata:
-#  name: kolibri-service
-#spec:
-#  # The port the Service listens on
-#  ports:
-#    - port: 8080
-#      # The port the traffic is sent to on the Pod
-#      targetPort: 8000
-#  selector:
-#    app: kolibri-service
-#    type: httpserver
-#    # This Service is available for external traffic.
-#  type: LoadBalancer
