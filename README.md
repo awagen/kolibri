@@ -274,6 +274,11 @@ The commands to generate the reports are as follows:
 Its also possible to enable coverage for each build via sbt setting ```coverageEnabled := true```.
 For more settings (such as minimal coverage criteria for build to succeed), see above-referenced project page.
 
+## Local execution - Issues and Fixes
+- starting the setup as provided in docker-compose file can be resource intensive. You might experience within the
+cluster heartbeat failures if not enough resources are available within docker. Thus make sure to allow sufficient 
+resources (e.g >= 4gb ram) to avoid this. The mentioned heartbeat failures will lead to loss of inter-node connections.
+
 ## License
 
 The kolibri-base code is licensed under APL 2.0.
