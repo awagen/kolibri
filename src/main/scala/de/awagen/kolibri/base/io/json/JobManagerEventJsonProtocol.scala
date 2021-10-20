@@ -25,7 +25,7 @@ import spray.json.{DefaultJsonProtocol, RootJsonFormat}
 object JobManagerEventJsonProtocol extends DefaultJsonProtocol {
 
   implicit val shortResultSummaryFormat: RootJsonFormat[ShortResultSummary] = jsonFormat5(ShortResultSummary)
-  implicit val shortJobStatusFormat: RootJsonFormat[ShortJobStatusInfo] = jsonFormat4(ShortJobStatusInfo)
+  implicit val shortJobStatusFormat: RootJsonFormat[ShortJobStatusInfo] = jsonFormat5(ShortJobStatusInfo)
 
 
 }

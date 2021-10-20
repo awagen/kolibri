@@ -19,6 +19,7 @@ package de.awagen.kolibri.base.processing
 
 import akka.actor.ActorSystem
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor
+import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.ProcessActorRunnableJobCmd
 import de.awagen.kolibri.base.domain.Connection
 import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions
 import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions.MapWithCount
@@ -38,6 +39,7 @@ import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
+import de.awagen.kolibri.datatypes.types.Types.WithCount
 import de.awagen.kolibri.datatypes.values.AggregateValue
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -83,9 +85,15 @@ object JobMessages {
 
 object JobMessagesImplicits {
 
-  implicit class TestPiCalcToRunnable(calc: TestPiCalculation) {
+  trait RunnableConvertible {
 
-    def toRunnable: SupervisorActor.ProcessActorRunnableJobCmd[Int, Double, Double, MapWithCount[Tag, AggregateValue[Double]]] = {
+    def toRunnable(implicit as: ActorSystem, ec: ExecutionContext): ProcessActorRunnableJobCmd[_, _, _, _ <: WithCount]
+
+  }
+
+  implicit class TestPiCalcToRunnable(calc: TestPiCalculation) extends RunnableConvertible {
+
+    def toRunnable(implicit as: ActorSystem, ec: ExecutionContext): SupervisorActor.ProcessActorRunnableJobCmd[Int, Double, Double, MapWithCount[Tag, AggregateValue[Double]]] = {
       TestJobDefinitions.piEstimationJob(
         jobName = calc.jobName,
         nrThrows = calc.nrThrows,
@@ -95,7 +103,7 @@ object JobMessagesImplicits {
 
   }
 
-  implicit class SearchEvaluationToRunnable(eval: SearchEvaluation) {
+  implicit class SearchEvaluationToRunnable(eval: SearchEvaluation) extends RunnableConvertible {
 
     def toRunnable(implicit as: ActorSystem, ec: ExecutionContext): SupervisorActor.ProcessActorRunnableJobCmd[RequestTemplateBuilderModifier, MetricRow, MetricRow, MetricAggregation[Tag]] = {
       SearchJobDefinitions.searchEvaluationToRunnableJobCmd(eval)

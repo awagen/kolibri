@@ -105,6 +105,7 @@ object JobManagerActor {
   case class ShortJobStatusInfo(jobId: String,
                                 jobType: String,
                                 startTime: String,
+                                endTime: Option[String],
                                 resultSummary: ShortResultSummary) extends JobManagerEvent
 
   case class ACK(jobId: String, batchNr: Int, sender: ActorRef) extends JobManagerEvent
@@ -152,6 +153,7 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
   // the batches to be distributed to the workers
   var jobToProcess: IndexedGenerator[BatchType] = _
   var executionStartZonedDateTime: ZonedDateTime = _
+  var executionEndZonedDateTime: ZonedDateTime = _
   var usedTasksCount: Int = config.runningTasksPerJobDefaultCount
   var jobType: String = _
 
@@ -250,6 +252,7 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
   }
 
   def wrapUp: Unit = {
+    executionEndZonedDateTime = currentTimeZonedInstance()
     log.info(s"wrapping up execution of jobId '$jobId'")
     log.info(s"distributed batches: ${batchDistributor.nrDistributed}, " +
       s"received results: ${batchDistributor.nrResultsAccepted}, " +
@@ -471,6 +474,7 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
         sender() ! ShortJobStatusInfo(jobId = jobId,
           jobType = jobType,
           startTime = DateTimeFormatter.ISO_ZONED_DATE_TIME.format(executionStartZonedDateTime),
+          endTime = Option.apply(executionEndZonedDateTime).map(x => DateTimeFormatter.ISO_ZONED_DATE_TIME.format(x)),
           resultSummary = shortResultSummary(RUNNING))
       }
     case UpdateStateAndCheckForCompletion =>

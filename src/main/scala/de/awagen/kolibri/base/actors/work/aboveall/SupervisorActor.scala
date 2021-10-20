@@ -28,9 +28,8 @@ import de.awagen.kolibri.base.actors.work.worker.TaskExecutionWorkerActor
 import de.awagen.kolibri.base.config.AppProperties._
 import de.awagen.kolibri.base.config.AppProperties.config.kolibriDispatcherName
 import de.awagen.kolibri.base.domain.jobdefinitions.Batch
-import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions.MapWithCount
 import de.awagen.kolibri.base.io.writer.Writers.Writer
-import de.awagen.kolibri.base.processing.JobMessages.{SearchEvaluation, TestPiCalculation}
+import de.awagen.kolibri.base.processing.JobMessages.{JobMessage, SearchEvaluation}
 import de.awagen.kolibri.base.processing.classifier.Mapper.FilteringMapper
 import de.awagen.kolibri.base.processing.execution.SimpleTaskExecution
 import de.awagen.kolibri.base.processing.execution.expectation.Expectation.SuccessAndErrorCounts
@@ -40,18 +39,14 @@ import de.awagen.kolibri.base.processing.execution.job.ActorRunnable
 import de.awagen.kolibri.base.processing.execution.task.Task
 import de.awagen.kolibri.base.processing.execution.task.utils.TaskUtils
 import de.awagen.kolibri.base.processing.failure.TaskFailType
-import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
 import de.awagen.kolibri.datatypes.ClassTyped
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
-import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
 import de.awagen.kolibri.datatypes.mutable.stores.TypeTaggedMap
-import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.tagging.TaggedWithType
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 import de.awagen.kolibri.datatypes.types.Types.WithCount
-import de.awagen.kolibri.datatypes.values.AggregateValue
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 
 import scala.collection.mutable
@@ -287,7 +282,8 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
         expectation.init
         jobIdToActorRefAndExpectation(jobId) = (ActorSetup(actor, jobSender), expectation)
       }
-    case e: TestPiCalculation =>
+    case e: JobMessage =>
+      import de.awagen.kolibri.base.processing.JobMessagesImplicits._
       val jobSender = sender()
       val jobId = e.jobName
       if (jobIdToActorRefAndExpectation.contains(jobId)) {
@@ -295,32 +291,23 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
       }
       else {
         log.info("Creating and sending job to JobManager, jobId: {}", jobId)
-        import de.awagen.kolibri.base.processing.JobMessagesImplicits._
-        val runnableJob: ProcessActorRunnableJobCmd[Int, Double, Double, MapWithCount[Tag, AggregateValue[Double]]] = e.toRunnable
-        val actor = runnableJobCmdToJobManager(jobId, runnableJob)
-        context.watch(actor)
-        actor ! e
-        val expectation = createJobExecutionExpectation(runnableJob.allowedTimeForJob)
-        expectation.init
-        jobIdToActorRefAndExpectation(jobId) = (ActorSetup(actor, jobSender), expectation)
-      }
-    case e: SearchEvaluation =>
-      val jobSender = sender()
-      val jobId = e.jobName
-      if (jobIdToActorRefAndExpectation.contains(jobId)) {
-        log.warning("Job with id {} is still running, thus not starting that here", jobId)
-      }
-      else {
-        log.info("Creating and sending job to JobManager, jobId: {}", jobId)
-        import de.awagen.kolibri.base.processing.JobMessagesImplicits._
-        implicit val timeout: Timeout = 10 minutes
-        val runnableJob: ProcessActorRunnableJobCmd[RequestTemplateBuilderModifier, MetricRow, MetricRow, MetricAggregation[Tag]] = e.toRunnable
-        val actor = runnableJobCmdToJobManager(jobId, runnableJob)
-        context.watch(actor)
-        actor ! e
-        val expectation = createJobExecutionExpectation(runnableJob.allowedTimeForJob)
-        expectation.init
-        jobIdToActorRefAndExpectation(jobId) = (ActorSetup(actor, jobSender), expectation)
+        val runnableJobCmdOpt: Option[ProcessActorRunnableJobCmd[_, _, _, _ <: WithCount]] = e match {
+          case msg: TestPiCalcToRunnable =>
+            Some(msg.toRunnable)
+          case msg: SearchEvaluation =>
+            Some(msg.toRunnable)
+          case _ =>
+            log.warning("Passed JobMessage not defined in SupervisorActor job-handling, ignored msg for job {}", e.jobName)
+            None
+        }
+        runnableJobCmdOpt.foreach(runnableJobCmd => {
+          val actor = runnableJobCmdToJobManager(jobId, runnableJobCmd)
+          context.watch(actor)
+          actor ! e
+          val expectation = createJobExecutionExpectation(runnableJobCmd.allowedTimeForJob)
+          expectation.init
+          jobIdToActorRefAndExpectation(jobId) = (ActorSetup(actor, jobSender), expectation)
+        })
       }
     case job: ProcessActorRunnableTaskJobCmd[WithCount] =>
       val jobSender: ActorRef = sender()
