@@ -64,7 +64,6 @@ object ProcessingMessages {
                            nrOfBatchesTotal: Int,
                            nrOfBatchesSentForProcessing: Int,
                            nrOfResultsReceived: Int,
-                           leftoverExpectationsMap: Map[Int, ExecutionExpectation],
                            failedBatches: Seq[Int]) extends KolibriSerializable {
 
     override def toString: String = Map(
@@ -72,14 +71,10 @@ object ProcessingMessages {
       "nrOfBatchesTotal" -> nrOfBatchesTotal,
       "nrOfBatchesSentForProcessing" -> nrOfBatchesSentForProcessing,
       "nrOfResultsReceived" -> nrOfResultsReceived,
-      "leftoverExpectationsMap" -> leftoverExpectationsMap,
       "failedBatches" -> failedBatches).toString
+
   }
 
-  case class ShortResultSummary(result: ProcessingResult.Value,
-                                nrOfBatchesTotal: Int,
-                                nrOfBatchesSentForProcessing: Int,
-                                nrOfResultsReceived: Int,
-                                failedBatches: Seq[Int]) extends KolibriSerializable
+
 
 }

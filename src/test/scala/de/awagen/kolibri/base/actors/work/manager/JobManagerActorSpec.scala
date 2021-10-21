@@ -110,11 +110,13 @@ class JobManagerActorSpec extends KolibriTestKit
         nrOfBatchesTotal = 4,
         nrOfBatchesSentForProcessing = 4,
         nrOfResultsReceived = 4,
-        leftoverExpectationsMap = Map(),
         failedBatches = Seq()
       )
       // then
-      testProbe.expectMsg(2 minutes, FinishedJobEvent("testId", expectedResult))
+      testProbe.expectMsgPF(10 seconds) {
+        case e: FinishedJobEvent if e.jobId == "testId" && e.jobStatusInfo.resultSummary == expectedResult  => true
+        case _ => false
+      }
     }
   }
 

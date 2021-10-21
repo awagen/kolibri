@@ -19,16 +19,17 @@ package de.awagen.kolibri.base.http.server.routes
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.StatusCodes
+import akka.http.scaladsl.server.Directives.{complete, get, onSuccess, path}
 import akka.http.scaladsl.server.Route
 import akka.pattern.ask
 import akka.util.Timeout
 import de.awagen.kolibri.base.actors.clusterinfo.ClusterMetricsListenerActor.{MetricsProvided, ProvideMetrics}
-import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.ProvideAllRunningJobStates
-import de.awagen.kolibri.base.actors.work.manager.JobManagerActor.ShortJobStatusInfo
+import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.{JobHistory, ProvideAllRunningJobStates, ProvideJobHistory}
+import de.awagen.kolibri.base.actors.work.manager.JobManagerActor.JobStatusInfo
 import de.awagen.kolibri.base.config.AppProperties.config.kolibriDispatcherName
 import de.awagen.kolibri.base.http.server.routes.BaseRoutes.{clusterMetricsListenerActor, supervisorActor}
 import de.awagen.kolibri.base.io.json.ClusterStatesJsonProtocol._
-import de.awagen.kolibri.base.io.json.JobManagerEventJsonProtocol.shortJobStatusFormat
+import de.awagen.kolibri.base.io.json.JobManagerEventJsonProtocol.jobStatusFormat
 import spray.json.enrichAny
 
 import scala.concurrent.ExecutionContextExecutor
@@ -57,6 +58,19 @@ object StatusRoutes extends CORSHandler {
     )
   }
 
+  def finishedJobStates(implicit system: ActorSystem): Route = {
+    implicit val timeout: Timeout = Timeout(100 millis)
+    corsHandler(
+      path("finishedJobStates") {
+        get {
+          onSuccess(supervisorActor ? ProvideJobHistory) {
+            case result: JobHistory =>
+              complete(StatusCodes.OK, s"""${result.jobs.toJson.toString()}""")
+          }
+        }
+      })
+  }
+
   def jobStates(implicit system: ActorSystem): Route = {
     implicit val timeout: Timeout = Timeout(100 millis)
     implicit val ec: ExecutionContextExecutor = system.dispatchers.lookup(kolibriDispatcherName)
@@ -65,7 +79,7 @@ object StatusRoutes extends CORSHandler {
       path("jobStates") {
         get {
           onSuccess(supervisorActor ? ProvideAllRunningJobStates) {
-            case result: Success[Seq[ShortJobStatusInfo]] =>
+            case result: Success[Seq[JobStatusInfo]] =>
               complete(StatusCodes.OK, s"""${result.get.toJson.toString()}""")
             case result: Failure[Any] =>
               complete(StatusCodes.ServerError.apply(500)(

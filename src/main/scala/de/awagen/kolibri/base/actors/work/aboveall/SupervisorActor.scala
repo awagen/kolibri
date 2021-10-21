@@ -23,7 +23,7 @@ import akka.util.Timeout
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor._
 import de.awagen.kolibri.base.actors.work.manager.JobManagerActor
 import de.awagen.kolibri.base.actors.work.manager.JobManagerActor._
-import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{ProcessingMessage, ResultSummary}
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.ProcessingMessage
 import de.awagen.kolibri.base.actors.work.worker.TaskExecutionWorkerActor
 import de.awagen.kolibri.base.config.AppProperties._
 import de.awagen.kolibri.base.config.AppProperties.config.kolibriDispatcherName
@@ -43,6 +43,7 @@ import de.awagen.kolibri.datatypes.ClassTyped
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.mutable.stores.TypeTaggedMap
+import de.awagen.kolibri.datatypes.stores.PriorityStores.{BasePriorityStore, PriorityStore}
 import de.awagen.kolibri.datatypes.tagging.TaggedWithType
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
@@ -104,21 +105,25 @@ object SupervisorActor {
 
   case object ProvideAllRunningJobStates extends SupervisorCmd
 
+  case object ProvideJobHistory extends SupervisorCmd
+
   case class StopJob(jobId: String) extends SupervisorCmd
 
   private case object JobHousekeeping extends SupervisorCmd
 
   object ProcessingResult extends Enumeration {
-    val SUCCESS, FAILURE, RUNNING = Value
+    val SUCCESS, FAILURE, RUNNING, UNKNOWN = Value
   }
 
   case class RunningJobs(jobIDs: Seq[String]) extends SupervisorEvent
+
+  case class JobHistory(jobs: Seq[JobStatusInfo]) extends SupervisorEvent
 
   case class ExpectationForJob(jobId: String, expectation: ExecutionExpectation) extends SupervisorEvent
 
   case class JobNotFound(jobId: String) extends SupervisorEvent
 
-  case class FinishedJobEvent(jobId: String, resultSummary: ResultSummary) extends SupervisorEvent
+  case class FinishedJobEvent(jobId: String, jobStatusInfo: JobStatusInfo) extends SupervisorEvent
 
 }
 
@@ -131,6 +136,17 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
   case class ActorSetup(executing: ActorRef, jobSender: ActorRef)
 
   val jobIdToActorRefAndExpectation: mutable.Map[String, (ActorSetup, ExecutionExpectation)] = mutable.Map.empty
+
+  val finishedJobStateOrdering: Ordering[JobStatusInfo] = (x, y) => {
+    val order: Option[Int] = for(
+      endTime1 <- x.endTime;
+      endTime2 <- y.endTime
+    ) yield endTime1.compareTo(endTime2)
+    order.getOrElse(0)
+  }
+  val JOB_HISTORY_PRIORITY_STORE_KEY = "jobs"
+  val finishedJobStateHistory: PriorityStore[String, JobStatusInfo] = BasePriorityStore(10, finishedJobStateOrdering,
+    _ => JOB_HISTORY_PRIORITY_STORE_KEY)
 
   def createJobManagerActor[T, U <: WithCount](jobId: String,
                                                perBatchAggregatorSupplier: () => Aggregator[ProcessingMessage[T], U],
@@ -159,15 +175,15 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
   def createJobExecutionExpectation(allowedDuration: FiniteDuration): ExecutionExpectation = {
     BaseExecutionExpectation(
       fulfillAllForSuccess = Seq(ClassifyingCountExpectation(Map("finishResponse" -> {
-        case e: FinishedJobEvent if e.resultSummary.result == ProcessingResult.SUCCESS => true
+        case e: FinishedJobEvent if e.jobStatusInfo.resultSummary.result == ProcessingResult.SUCCESS => true
         case _ => false
       }), Map("finishResponse" -> 1))),
       fulfillAnyForFail = Seq(
         StopExpectation(
           overallElementCount = 1,
           errorClassifier = {
-            case e: FinishedJobEvent if e.resultSummary.result == ProcessingResult.SUCCESS => SuccessAndErrorCounts(1, 0)
-            case e: FinishedJobEvent if e.resultSummary.result == ProcessingResult.FAILURE => SuccessAndErrorCounts(0, 1)
+            case e: FinishedJobEvent if e.jobStatusInfo.resultSummary.result == ProcessingResult.SUCCESS => SuccessAndErrorCounts(1, 0)
+            case e: FinishedJobEvent if e.jobStatusInfo.resultSummary.result == ProcessingResult.FAILURE => SuccessAndErrorCounts(0, 1)
             case _ => SuccessAndErrorCounts(0, 0)
           },
           overallCountToFailCountFailCriterion = new SerializableFunction1[(Int, Int), Boolean] {
@@ -196,6 +212,8 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
   }
 
   override def receive: Receive = {
+    case ProvideJobHistory =>
+      sender() ! JobHistory(finishedJobStateHistory.result.getOrElse(JOB_HISTORY_PRIORITY_STORE_KEY, Seq.empty))
     case ProvideAllRunningJobStates =>
       // forward the status-requesting message to processing actor, which will send his response to the initial sender
       val reportTo: ActorRef = sender()
@@ -356,6 +374,7 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
         actorSetup.foreach(x => x.jobSender ! event)
       }
       jobIdToActorRefAndExpectation -= event.jobId
+      finishedJobStateHistory.addEntry(event.jobStatusInfo)
     case KillAllChildren => context.children.foreach(x => context.stop(x))
     case GetJobWorkerStatus(jobId) =>
       val reportTo: ActorRef = sender()

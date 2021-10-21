@@ -60,19 +60,21 @@ class SupervisorActorSpec extends KolibriTestKit
     "correctly process ProcessActorRunnableJobCmd" in {
       // given
       val supervisor: ActorRef = system.actorOf(SupervisorActor.props(true))
-      val msg: SupervisorActor.ProcessActorRunnableJobCmd[_,_, _, _ <: WithCount] = generateProcessActorRunnableJobCmd("testId1")
+      val msg: SupervisorActor.ProcessActorRunnableJobCmd[_, _, _, _ <: WithCount] = generateProcessActorRunnableJobCmd("testId1")
       // when
       supervisor ! msg
       // then
-      val expectedResult = ResultSummary(
+      val expectedResultSummary = ResultSummary(
         result = ProcessingResult.SUCCESS,
         nrOfBatchesTotal = 4,
         nrOfBatchesSentForProcessing = 4,
         nrOfResultsReceived = 4,
-        leftoverExpectationsMap = Map(),
         failedBatches = Seq()
       )
-      expectMsg(1 minute, FinishedJobEvent("testId1", expectedResult))
+      expectMsgPF(10 seconds) {
+        case e: FinishedJobEvent if e.jobId == "testId1" && e.jobStatusInfo.resultSummary == expectedResultSummary  => true
+        case _ => false
+      }
     }
 
     "correctly process ProcessActorRunnableTaskJobCmd" in {
@@ -82,15 +84,17 @@ class SupervisorActorSpec extends KolibriTestKit
       // when
       supervisor ! msg
       // then
-      val expectedResult = ResultSummary(
+      val expectedResultSummary = ResultSummary(
         result = ProcessingResult.SUCCESS,
         nrOfBatchesTotal = 5,
         nrOfBatchesSentForProcessing = 5,
         nrOfResultsReceived = 5,
-        leftoverExpectationsMap = Map(),
         failedBatches = Seq()
       )
-      expectMsg(1 minute, FinishedJobEvent("testId2", expectedResult))
+      expectMsgPF(10 seconds) {
+        case e: FinishedJobEvent if e.jobId == "testId2" && e.jobStatusInfo.resultSummary == expectedResultSummary  => true
+        case _ => false
+      }
     }
 
   }

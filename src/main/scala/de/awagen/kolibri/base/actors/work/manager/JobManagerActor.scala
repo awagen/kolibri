@@ -100,13 +100,11 @@ object JobManagerActor {
   // cmds providing some event info to JobManagerActor (e.g in case some result finished computing))
   sealed trait JobManagerEvent extends KolibriSerializable
 
-  case class JobStatusInfo(jobId: String, resultSummary: ResultSummary) extends JobManagerEvent
-
-  case class ShortJobStatusInfo(jobId: String,
-                                jobType: String,
-                                startTime: String,
-                                endTime: Option[String],
-                                resultSummary: ShortResultSummary) extends JobManagerEvent
+  case class JobStatusInfo(jobId: String,
+                           jobType: String,
+                           startTime: String,
+                           endTime: Option[String],
+                           resultSummary: ResultSummary) extends JobManagerEvent
 
   case class ACK(jobId: String, batchNr: Int, sender: ActorRef) extends JobManagerEvent
 
@@ -236,18 +234,17 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
       nrOfBatchesTotal = jobToProcess.size,
       nrOfBatchesSentForProcessing = batchDistributor.nrDistributed,
       nrOfResultsReceived = batchDistributor.nrResultsAccepted,
-      leftoverExpectationsMap = Map(executionExpectationMap.toSeq: _*),
       failedBatches = batchDistributor.idsFailed
     )
   }
 
-  def shortResultSummary(result: ProcessingResult.Value): ShortResultSummary = {
-    ShortResultSummary(
-      result = result,
-      nrOfBatchesTotal = jobToProcess.size,
-      nrOfBatchesSentForProcessing = batchDistributor.nrDistributed,
-      nrOfResultsReceived = batchDistributor.nrResultsAccepted,
-      failedBatches = batchDistributor.idsFailed
+  def unknownJobResultSummary: ResultSummary = {
+    ResultSummary(
+      result = ProcessingResult.UNKNOWN,
+      nrOfBatchesTotal = 0,
+      nrOfBatchesSentForProcessing = 0,
+      nrOfResultsReceived = 0,
+      failedBatches = Seq.empty
     )
   }
 
@@ -267,13 +264,13 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
     scheduleCancellables.foreach(x => x.cancel())
     if (executionConsumer.expectation.succeeded) {
       log.info(s"job with jobId '$jobId' finished successfully, sending response to supervisor")
-      reportResultsTo ! FinishedJobEvent(jobId, resultSummary(ProcessingResult.SUCCESS))
+      reportResultsTo ! FinishedJobEvent(jobId, jobStatusInfo(ProcessingResult.SUCCESS))
       context.become(ignoringAll)
       self ! PoisonPill
     }
     else {
       log.info(s"job with jobId '$jobId' failed, sending response to supervisor")
-      reportResultsTo ! FinishedJobEvent(jobId, resultSummary(ProcessingResult.FAILURE))
+      reportResultsTo ! FinishedJobEvent(jobId, jobStatusInfo(ProcessingResult.FAILURE))
       context.become(ignoringAll)
       self ! PoisonPill
     }
@@ -459,6 +456,17 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
       log.warning(s"received invalid message: $a")
   }
 
+  def jobStatusInfo(state: ProcessingResult.Value): JobStatusInfo = JobStatusInfo(
+    jobId = jobId,
+    jobType = jobType,
+    startTime = DateTimeFormatter.ISO_ZONED_DATE_TIME.format(executionStartZonedDateTime),
+    endTime = Option.apply(executionEndZonedDateTime).map(x => DateTimeFormatter.ISO_ZONED_DATE_TIME.format(x)),
+    resultSummary = resultSummary(state))
+
+  def emptyJobStatusInfo: JobStatusInfo = JobStatusInfo(
+    jobId = "", jobType = "", startTime = "", endTime = Some(""), resultSummary = unknownJobResultSummary
+  )
+
   def processingState: Receive = {
     case e: ACK =>
       log.debug(s"received ACK: $e")
@@ -467,15 +475,10 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
       checkIfJobAckReceivedAndRemoveIfNot(batchNr)
     case ProvideJobStatus =>
       if (Objects.isNull(jobToProcess)) {
-        // TODO: provide some empty status here
-        sender() ! Seq.empty
+        sender() ! emptyJobStatusInfo
       }
       else {
-        sender() ! ShortJobStatusInfo(jobId = jobId,
-          jobType = jobType,
-          startTime = DateTimeFormatter.ISO_ZONED_DATE_TIME.format(executionStartZonedDateTime),
-          endTime = Option.apply(executionEndZonedDateTime).map(x => DateTimeFormatter.ISO_ZONED_DATE_TIME.format(x)),
-          resultSummary = shortResultSummary(RUNNING))
+        sender() ! jobStatusInfo(ProcessingResult.RUNNING)
       }
     case UpdateStateAndCheckForCompletion =>
       log.debug("received UpdateStateAndCheckForCompletion")

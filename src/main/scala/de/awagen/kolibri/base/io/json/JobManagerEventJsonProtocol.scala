@@ -17,15 +17,15 @@
 
 package de.awagen.kolibri.base.io.json
 
-import de.awagen.kolibri.base.actors.work.manager.JobManagerActor.ShortJobStatusInfo
-import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.ShortResultSummary
+import de.awagen.kolibri.base.actors.work.manager.JobManagerActor.JobStatusInfo
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.ResultSummary
 import de.awagen.kolibri.base.io.json.EnumerationJsonProtocol.processingResultFormat
 import spray.json.{DefaultJsonProtocol, RootJsonFormat}
 
 object JobManagerEventJsonProtocol extends DefaultJsonProtocol {
 
-  implicit val shortResultSummaryFormat: RootJsonFormat[ShortResultSummary] = jsonFormat5(ShortResultSummary)
-  implicit val shortJobStatusFormat: RootJsonFormat[ShortJobStatusInfo] = jsonFormat5(ShortJobStatusInfo)
+  implicit val resultSummaryFormat: RootJsonFormat[ResultSummary] = jsonFormat5(ResultSummary)
+  implicit val jobStatusFormat: RootJsonFormat[JobStatusInfo] = jsonFormat5(JobStatusInfo)
 
 
 }
