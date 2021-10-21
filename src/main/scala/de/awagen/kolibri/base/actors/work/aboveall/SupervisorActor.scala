@@ -17,7 +17,7 @@
 package de.awagen.kolibri.base.actors.work.aboveall
 
 import akka.actor.SupervisorStrategy.Stop
-import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, OneForOneStrategy, PoisonPill, Props, Terminated}
+import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, ActorSystem, OneForOneStrategy, PoisonPill, Props, Terminated}
 import akka.pattern.ask
 import akka.util.Timeout
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor._
@@ -58,6 +58,72 @@ import scala.concurrent.{ExecutionContextExecutor, Future}
 object SupervisorActor {
 
   def props(returnResponseToSender: Boolean): Props = Props(SupervisorActor(returnResponseToSender))
+
+  val JOB_HISTORY_PRIORITY_STORE_KEY = "jobs"
+  val finishedJobStateOrdering: Ordering[JobStatusInfo] = (x, y) => {
+    val order: Option[Int] = for(
+      endTime1 <- x.endTime;
+      endTime2 <- y.endTime
+    ) yield endTime1.compareTo(endTime2)
+    order.getOrElse(0)
+  }
+
+  def createTaskExecutionWorkerProps(finalResultKey: ClassTyped[_]): Props = {
+    TaskExecutionWorkerActor.props
+  }
+
+  def createJobManagerActor[T, U <: WithCount](jobId: String,
+                                               perBatchAggregatorSupplier: () => Aggregator[ProcessingMessage[T], U],
+                                               perJobAggregatorSupplier: () => Aggregator[ProcessingMessage[T], U],
+                                               writer: Writer[U, Tag, _],
+                                               allowedTimeForJob: FiniteDuration,
+                                               allowedTimeForBatch: FiniteDuration)(implicit context: ActorContext): ActorRef = {
+    context.actorOf(JobManagerActor.props[T, U](
+      experimentId = jobId,
+      perBatchAggregatorSupplier = perBatchAggregatorSupplier,
+      perJobAggregatorSupplier = perJobAggregatorSupplier,
+      writer = writer,
+      maxProcessDuration = allowedTimeForJob,
+      maxBatchDuration = allowedTimeForBatch).withDispatcher(kolibriDispatcherName),
+      name = JobManagerActor.name(jobId))
+  }
+
+  // we only expect one FinishedJobEvent per job
+  // StopExpectation met if an FinishedJobEvent has FAILURE result type, ignores all other messages
+  // except FinishedJobEvent; also sets a TimeoutExpectation to abort
+  // jobs on exceeding it
+  def createJobExecutionExpectation(allowedDuration: FiniteDuration): ExecutionExpectation = {
+    BaseExecutionExpectation(
+      fulfillAllForSuccess = Seq(ClassifyingCountExpectation(Map("finishResponse" -> {
+        case e: FinishedJobEvent if e.jobStatusInfo.resultSummary.result == ProcessingResult.SUCCESS => true
+        case _ => false
+      }), Map("finishResponse" -> 1))),
+      fulfillAnyForFail = Seq(
+        StopExpectation(
+          overallElementCount = 1,
+          errorClassifier = {
+            case e: FinishedJobEvent if e.jobStatusInfo.resultSummary.result == ProcessingResult.SUCCESS => SuccessAndErrorCounts(1, 0)
+            case e: FinishedJobEvent if e.jobStatusInfo.resultSummary.result == ProcessingResult.FAILURE => SuccessAndErrorCounts(0, 1)
+            case _ => SuccessAndErrorCounts(0, 0)
+          },
+          overallCountToFailCountFailCriterion = new SerializableFunction1[(Int, Int), Boolean] {
+            override def apply(v1: (Int, Int)): Boolean = v1._2 > 0
+          }),
+        TimeExpectation(allowedDuration))
+    )
+  }
+
+  def runnableJobCmdToJobManager[M <: WithCount](jobId: String, cmd: ProcessActorRunnableJobCmd[_, _, _, M])(implicit context: ActorContext): ActorRef = {
+    createJobManagerActor(
+      jobId,
+      cmd.perBatchAggregatorSupplier,
+      cmd.perJobAggregatorSupplier,
+      cmd.writer,
+      cmd.allowedTimeForJob,
+      cmd.allowedTimePerBatch)
+  }
+
+  case class ActorSetup(executing: ActorRef, jobSender: ActorRef)
 
   sealed trait SupervisorMsg extends KolibriSerializable
 
@@ -133,65 +199,10 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
   implicit val system: ActorSystem = context.system
   implicit val ec: ExecutionContextExecutor = context.system.dispatchers.lookup(kolibriDispatcherName)
 
-  case class ActorSetup(executing: ActorRef, jobSender: ActorRef)
-
   val jobIdToActorRefAndExpectation: mutable.Map[String, (ActorSetup, ExecutionExpectation)] = mutable.Map.empty
 
-  val finishedJobStateOrdering: Ordering[JobStatusInfo] = (x, y) => {
-    val order: Option[Int] = for(
-      endTime1 <- x.endTime;
-      endTime2 <- y.endTime
-    ) yield endTime1.compareTo(endTime2)
-    order.getOrElse(0)
-  }
-  val JOB_HISTORY_PRIORITY_STORE_KEY = "jobs"
   val finishedJobStateHistory: PriorityStore[String, JobStatusInfo] = BasePriorityStore(10, finishedJobStateOrdering,
     _ => JOB_HISTORY_PRIORITY_STORE_KEY)
-
-  def createJobManagerActor[T, U <: WithCount](jobId: String,
-                                               perBatchAggregatorSupplier: () => Aggregator[ProcessingMessage[T], U],
-                                               perJobAggregatorSupplier: () => Aggregator[ProcessingMessage[T], U],
-                                               writer: Writer[U, Tag, _],
-                                               allowedTimeForJob: FiniteDuration,
-                                               allowedTimeForBatch: FiniteDuration): ActorRef = {
-    context.actorOf(JobManagerActor.props[T, U](
-      experimentId = jobId,
-      perBatchAggregatorSupplier = perBatchAggregatorSupplier,
-      perJobAggregatorSupplier = perJobAggregatorSupplier,
-      writer = writer,
-      maxProcessDuration = allowedTimeForJob,
-      maxBatchDuration = allowedTimeForBatch).withDispatcher(kolibriDispatcherName),
-      name = JobManagerActor.name(jobId))
-  }
-
-  def createTaskExecutionWorkerProps(finalResultKey: ClassTyped[_]): Props = {
-    TaskExecutionWorkerActor.props
-  }
-
-  // we only expect one FinishedJobEvent per job
-  // StopExpectation met if an FinishedJobEvent has FAILURE result type, ignores all other messages
-  // except FinishedJobEvent; also sets a TimeoutExpectation to abort
-  // jobs on exceeding it
-  def createJobExecutionExpectation(allowedDuration: FiniteDuration): ExecutionExpectation = {
-    BaseExecutionExpectation(
-      fulfillAllForSuccess = Seq(ClassifyingCountExpectation(Map("finishResponse" -> {
-        case e: FinishedJobEvent if e.jobStatusInfo.resultSummary.result == ProcessingResult.SUCCESS => true
-        case _ => false
-      }), Map("finishResponse" -> 1))),
-      fulfillAnyForFail = Seq(
-        StopExpectation(
-          overallElementCount = 1,
-          errorClassifier = {
-            case e: FinishedJobEvent if e.jobStatusInfo.resultSummary.result == ProcessingResult.SUCCESS => SuccessAndErrorCounts(1, 0)
-            case e: FinishedJobEvent if e.jobStatusInfo.resultSummary.result == ProcessingResult.FAILURE => SuccessAndErrorCounts(0, 1)
-            case _ => SuccessAndErrorCounts(0, 0)
-          },
-          overallCountToFailCountFailCriterion = new SerializableFunction1[(Int, Int), Boolean] {
-            override def apply(v1: (Int, Int)): Boolean = v1._2 > 0
-          }),
-        TimeExpectation(allowedDuration))
-    )
-  }
 
   // schedule the housekeeping, checking each jobId
   context.system.scheduler.scheduleAtFixedRate(
@@ -199,17 +210,6 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
     interval = config.supervisorHousekeepingInterval,
     receiver = self,
     message = JobHousekeeping)
-
-
-  def runnableJobCmdToJobManager[M <: WithCount](jobId: String, cmd: ProcessActorRunnableJobCmd[_, _, _, M]): ActorRef = {
-    createJobManagerActor(
-      jobId,
-      cmd.perBatchAggregatorSupplier,
-      cmd.perJobAggregatorSupplier,
-      cmd.writer,
-      cmd.allowedTimeForJob,
-      cmd.allowedTimePerBatch)
-  }
 
   override def receive: Receive = {
     case ProvideJobHistory =>
