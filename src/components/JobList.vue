@@ -1,14 +1,14 @@
 <template>
 
-  <h2 class="runningJobHeader">RUNNING JOBS</h2>
+  <h2 class="runningJobHeader">{{header}}</h2>
   <table class="table">
     <thead>
     <tr>
       <th>Job Name</th>
       <th>Type</th>
-      <th>Start</th>
+      <th>Start/End</th>
       <th>Progress</th>
-      <th>Action</th>
+      <th v-if="showKillButton">Action</th>
     </tr>
     </thead>
     <tbody>
@@ -16,9 +16,9 @@
     <tr v-for="job in runningJobs">
       <td>{{job.jobId}}</td>
       <td>{{job.jobType}}</td>
-      <td>{{job.startTime}}</td>
+      <td>{{job.startTime}}/{{job.endTime}}</td>
       <td>{{job.resultSummary}}</td>
-      <td><button @click="killJob(job.jobId)" class="btn btn-primary s-circle kill">Kill</button></td>
+      <td v-if="showKillButton"><button @click="killJob(job.jobId)" class="btn btn-primary s-circle kill">Kill</button></td>
     </tr>
     </tbody>
   </table>
@@ -29,16 +29,19 @@ import {onBeforeUnmount, onMounted, ref} from "vue";
 import axios from "axios";
 
 export default {
-  props: {
-  },
-  setup() {
+  props: [
+    'header',
+    'jobRetrievalUrl',
+    'showKillButton'
+  ],
+  setup(props) {
     const runningJobs = ref([])
     const runningJobsRefreshIntervalInMs = ref(10000)
 
     function retrieveRunningJobs() {
       console.log("executing retrieveRunningJobs")
       return axios
-          .get('http://localhost:8000/jobStates')
+          .get(props.jobRetrievalUrl)
           .then(response => {
             runningJobs.value =  response.data
           }).catch(_ => {
@@ -49,7 +52,7 @@ export default {
     function killJob(jobId){
       console.log("executing killJob")
       return axios
-          .delete('http://localhost:8000/stopJob?jobId=' + jobId)
+          .delete(this.stopJobUrl + '?jobId=' + jobId)
           .then(response => {
             console.info("killJob response: " + response.data)
           }).catch(e => {

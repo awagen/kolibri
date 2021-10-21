@@ -27,6 +27,7 @@
 <script>
 import {onBeforeUnmount, onMounted, ref} from "vue";
 import axios from "axios";
+import { nodeStateUrl } from '../utils/globalConstants'
 
 export default {
   props: {
@@ -38,7 +39,7 @@ export default {
     function retrieveNodeStatus() {
       console.log("executing retrieveNodeStatus")
       return axios
-          .get("http://localhost:8000/nodeState")
+          .get(nodeStateUrl)
           .then(response => {
             runningNodes.value = response.data.map(worker => {
               let worker_state = {}

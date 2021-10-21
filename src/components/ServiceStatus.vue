@@ -1,7 +1,7 @@
 <template>
   <div class="connection-status-container">
-  <span class="connection-status-text">Status:</span>
-  <span v-bind:class="{ connected: isConnected }"
+    <span class="connection-status-text">Status:</span>
+    <span v-bind:class="{ connected: isConnected }"
           class="s-circle connection-status">
   </span>
   </div>
@@ -15,11 +15,13 @@
   width: 6em;
   line-height: 1.2em;
 }
+
 .connection-status-text {
   height: 100%;
   vertical-align: middle;
   line-height: 1.0em;
 }
+
 .connection-status {
   background-color: indianred;
   opacity: 0.5;
@@ -29,6 +31,7 @@
   display: inline-block;
   vertical-align: middle;
 }
+
 .connection-status.connected {
   background-color: lightgreen;
 }
@@ -38,6 +41,8 @@
 <script>
 import axios from "axios";
 import {onMounted, ref} from "vue";
+import { appIsUpUrl } from '../utils/globalConstants'
+
 
 export default {
   props: {},
@@ -48,9 +53,9 @@ export default {
     function retrieveServiceStatus() {
       console.log("executing retrieveServiceStatus")
       return axios
-          .get('http://localhost:8000/health')
+          .get(appIsUpUrl)
           .then(response => {
-            isConnected.value =  response.status < 400
+            isConnected.value = response.status < 400
           }).catch(_ => {
             isConnected.value = false
           })

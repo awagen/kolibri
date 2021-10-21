@@ -1,0 +1,5 @@
+export const appIsUpUrl = 'http://localhost:8000/health'
+export const nodeStateUrl = 'http://localhost:8000/nodeState'
+export const jobStateUrl = 'http://localhost:8000/jobStates'
+export const jobHistoryUrl = 'http://localhost:8000/finishedJobStates'
+export const stopJobUrl = 'http://localhost:8000/stopJob'

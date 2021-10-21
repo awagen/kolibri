@@ -18,13 +18,17 @@
   <div class="divider"></div>
   <ServiceStatus/>
   <NodeList/>
-  <JobList/>
+  <JobList :job-retrieval-url="retrieveJobStateUrl" :showKillButton="true"
+           header="RUNNING JOBS"/>
+  <JobList :job-retrieval-url="retrieveFinishedJobStateUrl" :showKillButton="false"
+           header="COMPLETED JOBS"/>
 </template>
 
 <script>
 import JobList from './components/JobList.vue'
 import ServiceStatus from "./components/ServiceStatus.vue";
 import NodeList from "./components/NodeList.vue";
+import {jobHistoryUrl, jobStateUrl} from './utils/globalConstants'
 
 export default {
 
@@ -33,9 +37,14 @@ export default {
     JobList,
     ServiceStatus
   },
-  setup() {
+  data() {
     return {
+      retrieveJobStateUrl: jobStateUrl,
+      retrieveFinishedJobStateUrl: jobHistoryUrl
     }
+  },
+  setup() {
+    return {}
   }
 }
 </script>

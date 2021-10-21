@@ -23,8 +23,9 @@ text {
 
 <script>
 import * as d3 from "d3";
-import {onMounted, ref} from "vue";
+import {onMounted} from "vue";
 import axios from "axios";
+import { nodeStateUrl } from '../utils/globalConstants'
 
 export default {
   props: {},
@@ -35,7 +36,7 @@ export default {
     function retrieveNodeStatus() {
       console.log("executing retrieveNodeStatus")
       return axios
-          .get("http://localhost:8000/nodeState")
+          .get(nodeStateUrl)
           .then(response => {
             let data = response.data
             // TODO: remove, must come from backend itself
