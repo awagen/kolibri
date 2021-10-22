@@ -41,7 +41,7 @@
 <script>
 import axios from "axios";
 import {onMounted, ref} from "vue";
-import { appIsUpUrl } from '../utils/globalConstants'
+import {appIsUpUrl} from '../utils/globalConstants'
 
 
 export default {

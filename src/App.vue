@@ -1,47 +1,43 @@
-<template>
+<template xmlns="http://www.w3.org/1999/html">
   <header class="navbar">
     <section class="navbar-section">
-      <a href="#" class="btn btn-link">DOCS</a>
-      <a href="#" class="btn btn-link">EXAMPLES</a>
-      <a href="#" class="btn btn-link">GITHUB</a>
+      <router-link class="btn btn-link" to="/">STATUS</router-link>
+      <router-link class="btn btn-link" to="/history">HISTORY</router-link>
+      <router-link class="btn btn-link" to="/jobCreation">CREATE</router-link>
     </section>
     <section class="navbar-center">
       <!-- centered logo or brand -->
       <img id="menu-logo" alt="Kolibri logo" src="./assets/images/kolibri.svg"/>
     </section>
     <section class="navbar-section">
-      <a href="#" class="btn btn-link">CREATE</a>
+      <router-link class="btn btn-link" to="/analyze">ANALYZE</router-link>
+      <router-link class="btn btn-link" to="/result">RESULT</router-link>
     </section>
   </header>
 
   <!-- divider element -->
   <div class="divider"></div>
   <ServiceStatus/>
-  <NodeList/>
-  <JobList :job-retrieval-url="retrieveJobStateUrl" :showKillButton="true"
-           header="RUNNING JOBS"/>
-  <JobList :job-retrieval-url="retrieveFinishedJobStateUrl" :showKillButton="false"
-           header="COMPLETED JOBS"/>
+
+  <!-- within router-view the view selected in the nav will be rendered -->
+  <router-view v-slot="{ Component }">
+    <transition name="fade" mode="in-out">
+      <div>
+        <component :is="Component"/>
+      </div>
+    </transition>
+  </router-view>
+
 </template>
 
 <script>
-import JobList from './components/JobList.vue'
 import ServiceStatus from "./components/ServiceStatus.vue";
-import NodeList from "./components/NodeList.vue";
-import {jobHistoryUrl, jobStateUrl} from './utils/globalConstants'
 
 export default {
 
-  components: {
-    NodeList,
-    JobList,
-    ServiceStatus
-  },
+  components: {ServiceStatus},
   data() {
-    return {
-      retrieveJobStateUrl: jobStateUrl,
-      retrieveFinishedJobStateUrl: jobHistoryUrl
-    }
+    return {}
   },
   setup() {
     return {}
@@ -62,18 +58,24 @@ export default {
 .btn.btn-link {
   color: #9C9C9C;
   font-size: x-large;
+  border: none !important;
+  outline-style: none !important;
 }
 
-.btn-link:hover {
+.btn-link:hover, .btn-link:active {
   color: black !important;
 }
 
-.divider {
-  border-color: #353535;
+a:visited, a:focus {
+  color: #9C9C9C !important;
 }
 
 .navbar-section a {
   padding-right: 2em;
+}
+
+.divider {
+  border-color: #353535;
 }
 
 </style>
