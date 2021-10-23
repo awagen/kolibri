@@ -24,7 +24,7 @@ import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor._
 import de.awagen.kolibri.base.actors.work.manager.JobManagerActor
 import de.awagen.kolibri.base.actors.work.manager.JobManagerActor._
 import de.awagen.kolibri.base.actors.work.manager.JobProcessingState.JobStatusInfo
-import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{ProcessingMessage, ProcessingResult}
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.ProcessingMessage
 import de.awagen.kolibri.base.actors.work.worker.TaskExecutionWorkerActor
 import de.awagen.kolibri.base.config.AppProperties._
 import de.awagen.kolibri.base.config.AppProperties.config.kolibriDispatcherName
@@ -33,7 +33,6 @@ import de.awagen.kolibri.base.io.writer.Writers.Writer
 import de.awagen.kolibri.base.processing.JobMessages.{JobMessage, SearchEvaluation}
 import de.awagen.kolibri.base.processing.classifier.Mapper.FilteringMapper
 import de.awagen.kolibri.base.processing.execution.SimpleTaskExecution
-import de.awagen.kolibri.base.processing.execution.expectation.Expectation.SuccessAndErrorCounts
 import de.awagen.kolibri.base.processing.execution.expectation._
 import de.awagen.kolibri.base.processing.execution.functions.Execution
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnable
@@ -47,7 +46,6 @@ import de.awagen.kolibri.datatypes.mutable.stores.TypeTaggedMap
 import de.awagen.kolibri.datatypes.stores.PriorityStores.{BasePriorityStore, PriorityStore}
 import de.awagen.kolibri.datatypes.tagging.TaggedWithType
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
-import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 import de.awagen.kolibri.datatypes.types.Types.WithCount
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 
@@ -87,31 +85,6 @@ object SupervisorActor {
       maxProcessDuration = allowedTimeForJob,
       maxBatchDuration = allowedTimeForBatch).withDispatcher(kolibriDispatcherName),
       name = JobManagerActor.name(jobId))
-  }
-
-  // we only expect one FinishedJobEvent per job
-  // StopExpectation met if an FinishedJobEvent has FAILURE result type, ignores all other messages
-  // except FinishedJobEvent; also sets a TimeoutExpectation to abort
-  // jobs on exceeding it
-  def createJobExecutionExpectation(allowedDuration: FiniteDuration): ExecutionExpectation = {
-    BaseExecutionExpectation(
-      fulfillAllForSuccess = Seq(ClassifyingCountExpectation(Map("finishResponse" -> {
-        case e: FinishedJobEvent if e.jobStatusInfo.resultSummary.result == ProcessingResult.SUCCESS => true
-        case _ => false
-      }), Map("finishResponse" -> 1))),
-      fulfillAnyForFail = Seq(
-        StopExpectation(
-          overallElementCount = 1,
-          errorClassifier = {
-            case e: FinishedJobEvent if e.jobStatusInfo.resultSummary.result == ProcessingResult.SUCCESS => SuccessAndErrorCounts(1, 0)
-            case e: FinishedJobEvent if e.jobStatusInfo.resultSummary.result == ProcessingResult.FAILURE => SuccessAndErrorCounts(0, 1)
-            case _ => SuccessAndErrorCounts(0, 0)
-          },
-          overallCountToFailCountFailCriterion = new SerializableFunction1[(Int, Int), Boolean] {
-            override def apply(v1: (Int, Int)): Boolean = v1._2 > 0
-          }),
-        TimeExpectation(allowedDuration))
-    )
   }
 
   def runnableJobCmdToJobManager[M <: WithCount](jobId: String, cmd: ProcessActorRunnableJobCmd[_, _, _, M])(implicit context: ActorContext): ActorRef = {
@@ -293,7 +266,7 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
         // job manager actor stopped
         context.watch(actor)
         actor ! ProcessJobCmd(job.processElements)
-        val expectation = createJobExecutionExpectation(job.allowedTimeForJob)
+        val expectation = ExecutionExpectations.createSupervisorJobExecutionExpectation(job.allowedTimeForJob)
         expectation.init
         jobIdToActorRefAndExpectation(jobId) = (ActorSetup(actor, jobSender), expectation)
       }
@@ -319,7 +292,7 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
           val actor = runnableJobCmdToJobManager(jobId, runnableJobCmd)
           context.watch(actor)
           actor ! e
-          val expectation = createJobExecutionExpectation(runnableJobCmd.allowedTimeForJob)
+          val expectation = ExecutionExpectations.createSupervisorJobExecutionExpectation(runnableJobCmd.allowedTimeForJob)
           expectation.init
           jobIdToActorRefAndExpectation(jobId) = (ActorSetup(actor, jobSender), expectation)
         })
@@ -353,7 +326,7 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
           job.allowedTimePerBatch)
         context.watch(actor)
         actor ! ProcessJobCmd(mappedIterable)
-        val expectation = createJobExecutionExpectation(job.allowedTimeForJob)
+        val expectation = ExecutionExpectations.createSupervisorJobExecutionExpectation(job.allowedTimeForJob)
         expectation.init
         jobIdToActorRefAndExpectation(jobId) = (ActorSetup(actor, jobSender), expectation)
       }
