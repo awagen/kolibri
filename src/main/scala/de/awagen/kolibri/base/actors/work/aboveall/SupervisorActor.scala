@@ -181,7 +181,7 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
     receiver = self,
     message = JobHousekeeping)
 
-  override def receive: Receive = {
+  val informationProvidingReceive: Receive = {
     case ProvideJobHistory =>
       sender() ! JobHistory(finishedJobStateHistory.result.getOrElse(JOB_HISTORY_PRIORITY_STORE_KEY, Seq.empty))
     case ProvideAllRunningJobStates =>
@@ -195,18 +195,6 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
       overallResults.onComplete(x => reportTo ! x)
     case ProvideAllRunningJobIDs =>
       sender() ! RunningJobs(jobIdToActorRefAndExpectation.keys.toSeq)
-    case StopJob(jobId) =>
-      val requestingActor = sender()
-      val actorSetupAndExpectation: Option[(ActorSetup, ExecutionExpectation)] = jobIdToActorRefAndExpectation.get(jobId)
-      actorSetupAndExpectation.foreach(x => {
-        // kill the executing actor
-        x._1.executing ! PoisonPill
-        // send current expectation back to the initial sender
-        requestingActor ! ExpectationForJob(jobId, x._2)
-      })
-      if (actorSetupAndExpectation.isEmpty) {
-        requestingActor ! JobNotFound(jobId: String)
-      }
     case ProvideJobState(jobId) =>
       val requestingActor = sender()
       val actorSetupAndExpectation: Option[(ActorSetup, ExecutionExpectation)] = jobIdToActorRefAndExpectation.get(jobId)
@@ -217,36 +205,9 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
       if (actorSetupAndExpectation.isEmpty) {
         requestingActor ! JobNotFound(jobId: String)
       }
-    case JobHousekeeping =>
-      // check the existing jobs and their condition
-      val checkJobIds: Seq[String] = jobIdToActorRefAndExpectation.keys.toSeq
-      checkJobIds.foreach(x => {
-        val expectation = jobIdToActorRefAndExpectation(x)._2
-        if (expectation.succeeded) {
-          log.info(s"job with id '$x' suceeded")
-          // just confirm to JobManager that expectation is met, the removal from tracking will be handled within
-          // the received Terminated message
-          jobIdToActorRefAndExpectation(x)._1.executing ! ExpectationMet
-        }
-        else if (expectation.failed) {
-          log.info(s"job with id '$x' failed with description: ${jobIdToActorRefAndExpectation(x)._2.statusDesc}")
-          jobIdToActorRefAndExpectation(x)._1.executing ! ExpectationFailed
-        }
-      })
-    // housekeeping about watched job-processing actors
-    case Terminated(actorRef: ActorRef) =>
-      log.info("received Terminated message for actorRef {}", actorRef.path.name)
-      val removeKey: Option[String] = jobIdToActorRefAndExpectation.keys
-        .find(x => jobIdToActorRefAndExpectation(x)._1.executing == actorRef)
-      removeKey.foreach(x => {
-        log.info("removing job {} because processing actor {} stopped",
-          x,
-          actorRef.path.name)
-        jobIdToActorRefAndExpectation -= x
-      })
-    case MaxTimeExceededEvent(jobId) =>
-      log.info("received MaxTimeExceeded message for jobId {}, thus respective JobManager is expected to kill himself," +
-        "which will be reflected in another Terminated message", jobId)
+  }
+
+  val jobStartingReceive: Receive = {
     case job: ProcessActorRunnableJobCmd[_, _, _, _] =>
       val jobSender = sender()
       val jobId = job.jobId
@@ -336,6 +297,52 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
         execution.execute
       }
       responseFuture.onComplete(x => replyTo ! x)
+  }
+
+  val stateKeepingReceive: Receive = {
+    case StopJob(jobId) =>
+      val requestingActor = sender()
+      val actorSetupAndExpectation: Option[(ActorSetup, ExecutionExpectation)] = jobIdToActorRefAndExpectation.get(jobId)
+      actorSetupAndExpectation.foreach(x => {
+        // kill the executing actor
+        x._1.executing ! PoisonPill
+        // send current expectation back to the initial sender
+        requestingActor ! ExpectationForJob(jobId, x._2)
+      })
+      if (actorSetupAndExpectation.isEmpty) {
+        requestingActor ! JobNotFound(jobId: String)
+      }
+    case JobHousekeeping =>
+      // check the existing jobs and their condition
+      val checkJobIds: Seq[String] = jobIdToActorRefAndExpectation.keys.toSeq
+      checkJobIds.foreach(x => {
+        val expectation = jobIdToActorRefAndExpectation(x)._2
+        if (expectation.succeeded) {
+          log.info(s"job with id '$x' suceeded")
+          // just confirm to JobManager that expectation is met, the removal from tracking will be handled within
+          // the received Terminated message
+          jobIdToActorRefAndExpectation(x)._1.executing ! ExpectationMet
+        }
+        else if (expectation.failed) {
+          log.info(s"job with id '$x' failed with description: ${jobIdToActorRefAndExpectation(x)._2.statusDesc}")
+          jobIdToActorRefAndExpectation(x)._1.executing ! ExpectationFailed
+        }
+      })
+    // housekeeping about watched job-processing actors
+    case Terminated(actorRef: ActorRef) =>
+      log.info("received Terminated message for actorRef {}", actorRef.path.name)
+      val removeKey: Option[String] = jobIdToActorRefAndExpectation.keys
+        .find(x => jobIdToActorRefAndExpectation(x)._1.executing == actorRef)
+      removeKey.foreach(x => {
+        log.info("removing job {} because processing actor {} stopped",
+          x,
+          actorRef.path.name)
+        jobIdToActorRefAndExpectation -= x
+      })
+    case MaxTimeExceededEvent(jobId) =>
+      log.info("received MaxTimeExceeded message for jobId {}, thus respective JobManager is expected to kill himself," +
+        "which will be reflected in another Terminated message", jobId)
+
     case event: FinishedJobEvent =>
       log.info("Experiment with id {} finished processing", event.jobId)
       jobIdToActorRefAndExpectation.get(event.jobId).foreach(x => x._2.accept(event))
@@ -355,6 +362,8 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
     case e =>
       log.warning("Unknown message (will be ignored): {}", e)
   }
+
+  override def receive: Receive = informationProvidingReceive.orElse(jobStartingReceive).orElse(stateKeepingReceive)
 
   /**
     * We keep a very relaxed supervision here by just allowing the actors

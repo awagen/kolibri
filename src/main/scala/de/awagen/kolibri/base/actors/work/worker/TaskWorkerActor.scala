@@ -93,7 +93,7 @@ class TaskWorkerActor[T] extends Actor with ActorLogging {
   }
 
   val waitingForWork: Receive = {
-    case e@ProcessTasks(data, tasks, resultKey, identifier) if e.isInstanceOf[ProcessTasks[T]] =>
+    case e@ProcessTasks(data, tasks, resultKey, identifier) if e.finalResultKey.isInstanceOf[ClassTyped[ProcessingMessage[T]]] =>
       this.executionRequestor = sender()
       this.data = data
       this.tasks = tasks
