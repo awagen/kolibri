@@ -266,7 +266,7 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
         // job manager actor stopped
         context.watch(actor)
         actor ! ProcessJobCmd(job.processElements)
-        val expectation = ExecutionExpectations.createSupervisorJobExecutionExpectation(job.allowedTimeForJob)
+        val expectation = ExecutionExpectations.finishedJobExecutionExpectation(job.allowedTimeForJob)
         expectation.init
         jobIdToActorRefAndExpectation(jobId) = (ActorSetup(actor, jobSender), expectation)
       }
@@ -292,7 +292,7 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
           val actor = runnableJobCmdToJobManager(jobId, runnableJobCmd)
           context.watch(actor)
           actor ! e
-          val expectation = ExecutionExpectations.createSupervisorJobExecutionExpectation(runnableJobCmd.allowedTimeForJob)
+          val expectation = ExecutionExpectations.finishedJobExecutionExpectation(runnableJobCmd.allowedTimeForJob)
           expectation.init
           jobIdToActorRefAndExpectation(jobId) = (ActorSetup(actor, jobSender), expectation)
         })
@@ -326,7 +326,7 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
           job.allowedTimePerBatch)
         context.watch(actor)
         actor ! ProcessJobCmd(mappedIterable)
-        val expectation = ExecutionExpectations.createSupervisorJobExecutionExpectation(job.allowedTimeForJob)
+        val expectation = ExecutionExpectations.finishedJobExecutionExpectation(job.allowedTimeForJob)
         expectation.init
         jobIdToActorRefAndExpectation(jobId) = (ActorSetup(actor, jobSender), expectation)
       }

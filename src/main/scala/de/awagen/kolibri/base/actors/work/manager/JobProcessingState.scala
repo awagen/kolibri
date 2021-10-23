@@ -22,10 +22,10 @@ import de.awagen.kolibri.base.actors.work.manager.JobProcessingState.JobStatusIn
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages._
 import de.awagen.kolibri.base.config.AppProperties.config
 import de.awagen.kolibri.base.io.writer.Writers.Writer
-import de.awagen.kolibri.base.processing.consume.Consumers.{ExecutionConsumer, getBaseExecutionConsumer}
+import de.awagen.kolibri.base.processing.consume.Consumers.{ExecutionConsumer, getExpectingAggregatingWritingExecutionConsumer}
 import de.awagen.kolibri.base.processing.distribution.Distributors.getRetryingDistributor
 import de.awagen.kolibri.base.processing.distribution.{DistributionStates, Distributor}
-import de.awagen.kolibri.base.processing.execution.expectation.ExecutionExpectations.jobExpectation
+import de.awagen.kolibri.base.processing.execution.expectation.ExecutionExpectations.jobExecutionExpectation
 import de.awagen.kolibri.base.processing.execution.expectation._
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
@@ -59,7 +59,7 @@ case class JobProcessingState[U](jobId: String) {
   // distributor of tasks
   private[this] var batchDistributor: Distributor[Batch, U] = _
   // consumer of results with expectation for the whole job
-  private[this] var executionConsumer: ExecutionConsumer[U] = _
+  private[this] var executionConsumer: ExecutionConsumer = _
   // mapping batchNr to ExecutionExpectation for the respective batch
   private[this] val executionExpectationMap: mutable.Map[Int, ExecutionExpectation] = mutable.Map.empty
   // for those batches we havent yet received a confirmation that it is processed,
@@ -88,7 +88,7 @@ case class JobProcessingState[U](jobId: String) {
     jobToProcess = job
     val parallelTasks = math.min(requestedParallelTasks, config.runningTasksPerJobMaxCount)
     executionStartZonedDateTime = currentTimeZonedInstance()
-    executionConsumer = getBaseExecutionConsumer(jobId, jobExpectation(job.size, maxProcessDuration, expectResultsFromBatchCalculations), aggregator, writer)
+    executionConsumer = getExpectingAggregatingWritingExecutionConsumer(jobId, jobExecutionExpectation(job.size, maxProcessDuration, expectResultsFromBatchCalculations), aggregator, writer)
     batchDistributor = getRetryingDistributor(jobToProcess, config.maxNrBatchRetries, parallelTasks)
     executionStartZonedDateTime = currentTimeZonedInstance()
   }

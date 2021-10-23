@@ -35,7 +35,7 @@ object ExecutionExpectations {
   // StopExpectation met if an FinishedJobEvent has FAILURE result type, ignores all other messages
   // except FinishedJobEvent; also sets a TimeoutExpectation to abort
   // jobs on exceeding it
-  def createSupervisorJobExecutionExpectation(allowedDuration: FiniteDuration): ExecutionExpectation = {
+  def finishedJobExecutionExpectation(allowedDuration: FiniteDuration): ExecutionExpectation = {
     BaseExecutionExpectation(
       fulfillAllForSuccess = Seq(ClassifyingCountExpectation(Map(FINISH_RESPONSE_KEY -> {
         case e: FinishedJobEvent if e.jobStatusInfo.resultSummary.result == ProcessingResult.SUCCESS => true
@@ -64,7 +64,7 @@ object ExecutionExpectations {
     * @param expectResultsFromBatchCalculations - boolean to indicate whether we expect to receive results with data or notifications of completion suffice
     * @return
     */
-  def jobExpectation(numberBatches: Int, maxProcessDuration: FiniteDuration, expectResultsFromBatchCalculations: Boolean): ExecutionExpectation = {
+  def jobExecutionExpectation(numberBatches: Int, maxProcessDuration: FiniteDuration, expectResultsFromBatchCalculations: Boolean): ExecutionExpectation = {
     val failExpectations: Seq[Expectation[Any]] = Seq(TimeExpectation(maxProcessDuration))
     BaseExecutionExpectation(
       fulfillAllForSuccess = Seq(

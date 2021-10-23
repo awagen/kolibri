@@ -32,14 +32,15 @@ object Consumers {
     * on an overall job level
     *
     * @param executionExpectation - expectation for the execution
-    * @param aggregator - result aggregator
-    * @param writer - result writer
+    * @param aggregator           - result aggregator
+    * @param writer               - result writer
     * @return
     */
-  def getBaseExecutionConsumer[T, U](jobId: String, executionExpectation: ExecutionExpectation,
-                                     aggregator: Aggregator[ProcessingMessage[T], U],
-                                     writer: Writer[U, Tag, _]): ExecutionConsumer[U] = {
-    BaseExecutionConsumer(
+  def getExpectingAggregatingWritingExecutionConsumer[T, U](jobId: String,
+                                                            executionExpectation: ExecutionExpectation,
+                                                            aggregator: Aggregator[ProcessingMessage[T], U],
+                                                            writer: Writer[U, Tag, _]): ExpectingAggregatingWritingExecutionConsumer[T, U] = {
+    new ExpectingAggregatingWritingExecutionConsumer(
       jobId = jobId,
       expectation = executionExpectation,
       aggregator = aggregator,
@@ -47,12 +48,11 @@ object Consumers {
     )
   }
 
-  trait ExecutionConsumer[T] extends KolibriSerializable {
+  trait ExecutionConsumer extends KolibriSerializable {
 
-    val applyFunc: PartialFunction[Any, Unit]
-    val expectation: ExecutionExpectation
+    def applyFunc: PartialFunction[Any, Unit]
 
-    def aggregation: T
+    def expectation: ExecutionExpectation
 
     def hasFinished: Boolean
 
@@ -61,6 +61,53 @@ object Consumers {
     def hasFailed: Boolean
 
     def wrapUp: Unit
+
+  }
+
+  trait AggregatingExecutionConsumer[U] extends ExecutionConsumer {
+
+    def aggregation: U
+
+  }
+
+  /**
+    * Consumer expecting processing messages / aggregation states
+    *
+    * @param expectation -
+    * @tparam T
+    * @tparam U
+    */
+  class ExpectingExecutionConsumer[T, U](val expectation: ExecutionExpectation) extends ExecutionConsumer {
+    private[this] val logger: Logger = LoggerFactory.getLogger(this.getClass)
+
+    var wrappedUp: Boolean = false
+
+    override val applyFunc: PartialFunction[Any, Unit] = {
+      case _ if wrappedUp =>
+        logger.warn("Consumer already in wrappedUp state, ignoring new element")
+      case e: AggregationStateWithData[U] =>
+        expectation.accept(e)
+        if (hasFinished) wrapUp
+      case e: AggregationStateWithoutData[U] =>
+        expectation.accept(e)
+        if (hasFinished) wrapUp
+      case e: ProcessingMessage[T] if e.data.isInstanceOf[T] =>
+        expectation.accept(e)
+        if (hasFinished) wrapUp
+    }
+
+    override def hasFinished: Boolean = expectation.failed || expectation.succeeded
+
+    override def wasSuccessful: Boolean = expectation.succeeded
+
+    override def hasFailed: Boolean = expectation.failed
+
+    override def wrapUp: Unit = {
+      if (!wrappedUp) {
+        logger.info("wrapping up execution consumer")
+        wrappedUp = true
+      }
+    }
 
   }
 
@@ -74,13 +121,11 @@ object Consumers {
     * @tparam T : type of data contained in the ProcessingMessages that reflect single results
     * @tparam U : type of the actual aggregation
     */
-  case class BaseExecutionConsumer[T, U](jobId: String,
-                                         expectation: ExecutionExpectation,
-                                         aggregator: Aggregator[ProcessingMessage[T], U],
-                                         writer: Writer[U, Tag, _]) extends ExecutionConsumer[U] {
-    val logger: Logger = LoggerFactory.getLogger(this.getClass)
-
-    var wrappedUp: Boolean = false
+  class ExpectingAggregatingWritingExecutionConsumer[T, U](val jobId: String,
+                                                           expectation: ExecutionExpectation,
+                                                           val aggregator: Aggregator[ProcessingMessage[T], U],
+                                                           val writer: Writer[U, Tag, _]) extends ExpectingExecutionConsumer[T, U](expectation = expectation) with AggregatingExecutionConsumer[U] {
+    private[this] val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
     override val applyFunc: PartialFunction[Any, Unit] = {
       case _ if wrappedUp =>
@@ -97,12 +142,6 @@ object Consumers {
         aggregator.add(e)
         if (hasFinished) wrapUp
     }
-
-    override def hasFinished: Boolean = expectation.failed || expectation.succeeded
-
-    override def wasSuccessful: Boolean = expectation.succeeded
-
-    override def hasFailed: Boolean = expectation.failed
 
     override def wrapUp: Unit = {
       if (!wrappedUp) {
