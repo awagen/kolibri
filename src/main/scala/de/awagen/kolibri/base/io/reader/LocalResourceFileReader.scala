@@ -20,7 +20,7 @@ import scala.io.Source
 
 case class LocalResourceFileReader(delimiterAndPosition: Option[(String, Int)],
                                    fromClassPath: Boolean,
-                                   encoding: String = "UTF-8") extends FileReader {
+                                   encoding: String = "UTF-8") extends Reader[String, Seq[String]] {
 
   override def getSource(fileIdentifier: String): Source = {
     if (fromClassPath) FileReaderUtils.localResourceSource(fileIdentifier, encoding)

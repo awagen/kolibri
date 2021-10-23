@@ -34,7 +34,7 @@ import com.google.cloud.storage.StorageOptions
   */
 case class GcpGSFileReader(bucketName: String,
                            dirPath: String,
-                           projectID: String) extends FileReader {
+                           projectID: String) extends Reader[String, Seq[String]] {
 
   val dirPathNormalized: String = dirPath.stripPrefix("/").stripSuffix("/")
 

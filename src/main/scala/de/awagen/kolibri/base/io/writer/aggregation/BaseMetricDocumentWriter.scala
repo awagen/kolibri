@@ -16,13 +16,13 @@
 
 package de.awagen.kolibri.base.io.writer.aggregation
 
-import de.awagen.kolibri.base.io.writer.Writers.{FileWriter, Writer}
+import de.awagen.kolibri.base.io.writer.Writers.Writer
 import de.awagen.kolibri.datatypes.metrics.aggregation.writer.MetricDocumentFormat
 import de.awagen.kolibri.datatypes.stores.MetricDocument
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 
 
-case class BaseMetricDocumentWriter(writer: FileWriter[String, Any],
+case class BaseMetricDocumentWriter(writer: Writer[String, String, Any],
                                     format: MetricDocumentFormat,
                                     subFolder: String,
                                     pathSeparator: String = "/",

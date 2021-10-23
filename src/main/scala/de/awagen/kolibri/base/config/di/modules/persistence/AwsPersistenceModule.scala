@@ -19,8 +19,9 @@ package de.awagen.kolibri.base.config.di.modules.persistence
 
 import com.softwaremill.tagging
 import de.awagen.kolibri.base.config.AppProperties
+import de.awagen.kolibri.base.config.AppProperties.config.{csvColumnSeparator, directoryPathSeparator}
 import de.awagen.kolibri.base.config.di.modules.Modules.{AWS_MODULE, PersistenceDIModule}
-import de.awagen.kolibri.base.io.reader.{AwsS3DirectoryReader, AwsS3FileReader, DirectoryReader, FileReader}
+import de.awagen.kolibri.base.io.reader.{AwsS3DirectoryReader, AwsS3FileReader, DataOverviewReader, Reader}
 import de.awagen.kolibri.base.io.writer.Writers.{FileWriter, Writer}
 import de.awagen.kolibri.base.io.writer.base.AwsS3FileWriter
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.Writer
@@ -34,23 +35,20 @@ class AwsPersistenceModule extends PersistenceDIModule with tagging.Tag[AWS_MODU
   assert(AppProperties.config.awsS3BucketPath.isDefined, "no s3 bucket path defined")
   assert(AppProperties.config.awsS3Region.isDefined, "no s3 bucket region defined")
 
-  lazy val fileWriter: FileWriter[String, _] = AwsS3FileWriter(
+  override lazy val writer: FileWriter[String, _] = AwsS3FileWriter(
     bucketName = AppProperties.config.awsS3Bucket.get,
     dirPath = AppProperties.config.awsS3BucketPath.get,
     region = AppProperties.config.awsS3Region.get,
     contentType = "text/plain"
   )
 
-  lazy val fileReader: FileReader = AwsS3FileReader(
+  override lazy val reader: Reader[String, Seq[String]] = AwsS3FileReader(
     AppProperties.config.awsS3Bucket.get,
     AppProperties.config.awsS3BucketPath.get,
     AppProperties.config.awsS3Region.get
   )
 
-  val directoryPathSeparator: String = "/"
-  val csvColumnSeparator: String = "\t"
-
-  def directoryReader(fileFilter: String => Boolean): DirectoryReader = AwsS3DirectoryReader(
+  override def dataOverviewReader(fileFilter: String => Boolean): DataOverviewReader = AwsS3DirectoryReader(
     AppProperties.config.awsS3Bucket.get,
     AppProperties.config.awsS3BucketPath.get,
     AppProperties.config.awsS3Region.get,
@@ -58,11 +56,11 @@ class AwsPersistenceModule extends PersistenceDIModule with tagging.Tag[AWS_MODU
     fileFilter
   )
 
-  def csvMetricAggregationWriter(subFolder: String, tagToFilenameFunc: Tags.Tag => String): Writer[MetricAggregation[Tags.Tag], Tags.Tag, Any] = Writer.awsCsvMetricAggregationWriter(
+  override def csvMetricAggregationWriter(subFolder: String, tagToDataIdentifierFunc: Tags.Tag => String): Writer[MetricAggregation[Tags.Tag], Tags.Tag, Any] = Writer.awsCsvMetricAggregationWriter(
     AppProperties.config.awsS3Bucket.get,
     AppProperties.config.awsS3BucketPath.get,
     csvColumnSeparator,
     subFolder,
-    tagToFilenameFunc
+    tagToDataIdentifierFunc
   )
 }

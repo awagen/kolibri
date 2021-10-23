@@ -26,9 +26,9 @@ import scala.io.Source
 
 case class AwsS3FileReader(bucketName: String,
                            dirPath: String,
-                           region: Regions) extends FileReader {
+                           region: Regions) extends Reader[String, Seq[String]] {
 
-  private[this] var s3Client: AmazonS3 = null
+  private[this] var s3Client: AmazonS3 = _
 
   // workaround for serialization
   def setS3ClientIfNotSet(): Unit = {

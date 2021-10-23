@@ -17,8 +17,8 @@
 
 package de.awagen.kolibri.base.config.di.modules
 
-import de.awagen.kolibri.base.io.reader.{DirectoryReader, FileReader}
-import de.awagen.kolibri.base.io.writer.Writers.{FileWriter, Writer}
+import de.awagen.kolibri.base.io.reader.{DataOverviewReader, Reader}
+import de.awagen.kolibri.base.io.writer.Writers.Writer
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
 import de.awagen.kolibri.datatypes.tagging.Tags
 
@@ -36,15 +36,13 @@ object Modules {
 
   trait PersistenceDIModule {
 
-    def fileWriter: FileWriter[String, _]
+    def writer: Writer[String, String, _]
 
-    def fileReader: FileReader
+    def reader: Reader[String, Seq[String]]
 
-    def directoryPathSeparator: String
+    def dataOverviewReader(dataIdentifierFilter: String => Boolean): DataOverviewReader
 
-    def directoryReader(fileFilter: String => Boolean): DirectoryReader
-
-    def csvMetricAggregationWriter(subFolder: String, tagToFilenameFunc: Tags.Tag => String): Writer[MetricAggregation[Tags.Tag], Tags.Tag, Any]
+    def csvMetricAggregationWriter(subFolder: String, tagToDataIdentifierFunc: Tags.Tag => String): Writer[MetricAggregation[Tags.Tag], Tags.Tag, Any]
 
   }
 

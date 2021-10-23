@@ -16,25 +16,25 @@
 
 package de.awagen.kolibri.base.io.json
 
-import de.awagen.kolibri.base.io.json.FileReaderJsonProtocol._
-import de.awagen.kolibri.base.io.reader.{FileReader, LocalResourceFileReader}
+import de.awagen.kolibri.base.io.json.ReaderJsonProtocol._
+import de.awagen.kolibri.base.io.reader.{Reader, LocalResourceFileReader}
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
 import spray.json._
 
-class FileReaderJsonProtocolSpec extends UnitTestSpec {
+class ReaderJsonProtocolSpec extends UnitTestSpec {
 
   "QueryProviderJsonProtocol" must {
 
     "parse QueryProvider json" in {
       // given
       val json = """{"type": "LOCAL_FILE_READER", "delimiter": "/", "position": 1, "encoding": "UTF-8", "fromClasspath": true}""".parseJson
-      val expectedValue: FileReader = LocalResourceFileReader(
+      val expectedValue: Reader[String, Seq[String]] = LocalResourceFileReader(
         delimiterAndPosition = Some(("/", 1)),
         fromClassPath = true,
         encoding = "UTF-8"
       )
       // when
-      val result = json.convertTo[FileReader]
+      val result = json.convertTo[Reader[String, Seq[String]]]
       // then
       result mustBe expectedValue
     }

@@ -19,8 +19,8 @@ package de.awagen.kolibri.base.processing.execution.functions
 
 import de.awagen.kolibri.base.config.AppConfig
 import de.awagen.kolibri.base.config.di.modules.persistence.PersistenceModule
-import de.awagen.kolibri.base.io.reader.{DirectoryReader, FileReader}
-import de.awagen.kolibri.base.io.writer.Writers.FileWriter
+import de.awagen.kolibri.base.io.reader.{DataOverviewReader, Reader}
+import de.awagen.kolibri.base.io.writer.Writers.Writer
 import de.awagen.kolibri.base.processing.execution.functions.FileUtils.regexDirectoryReader
 import de.awagen.kolibri.base.processing.failure.TaskFailType
 import de.awagen.kolibri.base.processing.failure.TaskFailType.TaskFailType
@@ -70,10 +70,10 @@ object AnalyzeFunctions {
                                                    queryFromFilename: String => String,
                                                    n_best: Int,
                                                    n_worst: Int) extends Execution[ExecutionSummary[Map[String, Map[Map[String, Seq[String]], Seq[(String, String)]]]]] {
-    lazy val directoryReader: DirectoryReader = regexDirectoryReader(fileRegex)
+    lazy val directoryReader: DataOverviewReader = regexDirectoryReader(fileRegex)
 
     override def execute: Either[TaskFailType.TaskFailType, ExecutionSummary[Map[String, Map[Map[String, Seq[String]], Seq[(String, String)]]]]] = {
-      val filteredFiles = directoryReader.listFiles(dir, _ => true)
+      val filteredFiles = directoryReader.listResources(dir, _ => true)
       val execution = GetImprovingAndLoosing(
         filteredFiles,
         currentParams,
@@ -95,8 +95,8 @@ object AnalyzeFunctions {
                                     n_best: Int,
                                     n_worst: Int) extends Execution[ExecutionSummary[Map[String, Map[Map[String, Seq[String]], Seq[(String, String)]]]]] {
     lazy val persistenceModule: PersistenceModule = AppConfig.persistenceModule
-    lazy val fileReader: FileReader = persistenceModule.persistenceDIModule.fileReader
-    lazy val fileWriter: FileWriter[String, _] = persistenceModule.persistenceDIModule.fileWriter
+    lazy val fileReader: Reader[String, Seq[String]] = persistenceModule.persistenceDIModule.reader
+    lazy val fileWriter: Writer[String, String, _] = persistenceModule.persistenceDIModule.writer
 
     override def execute: Either[TaskFailType.TaskFailType, ExecutionSummary[Map[String, Map[Map[String, Seq[String]], Seq[(String, String)]]]]] = {
       val result = KeepNBestAndKWorst(n_best, n_worst)

@@ -19,8 +19,9 @@ package de.awagen.kolibri.base.config.di.modules.persistence
 
 import com.softwaremill.tagging
 import de.awagen.kolibri.base.config.AppProperties
+import de.awagen.kolibri.base.config.AppProperties.config.{csvColumnSeparator, directoryPathSeparator}
 import de.awagen.kolibri.base.config.di.modules.Modules.{GCP_MODULE, PersistenceDIModule}
-import de.awagen.kolibri.base.io.reader.{DirectoryReader, FileReader, GcpGSDirectoryReader, GcpGSFileReader}
+import de.awagen.kolibri.base.io.reader.{DataOverviewReader, GcpGSDirectoryReader, GcpGSFileReader, Reader}
 import de.awagen.kolibri.base.io.writer.Writers
 import de.awagen.kolibri.base.io.writer.base.GcpGSFileWriter
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.Writer
@@ -34,39 +35,36 @@ class GCPPersistenceModule extends PersistenceDIModule with tagging.Tag[GCP_MODU
   assert(AppProperties.config.gcpGSBucketPath.isDefined, "no gcp gs bucket path defined")
   assert(AppProperties.config.gcpGSProjectID.isDefined, "no gcp projectID defined")
 
-  lazy val fileWriter: Writers.FileWriter[String, _] = GcpGSFileWriter(
+  lazy val writer: Writers.FileWriter[String, _] = GcpGSFileWriter(
     AppProperties.config.gcpGSBucket.get,
     AppProperties.config.gcpGSBucketPath.get,
     AppProperties.config.gcpGSProjectID.get
   )
 
-  lazy val fileReader: FileReader = GcpGSFileReader(
+  lazy val reader: Reader[String, Seq[String]] = GcpGSFileReader(
     AppProperties.config.gcpGSBucket.get,
     AppProperties.config.gcpGSBucketPath.get,
     AppProperties.config.gcpGSProjectID.get
   )
-
-  val directoryPathSeparator: String = "/"
-  val csvColumnSeparator: String = "\t"
 
   val filterNone: String => Boolean = new SerializableFunction1[String, Boolean](){
     override def apply(v1: String): Boolean = true
   }
 
-  override def directoryReader(fileFilter: String => Boolean): DirectoryReader = GcpGSDirectoryReader(
+  override def dataOverviewReader(fileFilter: String => Boolean): DataOverviewReader = GcpGSDirectoryReader(
     AppProperties.config.gcpGSBucket.get,
     AppProperties.config.gcpGSBucketPath.get,
     AppProperties.config.gcpGSProjectID.get,
     directoryPathSeparator,
     filterNone)
 
-  override def csvMetricAggregationWriter(subFolder: String, tagToFilenameFunc: Tags.Tag => String): Writers.Writer[MetricAggregation[Tags.Tag], Tags.Tag, Any] = Writer.gcpCsvMetricAggregationWriter(
+  override def csvMetricAggregationWriter(subFolder: String, tagToDataIdentifierFunc: Tags.Tag => String): Writers.Writer[MetricAggregation[Tags.Tag], Tags.Tag, Any] = Writer.gcpCsvMetricAggregationWriter(
     bucketName = AppProperties.config.gcpGSBucket.get,
     directory = AppProperties.config.gcpGSBucketPath.get,
     projectId = AppProperties.config.gcpGSProjectID.get,
     columnSeparator = csvColumnSeparator,
     subFolder = subFolder,
-    tagToFilenameFunc = tagToFilenameFunc
+    tagToFilenameFunc = tagToDataIdentifierFunc
   )
 
 }

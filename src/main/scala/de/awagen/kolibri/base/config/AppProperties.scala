@@ -193,6 +193,9 @@ object AppProperties {
       if (baseConfig.hasPath("kolibri.persistence.moduleClass")) Some(baseConfig.getString("kolibri.persistence.moduleClass"))
       else None
     }
+
+    val directoryPathSeparator: String = baseConfig.getString("kolibri.persistence.directoryPathSeparator")
+    val csvColumnSeparator: String = baseConfig.getString("kolibri.persistence.csvColumnSeparator")
   }
 
 }

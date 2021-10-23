@@ -19,10 +19,10 @@ package de.awagen.kolibri.base.io.json
 
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
 import spray.json._
-import DirectoryReaderJsonProtocol._
-import de.awagen.kolibri.base.io.reader.{AwsS3DirectoryReader, DirectoryReader, LocalDirectoryReader, LocalResourceDirectoryReader}
+import DataOverviewReaderJsonProtocol._
+import de.awagen.kolibri.base.io.reader.{AwsS3DirectoryReader, DataOverviewReader, LocalDirectoryReader, LocalResourceDirectoryReader}
 
-class DirectoryReaderJsonProtocolSpec extends UnitTestSpec {
+class DataOverviewReaderJsonProtocolSpec extends UnitTestSpec {
 
   val localResourceDirectoryReader: JsValue =
     """
@@ -57,17 +57,17 @@ class DirectoryReaderJsonProtocolSpec extends UnitTestSpec {
       |""".stripMargin.parseJson
 
   "parse LocalResourceDirectoryReader" in {
-    val reader = localResourceDirectoryReader.convertTo[DirectoryReader]
+    val reader = localResourceDirectoryReader.convertTo[DataOverviewReader]
     reader.isInstanceOf[LocalResourceDirectoryReader] mustBe true
   }
 
   "parse LocalDirectoryReader" in {
-    val reader = localReader.convertTo[DirectoryReader]
+    val reader = localReader.convertTo[DataOverviewReader]
     reader.isInstanceOf[LocalDirectoryReader] mustBe true
   }
 
   "parse AwsS3DirectoryReader" in {
-    val reader = awsS3DirectoryReader.convertTo[DirectoryReader]
+    val reader = awsS3DirectoryReader.convertTo[DataOverviewReader]
     reader.isInstanceOf[AwsS3DirectoryReader] mustBe true
   }
 

@@ -38,7 +38,7 @@ object WeightProviders {
                                                      weightColumn: Int,
                                                      defaultValue: Double) extends WeightProvider[String] {
     val logger: Logger = LoggerFactory.getLogger(FileBasedStringIdentifierWeightProvider.getClass)
-    val dataLines: Seq[String] = AppConfig.persistenceModule.persistenceDIModule.fileReader.read(filePath)
+    val dataLines: Seq[String] = AppConfig.persistenceModule.persistenceDIModule.reader.read(filePath)
     logger.debug(s"dataLines: $dataLines")
     val mapping: Map[String, Double] = dataLines.map(x => x.split(columnDelimiter))
       .filter(x => x.length > math.max(keyColumn, weightColumn))

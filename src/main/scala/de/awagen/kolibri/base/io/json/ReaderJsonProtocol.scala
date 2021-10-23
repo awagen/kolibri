@@ -17,13 +17,13 @@
 package de.awagen.kolibri.base.io.json
 
 import com.amazonaws.regions.Regions
-import de.awagen.kolibri.base.io.reader.{AwsS3FileReader, FileReader, LocalResourceFileReader}
+import de.awagen.kolibri.base.io.reader.{AwsS3FileReader, Reader, LocalResourceFileReader}
 import spray.json.{DefaultJsonProtocol, DeserializationException, JsObject, JsString, JsValue, JsonFormat}
 
-object FileReaderJsonProtocol extends DefaultJsonProtocol {
+object ReaderJsonProtocol extends DefaultJsonProtocol {
 
-  implicit object FileReaderFormat extends JsonFormat[FileReader] {
-    override def read(json: JsValue): FileReader = json match {
+  implicit object StringReaderFormat extends JsonFormat[Reader[String, Seq[String]]] {
+    override def read(json: JsValue): Reader[String, Seq[String]] = json match {
       case spray.json.JsObject(fields) => fields("type").convertTo[String] match {
         case "LOCAL_FILE_READER" =>
           val delimiter = fields.get("delimiter")
@@ -43,7 +43,7 @@ object FileReaderJsonProtocol extends DefaultJsonProtocol {
     }
 
     // TODO: extend to other types and check correctness
-    override def write(obj: FileReader): JsValue = obj match {
+    override def write(obj: Reader[String, Seq[String]]): JsValue = obj match {
       case e if e.isInstanceOf[LocalResourceFileReader] =>
         var fieldMap: Map[String, JsValue] = JsString(obj.toString).asJsObject.fields
         fieldMap = fieldMap + ("type" -> JsString("LOCAL_FILE_READER"))

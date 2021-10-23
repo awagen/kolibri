@@ -25,17 +25,17 @@ class LocalResourceDirectoryReaderSpec extends UnitTestSpec {
 
     "correctly list files" in {
       val dirReader = LocalResourceDirectoryReader("empty_files/")
-      val files: Seq[String] = dirReader.listFiles("")
+      val files: Seq[String] = dirReader.listResources("")
       files mustBe Seq("empty_files/empty1.json", "empty_files/empty2.csv", "empty_files/empty3.txt")
     }
 
     "correctly list filered files" in {
       val jsonDirectoryReader = LocalResourceDirectoryReader("empty_files/", baseFilenameFilter = x => x.endsWith(".json"))
-      val jsonFiles = jsonDirectoryReader.listFiles("")
+      val jsonFiles = jsonDirectoryReader.listResources("")
       val csvDirectoryReader = LocalResourceDirectoryReader("empty_files/", baseFilenameFilter = x => x.endsWith(".csv"))
-      val csvFiles = csvDirectoryReader.listFiles("")
+      val csvFiles = csvDirectoryReader.listResources("")
       val txtDirectoryReader = LocalResourceDirectoryReader("empty_files/", baseFilenameFilter = x => x.endsWith(".txt"))
-      val txtFiles = txtDirectoryReader.listFiles("")
+      val txtFiles = txtDirectoryReader.listResources("")
       jsonFiles mustBe Seq("empty_files/empty1.json")
       csvFiles mustBe Seq("empty_files/empty2.csv")
       txtFiles mustBe Seq("empty_files/empty3.txt")

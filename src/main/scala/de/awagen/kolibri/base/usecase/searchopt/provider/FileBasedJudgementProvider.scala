@@ -18,7 +18,7 @@
 package de.awagen.kolibri.base.usecase.searchopt.provider
 
 import de.awagen.kolibri.base.config.AppConfig.persistenceModule.persistenceDIModule
-import de.awagen.kolibri.base.io.reader.{FileReader, FileReaderUtils}
+import de.awagen.kolibri.base.io.reader.{Reader, FileReaderUtils}
 import de.awagen.kolibri.base.usecase.searchopt.provider.FileBasedJudgementProvider.{JudgementFileFormatConfig, defaultJudgementFileFormatConfig}
 
 
@@ -41,13 +41,13 @@ object FileBasedJudgementProvider {
 
   private[provider] def apply(filepath: String,
                               judgementFileFormatConfig: JudgementFileFormatConfig = defaultJudgementFileFormatConfig): FileBasedJudgementProvider = {
-    new FileBasedJudgementProvider(filepath, persistenceDIModule.fileReader)
+    new FileBasedJudgementProvider(filepath, persistenceDIModule.reader)
   }
 
 }
 
 private[provider] class FileBasedJudgementProvider(filepath: String,
-                                                   fileReader: FileReader,
+                                                   fileReader: Reader[String, Seq[String]],
                                                    judgementFileFormatConfig: JudgementFileFormatConfig = defaultJudgementFileFormatConfig)
   extends JudgementProvider[Double] {
 

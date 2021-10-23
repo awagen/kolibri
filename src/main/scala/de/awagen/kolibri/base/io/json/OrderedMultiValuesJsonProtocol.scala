@@ -38,7 +38,7 @@ object OrderedMultiValuesJsonProtocol extends DefaultJsonProtocol {
             case "FROM_FILES_LINES" =>
               val paramNameToFile = fields("values").convertTo[Map[String, String]]
               var params: Seq[OrderedValues[String]] = Seq.empty
-              val fileReader = AppConfig.persistenceModule.persistenceDIModule.fileReader
+              val fileReader = AppConfig.persistenceModule.persistenceDIModule.reader
               paramNameToFile.foreach(x => {
                 val name: String = x._1
                 val values: Seq[String] = fileReader.read(x._2).map(x => x.trim).filter(x => x.nonEmpty)
