@@ -214,7 +214,6 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
       job = cmd.job,
       perJobAggregatorSupplier.apply(),
       writer,
-      // TODO: might wanna add some task request count to ProcessJobCmd
       config.runningTasksPerJobDefaultCount,
       maxProcessDuration,
       expectResultsFromBatchCalculations)

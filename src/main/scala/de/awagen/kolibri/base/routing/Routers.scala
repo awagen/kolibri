@@ -24,6 +24,8 @@ import de.awagen.kolibri.base.actors.work.manager.WorkManagerActor
 
 object Routers {
 
+  val COMPUTE_ROLE = "compute"
+
   // NOTE: do not require the routees to have any props arguments.
   // this can lead to failed serialization on routee creation
   // (even if its just a case class with primitives, maybe due to disabled
@@ -33,13 +35,13 @@ object Routers {
     context.actorOf(
       ClusterRouterPool(
         RoundRobinPool(0),
-        // right now we want to have a single WorkManager per node. Just distributes the batches
-        // to workers on its respective node and keeps state of running workers
+        // WorkManager routee just distributes the batches to workers on its respective node
+        // and keeps state of running workers
         ClusterRouterPoolSettings(
           totalInstances = 10,
           maxInstancesPerNode = 2,
           allowLocalRoutees = true,
-          useRoles = Set("compute")))
+          useRoles = Set(COMPUTE_ROLE)))
         .props(WorkManagerActor.props),
       name = s"jobBatchRouter-$jobId")
   }
