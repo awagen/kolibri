@@ -25,11 +25,11 @@ import akka.pattern.ask
 import akka.util.Timeout
 import de.awagen.kolibri.base.actors.clusterinfo.ClusterMetricsListenerActor.{MetricsProvided, ProvideMetrics}
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.{JobHistory, ProvideAllRunningJobStates, ProvideJobHistory}
-import de.awagen.kolibri.base.actors.work.manager.JobManagerActor.JobStatusInfo
+import de.awagen.kolibri.base.actors.work.manager.JobProcessingState.JobStatusInfo
 import de.awagen.kolibri.base.config.AppProperties.config.kolibriDispatcherName
 import de.awagen.kolibri.base.http.server.routes.BaseRoutes.{clusterMetricsListenerActor, supervisorActor}
 import de.awagen.kolibri.base.io.json.ClusterStatesJsonProtocol._
-import de.awagen.kolibri.base.io.json.JobManagerEventJsonProtocol.jobStatusFormat
+import de.awagen.kolibri.base.io.json.JobStateJsonProtocol.jobStatusFormat
 import spray.json.enrichAny
 
 import scala.concurrent.ExecutionContextExecutor

@@ -23,8 +23,8 @@ import akka.management.scaladsl.AkkaManagement
 import akka.testkit.{ImplicitSender, TestKit}
 import de.awagen.kolibri.base.actors.KolibriTestKit
 import de.awagen.kolibri.base.actors.TestMessages.{generateProcessActorRunnableJobCmd, generateProcessActorRunnableTaskJobCmd}
-import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.{FinishedJobEvent, ProcessingResult}
-import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.ResultSummary
+import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.FinishedJobEvent
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{ProcessingResult, ResultSummary}
 import de.awagen.kolibri.datatypes.types.Types.WithCount
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.must.Matchers

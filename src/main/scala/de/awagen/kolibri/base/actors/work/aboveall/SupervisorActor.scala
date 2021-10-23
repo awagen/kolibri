@@ -23,7 +23,8 @@ import akka.util.Timeout
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor._
 import de.awagen.kolibri.base.actors.work.manager.JobManagerActor
 import de.awagen.kolibri.base.actors.work.manager.JobManagerActor._
-import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.ProcessingMessage
+import de.awagen.kolibri.base.actors.work.manager.JobProcessingState.JobStatusInfo
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{ProcessingMessage, ProcessingResult}
 import de.awagen.kolibri.base.actors.work.worker.TaskExecutionWorkerActor
 import de.awagen.kolibri.base.config.AppProperties._
 import de.awagen.kolibri.base.config.AppProperties.config.kolibriDispatcherName
@@ -61,7 +62,7 @@ object SupervisorActor {
 
   val JOB_HISTORY_PRIORITY_STORE_KEY = "jobs"
   val finishedJobStateOrdering: Ordering[JobStatusInfo] = (x, y) => {
-    val order: Option[Int] = for(
+    val order: Option[Int] = for (
       endTime1 <- x.endTime;
       endTime2 <- y.endTime
     ) yield endTime1.compareTo(endTime2)
@@ -176,10 +177,6 @@ object SupervisorActor {
   case class StopJob(jobId: String) extends SupervisorCmd
 
   private case object JobHousekeeping extends SupervisorCmd
-
-  object ProcessingResult extends Enumeration {
-    val SUCCESS, FAILURE, RUNNING, UNKNOWN = Value
-  }
 
   case class RunningJobs(jobIDs: Seq[String]) extends SupervisorEvent
 

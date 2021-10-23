@@ -23,9 +23,9 @@ import akka.management.scaladsl.AkkaManagement
 import akka.testkit.{TestKit, TestProbe}
 import de.awagen.kolibri.base.actors.KolibriTestKit
 import de.awagen.kolibri.base.actors.TestMessages.{TaggedInt, messagesToActorRefRunnableGenFunc}
-import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.{FinishedJobEvent, ProcessingResult}
+import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.FinishedJobEvent
 import de.awagen.kolibri.base.actors.work.manager.JobManagerActor.ProcessJobCmd
-import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationStateWithData, ProcessingMessage, ResultSummary}
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationStateWithData, ProcessingMessage, ProcessingResult, ResultSummary}
 import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions.MapWithCount
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnable
 import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator}

@@ -16,7 +16,6 @@
 
 package de.awagen.kolibri.base.actors.work.worker
 
-import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.ProcessingResult
 import de.awagen.kolibri.base.processing.execution.expectation.ExecutionExpectation
 import de.awagen.kolibri.base.processing.failure.TaskFailType.TaskFailType
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
@@ -73,6 +72,20 @@ object ProcessingMessages {
       "nrOfResultsReceived" -> nrOfResultsReceived,
       "failedBatches" -> failedBatches).toString
 
+  }
+
+  object ProcessingResult extends Enumeration {
+    val SUCCESS, FAILURE, RUNNING, UNKNOWN = Value
+  }
+
+  def unknownJobResultSummary: ResultSummary = {
+    ResultSummary(
+      result = ProcessingResult.UNKNOWN,
+      nrOfBatchesTotal = 0,
+      nrOfBatchesSentForProcessing = 0,
+      nrOfResultsReceived = 0,
+      failedBatches = Seq.empty
+    )
   }
 
 

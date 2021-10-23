@@ -16,7 +16,7 @@
 
 package de.awagen.kolibri.base.io.json
 
-import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.ProcessingResult
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.ProcessingResult
 import de.awagen.kolibri.base.domain.TaskDataKeys
 import de.awagen.kolibri.base.domain.jobdefinitions.ProcessingActorProps.ProcessingActorProps
 import de.awagen.kolibri.base.domain.jobdefinitions.RunnableExpectationGenerators.ExpectationGenerators

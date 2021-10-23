@@ -27,6 +27,26 @@ import org.slf4j.{Logger, LoggerFactory}
 
 object Consumers {
 
+  /**
+    * Consumer of incoming results, taking care of updating expectations, aggregations and result writing
+    * on an overall job level
+    *
+    * @param executionExpectation - expectation for the execution
+    * @param aggregator - result aggregator
+    * @param writer - result writer
+    * @return
+    */
+  def getBaseExecutionConsumer[T, U](jobId: String, executionExpectation: ExecutionExpectation,
+                                     aggregator: Aggregator[ProcessingMessage[T], U],
+                                     writer: Writer[U, Tag, _]): ExecutionConsumer[U] = {
+    BaseExecutionConsumer(
+      jobId = jobId,
+      expectation = executionExpectation,
+      aggregator = aggregator,
+      writer = writer
+    )
+  }
+
   trait ExecutionConsumer[T] extends KolibriSerializable {
 
     val applyFunc: PartialFunction[Any, Unit]
