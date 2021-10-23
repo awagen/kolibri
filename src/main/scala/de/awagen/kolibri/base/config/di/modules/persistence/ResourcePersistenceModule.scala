@@ -19,7 +19,7 @@ package de.awagen.kolibri.base.config.di.modules.persistence
 
 import com.softwaremill.tagging
 import de.awagen.kolibri.base.config.di.modules.Modules.{PersistenceDIModule, RESOURCE_MODULE}
-import de.awagen.kolibri.base.io.reader.{DirectoryReader, FileReader, LocalResourceDirectoryReader, LocalResourceFileReader}
+import de.awagen.kolibri.base.io.reader.{DataOverviewReader, Reader, LocalResourceDirectoryReader, LocalResourceFileReader}
 import de.awagen.kolibri.base.io.writer.Writers
 import de.awagen.kolibri.base.io.writer.Writers.FileWriter
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
@@ -29,21 +29,19 @@ import java.io.IOException
 
 class ResourcePersistenceModule extends PersistenceDIModule with tagging.Tag[RESOURCE_MODULE] {
 
-  override def fileReader: FileReader = LocalResourceFileReader(None, fromClassPath = true)
+  override def reader: Reader[String, Seq[String]] = LocalResourceFileReader(None, fromClassPath = true)
 
-  override def directoryPathSeparator: String = "/"
-
-  override def directoryReader(fileFilter: String => Boolean): DirectoryReader = LocalResourceDirectoryReader(
+  override def dataOverviewReader(fileFilter: String => Boolean): DataOverviewReader = LocalResourceDirectoryReader(
     baseDir = "",
     baseFilenameFilter = fileFilter)
 
-  override def fileWriter: Writers.FileWriter[String, _] = new FileWriter[String, Unit] {
+  override def writer: Writers.FileWriter[String, _] = new FileWriter[String, Unit] {
     override def write(data: String, targetIdentifier: String): Either[Exception, Unit] = {
       Left(new IOException("not writing to local resource"))
     }
   }
 
-  override def csvMetricAggregationWriter(subFolder: String, tagToFilenameFunc: Tags.Tag => String): Writers.Writer[MetricAggregation[Tags.Tag], Tags.Tag, Any] = new Writers.Writer[MetricAggregation[Tags.Tag], Tags.Tag, Any] {
+  override def csvMetricAggregationWriter(subFolder: String, tagToDataIdentifierFunc: Tags.Tag => String): Writers.Writer[MetricAggregation[Tags.Tag], Tags.Tag, Any] = new Writers.Writer[MetricAggregation[Tags.Tag], Tags.Tag, Any] {
     override def write(data: MetricAggregation[Tags.Tag], targetIdentifier: Tags.Tag): Either[Exception, Any] = Left(new IOException("not writing to local resources"))
   }
 

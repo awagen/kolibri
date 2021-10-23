@@ -20,10 +20,10 @@ import de.awagen.kolibri.datatypes.io.KolibriSerializable
 
 import scala.io.Source
 
-trait FileReader extends KolibriSerializable {
+trait Reader[IdType, +ReadType] extends KolibriSerializable {
 
-  def getSource(fileIdentifier: String): Source
+  def getSource(dataIdentifier: IdType): Source
 
-  def read(fileIdentifier: String): Seq[String]
+  def read(dataIdentifier: IdType): ReadType
 
 }

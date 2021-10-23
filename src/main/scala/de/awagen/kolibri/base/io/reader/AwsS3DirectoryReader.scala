@@ -29,11 +29,11 @@ case class AwsS3DirectoryReader(bucketName: String,
                                 dirPath: String,
                                 region: Regions,
                                 delimiter: String = "/",
-                                fileFilter: String => Boolean) extends DirectoryReader {
+                                fileFilter: String => Boolean) extends DataOverviewReader {
 
   private val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
-  private[this] var s3Client: AmazonS3 = null
+  private[this] var s3Client: AmazonS3 = _
 
   // workaround for serialization
   def setS3ClientIfNotSet(): Unit = {
@@ -44,7 +44,7 @@ case class AwsS3DirectoryReader(bucketName: String,
     }
   }
 
-  override def listFiles(subDir: String, baseFilenameFilter: String => Boolean): Seq[String] = {
+  override def listResources(subDir: String, baseFilenameFilter: String => Boolean): Seq[String] = {
     try {
       setS3ClientIfNotSet()
       val fullprefix = s"${dirPath.stripSuffix("/")}/$subDir".stripSuffix("/") + "/"

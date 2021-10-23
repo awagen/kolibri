@@ -19,8 +19,8 @@ package de.awagen.kolibri.base.processing.execution.functions
 
 import de.awagen.kolibri.base.config.AppConfig
 import de.awagen.kolibri.base.config.di.modules.persistence.PersistenceModule
-import de.awagen.kolibri.base.io.reader.{DirectoryReader, FileReader}
-import de.awagen.kolibri.base.io.writer.Writers.FileWriter
+import de.awagen.kolibri.base.io.reader.{DataOverviewReader, Reader}
+import de.awagen.kolibri.base.io.writer.Writers.Writer
 import de.awagen.kolibri.base.processing.execution.functions.FileUtils.regexDirectoryReader
 import de.awagen.kolibri.base.processing.failure.TaskFailType
 import de.awagen.kolibri.base.processing.failure.TaskFailType.TaskFailType
@@ -52,10 +52,10 @@ object AggregationFunctions {
                                                    outputFilename: String) extends Execution[Unit] {
 
     lazy val persistenceModule: PersistenceModule = AppConfig.persistenceModule
-    lazy val directoryReader: DirectoryReader = regexDirectoryReader(filterRegex)
+    lazy val directoryReader: DataOverviewReader = regexDirectoryReader(filterRegex)
 
     override def execute: Either[TaskFailType, Unit] = {
-      val filteredFiles: Seq[String] = directoryReader.listFiles(readSubDir, _ => true)
+      val filteredFiles: Seq[String] = directoryReader.listResources(readSubDir, _ => true)
       val aggregator = AggregateFilesWeighted(writeSubDir, filteredFiles, sampleIdentifierToWeight, outputFilename)
       aggregator.execute
     }
@@ -81,8 +81,8 @@ object AggregationFunctions {
     // dummy tag to aggregate under
     val aggregationIdentifier: Tag = StringTag("AGG")
 
-    lazy val fileReader: FileReader = persistenceModule.persistenceDIModule.fileReader
-    lazy val fileWriter: FileWriter[String, _] = persistenceModule.persistenceDIModule.fileWriter
+    lazy val fileReader: Reader[String, Seq[String]] = persistenceModule.persistenceDIModule.reader
+    lazy val fileWriter: Writer[String, String, _] = persistenceModule.persistenceDIModule.writer
 
     override def execute: Either[TaskFailType, Unit] = {
       try {

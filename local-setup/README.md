@@ -30,6 +30,8 @@
 As documented here https://kind.sigs.k8s.io/docs/user/local-registry/
 as of now local docker registry has to be created and images pushed to 
 that specific registry. The script located at ```./scripts/kind-with-registry.sh```
+(delete and remove registry when you dont need it anymore with 
+```docker container stop kind-registry && docker container rm -v kind-registry```)
 reflects the script provided in the above link and sets up a local registry
 for kind and starts kind cluster with that registry enabled.
 Note that it also defines extraMounts, mounting a local directory into kind cluster that 
@@ -47,9 +49,9 @@ After it is executed, images can be pushed and used as follows:
 In our case (substitute version accordingly to the version used in docker image tag):
 - ./scripts/kind-with-registry.sh (needed once to create repo and start kind cluster with repo enabled)
 - Then we tag and push push all images to make them available within kind registry:
-  - ```sudo docker tag kolibri-base:0.1.0-beta5 localhost:5000/kolibri-base:0.1.0-beta5```
+  - ```sudo docker tag kolibri-base:0.1.0-beta6 localhost:5000/kolibri-base:0.1.0-beta6```
   - ```sudo docker tag response-juggler:0.1.0 localhost:5000/response-juggler:0.1.0```
-  - ```sudo docker push localhost:5000/kolibri-base:0.1.0-beta5```
+  - ```sudo docker push localhost:5000/kolibri-base:0.1.0-beta6```
   - ```sudo docker push localhost:5000/response-juggler:0.1.0```
 - create namespace: ```sudo kubectl create namespace kolibri```  
 - switch namespace: ```sudo kubens kolibri```  

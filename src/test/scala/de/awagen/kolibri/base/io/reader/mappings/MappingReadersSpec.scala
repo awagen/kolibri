@@ -18,7 +18,7 @@
 package de.awagen.kolibri.base.io.reader.mappings
 
 import de.awagen.kolibri.base.io.reader.mappings.MappingReaders.{CsvMappingReader, MappingJsonReader}
-import de.awagen.kolibri.base.io.reader.{DirectoryReader, FileReader, LocalResourceDirectoryReader, LocalResourceFileReader}
+import de.awagen.kolibri.base.io.reader.{DataOverviewReader, Reader, LocalResourceDirectoryReader, LocalResourceFileReader}
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 
@@ -28,11 +28,11 @@ class MappingReadersSpec extends UnitTestSpec {
 
     "correctly read mappings" in {
       // given
-      val directoryReader: DirectoryReader = LocalResourceDirectoryReader(
+      val directoryReader: DataOverviewReader = LocalResourceDirectoryReader(
         "mapping_data",
         _ => true
       )
-      val fileReader: FileReader = LocalResourceFileReader(
+      val fileReader: Reader[String, Seq[String]] = LocalResourceFileReader(
         None,
         fromClassPath = true
       )
@@ -70,7 +70,7 @@ class MappingReadersSpec extends UnitTestSpec {
 
     "correctly read csv mapping" in {
       // given
-      val fileReader: FileReader = LocalResourceFileReader(
+      val fileReader: Reader[String, Seq[String]] = LocalResourceFileReader(
         None,
         fromClassPath = true
       )
@@ -97,7 +97,7 @@ class MappingReadersSpec extends UnitTestSpec {
 
     "correctly read mapping from json" in {
       // given
-      val fileReader: FileReader = LocalResourceFileReader(
+      val fileReader: Reader[String, Seq[String]] = LocalResourceFileReader(
         None,
         fromClassPath = true
       )

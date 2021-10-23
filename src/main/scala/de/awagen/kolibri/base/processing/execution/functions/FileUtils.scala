@@ -18,7 +18,7 @@
 package de.awagen.kolibri.base.processing.execution.functions
 
 import de.awagen.kolibri.base.config.AppConfig.persistenceModule.persistenceDIModule
-import de.awagen.kolibri.base.io.reader.{DirectoryReader, FileReader}
+import de.awagen.kolibri.base.io.reader.{DataOverviewReader, Reader}
 import de.awagen.kolibri.datatypes.metrics.aggregation.writer.CSVParameterBasedMetricDocumentFormat
 import de.awagen.kolibri.datatypes.stores.MetricDocument
 import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}
@@ -35,7 +35,7 @@ object FileUtils {
     * @return
     */
   def fileToMetricDocument(file: String,
-                           fileReader: FileReader): MetricDocument[Tag] = {
+                           fileReader: Reader[String, Seq[String]]): MetricDocument[Tag] = {
     val csvFormat: CSVParameterBasedMetricDocumentFormat = CSVParameterBasedMetricDocumentFormat("\t")
     val lines: Seq[String] = fileReader.getSource(file).getLines()
       .filter(line => !line.startsWith("#") && line.trim.nonEmpty)
@@ -45,7 +45,7 @@ object FileUtils {
     csvFormat.readDocument(headerColumns, rows, StringTag(""))
   }
 
-  def regexDirectoryReader(regex: Regex): DirectoryReader = persistenceDIModule.directoryReader(
+  def regexDirectoryReader(regex: Regex): DataOverviewReader = persistenceDIModule.dataOverviewReader(
     new SerializableFunction1[String, Boolean] {
       override def apply(v1: String): Boolean = regex.matches(v1)
     }

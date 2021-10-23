@@ -132,6 +132,8 @@ class WorkManagerActor() extends Actor with ActorLogging with KolibriSerializabl
       taskExecutionWorker.tell(ProcessTaskExecution(e.taskExecution, e.partIdentifier), sender())
     case e: JobBatchMsg[TestPiCalculation] if e.msg.isInstanceOf[TestPiCalculation] =>
       log.info("received TestPiCalculation msg")
+      implicit val ec: ExecutionContext = context.system.dispatchers.lookup(kolibriDispatcherName)
+      implicit val actorSystem: ActorSystem = context.system
       if (receivedBatchCount % 10 == 0) {
         log.info(s"received pi calc batch messages: $receivedBatchCount")
       }

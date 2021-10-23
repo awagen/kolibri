@@ -18,7 +18,7 @@
 package de.awagen.kolibri.base.io.json
 
 import de.awagen.kolibri.base.config.AppConfig
-import de.awagen.kolibri.base.io.reader.FileReader
+import de.awagen.kolibri.base.io.reader.Reader
 import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator}
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSupplier
 import spray.json.{DefaultJsonProtocol, DeserializationException, JsValue, JsonFormat, JsonReader, enrichAny}
@@ -56,7 +56,7 @@ object MappingSupplierJsonProtocol extends DefaultJsonProtocol {
     * @return
     */
   def extractPlainMappingFromCsvFile(fields: Map[String, JsValue]): Map[String, String] = {
-    val fileReader: FileReader = AppConfig.persistenceModule.persistenceDIModule.fileReader
+    val fileReader: Reader[String, Seq[String]] = AppConfig.persistenceModule.persistenceDIModule.reader
     val filePath = fields(FILE_PATH_FIELD).convertTo[String]
     val columnSeparator = fields(COLUMN_SEPARATOR_FIELD).convertTo[String]
     val fromIndex = fields(FROM_INDEX_FIELD).convertTo[Int]
@@ -87,9 +87,9 @@ object MappingSupplierJsonProtocol extends DefaultJsonProtocol {
     val directory = fields(DIRECTORY_FIELD).convertTo[String]
     val filesSuffix = fields(FILES_SUFFIX_FIELD).convertTo[String]
     val paramName = fields(PARAM_NAME_FIELD).convertTo[String]
-    val directoryReader = AppConfig.persistenceModule.persistenceDIModule.directoryReader(x => x.endsWith(filesSuffix))
+    val directoryReader = AppConfig.persistenceModule.persistenceDIModule.dataOverviewReader(x => x.endsWith(filesSuffix))
     val keyToParamMap: mutable.Map[String, Map[String, IndexedGenerator[T]]] = mutable.Map.empty
-    directoryReader.listFiles(directory, _ => true)
+    directoryReader.listResources(directory, _ => true)
       .map(file => file.split("/").last.stripSuffix(filesSuffix))
       .foreach(key => {
         val valueGen = ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq(valueMapFunc.apply(key)))
@@ -112,13 +112,13 @@ object MappingSupplierJsonProtocol extends DefaultJsonProtocol {
   def extractParamMapsFromDirs[T](fields: Map[String, JsValue], lineToValueFunc: String => T, normFunc: T => T): Map[String, Map[String, IndexedGenerator[T]]] = {
     val paramNamesToDirMap = fields(PARAM_NAMES_TO_DIR_MAP_FIELD).convertTo[Map[String, String]]
     val filesSuffix = fields(FILES_SUFFIX_FIELD).convertTo[String]
-    val directoryReader = AppConfig.persistenceModule.persistenceDIModule.directoryReader(x => x.endsWith(filesSuffix))
-    val fileReader = AppConfig.persistenceModule.persistenceDIModule.fileReader
+    val directoryReader = AppConfig.persistenceModule.persistenceDIModule.dataOverviewReader(x => x.endsWith(filesSuffix))
+    val fileReader = AppConfig.persistenceModule.persistenceDIModule.reader
     val keyToParamMap: mutable.Map[String, mutable.Map[String, IndexedGenerator[T]]] = mutable.Map.empty
     paramNamesToDirMap.foreach(x => {
       val paramName = x._1
       // for single parameterName, collect all files. The filenames with suffix stripped off make the keys
-      val files: Seq[String] = directoryReader.listFiles(x._2, _ => true)
+      val files: Seq[String] = directoryReader.listResources(x._2, _ => true)
       files.foreach(file => {
         val key: String = file.split("/").last.stripSuffix(filesSuffix)
         val values: IndexedGenerator[T] = ByFunctionNrLimitedIndexedGenerator.createFromSeq(

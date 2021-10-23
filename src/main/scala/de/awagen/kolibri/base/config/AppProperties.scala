@@ -91,7 +91,8 @@ object AppProperties {
     val jobTimeout: FiniteDuration = FiniteDuration(baseConfig.getInt("kolibri.job.timeoutInSeconds"), SECONDS)
     val jobProcessingCheckResourcesInterval: FiniteDuration = FiniteDuration(baseConfig.getInt("kolibri.job.processingCheckResourcesIntervalInMillis"),
       MILLISECONDS)
-    val runningTasksBaselineCount: Int = baseConfig.getInt("kolibri.job.runningTasksBaselineCount")
+    val runningTasksPerJobMaxCount: Int = baseConfig.getInt("kolibri.job.runningTasksPerJobMaxCount")
+    val runningTasksPerJobDefaultCount: Int = baseConfig.getInt("kolibri.job.runningTasksPerJobDefaultCount")
     val batchDistributionInterval: FiniteDuration = FiniteDuration(baseConfig.getInt("kolibri.job.batchDistributionIntervalInMs"), MILLISECONDS)
     val batchMaxTimeToACKInMs: FiniteDuration = FiniteDuration(baseConfig.getInt("kolibri.job.batchMaxTimeToACKInMs"), MILLISECONDS)
 
@@ -192,6 +193,9 @@ object AppProperties {
       if (baseConfig.hasPath("kolibri.persistence.moduleClass")) Some(baseConfig.getString("kolibri.persistence.moduleClass"))
       else None
     }
+
+    val directoryPathSeparator: String = baseConfig.getString("kolibri.persistence.directoryPathSeparator")
+    val csvColumnSeparator: String = baseConfig.getString("kolibri.persistence.csvColumnSeparator")
   }
 
 }

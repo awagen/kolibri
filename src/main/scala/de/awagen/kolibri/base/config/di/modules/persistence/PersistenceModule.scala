@@ -19,6 +19,7 @@ package de.awagen.kolibri.base.config.di.modules.persistence
 
 import com.softwaremill.macwire.wire
 import de.awagen.kolibri.base.config.AppProperties
+import de.awagen.kolibri.base.config.AppProperties.config.directoryPathSeparator
 import de.awagen.kolibri.base.config.di.modules.Modules.PersistenceDIModule
 import de.awagen.kolibri.base.io.writer.Writers.Writer
 import de.awagen.kolibri.base.io.writer.aggregation.BaseMetricDocumentWriter
@@ -54,7 +55,7 @@ class PersistenceModule {
 
   // apply qualifiers by specifying tagging value
   def metricDocumentWriter(subfolder: String): Writer[MetricDocument[Tags.Tag], Tags.Tag, Any] =
-    BaseMetricDocumentWriter(fileWriter, metricDocFormat, subfolder, directoryPathSeparator)
+    BaseMetricDocumentWriter(writer, metricDocFormat, subfolder, directoryPathSeparator)
 
 
 }

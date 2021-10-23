@@ -19,8 +19,8 @@ package de.awagen.kolibri.base.io.reader
 
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 
-trait DirectoryReader extends KolibriSerializable {
+trait DataOverviewReader extends KolibriSerializable {
 
-  def listFiles(subDir: String, baseFilenameFilter: String => Boolean): Seq[String]
+  def listResources(locationIdentifier: String, dataIdentifierFilter: String => Boolean): Seq[String]
 
 }

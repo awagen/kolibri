@@ -17,7 +17,7 @@
 
 package de.awagen.kolibri.base.io.reader.mappings
 
-import de.awagen.kolibri.base.io.reader.{DirectoryReader, FileReader}
+import de.awagen.kolibri.base.io.reader.{DataOverviewReader, Reader}
 import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator}
 
 import scala.collection.mutable
@@ -44,13 +44,13 @@ object MappingReaders {
     * @param fileNameFilter    - filter for file names to selectively only select certain files
     * @param fileNameToKeyFunc - the key from file name generation function
     */
-  case class KeyByFilenameValuePerLineReader(directoryReader: DirectoryReader,
-                                             fileReader: FileReader,
+  case class KeyByFilenameValuePerLineReader(directoryReader: DataOverviewReader,
+                                             fileReader: Reader[String, Seq[String]],
                                              splitLineBy: Option[String],
                                              fileNameFilter: String => Boolean,
                                              fileNameToKeyFunc: String => String) extends GeneratorMappingReader[Seq[String]] {
     override def read(resourceIdentifier: String): Map[String, IndexedGenerator[Seq[String]]] = {
-      val filteredFiles: Seq[String] = directoryReader.listFiles(resourceIdentifier, fileNameFilter)
+      val filteredFiles: Seq[String] = directoryReader.listResources(resourceIdentifier, fileNameFilter)
       val map: mutable.Map[String, IndexedGenerator[Seq[String]]] = mutable.Map.empty
       filteredFiles.foreach(absoluteFilePath => {
         val values: Seq[Seq[String]] = fileReader.read(absoluteFilePath)
@@ -78,7 +78,7 @@ object MappingReaders {
     * @param keyColumnIndex   - column index to retrieve key
     * @param valueColumnIndex - colum index to retrieve value
     */
-  case class CsvMappingReader(fileReader: FileReader,
+  case class CsvMappingReader(fileReader: Reader[String, Seq[String]],
                               columnSeparator: String,
                               splitValueBy: Option[String],
                               keyColumnIndex: Int,
@@ -108,7 +108,7 @@ object MappingReaders {
     *
     * @param fileReader - Reader used to read file contents
     */
-  case class MappingJsonReader(fileReader: FileReader) extends GeneratorMappingReader[String] {
+  case class MappingJsonReader(fileReader: Reader[String, Seq[String]]) extends GeneratorMappingReader[String] {
     override def read(resourceIdentifier: String): Map[String, IndexedGenerator[String]] = {
       val fileContent: JsValue = fileReader.read(resourceIdentifier).mkString("\n").parseJson
       fileContent match {

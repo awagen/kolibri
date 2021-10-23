@@ -18,16 +18,16 @@
 package de.awagen.kolibri.base.io.json
 
 import com.amazonaws.regions.Regions
-import de.awagen.kolibri.base.io.reader.{AwsS3DirectoryReader, DirectoryReader, LocalDirectoryReader, LocalResourceDirectoryReader}
+import de.awagen.kolibri.base.io.reader.{AwsS3DirectoryReader, DataOverviewReader, LocalDirectoryReader, LocalResourceDirectoryReader}
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 import spray.json.{DefaultJsonProtocol, JsValue, JsonFormat, enrichAny}
 
 import scala.util.matching.Regex
 
-object DirectoryReaderJsonProtocol extends DefaultJsonProtocol {
+object DataOverviewReaderJsonProtocol extends DefaultJsonProtocol {
 
-  implicit object DirectoryReaderFormat extends JsonFormat[DirectoryReader] {
-    override def read(json: JsValue): DirectoryReader = json match {
+  implicit object DataOverviewReaderFormat extends JsonFormat[DataOverviewReader] {
+    override def read(json: JsValue): DataOverviewReader = json match {
       case spray.json.JsObject(fields) => fields("type").convertTo[String] match {
         case "CLASSPATH_REGEX_FILEFILTER" =>
           val baseDir: String = fields("baseDir").convertTo[String]
@@ -61,7 +61,7 @@ object DirectoryReaderJsonProtocol extends DefaultJsonProtocol {
       }
     }
 
-    override def write(obj: DirectoryReader): JsValue = """{}""".toJson
+    override def write(obj: DataOverviewReader): JsValue = """{}""".toJson
   }
 
 }

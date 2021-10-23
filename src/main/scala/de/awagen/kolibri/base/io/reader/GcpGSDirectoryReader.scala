@@ -36,11 +36,11 @@ case class GcpGSDirectoryReader(bucketName: String,
                                 dirPath: String,
                                 projectID: String,
                                 delimiter: String = "/",
-                                fileFilter: String => Boolean) extends DirectoryReader {
+                                fileFilter: String => Boolean) extends DataOverviewReader {
   val dirPathNormalized: String = dirPath.stripPrefix(delimiter).stripSuffix(delimiter)
   val storage: Storage = StorageOptions.newBuilder.setProjectId(projectID).build.getService
 
-  override def listFiles(subDir: String, baseFilenameFilter: String => Boolean): Seq[String] = {
+  override def listResources(subDir: String, baseFilenameFilter: String => Boolean): Seq[String] = {
     val prefix = s"$dirPathNormalized$delimiter${subDir.stripPrefix(delimiter.stripSuffix(delimiter))}$delimiter"
     val blobs: Page[Blob] = storage.list(
       bucketName,

@@ -69,8 +69,8 @@ object IndexedGeneratorJsonProtocol extends DefaultJsonProtocol {
         case "BY_FILENAME_KEYS" =>
           val directory: String = fields("directory").convertTo[String]
           val filesSuffix: String = fields("filesSuffix").convertTo[String]
-          val directoryReader = AppConfig.persistenceModule.persistenceDIModule.directoryReader(x => x.endsWith(filesSuffix))
-          val keys: Seq[String] = directoryReader.listFiles(directory, _ => true)
+          val directoryReader = AppConfig.persistenceModule.persistenceDIModule.dataOverviewReader(x => x.endsWith(filesSuffix))
+          val keys: Seq[String] = directoryReader.listResources(directory, _ => true)
             .map(file => file.split("/").last.stripSuffix(filesSuffix))
           ByFunctionNrLimitedIndexedGenerator.createFromSeq(keys)
       }

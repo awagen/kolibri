@@ -35,7 +35,7 @@ object SupplierJsonProtocol extends DefaultJsonProtocol {
         case "FROM_JSON_FILE" =>
           val file = fields("file").convertTo[String]
           val persistenceModule = AppConfig.persistenceModule
-          val source: Source = persistenceModule.persistenceDIModule.fileReader.getSource(file)
+          val source: Source = persistenceModule.persistenceDIModule.reader.getSource(file)
           val mapping = source.getLines().mkString("\n").parseJson.convertTo[Map[String, Seq[String]]]
           new SerializableSupplier[Map[String, Seq[String]]]() {
             override def apply(): Map[String, Seq[String]] = mapping

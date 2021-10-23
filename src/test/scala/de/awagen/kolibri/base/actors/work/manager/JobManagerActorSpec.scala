@@ -23,9 +23,9 @@ import akka.management.scaladsl.AkkaManagement
 import akka.testkit.{TestKit, TestProbe}
 import de.awagen.kolibri.base.actors.KolibriTestKit
 import de.awagen.kolibri.base.actors.TestMessages.{TaggedInt, messagesToActorRefRunnableGenFunc}
-import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.{FinishedJobEvent, ProcessingResult}
+import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.FinishedJobEvent
 import de.awagen.kolibri.base.actors.work.manager.JobManagerActor.ProcessJobCmd
-import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationStateWithData, ProcessingMessage, ResultSummary}
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationStateWithData, ProcessingMessage, ProcessingResult, ResultSummary}
 import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions.MapWithCount
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnable
 import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator}
@@ -92,13 +92,11 @@ class JobManagerActorSpec extends KolibriTestKit
       val testProbe: TestProbe = TestProbe()
       val managerProps = JobManagerActor.props(
         experimentId = "testId",
-        runningTaskBaselineCount = 10,
         perBatchAggregatorSupplier = aggregatorSupplier,
         perJobAggregatorSupplier = aggregatorSupplier,
         writer = (_: MapWithCount[Tag, Double], _: Tag) => Right(()),
         maxProcessDuration = 10 minutes,
-        maxBatchDuration = 1 minute,
-        2)
+        maxBatchDuration = 1 minute)
       val jobManagerActor: ActorRef = system.actorOf(managerProps)
       val jobGenerator: IndexedGenerator[ActorRunnable[TaggedInt, Int, Int, MapWithCount[Tag, Double]]] = ByFunctionNrLimitedIndexedGenerator(
         nrOfElements = 4,
@@ -112,11 +110,13 @@ class JobManagerActorSpec extends KolibriTestKit
         nrOfBatchesTotal = 4,
         nrOfBatchesSentForProcessing = 4,
         nrOfResultsReceived = 4,
-        leftoverExpectationsMap = Map(),
         failedBatches = Seq()
       )
       // then
-      testProbe.expectMsg(2 minutes, FinishedJobEvent("testId", expectedResult))
+      testProbe.expectMsgPF(10 seconds) {
+        case e: FinishedJobEvent if e.jobId == "testId" && e.jobStatusInfo.resultSummary == expectedResult  => true
+        case _ => false
+      }
     }
   }
 

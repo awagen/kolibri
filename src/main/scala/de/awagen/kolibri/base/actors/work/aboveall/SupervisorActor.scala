@@ -17,41 +17,36 @@
 package de.awagen.kolibri.base.actors.work.aboveall
 
 import akka.actor.SupervisorStrategy.Stop
-import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, OneForOneStrategy, PoisonPill, Props, Terminated}
+import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, ActorSystem, OneForOneStrategy, PoisonPill, Props, Terminated}
 import akka.pattern.ask
 import akka.util.Timeout
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor._
 import de.awagen.kolibri.base.actors.work.manager.JobManagerActor
 import de.awagen.kolibri.base.actors.work.manager.JobManagerActor._
-import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{ProcessingMessage, ResultSummary}
+import de.awagen.kolibri.base.actors.work.manager.JobProcessingState.JobStatusInfo
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.ProcessingMessage
 import de.awagen.kolibri.base.actors.work.worker.TaskExecutionWorkerActor
 import de.awagen.kolibri.base.config.AppProperties._
-import de.awagen.kolibri.base.config.AppProperties.config.{kolibriDispatcherName, maxNrBatchRetries}
+import de.awagen.kolibri.base.config.AppProperties.config.kolibriDispatcherName
 import de.awagen.kolibri.base.domain.jobdefinitions.Batch
-import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions.MapWithCount
 import de.awagen.kolibri.base.io.writer.Writers.Writer
-import de.awagen.kolibri.base.processing.JobMessages.{SearchEvaluation, TestPiCalculation}
+import de.awagen.kolibri.base.processing.JobMessages.{JobMessage, SearchEvaluation}
 import de.awagen.kolibri.base.processing.classifier.Mapper.FilteringMapper
 import de.awagen.kolibri.base.processing.execution.SimpleTaskExecution
-import de.awagen.kolibri.base.processing.execution.expectation.Expectation.SuccessAndErrorCounts
 import de.awagen.kolibri.base.processing.execution.expectation._
 import de.awagen.kolibri.base.processing.execution.functions.Execution
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnable
 import de.awagen.kolibri.base.processing.execution.task.Task
 import de.awagen.kolibri.base.processing.execution.task.utils.TaskUtils
 import de.awagen.kolibri.base.processing.failure.TaskFailType
-import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
 import de.awagen.kolibri.datatypes.ClassTyped
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
-import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
 import de.awagen.kolibri.datatypes.mutable.stores.TypeTaggedMap
-import de.awagen.kolibri.datatypes.stores.MetricRow
+import de.awagen.kolibri.datatypes.stores.PriorityStores.{BasePriorityStore, PriorityStore}
 import de.awagen.kolibri.datatypes.tagging.TaggedWithType
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
-import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 import de.awagen.kolibri.datatypes.types.Types.WithCount
-import de.awagen.kolibri.datatypes.values.AggregateValue
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 
 import scala.collection.mutable
@@ -62,6 +57,47 @@ import scala.concurrent.{ExecutionContextExecutor, Future}
 object SupervisorActor {
 
   def props(returnResponseToSender: Boolean): Props = Props(SupervisorActor(returnResponseToSender))
+
+  val JOB_HISTORY_PRIORITY_STORE_KEY = "jobs"
+  val finishedJobStateOrdering: Ordering[JobStatusInfo] = (x, y) => {
+    val order: Option[Int] = for (
+      endTime1 <- x.endTime;
+      endTime2 <- y.endTime
+    ) yield endTime1.compareTo(endTime2)
+    order.getOrElse(0)
+  }
+
+  def createTaskExecutionWorkerProps(finalResultKey: ClassTyped[_]): Props = {
+    TaskExecutionWorkerActor.props
+  }
+
+  def createJobManagerActor[T, U <: WithCount](jobId: String,
+                                               perBatchAggregatorSupplier: () => Aggregator[ProcessingMessage[T], U],
+                                               perJobAggregatorSupplier: () => Aggregator[ProcessingMessage[T], U],
+                                               writer: Writer[U, Tag, _],
+                                               allowedTimeForJob: FiniteDuration,
+                                               allowedTimeForBatch: FiniteDuration)(implicit context: ActorContext): ActorRef = {
+    context.actorOf(JobManagerActor.props[T, U](
+      experimentId = jobId,
+      perBatchAggregatorSupplier = perBatchAggregatorSupplier,
+      perJobAggregatorSupplier = perJobAggregatorSupplier,
+      writer = writer,
+      maxProcessDuration = allowedTimeForJob,
+      maxBatchDuration = allowedTimeForBatch).withDispatcher(kolibriDispatcherName),
+      name = JobManagerActor.name(jobId))
+  }
+
+  def runnableJobCmdToJobManager[M <: WithCount](jobId: String, cmd: ProcessActorRunnableJobCmd[_, _, _, M])(implicit context: ActorContext): ActorRef = {
+    createJobManagerActor(
+      jobId,
+      cmd.perBatchAggregatorSupplier,
+      cmd.perJobAggregatorSupplier,
+      cmd.writer,
+      cmd.allowedTimeForJob,
+      cmd.allowedTimePerBatch)
+  }
+
+  case class ActorSetup(executing: ActorRef, jobSender: ActorRef)
 
   sealed trait SupervisorMsg extends KolibriSerializable
 
@@ -109,21 +145,21 @@ object SupervisorActor {
 
   case object ProvideAllRunningJobStates extends SupervisorCmd
 
+  case object ProvideJobHistory extends SupervisorCmd
+
   case class StopJob(jobId: String) extends SupervisorCmd
 
   private case object JobHousekeeping extends SupervisorCmd
 
-  object ProcessingResult extends Enumeration {
-    val SUCCESS, FAILURE, RUNNING = Value
-  }
-
   case class RunningJobs(jobIDs: Seq[String]) extends SupervisorEvent
+
+  case class JobHistory(jobs: Seq[JobStatusInfo]) extends SupervisorEvent
 
   case class ExpectationForJob(jobId: String, expectation: ExecutionExpectation) extends SupervisorEvent
 
   case class JobNotFound(jobId: String) extends SupervisorEvent
 
-  case class FinishedJobEvent(jobId: String, resultSummary: ResultSummary) extends SupervisorEvent
+  case class FinishedJobEvent(jobId: String, jobStatusInfo: JobStatusInfo) extends SupervisorEvent
 
 }
 
@@ -133,57 +169,10 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
   implicit val system: ActorSystem = context.system
   implicit val ec: ExecutionContextExecutor = context.system.dispatchers.lookup(kolibriDispatcherName)
 
-  case class ActorSetup(executing: ActorRef, jobSender: ActorRef)
-
   val jobIdToActorRefAndExpectation: mutable.Map[String, (ActorSetup, ExecutionExpectation)] = mutable.Map.empty
 
-  def createJobManagerActor[T, U <: WithCount](jobId: String,
-                                               perBatchAggregatorSupplier: () => Aggregator[ProcessingMessage[T], U],
-                                               perJobAggregatorSupplier: () => Aggregator[ProcessingMessage[T], U],
-                                               writer: Writer[U, Tag, _],
-                                               allowedTimeForJob: FiniteDuration,
-                                               allowedTimeForBatch: FiniteDuration,
-                                               maxNumRetries: Int): ActorRef = {
-    context.actorOf(JobManagerActor.props[T, U](
-      experimentId = jobId,
-      runningTaskBaselineCount = config.runningTasksBaselineCount,
-      perBatchAggregatorSupplier = perBatchAggregatorSupplier,
-      perJobAggregatorSupplier = perJobAggregatorSupplier,
-      writer = writer,
-      maxProcessDuration = allowedTimeForJob,
-      maxBatchDuration = allowedTimeForBatch,
-      maxNumRetries).withDispatcher(kolibriDispatcherName),
-      name = JobManagerActor.name(jobId))
-  }
-
-  def createTaskExecutionWorkerProps(finalResultKey: ClassTyped[_]): Props = {
-    TaskExecutionWorkerActor.props
-  }
-
-  // we only expect one FinishedJobEvent per job
-  // StopExpectation met if an FinishedJobEvent has FAILURE result type, ignores all other messages
-  // except FinishedJobEvent; also sets a TimeoutExpectation to abort
-  // jobs on exceeding it
-  def createJobExecutionExpectation(allowedDuration: FiniteDuration): ExecutionExpectation = {
-    BaseExecutionExpectation(
-      fulfillAllForSuccess = Seq(ClassifyingCountExpectation(Map("finishResponse" -> {
-        case e: FinishedJobEvent if e.resultSummary.result == ProcessingResult.SUCCESS => true
-        case _ => false
-      }), Map("finishResponse" -> 1))),
-      fulfillAnyForFail = Seq(
-        StopExpectation(
-          overallElementCount = 1,
-          errorClassifier = {
-            case e: FinishedJobEvent if e.resultSummary.result == ProcessingResult.SUCCESS => SuccessAndErrorCounts(1, 0)
-            case e: FinishedJobEvent if e.resultSummary.result == ProcessingResult.FAILURE => SuccessAndErrorCounts(0, 1)
-            case _ => SuccessAndErrorCounts(0, 0)
-          },
-          overallCountToFailCountFailCriterion = new SerializableFunction1[(Int, Int), Boolean] {
-            override def apply(v1: (Int, Int)): Boolean = v1._2 > 0
-          }),
-        TimeExpectation(allowedDuration))
-    )
-  }
+  val finishedJobStateHistory: PriorityStore[String, JobStatusInfo] = BasePriorityStore(10, finishedJobStateOrdering,
+    _ => JOB_HISTORY_PRIORITY_STORE_KEY)
 
   // schedule the housekeeping, checking each jobId
   context.system.scheduler.scheduleAtFixedRate(
@@ -192,19 +181,9 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
     receiver = self,
     message = JobHousekeeping)
 
-
-  def runnableJobCmdToJobManager[M <: WithCount](jobId: String, cmd: ProcessActorRunnableJobCmd[_, _, _, M]): ActorRef = {
-    createJobManagerActor(
-      jobId,
-      cmd.perBatchAggregatorSupplier,
-      cmd.perJobAggregatorSupplier,
-      cmd.writer,
-      cmd.allowedTimeForJob,
-      cmd.allowedTimePerBatch,
-      maxNrBatchRetries)
-  }
-
-  override def receive: Receive = {
+  val informationProvidingReceive: Receive = {
+    case ProvideJobHistory =>
+      sender() ! JobHistory(finishedJobStateHistory.result.getOrElse(JOB_HISTORY_PRIORITY_STORE_KEY, Seq.empty))
     case ProvideAllRunningJobStates =>
       // forward the status-requesting message to processing actor, which will send his response to the initial sender
       val reportTo: ActorRef = sender()
@@ -216,6 +195,111 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
       overallResults.onComplete(x => reportTo ! x)
     case ProvideAllRunningJobIDs =>
       sender() ! RunningJobs(jobIdToActorRefAndExpectation.keys.toSeq)
+    case ProvideJobState(jobId) =>
+      val requestingActor = sender()
+      val actorSetupAndExpectation: Option[(ActorSetup, ExecutionExpectation)] = jobIdToActorRefAndExpectation.get(jobId)
+      actorSetupAndExpectation.foreach(x => {
+        // forward the status-requesting message to processing actor, which will send his response to the initial sender
+        x._1.executing forward ProvideJobStatus
+      })
+      if (actorSetupAndExpectation.isEmpty) {
+        requestingActor ! JobNotFound(jobId: String)
+      }
+  }
+
+  val jobStartingReceive: Receive = {
+    case job: ProcessActorRunnableJobCmd[_, _, _, _] =>
+      val jobSender = sender()
+      val jobId = job.jobId
+      if (jobIdToActorRefAndExpectation.contains(jobId)) {
+        log.warning("Job with id {} is still running, thus not starting that here", jobId)
+      }
+      else {
+        log.info("Creating and sending job to JobManager, jobId: {}", jobId)
+        val actor = createJobManagerActor(
+          jobId = jobId,
+          perBatchAggregatorSupplier = job.perBatchAggregatorSupplier,
+          perJobAggregatorSupplier = job.perJobAggregatorSupplier,
+          writer = job.writer,
+          allowedTimeForJob = job.allowedTimeForJob,
+          allowedTimeForBatch = job.allowedTimePerBatch)
+        // registering actor to receive Terminated messages in case a
+        // job manager actor stopped
+        context.watch(actor)
+        actor ! ProcessJobCmd(job.processElements)
+        val expectation = ExecutionExpectations.finishedJobExecutionExpectation(job.allowedTimeForJob)
+        expectation.init
+        jobIdToActorRefAndExpectation(jobId) = (ActorSetup(actor, jobSender), expectation)
+      }
+    case e: JobMessage =>
+      import de.awagen.kolibri.base.processing.JobMessagesImplicits._
+      val jobSender = sender()
+      val jobId = e.jobName
+      if (jobIdToActorRefAndExpectation.contains(jobId)) {
+        log.warning("Job with id {} is still running, thus not starting that here", jobId)
+      }
+      else {
+        log.info("Creating and sending job to JobManager, jobId: {}", jobId)
+        val runnableJobCmdOpt: Option[ProcessActorRunnableJobCmd[_, _, _, _ <: WithCount]] = e match {
+          case msg: TestPiCalcToRunnable =>
+            Some(msg.toRunnable)
+          case msg: SearchEvaluation =>
+            Some(msg.toRunnable)
+          case _ =>
+            log.warning("Passed JobMessage not defined in SupervisorActor job-handling, ignored msg for job {}", e.jobName)
+            None
+        }
+        runnableJobCmdOpt.foreach(runnableJobCmd => {
+          val actor = runnableJobCmdToJobManager(jobId, runnableJobCmd)
+          context.watch(actor)
+          actor ! e
+          val expectation = ExecutionExpectations.finishedJobExecutionExpectation(runnableJobCmd.allowedTimeForJob)
+          expectation.init
+          jobIdToActorRefAndExpectation(jobId) = (ActorSetup(actor, jobSender), expectation)
+        })
+      }
+    case job: ProcessActorRunnableTaskJobCmd[WithCount] =>
+      val jobSender: ActorRef = sender()
+      val jobId = job.jobId
+      if (jobIdToActorRefAndExpectation.contains(jobId)) {
+        log.warning("Experiment with id {} is still running, thus not starting that here", job.jobId)
+        ()
+      }
+      else {
+        val mappedIterable: IndexedGenerator[ActorRunnable[SimpleTaskExecution[_], Any, Any, WithCount]] =
+          TaskUtils.tasksToActorRunnable(
+            jobId = jobId,
+            resultKey = job.resultKey,
+            mapGenerator = job.dataIterable,
+            tasks = job.tasks,
+            aggregatorSupplier = job.perBatchAggregatorSupplier,
+            taskExecutionWorkerProps = createTaskExecutionWorkerProps(finalResultKey = job.resultKey),
+            timeoutPerRunnable = job.allowedTimePerBatch,
+            1 minute,
+            job.sendResultsBack)
+        log.info("Creating and sending job to JobManager, jobId: {}", jobId)
+        val actor = createJobManagerActor(
+          jobId,
+          job.perBatchAggregatorSupplier,
+          job.perJobAggregatorSupplier,
+          job.writer,
+          job.allowedTimeForJob,
+          job.allowedTimePerBatch)
+        context.watch(actor)
+        actor ! ProcessJobCmd(mappedIterable)
+        val expectation = ExecutionExpectations.finishedJobExecutionExpectation(job.allowedTimeForJob)
+        expectation.init
+        jobIdToActorRefAndExpectation(jobId) = (ActorSetup(actor, jobSender), expectation)
+      }
+    case execution: Execution[Any] =>
+      val replyTo: ActorRef = sender()
+      val responseFuture: Future[Either[TaskFailType.TaskFailType, Any]] = Future {
+        execution.execute
+      }
+      responseFuture.onComplete(x => replyTo ! x)
+  }
+
+  val stateKeepingReceive: Receive = {
     case StopJob(jobId) =>
       val requestingActor = sender()
       val actorSetupAndExpectation: Option[(ActorSetup, ExecutionExpectation)] = jobIdToActorRefAndExpectation.get(jobId)
@@ -224,16 +308,6 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
         x._1.executing ! PoisonPill
         // send current expectation back to the initial sender
         requestingActor ! ExpectationForJob(jobId, x._2)
-      })
-      if (actorSetupAndExpectation.isEmpty) {
-        requestingActor ! JobNotFound(jobId: String)
-      }
-    case ProvideJobState(jobId) =>
-      val requestingActor = sender()
-      val actorSetupAndExpectation: Option[(ActorSetup, ExecutionExpectation)] = jobIdToActorRefAndExpectation.get(jobId)
-      actorSetupAndExpectation.foreach(x => {
-        // forward the status-requesting message to processing actor, which will send his response to the initial sender
-        x._1.executing forward ProvideJobStatus
       })
       if (actorSetupAndExpectation.isEmpty) {
         requestingActor ! JobNotFound(jobId: String)
@@ -268,105 +342,7 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
     case MaxTimeExceededEvent(jobId) =>
       log.info("received MaxTimeExceeded message for jobId {}, thus respective JobManager is expected to kill himself," +
         "which will be reflected in another Terminated message", jobId)
-    case job: ProcessActorRunnableJobCmd[_, _, _, _] =>
-      val jobSender = sender()
-      val jobId = job.jobId
-      if (jobIdToActorRefAndExpectation.contains(jobId)) {
-        log.warning("Job with id {} is still running, thus not starting that here", jobId)
-      }
-      else {
-        log.info("Creating and sending job to JobManager, jobId: {}", jobId)
-        val actor = createJobManagerActor(
-          jobId = jobId,
-          perBatchAggregatorSupplier = job.perBatchAggregatorSupplier,
-          perJobAggregatorSupplier = job.perJobAggregatorSupplier,
-          writer = job.writer,
-          allowedTimeForJob = job.allowedTimeForJob,
-          allowedTimeForBatch = job.allowedTimePerBatch,
-          maxNumRetries = maxNrBatchRetries)
-        // registering actor to receive Terminated messages in case a
-        // job manager actor stopped
-        context.watch(actor)
-        actor ! ProcessJobCmd(job.processElements)
-        val expectation = createJobExecutionExpectation(job.allowedTimeForJob)
-        expectation.init
-        jobIdToActorRefAndExpectation(jobId) = (ActorSetup(actor, jobSender), expectation)
-      }
-    case e: TestPiCalculation =>
-      val jobSender = sender()
-      val jobId = e.jobName
-      if (jobIdToActorRefAndExpectation.contains(jobId)) {
-        log.warning("Job with id {} is still running, thus not starting that here", jobId)
-      }
-      else {
-        log.info("Creating and sending job to JobManager, jobId: {}", jobId)
-        import de.awagen.kolibri.base.processing.JobMessagesImplicits._
-        val runnableJob: ProcessActorRunnableJobCmd[Int, Double, Double, MapWithCount[Tag, AggregateValue[Double]]] = e.toRunnable
-        val actor = runnableJobCmdToJobManager(jobId, runnableJob)
-        context.watch(actor)
-        actor ! e
-        val expectation = createJobExecutionExpectation(runnableJob.allowedTimeForJob)
-        expectation.init
-        jobIdToActorRefAndExpectation(jobId) = (ActorSetup(actor, jobSender), expectation)
-      }
-    case e: SearchEvaluation =>
-      val jobSender = sender()
-      val jobId = e.jobName
-      if (jobIdToActorRefAndExpectation.contains(jobId)) {
-        log.warning("Job with id {} is still running, thus not starting that here", jobId)
-      }
-      else {
-        log.info("Creating and sending job to JobManager, jobId: {}", jobId)
-        import de.awagen.kolibri.base.processing.JobMessagesImplicits._
-        implicit val timeout: Timeout = 10 minutes
-        val runnableJob: ProcessActorRunnableJobCmd[RequestTemplateBuilderModifier, MetricRow, MetricRow, MetricAggregation[Tag]] = e.toRunnable
-        val actor = runnableJobCmdToJobManager(jobId, runnableJob)
-        context.watch(actor)
-        actor ! e
-        val expectation = createJobExecutionExpectation(runnableJob.allowedTimeForJob)
-        expectation.init
-        jobIdToActorRefAndExpectation(jobId) = (ActorSetup(actor, jobSender), expectation)
-      }
-    case job: ProcessActorRunnableTaskJobCmd[WithCount] =>
-      val jobSender: ActorRef = sender()
-      val jobId = job.jobId
-      if (jobIdToActorRefAndExpectation.contains(jobId)) {
-        log.warning("Experiment with id {} is still running, thus not starting that here", job.jobId)
-        ()
-      }
-      else {
-        val mappedIterable: IndexedGenerator[ActorRunnable[SimpleTaskExecution[_], Any, Any, WithCount]] =
-          TaskUtils.tasksToActorRunnable(
-            jobId = jobId,
-            resultKey = job.resultKey,
-            mapGenerator = job.dataIterable,
-            tasks = job.tasks,
-            aggregatorSupplier = job.perBatchAggregatorSupplier,
-            taskExecutionWorkerProps = createTaskExecutionWorkerProps(finalResultKey = job.resultKey),
-            timeoutPerRunnable = job.allowedTimePerBatch,
-            1 minute,
-            job.sendResultsBack)
-        log.info("Creating and sending job to JobManager, jobId: {}", jobId)
-        val actor = createJobManagerActor(
-          jobId,
-          job.perBatchAggregatorSupplier,
-          job.perJobAggregatorSupplier,
-          job.writer,
-          job.allowedTimeForJob,
-          job.allowedTimePerBatch,
-          maxNrBatchRetries)
-        context.watch(actor)
-        actor ! ProcessJobCmd(mappedIterable)
-        val expectation = createJobExecutionExpectation(job.allowedTimeForJob)
-        expectation.init
-        jobIdToActorRefAndExpectation(jobId) = (ActorSetup(actor, jobSender), expectation)
-      }
-    case execution: Execution[Any] =>
-      val replyTo: ActorRef = sender()
-      val responseFuture: Future[Either[TaskFailType.TaskFailType, Any]] = Future {
-        execution.execute
-      }
-      responseFuture.onComplete(x => replyTo ! x)
+
     case event: FinishedJobEvent =>
       log.info("Experiment with id {} finished processing", event.jobId)
       jobIdToActorRefAndExpectation.get(event.jobId).foreach(x => x._2.accept(event))
@@ -375,6 +351,7 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
         actorSetup.foreach(x => x.jobSender ! event)
       }
       jobIdToActorRefAndExpectation -= event.jobId
+      finishedJobStateHistory.addEntry(event.jobStatusInfo)
     case KillAllChildren => context.children.foreach(x => context.stop(x))
     case GetJobWorkerStatus(jobId) =>
       val reportTo: ActorRef = sender()
@@ -385,6 +362,8 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
     case e =>
       log.warning("Unknown message (will be ignored): {}", e)
   }
+
+  override def receive: Receive = informationProvidingReceive.orElse(jobStartingReceive).orElse(stateKeepingReceive)
 
   /**
     * We keep a very relaxed supervision here by just allowing the actors

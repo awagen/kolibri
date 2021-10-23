@@ -30,7 +30,7 @@ import de.awagen.kolibri.base.config.AppProperties.config.{kolibriDispatcherName
 import de.awagen.kolibri.base.http.server.routes.BaseRoutes._
 import de.awagen.kolibri.base.http.server.HttpServer
 import de.awagen.kolibri.base.http.server.routes.BaseRoutes
-import de.awagen.kolibri.base.http.server.routes.StatusRoutes.{health, jobStates, nodeState}
+import de.awagen.kolibri.base.http.server.routes.StatusRoutes.{finishedJobStates, health, jobStates, nodeState}
 import kamon.Kamon
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -96,7 +96,7 @@ object ClusterNode extends App {
     val usedRoute: Route = route.getOrElse(simpleHelloRoute ~ streamingUserRoutes ~ clusterStatusRoutee ~ killAllJobs
       ~ getJobStatus ~ killJob ~ getJobWorkerStatus ~ getRunningJobIds ~ executeDistributedPiCalculationExample
       ~ executeDistributedPiCalculationExampleWithoutSerialization ~ startSearchEval ~ startSearchEvalNoSerialize
-      ~ startExecution ~ nodeState ~ jobStates ~ health)
+      ~ startExecution ~ nodeState ~ jobStates ~ finishedJobStates ~ health)
     val isHttpServerNode: Boolean = node_roles.contains(config.HTTP_SERVER_ROLE)
 
     logger.info(s"Node roles: $node_roles")
