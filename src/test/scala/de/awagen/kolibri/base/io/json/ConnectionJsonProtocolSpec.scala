@@ -16,7 +16,7 @@
 
 package de.awagen.kolibri.base.io.json
 
-import de.awagen.kolibri.base.domain.Connection
+import de.awagen.kolibri.base.domain.Connections.Connection
 import de.awagen.kolibri.base.domain.jobdefinitions.provider.{BaseCredentialsProvider, Credentials}
 import de.awagen.kolibri.base.io.json.ConnectionJsonProtocol._
 import de.awagen.kolibri.base.testclasses.UnitTestSpec

@@ -18,9 +18,14 @@ package de.awagen.kolibri.base.domain
 
 import de.awagen.kolibri.base.domain.jobdefinitions.provider.CredentialsProvider
 
-case class Connection(
-  host: String,
-  port: Int,
-  useHttps: Boolean,
-  credentialsProvider: Option[CredentialsProvider]
-)
+object Connections {
+
+  case class Connection(host: String,
+                        port: Int,
+                        useHttps: Boolean,
+                        credentialsProvider: Option[CredentialsProvider])
+
+  case class Host(hostname: String, port: Int)
+}
+
+

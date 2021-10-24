@@ -25,7 +25,7 @@ import akka.testkit.{ImplicitSender, TestKit}
 import de.awagen.kolibri.base.actors.KolibriTestKitNoCluster
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{Corn, ProcessingMessage}
-import de.awagen.kolibri.base.domain.Connection
+import de.awagen.kolibri.base.domain.Connections.Connection
 import de.awagen.kolibri.base.http.client.request.RequestTemplate
 import de.awagen.kolibri.base.usecase.searchopt.http.client.flows.FlowTestHelper.{connectionPoolRequestFlow, connectionToRequestTemplateProcessingAndParsing, parseResponse, singleRequestProcessingFlow}
 import org.scalamock.scalatest.MockFactory

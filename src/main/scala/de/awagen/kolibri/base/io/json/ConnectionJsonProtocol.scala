@@ -16,7 +16,7 @@
 
 package de.awagen.kolibri.base.io.json
 
-import de.awagen.kolibri.base.domain.Connection
+import de.awagen.kolibri.base.domain.Connections.Connection
 import de.awagen.kolibri.base.domain.jobdefinitions.provider.CredentialsProvider
 import de.awagen.kolibri.base.io.json.CredentialsProviderJsonProtocol.CredentialsProviderFormat
 import spray.json.{DefaultJsonProtocol, RootJsonFormat}

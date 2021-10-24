@@ -18,7 +18,7 @@
 package de.awagen.kolibri.base.io.json
 
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
-import de.awagen.kolibri.base.domain.Connection
+import de.awagen.kolibri.base.domain.Connections.Connection
 import de.awagen.kolibri.base.http.client.request.RequestTemplate
 import de.awagen.kolibri.base.io.json.ConnectionJsonProtocol._
 import de.awagen.kolibri.base.io.json.ExecutionJsonProtocol._

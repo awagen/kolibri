@@ -194,6 +194,12 @@ object AppProperties {
       else None
     }
 
+    val httpConnectionPoolMode: String = baseConfig.getString("kolibri.request.connection.pool.mode")
+    val httpConnectionPoolModuleClass: Option[String] = {
+      if (baseConfig.hasPath("kolibri.request.connection.pool.moduleClass")) Some(baseConfig.getString("kolibri.request.connection.pool.moduleClass"))
+      else None
+    }
+
     val directoryPathSeparator: String = baseConfig.getString("kolibri.persistence.directoryPathSeparator")
     val csvColumnSeparator: String = baseConfig.getString("kolibri.persistence.csvColumnSeparator")
   }

@@ -18,12 +18,15 @@
 package de.awagen.kolibri.base.config
 
 import com.softwaremill.macwire.wire
+import de.awagen.kolibri.base.config.di.modules.connections.HttpModule
 import de.awagen.kolibri.base.config.di.modules.persistence.PersistenceModule
 import de.awagen.kolibri.base.usecase.searchopt.provider.FileBasedJudgementProvider.{JudgementFileFormatConfig, defaultJudgementFileFormatConfig}
 
 object AppConfig {
 
   val persistenceModule: PersistenceModule = wire[PersistenceModule]
+
+  val httpModule: HttpModule = wire[HttpModule]
 
   val judgementFileFormatConfig: JudgementFileFormatConfig = defaultJudgementFileFormatConfig
 
