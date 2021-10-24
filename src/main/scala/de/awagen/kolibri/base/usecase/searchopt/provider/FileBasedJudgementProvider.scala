@@ -18,60 +18,122 @@
 package de.awagen.kolibri.base.usecase.searchopt.provider
 
 import de.awagen.kolibri.base.config.AppConfig.persistenceModule.persistenceDIModule
-import de.awagen.kolibri.base.io.reader.{Reader, FileReaderUtils}
-import de.awagen.kolibri.base.usecase.searchopt.provider.FileBasedJudgementProvider.{JudgementFileFormatConfig, defaultJudgementFileFormatConfig}
+import de.awagen.kolibri.base.io.reader.{FileReaderUtils, Reader}
+import de.awagen.kolibri.base.usecase.searchopt.parse.TypedJsonSelectors.{SingleValueSelector, TypedJsonSeqSelector}
+import play.api.libs.json.Json
+
+import scala.io.Source
 
 
 object FileBasedJudgementProvider {
 
-  case class JudgementFileFormatConfig(judgement_file_column_divider: String,
-                                       judgement_list_delimiter: String,
-                                       judgement_file_columns: Int,
-                                       judgement_file_judgement_column: Int,
-                                       judgement_file_searchterm_column: Int,
-                                       judgement_file_productid_column: Int)
+  case class JudgementFileCSVFormatConfig(judgement_list_delimiter: String,
+                                          judgement_file_columns: Int,
+                                          judgement_file_judgement_column: Int,
+                                          judgement_file_search_term_column: Int,
+                                          judgement_file_product_id_column: Int)
 
-  val defaultJudgementFileFormatConfig: JudgementFileFormatConfig = JudgementFileFormatConfig(
-    judgement_file_column_divider = "\u0000",
+  val defaultJudgementFileFormatConfig: JudgementFileCSVFormatConfig = JudgementFileCSVFormatConfig(
     judgement_list_delimiter = "\u0000",
     judgement_file_columns = 3,
     judgement_file_judgement_column = 2,
-    judgement_file_searchterm_column = 0,
-    judgement_file_productid_column = 1)
+    judgement_file_search_term_column = 0,
+    judgement_file_product_id_column = 1)
 
-  private[provider] def apply(filepath: String,
-                              judgementFileFormatConfig: JudgementFileFormatConfig = defaultJudgementFileFormatConfig): FileBasedJudgementProvider = {
-    new FileBasedJudgementProvider(filepath, persistenceDIModule.reader)
+  def createCSVBasedProvider(filepath: String,
+                             judgementFileFormatConfig: JudgementFileCSVFormatConfig = defaultJudgementFileFormatConfig,
+                             queryProductDelimiter: String = "\u0000"): FileBasedJudgementProvider = {
+    new FileBasedJudgementProvider(filepath,
+      persistenceDIModule.reader,
+      csvSourceToJudgementMapping(
+        judgementFileFormatConfig = judgementFileFormatConfig,
+        queryProductDelimiter = queryProductDelimiter
+      ),
+      queryProductDelimiter = queryProductDelimiter
+    )
   }
+
+  def createJsonLineBasedProvider(filepath: String,
+                                  jsonQuerySelector: SingleValueSelector[Any],
+                                  jsonProductsSelector: TypedJsonSeqSelector,
+                                  jsonJudgementsSelector: TypedJsonSeqSelector,
+                                  queryProductDelimiter: String = "\u0000"): FileBasedJudgementProvider = {
+    new FileBasedJudgementProvider(
+      filepath,
+      persistenceDIModule.reader,
+      jsonLineSourceToJudgementMapping(
+        jsonQuerySelector,
+        jsonProductsSelector,
+        jsonJudgementsSelector,
+        queryProductDelimiter)
+    )
+  }
+
+  /**
+    * This assumes that the judgement file contains one json per line.
+    * An example could be {"query", "products": [{"product_id": "abc", "score": 0.231}, ...]}, and the passed selectors
+    * need to take the specifics of the format into account
+    *
+    * @param jsonQuerySelector      - selector to extract the query per json
+    * @param jsonProductsSelector   - selector to extract the product_ids per json
+    * @param jsonJudgementsSelector - selector to extract the judgements per json
+    * @param queryProductDelimiter  - delimiter used to combine query and product to a single key
+    * @return
+    */
+  def jsonLineSourceToJudgementMapping(jsonQuerySelector: SingleValueSelector[Any],
+                                       jsonProductsSelector: TypedJsonSeqSelector,
+                                       jsonJudgementsSelector: TypedJsonSeqSelector,
+                                       queryProductDelimiter: String = "\u0000"): Source => Map[String, Double] = {
+    source => {
+      source.getLines()
+        .map(line => line.trim)
+        .filter(line => line.nonEmpty)
+        .map(line => Json.parse(line))
+        .flatMap(jsValue => {
+          val query: String = jsonQuerySelector.select(jsValue).getOrElse("").asInstanceOf[String]
+          val products: Seq[String] = jsonProductsSelector.select(jsValue).asInstanceOf[Seq[String]]
+          val judgements: Seq[Double] = jsonJudgementsSelector.select(jsValue).asInstanceOf[Seq[Double]]
+          val keys: Seq[String] = products.map(product => s"$query$queryProductDelimiter$product")
+          keys zip judgements
+        })
+        .toMap
+    }
+  }
+
+  def csvSourceToJudgementMapping(judgementFileFormatConfig: JudgementFileCSVFormatConfig = defaultJudgementFileFormatConfig,
+                                  queryProductDelimiter: String = "\u0000"): Source => Map[String, Double] = {
+    FileReaderUtils.mappingFromCSVSource[Double](
+      judgementFileFormatConfig.judgement_list_delimiter,
+      judgementFileFormatConfig.judgement_file_columns,
+      x => s"${x(judgementFileFormatConfig.judgement_file_search_term_column)}$queryProductDelimiter${x(judgementFileFormatConfig.judgement_file_product_id_column)}",
+      x => x(judgementFileFormatConfig.judgement_file_judgement_column).toDouble)
+  }
+
 
 }
 
 private[provider] class FileBasedJudgementProvider(filepath: String,
                                                    fileReader: Reader[String, Seq[String]],
-                                                   judgementFileFormatConfig: JudgementFileFormatConfig = defaultJudgementFileFormatConfig)
+                                                   sourceToJudgementMappingFunc: Source => Map[String, Double],
+                                                   queryProductDelimiter: String = "\u0000")
   extends JudgementProvider[Double] {
 
   private val judgementStorage: Map[String, Double] = readJudgementsFromFile(filepath)
 
-  private[this] def readJudgementsFromFile(filepath: String): Map[String, Double] = {
-    FileReaderUtils.mappingFromFile[Double](
-      () => fileReader.getSource(filepath),
-      judgementFileFormatConfig.judgement_list_delimiter,
-      judgementFileFormatConfig.judgement_file_columns,
-      x => createKey(x(judgementFileFormatConfig.judgement_file_searchterm_column), x(judgementFileFormatConfig.judgement_file_productid_column)),
-      x => x(judgementFileFormatConfig.judgement_file_judgement_column).toDouble)
+  private[provider] def readJudgementsFromFile(filepath: String): Map[String, Double] = {
+    sourceToJudgementMappingFunc.apply(fileReader.getSource(filepath))
   }
 
   override def retrieveJudgement(searchTerm: String, productId: String): Option[Double] = {
     judgementStorage.get(createKey(searchTerm, productId))
   }
 
-  def createKey(searchTerm: String, productId: String): String = {
-    s"$searchTerm${judgementFileFormatConfig.judgement_file_column_divider}$productId"
+  private[provider] def createKey(searchTerm: String, productId: String): String = {
+    s"$searchTerm$queryProductDelimiter$productId"
   }
 
-  def keyToSearchTermAndProductId(key: String): (String, String) = {
-    val parts = key.split(judgementFileFormatConfig.judgement_file_column_divider)
+  private[provider] def keyToSearchTermAndProductId(key: String): (String, String) = {
+    val parts = key.split(queryProductDelimiter)
     (parts.head, parts(1))
   }
 

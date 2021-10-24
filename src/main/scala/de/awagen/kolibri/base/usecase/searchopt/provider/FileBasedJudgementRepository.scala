@@ -26,6 +26,6 @@ object FileBasedJudgementRepository extends AtomicMapPromiseStore[String, Judgem
 
   override def calculateValue(key: String): JudgementProvider[Double] = {
     logger.debug("calculateValue")
-    FileBasedJudgementProvider(key, AppConfig.judgementFileFormatConfig)
+    AppConfig.filepathToJudgementProvider.apply(key)
   }
 }
