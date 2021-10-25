@@ -7,7 +7,7 @@ val playLogbackVersion = "2.8.2"
 val sprayVersion = "1.3.5"
 
 ThisBuild / scalaVersion := "2.13.2"
-ThisBuild / version := "0.1.0-beta3"
+ThisBuild / version := "0.1.0-beta4"
 
 lazy val jvmOptions = Seq(
   "-Xms1G",

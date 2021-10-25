@@ -139,7 +139,7 @@ case class CSVParameterBasedMetricDocumentFormat(columnSeparator: String) extend
         .biValue
         .addFirst(RunningValue(weightedFailCount, failCount, failReasonsCountMap, failMapKeepWeightFon,  errorMapAdd.addFunc))
         .addSecond(RunningValue(weightedSuccessCount, successCount, metricValue, weightMultiplyFunction, doubleAvgAdd.addFunc))
-      metricRow = metricRow.addMetric(metricValueObj.copy(biValue = newRunningValue))
+      metricRow = metricRow.addMetricDontChangeCountStore(metricValueObj.copy(biValue = newRunningValue))
     })
     metricRow
   }

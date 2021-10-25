@@ -34,7 +34,7 @@ class MetricRowSpec extends UnitTestSpec {
       // given
       var store: MetricRow = MetricRow.empty
       // when
-      store = store.addMetric(metricsValue1)
+      store = store.addMetricDontChangeCountStore(metricsValue1)
       // then
       store.getMetricsValue("mName1").get mustBe metricsValue1
       store.metrics.keys mustBe Set("mName1")
@@ -58,8 +58,8 @@ class MetricRowSpec extends UnitTestSpec {
       // given
       var store1: MetricRow = MetricRow.empty
       var store2: MetricRow = MetricRow.empty
-      store1 = store1.addMetric(metricsValue1)
-      store2 = store2.addMetric(metricsValue3)
+      store1 = store1.addMetricDontChangeCountStore(metricsValue1)
+      store2 = store2.addMetricDontChangeCountStore(metricsValue3)
       // when
       val fullStore: MetricRow = store1.addRecordAndIncreaseSampleCount(store2)
       // then
