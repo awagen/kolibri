@@ -36,8 +36,8 @@ object TestObjects {
 
 
   val metricRecord1: MetricRow = MetricRow.emptyForParams(parameterTag1.value).addFullMetricsSampleAndIncreaseSampleCount(metricsSuccess1, metricsSuccess2)
-  val metricRecord2: MetricRow = MetricRow.emptyForParams(parameterTag2.value).addMetric(metricsSuccess3)
-  val metricRecord3: MetricRow = MetricRow.emptyForParams(parameterTag3.value).addMetric(metricsSuccess4)
+  val metricRecord2: MetricRow = MetricRow.emptyForParams(parameterTag2.value).addMetricDontChangeCountStore(metricsSuccess3)
+  val metricRecord3: MetricRow = MetricRow.emptyForParams(parameterTag3.value).addMetricDontChangeCountStore(metricsSuccess4)
 
   val doc1: MetricDocument[String] = MetricDocument.empty[String]("doc1")
   doc1.add(metricRecord1)

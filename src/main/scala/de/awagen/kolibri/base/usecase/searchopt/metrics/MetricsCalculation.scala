@@ -49,9 +49,9 @@ case class MetricsCalculation(metrics: Seq[Metric], judgementHandling: Judgement
   }
 
   def calculateAll(params: immutable.Map[String, Seq[String]], values: Seq[Option[Double]]): MetricRow = {
-    var metricRow = MetricRow.emptyForParams(params = params)
-    metrics.foreach(x => metricRow = metricRow.addMetric(calculateMetric(x, values)))
-    metricRow
+    val metricRow = MetricRow.emptyForParams(params = params)
+    val allMetrics: Seq[MetricValue[Double]] = metrics.map(x => calculateMetric(x, values))
+    metricRow.addFullMetricsSampleAndIncreaseSampleCount(allMetrics:_*)
   }
 
 }

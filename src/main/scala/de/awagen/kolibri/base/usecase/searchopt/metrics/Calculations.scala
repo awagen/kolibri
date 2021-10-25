@@ -147,7 +147,7 @@ object Functions {
     var metricRow = MetricRow.empty.copy(params = params)
     valueNames.foreach(x => {
       val addValue: MetricValue[Double] = MetricValue.createAvgFailSample(metricName = x, failMap = Map[ComputeFailReason, Int](ComputeFailReason(s"${e.getClass.getName}") -> 1))
-      metricRow = metricRow.addMetric(addValue)
+      metricRow = metricRow.addMetricDontChangeCountStore(addValue)
     })
     metricRow
   }
@@ -162,7 +162,7 @@ object Functions {
     var metricRow = MetricRow.empty.copy(params = params)
     failReason.foreach(reason => {
       val addValue: MetricValue[Double] = MetricValue.createAvgFailSample(metricName = metricName, failMap = Map[ComputeFailReason, Int](reason -> 1))
-      metricRow = metricRow.addMetric(addValue)
+      metricRow = metricRow.addMetricDontChangeCountStore(addValue)
     })
     metricRow
   }
@@ -171,7 +171,7 @@ object Functions {
     case Left(e) => computeFailReasonsToMetricRowResponse(e, metricName, params)
     case Right(e) =>
       val addValue: MetricValue[Double] = MetricValue.createAvgSuccessSample(metricName, e, 1.0)
-      MetricRow.empty.copy(params = params).addMetric(addValue)
+      MetricRow.empty.copy(params = params).addMetricDontChangeCountStore(addValue)
   }
 
   def findFirstValue(findTrue: Boolean): SerializableFunction1[Seq[Boolean], CalculationResult[Double]] = new SerializableFunction1[Seq[Boolean], CalculationResult[Double]] {
