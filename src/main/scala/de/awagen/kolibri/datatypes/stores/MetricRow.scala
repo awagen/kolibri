@@ -108,10 +108,7 @@ case class MetricRow(countStore: ResultCountStore, params: Map[String, Seq[Strin
   override def addMetric(addMetric: MetricValue[Double]): MetricRow = {
     val currentMetricState: MetricValue[Double] = metrics.getOrElse(addMetric.name, MetricValue.createEmptyAveragingMetricValue(addMetric.name))
     val updatedMetricState = MetricValue[Double](addMetric.name, currentMetricState.biValue.add(addMetric.biValue))
-    val addSuccessCount = updatedMetricState.biValue.value2.numSamples
-    val addFailCount = updatedMetricState.biValue.value1.numSamples
-    val newCountStore = new ResultCountStore(countStore.successCount + addSuccessCount, countStore.failCount + addFailCount)
-    MetricRow(newCountStore, params, metrics + (addMetric.name -> updatedMetricState))
+    MetricRow(countStore, params, metrics + (addMetric.name -> updatedMetricState))
   }
 
   override def addFullMetricsSampleAndIncreaseSampleCount(newMetrics: MetricValue[Double]*): MetricRow = {
