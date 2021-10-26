@@ -20,7 +20,7 @@ package de.awagen.kolibri.base.processing
 import akka.actor.ActorSystem
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.ProcessActorRunnableJobCmd
-import de.awagen.kolibri.base.domain.Connection
+import de.awagen.kolibri.base.domain.Connections.Connection
 import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions
 import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions.MapWithCount
 import de.awagen.kolibri.base.http.client.request.{RequestTemplate, RequestTemplateBuilder}

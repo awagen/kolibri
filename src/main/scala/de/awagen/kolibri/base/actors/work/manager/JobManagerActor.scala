@@ -289,7 +289,7 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
     case CheckIfJobAckReceivedAndRemoveIfNot(batchNr) =>
       checkIfJobAckReceivedAndRemoveIfNot(batchNr)
     case ProvideJobStatus =>
-      if (jobProcessingState.isJobToProcessSet) {
+      if (!jobProcessingState.isJobToProcessSet) {
         sender() ! emptyJobStatusInfo
       }
       else {

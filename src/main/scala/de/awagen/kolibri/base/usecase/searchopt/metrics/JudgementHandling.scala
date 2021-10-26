@@ -30,7 +30,7 @@ object JudgementValidation extends Enumeration {
     x => {
       val missing: Int = x.count(y => y.isEmpty)
       val total: Int = x.size
-      if (total > 0) missing.asInstanceOf[Double] / total.asInstanceOf[Double] <= fraction else false
+      if (total > 0) missing.asInstanceOf[Double] / total.asInstanceOf[Double] <= fraction else true
     }
   }
 

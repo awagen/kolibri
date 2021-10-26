@@ -67,25 +67,26 @@ object FileReaderUtils {
   }
 
 
-  def mappingFromFile[T](source: () => Source,
-                         columnDelimiter: String,
-                         filterLessColumnsThan: Int,
-                         valsToKey: Seq[String] => String,
-                         columnsToValue: Array[String] => T): Map[String, T] = {
-    source.apply().getLines
-      .filter(f => f.trim.nonEmpty && !f.startsWith("#"))
-      .map(x => x.split(columnDelimiter))
-      .filter(x => x.length >= filterLessColumnsThan)
-      .map(x => valsToKey(x) -> columnsToValue(x))
-      .toMap
+  def mappingFromCSVSource[T](columnDelimiter: String,
+                              filterLessColumnsThan: Int,
+                              valsToKey: Seq[String] => String,
+                              columnsToValue: Array[String] => T): Source => Map[String, T] = {
+    source => {
+      source.getLines()
+        .filter(f => f.trim.nonEmpty && !f.startsWith("#"))
+        .map(x => x.split(columnDelimiter))
+        .filter(x => x.length >= filterLessColumnsThan)
+        .map(x => valsToKey(x) -> columnsToValue(x))
+        .toMap
+    }
   }
 
 
-  def multiMappingFromFile[T](source: Source,
-                              columnDelimiter: String,
-                              filterLessColumnsThan: Int,
-                              valsToKey: Seq[String] => String,
-                              columnsToValue: Array[String] => T): Map[String, Set[T]] = {
+  def multiMappingFromCSVFile[T](source: Source,
+                                 columnDelimiter: String,
+                                 filterLessColumnsThan: Int,
+                                 valsToKey: Seq[String] => String,
+                                 columnsToValue: Array[String] => T): Map[String, Set[T]] = {
     val mappings: Seq[(String, T)] = source
       .getLines
       .filter(f => f.trim.nonEmpty && !f.startsWith("#"))

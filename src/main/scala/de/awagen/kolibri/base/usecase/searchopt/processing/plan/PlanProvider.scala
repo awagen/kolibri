@@ -89,7 +89,7 @@ object PlanProvider {
       prerequisites = Seq.empty,
       successKey = ExtTaskDataKeys.JUDGEMENT_PROVIDER,
       failKey = JUDGEMENT_PROVIDER_FAILED,
-      futureFunc = x => judgementProviderFactory.getJudgements.future,
+      futureFunc = _ => judgementProviderFactory.getJudgements.future,
       successHandler = (_, _) => (),
       failureHandler = _ => ())
   }

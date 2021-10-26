@@ -25,7 +25,7 @@ import akka.stream.scaladsl.Flow
 import akka.util.ByteString
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{Corn, ProcessingMessage}
-import de.awagen.kolibri.base.domain.Connection
+import de.awagen.kolibri.base.domain.Connections.Connection
 import de.awagen.kolibri.base.http.client.request.RequestTemplate
 import org.slf4j.{Logger, LoggerFactory}
 

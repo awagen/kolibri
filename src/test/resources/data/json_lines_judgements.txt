@@ -1,0 +1,3 @@
+{"query": "q1", "products": [{"productId": "a", "score": 0.43}, {"productId": "b", "score": 0.55}, {"productId": "c", "score": 0.22}]}
+{"query": "q2", "products": [{"productId": "aa", "score": 0.30}, {"productId": "bb", "score": 0.11}]}
+{"query": "q3", "products": [{"productId": "cc", "score": 0.10}]}

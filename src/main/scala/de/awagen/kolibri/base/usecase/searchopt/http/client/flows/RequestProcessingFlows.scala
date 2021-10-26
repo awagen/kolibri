@@ -24,9 +24,11 @@ import akka.http.scaladsl.model.{HttpRequest, HttpResponse, Uri}
 import akka.stream._
 import akka.stream.scaladsl.{Balance, Flow, GraphDSL, Merge}
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{Corn, ProcessingMessage}
+import de.awagen.kolibri.base.config.AppConfig
+import de.awagen.kolibri.base.config.AppConfig.httpModule
 import de.awagen.kolibri.base.config.AppProperties.config
 import de.awagen.kolibri.base.config.AppProperties.config.useConnectionPoolFlow
-import de.awagen.kolibri.base.domain.Connection
+import de.awagen.kolibri.base.domain.Connections.Connection
 import de.awagen.kolibri.base.http.client.request.RequestTemplate
 import de.awagen.kolibri.base.processing.decider.Deciders.allResumeDecider
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.Flows
@@ -138,7 +140,7 @@ object RequestProcessingFlows {
 
   def connectionToProcessingFunc[T](parsingFunc: HttpResponse => Future[Either[Throwable, T]])(implicit ac: ActorSystem, ec: ExecutionContext): Connection => Flow[ProcessingMessage[RequestTemplate], ProcessingMessage[(Either[Throwable, T], RequestTemplate)], NotUsed] = x => {
     if (useConnectionPoolFlow) connectionPoolFlow(Flows.connectionFunc, x, parsingFunc)
-    else singleRequestFlow(x => Http().singleRequest(x), x, parsingFunc)
+    else singleRequestFlow(x => httpModule.httpDIModule.singleRequest(x), x, parsingFunc)
   }
 
 

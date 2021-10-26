@@ -20,7 +20,8 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.stream.scaladsl.Flow
-import de.awagen.kolibri.base.actors.flows.GenericFlows.{Host, getHttpConnectionPoolFlow, getHttpsConnectionPoolFlow}
+import de.awagen.kolibri.base.config.AppConfig.httpModule
+import de.awagen.kolibri.base.domain.Connections.Host
 import de.awagen.kolibri.base.http.client.request.HttpRequestProvider
 import de.awagen.kolibri.datatypes.ConcurrentUpdateMapOps
 import de.awagen.kolibri.datatypes.values.DataPoint
@@ -31,7 +32,7 @@ import scala.util.Try
 case class ConnectionPoolStorage[T <: DataPoint[HttpRequestProvider]](map: AtomicReference[Map[String, Flow[(HttpRequest, T), (Try[HttpResponse], T), Http.HostConnectionPool]]]) {
 
   def getPoolForHost(host: Host, useHttps: Boolean)(implicit actorSystem: ActorSystem): Flow[(HttpRequest, T), (Try[HttpResponse], T), Http.HostConnectionPool] = {
-    val poolFunc = if (useHttps) getHttpsConnectionPoolFlow[T] else getHttpConnectionPoolFlow[T]
+    val poolFunc = if (useHttps) httpModule.httpDIModule.getHttpsConnectionPoolFlow[T] else httpModule.httpDIModule.getHttpConnectionPoolFlow[T]
     val hostIdentifier = s"${host.hostname}${host.port}$useHttps"
     ConcurrentUpdateMapOps.updateMapEntryIfKeyNotExists[String, Flow[(HttpRequest, T), (Try[HttpResponse], T), Http.HostConnectionPool]](map, s"$hostIdentifier", poolFunc.apply(host))
     map.get()(hostIdentifier)

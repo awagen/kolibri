@@ -24,7 +24,7 @@ import akka.testkit.TestKit
 import de.awagen.kolibri.base.actors.KolibriTestKitNoCluster
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{Corn, ProcessingMessage}
-import de.awagen.kolibri.base.domain.Connection
+import de.awagen.kolibri.base.domain.Connections.Connection
 import de.awagen.kolibri.base.http.client.request.{RequestTemplate, RequestTemplateBuilder}
 import de.awagen.kolibri.base.processing.modifiers.Modifier
 import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.RequestParameterModifier
