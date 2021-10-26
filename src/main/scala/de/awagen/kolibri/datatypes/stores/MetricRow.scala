@@ -105,7 +105,7 @@ case class MetricRow(countStore: ResultCountStore, params: Map[String, Seq[Strin
 
   override def getMetricsValue(key: String): Option[MetricValue[Double]] = metrics.get(key)
 
-  override def addMetric(addMetric: MetricValue[Double]): MetricRow = {
+  override def addMetricDontChangeCountStore(addMetric: MetricValue[Double]): MetricRow = {
     val currentMetricState: MetricValue[Double] = metrics.getOrElse(addMetric.name, MetricValue.createEmptyAveragingMetricValue(addMetric.name))
     val updatedMetricState = MetricValue[Double](addMetric.name, currentMetricState.biValue.add(addMetric.biValue))
     MetricRow(countStore, params, metrics + (addMetric.name -> updatedMetricState))
@@ -113,7 +113,7 @@ case class MetricRow(countStore: ResultCountStore, params: Map[String, Seq[Strin
 
   override def addFullMetricsSampleAndIncreaseSampleCount(newMetrics: MetricValue[Double]*): MetricRow = {
     var result: MetricRow = this
-    newMetrics.foreach(x => result = result.addMetric(x))
+    newMetrics.foreach(x => result = result.addMetricDontChangeCountStore(x))
     if (MetricRow.isSuccessSample(newMetrics:_*)) countStore.incrementSuccessCount()
     else countStore.incrementFailCount()
     result
@@ -121,7 +121,7 @@ case class MetricRow(countStore: ResultCountStore, params: Map[String, Seq[Strin
 
   override def addRecordAndIncreaseSampleCount(record: MetricRecord[String, Double]): MetricRow = {
     var result = this
-    record.metricValues.foreach(x => result = result.addMetric(x))
+    record.metricValues.foreach(x => result = result.addMetricDontChangeCountStore(x))
     if (MetricRow.isSuccessSample(record.metricValues:_*)) countStore.incrementSuccessCount()
     else countStore.incrementFailCount()
     result

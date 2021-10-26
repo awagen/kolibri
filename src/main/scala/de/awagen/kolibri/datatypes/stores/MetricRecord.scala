@@ -22,7 +22,7 @@ trait MetricRecord[A, B] {
 
   def getMetricsValue(key: A): Option[MetricValue[B]]
 
-  def addMetric(metric: MetricValue[B]): MetricRecord[A, B]
+  def addMetricDontChangeCountStore(metric: MetricValue[B]): MetricRecord[A, B]
 
   def addFullMetricsSampleAndIncreaseSampleCount(metrics: MetricValue[B]*): MetricRecord[A, B]
 

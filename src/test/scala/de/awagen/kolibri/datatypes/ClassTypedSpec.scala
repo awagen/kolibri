@@ -24,28 +24,28 @@ class ClassTypedSpec extends UnitTestSpec {
   "ClassTyped" must {
 
     "be equal for same types" in {
-      ClassTyped[String] == ClassTyped[String] mustBe true
-      ClassTyped[String] == ClassTyped[Int] mustBe false
+      ClassTyped[String].equals(ClassTyped[String]) mustBe true
+      ClassTyped[String].equals(ClassTyped[Int]) mustBe false
     }
 
     "have equal hashes" in {
-      ClassTyped[String].hashCode() == ClassTyped[String].hashCode() mustBe true
-      ClassTyped[String].hashCode() == ClassTyped[Int].hashCode() mustBe false
+      ClassTyped[String].hashCode().equals(ClassTyped[String].hashCode()) mustBe true
+      ClassTyped[String].hashCode().equals(ClassTyped[Int].hashCode()) mustBe false
     }
   }
 
   "NamedClassTyped" must {
 
     "be equal only for same types and names" in {
-      NamedClassTyped[Double]("name1") == NamedClassTyped[Double]("name1") mustBe true
-      NamedClassTyped[Double]("name1") == NamedClassTyped[Double]("name2") mustBe false
-      NamedClassTyped[Double]("name1") == NamedClassTyped[String]("name1") mustBe false
+      NamedClassTyped[Double]("name1").equals(NamedClassTyped[Double]("name1")) mustBe true
+      NamedClassTyped[Double]("name1").equals(NamedClassTyped[Double]("name2")) mustBe false
+      NamedClassTyped[Double]("name1").equals(NamedClassTyped[String]("name1")) mustBe false
     }
 
     "have only equal hashes in case of same types and names" in {
-      NamedClassTyped[Double]("name1").hashCode() == NamedClassTyped[Double]("name1").hashCode() mustBe true
-      NamedClassTyped[Double]("name1").hashCode() == NamedClassTyped[Double]("name2").hashCode() mustBe false
-      NamedClassTyped[Double]("name1").hashCode() == NamedClassTyped[String]("name1") .hashCode()mustBe false
+      NamedClassTyped[Double]("name1").hashCode().equals(NamedClassTyped[Double]("name1").hashCode()) mustBe true
+      NamedClassTyped[Double]("name1").hashCode().equals(NamedClassTyped[Double]("name2").hashCode()) mustBe false
+      NamedClassTyped[Double]("name1").hashCode().equals(NamedClassTyped[String]("name1").hashCode()) mustBe false
     }
 
   }
