@@ -21,7 +21,7 @@ object MissingValueStrategy extends Enumeration {
 
   protected case class Val(function: Function[Seq[Option[Double]], Seq[Double]]) extends super.Val {}
 
-  val AS_ZEROS: MissingValueStrategy = Val(MissingValueFunctions.treatMissingAsZeros)
+  val AS_ZEROS: MissingValueStrategy = Val(MissingValueFunctions.treatMissingAsConstant(0.0D))
   val AS_AVG_OF_NON_MISSING: MissingValueStrategy = Val(MissingValueFunctions.treatMissingAsAvgOfNonMissing)
 }
 
@@ -38,10 +38,6 @@ object MissingValueFunctions {
 
   def treatMissingAsConstant(constant: Double): Function[Seq[Option[Double]], Seq[Double]] = {
     x => x.map(y => y.getOrElse(constant))
-  }
-
-  def treatMissingAsZeros: Function[Seq[Option[Double]], Seq[Double]] = {
-    x => x.map(y => y.getOrElse(0D))
   }
 
 }
