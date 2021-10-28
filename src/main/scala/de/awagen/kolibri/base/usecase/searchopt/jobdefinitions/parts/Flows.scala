@@ -62,8 +62,8 @@ object Flows {
     * @param fixedParams : mapping of parameter names to possible multiple values
     * @return
     */
-  def processingFlow(contextPath: String,
-                     fixedParams: Map[String, Seq[String]]): Flow[Modifier[RequestTemplateBuilder], ProcessingMessage[RequestTemplate], NotUsed] =
+  def modifiersToRequestTemplateMessageFlow(contextPath: String,
+                                            fixedParams: Map[String, Seq[String]]): Flow[Modifier[RequestTemplateBuilder], ProcessingMessage[RequestTemplate], NotUsed] =
     Flow.fromFunction[RequestTemplateBuilderModifier, ProcessingMessage[RequestTemplate]](
       modifierToProcessingMessage(contextPath, fixedParams)
     )
@@ -154,7 +154,7 @@ object Flows {
                          singleMapCalculations: Seq[Calculation[WeaklyTypedMap[String], CalculationResult[Double]]])
                         (implicit as: ActorSystem, ec: ExecutionContext): Flow[RequestTemplateBuilderModifier, ProcessingMessage[MetricRow], NotUsed] = {
     val partialFlow: Flow[RequestTemplateBuilderModifier, ProcessingMessage[(Either[Throwable, WeaklyTypedMap[String]], RequestTemplate)], NotUsed] =
-      processingFlow(contextPath, fixedParams)
+      modifiersToRequestTemplateMessageFlow(contextPath, fixedParams)
         .via(Flow.fromFunction(el => {
           taggingConfiguration.foreach(config => config.tagInit(el))
           el

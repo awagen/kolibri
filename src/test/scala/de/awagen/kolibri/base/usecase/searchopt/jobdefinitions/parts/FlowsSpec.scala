@@ -79,7 +79,7 @@ class FlowsSpec extends KolibriTestKitNoCluster
     "correctly generate processingFlow" in {
       // given
       val params: Map[String, Seq[String]] = Map("p1" -> Seq("v1"))
-      val flow: Flow[Modifier[RequestTemplateBuilder], ProcessingMessages.ProcessingMessage[RequestTemplate], NotUsed] = Flows.processingFlow("/testpath/", params)
+      val flow: Flow[Modifier[RequestTemplateBuilder], ProcessingMessages.ProcessingMessage[RequestTemplate], NotUsed] = Flows.modifiersToRequestTemplateMessageFlow("/testpath/", params)
       val modifier1: Modifier[RequestTemplateBuilder] = x => x.withContextPath("newContextPath/")
       val modifier2: Modifier[RequestTemplateBuilder] = x => x
       // when
