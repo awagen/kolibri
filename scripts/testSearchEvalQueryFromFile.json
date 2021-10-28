@@ -70,6 +70,14 @@
           "type": "PLAINREC",
           "path": "\\ response \\ docs \\\\ product_id"
         }
+      },
+      {
+        "name": "bools",
+        "castType": "BOOLEAN",
+        "selector": {
+          "type": "PLAINREC",
+          "path": "\\ response \\ docs \\\\ bool"
+        }
       }
     ]
   },
@@ -119,7 +127,18 @@
       "q"
     ]
   },
-  "singleMapCalculations": [],
+  "singleMapCalculations": [
+    {
+      "name": "FIRST_TRUE_BOOL",
+      "dataKey": "bools",
+      "functionType": "FIRST_TRUE"
+    },
+    {
+      "name": "COUNT_TRUE_BOOL",
+      "dataKey": "bools",
+      "functionType": "TRUE_COUNT"
+    }
+  ],
   "allowedTimePerElementInMillis": 1000,
   "allowedTimePerBatchInSeconds": 6000,
   "allowedTimeForJobInSeconds": 720000,
