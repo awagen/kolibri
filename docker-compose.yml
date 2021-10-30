@@ -82,6 +82,12 @@ services:
       AWS_S3_PATH: 'metric_test'
       AWS_S3_REGION: 'EU_CENTRAL_1'
       LOCAL_STORAGE_DIR: '/app/data'
+      JUDGEMENT_FILE_SOURCE_TYPE: 'JSON_LINES'
+      # if judgement file format set to 'JSON_LINES', need to set 'DOUBLE' in case judgements are numeric in the json,
+      # if the numeric value is represented as string, use 'STRING'. This purely refers to how the json value is interpreted,
+      # later this will be cast to double either way
+      JUDGEMENT_FILE_JSON_LINES_JUDGEMENT_VALUE_TYPE_CAST: 'STRING'
+      USE_INSECURE_SSL_ENGINE: 'true'
     volumes:
       - ./kolibri-test:/app/data
       - ./test-files:/app/test-files
@@ -143,6 +149,12 @@ services:
       AWS_S3_PATH: 'metric_test'
       AWS_S3_REGION: 'EU_CENTRAL_1'
       LOCAL_STORAGE_DIR: '/app/data'
+      JUDGEMENT_FILE_SOURCE_TYPE: 'JSON_LINES'
+      # if judgement file format set to 'JSON_LINES', need to set 'DOUBLE' in case judgements are numeric in the json,
+      # if the numeric value is represented as string, use 'STRING'. This purely refers to how the json value is interpreted,
+      # later this will be cast to double either way
+      JUDGEMENT_FILE_JSON_LINES_JUDGEMENT_VALUE_TYPE_CAST: 'STRING'
+      USE_INSECURE_SSL_ENGINE: 'true'
     volumes:
       - ./kolibri-test:/app/data
       - ./test-files:/app/test-files

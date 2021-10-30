@@ -21,7 +21,7 @@ import de.awagen.kolibri.base.usecase.searchopt.io.json.JudgementProviderFactory
 import de.awagen.kolibri.base.usecase.searchopt.io.json.MetricsCalculationJsonProtocol._
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.{Calculation, CalculationResult, FromMapCalculation, FromMapFutureCalculation, FutureCalculation, JudgementBasedMetricsCalculation}
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Functions.{booleanPrecision, countValues, findFirstValue}
-import de.awagen.kolibri.base.usecase.searchopt.metrics.MetricsCalculation
+import de.awagen.kolibri.base.usecase.searchopt.metrics.{Functions, MetricsCalculation}
 import de.awagen.kolibri.base.usecase.searchopt.provider.JudgementProviderFactory
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.datatypes.stores.MetricRow
@@ -61,11 +61,13 @@ object CalculationsJsonProtocol extends DefaultJsonProtocol {
   }
 
   implicit object FromMapCalculationSeqBooleanToDoubleFormat extends JsonFormat[Calculation[WeaklyTypedMap[String], CalculationResult[Double]]] {
-    override def read(json: JsValue): FromMapCalculation[Seq[Boolean], Double] = json match {
+    override def read(json: JsValue): Calculation[WeaklyTypedMap[String], CalculationResult[Double]] = json match {
       case spray.json.JsObject(fields) =>
         val metricName: String = fields("name").convertTo[String]
         val dataKey: String = fields("dataKey").convertTo[String]
         fields("functionType").convertTo[String] match {
+          case "IDENTITY" =>
+            FromMapCalculation[Double, Double](metricName, dataKey, Functions.identity[Double])
           case "FIRST_TRUE" =>
             FromMapCalculation[Seq[Boolean], Double](metricName, dataKey, findFirstValue(true))
           case "FIRST_FALSE" =>

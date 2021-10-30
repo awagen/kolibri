@@ -85,6 +85,13 @@ object FileBasedJudgementProvider {
     )
   }
 
+  def convertStringOrDoubleAnyToDouble(any: Any): Double = {
+    any match {
+      case str: String => str.toDouble
+      case _ => any.asInstanceOf[Double]
+    }
+  }
+
   /**
     * This assumes that the judgement file contains one json per line.
     * An example could be {"query", "products": [{"product_id": "abc", "score": 0.231}, ...]}, and the passed selectors
@@ -108,7 +115,7 @@ object FileBasedJudgementProvider {
         .flatMap(jsValue => {
           val query: String = jsonQuerySelector.select(jsValue).getOrElse("").asInstanceOf[String]
           val products: Seq[String] = jsonProductsSelector.select(jsValue).asInstanceOf[Seq[String]]
-          val judgements: Seq[Double] = jsonJudgementsSelector.select(jsValue).asInstanceOf[Seq[Double]]
+          val judgements: Seq[Double] = jsonJudgementsSelector.select(jsValue).map(x => convertStringOrDoubleAnyToDouble(x))
           val keys: Seq[String] = products.map(product => s"$query$queryProductDelimiter$product")
           keys zip judgements
         })

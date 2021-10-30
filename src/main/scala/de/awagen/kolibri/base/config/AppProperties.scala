@@ -21,6 +21,8 @@ import com.typesafe.config.{Config, ConfigFactory}
 import de.awagen.kolibri.base.actors.resources.{CPUBasedResourceChecker, ResourceChecker}
 import de.awagen.kolibri.base.cluster.ClusterStates.ClusterStatus
 import de.awagen.kolibri.base.config.EnvVariableKeys.{IS_SINGLENODE, NODE_ROLES, POD_IP, PROFILE}
+import de.awagen.kolibri.datatypes.JsonTypeCast
+import de.awagen.kolibri.datatypes.JsonTypeCast.JsonTypeCast
 import de.awagen.kolibri.datatypes.metrics.aggregation.writer.{CSVParameterBasedMetricDocumentFormat, MetricDocumentFormat}
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -217,6 +219,9 @@ object AppProperties {
       .split(",").map(x => x.trim).filter(x => x.nonEmpty)
     val judgementJsonLinesPlainProductIdSelector: String = baseConfig.getString("kolibri.format.judgements.jsonLines.productIdSelector")
     val judgementJsonLinesPlainJudgementSelector: String = baseConfig.getString("kolibri.format.judgements.jsonLines.judgementSelector")
+    val judgementJsonLinesJudgementValueTypeCast: JsonTypeCast.Val = JsonTypeCast.withName(baseConfig.getString("kolibri.format.judgements.jsonLines.judgementValueTypeCast")).asInstanceOf[JsonTypeCast]
+
+    val useInsecureSSLEngine: Boolean = baseConfig.getBoolean("kolibri.ssl.useInsecureEngine")
   }
 
 }
