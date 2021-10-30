@@ -82,7 +82,7 @@ services:
       AWS_S3_PATH: 'metric_test'
       AWS_S3_REGION: 'EU_CENTRAL_1'
       LOCAL_STORAGE_DIR: '/app/data'
-      JUDGEMENT_FILE_SOURCE_TYPE: 'JSON_LINES'
+      JUDGEMENT_FILE_SOURCE_TYPE: 'CSV'
       # if judgement file format set to 'JSON_LINES', need to set 'DOUBLE' in case judgements are numeric in the json,
       # if the numeric value is represented as string, use 'STRING'. This purely refers to how the json value is interpreted,
       # later this will be cast to double either way
@@ -149,7 +149,7 @@ services:
       AWS_S3_PATH: 'metric_test'
       AWS_S3_REGION: 'EU_CENTRAL_1'
       LOCAL_STORAGE_DIR: '/app/data'
-      JUDGEMENT_FILE_SOURCE_TYPE: 'JSON_LINES'
+      JUDGEMENT_FILE_SOURCE_TYPE: 'CSV'
       # if judgement file format set to 'JSON_LINES', need to set 'DOUBLE' in case judgements are numeric in the json,
       # if the numeric value is represented as string, use 'STRING'. This purely refers to how the json value is interpreted,
       # later this will be cast to double either way

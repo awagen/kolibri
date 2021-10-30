@@ -208,7 +208,7 @@ class FlowsSpec extends KolibriTestKitNoCluster
           RequestParameterModifier(Map(QUERY_PARAM -> Seq("q1")), replace = true)
         )
       ).via(fullFlow)
-        .runWith(Sink.seq), 2 seconds).map(x => x.data)
+        .runWith(Sink.seq), 5 seconds).map(x => x.data)
       // then
       result.size mustBe 2
       result.head.metrics.keySet mustBe Set("metric1", NDCG5_NAME, NDCG10_NAME, NDCG2_NAME)
