@@ -146,7 +146,7 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
     logger.debug(s"received aggregation state: $msg")
     jobProcessingState.accept(msg)
     if (jobProcessingState.completed) {
-      wrapUp
+      wrapUp()
     }
     else {
       fillUpFreeSlots()
@@ -165,7 +165,7 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
     }
   }
 
-  def wrapUp: Unit = {
+  def wrapUp(): Unit = {
     wrapUpFunction.foreach(x => x.execute match {
       case Left(e) => log.info(s"wrap up function execution failed, result: $e")
       case Right(e) => log.info(s"wrap up function execution succeeded, result: $e")
@@ -300,7 +300,7 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
       jobProcessingState.updateSingleBatchExpectations()
       if (jobProcessingState.completed) {
         log.debug("UpdateStateAndCheckForCompletion: completed")
-        wrapUp
+        wrapUp()
       }
     case DistributeBatches =>
       log.debug("received DistributeBatches")
@@ -308,7 +308,7 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
       fillUpFreeSlots()
       if (jobProcessingState.completed) {
         log.debug("UpdateStateAndCheckForCompletion: completed")
-        wrapUp
+        wrapUp()
       }
     case ExpectationMet =>
       log.debug("received ExpectationMet, which means we can stop executing")

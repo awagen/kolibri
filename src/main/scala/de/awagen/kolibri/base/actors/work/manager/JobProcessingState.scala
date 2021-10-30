@@ -168,7 +168,9 @@ case class JobProcessingState[U](jobId: String) {
   }
 
   def addExpectationForBatch(batchNr: Int, maxBatchDuration: FiniteDuration, expectResultsFromBatchCalculations: Boolean): Unit = {
-    val expectation = expectationForNextBatch(maxBatchDuration, expectResultsFromBatchCalculations)
+    // the only expectation here is that we get a single AggregationState
+    // the expectation of the runnable is actually handled within the runnable
+    val expectation = ExecutionExpectations.jobExecutionExpectation(1, maxBatchDuration, expectResultsFromBatchCalculations)
     expectation.init
     executionExpectationMap(batchNr) = expectation
   }
@@ -184,32 +186,6 @@ case class JobProcessingState[U](jobId: String) {
 
   def removeBatchWaitingForACK(batchNr: Int): Unit = {
     batchesSentWaitingForACK = batchesSentWaitingForACK - batchNr
-  }
-
-  def expectationForNextBatch(maxBatchDuration: FiniteDuration, expectResultsFromBatchCalculations: Boolean): ExecutionExpectation = {
-    // the only expectation here is that we get a single AggregationState
-    // the expectation of the runnable is actually handled within the runnable
-    // allowed time per batch is handled where the actual execution happens,
-    // thus we set no TimeExpectation here
-    val failExpectations: Seq[Expectation[Any]] = Seq(TimeExpectation(maxBatchDuration))
-    BaseExecutionExpectation(
-      fulfillAllForSuccess = Seq(
-        ClassifyingCountExpectation(Map("finishResponse" -> {
-          case _: AggregationStateWithData[_] =>
-            if (!expectResultsFromBatchCalculations) {
-              log.warn(s"received AggregationState with data but expectResultsFromBatchCalculations=$expectResultsFromBatchCalculations")
-            }
-            true
-          case _: AggregationStateWithoutData[_] =>
-            if (expectResultsFromBatchCalculations) {
-              log.warn(s"received AggregationState without data but expectResultsFromBatchCalculations=$expectResultsFromBatchCalculations")
-              false
-            }
-            else true
-          case _ => false
-        }), Map("finishResponse" -> 1))
-      ),
-      fulfillAnyForFail = failExpectations)
   }
 
   def jobStatusInfo(state: ProcessingResult.Value): JobStatusInfo = JobStatusInfo(
