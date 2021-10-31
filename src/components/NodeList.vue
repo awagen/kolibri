@@ -37,7 +37,6 @@ export default {
     const runningNodesRefreshIntervalInMs = ref(5000)
 
     function retrieveNodeStatus() {
-      console.log("executing retrieveNodeStatus")
       return axios
           .get(nodeStateUrl)
           .then(response => {

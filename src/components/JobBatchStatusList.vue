@@ -9,6 +9,7 @@
       <th>Batch ID</th>
       <th>Elements Processed</th>
       <th>Total Elements</th>
+      <th>Progress</th>
     </tr>
     </thead>
     <tbody>
@@ -19,6 +20,11 @@
       <td>{{job.batchId}}</td>
       <td>{{job.totalProcessed}}</td>
       <td>{{job.totalToProcess}}</td>
+      <td>
+        <div class="bar bar-sm">
+          <div class="bar-item" role="progressbar" :style="{'width': job.progress + '%'}" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"></div>
+        </div>
+      </td>
     </tr>
     </tbody>
   </table>
@@ -38,13 +44,13 @@ export default {
     const runningBatchRefreshIntervalInMs = ref(10000)
 
     function retrieveRunningBatchStates() {
-      console.log("executing retrieveRunningBatchStates")
       return axios
           .get(props.batchRetrievalUrl)
           .then(response => {
-            console.log("retrieved response: ")
-            console.log(response)
             runningBatchStates.value =  response.data
+            runningBatchStates.value.forEach(function (item, index) {
+              item["progress"] = Math.round((item["totalProcessed"] / item["totalToProcess"]) * 100)
+            });
           }).catch(_ => {
             runningBatchStates.value = []
           })

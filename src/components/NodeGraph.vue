@@ -34,7 +34,6 @@ export default {
     let nodeStates = []
 
     function retrieveNodeStatus() {
-      console.log("executing retrieveNodeStatus")
       return axios
           .get(nodeStateUrl)
           .then(response => {

@@ -51,7 +51,6 @@ export default {
     const statusRefreshIntervalInMs = ref(5000)
 
     function retrieveServiceStatus() {
-      console.log("executing retrieveServiceStatus")
       return axios
           .get(appIsUpUrl)
           .then(response => {

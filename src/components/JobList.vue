@@ -7,6 +7,7 @@
       <th>Job Name</th>
       <th>Type</th>
       <th>Start/End</th>
+      <th>Status</th>
       <th>Progress</th>
       <th v-if="showKillButton">Action</th>
     </tr>
@@ -18,6 +19,11 @@
       <td>{{job.jobType}}</td>
       <td>{{job.startTime}}/{{job.endTime}}</td>
       <td>{{job.resultSummary}}</td>
+      <td>
+        <div class="bar bar-sm">
+          <div class="bar-item" role="progressbar" :style="{'width': job.progress + '%'}" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"></div>
+        </div>
+      </td>
       <td v-if="showKillButton"><button @click="killJob(job.jobId)" class="btn btn-primary s-circle kill">Kill</button></td>
     </tr>
     </tbody>
@@ -40,11 +46,13 @@ export default {
     const runningJobsRefreshIntervalInMs = ref(10000)
 
     function retrieveRunningJobs() {
-      console.log("executing retrieveRunningJobs")
       return axios
           .get(props.jobRetrievalUrl)
           .then(response => {
             runningJobs.value =  response.data
+            runningJobs.value.forEach(function (item, index) {
+              item["progress"] = Math.round((item["resultSummary"]["nrOfResultsReceived"] / item["resultSummary"]["nrOfBatchesTotal"]) * 100)
+            });
           }).catch(_ => {
             runningJobs.value = []
           })
