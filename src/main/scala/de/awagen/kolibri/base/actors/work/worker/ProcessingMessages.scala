@@ -45,7 +45,6 @@ object ProcessingMessages {
     val jobID: String
     val batchNr: Int
     val executionExpectation: ExecutionExpectation
-
   }
 
   case class AggregationStateWithoutData[+V](containedElementCount: Int,

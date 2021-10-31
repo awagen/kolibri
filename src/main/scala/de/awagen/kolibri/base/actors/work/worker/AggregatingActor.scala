@@ -59,9 +59,13 @@ object AggregatingActor {
 
   trait AggregatingActorEvent extends KolibriSerializable
 
+  case class ExpectationState(executionExpectation: ExecutionExpectation) extends AggregatingActorEvent
+
   case object Close extends AggregatingActorCmd
 
   case object ProvideStateAndStop
+
+  case object ProvideState
 
   case object ReportResults extends AggregatingActorCmd
 
@@ -113,6 +117,13 @@ class AggregatingActor[U, V <: WithCount](val aggregatorConfig: AggregatorConfig
     receiver = self,
     message = Housekeeping)
 
+  case class AggregationStateSummary() extends KolibriSerializable
+
+  def sendAggregationStateWithoutData(receiver: ActorRef): Unit = {
+    log.debug("sending current execution state")
+    receiver ! AggregationStateWithoutData(aggregator.aggregation.count, jobPartIdentifier.jobId, jobPartIdentifier.batchNr, expectation.deepCopy)
+  }
+
   def sendAggregationState(receiver: ActorRef): Unit = {
     val filteredMappedData: V = aggregatorConfig.filteringMapperForResultSending.map(aggregator.aggregation)
     if (sendResultDataBackToOwner) {
@@ -132,8 +143,9 @@ class AggregatingActor[U, V <: WithCount](val aggregatorConfig: AggregatorConfig
       log.info(s"expectation succeeded: ${expectation.succeeded}, expectation failed: ${expectation.failed}")
       log.info(s"sending aggregation state for batch: ${jobPartIdentifier.batchNr}")
 
+      // TODO: place fail and success counts within aggregator and then pass them separate from the data
+      //  (data then doesnt need to be of type WithCount)
       // apply the mapper first to decide which parts of the data to be send to the result receiver
-      // TODO: place fail and success counts within aggregator and then pass them separate from the data (data then doesnt need to be of type WithCount)
       sendAggregationState(owner)
 
       writerOpt.foreach(writer => {
@@ -162,13 +174,13 @@ class AggregatingActor[U, V <: WithCount](val aggregatorConfig: AggregatorConfig
   def handleAggregationStateMsg(msg: AggregationState[V]): Unit = {
     msg match {
       case e: AggregationStateWithData[V] =>
-        log.info("received aggregation result event with count: {}", e.data.count)
+        log.debug("received aggregation result event with count: {}", e.data.count)
         aggregator.addAggregate(aggregatorConfig.filterAggregationMapperForAggregator.map(e.data))
       case e: AggregationStateWithoutData[V] =>
-        log.info("received aggregation result event with count: {}", e.containedElementCount)
+        log.debug("received aggregation result event with count: {}", e.containedElementCount)
     }
     expectation.accept(msg)
-    log.info("overall partial result count: {}", aggregator.aggregation.count)
+    log.debug("overall partial result count: {}", aggregator.aggregation.count)
     log.debug("expectation state: {}", expectation.statusDesc)
     log.debug(s"expectation: $expectation")
     handleExpectationStateAndCloseIfFinished(true)
@@ -195,6 +207,9 @@ class AggregatingActor[U, V <: WithCount](val aggregatorConfig: AggregatorConfig
       cancellableSchedule.cancel()
       sendAggregationState(owner)
       self ! PoisonPill
+    case ProvideState =>
+      log.debug("received ProvideState msg")
+      sendAggregationStateWithoutData(sender())
     case Housekeeping =>
       handleExpectationStateAndCloseIfFinished(adjustReceive = true)
     case ReportResults =>

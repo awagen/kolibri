@@ -29,17 +29,21 @@ import de.awagen.kolibri.base.actors.clusterinfo.ClusterMetricsListenerActor
 import de.awagen.kolibri.base.actors.clusterinfo.ClusterMetricsListenerActor.{MetricsProvided, ProvideMetrics}
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor._
+import de.awagen.kolibri.base.actors.work.manager.JobManagerActor.WorkerStatusResponse
+import de.awagen.kolibri.base.actors.work.worker.RunnableExecutionActor.BatchProcessStateResult
 import de.awagen.kolibri.base.cluster.ClusterStates.ClusterStatus
 import de.awagen.kolibri.base.config.AppProperties.config.{analyzeTimeout, internalJobStatusRequestTimeout, kolibriDispatcherName}
 import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions
 import de.awagen.kolibri.base.http.server.routes.StatusRoutes.corsHandler
-import de.awagen.kolibri.base.processing.JobMessages.{SearchEvaluation, TestPiCalculation}
+import de.awagen.kolibri.base.processing.JobMessages.{SearchEvaluation, TestPiCalculation, logger}
 import de.awagen.kolibri.base.processing.execution.functions.Execution
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.SearchJobDefinitions
+import spray.json.DefaultJsonProtocol.{JsValueFormat, StringJsonFormat, immSeqFormat}
+import spray.json.{JsValue, enrichAny}
 
 import java.util.Objects
-import scala.concurrent.ExecutionContextExecutor
 import scala.concurrent.duration._
+import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.util.Random
 
 /**
@@ -60,6 +64,31 @@ object BaseRoutes {
         clusterMetricsListenerActor = system.actorOf(ClusterMetricsListenerActor.props)
       }
     }
+  }
+
+  def batchStateToJson(state: BatchProcessStateResult): JsValue = {
+    import spray.json._
+    import DefaultJsonProtocol._
+    state.result match {
+      case Right(value) =>
+        Map("node" -> s"${value.node}",
+          "jobId" -> s"${value.jobId}",
+          "batchId" -> s"${value.batchNr}",
+          "totalToProcess" -> s"${value.totalElements}",
+          "totalProcessed" -> s"${value.processedElementCount}"
+        ).toJson
+      case Left(e) =>
+        Map("exception" -> s"${e.getCause.getClass.getName}").toJson
+    }
+  }
+
+  def workerStatusToJson(response: WorkerStatusResponse): String = {
+    import spray.json._
+    import DefaultJsonProtocol._
+    val jsonSeq: Seq[JsValue] = response.result.map(x => {
+      batchStateToJson(x)
+    })
+    jsonSeq.toJson.toString()
   }
 
   def extractHeaderValue(headerName: String): Seq[HttpHeader] => Option[String] = {
@@ -177,13 +206,50 @@ object BaseRoutes {
     implicit val timeout: Timeout = Timeout(1 minute)
     implicit val ec: ExecutionContextExecutor = system.dispatchers.lookup(kolibriDispatcherName)
     corsHandler(
-      path("job_worker_status") {
+      path("jobWorkerStatus") {
         get {
           parameters("jobId") { jobId => {
             onSuccess(supervisorActor ? GetJobWorkerStatus(jobId)) {
-              e => complete(e.toString)
+              e => complete(workerStatusToJson(e.asInstanceOf[WorkerStatusResponse]))
             }
           }
+          }
+        }
+      }
+    )
+  }
+
+  def getAllJobWorkerStates(implicit system: ActorSystem): Route = {
+    implicit val timeout: Timeout = Timeout(1 minute)
+    implicit val ec: ExecutionContextExecutor = system.dispatchers.lookup(kolibriDispatcherName)
+    corsHandler(
+      path("jobAllWorkerStates") {
+        get {
+          val jobIdsFuture: Future[Any] = supervisorActor ? ProvideAllRunningJobIDs
+          val result: Future[Any] = jobIdsFuture.flatMap({
+            case value: RunningJobs =>
+              logger.debug(s"found running jobs: ${value.jobIDs}")
+              val results: Seq[Future[Any]] = value.jobIDs.map(jobId => supervisorActor ? GetJobWorkerStatus(jobId))
+              if (results.isEmpty) {
+                Future.successful(Seq.empty[String].toJson.toString())
+              }
+              else {
+                Future.sequence(results).map(values => {
+                  values.asInstanceOf[Seq[WorkerStatusResponse]]
+                    .flatMap(status => status.result)
+                    .map(state => batchStateToJson(state))
+                    .toJson.toString()
+                })
+                  .recover(e => Seq(workerStatusToJson(WorkerStatusResponse(Seq(BatchProcessStateResult(Left(e)))))).toJson.toString())
+              }
+            case _ => Future.successful(Seq(workerStatusToJson(WorkerStatusResponse(Seq.empty))).toJson.toString())
+          }).recover(e => {
+            Seq(workerStatusToJson(WorkerStatusResponse(Seq(BatchProcessStateResult(Left(e)))))).toJson.toString()
+          })
+          onSuccess(result) {
+            e =>
+              logger.debug(s"result: $e")
+              complete(e.toString)
           }
         }
       })
@@ -244,9 +310,10 @@ object BaseRoutes {
     corsHandler(
       path("search_eval") {
         post {
-          entity(as[SearchEvaluation]) { searchEvaluation =>
-            supervisorActor ! SearchJobDefinitions.searchEvaluationToRunnableJobCmd(searchEvaluation)
-            complete(StatusCodes.Accepted, "Starting search evaluation example")
+          entity(as[SearchEvaluation]) {
+            searchEvaluation =>
+              supervisorActor ! SearchJobDefinitions.searchEvaluationToRunnableJobCmd(searchEvaluation)
+              complete(StatusCodes.Accepted, "Starting search evaluation example")
           }
         }
       })
@@ -254,13 +321,16 @@ object BaseRoutes {
 
   def startSearchEvalNoSerialize(implicit system: ActorSystem): Route = {
     implicit val ec: ExecutionContextExecutor = system.dispatchers.lookup(kolibriDispatcherName)
+
     import de.awagen.kolibri.base.io.json.SearchEvaluationJsonProtocol._
+
     corsHandler(
       path("search_eval_no_ser") {
         post {
-          entity(as[SearchEvaluation]) { searchEvaluation =>
-            supervisorActor ! searchEvaluation
-            complete(StatusCodes.Accepted, "Starting search evaluation example")
+          entity(as[SearchEvaluation]) {
+            searchEvaluation =>
+              supervisorActor ! searchEvaluation
+              complete(StatusCodes.Accepted, "Starting search evaluation example")
           }
         }
       })
@@ -269,14 +339,17 @@ object BaseRoutes {
   def startExecution(implicit system: ActorSystem): Route = {
     implicit val timeout: Timeout = Timeout(analyzeTimeout)
     implicit val ec: ExecutionContextExecutor = system.dispatchers.lookup(kolibriDispatcherName)
+
     import de.awagen.kolibri.base.io.json.ExecutionJsonProtocol._
+
     corsHandler(
       path("execution") {
         post {
-          entity(as[Execution[Any]]) { execution =>
-            onSuccess(supervisorActor ? execution) {
-              e => complete(e.toString)
-            }
+          entity(as[Execution[Any]]) {
+            execution =>
+              onSuccess(supervisorActor ? execution) {
+                e => complete(e.toString)
+              }
           }
         }
       })

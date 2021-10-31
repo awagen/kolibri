@@ -173,10 +173,12 @@ class WorkManagerActor() extends Actor with ActorLogging with KolibriSerializabl
         })
         workerKeyToActiveWorker -= x
       })
-    case GetWorkerStatus(executionType, jobId, batchNr) =>
+    case e@GetWorkerStatus(executionType, jobId, batchNr) =>
       val reportTo = sender()
       val key = workerKey(executionType, jobId, batchNr)
       val worker: Option[ActorRef] = workerKeyToActiveWorker.get(key)
+      log.debug(s"received GetWorkerStatus request: $e")
+      log.debug(s"sending ReportResults to worker: $worker")
       worker.foreach(x => x.tell(ReportResults, reportTo))
     case e =>
       log.warning(s"Unknown and unhandled message: '$e'")

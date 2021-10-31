@@ -27,6 +27,7 @@ import de.awagen.kolibri.base.actors.work.manager.JobManagerActor._
 import de.awagen.kolibri.base.actors.work.manager.JobProcessingState.emptyJobStatusInfo
 import de.awagen.kolibri.base.actors.work.manager.WorkManagerActor.{ExecutionType, GetWorkerStatus, JobBatchMsg}
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages._
+import de.awagen.kolibri.base.actors.work.worker.RunnableExecutionActor.BatchProcessStateResult
 import de.awagen.kolibri.base.config.AppProperties._
 import de.awagen.kolibri.base.config.AppProperties.config.kolibriDispatcherName
 import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions.MapWithCount
@@ -109,7 +110,7 @@ object JobManagerActor {
 
   case object GetStatusForWorkers extends ExternalJobManagerCmd
 
-  case class WorkerStatusResponse[U](result: Either[Throwable, Seq[AggregationState[U]]]) extends JobManagerEvent
+  case class WorkerStatusResponse(result: Seq[BatchProcessStateResult]) extends JobManagerEvent
 
   case class WorkerKilled(batchNr: Int) extends JobManagerEvent
 
@@ -340,13 +341,22 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
       // send GetWorkerStatus messages
       val runningBatches = jobProcessingState.runningBatches
       val messages = runningBatches.map(batchNr => GetWorkerStatus(ExecutionType.RUNNABLE, jobId, batchNr))
-      implicit val timeout: Timeout = Timeout(1 second)
-      val responseFuture: Future[Seq[Any]] = Future.sequence(messages.map(x => workerServiceRouter.ask(x)))
-      responseFuture.onComplete({
-        case Success(value) =>
-          reportTo ! WorkerStatusResponse[U](Right(value = value.asInstanceOf[Seq[AggregationState[U]]]))
-        case Failure(e) =>
-          reportTo ! WorkerStatusResponse[U](Left(e))
+      val responseFuture: Future[Seq[Any]] = Future.sequence(messages.map(x => {
+        implicit val timeout: Timeout = Timeout(5 seconds)
+        workerServiceRouter.ask(x)
+      }))
+      responseFuture.onComplete(res => {
+        log.debug(s"received job status result: $res")
+        res match {
+          case Success(value: Seq[BatchProcessStateResult]) =>
+            log.debug(s"received list of batch process state result: $value")
+            reportTo ! WorkerStatusResponse(value)
+          case Failure(e: Throwable) =>
+            log.info(s"received exception on batch status request: $e")
+            reportTo ! WorkerStatusResponse(Seq(BatchProcessStateResult(Left(e))))
+          case e =>
+            log.info(s"received unknown batch result: $e")
+        }
       })
     case WorkerKilled(batchNr) =>
       jobProcessingState.removeExpectationForBatchId(batchNr)

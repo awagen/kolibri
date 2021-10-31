@@ -25,6 +25,7 @@ import de.awagen.kolibri.base.actors.work.manager.JobManagerActor
 import de.awagen.kolibri.base.actors.work.manager.JobManagerActor._
 import de.awagen.kolibri.base.actors.work.manager.JobProcessingState.JobStatusInfo
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.ProcessingMessage
+import de.awagen.kolibri.base.actors.work.worker.RunnableExecutionActor.BatchProcessStateResult
 import de.awagen.kolibri.base.actors.work.worker.TaskExecutionWorkerActor
 import de.awagen.kolibri.base.config.AppProperties._
 import de.awagen.kolibri.base.config.AppProperties.config.kolibriDispatcherName
@@ -52,6 +53,7 @@ import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 import scala.collection.mutable
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import scala.concurrent.{ExecutionContextExecutor, Future}
+import scala.util.{Failure, Success}
 
 
 object SupervisorActor {
@@ -355,10 +357,21 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
     case KillAllChildren => context.children.foreach(x => context.stop(x))
     case GetJobWorkerStatus(jobId) =>
       val reportTo: ActorRef = sender()
-      implicit val timeout: Timeout = Timeout(1 second)
-      jobIdToActorRefAndExpectation.get(jobId).foreach(x => {
-        x._1.executing.ask(GetStatusForWorkers, self).onComplete(result => reportTo ! result)
+      implicit val timeout: Timeout = Timeout(5 seconds)
+      val setupAndExpectation: Option[(ActorSetup, ExecutionExpectation)] = jobIdToActorRefAndExpectation.get(jobId)
+      setupAndExpectation.foreach(x => {
+        x._1.executing.ask(GetStatusForWorkers)(timeout, self).onComplete({
+          case Success(response: WorkerStatusResponse) =>
+            log.debug(s"received batch status result: $response")
+            reportTo ! response
+          case Failure(e) =>
+            log.debug(s"received exception on batch status request: $e")
+            reportTo ! WorkerStatusResponse(Seq(BatchProcessStateResult(Left(e))))
+        })
       })
+      if (setupAndExpectation.isEmpty) {
+        reportTo ! WorkerStatusResponse(Seq.empty)
+      }
     case e =>
       log.warning("Unknown message (will be ignored): {}", e)
   }

@@ -18,14 +18,16 @@ package de.awagen.kolibri.base.actors.work.worker
 
 import akka.Done
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Cancellable, PoisonPill, Props}
+import akka.pattern.ask
 import akka.stream.scaladsl.RunnableGraph
 import akka.stream.{ActorAttributes, UniqueKillSwitch}
-import de.awagen.kolibri.base.actors.work.worker.AggregatingActor.{ProvideStateAndStop, ReportResults}
+import de.awagen.kolibri.base.actors.work.worker.AggregatingActor.{ProvideState, ProvideStateAndStop, ReportResults}
 import de.awagen.kolibri.base.actors.work.worker.JobPartIdentifiers.BaseJobPartIdentifier
-import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.AggregationState
-import de.awagen.kolibri.base.actors.work.worker.RunnableExecutionActor.{ProvideAggregationState, RunnableHousekeeping}
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationState, AggregationStateWithoutData}
+import de.awagen.kolibri.base.actors.work.worker.RunnableExecutionActor.{BatchProcessState, BatchProcessStateResult, ProvideAggregationState, RunnableHousekeeping}
 import de.awagen.kolibri.base.config.AppProperties.config
 import de.awagen.kolibri.base.config.AppProperties.config.kolibriDispatcherName
+import de.awagen.kolibri.base.config.EnvVariableKeys.CLUSTER_NODE_HOST
 import de.awagen.kolibri.base.io.writer.Writers.Writer
 import de.awagen.kolibri.base.processing.decider.Deciders.allResumeDecider
 import de.awagen.kolibri.base.processing.execution.expectation._
@@ -37,6 +39,7 @@ import de.awagen.kolibri.datatypes.types.Types.WithCount
 
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContextExecutor, Future}
+import scala.util.{Failure, Success}
 
 
 object RunnableExecutionActor {
@@ -45,13 +48,19 @@ object RunnableExecutionActor {
                             writerOpt: Option[Writer[U, Tag, _]]): Props =
     Props(new RunnableExecutionActor[U](maxBatchDurationInSeconds, writerOpt)).withDispatcher(kolibriDispatcherName)
 
-  trait RunnableExecutionActorCmd extends KolibriSerializable
+  sealed trait RunnableExecutionActorCmd extends KolibriSerializable
+
+  sealed trait RunnableExecutionActorEvent extends KolibriSerializable
 
   case object Terminate extends RunnableExecutionActorCmd
 
   case object RunnableHousekeeping extends RunnableExecutionActorCmd
 
-  case object ProvideAggregationState
+  case object ProvideAggregationState extends RunnableExecutionActorCmd
+
+  case class BatchProcessState(node: String, jobId: String, batchNr: Int, totalElements: Int, processedElementCount: Int)
+
+  sealed case class BatchProcessStateResult(result: Either[Throwable, BatchProcessState]) extends RunnableExecutionActorEvent
 
 }
 
@@ -88,6 +97,8 @@ class RunnableExecutionActor[U <: WithCount](maxBatchDuration: FiniteDuration,
   private[this] var aggregatingActor: ActorRef = _
   // cancellable of housekeeping schedule
   private[this] var housekeepingCancellable: Cancellable = _
+  // nr of elements processed in ActorRunnable
+  private[this] var elementsToProcessCount: Int = _
   var sendResultsBack: Boolean = true
 
 
@@ -98,6 +109,7 @@ class RunnableExecutionActor[U <: WithCount](maxBatchDuration: FiniteDuration,
       // jobId and batchNr might be used as identifiers to filter received messages by
       runningJobId = runnable.jobId
       runningJobBatchNr = runnable.batchNr
+      elementsToProcessCount = runnable.supplier.size
       aggregatingActor = context.actorOf(AggregatingActor.props(
         runnable.aggregatorConfig,
         () => runnable.expectationGenerator.apply(runnable.supplier.size),
@@ -174,6 +186,22 @@ class RunnableExecutionActor[U <: WithCount](maxBatchDuration: FiniteDuration,
       self ! PoisonPill
     case ProvideAggregationState =>
       aggregatingActor.tell(ReportResults, sender())
+    case ReportResults =>
+      log.debug("received ReportResults message")
+      val reportTo: ActorRef = sender()
+      aggregatingActor.ask(ProvideState)(5 seconds, self).onComplete({
+        case Success(value: AggregationStateWithoutData[_]) =>
+          val batchProcessState = BatchProcessState(
+            CLUSTER_NODE_HOST.value,
+            value.jobID,
+            value.batchNr,
+            elementsToProcessCount,
+            value.containedElementCount
+          )
+          reportTo ! BatchProcessStateResult(Right(batchProcessState))
+        case Failure(e: Throwable) =>
+          reportTo ! BatchProcessStateResult(Left(e))
+      })
     case msg =>
       expectation.accept(msg)
   }

@@ -96,7 +96,7 @@ object ClusterNode extends App {
     val usedRoute: Route = route.getOrElse(simpleHelloRoute ~ streamingUserRoutes ~ clusterStatusRoutee ~ killAllJobs
       ~ getJobStatus ~ killJob ~ getJobWorkerStatus ~ getRunningJobIds ~ executeDistributedPiCalculationExample
       ~ executeDistributedPiCalculationExampleWithoutSerialization ~ startSearchEval ~ startSearchEvalNoSerialize
-      ~ startExecution ~ nodeState ~ jobStates ~ finishedJobStates ~ health)
+      ~ startExecution ~ nodeState ~ jobStates ~ finishedJobStates ~ health ~ getAllJobWorkerStates)
     val isHttpServerNode: Boolean = node_roles.contains(config.HTTP_SERVER_ROLE)
 
     logger.info(s"Node roles: $node_roles")
