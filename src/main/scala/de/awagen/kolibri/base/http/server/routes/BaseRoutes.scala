@@ -78,7 +78,7 @@ object BaseRoutes {
           "totalProcessed" -> s"${value.processedElementCount}"
         ).toJson
       case Left(e) =>
-        Map("exception" -> s"${e.getCause.getClass.getName}").toJson
+        Map("exception" -> s"${e.getClass.getName}").toJson
     }
   }
 
