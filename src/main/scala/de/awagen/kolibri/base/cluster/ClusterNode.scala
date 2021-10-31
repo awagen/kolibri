@@ -30,7 +30,7 @@ import de.awagen.kolibri.base.config.AppProperties.config.{kolibriDispatcherName
 import de.awagen.kolibri.base.http.server.routes.BaseRoutes._
 import de.awagen.kolibri.base.http.server.HttpServer
 import de.awagen.kolibri.base.http.server.routes.BaseRoutes
-import de.awagen.kolibri.base.http.server.routes.StatusRoutes.{finishedJobStates, health, jobStates, nodeState}
+import de.awagen.kolibri.base.http.server.routes.StatusRoutes.{finishedJobStates, getAllJobWorkerStates, getJobStatus, getJobWorkerStatus, getRunningJobIds, health, jobStates, nodeState}
 import kamon.Kamon
 import org.slf4j.{Logger, LoggerFactory}
 

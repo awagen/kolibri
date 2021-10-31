@@ -19,30 +19,133 @@ package de.awagen.kolibri.base.http.server.routes
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.StatusCodes
-import akka.http.scaladsl.server.Directives.{complete, get, onSuccess, path}
 import akka.http.scaladsl.server.Route
 import akka.pattern.ask
 import akka.util.Timeout
 import de.awagen.kolibri.base.actors.clusterinfo.ClusterMetricsListenerActor.{MetricsProvided, ProvideMetrics}
-import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.{JobHistory, ProvideAllRunningJobStates, ProvideJobHistory}
+import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor._
+import de.awagen.kolibri.base.actors.work.manager.JobManagerActor.WorkerStatusResponse
 import de.awagen.kolibri.base.actors.work.manager.JobProcessingState.JobStatusInfo
-import de.awagen.kolibri.base.config.AppProperties.config.kolibriDispatcherName
+import de.awagen.kolibri.base.actors.work.worker.RunnableExecutionActor.BatchProcessStateResult
+import de.awagen.kolibri.base.config.AppProperties.config.{internalJobStatusRequestTimeout, kolibriDispatcherName}
 import de.awagen.kolibri.base.http.server.routes.BaseRoutes.{clusterMetricsListenerActor, supervisorActor}
 import de.awagen.kolibri.base.io.json.ClusterStatesJsonProtocol._
 import de.awagen.kolibri.base.io.json.JobStateJsonProtocol.jobStatusFormat
-import spray.json.enrichAny
-
-import scala.concurrent.ExecutionContextExecutor
-import scala.concurrent.duration.DurationInt
+import de.awagen.kolibri.base.processing.JobMessages.logger
+import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.util.{Failure, Success}
 
 object StatusRoutes extends CORSHandler {
 
-  def nodeState(implicit system: ActorSystem): Route = {
-    implicit val timeout: Timeout = Timeout(100 millis)
-    implicit val ec: ExecutionContextExecutor = system.dispatchers.lookup(kolibriDispatcherName)
-    import akka.http.scaladsl.server.Directives._
+  implicit val timeout: Timeout = Timeout(internalJobStatusRequestTimeout)
 
+  import akka.http.scaladsl.server.Directives._
+  import spray.json._
+  import DefaultJsonProtocol._
+
+  def batchStateToJson(state: BatchProcessStateResult): JsValue = {
+    state.result match {
+      case Right(value) =>
+        Map("node" -> s"${value.node}",
+          "jobId" -> s"${value.jobId}",
+          "batchId" -> s"${value.batchNr}",
+          "totalToProcess" -> s"${value.totalElements}",
+          "totalProcessed" -> s"${value.processedElementCount}"
+        ).toJson
+      case Left(e) =>
+        Map("exception" -> s"${e.getClass.getName}").toJson
+    }
+  }
+
+  def workerStatusToJson(response: WorkerStatusResponse): String = {
+    val jsonSeq: Seq[JsValue] = response.result.map(x => {
+      batchStateToJson(x)
+    })
+    jsonSeq.toJson.toString()
+  }
+
+  def getJobWorkerStatus(implicit system: ActorSystem): Route = {
+    implicit val ec: ExecutionContextExecutor = system.dispatchers.lookup(kolibriDispatcherName)
+    corsHandler(
+      path("jobWorkerStatus") {
+        get {
+          parameters("jobId") { jobId => {
+            onSuccess(supervisorActor ? GetJobWorkerStatus(jobId)) {
+              e => complete(workerStatusToJson(e.asInstanceOf[WorkerStatusResponse]))
+            }
+          }
+          }
+        }
+      }
+    )
+  }
+
+  def getAllJobWorkerStates(implicit system: ActorSystem): Route = {
+    implicit val ec: ExecutionContextExecutor = system.dispatchers.lookup(kolibriDispatcherName)
+    corsHandler(
+      path("jobAllWorkerStates") {
+        get {
+          val jobIdsFuture: Future[Any] = supervisorActor ? ProvideAllRunningJobIDs
+          val result: Future[Any] = jobIdsFuture.flatMap({
+            case value: RunningJobs =>
+              logger.debug(s"found running jobs: ${value.jobIDs}")
+              val results: Seq[Future[Any]] = value.jobIDs.map(jobId => supervisorActor ? GetJobWorkerStatus(jobId))
+              if (results.isEmpty) {
+                Future.successful(Seq.empty[String].toJson.toString())
+              }
+              else {
+                Future.sequence(results).map(values => {
+                  values.asInstanceOf[Seq[WorkerStatusResponse]]
+                    .flatMap(status => status.result)
+                    .map(state => batchStateToJson(state))
+                    .toJson.toString()
+                })
+                  .recover(e => Seq(workerStatusToJson(WorkerStatusResponse(Seq(BatchProcessStateResult(Left(e)))))).toJson.toString())
+              }
+            case _ => Future.successful(Seq(workerStatusToJson(WorkerStatusResponse(Seq.empty))).toJson.toString())
+          }).recover(e => {
+            Seq(workerStatusToJson(WorkerStatusResponse(Seq(BatchProcessStateResult(Left(e)))))).toJson.toString()
+          })
+          onSuccess(result) {
+            e =>
+              logger.debug(s"result: $e")
+              complete(e.toString)
+          }
+        }
+      })
+  }
+
+  def getRunningJobIds(implicit system: ActorSystem): Route = {
+    implicit val ec: ExecutionContextExecutor = system.dispatchers.lookup(kolibriDispatcherName)
+    corsHandler(
+      path("getRunningJobIDs") {
+        get {
+          onSuccess(supervisorActor ? ProvideAllRunningJobIDs) {
+            e => complete(e.toString)
+          }
+        }
+      })
+  }
+
+
+  def getJobStatus(implicit system: ActorSystem): Route = {
+    implicit val ec: ExecutionContextExecutor = system.dispatchers.lookup(kolibriDispatcherName)
+    corsHandler(
+      path("getJobStatus") {
+        get {
+          parameters("jobId") {
+            jobId => {
+              onSuccess(supervisorActor ? ProvideJobState(jobId)) {
+                e => complete(e.toString)
+              }
+            }
+          }
+        }
+      })
+  }
+
+  def nodeState(implicit system: ActorSystem): Route = {
+    implicit val ec: ExecutionContextExecutor = system.dispatchers.lookup(kolibriDispatcherName)
     corsHandler(
       path("nodeState") {
         get {
@@ -59,7 +162,6 @@ object StatusRoutes extends CORSHandler {
   }
 
   def finishedJobStates(implicit system: ActorSystem): Route = {
-    implicit val timeout: Timeout = Timeout(100 millis)
     corsHandler(
       path("finishedJobStates") {
         get {
@@ -72,9 +174,7 @@ object StatusRoutes extends CORSHandler {
   }
 
   def jobStates(implicit system: ActorSystem): Route = {
-    implicit val timeout: Timeout = Timeout(100 millis)
     implicit val ec: ExecutionContextExecutor = system.dispatchers.lookup(kolibriDispatcherName)
-    import akka.http.scaladsl.server.Directives._
     corsHandler(
       path("jobStates") {
         get {
@@ -96,14 +196,12 @@ object StatusRoutes extends CORSHandler {
   }
 
   def health(implicit system: ActorSystem): Route = {
-    import akka.http.scaladsl.server.Directives._
     corsHandler(
       path("health") {
         get {
           complete(StatusCodes.OK)
         }
       })
-
   }
 
 }
