@@ -26,7 +26,7 @@ import de.awagen.kolibri.base.actors.clusterinfo.ClusterMetricsListenerActor.{Me
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor._
 import de.awagen.kolibri.base.actors.work.manager.JobManagerActor.WorkerStatusResponse
 import de.awagen.kolibri.base.actors.work.manager.JobProcessingState.JobStatusInfo
-import de.awagen.kolibri.base.actors.work.worker.RunnableExecutionActor.BatchProcessStateResult
+import de.awagen.kolibri.base.actors.work.worker.RunnableExecutionActor.{BatchProcessState, BatchProcessStateResult}
 import de.awagen.kolibri.base.config.AppProperties.config.{internalJobStatusRequestTimeout, kolibriDispatcherName}
 import de.awagen.kolibri.base.http.server.routes.BaseRoutes.{clusterMetricsListenerActor, supervisorActor}
 import de.awagen.kolibri.base.io.json.ClusterStatesJsonProtocol._
@@ -43,8 +43,8 @@ object StatusRoutes extends CORSHandler {
   import spray.json._
   import DefaultJsonProtocol._
 
-  def batchStateToJson(state: BatchProcessStateResult): JsValue = {
-    state.result match {
+  def batchStateToJson(state: Either[Throwable, BatchProcessState]): JsValue = {
+    state match {
       case Right(value) =>
         Map("node" -> s"${value.node}",
           "jobId" -> s"${value.jobId}",
@@ -59,7 +59,7 @@ object StatusRoutes extends CORSHandler {
 
   def workerStatusToJson(response: WorkerStatusResponse): String = {
     val jsonSeq: Seq[JsValue] = response.result.map(x => {
-      batchStateToJson(x)
+      batchStateToJson(x.result)
     })
     jsonSeq.toJson.toString()
   }
@@ -80,6 +80,12 @@ object StatusRoutes extends CORSHandler {
     )
   }
 
+  /**
+    * Order BatchProcessStates by jobId and by batchNr (in that order)
+    */
+  val batchProcessStateOrdering: Ordering[BatchProcessState] = Ordering.by[BatchProcessState, String](_.jobId)
+    .orElseBy(_.batchNr)
+
   def getAllJobWorkerStates(implicit system: ActorSystem): Route = {
     implicit val ec: ExecutionContextExecutor = system.dispatchers.lookup(kolibriDispatcherName)
     corsHandler(
@@ -97,6 +103,13 @@ object StatusRoutes extends CORSHandler {
                 Future.sequence(results).map(values => {
                   values.asInstanceOf[Seq[WorkerStatusResponse]]
                     .flatMap(status => status.result)
+                    .filter(x => x.result.isRight)
+                    .map(x => x.result)
+                    .sorted(Ordering[Either[Throwable, BatchProcessState]]({
+                      case (Right(aa:BatchProcessState), Right(bb:BatchProcessState)) =>
+                        batchProcessStateOrdering.compare(aa, bb)
+                      case _ => 0
+                    }))
                     .map(state => batchStateToJson(state))
                     .toJson.toString()
                 })
