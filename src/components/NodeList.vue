@@ -42,8 +42,8 @@ export default {
           .then(response => {
             runningNodes.value = response.data.map(worker => {
               let worker_state = {}
-              worker_state["avgCpuUsage"] = (worker["cpuInfo"]["loadAvg"] / worker["cpuInfo"]["nrProcessors"]).toFixed(2) + "%"
-              worker_state["heapUsage"] = (worker["heapInfo"]["heapUsed"] / worker["heapInfo"]["heapMax"]).toFixed(2) + "%"
+              worker_state["avgCpuUsage"] = (100 * worker["cpuInfo"]["loadAvg"] / worker["cpuInfo"]["nrProcessors"]).toFixed(2) + "%"
+              worker_state["heapUsage"] = (100 * worker["heapInfo"]["heapUsed"] / worker["heapInfo"]["heapMax"]).toFixed(2) + "%"
               worker_state["host"] = worker["host"]
               worker_state["port"] = worker["port"]
               worker_state["countCPUs"] = worker["cpuInfo"]["nrProcessors"]
