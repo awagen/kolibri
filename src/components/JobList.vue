@@ -27,6 +27,7 @@
 <script>
 import {onBeforeUnmount, onMounted, ref} from "vue";
 import axios from "axios";
+import {stopJobUrl} from '../utils/globalConstants'
 
 export default {
   props: [
@@ -52,7 +53,7 @@ export default {
     function killJob(jobId){
       console.log("executing killJob")
       return axios
-          .delete(this.stopJobUrl + '?jobId=' + jobId)
+          .delete(stopJobUrl + '?jobId=' + jobId)
           .then(response => {
             console.info("killJob response: " + response.data)
           }).catch(e => {
