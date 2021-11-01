@@ -20,6 +20,8 @@ trait JudgementProvider[T] extends Serializable {
 
   def allJudgements: Map[String, T]
 
+  def retrieveJudgementsForTerm(searchTerm: String): Map[String, Double]
+
   def retrieveJudgement(searchTerm: String, productId: String): Option[T]
 
   def retrieveJudgements(searchTerm: String, productIds: Seq[String]): Seq[Option[T]] = {

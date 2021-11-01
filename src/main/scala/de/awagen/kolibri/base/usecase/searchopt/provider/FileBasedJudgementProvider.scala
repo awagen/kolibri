@@ -42,9 +42,10 @@ object FileBasedJudgementProvider {
 
   /**
     * file based judgement provider assuming the file format is CSV
-    * @param filepath - file path
+    *
+    * @param filepath                  - file path
     * @param judgementFileFormatConfig - the column config indicating from which columns to extract the data
-    * @param queryProductDelimiter - separator of query and productId to use when creating the key to store the judgement under
+    * @param queryProductDelimiter     - separator of query and productId to use when creating the key to store the judgement under
     * @return
     */
   def createCSVBasedProvider(filepath: String,
@@ -62,11 +63,12 @@ object FileBasedJudgementProvider {
 
   /**
     * Creates the file based judgement provider assuming the file contains per line a json that represents the data state for a single query
-    * @param filepath - file path
-    * @param jsonQuerySelector - selector to extract the query from a single json (in this case a single line in the file)
-    * @param jsonProductsSelector - selector to retrieve all products in order of appearance
+    *
+    * @param filepath               - file path
+    * @param jsonQuerySelector      - selector to extract the query from a single json (in this case a single line in the file)
+    * @param jsonProductsSelector   - selector to retrieve all products in order of appearance
     * @param jsonJudgementsSelector - selector to retrieve the judgements in order of appearance
-    * @param queryProductDelimiter - separator of query and productId to use when creating the key to store the judgement under
+    * @param queryProductDelimiter  - separator of query and productId to use when creating the key to store the judgement under
     * @return
     */
   def createJsonLineBasedProvider(filepath: String,
@@ -126,8 +128,9 @@ object FileBasedJudgementProvider {
   /**
     * Transform a source in csv format into the judgement mapping.
     * The columns are taken from the respective format config
+    *
     * @param judgementFileFormatConfig - config of columns
-    * @param queryProductDelimiter - the delimiter used to create the query - product - keys
+    * @param queryProductDelimiter     - the delimiter used to create the query - product - keys
     * @return
     */
   def csvSourceToJudgementMapping(judgementFileFormatConfig: JudgementFileCSVFormatConfig = defaultJudgementFileFormatConfig,
@@ -144,10 +147,11 @@ object FileBasedJudgementProvider {
 
 /**
   * File based judgement provider. Takes distinct mapping functions depending on the format
-  * @param filepath - path to the file
-  * @param fileReader - reader to use
+  *
+  * @param filepath                     - path to the file
+  * @param fileReader                   - reader to use
   * @param sourceToJudgementMappingFunc - mapping function of source to judgement mapping (assuming key = [query][queryProductDelimiter][productId]
-  * @param queryProductDelimiter  - separator of query and productId for key generation
+  * @param queryProductDelimiter        - separator of query and productId for key generation
   */
 private[provider] class FileBasedJudgementProvider(filepath: String,
                                                    fileReader: Reader[String, Seq[String]],
@@ -175,4 +179,9 @@ private[provider] class FileBasedJudgementProvider(filepath: String,
   }
 
   override def allJudgements: Map[String, Double] = collection.immutable.Map[String, Double]() ++ judgementStorage
+
+  override def retrieveJudgementsForTerm(searchTerm: String): Map[String, Double] = judgementStorage
+    .map(x => (keyToSearchTermAndProductId(x._1), x._2))
+    .filter(x => x._1._1 == searchTerm)
+    .map(x => (x._1._2, x._2))
 }

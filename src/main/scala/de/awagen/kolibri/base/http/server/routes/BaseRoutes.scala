@@ -30,12 +30,16 @@ import de.awagen.kolibri.base.actors.clusterinfo.ClusterMetricsListenerActor.{Me
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor._
 import de.awagen.kolibri.base.cluster.ClusterStates.ClusterStatus
+import de.awagen.kolibri.base.config.AppConfig
 import de.awagen.kolibri.base.config.AppProperties.config.{analyzeTimeout, internalJobStatusRequestTimeout, kolibriDispatcherName}
 import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions
 import de.awagen.kolibri.base.http.server.routes.StatusRoutes.corsHandler
 import de.awagen.kolibri.base.processing.JobMessages.{SearchEvaluation, TestPiCalculation}
 import de.awagen.kolibri.base.processing.execution.functions.Execution
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.SearchJobDefinitions
+import de.awagen.kolibri.base.usecase.searchopt.provider.JudgementProvider
+import spray.json.DefaultJsonProtocol.{DoubleJsonFormat, StringJsonFormat, mapFormat}
+import spray.json.enrichAny
 
 import java.util.Objects
 import scala.concurrent.ExecutionContextExecutor
@@ -231,4 +235,32 @@ object BaseRoutes {
         }
       })
   }
+
+  def getJudgements(implicit system: ActorSystem): Route = {
+    corsHandler(
+      path("judgements") {
+        get {
+          parameters("query", "productId", "judgementFilePath") {
+            (query, productId, filePath) => {
+              val provider: JudgementProvider[Double] = AppConfig.filepathToJudgementProvider(filePath)
+              val judgement: Option[Double] = provider.retrieveJudgement(query, productId)
+              complete(judgement.toString)
+            }
+        }
+      }
+  })}
+
+  def getAllJudgements(implicit system: ActorSystem): Route = {
+    corsHandler(
+      path("allJudgements") {
+        get {
+          parameters("query", "judgementFilePath") {
+            (query, filePath) => {
+              val provider: JudgementProvider[Double] = AppConfig.filepathToJudgementProvider(filePath)
+              val judgements: Map[String, Double] = provider.retrieveJudgementsForTerm(query)
+              complete(judgements.toJson.toString())
+            }
+          }
+        }
+      })}
 }
