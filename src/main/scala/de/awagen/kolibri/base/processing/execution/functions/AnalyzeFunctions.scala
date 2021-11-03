@@ -87,6 +87,38 @@ object AnalyzeFunctions {
 
   }
 
+  /**
+    * Execution to compute the variance for a given metric per single result file (single query results)
+    * and return queries and the calculated variance sorted ascending by
+    * variance
+    *
+    * @param dir               - the result (sub)folder
+    * @param fileRegex         - the regex to determine which result files to take into account
+    * @param metricName        - metric name to calculate variance by
+    * @param queryFromFilename - functiom to determine the query from the filename
+    */
+  case class GetValueVarianceFromDirPerRegex(dir: String,
+                                             fileRegex: Regex,
+                                             metricName: String,
+                                             queryFromFilename: String => String) extends Execution[ExecutionSummary[Seq[(String, Double)]]] {
+    lazy val directoryReader: DataOverviewReader = regexDirectoryReader(fileRegex)
+    lazy val persistenceModule: PersistenceModule = AppConfig.persistenceModule
+    lazy val fileReader: Reader[String, Seq[String]] = persistenceModule.persistenceDIModule.reader
+
+    override def execute: Either[TaskFailType, ExecutionSummary[Seq[(String, Double)]]] = {
+      val filteredFiles: Seq[String] = directoryReader.listResources(dir, _ => true)
+      var queryVariancePairs: Seq[(String, Double)] = Seq.empty
+      filteredFiles.foreach(file => {
+        val document: MetricDocument[Tag] = FileUtils.fileToMetricDocument(file, fileReader)
+        val singleValues: Seq[Double] = document.rows.values.map(x => x.metrics(metricName).biValue.value2.value).toSeq
+        val mean = if (singleValues.isEmpty) 0 else singleValues.sum / singleValues.size
+        val variance = if (singleValues.isEmpty) 0 else singleValues.map(x => math.pow(x - mean, 2.0)).sum / singleValues.size
+        queryVariancePairs = queryVariancePairs :+ (queryFromFilename(file), variance)
+      })
+      Right(ExecutionSummary(queryVariancePairs.sorted((x: (String, Double), y: (String, Double)) => x._2 compare y._2), 0, filteredFiles.size, immutable.Map.empty))
+    }
+  }
+
   case class GetImprovingAndLoosing(compareFiles: Seq[String],
                                     currentParams: Map[String, Seq[String]],
                                     compareParams: Seq[Map[String, Seq[String]]],
