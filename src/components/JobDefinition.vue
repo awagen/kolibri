@@ -21,7 +21,6 @@
           <select class="form-input" id="job-type-1">
             <option>Choose a job type</option>
             <option>SearchEvaluation</option>
-            <option>LoadTest</option>
           </select>
         </div>
       </div>
@@ -31,15 +30,54 @@
           <label class="form-label" for="connection-add-1">Add Connection</label>
         </div>
         <div class="col-9 col-sm-12">
-          <button class="k-form-add btn btn-lg" id="connection-add-1">Add Connections</button>
+          <button v-if="connection_button_expanded" type='button' @click="toggle_connection_add_button()" class="k-form-add btn btn-action s-circle" id="connection-add-1"><i class="icon icon-arrow-down"></i></button>
+          <button v-else  type='button' @click="toggle_connection_add_button()" class="k-form-add btn btn-action s-circle" id="connection-add-1"><i class="icon icon-arrow-up"></i></button>
+        </div>
+      </div>
+      <!-- add fields for connection -->
+      <div v-if="connection_button_expanded" class="form-group" id="connection-add-host">
+        <div class="col-3 col-sm-12"></div>
+        <div class="col-3 col-sm-12">
+          <label class="form-label" for="connection-host">Host</label>
+        </div>
+        <div class="col-6 col-sm-12">
+          <input class="form-input" type="text" id="connection-host" placeholder="Host">
+        </div>
+        <div class="form-separator"></div>
+        <!-- port -->
+        <div class="col-3 col-sm-12"></div>
+        <div class="col-3 col-sm-12">
+          <label class="form-label" for="connection-port">Port</label>
+        </div>
+        <div class="col-6 col-sm-12">
+          <input class="form-input" type="text" id="connection-port" placeholder="Port">
+        </div>
+        <div class="form-separator"></div>
+        <!-- use https selection -->
+        <div class="col-3 col-sm-12"></div>
+        <div class="col-3 col-sm-12">
+          <label class="form-label">Https</label>
+        </div>
+        <div class="col-6 col-sm-12">
+          <label class="form-switch">
+            <input type="checkbox" id="connection-https">
+            <i class="form-icon"></i>
+          </label>
+        </div>
+        <!-- submit button -->
+        <div class="form-separator"></div>
+        <div class="col-3 col-sm-12"></div>
+        <div class="col-9 col-sm-12">
+          <button type='button' @click="add_connection()" class="k-form-add btn btn-action" id="connection-submit-1">SUBMIT</button>
         </div>
       </div>
     </form>
     <!-- Other half is the status display for stuff already added -->
-    <div class="col-6 column">
+    <div class="col-6 column k-json-panel">
       <h3 class="title">
         Created
       </h3>
+      <pre v-html="created_json_string_state"/>
     </div>
   </div>
 </template>
@@ -52,12 +90,67 @@ export default {
 
   props: [],
   setup(props) {
-    const json = ref(JSON.stringify({"data": "val1", "p": "y"}, null, '\t'))
+    const hostInputSelector = "connection-host"
+    const portInputSelector = "connection-port"
+    const httpsCheckboxSelector = "connection-https"
+    const connection_button_expanded = ref(false)
+
+    const connections = ref([])
+    const created_state = ref({})
+    const created_json_string_state = ref("")
+
+    function toggle_connection_add_button(){
+      connection_button_expanded.value = !connection_button_expanded.value
+    }
+
+    function add_connection() {
+      let host = document.getElementById(hostInputSelector).value
+      let port = document.getElementById(portInputSelector).value
+      let https = document.getElementById(httpsCheckboxSelector).checked
+      let connection = {
+        "host": host,
+        "port": port,
+        "https": https
+      }
+      connections.value.push(connection)
+      created_state.value["connections"] = connections.value
+      created_json_string_state.value = syntaxHighlight(JSON.stringify(created_state.value, null, '\t'))
+      console.log(connections.value)
+      console.log(created_state.value)
+    }
+
+    // ref: https://stackoverflow.com/questions/4810841/pretty-print-json-using-javascript
+    function syntaxHighlight(json) {
+      if (typeof json != 'string') {
+        json = JSON.stringify(json, undefined, 2);
+      }
+      json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+        let cls = 'number';
+        if (/^"/.test(match)) {
+          if (/:$/.test(match)) {
+            cls = 'key';
+          } else {
+            cls = 'string';
+          }
+        } else if (/true|false/.test(match)) {
+          cls = 'boolean';
+        } else if (/null/.test(match)) {
+          cls = 'null';
+        }
+        return '<span class="' + cls + '">' + match + '</span>';
+      });
+    }
+
     onMounted(() => {
     })
 
     return {
-      json
+      connection_button_expanded,
+      toggle_connection_add_button,
+      add_connection,
+      created_state,
+      created_json_string_state
     }
   },
 
@@ -84,10 +177,39 @@ export default {
 }
 
 .k-form-add.btn {
-  width: 50%;
+  /*width: 50%;*/
   padding: 0;
   margin: 0;
   display: block;
+  background-color: #9999;
+  color:black;
+  border-width: 0;
 }
+
+.form-separator {
+  height: 2.8em;
+}
+
+button#connection-submit-1 {
+  width:auto;
+  background-color: #9999;
+  border-width: 0;
+  color: black;
+  padding: 0.5em;
+}
+
+/* need some deep selectors here since otherwise code loaded in v-html directive doesnt get styled */
+::v-deep(pre) {
+  /*outline: 1px solid #ccc; */
+  padding-left: 2em;
+  padding-top: 0;
+  margin: 5px;
+  text-align: left;
+}
+::v-deep(.string) { color: green; }
+::v-deep(.number) { color: darkorange; }
+::v-deep(.boolean) { color: black; }
+::v-deep(.null) { color: magenta; }
+::v-deep(.key) { color: #9c9c9c; }
 
 </style>
