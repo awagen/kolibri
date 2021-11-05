@@ -96,6 +96,10 @@ object StatusRoutes extends CORSHandler {
             case value: RunningJobs =>
               logger.debug(s"found running jobs: ${value.jobIDs}")
               val results: Seq[Future[Any]] = value.jobIDs.map(jobId => supervisorActor ? GetJobWorkerStatus(jobId))
+                // map to recover to make sure we have some value in case we run in timeout
+                .map(status => {
+                  status.recover(err => WorkerStatusResponse(result = Seq(BatchProcessStateResult(Left(err)))))
+                })
               if (results.isEmpty) {
                 Future.successful(Seq.empty[String].toJson.toString())
               }
