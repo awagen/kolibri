@@ -4,6 +4,7 @@ import HistoryView from "../views/HistoryView.vue";
 import StatusView from "../views/StatusView.vue";
 import AnalyzeView from "../views/AnalyzeView.vue";
 import ResultView from "../views/ResultView.vue";
+import NotFoundView from "../views/NotFoundView.vue";
 
 const routes = [
     {
@@ -30,6 +31,11 @@ const routes = [
         path: "/result",
         name: "Result",
         component: ResultView
+    },
+    {
+        path: '/:catchAll(.*)',
+        component: NotFoundView,
+        name: 'NotFound'
     }
 ];
 

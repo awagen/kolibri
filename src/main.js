@@ -3,9 +3,9 @@ import App from './App.vue'
 import './index.css'
 import router from './router'
 
-import "./assets/css/spectre-0.5.9/dist/spectre.min.css";
-import "./assets/css/spectre-0.5.9/dist/spectre-exp.min.css";
-import "./assets/css/spectre-0.5.9/dist/spectre-icons.min.css";
+// we could just reference style sheets relatively from assets folder, but we keep one central scss file instead
+// as central place, mixing sheets and overwriting styles
+import './assets/css/styles.scss';
 
 const app = createApp(App);
 app.use(router)
