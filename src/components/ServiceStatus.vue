@@ -1,7 +1,7 @@
 <template>
   <div class="connection-status-container">
     <span class="connection-status-text">Status:</span>
-    <span v-bind:class="{ connected: isConnected }"
+    <span v-bind:class="{ connected: this.$store.state.serviceIsUp }"
           class="s-circle connection-status">
   </span>
   </div>
@@ -39,39 +39,13 @@
 </style>
 
 <script>
-import axios from "axios";
-import {onMounted, ref} from "vue";
-import {appIsUpUrl} from '../utils/globalConstants'
-
+import {onMounted} from "vue";
 
 export default {
   props: {},
   setup() {
-    const isConnected = ref(Boolean)
-    const statusRefreshIntervalInMs = ref(5000)
-
-    function retrieveServiceStatus() {
-      return axios
-          .get(appIsUpUrl)
-          .then(response => {
-            isConnected.value = response.status < 400
-          }).catch(_ => {
-            isConnected.value = false
-          })
-    }
-
-    onMounted(() => {
-      // initial service status check
-      retrieveServiceStatus()
-      // regular scheduling
-      window.setInterval(() => {
-        retrieveServiceStatus()
-      }, statusRefreshIntervalInMs.value)
-    })
-
-    return {
-      isConnected
-    }
+    onMounted(() => {})
+    return {}
   }
 }
 

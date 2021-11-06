@@ -1,6 +1,6 @@
 <template>
 
-  <h2 class="runningJobHeader">{{header}}</h2>
+  <h2 class="runningJobHeader">{{ header }}</h2>
   <table class="table">
     <thead>
     <tr>
@@ -14,51 +14,39 @@
     </thead>
     <tbody>
     <!-- list all running jobs -->
-    <tr v-for="job in runningJobs">
-      <td>{{job.jobId}}</td>
-      <td>{{job.jobType}}</td>
-      <td>{{job.startTime}}/{{job.endTime}}</td>
-      <td>{{job.resultSummary}}</td>
+    <tr v-for="job in data">
+      <td>{{ job.jobId }}</td>
+      <td>{{ job.jobType }}</td>
+      <td>{{ job.startTime }}/{{ job.endTime }}</td>
+      <td>{{ job.resultSummary }}</td>
       <td>
         <div class="bar bar-sm">
-          <div class="bar-item" role="progressbar" :style="{'width': job.progress + '%'}" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"></div>
+          <div class="bar-item" role="progressbar" :style="{'width': job.progress + '%'}" aria-valuenow="25"
+               aria-valuemin="0" aria-valuemax="100"></div>
         </div>
       </td>
-      <td v-if="showKillButton"><button @click="killJob(job.jobId)" class="btn btn-primary s-circle kill">Kill</button></td>
+      <td v-if="showKillButton">
+        <button @click="killJob(job.jobId)" class="btn btn-primary s-circle kill">Kill</button>
+      </td>
     </tr>
     </tbody>
   </table>
 </template>
 
 <script>
-import {onBeforeUnmount, onMounted, ref} from "vue";
+import {onBeforeUnmount, onMounted} from "vue";
 import axios from "axios";
 import {stopJobUrl} from '../utils/globalConstants'
 
 export default {
   props: [
     'header',
-    'jobRetrievalUrl',
+    'data',
     'showKillButton'
   ],
   setup(props) {
-    const runningJobs = ref([])
-    const runningJobsRefreshIntervalInMs = ref(10000)
 
-    function retrieveRunningJobs() {
-      return axios
-          .get(props.jobRetrievalUrl)
-          .then(response => {
-            runningJobs.value =  response.data
-            runningJobs.value.forEach(function (item, index) {
-              item["progress"] = Math.round((item["resultSummary"]["nrOfResultsReceived"] / item["resultSummary"]["nrOfBatchesTotal"]) * 100)
-            });
-          }).catch(_ => {
-            runningJobs.value = []
-          })
-    }
-
-    function killJob(jobId){
+    function killJob(jobId) {
       console.log("executing killJob")
       return axios
           .delete(stopJobUrl + '?jobId=' + jobId)
@@ -71,21 +59,11 @@ export default {
     }
 
     onMounted(() => {
-      // execute once initially to fill display
-      retrieveRunningJobs()
-
-      // execute scheduled in intervals of given length to refresh display
-      window.setInterval(() => {
-        retrieveRunningJobs()
-      }, runningJobsRefreshIntervalInMs.value)
     })
-
     onBeforeUnmount(() => {
-      clearInterval()
     })
 
     return {
-      runningJobs,
       killJob
     }
   }
@@ -116,7 +94,7 @@ td, th {
 
 .btn.kill {
   background-color: #340000;
-  color: #9C9C9C ;
+  color: #9C9C9C;
   border: none;
 }
 

@@ -1,6 +1,5 @@
 <template>
-  <JobList :job-retrieval-url="retrieveFinishedJobStateUrl" :showKillButton="false"
-           header="COMPLETED JOBS"/>
+  <JobList :data="this.$store.state.jobHistory" :show-kill-button="false" header="COMPLETED JOBS"/>
 </template>
 
 <script>
