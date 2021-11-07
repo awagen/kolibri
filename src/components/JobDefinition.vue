@@ -4,6 +4,7 @@
       <h3 class="title">
       Definition Creation
       </h3>
+      <!-- form group for job name -->
       <div class="form-group">
         <div class="col-3 col-sm-12">
           <label class="form-label" for="job-name-1">JobName</label>
@@ -12,6 +13,37 @@
           <input class="form-input" type="text" id="job-name-1" placeholder="JobName">
         </div>
       </div>
+
+      <!-- form group for requested nr of parallel tasks -->
+      <div class="form-group">
+        <div class="col-3 col-sm-12">
+          <label class="form-label" for="tasks-1">Parallel Batches</label>
+        </div>
+        <div class="col-9 col-sm-12">
+          <input class="form-input" type="text" id="tasks-1" placeholder="ParallelBatches">
+        </div>
+      </div>
+
+      <!-- form group for requested context path -->
+      <div class="form-group">
+        <div class="col-3 col-sm-12">
+          <label class="form-label" for="path-1">ContextPath</label>
+        </div>
+        <div class="col-9 col-sm-12">
+          <input class="form-input" type="text" id="path-1" placeholder="ContextPath">
+        </div>
+      </div>
+
+      <!-- form group for fixed params -->
+      <div class="form-group">
+        <div class="col-3 col-sm-12">
+          <label class="form-label" for="fixed-params-1">FixedParams</label>
+        </div>
+        <div class="col-9 col-sm-12">
+          <input class="form-input" type="text" id="fixed-params-1" placeholder="FixedParams">
+        </div>
+      </div>
+
       <!-- -->
       <div class="form-group">
         <div class="col-3 col-sm-12">
@@ -75,7 +107,7 @@
     <!-- Other half is the status display for stuff already added -->
     <div class="col-6 column k-json-panel">
       <h3 class="title">
-        Created
+        JSON
       </h3>
       <pre v-html="created_json_string_state"/>
     </div>
