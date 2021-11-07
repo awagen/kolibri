@@ -3,9 +3,7 @@ import {createStore} from 'vuex'
 import App from './App.vue'
 import './index.css'
 import router from './router'
-import {appIsUpUrl, nodeStateUrl} from './utils/globalConstants'
-import axios from "axios";
-import retrieveJobs from './utils/functions'
+import {retrieveJobs, retrieveNodeStatus, retrieveServiceUpState} from './utils/retrievalFunctions'
 
 // we could just reference style sheets relatively from assets folder, but we keep one central scss file instead
 // as central place, mixing sheets and overwriting styles
@@ -25,40 +23,20 @@ const store = createStore({
 
     mutations: {
         updateServiceUpState(state) {
-            return axios
-                .get(appIsUpUrl)
-                .then(response => {
-                    state.serviceIsUp = response.status < 400
-                }).catch(_ => {
-                    state.serviceIsUp = false
-                })
+            retrieveServiceUpState().then(response => state.serviceIsUp = response)
         },
 
-        retrieveNodeStatus(state) {
-            return axios
-                .get(nodeStateUrl)
-                .then(response => {
-                    state.runningNodes = response.data.map(worker => {
-                        let worker_state = {}
-                        worker_state["avgCpuUsage"] = (100 * worker["cpuInfo"]["loadAvg"] / worker["cpuInfo"]["nrProcessors"]).toFixed(2) + "%"
-                        worker_state["heapUsage"] = (100 * worker["heapInfo"]["heapUsed"] / worker["heapInfo"]["heapMax"]).toFixed(2) + "%"
-                        worker_state["host"] = worker["host"]
-                        worker_state["port"] = worker["port"]
-                        worker_state["countCPUs"] = worker["cpuInfo"]["nrProcessors"]
-                        return worker_state
-                    });
-                }).catch(_ => {
-                    state.runningNodes = []
-                })
+        updateNodeStatus(state) {
+            retrieveNodeStatus().then(response => state.runningNodes = response)
         },
 
-        retrieveRunningJobs(state) {
+        updateRunningJobs(state) {
             return retrieveJobs( false, x => {
                 state.runningJobs = x
             })
         },
 
-        retrieveJobHistory(state) {
+        updateJobHistory(state) {
             return retrieveJobs( true, x => {
                 state.jobHistory = x
             })
@@ -69,15 +47,15 @@ const store = createStore({
 
 // initial service status check
 store.commit("updateServiceUpState")
-store.commit("retrieveNodeStatus")
-store.commit("retrieveRunningJobs")
-store.commit("retrieveJobHistory")
+store.commit("updateNodeStatus")
+store.commit("updateRunningJobs")
+store.commit("updateJobHistory")
 // regular scheduling
 window.setInterval(() => {
     store.commit("updateServiceUpState")
-    store.commit("retrieveNodeStatus")
-    store.commit("retrieveRunningJobs")
-    store.commit("retrieveJobHistory")
+    store.commit("updateNodeStatus")
+    store.commit("updateRunningJobs")
+    store.commit("updateJobHistory")
 }, store.state.statusRefreshIntervalInMs)
 
 
