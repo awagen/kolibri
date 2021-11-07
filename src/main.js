@@ -3,28 +3,13 @@ import {createStore} from 'vuex'
 import App from './App.vue'
 import './index.css'
 import router from './router'
-import {appIsUpUrl, jobHistoryUrl, jobStateUrl, nodeStateUrl} from './utils/globalConstants'
+import {appIsUpUrl, nodeStateUrl} from './utils/globalConstants'
 import axios from "axios";
+import retrieveJobs from './utils/functions'
 
 // we could just reference style sheets relatively from assets folder, but we keep one central scss file instead
 // as central place, mixing sheets and overwriting styles
 import './assets/css/styles.scss';
-
-// TODO: move this function to some lib, cant def this within the mutations
-function retrieveJobs(historical, updateFunc) {
-    const  url = historical ? jobHistoryUrl : jobStateUrl
-    return axios
-        .get(url)
-        .then(response => {
-            let result = response.data
-            result.forEach(function (item, index) {
-                item["progress"] = Math.round((item["resultSummary"]["nrOfResultsReceived"] / item["resultSummary"]["nrOfBatchesTotal"]) * 100)
-            });
-            updateFunc(result)
-        }).catch(_ => {
-            updateFunc([])
-        })
-}
 
 // Create a new store instance.
 const store = createStore({
@@ -69,16 +54,12 @@ const store = createStore({
 
         retrieveRunningJobs(state) {
             return retrieveJobs( false, x => {
-                console.info("updating running jobs")
-                console.log(x)
                 state.runningJobs = x
             })
         },
 
         retrieveJobHistory(state) {
             return retrieveJobs( true, x => {
-                console.info("updating jobHistory")
-                console.log(x)
                 state.jobHistory = x
             })
         }
