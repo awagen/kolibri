@@ -136,6 +136,19 @@ object AppProperties {
     val runnableExecutionActorHousekeepingInterval: FiniteDuration = getFiniteDuration(config = baseConfig,
       key = "kolibri.execution.runnableExecutionHouseKeepingIntervalInSeconds", SECONDS)
 
+    val aggregatingActorHousekeepingInterval: FiniteDuration = getFiniteDuration(config = baseConfig,
+      key = "kolibri.execution.aggregatingActorHouseKeepingIntervalInSeconds", SECONDS)
+
+    val aggregatingActorStateSendingInterval: FiniteDuration = getFiniteDuration(config = baseConfig,
+      key = "kolibri.execution.aggregatingActorStateSendingIntervalInSeconds", SECONDS)
+
+    val workManagerStateUpdateInterval: FiniteDuration = getFiniteDuration(config = baseConfig,
+      key = "kolibri.execution.workManagerStateUpdateIntervalInSeconds", SECONDS)
+
+    val workManagerReportBatchStateToJobManagerInterval: FiniteDuration = getFiniteDuration(config = baseConfig,
+      key = "kolibri.execution.workManagerReportBatchStateToJobManagerIntervalInSeconds", SECONDS)
+
+
     val jobManagerCheckForCompletionIntervalInSeconds: FiniteDuration = getFiniteDuration(config = baseConfig,
       key = "kolibri.execution.jobManagerCheckForCompletionIntervalInSeconds", SECONDS)
 

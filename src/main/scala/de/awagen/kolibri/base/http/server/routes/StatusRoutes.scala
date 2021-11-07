@@ -95,11 +95,12 @@ object StatusRoutes extends CORSHandler {
           val result: Future[Any] = jobIdsFuture.flatMap({
             case value: RunningJobs =>
               logger.debug(s"found running jobs: ${value.jobIDs}")
-              val results: Seq[Future[Any]] = value.jobIDs.map(jobId => supervisorActor ? GetJobWorkerStatus(jobId))
-                // map to recover to make sure we have some value in case we run in timeout
-                .map(status => {
-                  status.recover(err => WorkerStatusResponse(result = Seq(BatchProcessStateResult(Left(err)))))
-                })
+              val results: Seq[Future[Any]] = value.jobIDs.map(jobId => {
+                (supervisorActor ? GetJobWorkerStatus(jobId))
+                  // recover to make sure we have some value in case we run in timeout
+                  .recover(err => WorkerStatusResponse(result = Seq(BatchProcessStateResult(jobId, -1, Left(err)))))
+              })
+
               if (results.isEmpty) {
                 Future.successful(Seq.empty[String].toJson.toString())
               }
@@ -117,11 +118,11 @@ object StatusRoutes extends CORSHandler {
                     .map(state => batchStateToJson(state))
                     .toJson.toString()
                 })
-                  .recover(e => Seq(workerStatusToJson(WorkerStatusResponse(Seq(BatchProcessStateResult(Left(e)))))).toJson.toString())
+                  .recover(e => Seq(workerStatusToJson(WorkerStatusResponse(Seq(BatchProcessStateResult("unknown", 0, Left(e)))))).toJson.toString())
               }
             case _ => Future.successful(Seq(workerStatusToJson(WorkerStatusResponse(Seq.empty))).toJson.toString())
           }).recover(e => {
-            Seq(workerStatusToJson(WorkerStatusResponse(Seq(BatchProcessStateResult(Left(e)))))).toJson.toString()
+            Seq(workerStatusToJson(WorkerStatusResponse(Seq(BatchProcessStateResult("unknown", 0, Left(e)))))).toJson.toString()
           })
           onSuccess(result) {
             e =>

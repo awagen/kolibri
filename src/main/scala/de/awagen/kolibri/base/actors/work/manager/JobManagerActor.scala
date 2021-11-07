@@ -129,6 +129,7 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
 
   // processing state keeping track of received results and distribution of new batches
   val jobProcessingState: JobProcessingState[U] = JobProcessingState[U](jobId)
+  var runningBatchesState: Map[Int, BatchProcessStateResult] = Map.empty
 
   // if set to true, job manager will expect batches to send back actual results, otherwise will not look at returned data in messages but only at success criteria
   // e.g makes sense in case sending results back is not needed since each batch corresponds to an result by itself
@@ -324,6 +325,7 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
     case e: AggregationState[U] =>
       jobProcessingState.addBatchFailedACK(e.batchNr)
       jobProcessingState.removeBatchWaitingForACK(e.batchNr)
+      runningBatchesState -= e.batchNr
       log.debug("received aggregation (batch finished) - jobId: {}, batchNr: {} ", e.jobID, e.batchNr)
       acceptResultMsg(e)
       if (jobProcessingState.nrResultsAccepted % 10 == 0 ||
@@ -335,31 +337,16 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
       reportResultsTo ! MaxTimeExceededEvent(jobId)
       context.become(ignoringAll)
       self ! PoisonPill
+    // react to status updates retrieved by the workers
+    case result: BatchProcessStateResult =>
+      log.debug(s"received update on batch state: $result")
+      runningBatchesState = runningBatchesState + (result.batchNr -> result)
     // retrieve the currently processing actors and retrieve from all the status
     case GetStatusForWorkers =>
-      val reportTo: ActorRef = sender()
-      // send GetWorkerStatus messages
-      val runningBatches = jobProcessingState.runningBatches
-      val messages = runningBatches.map(batchNr => GetWorkerStatus(ExecutionType.RUNNABLE, jobId, batchNr))
-      val responseFuture: Future[Seq[Any]] = Future.sequence(messages.map(x => {
-        implicit val timeout: Timeout = Timeout(5 seconds)
-        workerServiceRouter.ask(x)
-      }))
-      responseFuture.onComplete(res => {
-        log.debug(s"received job status result: $res")
-        res match {
-          case Success(value: Seq[BatchProcessStateResult]) =>
-            log.debug(s"received list of batch process state result: $value")
-            reportTo ! WorkerStatusResponse(value)
-          case Failure(e: Throwable) =>
-            log.info(s"received exception on batch status request: $e")
-            reportTo ! WorkerStatusResponse(Seq(BatchProcessStateResult(Left(e))))
-          case e =>
-            log.info(s"received unknown batch result: $e")
-        }
-      })
+      sender() ! WorkerStatusResponse(runningBatchesState.values.toSeq)
     case WorkerKilled(batchNr) =>
       jobProcessingState.removeExpectationForBatchId(batchNr)
+      runningBatchesState -= batchNr
       fillUpFreeSlots()
     case e =>
       log.warning(s"Unknown message '$e', ignoring")

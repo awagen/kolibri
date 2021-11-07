@@ -18,13 +18,12 @@ package de.awagen.kolibri.base.actors.work.worker
 
 import akka.Done
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Cancellable, PoisonPill, Props}
-import akka.pattern.ask
 import akka.stream.scaladsl.RunnableGraph
 import akka.stream.{ActorAttributes, UniqueKillSwitch}
-import de.awagen.kolibri.base.actors.work.worker.AggregatingActor.{ProvideState, ProvideStateAndStop, ReportResults}
+import de.awagen.kolibri.base.actors.work.worker.AggregatingActor.{FinalReportState, ProvideStateAndStop, StateUpdateWithoutData}
 import de.awagen.kolibri.base.actors.work.worker.JobPartIdentifiers.BaseJobPartIdentifier
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationState, AggregationStateWithoutData}
-import de.awagen.kolibri.base.actors.work.worker.RunnableExecutionActor.{BatchProcessState, BatchProcessStateResult, ProvideAggregationState, RunnableHousekeeping}
+import de.awagen.kolibri.base.actors.work.worker.RunnableExecutionActor.{BatchProcessState, BatchProcessStateResult, ReportBatchState, RunnableHousekeeping}
 import de.awagen.kolibri.base.config.AppProperties.config
 import de.awagen.kolibri.base.config.AppProperties.config.kolibriDispatcherName
 import de.awagen.kolibri.base.config.EnvVariableKeys.CLUSTER_NODE_HOST
@@ -39,7 +38,6 @@ import de.awagen.kolibri.datatypes.types.Types.WithCount
 
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContextExecutor, Future}
-import scala.util.{Failure, Success}
 
 
 object RunnableExecutionActor {
@@ -54,13 +52,13 @@ object RunnableExecutionActor {
 
   case object Terminate extends RunnableExecutionActorCmd
 
+  case object ReportBatchState extends RunnableExecutionActorCmd
+
   case object RunnableHousekeeping extends RunnableExecutionActorCmd
 
-  case object ProvideAggregationState extends RunnableExecutionActorCmd
+  case class BatchProcessState(node: String, jobId: String, batchNr: Int, totalElements: Int, processedElementCount: Int) extends RunnableExecutionActorEvent
 
-  case class BatchProcessState(node: String, jobId: String, batchNr: Int, totalElements: Int, processedElementCount: Int)
-
-  sealed case class BatchProcessStateResult(result: Either[Throwable, BatchProcessState]) extends RunnableExecutionActorEvent
+  sealed case class BatchProcessStateResult(jobId: String, batchNr: Int, result: Either[Throwable, BatchProcessState]) extends RunnableExecutionActorEvent
 
 }
 
@@ -100,7 +98,7 @@ class RunnableExecutionActor[U <: WithCount](maxBatchDuration: FiniteDuration,
   // nr of elements processed in ActorRunnable
   private[this] var elementsToProcessCount: Int = _
   var sendResultsBack: Boolean = true
-
+  var batchStateUpdate: StateUpdateWithoutData = _
 
   val readyForJob: Receive = {
     case runnable: ActorRunnable[_, _, _, U] =>
@@ -118,6 +116,8 @@ class RunnableExecutionActor[U <: WithCount](maxBatchDuration: FiniteDuration,
         writerOpt,
         sendResultBack = runnable.sendResultsBack
       ))
+      // set the initial state to an empty one
+      batchStateUpdate = StateUpdateWithoutData(AggregationStateWithoutData(0, runningJobId, runningJobBatchNr, BaseExecutionExpectation.empty()), isFinal = false)
       // we set the aggregatingActor as receiver of all messages
       // (whether graph sink is used or setting the aggregator as sender when sending
       // messages to executing actors within the graph)
@@ -145,7 +145,6 @@ class RunnableExecutionActor[U <: WithCount](maxBatchDuration: FiniteDuration,
       val outcome: (UniqueKillSwitch, Future[Done]) = runnableGraph.run()
       // when complete, send the aggregation to the aggregatig actor (well, aggregating actor actually not needed in that case)
       outcome._2.onComplete(_ => {
-        //        aggregatingActor ! AggregationState(runnable.aggregator.aggregation, runningJobId, runningJobBatchNr, expectation)
         log.info("graph completed, notifying aggregator to send results and stop aggregating")
         aggregatingActor ! ProvideStateAndStop
         ()
@@ -178,32 +177,34 @@ class RunnableExecutionActor[U <: WithCount](maxBatchDuration: FiniteDuration,
         killSwitch.abort(new RuntimeException(s"Expectation failed:\n${expectation.statusDesc}"))
         aggregatingActor ! ProvideStateAndStop
       }
-    case e: AggregationState[_] =>
-      log.debug("received aggregation (batch finished): {}", e)
-      expectation.accept(e)
+    // this is the final report, e.g after filtering, coming from AggregatingActor
+    case FinalReportState(state) =>
+      log.debug("received aggregation (batch finished): {}", state)
+      expectation.accept(state)
       housekeepingCancellable.cancel()
-      jobSender ! e
+      jobSender ! state
       self ! PoisonPill
-    case ProvideAggregationState =>
-      aggregatingActor.tell(ReportResults, sender())
-    case ReportResults =>
+    // expected regularly from AggregatingActor to keep track of the state
+    case stateUpdate@StateUpdateWithoutData(_, _) =>
+      log.debug(s"received state update: $stateUpdate")
+      batchStateUpdate = stateUpdate
+    case ReportBatchState =>
       log.debug("received ReportResults message")
       val reportTo: ActorRef = sender()
-      aggregatingActor.ask(ProvideState)(5 seconds, self).onComplete({
-        case Success(value: AggregationStateWithoutData[_]) =>
-          val batchProcessState = BatchProcessState(
-            CLUSTER_NODE_HOST.value,
-            value.jobID,
-            value.batchNr,
-            elementsToProcessCount,
-            value.containedElementCount
-          )
-          reportTo ! BatchProcessStateResult(Right(batchProcessState))
-        case Failure(e: Throwable) =>
-          reportTo ! BatchProcessStateResult(Left(e))
-      })
+      val resultMessage = BatchProcessStateResult(runningJobId, runningJobBatchNr, Right(batchProcessState()))
+      reportTo ! resultMessage
     case msg =>
       expectation.accept(msg)
+  }
+
+  def batchProcessState(): BatchProcessState = {
+    BatchProcessState(
+      CLUSTER_NODE_HOST.value,
+      batchStateUpdate.state.jobID,
+      batchStateUpdate.state.batchNr,
+      elementsToProcessCount,
+      batchStateUpdate.state.containedElementCount
+    )
   }
 
   override def receive: Receive = readyForJob

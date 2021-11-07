@@ -366,7 +366,7 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
             reportTo ! response
           case Failure(e) =>
             log.debug(s"received exception on batch status request: $e")
-            reportTo ! WorkerStatusResponse(Seq(BatchProcessStateResult(Left(e))))
+            reportTo ! WorkerStatusResponse(Seq(BatchProcessStateResult(jobId, -1, Left(e))))
         })
       })
       if (setupAndExpectation.isEmpty) {
