@@ -1,14 +1,14 @@
 <template>
-    <JobDefinition></JobDefinition>
+    <JobDefinitionByTemplates></JobDefinitionByTemplates>
 </template>
 
 <script>
-import JobDefinition from "../components/JobDefinition.vue";
+import JobDefinitionByTemplates from "../components/JobDefinitionByTemplates.vue";
 
 export default {
 
   components: {
-    JobDefinition
+    JobDefinitionByTemplates
   },
   data() {
     return {

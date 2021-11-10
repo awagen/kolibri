@@ -142,7 +142,7 @@ export default {
       let connection = {
         "host": host,
         "port": port,
-        "https": https
+        "useHttps": https
       }
       connections.value.push(connection)
       created_state.value["connections"] = connections.value
