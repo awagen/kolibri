@@ -40,7 +40,7 @@ class LocalPersistenceModule extends PersistenceDIModule with tagging.Tag[LOCAL_
     LocalResourceFileReader(None, fromClassPath = false)
 
   override def dataOverviewReader(fileFilter: String => Boolean): DataOverviewReader = LocalDirectoryReader(
-    baseDir = AppProperties.config.localPersistenceDir.get,
+    baseDir = AppProperties.config.localResourceDir.get,
     baseFilenameFilter = fileFilter)
 
 

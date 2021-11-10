@@ -82,6 +82,7 @@ services:
       AWS_S3_PATH: 'metric_test'
       AWS_S3_REGION: 'EU_CENTRAL_1'
       LOCAL_STORAGE_DIR: '/app/data'
+      LOCAL_RESOURCES_DIR: '/app/test-files'
       JUDGEMENT_FILE_SOURCE_TYPE: 'CSV'
       # if judgement file format set to 'JSON_LINES', need to set 'DOUBLE' in case judgements are numeric in the json,
       # if the numeric value is represented as string, use 'STRING'. This purely refers to how the json value is interpreted,
@@ -149,6 +150,7 @@ services:
       AWS_S3_PATH: 'metric_test'
       AWS_S3_REGION: 'EU_CENTRAL_1'
       LOCAL_STORAGE_DIR: '/app/data'
+      LOCAL_RESOURCES_DIR: '/app/test-files'
       JUDGEMENT_FILE_SOURCE_TYPE: 'CSV'
       # if judgement file format set to 'JSON_LINES', need to set 'DOUBLE' in case judgements are numeric in the json,
       # if the numeric value is represented as string, use 'STRING'. This purely refers to how the json value is interpreted,
@@ -183,6 +185,10 @@ services:
       RESPONSE_FIELD_SAMPLER_TYPE_BOOL: "SINGLE"
       RESPONSE_FIELD_SAMPLER_ELEMENT_CAST_BOOL: "BOOL"
       RESPONSE_FIELD_SAMPLER_SELECTION_BOOL: "True,False"
+      RESPONSE_FIELD_IDENT_NUM_FOUND: "{{NUM_FOUND}}"
+      RESPONSE_FIELD_SAMPLER_TYPE_NUM_FOUND: "SINGLE"
+      RESPONSE_FIELD_SAMPLER_ELEMENT_CAST_NUM_FOUND: "INT"
+      RESPONSE_FIELD_SAMPLER_SELECTION_NUM_FOUND: "1,5,6,8,10,12,100,50,200"
     ports:
       - "80:80"
 
@@ -206,5 +212,9 @@ services:
       RESPONSE_FIELD_SAMPLER_TYPE_BOOL: "SINGLE"
       RESPONSE_FIELD_SAMPLER_ELEMENT_CAST_BOOL: "BOOL"
       RESPONSE_FIELD_SAMPLER_SELECTION_BOOL: "True,False"
+      RESPONSE_FIELD_IDENT_NUM_FOUND: "{{NUM_FOUND}}"
+      RESPONSE_FIELD_SAMPLER_TYPE_NUM_FOUND: "SINGLE"
+      RESPONSE_FIELD_SAMPLER_ELEMENT_CAST_NUM_FOUND: "INT"
+      RESPONSE_FIELD_SAMPLER_SELECTION_NUM_FOUND: "1,5,6,8,10,12,100,50,200"
     ports:
       - "81:81"

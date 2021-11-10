@@ -1,0 +1,211 @@
+{
+  "jobName": "testJob1",
+  "requestTasks": 10,
+  "fixedParams": {
+    "lang": [
+      "en"
+    ],
+    "start": [
+      "0"
+    ],
+    "rows": [
+      "100"
+    ]
+  },
+  "contextPath": "search",
+  "connections": [
+    {
+      "host": "search-service",
+      "port": 80,
+      "useHttps": false
+    }
+  ],
+  "requestPermutation": [
+    {
+      "type": "ALL",
+      "value": {
+        "params": {
+          "type": "FROM_FILES_LINES",
+          "values": {
+            "query": "/app/test-files/test-paramfiles/test_queries.txt"
+          }
+        }
+      }
+    },
+    {
+      "type": "ALL",
+      "value": {
+        "headers": {
+          "type": "GRID_FROM_VALUES_SEQ",
+          "values": [
+            {
+              "name": "some-header",
+              "values": [
+                "[{}]"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "ALL",
+      "value": {
+        "params": {
+          "type": "GRID_FROM_VALUES_SEQ",
+          "values": [
+            {
+              "name": "someParam1",
+              "values": [
+                "value1:0.0",
+                "value1:0.5",
+                "value1:1.0",
+                "value1:1.5",
+                "value1:2.0"
+              ]
+            },
+            {
+              "name": "someParam2",
+              "start": 0.0,
+              "end": 10.0,
+              "stepSize": 1.0
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "batchByIndex": 0,
+  "parsingConfig": {
+    "singleSelectors": [
+      {
+        "name": "numFound",
+        "castType": "DOUBLE",
+        "selector": {
+          "type": "PLAIN_PATH",
+          "keys": [
+            "response",
+            "numFound"
+          ]
+        }
+      }
+    ],
+    "seqSelectors": [
+      {
+        "name": "productIds",
+        "castType": "STRING",
+        "selector": {
+          "type": "PLAINREC",
+          "path": "\\ response \\ docs \\\\ product_id"
+        }
+      },
+      {
+        "name": "bools",
+        "castType": "BOOLEAN",
+        "selector": {
+          "type": "PLAINREC",
+          "path": "\\ response \\ docs \\\\ bool"
+        }
+      }
+    ]
+  },
+  "excludeParamsFromMetricRow": [
+    "query",
+    "lang",
+    "start",
+    "rows"
+  ],
+  "taggingConfiguration": {
+    "initTagger": {
+      "type": "REQUEST_PARAMETER",
+      "parameter": "query",
+      "extend": false
+    },
+    "processedTagger": {
+      "type": "NOTHING"
+    },
+    "resultTagger": {
+      "type": "NOTHING"
+    }
+  },
+  "requestTemplateStorageKey": "requestTemplate",
+  "mapFutureMetricRowCalculation": {
+    "functionType": "IR_METRICS",
+    "name": "irMetrics",
+    "queryParamName": "query",
+    "requestTemplateKey": "requestTemplate",
+    "productIdsKey": "productIds",
+    "judgementProvider": {
+      "type": "FILE_BASED",
+      "filename": "/app/test-files/test-judgements/test_judgements.txt"
+    },
+    "metricsCalculation": {
+      "metrics": [
+        {
+          "name": "DCG_10",
+          "function": {
+            "type": "DCG",
+            "k": 10
+          }
+        },
+        {
+          "name": "NDCG_10",
+          "function": {
+            "type": "NDCG",
+            "k": 10
+          }
+        },
+        {
+          "name": "PRECISION_4",
+          "function": {
+            "type": "PRECISION",
+            "k": 4,
+            "threshold": 0.1
+          }
+        },
+        {
+          "name": "ERR_10",
+          "function": {
+            "type": "ERR",
+            "k": 10
+          }
+        }
+      ],
+      "judgementHandling": {
+        "validations": [
+          "EXIST_RESULTS",
+          "EXIST_JUDGEMENTS"
+        ],
+        "handling": "AS_ZEROS"
+      }
+    },
+    "excludeParams": [
+      "query",
+      "lang",
+      "start",
+      "rows"
+    ]
+  },
+  "singleMapCalculations": [
+    {
+      "name": "NUM_FOUND",
+      "dataKey": "numFound",
+      "functionType": "IDENTITY"
+    }
+  ],
+  "allowedTimePerElementInMillis": 1000,
+  "allowedTimePerBatchInSeconds": 6000,
+  "allowedTimeForJobInSeconds": 720000,
+  "expectResultsFromBatchCalculations": false,
+  "wrapUpFunction": {
+    "type": "AGGREGATE_FROM_DIR_BY_REGEX",
+    "weightProvider": {
+      "type": "CONSTANT",
+      "weight": 1.0
+    },
+    "regex": "[(]query=.+[)]",
+    "outputFilename": "(ALL1)",
+    "readSubDir": "testJob1",
+    "writeSubDir": "testJob1"
+  }
+}

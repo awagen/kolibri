@@ -203,6 +203,11 @@ object AppProperties {
       else None
     }
 
+    val localResourceDir: Option[String] = {
+      if (baseConfig.hasPath("kolibri.persistence.local.resources.dir")) Some(baseConfig.getString("kolibri.persistence.local.resources.dir"))
+      else None
+    }
+
     val persistenceMode: String = baseConfig.getString("kolibri.persistence.mode")
     val persistenceModuleClass: Option[String] = {
       if (baseConfig.hasPath("kolibri.persistence.moduleClass")) Some(baseConfig.getString("kolibri.persistence.moduleClass"))
