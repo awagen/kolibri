@@ -22,7 +22,7 @@
           <label class="form-label" for="template-name-1">Select Template</label>
         </div>
         <div class="col-9 col-sm-12">
-          <select @change="templateSelectEvent($event)" class="form-select k-field" id="template-name-1">
+          <select @change="templateSelectEvent($event)" class="form-select k-field k-value-selector" id="template-name-1">
             <option>Choose an option</option>
             <option v-for="templateName in templateNames">{{ templateName }}</option>
           </select>
@@ -79,7 +79,7 @@
           <label class="form-label" for="template-edit-saveto-filename-1">New template filename</label>
         </div>
         <div class="col-9 col-sm-12">
-          <input class="form-input" type="text" id="template-edit-saveto-filename-1"
+          <input class="form-input k-value-selector" type="text" id="template-edit-saveto-filename-1"
                  placeholder="New template filename">
         </div>
       </div>
@@ -287,6 +287,10 @@ button#save-template-1 {
 
 button#run-template-1 {
   background-color: orange;
+}
+
+.k-value-selector  {
+  color: black;
 }
 
 </style>
