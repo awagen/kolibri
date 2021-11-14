@@ -21,8 +21,12 @@ function syntaxHighlight(json) {
     });
 }
 
-function objectToJsonStringAndSyntaxHighlight(obj) {
-    return syntaxHighlight(JSON.stringify(obj, null, '\t'))
+function stringifyObj(obj){
+    return JSON.stringify(obj, null, '\t')
 }
 
-export {syntaxHighlight, objectToJsonStringAndSyntaxHighlight}
+function objectToJsonStringAndSyntaxHighlight(obj) {
+    return syntaxHighlight(stringifyObj(obj))
+}
+
+export {syntaxHighlight, stringifyObj, objectToJsonStringAndSyntaxHighlight}

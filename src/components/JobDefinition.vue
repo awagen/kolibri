@@ -2,7 +2,7 @@
   <div class="form-container-experiment-create columns">
     <form class="form-horizontal col-6 column">
       <h3 class="title">
-      Definition Creation
+        Definition Creation
       </h3>
       <!-- form group for job name -->
       <div class="form-group">
@@ -62,8 +62,12 @@
           <label class="form-label" for="connection-add-1">Add Connection</label>
         </div>
         <div class="col-9 col-sm-12">
-          <button v-if="connection_button_expanded" type='button' @click="toggle_connection_add_button()" class="k-form-add btn btn-action s-circle" id="connection-add-1"><i class="icon icon-arrow-down"></i></button>
-          <button v-else  type='button' @click="toggle_connection_add_button()" class="k-form-add btn btn-action s-circle" id="connection-add-1"><i class="icon icon-arrow-up"></i></button>
+          <button v-if="connection_button_expanded" type='button' @click="toggle_connection_add_button()"
+                  class="k-form-add btn btn-action s-circle" id="connection-add-1"><i class="icon icon-arrow-down"></i>
+          </button>
+          <button v-else type='button' @click="toggle_connection_add_button()"
+                  class="k-form-add btn btn-action s-circle" id="connection-add-1"><i class="icon icon-arrow-up"></i>
+          </button>
         </div>
       </div>
       <!-- add fields for connection -->
@@ -100,7 +104,9 @@
         <div class="form-separator"></div>
         <div class="col-3 col-sm-12"></div>
         <div class="col-9 col-sm-12">
-          <button type='button' @click="add_connection()" class="k-form-add btn btn-action" id="connection-submit-1">SUBMIT</button>
+          <button type='button' @click="add_connection()" class="k-form-add btn btn-action" id="connection-submit-1">
+            SUBMIT
+          </button>
         </div>
       </div>
     </form>
@@ -131,7 +137,7 @@ export default {
     const created_state = ref({})
     const created_json_string_state = ref("")
 
-    function toggle_connection_add_button(){
+    function toggle_connection_add_button() {
       connection_button_expanded.value = !connection_button_expanded.value
     }
 
@@ -191,7 +197,7 @@ export default {
   margin: 0;
   display: block;
   background-color: #9999;
-  color:black;
+  color: black;
   border-width: 0;
 }
 
@@ -200,7 +206,7 @@ export default {
 }
 
 button#connection-submit-1 {
-  width:auto;
+  width: auto;
   background-color: #9999;
   border-width: 0;
   color: black;
@@ -215,10 +221,25 @@ button#connection-submit-1 {
   margin: 5px;
   text-align: left;
 }
-::v-deep(.string) { color: green; }
-::v-deep(.number) { color: darkorange; }
-::v-deep(.boolean) { color: black; }
-::v-deep(.null) { color: magenta; }
-::v-deep(.key) { color: #9c9c9c; }
+
+::v-deep(.string) {
+  color: green;
+}
+
+::v-deep(.number) {
+  color: darkorange;
+}
+
+::v-deep(.boolean) {
+  color: black;
+}
+
+::v-deep(.null) {
+  color: magenta;
+}
+
+::v-deep(.key) {
+  color: #9c9c9c;
+}
 
 </style>
