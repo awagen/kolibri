@@ -163,68 +163,36 @@ object AppProperties {
 
     val maxNrBatchRetries: Int = baseConfig.getInt("kolibri.execution.maxNrBatchRetries")
 
-    val awsS3Bucket: Option[String] = {
-      if (baseConfig.hasPath("kolibri.persistence.s3.bucket")) Some(baseConfig.getString("kolibri.persistence.s3.bucket"))
+    def safeGetString(path: String): Option[String] = {
+      if (baseConfig.hasPath(path)) Some(baseConfig.getString(path))
       else None
     }
 
-    val awsS3BucketPath: Option[String] = {
-      if (baseConfig.hasPath("kolibri.persistence.s3.bucketPath")) Some(baseConfig.getString("kolibri.persistence.s3.bucketPath"))
-      else None
-    }
+    val awsS3Bucket: Option[String] = safeGetString("kolibri.persistence.s3.bucket")
 
-    val awsS3Region: Option[Regions] = {
-      if (baseConfig.hasPath("kolibri.persistence.s3.region")) Some(baseConfig.getString("kolibri.persistence.s3.region"))
-        .map(x => Regions.valueOf(x))
-      else None
-    }
+    val awsS3BucketPath: Option[String] = safeGetString("kolibri.persistence.s3.bucketPath")
 
-    val gcpGSBucket: Option[String] = {
-      if (baseConfig.hasPath("kolibri.persistence.gs.bucket")) Some(baseConfig.getString("kolibri.persistence.gs.bucket"))
-      else None
-    }
+    val awsS3Region: Option[Regions] = safeGetString("kolibri.persistence.s3.region").map(x => Regions.valueOf(x))
 
-    val gcpGSBucketPath: Option[String] = {
-      if (baseConfig.hasPath("kolibri.persistence.gs.bucketPath")) Some(baseConfig.getString("kolibri.persistence.gs.bucketPath"))
-      else None
-    }
+    val gcpGSBucket: Option[String] = safeGetString("kolibri.persistence.gs.bucket")
 
-    val gcpGSProjectID: Option[String] = {
-      if (baseConfig.hasPath("kolibri.persistence.gs.projectID")) Some(baseConfig.getString("kolibri.persistence.gs.projectID"))
-      else None
-    }
+    val gcpGSBucketPath: Option[String] = safeGetString("kolibri.persistence.gs.bucketPath")
 
-    val localPersistenceWriteBasePath: Option[String] = {
-      if (baseConfig.hasPath("kolibri.persistence.local.writeBasePath")) Some(baseConfig.getString("kolibri.persistence.local.writeBasePath"))
-      else None
-    }
+    val gcpGSProjectID: Option[String] = safeGetString("kolibri.persistence.gs.projectID")
 
-    val localPersistenceReadBasePath: Option[String] = {
-      if (baseConfig.hasPath("kolibri.persistence.local.readBasePath")) Some(baseConfig.getString("kolibri.persistence.local.readBasePath"))
-      else None
-    }
+    val localPersistenceWriteBasePath: Option[String] = safeGetString("kolibri.persistence.local.writeBasePath")
 
-    val localResourceReadBasePath: Option[String] = {
-      if (baseConfig.hasPath("kolibri.persistence.local.resources.readBasePath")) Some(baseConfig.getString("kolibri.persistence.local.resources.readBasePath"))
-      else None
-    }
+    val localPersistenceReadBasePath: Option[String] = safeGetString("kolibri.persistence.local.readBasePath")
 
-    val jobTemplatesPath: Option[String] = {
-      if (baseConfig.hasPath("kolibri.persistence.templates.jobTemplatesPath")) Some(baseConfig.getString("kolibri.persistence.templates.jobTemplatesPath"))
-      else None
-    }
+    val localResourceReadBasePath: Option[String] = safeGetString("kolibri.persistence.local.resources.readBasePath")
+
+    val jobTemplatesPath: Option[String] = safeGetString("kolibri.persistence.templates.jobTemplatesPath")
 
     val persistenceMode: String = baseConfig.getString("kolibri.persistence.mode")
-    val persistenceModuleClass: Option[String] = {
-      if (baseConfig.hasPath("kolibri.persistence.moduleClass")) Some(baseConfig.getString("kolibri.persistence.moduleClass"))
-      else None
-    }
+    val persistenceModuleClass: Option[String] = safeGetString("kolibri.persistence.moduleClass")
 
     val httpConnectionPoolMode: String = baseConfig.getString("kolibri.request.connection.pool.mode")
-    val httpConnectionPoolModuleClass: Option[String] = {
-      if (baseConfig.hasPath("kolibri.request.connection.pool.moduleClass")) Some(baseConfig.getString("kolibri.request.connection.pool.moduleClass"))
-      else None
-    }
+    val httpConnectionPoolModuleClass: Option[String] = safeGetString("kolibri.request.connection.pool.moduleClass")
 
     val directoryPathSeparator: String = baseConfig.getString("kolibri.persistence.directoryPathSeparator")
     val csvColumnSeparator: String = baseConfig.getString("kolibri.persistence.csvColumnSeparator")
