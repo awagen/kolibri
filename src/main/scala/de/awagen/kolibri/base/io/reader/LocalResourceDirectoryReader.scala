@@ -37,6 +37,7 @@ case class LocalResourceDirectoryReader(baseDir: String,
       .filter(baseFilenameFilter.apply)
       .filter(filenameFilter.apply)
       .map(x => s"$fullDir/$x".stripSuffix("/"))
+      .map(fullFilePath => fullFilePath.stripPrefix(normedBaseDir).stripPrefix("/"))
       .toSeq
   }
 

@@ -25,7 +25,7 @@
         "params": {
           "type": "FROM_FILES_LINES",
           "values": {
-            "q": "/data/test-files/test-paramfiles/test_queries.txt"
+            "q": "test-paramfiles/test_queries.txt"
           }
         }
       }
@@ -93,7 +93,7 @@
     "productIdsKey": "productIds",
     "judgementProvider": {
       "type": "FILE_BASED",
-      "filename": "/data/test-files/test-judgements/test_judgements.txt"
+      "filename": "test-judgements/test_judgements.txt"
     },
     "metricsCalculation": {
       "metrics": [
@@ -127,7 +127,7 @@
     },
     "regex": "[(]q=.+[)]",
     "outputFilename": "(ALL1)",
-    "readSubDir": "testJob",
+    "readSubDir": "k8s-test-results/testJob",
     "writeSubDir": "testJob"
   }
 }

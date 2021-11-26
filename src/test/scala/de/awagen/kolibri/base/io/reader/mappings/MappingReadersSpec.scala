@@ -33,6 +33,7 @@ class MappingReadersSpec extends UnitTestSpec {
         _ => true
       )
       val fileReader: Reader[String, Seq[String]] = LocalResourceFileReader(
+        "mapping_data",
         None,
         fromClassPath = true
       )
@@ -71,6 +72,7 @@ class MappingReadersSpec extends UnitTestSpec {
     "correctly read csv mapping" in {
       // given
       val fileReader: Reader[String, Seq[String]] = LocalResourceFileReader(
+        "",
         None,
         fromClassPath = true
       )
@@ -98,6 +100,7 @@ class MappingReadersSpec extends UnitTestSpec {
     "correctly read mapping from json" in {
       // given
       val fileReader: Reader[String, Seq[String]] = LocalResourceFileReader(
+        "",
         None,
         fromClassPath = true
       )

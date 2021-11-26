@@ -23,8 +23,6 @@ nodes:
   - role: control-plane
     extraMounts:
       # NOTE: you gotta adjust the paths to the root folder where kolibri-base project is located
-      - hostPath: [your-local-repo-folder]/kolibri-base/kolibri-test/k8s-test/
-        containerPath: /local-data
       - hostPath: [your-local-repo-folder]/kolibri-base/test-files/
         containerPath: /local-test-files
 EOF

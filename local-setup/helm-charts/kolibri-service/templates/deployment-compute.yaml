@@ -34,9 +34,6 @@ spec:
         - name: kolibri-pv-local-storage-readwrite
           persistentVolumeClaim:
             claimName: kolibri-pv-readwrite-claim
-        - name: kolibri-pv-local-storage-readonly
-          persistentVolumeClaim:
-            claimName: kolibri-pv-readonly-claim
       {{- end }}
       containers:
         - name: {{ .Chart.Name }}

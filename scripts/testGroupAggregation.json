@@ -2,12 +2,12 @@
   "type": "AGGREGATE_GROUPS",
   "groupSupplier": {
     "type": "FROM_JSON_FILE",
-    "file": "/app/test-files/test-groups/groups1.json"
+    "file": "test-groups/groups1.json"
   },
   "weightProvider": {
     "type": "CONSTANT",
     "weight": 1.0
   },
-  "readSubDir": "/app/data/testJob",
-  "writeSubDir": "testJob/testJob-groups"
+  "readSubDir": "test-results/testJob",
+  "writeSubDir": "testJob-groups"
 }

@@ -2,7 +2,7 @@
   "type": "AGGREGATE_FROM_DIR_BY_REGEX",
   "weightProvider": {
     "type": "FROM_PER_QUERY_FILE",
-    "filePath": "/app/test-files/test-weights/query-weights.txt",
+    "filePath": "test-weights/query-weights.txt",
     "removePrefix": "(q=",
     "removeSuffix": ")",
     "columnDelimiter": "  ",
@@ -12,6 +12,6 @@
   },
   "regex": "[(]q=.+[)]",
   "outputFilename": "(ALL-Weighted)",
-  "readSubDir": "testJob",
+  "readSubDir": "test-results/testJob",
   "writeSubDir": "testJob"
 }

@@ -31,21 +31,21 @@ import de.awagen.kolibri.datatypes.tagging.Tags
 
 class LocalPersistenceModule extends PersistenceDIModule with tagging.Tag[LOCAL_MODULE] {
 
-  assert(AppProperties.config.localPersistenceDir.isDefined, "no local persistence dir defined")
+  assert(AppProperties.config.localPersistenceWriteBasePath.isDefined, "no local persistence dir defined")
 
   lazy val writer: FileWriter[String, _] =
-    LocalDirectoryFileWriter(directory = AppProperties.config.localPersistenceDir.get)
+    LocalDirectoryFileWriter(directory = AppProperties.config.localPersistenceWriteBasePath.get)
 
   lazy val reader: Reader[String, Seq[String]] =
-    LocalResourceFileReader(None, fromClassPath = false)
+    LocalResourceFileReader(basePath = AppProperties.config.localPersistenceReadBasePath.get, delimiterAndPosition = None, fromClassPath = false)
 
   override def dataOverviewReader(fileFilter: String => Boolean): DataOverviewReader = LocalDirectoryReader(
-    baseDir = AppProperties.config.localResourceDir.get,
+    baseDir = AppProperties.config.localPersistenceReadBasePath.get,
     baseFilenameFilter = fileFilter)
 
 
   def csvMetricAggregationWriter(subFolder: String, tagToDataIdentifierFunc: Tags.Tag => String): Writer[MetricAggregation[Tags.Tag], Tags.Tag, Any] = Writer.localMetricAggregationWriter(
-    AppProperties.config.localPersistenceDir.get,
+    AppProperties.config.localPersistenceWriteBasePath.get,
     csvColumnSeparator,
     subFolder,
     tagToDataIdentifierFunc

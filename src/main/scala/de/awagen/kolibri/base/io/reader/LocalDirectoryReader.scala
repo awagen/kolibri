@@ -38,6 +38,7 @@ case class LocalDirectoryReader(baseDir: String,
       .filter(file => baseFilenameFilter.apply(file.getName))
       .filter(file => additionalFilenameFilter.apply(file.getName))
       .map(file => file.getAbsolutePath)
+      .map(fullFilePath => fullFilePath.stripPrefix(normedBaseDir))
       .toSeq
   }
 }

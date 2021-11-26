@@ -22,8 +22,9 @@ import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives.{complete, get, parameters, path, pathPrefix}
 import akka.http.scaladsl.server.Route
 import de.awagen.kolibri.base.config.AppConfig.persistenceModule
+import de.awagen.kolibri.base.config.AppProperties
 import de.awagen.kolibri.base.http.server.routes.StatusRoutes.corsHandler
-import de.awagen.kolibri.base.io.reader.DataOverviewReader
+import de.awagen.kolibri.base.io.reader.{DataOverviewReader, Reader}
 import spray.json.DefaultJsonProtocol.{StringJsonFormat, immSeqFormat}
 import spray.json.enrichAny
 
@@ -31,7 +32,8 @@ object ResourceRoutes {
 
   val JSON_FILE_SUFFIX = ".json"
   val dataOverviewReader: DataOverviewReader = persistenceModule.persistenceDIModule.dataOverviewReader(x => x.endsWith(JSON_FILE_SUFFIX))
-  val JOB_TEMPLATE_PATH = "templates/jobs"
+  val contentReader: Reader[String, Seq[String]] = persistenceModule.persistenceDIModule.reader
+  val jobTemplatePath: String = AppProperties.config.jobTemplatesPath.get.stripSuffix("/")
 
 
   def getJobTemplateOverviewForType(implicit system: ActorSystem): Route = {
@@ -43,12 +45,35 @@ object ResourceRoutes {
               parameters("type") { typeName => {
                 // retrieve the available json template definitions for the given type
                 val resources: Seq[String] = dataOverviewReader
-                  .listResources(s"$JOB_TEMPLATE_PATH/$typeName", _ => true)
+                  .listResources(s"$jobTemplatePath/$typeName", _ => true)
                   .map(filepath => filepath.split("/").last)
                 complete(StatusCodes.OK, resources.toJson.toString())
               }
               }
             }
+          }
+        }
+      }
+    )
+  }
+
+  def getJobTemplateByTypeAndIdentifier(implicit system: ActorSystem): Route = {
+    corsHandler(
+      pathPrefix("templates") {
+        path("jobs") {
+          get {
+            parameters("type", "identifier") { (typeName, identifier) => {
+              // retrieve the content of the definition file defined by type and identifier
+              val filepath = s"$jobTemplatePath/$typeName/$identifier"
+              try {
+                val content = contentReader.getSource(filepath).getLines().mkString("\n")
+                complete(StatusCodes.OK, content)
+              }
+              catch {
+                case e: Exception =>
+                  complete(StatusCodes.NotFound, e)
+              }
+            }}
           }
         }
       }

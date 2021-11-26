@@ -124,10 +124,6 @@ object AppProperties {
     val formatType: String = baseConfig.getString("kolibri.format.metricDocumentFormatType")
     val metricDocumentFormat: MetricDocumentFormat = CSVParameterBasedMetricDocumentFormat(columnSeparator = "\t")
 
-    val writerType: String = baseConfig.getString("kolibri.writer.type")
-
-    val writerDirPath: String = baseConfig.getString("kolibri.writer.dirpath")
-
     val startClusterSingletonRouter: Boolean = baseConfig.getBoolean("kolibri.cluster.startClusterSingletonRouter")
 
     val supervisorHousekeepingInterval: FiniteDuration = getFiniteDuration(config = baseConfig,
@@ -198,13 +194,23 @@ object AppProperties {
       else None
     }
 
-    val localPersistenceDir: Option[String] = {
-      if (baseConfig.hasPath("kolibri.persistence.local.dir")) Some(baseConfig.getString("kolibri.persistence.local.dir"))
+    val localPersistenceWriteBasePath: Option[String] = {
+      if (baseConfig.hasPath("kolibri.persistence.local.writeBasePath")) Some(baseConfig.getString("kolibri.persistence.local.writeBasePath"))
       else None
     }
 
-    val localResourceDir: Option[String] = {
-      if (baseConfig.hasPath("kolibri.persistence.local.resources.dir")) Some(baseConfig.getString("kolibri.persistence.local.resources.dir"))
+    val localPersistenceReadBasePath: Option[String] = {
+      if (baseConfig.hasPath("kolibri.persistence.local.readBasePath")) Some(baseConfig.getString("kolibri.persistence.local.readBasePath"))
+      else None
+    }
+
+    val localResourceReadBasePath: Option[String] = {
+      if (baseConfig.hasPath("kolibri.persistence.local.resources.readBasePath")) Some(baseConfig.getString("kolibri.persistence.local.resources.readBasePath"))
+      else None
+    }
+
+    val jobTemplatesPath: Option[String] = {
+      if (baseConfig.hasPath("kolibri.persistence.templates.jobTemplatesPath")) Some(baseConfig.getString("kolibri.persistence.local.resources.readBasePath"))
       else None
     }
 
