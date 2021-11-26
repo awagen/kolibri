@@ -34,19 +34,19 @@ Connection refused:
 
 - check ```ss -tnlp | grep :8558``` (e.g replace the port with the one used for contact probing (check discovery config/
   log messages for connection refused))
-- in case firewall blocks something, might wanna check ```sudo tcpdump -n icmp```
+- in case firewall blocks something, might wanna check ```tcpdump -n icmp```
 
 ## Build jar, build docker image, startup local
 
 - you might temporarily need to clone kolibri-datatypes and publish locally (see kolibri-datatypes README on instructions)
 - build jar (find it in target folder afterwards): ```./scripts/buildJar.sh```
-- build docker image for local usage: ```sudo docker build . -t kolibri-base:0.1.0-beta7```
+- build docker image for local usage: ```docker build . -t kolibri-base:0.1.0-beta7```
 - run single-node cluster (compute and httpserver role, access via localhost:
   8000): ```./scripts/docker_run_single_node.sh```
     - sets interface of http server to 0.0.0.0 to allow requests from host system to localhost:8000 reach the service
       within the container
 - start local 3-node cluster (one compute and httpserver node, two 'compute'-only nodes, access via localhost:
-  8000): ```sudo docker-compose up```
+  8000): ```docker-compose up```
   - NOTE: starting response-juggler as used in the docker-compose.yaml requires cloning ```https://github.com/awagen/response-juggler``` and building
   the image locally via ```docker build -t response-juggler:0.1.0 .```. 
   This service provides a basic response fake to avoid having to have a real search system running, and the parameters defined in the docker-compose
