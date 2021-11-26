@@ -210,7 +210,7 @@ object AppProperties {
     }
 
     val jobTemplatesPath: Option[String] = {
-      if (baseConfig.hasPath("kolibri.persistence.templates.jobTemplatesPath")) Some(baseConfig.getString("kolibri.persistence.local.resources.readBasePath"))
+      if (baseConfig.hasPath("kolibri.persistence.templates.jobTemplatesPath")) Some(baseConfig.getString("kolibri.persistence.templates.jobTemplatesPath"))
       else None
     }
 
