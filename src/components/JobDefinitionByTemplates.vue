@@ -13,7 +13,7 @@
         <div class="col-9 col-sm-12">
           <select @change="jobTypeSelectEvent($event)" class="form-select k-value-selector" id="template-type-1">
             <option>Choose an option</option>
-            <option v-for="templateType in templateTypes">{{templateType}}</option>
+            <option v-for="templateType in templateTypes">{{ templateType }}</option>
           </select>
         </div>
         <div class="k-form-separator"></div>
@@ -22,7 +22,8 @@
           <label class="form-label" for="template-name-1">Select Template</label>
         </div>
         <div class="col-9 col-sm-12">
-          <select @change="templateSelectEvent($event)" class="form-select k-field k-value-selector" id="template-name-1">
+          <select @change="templateSelectEvent($event)" class="form-select k-field k-value-selector"
+                  id="template-name-1">
             <option>Choose an option</option>
             <option v-for="templateName in templateNames">{{ templateName }}</option>
           </select>
@@ -35,9 +36,10 @@
           <label class="form-label" for="template-field-1">Select Template Field</label>
         </div>
         <div class="col-9 col-sm-12">
-          <select @change="jobTemplateFieldEditSelectEvent($event)" class="form-select k-value-selector" id="template-field-1">
+          <select @change="jobTemplateFieldEditSelectEvent($event)" class="form-select k-value-selector"
+                  id="template-field-1">
             <option>Choose an option (or edit freely)</option>
-            <option v-for="fieldName in Object.keys(selectedTemplateContent)">{{fieldName}}</option>
+            <option v-for="fieldName in Object.keys(selectedTemplateContent)">{{ fieldName }}</option>
           </select>
         </div>
       </div>
@@ -52,10 +54,10 @@
             <div class="popover-container">
               <div class="card">
                 <div class="card-header">
-                  <b>Field: {{selectedTemplateField}}</b>
+                  <b>Field: {{ selectedTemplateField }}</b>
                 </div>
                 <div class="card-body">
-                  {{selectedTemplateFieldInfo}}
+                  {{ selectedTemplateFieldInfo }}
                 </div>
               </div>
             </div>
@@ -71,7 +73,8 @@
         <div class="form-separator"></div>
         <div class="col-3 col-sm-12"></div>
         <div class="col-9 col-sm-12">
-          <button type='button' @click="applyChanges()" class="k-form k-half k-right-padded btn btn-action" id="apply-changes-1">
+          <button type='button' @click="applyChanges()" class="k-form k-half k-right-padded btn btn-action"
+                  id="apply-changes-1">
             APPLY CHANGES
           </button>
         </div>
@@ -137,6 +140,8 @@ export default {
     const getTemplatesURL = "http://localhost:8000/templates/jobs/overview"
     // url to retrieve template content from
     const getTemplateContentURL = "http://localhost:8000/templates/jobs"
+    // url to send template for storage
+    const templateSaveURL = "http://localhost:8000/store_job_template"
     // template field selected for edit
     const selectedTemplateField = ref("")
     // boolean to indicate whether any field info is available for the selected field
@@ -207,6 +212,24 @@ export default {
           })
     }
 
+    function saveTemplate() {
+      let templateName = document.getElementById("template-edit-saveto-filename-1").value
+      let typeName = selectedTemplateType.value
+      if (templateName === "") {
+        console.info("empty template name, not sending for storage")
+      }
+      return axios
+          .post(templateSaveURL + "?type=" + typeName + "&templateName=" + templateName, selectedTemplateContent.value)
+          .then(response => {
+            console.info("success job template store call")
+            console.log(response)
+          })
+          .catch(e => {
+            console.info("exception on trying to store job template")
+            console.log(e)
+          })
+    }
+
     function retrieveTemplateContent(typeName, templateName) {
       return axios
           .get(getTemplateContentURL + "?type=" + typeName + "&identifier=" + templateName)
@@ -246,7 +269,8 @@ export default {
       selectedTemplateFieldValue,
       selectedTemplateFieldInfo,
       selectedTemplateFieldPartial,
-      fieldInfoAvailable
+      fieldInfoAvailable,
+      saveTemplate
     }
   },
 
@@ -360,7 +384,7 @@ button#run-template-1 {
   background-color: orange;
 }
 
-.k-value-selector  {
+.k-value-selector {
   color: black;
 }
 
