@@ -46,6 +46,20 @@
       <div class="form-group">
         <div class="col-3 col-sm-12">
           <label class="form-label" for="template-edit-1">Replace Template Content</label>
+          <!-- if available, display some field info here -->
+          <div v-if="fieldInfoAvailable" class="popover popover-right">
+            <button class="btn btn-action s-circle"><i class="icon icon-message"></i></button>
+            <div class="popover-container">
+              <div class="card">
+                <div class="card-header">
+                  <b>Field: {{selectedTemplateField}}</b>
+                </div>
+                <div class="card-body">
+                  {{selectedTemplateFieldInfo}}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
         <div class="col-9 col-sm-12">
           <textarea spellcheck="false" class="form-input k-area" id="template-edit-1" placeholder="Template Content"
@@ -125,6 +139,8 @@ export default {
     const getTemplateContentURL = "http://localhost:8000/templates/jobs"
     // template field selected for edit
     const selectedTemplateField = ref("")
+    // boolean to indicate whether any field info is available for the selected field
+    const fieldInfoAvailable = ref(false)
     // the actual current value for the selectedTemplateField
     const selectedTemplateFieldValue = ref("")
     // the info/description (if available) for the selectedTemplateField
@@ -166,6 +182,7 @@ export default {
       // load the current field value for the selected field and the info (if any is provided)
       selectedTemplateFieldValue.value = selectedTemplateContent.value[selectedTemplateField.value]
       selectedTemplateFieldInfo.value = selectedTemplateContentInfo.value[selectedTemplateField.value]
+      fieldInfoAvailable.value = selectedTemplateFieldInfo.value != null
       selectedTemplateFieldPartial.value[selectedTemplateField.value] = selectedTemplateFieldValue.value
       document.getElementById("template-edit-1").value = baseJsonFormatting(selectedTemplateFieldPartial.value)
     }
@@ -228,7 +245,8 @@ export default {
       selectedTemplateField,
       selectedTemplateFieldValue,
       selectedTemplateFieldInfo,
-      selectedTemplateFieldPartial
+      selectedTemplateFieldPartial,
+      fieldInfoAvailable
     }
   },
 
@@ -344,6 +362,11 @@ button#run-template-1 {
 
 .k-value-selector  {
   color: black;
+}
+
+.popover button {
+  background-color: #588274;
+  border-width: 0;
 }
 
 </style>
