@@ -32,7 +32,8 @@ case class LocalResourceFileReader(basePath: String,
     * @return
     */
   def fileIdentifierToFullPath(fileIdentifier: String): String = {
-    s"$normedBasePath$pathSeparator${fileIdentifier.stripPrefix("/")}"
+    if (fileIdentifier.startsWith(normedBasePath)) fileIdentifier
+    else s"$normedBasePath$pathSeparator${fileIdentifier.stripPrefix("/")}"
   }
 
   /**

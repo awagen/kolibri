@@ -31,14 +31,13 @@ case class LocalDirectoryReader(baseDir: String,
   override def listResources(subDir: String, additionalFilenameFilter: String => Boolean): Seq[String] = {
     val normedSubDir = subDir.stripPrefix("/")
     val fullDir = s"$normedBaseDir/$normedSubDir".stripSuffix("/")
-    logger.info(s"scanning files in directory $fullDir")
+    logger.debug(s"scanning files in directory $fullDir")
     val directory = new File(fullDir)
+    logger.debug(s"found files: ${directory.listFiles().mkString(",")}")
     directory.listFiles()
-      .filter(file => file.isFile)
-      .filter(file => baseFilenameFilter.apply(file.getName))
-      .filter(file => additionalFilenameFilter.apply(file.getName))
       .map(file => file.getAbsolutePath)
-      .map(fullFilePath => fullFilePath.stripPrefix(normedBaseDir))
+      .filter(filePath => baseFilenameFilter.apply(filePath))
+      .filter(filePath => additionalFilenameFilter.apply(filePath))
       .toSeq
   }
 }

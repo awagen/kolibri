@@ -150,7 +150,7 @@
       "type": "CONSTANT",
       "weight": 1.0
     },
-    "regex": "[(]q=.+[)]",
+    "regex": ".*[(]q=.+[)]",
     "outputFilename": "(ALL1)",
     "readSubDir": "testJob",
     "writeSubDir": "testJob"

@@ -34,13 +34,15 @@ object ResourceRoutes {
   private[this] val logger: Logger = LoggerFactory.getLogger(ResourceRoutes.getClass)
 
   val JSON_FILE_SUFFIX = ".json"
-  val dataOverviewReader: DataOverviewReader = persistenceModule.persistenceDIModule.dataOverviewReader(x => x.endsWith(JSON_FILE_SUFFIX))
+  val jsonFileOverviewReader: DataOverviewReader = persistenceModule.persistenceDIModule.dataOverviewReader(x => x.endsWith(JSON_FILE_SUFFIX))
+  val directoryOverviewReader: DataOverviewReader = persistenceModule.persistenceDIModule.dataOverviewReader(x => !x.split("/").last.contains("."))
   val contentReader: Reader[String, Seq[String]] = persistenceModule.persistenceDIModule.reader
   val jobTemplatePath: String = AppProperties.config.jobTemplatesPath.get.stripSuffix("/")
   val contentInfoFileName = "info.json"
 
   val TEMPLATES_PATH_PREFIX = "templates"
   val JOBS_PATH_PREFIX = "jobs"
+  val TYPES_PATH = "types"
   val OVERVIEW_PATH = "overview"
   val PARAM_TYPE = "type"
   val PARAM_IDENTIFIER = "identifier"
@@ -48,15 +50,32 @@ object ResourceRoutes {
   val RESPONSE_TEMPLATE_INFO_KEY = "info"
 
 
+  def getJobTemplateTypes(implicit system: ActorSystem): Route = {
+    corsHandler(
+      pathPrefix(TEMPLATES_PATH_PREFIX) {
+        pathPrefix(JOBS_PATH_PREFIX) {
+          path(TYPES_PATH) {
+            get {
+              val resources: Seq[String] = directoryOverviewReader
+                .listResources(s"$jobTemplatePath", _ => true)
+                .map(filepath => filepath.split("/").last.trim)
+              complete(StatusCodes.OK, resources.toJson.toString())
+            }
+          }
+        }
+      }
+    )
+  }
+
   def getJobTemplateOverviewForType(implicit system: ActorSystem): Route = {
     corsHandler(
       pathPrefix(TEMPLATES_PATH_PREFIX) {
         pathPrefix(JOBS_PATH_PREFIX) {
           path(OVERVIEW_PATH) {
             get {
-              parameters(PARAM_TYPE) {typeName => {
+              parameters(PARAM_TYPE) { typeName => {
                 // retrieve the available json template definitions for the given type
-                val resources: Seq[String] = dataOverviewReader
+                val resources: Seq[String] = jsonFileOverviewReader
                   .listResources(s"$jobTemplatePath/$typeName", _ => true)
                   .map(filepath => filepath.split("/").last)
                   .filter(filename => filename != contentInfoFileName)
@@ -70,7 +89,7 @@ object ResourceRoutes {
     )
   }
 
-  def safeContentRead(path: String, default: String,  logOnFail: Boolean): String = {
+  def safeContentRead(path: String, default: String, logOnFail: Boolean): String = {
     try {
       contentReader.getSource(path).getLines().mkString("\n")
     }

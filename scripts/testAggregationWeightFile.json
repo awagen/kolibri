@@ -10,7 +10,7 @@
     "weightColumn": 1,
     "defaultValue": 1.0
   },
-  "regex": "[(]q=.+[)]",
+  "regex": ".*[(]q=.+[)]",
   "outputFilename": "(ALL-Weighted)",
   "readSubDir": "test-results/testJob",
   "writeSubDir": "testJob"

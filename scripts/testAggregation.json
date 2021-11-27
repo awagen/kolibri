@@ -4,8 +4,8 @@
     "type": "CONSTANT",
     "weight": 1.0
   },
-  "regex": "[(]q=.+[)]",
-  "outputFilename": "(ALL2)",
-  "readSubDir": "test-results/testJob",
-  "writeSubDir": "testJob"
+  "regex": ".*[(]q=.+[)]",
+  "outputFilename": "(ALL1)",
+  "readSubDir": "test-results/testJob1",
+  "writeSubDir": "testJob1"
 }
