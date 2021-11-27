@@ -105,7 +105,7 @@
 
 <script>
 import {onMounted, ref} from "vue";
-import {objectToJsonStringAndSyntaxHighlight, stringifyObj} from "../utils/formatFunctions";
+import {objectToJsonStringAndSyntaxHighlight, stringifyObj, baseJsonFormatting} from "../utils/formatFunctions";
 import axios from "axios";
 
 export default {
@@ -167,7 +167,7 @@ export default {
       selectedTemplateFieldValue.value = selectedTemplateContent.value[selectedTemplateField.value]
       selectedTemplateFieldInfo.value = selectedTemplateContentInfo.value[selectedTemplateField.value]
       selectedTemplateFieldPartial.value[selectedTemplateField.value] = selectedTemplateFieldValue.value
-      document.getElementById("template-edit-1").value = JSON.stringify(selectedTemplateFieldPartial.value)
+      document.getElementById("template-edit-1").value = baseJsonFormatting(selectedTemplateFieldPartial.value)
     }
 
     function retrieveTemplateTypes() {
