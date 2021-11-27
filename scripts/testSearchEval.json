@@ -152,7 +152,7 @@
     },
     "regex": ".*[(]q=.+[)]",
     "outputFilename": "(ALL1)",
-    "readSubDir": "testJob",
-    "writeSubDir": "testJob"
+    "readSubDir": "test-results/testJob",
+    "writeSubDir": "test-results/testJob"
   }
 }

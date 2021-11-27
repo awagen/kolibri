@@ -13,5 +13,5 @@
   "regex": ".*[(]q=.+[)]",
   "outputFilename": "(ALL-Weighted)",
   "readSubDir": "test-results/testJob",
-  "writeSubDir": "testJob"
+  "writeSubDir": "test-results/testJob"
 }

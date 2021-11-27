@@ -9,5 +9,5 @@
     "weight": 1.0
   },
   "readSubDir": "test-results/testJob",
-  "writeSubDir": "testJob-groups"
+  "writeSubDir": "test-results/testJob-groups"
 }

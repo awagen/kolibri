@@ -19,15 +19,17 @@ package de.awagen.kolibri.base.http.server.routes
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.StatusCodes
-import akka.http.scaladsl.server.Directives.{complete, get, parameters, path, pathPrefix}
+import akka.http.scaladsl.server.Directives.{as, complete, entity, get, parameters, path, pathPrefix, post}
 import akka.http.scaladsl.server.Route
 import de.awagen.kolibri.base.config.AppConfig.persistenceModule
 import de.awagen.kolibri.base.config.AppProperties
 import de.awagen.kolibri.base.http.server.routes.StatusRoutes.corsHandler
 import de.awagen.kolibri.base.io.reader.{DataOverviewReader, Reader}
+import de.awagen.kolibri.base.io.writer.Writers
+import de.awagen.kolibri.base.processing.JobMessages.SearchEvaluation
 import org.slf4j.{Logger, LoggerFactory}
 import spray.json.DefaultJsonProtocol.{StringJsonFormat, immSeqFormat}
-import spray.json.enrichAny
+import spray.json.{JsValue, enrichAny}
 
 object ResourceRoutes {
 
@@ -37,6 +39,7 @@ object ResourceRoutes {
   val jsonFileOverviewReader: DataOverviewReader = persistenceModule.persistenceDIModule.dataOverviewReader(x => x.endsWith(JSON_FILE_SUFFIX))
   val directoryOverviewReader: DataOverviewReader = persistenceModule.persistenceDIModule.dataOverviewReader(x => !x.split("/").last.contains("."))
   val contentReader: Reader[String, Seq[String]] = persistenceModule.persistenceDIModule.reader
+  val fileWriter: Writers.Writer[String, String, _] = persistenceModule.persistenceDIModule.writer
   val jobTemplatePath: String = AppProperties.config.jobTemplatesPath.get.stripSuffix("/")
   val contentInfoFileName = "info.json"
 
@@ -45,10 +48,57 @@ object ResourceRoutes {
   val TYPES_PATH = "types"
   val OVERVIEW_PATH = "overview"
   val PARAM_TYPE = "type"
+  val PARAM_TEMPLATE_NAME = "templateName"
   val PARAM_IDENTIFIER = "identifier"
   val RESPONSE_TEMPLATE_KEY = "template"
   val RESPONSE_TEMPLATE_INFO_KEY = "info"
 
+
+  def storeSearchEvaluationTemplate(implicit system: ActorSystem): Route = {
+    import de.awagen.kolibri.base.io.json.SearchEvaluationJsonProtocol._
+    corsHandler(
+      path("store_job_template") {
+        post {
+          entity(as[JsValue]) {
+            searchEvaluationJson => {
+              parameters(PARAM_TYPE, PARAM_TEMPLATE_NAME) { (typeName, templateName) => {
+                if (templateName.trim.isEmpty || typeName.startsWith("..") || templateName.startsWith("..")) complete(StatusCodes.BadRequest)
+                try {
+                  searchEvaluationJson.convertTo[SearchEvaluation]
+                  val searchEvaluationContent: String = searchEvaluationJson.prettyPrint
+                  // now check whether file corresponding to template name is already there, then deny, otherwise write new template
+                  val fullTemplateName: String = templateName.stripPrefix("/").stripSuffix("/").trim match {
+                    case n if n.endsWith(".json") => n
+                    case n => s"$n.json"
+                  }
+                  val templateFilePath = s"$jobTemplatePath/$typeName/$fullTemplateName"
+                  logger.info(s"checking file path for existence: $templateFilePath")
+                  var fileExists: Boolean = false
+                  try {
+                    contentReader.getSource(templateFilePath)
+                    fileExists = true
+                  }
+                  catch {
+                    case _: Exception =>
+                      fileExists = false
+                  }
+                  if (fileExists) complete(StatusCodes.Conflict)
+                  else {
+                    fileWriter.write(searchEvaluationContent, templateFilePath)
+                    complete(StatusCodes.Accepted)
+                  }
+                }
+                catch {
+                  case e: Exception =>
+                    complete(StatusCodes.BadRequest, e)
+                }
+              }
+              }
+            }
+          }
+        }
+      })
+  }
 
   def getJobTemplateTypes(implicit system: ActorSystem): Route = {
     corsHandler(

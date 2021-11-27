@@ -7,5 +7,5 @@
   "regex": ".*[(]q=.+[)]",
   "outputFilename": "(ALL1)",
   "readSubDir": "test-results/testJob1",
-  "writeSubDir": "testJob1"
+  "writeSubDir": "test-results/testJob1"
 }

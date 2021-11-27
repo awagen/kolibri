@@ -128,6 +128,6 @@
     "regex": ".*[(]q=.+[)]",
     "outputFilename": "(ALL1)",
     "readSubDir": "k8s-test-results/testJob",
-    "writeSubDir": "testJob"
+    "writeSubDir": "k8s-test-results/testJob"
   }
 }
