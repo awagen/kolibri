@@ -13,7 +13,7 @@
         <div class="col-9 col-sm-12">
           <select @change="jobTypeSelectEvent($event)" class="form-select k-value-selector" id="template-type-1">
             <option>Choose an option</option>
-            <option>search-evaluation</option>
+            <option v-for="templateType in templateTypes">{{templateType}}</option>
           </select>
         </div>
         <div class="k-form-separator"></div>
@@ -29,6 +29,19 @@
         </div>
       </div>
 
+      <!-- Selector for field names in json which will open an edit window for that specific field with apply option -->
+      <div class="form-group">
+        <div class="col-3 col-sm-12">
+          <label class="form-label" for="template-field-1">Select Template Field</label>
+        </div>
+        <div class="col-9 col-sm-12">
+          <select @change="jobTemplateFieldEditSelectEvent($event)" class="form-select k-value-selector" id="template-field-1">
+            <option>Choose an option (or edit freely)</option>
+            <option v-for="fieldName in Object.keys(selectedTemplateContent)">{{fieldName}}</option>
+          </select>
+        </div>
+      </div>
+
       <!-- Text area for template edit -->
       <div class="form-group">
         <div class="col-3 col-sm-12">
@@ -36,7 +49,7 @@
         </div>
         <div class="col-9 col-sm-12">
           <textarea spellcheck="false" class="form-input k-area" id="template-edit-1" placeholder="Template Content"
-                    rows="30">
+                    rows="20">
           </textarea>
         </div>
 
@@ -99,18 +112,33 @@ export default {
 
   props: [],
   setup(props) {
+    // the names of template types for which specific templates can be requested
+    const templateTypes = ref([])
+    // url to request available template types
+    const getTemplateTypesURL = "http://localhost:8000/templates/jobs/types"
     // the names of the available templates as retrieved via the templates url
     const templateNames = ref([])
-    // url to retrieve the templates overview from. Right now restricts type
+    // url to retrieve the templates overview from. This endpoint provides available templates that can be retrieved
+    // then via the getTemplateContentURL
     const getTemplatesURL = "http://localhost:8000/templates/jobs/overview"
     // url to retrieve template content from
     const getTemplateContentURL = "http://localhost:8000/templates/jobs"
+    // template field selected for edit
+    const selectedTemplateField = ref("")
+    // the actual current value for the selectedTemplateField
+    const selectedTemplateFieldValue = ref("")
+    // the info/description (if available) for the selectedTemplateField
+    const selectedTemplateFieldInfo = ref("")
+    // the partial selected for editing, e.g {selectedTemplateField: selectedTemplateFieldValue}
+    const selectedTemplateFieldPartial = ref({})
     // selected type of template
     const selectedTemplateType = ref("")
     // selected name of template
     const selectedTemplateName = ref("")
     // the retrieved template content
     const selectedTemplateContent = ref("")
+    // description per field for the retrieved content
+    const selectedTemplateContentInfo = ref("")
     // the stringified values of the retrieved json
     const selectedTemplateJsonString = ref("")
     // the changes applied to the selected template
@@ -124,14 +152,32 @@ export default {
 
     function jobTypeSelectEvent(event) {
       selectedTemplateType.value = event.target.value
-      console.info(selectedTemplateType.value);
       retrieveTemplatesForType(selectedTemplateType.value)
     }
 
     function templateSelectEvent(event) {
       selectedTemplateName.value = event.target.value
-      console.info(selectedTemplateName.value);
       retrieveTemplateContent(selectedTemplateType.value, selectedTemplateName.value)
+    }
+
+    function jobTemplateFieldEditSelectEvent(event) {
+      selectedTemplateFieldPartial.value = {}
+      selectedTemplateField.value = event.target.value
+      // load the current field value for the selected field and the info (if any is provided)
+      selectedTemplateFieldValue.value = selectedTemplateContent.value[selectedTemplateField.value]
+      selectedTemplateFieldInfo.value = selectedTemplateContentInfo.value[selectedTemplateField.value]
+      selectedTemplateFieldPartial.value[selectedTemplateField.value] = selectedTemplateFieldValue.value
+      document.getElementById("template-edit-1").value = JSON.stringify(selectedTemplateFieldPartial.value)
+    }
+
+    function retrieveTemplateTypes() {
+      return axios
+          .get(getTemplateTypesURL)
+          .then(response => {
+            templateTypes.value = response.data
+          }).catch(_ => {
+            templateTypes.value = []
+          })
     }
 
     function retrieveTemplatesForType(typeName) {
@@ -148,8 +194,8 @@ export default {
       return axios
           .get(getTemplateContentURL + "?type=" + typeName + "&identifier=" + templateName)
           .then(response => {
-            selectedTemplateContent.value = response.data
-            console.log(selectedTemplateContent.value.value)
+            selectedTemplateContent.value = response.data["template"]
+            selectedTemplateContentInfo.value = response.data["info"]
             selectedTemplateJsonString.value = objectToJsonStringAndSyntaxHighlight(selectedTemplateContent.value)
           }).catch(_ => {
             selectedTemplateContent.value = "";
@@ -165,17 +211,24 @@ export default {
     }
 
     onMounted(() => {
+      retrieveTemplateTypes();
     })
 
     return {
+      templateTypes,
       templateNames,
       jobTypeSelectEvent,
       templateSelectEvent,
+      jobTemplateFieldEditSelectEvent,
       selectedTemplateType,
       selectedTemplateContent,
       selectedTemplateJsonString,
       changedTemplateParts,
-      applyChanges
+      applyChanges,
+      selectedTemplateField,
+      selectedTemplateFieldValue,
+      selectedTemplateFieldInfo,
+      selectedTemplateFieldPartial
     }
   },
 
