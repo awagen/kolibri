@@ -18,3 +18,7 @@ prometheus/data
 grafana/*
 !grafana/dashboards/
 kolibri-test/
+/.bsp
+/.scannerwork
+/test-files/k8s-test-results
+/test-files/test-results
