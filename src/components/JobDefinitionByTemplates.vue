@@ -124,6 +124,12 @@
 import {onMounted, ref} from "vue";
 import {objectToJsonStringAndSyntaxHighlight, stringifyObj, baseJsonFormatting} from "../utils/formatFunctions";
 import axios from "axios";
+import {
+  templateContentUrl, templateExecuteUrl,
+  templateOverviewForTypeUrl,
+  templateSaveUrl,
+  templateTypeUrl
+} from "../utils/globalConstants";
 
 export default {
 
@@ -131,19 +137,8 @@ export default {
   setup(props) {
     // the names of template types for which specific templates can be requested
     const templateTypes = ref([])
-    // url to request available template types
-    const getTemplateTypesURL = "http://localhost:8000/templates/jobs/types"
     // the names of the available templates as retrieved via the templates url
     const templateNames = ref([])
-    // url to retrieve the templates overview from. This endpoint provides available templates that can be retrieved
-    // then via the getTemplateContentURL
-    const getTemplatesURL = "http://localhost:8000/templates/jobs/overview"
-    // url to retrieve template content from
-    const getTemplateContentURL = "http://localhost:8000/templates/jobs"
-    // url to send template for storage
-    const templateSaveURL = "http://localhost:8000/store_job_template"
-    // url to post the job definitions against for execution. needs a type-parameter to validate the type of passed json
-    const executeTemplateURL = "http://localhost:8000/execute_job"
     // template field selected for edit
     const selectedTemplateField = ref("")
     // boolean to indicate whether any field info is available for the selected field
@@ -166,12 +161,6 @@ export default {
     const selectedTemplateJsonString = ref("")
     // the changes applied to the selected template
     const changedTemplateParts = ref({})
-    // mapping of job type to execution url (then only post the json content with below jsonContentHeader and job should start)
-    const jobTypeToExecutionUrlMapping = {
-      "search-evaluation": "http://localhost:8000/search_eval_no_ser"
-    }
-    // header to post with the json
-    const jsonContentHeader = "Content-Type: application/json"
 
     function jobTypeSelectEvent(event) {
       selectedTemplateType.value = event.target.value
@@ -196,7 +185,7 @@ export default {
 
     function retrieveTemplateTypes() {
       return axios
-          .get(getTemplateTypesURL)
+          .get(templateTypeUrl)
           .then(response => {
             templateTypes.value = response.data
           }).catch(_ => {
@@ -206,7 +195,7 @@ export default {
 
     function retrieveTemplatesForType(typeName) {
       return axios
-          .get(getTemplatesURL + "?type=" + typeName)
+          .get(templateOverviewForTypeUrl + "?type=" + typeName)
           .then(response => {
             templateNames.value = response.data
           }).catch(_ => {
@@ -221,7 +210,7 @@ export default {
         console.info("empty template name, not sending for storage")
       }
       return axios
-          .post(templateSaveURL + "?type=" + typeName + "&templateName=" + templateName, selectedTemplateContent.value)
+          .post(templateSaveUrl + "?type=" + typeName + "&templateName=" + templateName, selectedTemplateContent.value)
           .then(response => {
             console.info("success job template store call")
             console.log(response)
@@ -235,7 +224,7 @@ export default {
     function executeJob() {
       let typeName = selectedTemplateType.value
       return axios
-          .post(executeTemplateURL + "?type=" + typeName, selectedTemplateContent.value)
+          .post(templateExecuteUrl + "?type=" + typeName, selectedTemplateContent.value)
           .then(response => {
             console.info("success job execution call")
             console.log(response)
@@ -248,7 +237,7 @@ export default {
 
     function retrieveTemplateContent(typeName, templateName) {
       return axios
-          .get(getTemplateContentURL + "?type=" + typeName + "&identifier=" + templateName)
+          .get(templateContentUrl + "?type=" + typeName + "&identifier=" + templateName)
           .then(response => {
             selectedTemplateContent.value = response.data["template"]
             selectedTemplateContentInfo.value = response.data["info"]
