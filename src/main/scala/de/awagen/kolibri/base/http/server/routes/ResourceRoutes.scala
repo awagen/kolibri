@@ -29,9 +29,49 @@ import de.awagen.kolibri.base.io.writer.Writers
 import de.awagen.kolibri.base.processing.JobMessages.SearchEvaluation
 import org.slf4j.{Logger, LoggerFactory}
 import spray.json.DefaultJsonProtocol.{StringJsonFormat, immSeqFormat}
-import spray.json.{JsValue, enrichAny}
+import spray.json.{JsValue, JsonReader, enrichAny}
 
 object ResourceRoutes {
+
+  object TemplatePathToJsonValidation extends Enumeration {
+
+    import de.awagen.kolibri.base.io.json.SearchEvaluationJsonProtocol._
+
+    type TemplatePathToJsonValidation = Val[_]
+
+    sealed case class Val[+T]()(implicit jsonReader: JsonReader[T]) extends super.Val {
+
+      def isValid(value: JsValue): Boolean = {
+        try {
+          value.convertTo[T]
+          true
+        }
+        catch {
+          case _: Exception => false
+        }
+      }
+    }
+
+    def getByNameFunc(nameNormalizeFunc: String => String = x => x.toUpperCase.replace("-", "_")): String => Option[Val[_]] = {
+      name => {
+        val normalizedName = nameNormalizeFunc.apply(name)
+        var result: Option[Val[_]] = None
+        try {
+          val value = TemplatePathToJsonValidation.withName(normalizedName).asInstanceOf[Val[_]]
+          result = Some(value)
+        }
+        catch {
+          case _: Exception =>
+            logger.warn(s"TemplatePathToJsonValidation of name $normalizedName not found")
+        }
+        result
+      }
+    }
+
+    val SEARCH_EVALUATION: Val[_] = Val[SearchEvaluation]
+
+
+  }
 
   private[this] val logger: Logger = LoggerFactory.getLogger(ResourceRoutes.getClass)
 
@@ -60,12 +100,17 @@ object ResourceRoutes {
       path("store_job_template") {
         post {
           entity(as[JsValue]) {
-            searchEvaluationJson => {
+            json => {
               parameters(PARAM_TYPE, PARAM_TEMPLATE_NAME) { (typeName, templateName) => {
                 if (templateName.trim.isEmpty || typeName.startsWith("..") || templateName.startsWith("..")) complete(StatusCodes.BadRequest)
-                try {
-                  searchEvaluationJson.convertTo[SearchEvaluation]
-                  val searchEvaluationContent: String = searchEvaluationJson.prettyPrint
+                val isValid = TemplatePathToJsonValidation.getByNameFunc()(typeName).exists(func => func.isValid(json))
+                if (!isValid) {
+                  val message: String = s"no valid type for typeName: '$typeName'"
+                  logger.warn(message)
+                  complete(StatusCodes.BadRequest, message)
+                }
+                else {
+                  val jsonString: String = json.prettyPrint
                   // now check whether file corresponding to template name is already there, then deny, otherwise write new template
                   val fullTemplateName: String = templateName.stripPrefix("/").stripSuffix("/").trim match {
                     case n if n.endsWith(".json") => n
@@ -84,13 +129,9 @@ object ResourceRoutes {
                   }
                   if (fileExists) complete(StatusCodes.Conflict)
                   else {
-                    fileWriter.write(searchEvaluationContent, templateFilePath)
+                    fileWriter.write(jsonString, templateFilePath)
                     complete(StatusCodes.Accepted)
                   }
-                }
-                catch {
-                  case e: Exception =>
-                    complete(StatusCodes.BadRequest, e)
                 }
               }
               }
