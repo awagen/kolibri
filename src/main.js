@@ -8,13 +8,14 @@ import {retrieveJobs, retrieveNodeStatus, retrieveServiceUpState} from './utils/
 // we could just reference style sheets relatively from assets folder, but we keep one central scss file instead
 // as central place, mixing sheets and overwriting styles
 import './assets/css/styles.scss';
+import {kolibriStateRefreshInterval} from "./utils/globalConstants";
 
 // Create a new store instance.
 const store = createStore({
     state() {
         return {
             serviceIsUp: false,
-            statusRefreshIntervalInMs: 2000,
+            statusRefreshIntervalInMs: kolibriStateRefreshInterval,
             runningNodes: [],
             runningJobs: [],
             jobHistory: []
