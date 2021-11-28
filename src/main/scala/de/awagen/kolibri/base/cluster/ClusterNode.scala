@@ -106,7 +106,7 @@ object ClusterNode extends App {
         ~ executeDistributedPiCalculationExampleWithoutSerialization ~ startSearchEval ~ startSearchEvalNoSerialize
         ~ startExecution ~ nodeState ~ jobStates ~ finishedJobStates ~ health ~ getAllJobWorkerStates
         ~ getJudgements ~ getAllJudgements ~ getJobTemplateOverviewForType ~ getJobTemplateByTypeAndIdentifier
-        ~ getJobTemplateTypes ~ storeSearchEvaluationTemplate)
+        ~ getJobTemplateTypes ~ storeSearchEvaluationTemplate ~ startExecutionDefinition)
 
       HttpServer.startHttpServer(usedRoute, interface = config.http_server_host, port = config.http_server_port).onComplete {
         case Success(serverBinding) => logger.info(s"listening to ${serverBinding.localAddress}")

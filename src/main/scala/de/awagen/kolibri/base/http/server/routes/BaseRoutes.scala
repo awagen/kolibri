@@ -20,7 +20,7 @@ package de.awagen.kolibri.base.http.server.routes
 import akka.NotUsed
 import akka.actor.{ActorRef, ActorSystem}
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpHeader, StatusCodes}
-import akka.http.scaladsl.server.Directives.{as, complete, delete, entity, get, onSuccess, parameters, path, post}
+import akka.http.scaladsl.server.Directives.{as, complete, delete, entity, get, onSuccess, parameters, path, post, redirect}
 import akka.http.scaladsl.server.Route
 import akka.pattern.ask
 import akka.stream.scaladsl.Source
@@ -33,11 +33,13 @@ import de.awagen.kolibri.base.cluster.ClusterStates.ClusterStatus
 import de.awagen.kolibri.base.config.AppConfig
 import de.awagen.kolibri.base.config.AppProperties.config.{analyzeTimeout, internalJobStatusRequestTimeout, kolibriDispatcherName}
 import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions
+import de.awagen.kolibri.base.http.server.routes.ResourceRoutes.TemplateTypeValidationAndExecutionInfo
 import de.awagen.kolibri.base.http.server.routes.StatusRoutes.corsHandler
 import de.awagen.kolibri.base.processing.JobMessages.{SearchEvaluation, TestPiCalculation}
 import de.awagen.kolibri.base.processing.execution.functions.Execution
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.SearchJobDefinitions
 import de.awagen.kolibri.base.usecase.searchopt.provider.JudgementProvider
+import org.slf4j.{Logger, LoggerFactory}
 import spray.json.DefaultJsonProtocol.{DoubleJsonFormat, StringJsonFormat, mapFormat}
 import spray.json.enrichAny
 
@@ -50,6 +52,8 @@ import scala.util.Random
   * route examples: https://doc.akka.io/docs/akka-http/current/introduction.html#using-akka-http
   */
 object BaseRoutes {
+
+  private[this] val logger: Logger = LoggerFactory.getLogger(BaseRoutes.getClass)
 
   private[routes] var supervisorActor: ActorRef = _
   private[routes] var clusterMetricsListenerActor: ActorRef = _
@@ -219,6 +223,38 @@ object BaseRoutes {
       })
   }
 
+  /**
+    * Route to shoot a json job definition of type given by type-parameter.
+    * The type parameter needs to be found within
+    * TemplateTypeValidationAndExecutionInfo.getByNameFunc function
+    * to be executed (the matched enum also provides the execution path to redirect to),
+    * otherwise its declined.
+    * @param system - ActorSystem
+    * @return
+    */
+  def startExecutionDefinition(implicit system: ActorSystem): Route = {
+    implicit val ec: ExecutionContextExecutor = system.dispatchers.lookup(kolibriDispatcherName)
+    corsHandler(
+      path("execute_job") {
+        post {
+          parameters("type") { typeName => {
+            logger.debug(s"received execution request for type '$typeName'")
+            val templateInfoOpt: Option[TemplateTypeValidationAndExecutionInfo.Val[_]] = TemplateTypeValidationAndExecutionInfo.getByNameFunc()(typeName)
+            if (templateInfoOpt.isEmpty) {
+              logger.debug(s"no valid template type found for '$typeName'")
+              complete(StatusCodes.BadRequest, s"Invalid type '$typeName'")
+            }
+            else {
+              val normedExecutionPath: String = templateInfoOpt.get.requestPath.stripPrefix("/")
+              logger.debug(s"redirecting execution request for '$typeName' to path '$normedExecutionPath'")
+              redirect(s"/$normedExecutionPath", StatusCodes.PermanentRedirect)
+            }
+          }
+          }
+        }
+      })
+  }
+
   def startExecution(implicit system: ActorSystem): Route = {
     implicit val timeout: Timeout = Timeout(analyzeTimeout)
     implicit val ec: ExecutionContextExecutor = system.dispatchers.lookup(kolibriDispatcherName)
@@ -246,9 +282,10 @@ object BaseRoutes {
               val judgement: Option[Double] = provider.retrieveJudgement(query, productId)
               complete(judgement.toString)
             }
+          }
         }
-      }
-  })}
+      })
+  }
 
   def getAllJudgements(implicit system: ActorSystem): Route = {
     corsHandler(
@@ -262,5 +299,6 @@ object BaseRoutes {
             }
           }
         }
-      })}
+      })
+  }
 }

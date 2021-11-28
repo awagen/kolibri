@@ -33,13 +33,17 @@ import spray.json.{JsValue, JsonReader, enrichAny}
 
 object ResourceRoutes {
 
-  object TemplatePathToJsonValidation extends Enumeration {
+  /**
+    * Encapsulates validation that the json of passed type can indeed be parsed to the correct type.
+    * Also brings the path against which the template can be send as body to cause its actual execution.
+    */
+  object TemplateTypeValidationAndExecutionInfo extends Enumeration {
 
     import de.awagen.kolibri.base.io.json.SearchEvaluationJsonProtocol._
 
-    type TemplatePathToJsonValidation = Val[_]
+    type TemplateTypeValidationAndExecutionInfo = Val[_]
 
-    sealed case class Val[+T]()(implicit jsonReader: JsonReader[T]) extends super.Val {
+    sealed case class Val[+T](requestPath: String)(implicit jsonReader: JsonReader[T]) extends super.Val {
 
       def isValid(value: JsValue): Boolean = {
         try {
@@ -57,7 +61,7 @@ object ResourceRoutes {
         val normalizedName = nameNormalizeFunc.apply(name)
         var result: Option[Val[_]] = None
         try {
-          val value = TemplatePathToJsonValidation.withName(normalizedName).asInstanceOf[Val[_]]
+          val value = TemplateTypeValidationAndExecutionInfo.withName(normalizedName).asInstanceOf[Val[_]]
           result = Some(value)
         }
         catch {
@@ -68,8 +72,7 @@ object ResourceRoutes {
       }
     }
 
-    val SEARCH_EVALUATION: Val[_] = Val[SearchEvaluation]
-
+    val SEARCH_EVALUATION: Val[_] = Val[SearchEvaluation]("search_eval_no_ser")
 
   }
 
@@ -95,15 +98,15 @@ object ResourceRoutes {
 
 
   def storeSearchEvaluationTemplate(implicit system: ActorSystem): Route = {
-    import de.awagen.kolibri.base.io.json.SearchEvaluationJsonProtocol._
     corsHandler(
       path("store_job_template") {
         post {
-          entity(as[JsValue]) {
-            json => {
+          entity(as[String]) {
+            jsonString => {
+              val json = jsonString.toJson
               parameters(PARAM_TYPE, PARAM_TEMPLATE_NAME) { (typeName, templateName) => {
                 if (templateName.trim.isEmpty || typeName.startsWith("..") || templateName.startsWith("..")) complete(StatusCodes.BadRequest)
-                val isValid = TemplatePathToJsonValidation.getByNameFunc()(typeName).exists(func => func.isValid(json))
+                val isValid = TemplateTypeValidationAndExecutionInfo.getByNameFunc()(typeName).exists(func => func.isValid(json))
                 if (!isValid) {
                   val message: String = s"no valid type for typeName: '$typeName'"
                   logger.warn(message)
