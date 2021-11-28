@@ -30,6 +30,9 @@ import de.awagen.kolibri.base.processing.JobMessages.SearchEvaluation
 import org.slf4j.{Logger, LoggerFactory}
 import spray.json.DefaultJsonProtocol.{StringJsonFormat, immSeqFormat}
 import spray.json.{JsValue, JsonReader, enrichAny}
+import scala.reflect.runtime.universe._
+
+import scala.reflect.runtime.universe.typeOf
 
 object ResourceRoutes {
 
@@ -43,7 +46,7 @@ object ResourceRoutes {
 
     type TemplateTypeValidationAndExecutionInfo = Val[_]
 
-    sealed case class Val[+T](requestPath: String)(implicit jsonReader: JsonReader[T]) extends super.Val {
+    sealed case class Val[+T: TypeTag](requestPath: String)(implicit jsonReader: JsonReader[T]) extends super.Val {
 
       def isValid(value: JsValue): Boolean = {
         try {
@@ -51,7 +54,9 @@ object ResourceRoutes {
           true
         }
         catch {
-          case _: Exception => false
+          case e: Exception =>
+            logger.warn(s"json input conversion to type '${typeOf[T]}' failed", e)
+            false
         }
       }
     }
@@ -98,12 +103,13 @@ object ResourceRoutes {
 
 
   def storeSearchEvaluationTemplate(implicit system: ActorSystem): Route = {
+    import spray.json._
     corsHandler(
       path("store_job_template") {
         post {
           entity(as[String]) {
             jsonString => {
-              val json = jsonString.toJson
+              val json: JsValue = jsonString.parseJson
               parameters(PARAM_TYPE, PARAM_TEMPLATE_NAME) { (typeName, templateName) => {
                 if (templateName.trim.isEmpty || typeName.startsWith("..") || templateName.startsWith("..")) complete(StatusCodes.BadRequest)
                 val isValid = TemplateTypeValidationAndExecutionInfo.getByNameFunc()(typeName).exists(func => func.isValid(json))
