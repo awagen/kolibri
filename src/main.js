@@ -32,17 +32,16 @@ const store = createStore({
         },
 
         updateRunningJobs(state) {
-            return retrieveJobs( false, x => {
+            return retrieveJobs(false, x => {
                 state.runningJobs = x
             })
         },
 
         updateJobHistory(state) {
-            return retrieveJobs( true, x => {
+            return retrieveJobs(true, x => {
                 state.jobHistory = x
             })
         }
-
     }
 })
 

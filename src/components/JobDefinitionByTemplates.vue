@@ -91,12 +91,14 @@
         <!-- template save button -->
         <div class="form-separator"></div>
         <div class="col-6 col-sm-12">
-          <button type='button' @click="saveTemplate()" class="k-form k-full btn btn-action" id="save-template-1">
+          <button type='button' @click="getSelectionsAndSaveTemplate()" class="k-form k-full btn btn-action"
+                  id="save-template-1">
             SAVE TEMPLATE
           </button>
         </div>
         <div class="col-6 col-sm-12">
-          <button type='button' @click="executeJob()" class="k-form k-full btn btn-action" id="run-template-1">
+          <button type='button' @click="getSelectionAndExecuteJob()" class="k-form k-full btn btn-action"
+                  id="run-template-1">
             RUN TEMPLATE
           </button>
         </div>
@@ -123,13 +125,12 @@
 <script>
 import {onMounted, ref} from "vue";
 import {objectToJsonStringAndSyntaxHighlight, stringifyObj, baseJsonFormatting} from "../utils/formatFunctions";
-import axios from "axios";
 import {
-  templateContentUrl, templateExecuteUrl,
-  templateOverviewForTypeUrl,
-  templateSaveUrl,
-  templateTypeUrl
-} from "../utils/globalConstants";
+  executeJob,
+  retrieveTemplateContentAndInfo,
+  retrieveTemplatesForType, retrieveTemplateTypes,
+  saveTemplate
+} from "../utils/retrievalFunctions";
 
 export default {
 
@@ -164,12 +165,24 @@ export default {
 
     function jobTypeSelectEvent(event) {
       selectedTemplateType.value = event.target.value
-      retrieveTemplatesForType(selectedTemplateType.value)
+      retrieveTemplatesForType(selectedTemplateType.value).then(response => {
+        templateNames.value = response
+      })
     }
 
     function templateSelectEvent(event) {
       selectedTemplateName.value = event.target.value
-      retrieveTemplateContent(selectedTemplateType.value, selectedTemplateName.value)
+      retrieveTemplateContentAndInfo(selectedTemplateType.value, selectedTemplateName.value).then(response => {
+        if (Object.keys(response).length === 0) {
+          selectedTemplateContent.value = {};
+          selectedTemplateContentInfo.value = {}
+          selectedTemplateJsonString.value = "";
+        } else {
+          selectedTemplateContent.value = response["template"]
+          selectedTemplateContentInfo.value = response["info"]
+          selectedTemplateJsonString.value = objectToJsonStringAndSyntaxHighlight(selectedTemplateContent.value)
+        }
+      })
     }
 
     function jobTemplateFieldEditSelectEvent(event) {
@@ -183,69 +196,18 @@ export default {
       document.getElementById("template-edit-1").value = baseJsonFormatting(selectedTemplateFieldPartial.value)
     }
 
-    function retrieveTemplateTypes() {
-      return axios
-          .get(templateTypeUrl)
-          .then(response => {
-            templateTypes.value = response.data
-          }).catch(_ => {
-            templateTypes.value = []
-          })
-    }
-
-    function retrieveTemplatesForType(typeName) {
-      return axios
-          .get(templateOverviewForTypeUrl + "?type=" + typeName)
-          .then(response => {
-            templateNames.value = response.data
-          }).catch(_ => {
-            templateNames.value = []
-          })
-    }
-
-    function saveTemplate() {
+    function getSelectionsAndSaveTemplate() {
       let templateName = document.getElementById("template-edit-saveto-filename-1").value
       let typeName = selectedTemplateType.value
       if (templateName === "") {
         console.info("empty template name, not sending for storage")
       }
-      return axios
-          .post(templateSaveUrl + "?type=" + typeName + "&templateName=" + templateName, selectedTemplateContent.value)
-          .then(response => {
-            console.info("success job template store call")
-            console.log(response)
-          })
-          .catch(e => {
-            console.info("exception on trying to store job template")
-            console.log(e)
-          })
+      saveTemplate(typeName, templateName, selectedTemplateContent.value)
     }
 
-    function executeJob() {
+    function getSelectionAndExecuteJob() {
       let typeName = selectedTemplateType.value
-      return axios
-          .post(templateExecuteUrl + "?type=" + typeName, selectedTemplateContent.value)
-          .then(response => {
-            console.info("success job execution call")
-            console.log(response)
-          })
-          .catch(e => {
-            console.info("exception on trying send job execution")
-            console.log(e)
-          })
-    }
-
-    function retrieveTemplateContent(typeName, templateName) {
-      return axios
-          .get(templateContentUrl + "?type=" + typeName + "&identifier=" + templateName)
-          .then(response => {
-            selectedTemplateContent.value = response.data["template"]
-            selectedTemplateContentInfo.value = response.data["info"]
-            selectedTemplateJsonString.value = objectToJsonStringAndSyntaxHighlight(selectedTemplateContent.value)
-          }).catch(_ => {
-            selectedTemplateContent.value = "";
-            selectedTemplateJsonString.value = "";
-          })
+      executeJob(typeName, selectedTemplateContent.value)
     }
 
     function applyChanges() {
@@ -256,7 +218,7 @@ export default {
     }
 
     onMounted(() => {
-      retrieveTemplateTypes();
+      retrieveTemplateTypes().then(response => templateTypes.value = response)
     })
 
     return {
@@ -275,8 +237,8 @@ export default {
       selectedTemplateFieldInfo,
       selectedTemplateFieldPartial,
       fieldInfoAvailable,
-      saveTemplate,
-      executeJob
+      getSelectionsAndSaveTemplate,
+      getSelectionAndExecuteJob
     }
   },
 

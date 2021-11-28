@@ -1,5 +1,7 @@
 import axios from "axios";
-import {jobHistoryUrl, jobStateUrl, appIsUpUrl, nodeStateUrl} from '../utils/globalConstants'
+import {jobHistoryUrl, jobStateUrl, appIsUpUrl, nodeStateUrl, templateOverviewForTypeUrl,
+    templateTypeUrl, templateSaveUrl, templateExecuteUrl,
+    templateContentUrl} from '../utils/globalConstants'
 
 
 function retrieveJobs(historical, updateFunc) {
@@ -45,4 +47,69 @@ function retrieveNodeStatus() {
         })
 }
 
-export {retrieveJobs, retrieveServiceUpState, retrieveNodeStatus}
+function retrieveTemplatesForType(typeName) {
+    return axios
+        .get(templateOverviewForTypeUrl + "?type=" + typeName)
+        .then(response => {
+            return response.data
+        }).catch(_ => {
+            return []
+        })
+}
+
+function retrieveTemplateTypes() {
+    return axios
+        .get(templateTypeUrl)
+        .then(response => {
+            return response.data
+        }).catch(_ => {
+            return []
+        })
+}
+
+function saveTemplate(templateTypeName, templateName, templateContent) {
+    if (templateName === "") {
+        console.info("empty template name, not sending for storage")
+    }
+    return axios
+        .post(templateSaveUrl + "?type=" + templateTypeName + "&templateName=" + templateName, templateContent)
+        .then(response => {
+            console.info("success job template store call")
+            console.log(response)
+            return true
+        })
+        .catch(e => {
+            console.info("exception on trying to store job template")
+            console.log(e)
+            return false
+        })
+}
+
+function executeJob(typeName, jobDefinitionContent) {
+    return axios
+        .post(templateExecuteUrl + "?type=" + typeName, jobDefinitionContent)
+        .then(response => {
+            console.info("success job execution call")
+            console.log(response)
+            return true
+        })
+        .catch(e => {
+            console.info("exception on trying send job execution")
+            console.log(e)
+            return false
+        })
+}
+
+function retrieveTemplateContentAndInfo(typeName, templateName) {
+    return axios
+        .get(templateContentUrl + "?type=" + typeName + "&identifier=" + templateName)
+        .then(response => {
+            return response.data
+        }).catch(_ => {
+            return {}
+        })
+}
+
+export {retrieveJobs, retrieveServiceUpState, retrieveNodeStatus,
+    retrieveTemplatesForType, retrieveTemplateTypes, saveTemplate, executeJob,
+    retrieveTemplateContentAndInfo}
