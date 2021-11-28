@@ -96,7 +96,7 @@
           </button>
         </div>
         <div class="col-6 col-sm-12">
-          <button type='button' @click="runTemplate()" class="k-form k-full btn btn-action" id="run-template-1">
+          <button type='button' @click="executeJob()" class="k-form k-full btn btn-action" id="run-template-1">
             RUN TEMPLATE
           </button>
         </div>
@@ -142,6 +142,8 @@ export default {
     const getTemplateContentURL = "http://localhost:8000/templates/jobs"
     // url to send template for storage
     const templateSaveURL = "http://localhost:8000/store_job_template"
+    // url to post the job definitions against for execution. needs a type-parameter to validate the type of passed json
+    const executeTemplateURL = "http://localhost:8000/execute_job"
     // template field selected for edit
     const selectedTemplateField = ref("")
     // boolean to indicate whether any field info is available for the selected field
@@ -230,6 +232,20 @@ export default {
           })
     }
 
+    function executeJob() {
+      let typeName = selectedTemplateType.value
+      return axios
+          .post(executeTemplateURL + "?type=" + typeName, selectedTemplateContent.value)
+          .then(response => {
+            console.info("success job execution call")
+            console.log(response)
+          })
+          .catch(e => {
+            console.info("exception on trying send job execution")
+            console.log(e)
+          })
+    }
+
     function retrieveTemplateContent(typeName, templateName) {
       return axios
           .get(getTemplateContentURL + "?type=" + typeName + "&identifier=" + templateName)
@@ -270,7 +286,8 @@ export default {
       selectedTemplateFieldInfo,
       selectedTemplateFieldPartial,
       fieldInfoAvailable,
-      saveTemplate
+      saveTemplate,
+      executeJob
     }
   },
 
