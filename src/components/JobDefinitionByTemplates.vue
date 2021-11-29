@@ -13,7 +13,7 @@
         <div class="col-9 col-sm-12">
           <select @change="jobTypeSelectEvent($event)" class="form-select k-value-selector" id="template-type-1">
             <option>Choose an option</option>
-            <option v-for="templateType in templateTypes">{{ templateType }}</option>
+            <option v-for="templateType in this.$store.state.templateTypes">{{ templateType }}</option>
           </select>
         </div>
         <div class="k-form-separator"></div>
@@ -25,7 +25,7 @@
           <select @change="templateSelectEvent($event)" class="form-select k-field k-value-selector"
                   id="template-name-1">
             <option>Choose an option</option>
-            <option v-for="templateName in templateNames">{{ templateName }}</option>
+            <option v-for="templateName in this.$store.state.templateNames">{{ templateName }}</option>
           </select>
         </div>
       </div>
@@ -39,7 +39,7 @@
           <select @change="jobTemplateFieldEditSelectEvent($event)" class="form-select k-value-selector"
                   id="template-field-1">
             <option>Choose an option (or edit freely)</option>
-            <option v-for="fieldName in Object.keys(selectedTemplateContent)">{{ fieldName }}</option>
+            <option v-for="fieldName in Object.keys(this.$store.state.selectedTemplateContent)">{{ fieldName }}</option>
           </select>
         </div>
       </div>
@@ -49,15 +49,15 @@
         <div class="col-3 col-sm-12">
           <label class="form-label" for="template-edit-1">Replace Template Content</label>
           <!-- if available, display some field info here -->
-          <div v-if="fieldInfoAvailable" class="popover popover-right">
+          <div v-if="this.$store.state.fieldInfoAvailable" class="popover popover-right">
             <button class="btn btn-action s-circle"><i class="icon icon-message"></i></button>
             <div class="popover-container">
               <div class="card">
                 <div class="card-header">
-                  <b>Field: {{ selectedTemplateField }}</b>
+                  <b>Field: {{ this.$store.state.selectedTemplateField }}</b>
                 </div>
                 <div class="card-body">
-                  {{ selectedTemplateFieldInfo }}
+                  {{ this.$store.state.selectedTemplateFieldInfo }}
                 </div>
               </div>
             </div>
@@ -117,132 +117,60 @@
       </div>
 
       <div class="form-separator"></div>
-      <pre id="template-content-display-1" v-html="selectedTemplateJsonString"/>
+      <pre id="template-content-display-1" v-html="this.$store.state.selectedTemplateJsonString"/>
     </form>
   </div>
 </template>
 
 <script>
-import {onMounted, ref} from "vue";
-import {objectToJsonStringAndSyntaxHighlight, stringifyObj, baseJsonFormatting} from "../utils/formatFunctions";
+import {onMounted} from "vue";
+import {baseJsonFormatting} from "../utils/formatFunctions";
 import {
   executeJob,
-  retrieveTemplateContentAndInfo,
-  retrieveTemplatesForType, retrieveTemplateTypes,
   saveTemplate
 } from "../utils/retrievalFunctions";
 
 export default {
 
   props: [],
-  setup(props) {
-    // the names of template types for which specific templates can be requested
-    const templateTypes = ref([])
-    // the names of the available templates as retrieved via the templates url
-    const templateNames = ref([])
-    // template field selected for edit
-    const selectedTemplateField = ref("")
-    // boolean to indicate whether any field info is available for the selected field
-    const fieldInfoAvailable = ref(false)
-    // the actual current value for the selectedTemplateField
-    const selectedTemplateFieldValue = ref("")
-    // the info/description (if available) for the selectedTemplateField
-    const selectedTemplateFieldInfo = ref("")
-    // the partial selected for editing, e.g {selectedTemplateField: selectedTemplateFieldValue}
-    const selectedTemplateFieldPartial = ref({})
-    // selected type of template
-    const selectedTemplateType = ref("")
-    // selected name of template
-    const selectedTemplateName = ref("")
-    // the retrieved template content
-    const selectedTemplateContent = ref("")
-    // description per field for the retrieved content
-    const selectedTemplateContentInfo = ref("")
-    // the stringified values of the retrieved json
-    const selectedTemplateJsonString = ref("")
-    // the changes applied to the selected template
-    const changedTemplateParts = ref({})
+  methods: {
+    jobTypeSelectEvent(event) {
+      this.$store.commit("updateSelectedTemplateType", event.target.value)
+    },
 
-    function jobTypeSelectEvent(event) {
-      selectedTemplateType.value = event.target.value
-      retrieveTemplatesForType(selectedTemplateType.value).then(response => {
-        templateNames.value = response
-      })
-    }
+    templateSelectEvent(event) {
+      this.$store.commit("updateSelectedTemplate", event.target.value)
+    },
 
-    function templateSelectEvent(event) {
-      selectedTemplateName.value = event.target.value
-      retrieveTemplateContentAndInfo(selectedTemplateType.value, selectedTemplateName.value).then(response => {
-        if (Object.keys(response).length === 0) {
-          selectedTemplateContent.value = {};
-          selectedTemplateContentInfo.value = {}
-          selectedTemplateJsonString.value = "";
-        } else {
-          selectedTemplateContent.value = response["template"]
-          selectedTemplateContentInfo.value = response["info"]
-          selectedTemplateJsonString.value = objectToJsonStringAndSyntaxHighlight(selectedTemplateContent.value)
-        }
-      })
-    }
+    jobTemplateFieldEditSelectEvent(event) {
+      this.$store.commit("updateTemplateFieldEditSelection", event.target.value)
+      document.getElementById("template-edit-1").value = baseJsonFormatting(this.$store.state.selectedTemplateFieldPartial)
+    },
 
-    function jobTemplateFieldEditSelectEvent(event) {
-      selectedTemplateFieldPartial.value = {}
-      selectedTemplateField.value = event.target.value
-      // load the current field value for the selected field and the info (if any is provided)
-      selectedTemplateFieldValue.value = selectedTemplateContent.value[selectedTemplateField.value]
-      selectedTemplateFieldInfo.value = selectedTemplateContentInfo.value[selectedTemplateField.value]
-      fieldInfoAvailable.value = selectedTemplateFieldInfo.value != null
-      selectedTemplateFieldPartial.value[selectedTemplateField.value] = selectedTemplateFieldValue.value
-      document.getElementById("template-edit-1").value = baseJsonFormatting(selectedTemplateFieldPartial.value)
-    }
-
-    function getSelectionsAndSaveTemplate() {
+    getSelectionsAndSaveTemplate() {
       let templateName = document.getElementById("template-edit-saveto-filename-1").value
-      let typeName = selectedTemplateType.value
+      let typeName = this.$store.state.selectedTemplateType
       if (templateName === "") {
         console.info("empty template name, not sending for storage")
       }
-      saveTemplate(typeName, templateName, selectedTemplateContent.value)
-    }
+      saveTemplate(typeName, templateName, this.$store.state.selectedTemplateContent)
+    },
 
-    function getSelectionAndExecuteJob() {
-      let typeName = selectedTemplateType.value
-      executeJob(typeName, selectedTemplateContent.value)
-    }
+    getSelectionAndExecuteJob() {
+      let typeName = this.$store.state.selectedTemplateType
+      executeJob(typeName, this.$store.state.selectedTemplateContent)
+    },
 
-    function applyChanges() {
+    applyChanges() {
       let changes = document.getElementById("template-edit-1").value
-      changedTemplateParts.value = JSON.parse(changes)
-      selectedTemplateContent.value = Object.assign({}, JSON.parse(stringifyObj(selectedTemplateContent.value)), changedTemplateParts.value);
-      selectedTemplateJsonString.value = objectToJsonStringAndSyntaxHighlight(selectedTemplateContent.value)
-    }
-
-    onMounted(() => {
-      retrieveTemplateTypes().then(response => templateTypes.value = response)
-    })
-
-    return {
-      templateTypes,
-      templateNames,
-      jobTypeSelectEvent,
-      templateSelectEvent,
-      jobTemplateFieldEditSelectEvent,
-      selectedTemplateType,
-      selectedTemplateContent,
-      selectedTemplateJsonString,
-      changedTemplateParts,
-      applyChanges,
-      selectedTemplateField,
-      selectedTemplateFieldValue,
-      selectedTemplateFieldInfo,
-      selectedTemplateFieldPartial,
-      fieldInfoAvailable,
-      getSelectionsAndSaveTemplate,
-      getSelectionAndExecuteJob
+      this.$store.commit("updateTemplateState", changes)
     }
   },
-
-
+  setup(props) {
+    onMounted(() => {
+    })
+    return {}
+  }
 }
 
 </script>

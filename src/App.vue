@@ -2,16 +2,16 @@
   <header class="navbar">
     <section class="navbar-section">
       <router-link class="btn btn-link" to="/">STATUS</router-link>
-      <router-link class="btn btn-link" to="/history">HISTORY</router-link>
       <router-link class="btn btn-link" to="/jobCreation">CREATE</router-link>
+      <router-link class="btn btn-link" to="/history">HISTORY</router-link>
     </section>
     <section class="navbar-center">
       <!-- centered logo or brand -->
       <img id="menu-logo" alt="Kolibri logo" src="./assets/images/kolibri.svg"/>
     </section>
     <section class="navbar-section">
-      <router-link class="btn btn-link" to="/analyze">ANALYZE</router-link>
-      <router-link class="btn btn-link" to="/result">RESULT</router-link>
+<!--      <router-link class="btn btn-link" to="/analyze">ANALYZE</router-link>-->
+<!--      <router-link class="btn btn-link" to="/result">RESULT</router-link>-->
     </section>
   </header>
 
