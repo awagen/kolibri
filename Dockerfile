@@ -13,4 +13,6 @@ FROM nginx:stable-alpine as production-stage
 RUN mkdir /app
 COPY --from=build-stage /app/dist /app
 COPY ./nginx/nginx.conf /etc/nginx/nginx.conf
+COPY ./docker/entrypoint.sh /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["nginx", "-g", "daemon off;"]
