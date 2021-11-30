@@ -5,6 +5,7 @@ target/
 tmp
 .history
 /.idea
+/.github
 /*.iml
 /out
 /.idea_modules
@@ -14,11 +15,3 @@ tmp
 /.settings
 public
 *.log
-prometheus/data
-grafana/*
-!grafana/dashboards/
-kolibri-test/
-/.bsp
-/.scannerwork
-/test-files/k8s-test-results
-/test-files/test-results
