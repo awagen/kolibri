@@ -61,8 +61,10 @@ environmentalVars:
   MAX_NR_BATCH_RETRIES: '2'
   PERSISTENCE_MODE: 'CLASS'
   PERSISTENCE_MODULE_CLASS: 'de.awagen.kolibri.base.config.di.modules.persistence.LocalPersistenceModule'
-  LOCAL_STORAGE_DIR: '/app/data'
-
+  LOCAL_STORAGE_WRITE_BASE_PATH: '/data/test-files'
+  LOCAL_STORAGE_WRITE_RESULTS_SUBPATH: 'k8s-test-results'
+  LOCAL_STORAGE_READ_BASE_PATH: '/data/test-files'
+  JOB_TEMPLATES_PATH: 'templates/jobs'
 
 environmentalVarsComputeNodes:
   PROFILE: 'prod'
@@ -106,7 +108,10 @@ environmentalVarsComputeNodes:
   MAX_NR_BATCH_RETRIES: '2'
   PERSISTENCE_MODE: 'CLASS'
   PERSISTENCE_MODULE_CLASS: 'de.awagen.kolibri.base.config.di.modules.persistence.LocalPersistenceModule'
-  LOCAL_STORAGE_DIR: '/app/data'
+  LOCAL_STORAGE_WRITE_BASE_PATH: '/data/test-files'
+  LOCAL_STORAGE_WRITE_RESULTS_SUBPATH: 'k8s-test-results'
+  LOCAL_STORAGE_READ_BASE_PATH: '/data/test-files'
+  JOB_TEMPLATES_PATH: 'templates/jobs'
 
 serviceAccount:
   # Specifies whether a service account should be created
@@ -221,15 +226,12 @@ autoscalingCompute:
   targetMemoryUtilizationPercentage: 90
 
 volumeMounts:
-  - mountPath: "/app/data"
-    name: kolibri-pv-local-storage-readwrite
   - mountPath: "/data/test-files"
-    name: kolibri-pv-local-storage-readonly
+    name: kolibri-pv-local-storage-readwrite
 
 localVolume:
   enabled: true
-  hostPathReadWrite: /local-data
-  hostPathReadOnly: /local-test-files
+  hostPathReadWrite: /local-test-files
 
 nodeSelector: { }
 

@@ -27,6 +27,7 @@ import de.awagen.kolibri.base.actors.work.manager.JobManagerActor._
 import de.awagen.kolibri.base.actors.work.manager.JobProcessingState.emptyJobStatusInfo
 import de.awagen.kolibri.base.actors.work.manager.WorkManagerActor.{ExecutionType, GetWorkerStatus, JobBatchMsg}
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages._
+import de.awagen.kolibri.base.actors.work.worker.RunnableExecutionActor.BatchProcessStateResult
 import de.awagen.kolibri.base.config.AppProperties._
 import de.awagen.kolibri.base.config.AppProperties.config.kolibriDispatcherName
 import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions.MapWithCount
@@ -109,7 +110,7 @@ object JobManagerActor {
 
   case object GetStatusForWorkers extends ExternalJobManagerCmd
 
-  case class WorkerStatusResponse[U](result: Either[Throwable, Seq[AggregationState[U]]]) extends JobManagerEvent
+  case class WorkerStatusResponse(result: Seq[BatchProcessStateResult]) extends JobManagerEvent
 
   case class WorkerKilled(batchNr: Int) extends JobManagerEvent
 
@@ -128,6 +129,7 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
 
   // processing state keeping track of received results and distribution of new batches
   val jobProcessingState: JobProcessingState[U] = JobProcessingState[U](jobId)
+  var runningBatchesState: Map[Int, BatchProcessStateResult] = Map.empty
 
   // if set to true, job manager will expect batches to send back actual results, otherwise will not look at returned data in messages but only at success criteria
   // e.g makes sense in case sending results back is not needed since each batch corresponds to an result by itself
@@ -146,7 +148,7 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
     logger.debug(s"received aggregation state: $msg")
     jobProcessingState.accept(msg)
     if (jobProcessingState.completed) {
-      wrapUp
+      wrapUp()
     }
     else {
       fillUpFreeSlots()
@@ -165,7 +167,7 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
     }
   }
 
-  def wrapUp: Unit = {
+  def wrapUp(): Unit = {
     wrapUpFunction.foreach(x => x.execute match {
       case Left(e) => log.info(s"wrap up function execution failed, result: $e")
       case Right(e) => log.info(s"wrap up function execution succeeded, result: $e")
@@ -300,7 +302,7 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
       jobProcessingState.updateSingleBatchExpectations()
       if (jobProcessingState.completed) {
         log.debug("UpdateStateAndCheckForCompletion: completed")
-        wrapUp
+        wrapUp()
       }
     case DistributeBatches =>
       log.debug("received DistributeBatches")
@@ -308,7 +310,7 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
       fillUpFreeSlots()
       if (jobProcessingState.completed) {
         log.debug("UpdateStateAndCheckForCompletion: completed")
-        wrapUp
+        wrapUp()
       }
     case ExpectationMet =>
       log.debug("received ExpectationMet, which means we can stop executing")
@@ -323,6 +325,7 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
     case e: AggregationState[U] =>
       jobProcessingState.addBatchFailedACK(e.batchNr)
       jobProcessingState.removeBatchWaitingForACK(e.batchNr)
+      runningBatchesState -= e.batchNr
       log.debug("received aggregation (batch finished) - jobId: {}, batchNr: {} ", e.jobID, e.batchNr)
       acceptResultMsg(e)
       if (jobProcessingState.nrResultsAccepted % 10 == 0 ||
@@ -334,22 +337,16 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
       reportResultsTo ! MaxTimeExceededEvent(jobId)
       context.become(ignoringAll)
       self ! PoisonPill
+    // react to status updates retrieved by the workers
+    case result: BatchProcessStateResult =>
+      log.debug(s"received update on batch state: $result")
+      runningBatchesState = runningBatchesState + (result.batchNr -> result)
     // retrieve the currently processing actors and retrieve from all the status
     case GetStatusForWorkers =>
-      val reportTo: ActorRef = sender()
-      // send GetWorkerStatus messages
-      val runningBatches = jobProcessingState.runningBatches
-      val messages = runningBatches.map(batchNr => GetWorkerStatus(ExecutionType.RUNNABLE, jobId, batchNr))
-      implicit val timeout: Timeout = Timeout(1 second)
-      val responseFuture: Future[Seq[Any]] = Future.sequence(messages.map(x => workerServiceRouter.ask(x)))
-      responseFuture.onComplete({
-        case Success(value) =>
-          reportTo ! WorkerStatusResponse[U](Right(value = value.asInstanceOf[Seq[AggregationState[U]]]))
-        case Failure(e) =>
-          reportTo ! WorkerStatusResponse[U](Left(e))
-      })
+      sender() ! WorkerStatusResponse(runningBatchesState.values.toSeq)
     case WorkerKilled(batchNr) =>
       jobProcessingState.removeExpectationForBatchId(batchNr)
+      runningBatchesState -= batchNr
       fillUpFreeSlots()
     case e =>
       log.warning(s"Unknown message '$e', ignoring")

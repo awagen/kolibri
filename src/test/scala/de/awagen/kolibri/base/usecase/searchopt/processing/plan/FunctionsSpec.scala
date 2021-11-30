@@ -31,7 +31,7 @@ import de.awagen.kolibri.datatypes.values.AggregateValue
 
 import scala.collection.mutable
 
-class FunctionsSpec extends UnitTestSpec{
+class FunctionsSpec extends UnitTestSpec {
 
   object Fixtures {
 
@@ -60,6 +60,13 @@ class FunctionsSpec extends UnitTestSpec{
         allJudgements.get(key)
       }
 
+      override def retrieveJudgementsForTerm(searchTerm: String): Map[String, Double] = allJudgements
+        .map(x => {
+          val split = x._1.split("-")
+          ((split(0), split(1)), x._2)
+        })
+        .filter(x => x._1._1 == searchTerm)
+        .map(x => (x._1._2, x._2))
     }
 
   }

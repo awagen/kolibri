@@ -16,17 +16,20 @@
 
 package de.awagen.kolibri.base.actors.work.manager
 
-import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props, Terminated}
+import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Cancellable, Props, Terminated}
+import akka.pattern.ask
+import akka.util.Timeout
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor
 import de.awagen.kolibri.base.actors.work.manager.JobManagerActor.{ACK, WorkerKilled}
 import de.awagen.kolibri.base.actors.work.manager.WorkManagerActor.ExecutionType.{RUNNABLE, TASK, TASK_EXECUTION}
 import de.awagen.kolibri.base.actors.work.manager.WorkManagerActor._
-import de.awagen.kolibri.base.actors.work.worker.AggregatingActor.ReportResults
 import de.awagen.kolibri.base.actors.work.worker.JobPartIdentifiers.JobPartIdentifier
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.ProcessingMessage
+import de.awagen.kolibri.base.actors.work.worker.RunnableExecutionActor.{BatchProcessStateResult, ReportBatchState}
 import de.awagen.kolibri.base.actors.work.worker.TaskExecutionWorkerActor.ProcessTaskExecution
 import de.awagen.kolibri.base.actors.work.worker.TaskWorkerActor.ProcessTasks
 import de.awagen.kolibri.base.actors.work.worker.{RunnableExecutionActor, TaskExecutionWorkerActor, TaskWorkerActor}
+import de.awagen.kolibri.base.config.AppProperties.config
 import de.awagen.kolibri.base.config.AppProperties.config.kolibriDispatcherName
 import de.awagen.kolibri.base.io.writer.Writers
 import de.awagen.kolibri.base.processing.JobMessages.{SearchEvaluation, TestPiCalculation}
@@ -45,8 +48,11 @@ import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.tagging.TaggedWithType
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 
+import java.util.concurrent.TimeUnit
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext
+import scala.concurrent.duration._
+import scala.util.{Failure, Success}
 
 
 object WorkManagerActor {
@@ -72,11 +78,16 @@ object WorkManagerActor {
 
 class WorkManagerActor() extends Actor with ActorLogging with KolibriSerializable {
 
+  implicit val ec: ExecutionContext = context.system.dispatchers.lookup(kolibriDispatcherName)
+  implicit val actorSystem: ActorSystem = context.system
+
   var receivedBatchCount: Int = 0
   // record of worker key to the actual actor reference
   val workerKeyToActiveWorker: mutable.Map[String, ActorRef] = mutable.Map.empty
   // worker key to the respective job manager expecting the answer
   val workerKeyToJobManager: mutable.Map[String, ActorRef] = mutable.Map.empty
+  // keep track of the results
+  val workerKeyToBatchState: mutable.Map[String, BatchProcessStateResult] = mutable.Map.empty
   // mapping of jobId to runnable generator to be able to get rid of serialization
   // issues compared to sending the ActorRunnables directly from JobManager
   // (WorkManager creates executing actors on the same node, thus the messages
@@ -86,6 +97,16 @@ class WorkManagerActor() extends Actor with ActorLogging with KolibriSerializabl
   // generator of the runnables once. This actor is supposed to be utilized within
   // a JobManagerActor (thus will be killed when its parent is killed)
   var runnableGeneratorForJob: Option[IndexedGenerator[ActorRunnable[_, _, _, _]]] = None
+
+  // two cancellable scheduler, one updating the WorkManager's bookkeeping of batch processing
+  // states, the other for sending the current bookkeeping state to JobManager
+  val cancellableBatchStateUpdate: Cancellable = context.system.scheduler.scheduleAtFixedRate(
+    initialDelay = config.workManagerStateUpdateInterval,
+    interval = config.workManagerStateUpdateInterval)(() => retrieveWorkerStates())
+  val cancellableJobManagerReport: Cancellable = context.system.scheduler.scheduleAtFixedRate(
+    initialDelay = config.workManagerReportBatchStateToJobManagerInterval,
+    interval = config.workManagerReportBatchStateToJobManagerInterval)(() => sendWorkerStatesToJobManager())
+
 
   def workerKey(executionType: ExecutionType.Value, jobId: String, batchNr: Int): String = {
     s"${executionType.toString}_${jobId}_${batchNr}"
@@ -132,8 +153,6 @@ class WorkManagerActor() extends Actor with ActorLogging with KolibriSerializabl
       taskExecutionWorker.tell(ProcessTaskExecution(e.taskExecution, e.partIdentifier), sender())
     case e: JobBatchMsg[TestPiCalculation] if e.msg.isInstanceOf[TestPiCalculation] =>
       log.info("received TestPiCalculation msg")
-      implicit val ec: ExecutionContext = context.system.dispatchers.lookup(kolibriDispatcherName)
-      implicit val actorSystem: ActorSystem = context.system
       if (receivedBatchCount % 10 == 0) {
         log.info(s"received pi calc batch messages: $receivedBatchCount")
       }
@@ -147,8 +166,6 @@ class WorkManagerActor() extends Actor with ActorLogging with KolibriSerializabl
         .getOrElse(log.warning(s"job for message '$e' does not contain batch '${e.batchNr}', not executing anything for batch"))
     case e: JobBatchMsg[SearchEvaluation] if e.msg.isInstanceOf[SearchEvaluation] =>
       log.info("received SearchEvaluation msg")
-      implicit val ec: ExecutionContext = context.system.dispatchers.lookup(kolibriDispatcherName)
-      implicit val actorSystem: ActorSystem = context.system
       val runnableMsg: SupervisorActor.ProcessActorRunnableJobCmd[RequestTemplateBuilderModifier, MetricRow, MetricRow, MetricAggregation[Tag]] = e.msg.toRunnable
       val writerOpt: Option[Writers.Writer[MetricAggregation[Tag], Tag, _]] = Some(runnableMsg.writer)
       if (runnableGeneratorForJob.isEmpty) {
@@ -172,14 +189,47 @@ class WorkManagerActor() extends Actor with ActorLogging with KolibriSerializabl
           workerKeyToJobManager -= x
         })
         workerKeyToActiveWorker -= x
+        workerKeyToBatchState -= x
       })
-    case GetWorkerStatus(executionType, jobId, batchNr) =>
-      val reportTo = sender()
-      val key = workerKey(executionType, jobId, batchNr)
-      val worker: Option[ActorRef] = workerKeyToActiveWorker.get(key)
-      worker.foreach(x => x.tell(ReportResults, reportTo))
     case e =>
       log.warning(s"Unknown and unhandled message: '$e'")
+  }
+
+  /**
+    * retrieve the job processing states and store to send to the related job managers
+    */
+  def retrieveWorkerStates(): Unit = {
+    implicit val ec: ExecutionContext = context.system.dispatchers.lookup(kolibriDispatcherName)
+    workerKeyToActiveWorker.keys.foreach(key => {
+      val worker: ActorRef = workerKeyToActiveWorker(key)
+      implicit val timeout: Timeout = Timeout(FiniteDuration(3, TimeUnit.SECONDS))
+      val jobId: String = jobIdFromKey(key)
+      val batchNr: Int = batchNrFromKey(key)
+      worker.ask(ReportBatchState).recover(e => BatchProcessStateResult(jobId, batchNr, Left(e)))
+        .onComplete({
+          case Success(value: BatchProcessStateResult) => {
+            log.debug(s"received batch state result: $value")
+            workerKeyToBatchState(key) = value
+          }
+          case Failure(exception: Exception) => {
+            log.warning(s"exception when retrieving state for job '$jobId', batchNr '$batchNr': ${exception.getClass.getName}")
+            workerKeyToBatchState(key) = BatchProcessStateResult(jobId, batchNr, Left(exception))
+          }
+        })
+    })
+  }
+
+  /**
+    * Send the so current job state to the related job managers
+    */
+  def sendWorkerStatesToJobManager(): Unit = {
+    implicit val ec: ExecutionContext = context.system.dispatchers.lookup(kolibriDispatcherName)
+    workerKeyToBatchState.foreach(x => {
+      workerKeyToJobManager.get(x._1).foreach(jobManager => {
+        jobManager ! x._2
+      })
+
+    })
   }
 
   def distributeRunnable(runnable: ActorRunnable[_, _, _, _], writerOpt: Option[Writers.Writer[MetricAggregation[Tag], Tag, _]]): Unit = {

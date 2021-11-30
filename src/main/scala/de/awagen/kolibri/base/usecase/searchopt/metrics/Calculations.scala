@@ -174,6 +174,10 @@ object Functions {
       MetricRow.empty.copy(params = params).addMetricDontChangeCountStore(addValue)
   }
 
+  def identity[T]: SerializableFunction1[T, CalculationResult[T]] = new SerializableFunction1[T, CalculationResult[T]] {
+    override def apply(msg: T): Either[Seq[ComputeFailReason], T] = Right(msg)
+  }
+
   def findFirstValue(findTrue: Boolean): SerializableFunction1[Seq[Boolean], CalculationResult[Double]] = new SerializableFunction1[Seq[Boolean], CalculationResult[Double]] {
     override def apply(msg: Seq[Boolean]): Either[Seq[ComputeFailReason], Double] =
       msg.indices.find(index => if (findTrue) msg(index) else !msg(index))

@@ -10,16 +10,4 @@ spec:
   resources:
     requests:
       storage: 1Gi
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: kolibri-pv-readonly-claim
-spec:
-  volumeName: kolibri-local-volume-readonly
-  accessModes:
-    - ReadOnlyMany
-  resources:
-    requests:
-      storage: 1Gi
   {{- end }}

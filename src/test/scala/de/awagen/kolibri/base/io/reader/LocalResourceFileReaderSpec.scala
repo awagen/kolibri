@@ -24,13 +24,13 @@ class LocalResourceFileReaderSpec extends UnitTestSpec {
   "LocalResourceFileReader" must {
 
     "correctly read entries" in {
-      val fileReader: LocalResourceFileReader = LocalResourceFileReader(delimiterAndPosition = None, fromClassPath = true)
+      val fileReader: LocalResourceFileReader = LocalResourceFileReader(basePath = "", delimiterAndPosition = None, fromClassPath = true)
       val queries: Seq[String] = fileReader.read("data/queryterms.txt")
       queries mustBe Seq("schuh", "spiegel", "uhr", "hose", "jeans", "tv")
     }
 
     "correctly read entries and pick nth after split" in {
-      val fileReader: LocalResourceFileReader = LocalResourceFileReader(delimiterAndPosition = Some(("\\s+", 1)), fromClassPath = true)
+      val fileReader: LocalResourceFileReader = LocalResourceFileReader(basePath = "", delimiterAndPosition = Some(("\\s+", 1)), fromClassPath = true)
       val queries: Seq[String] = fileReader.read("data/queryterms_column2.txt")
       queries mustBe Seq("term1", "term2", "term3", "term4", "term5")
     }

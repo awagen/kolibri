@@ -26,12 +26,13 @@ object ReaderJsonProtocol extends DefaultJsonProtocol {
     override def read(json: JsValue): Reader[String, Seq[String]] = json match {
       case spray.json.JsObject(fields) => fields("type").convertTo[String] match {
         case "LOCAL_FILE_READER" =>
+          val basePath = fields.get("basePath").map(x => x.convertTo[String]).getOrElse("")
           val delimiter = fields.get("delimiter")
           val position = fields.get("position")
           val fromClasspath = fields("fromClasspath").convertTo[Boolean]
           val encoding = fields.get("encoding").map(x => x.convertTo[String])
           val delimiterAndPosition: Option[(String, Int)] = for {x <- delimiter; y <- position} yield (x.convertTo[String], y.convertTo[Int])
-          LocalResourceFileReader(delimiterAndPosition, fromClasspath, encoding.getOrElse("UTF-8"))
+          LocalResourceFileReader(basePath, delimiterAndPosition, fromClasspath, encoding.getOrElse("UTF-8"))
         case "AWS_S3_FILE_READER" =>
           val bucketName = fields("bucketName").convertTo[String]
           val dirPath = fields("dirPath").convertTo[String]

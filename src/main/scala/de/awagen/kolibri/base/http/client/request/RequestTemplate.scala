@@ -96,7 +96,7 @@ class RequestTemplate(val contextPath: String,
       uri = Uri(s"$query"),
       method = httpMethod,
       protocol = protocol,
-      headers = getContextHeaders,
+      headers = getContextHeaders ++ headers,
       entity = body
     )
     logger.debug(s"request: $request")

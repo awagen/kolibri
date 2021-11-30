@@ -21,6 +21,8 @@ import com.typesafe.config.{Config, ConfigFactory}
 import de.awagen.kolibri.base.actors.resources.{CPUBasedResourceChecker, ResourceChecker}
 import de.awagen.kolibri.base.cluster.ClusterStates.ClusterStatus
 import de.awagen.kolibri.base.config.EnvVariableKeys.{IS_SINGLENODE, NODE_ROLES, POD_IP, PROFILE}
+import de.awagen.kolibri.datatypes.JsonTypeCast
+import de.awagen.kolibri.datatypes.JsonTypeCast.JsonTypeCast
 import de.awagen.kolibri.datatypes.metrics.aggregation.writer.{CSVParameterBasedMetricDocumentFormat, MetricDocumentFormat}
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -122,10 +124,6 @@ object AppProperties {
     val formatType: String = baseConfig.getString("kolibri.format.metricDocumentFormatType")
     val metricDocumentFormat: MetricDocumentFormat = CSVParameterBasedMetricDocumentFormat(columnSeparator = "\t")
 
-    val writerType: String = baseConfig.getString("kolibri.writer.type")
-
-    val writerDirPath: String = baseConfig.getString("kolibri.writer.dirpath")
-
     val startClusterSingletonRouter: Boolean = baseConfig.getBoolean("kolibri.cluster.startClusterSingletonRouter")
 
     val supervisorHousekeepingInterval: FiniteDuration = getFiniteDuration(config = baseConfig,
@@ -133,6 +131,19 @@ object AppProperties {
 
     val runnableExecutionActorHousekeepingInterval: FiniteDuration = getFiniteDuration(config = baseConfig,
       key = "kolibri.execution.runnableExecutionHouseKeepingIntervalInSeconds", SECONDS)
+
+    val aggregatingActorHousekeepingInterval: FiniteDuration = getFiniteDuration(config = baseConfig,
+      key = "kolibri.execution.aggregatingActorHouseKeepingIntervalInSeconds", SECONDS)
+
+    val aggregatingActorStateSendingInterval: FiniteDuration = getFiniteDuration(config = baseConfig,
+      key = "kolibri.execution.aggregatingActorStateSendingIntervalInSeconds", SECONDS)
+
+    val workManagerStateUpdateInterval: FiniteDuration = getFiniteDuration(config = baseConfig,
+      key = "kolibri.execution.workManagerStateUpdateIntervalInSeconds", SECONDS)
+
+    val workManagerReportBatchStateToJobManagerInterval: FiniteDuration = getFiniteDuration(config = baseConfig,
+      key = "kolibri.execution.workManagerReportBatchStateToJobManagerIntervalInSeconds", SECONDS)
+
 
     val jobManagerCheckForCompletionIntervalInSeconds: FiniteDuration = getFiniteDuration(config = baseConfig,
       key = "kolibri.execution.jobManagerCheckForCompletionIntervalInSeconds", SECONDS)
@@ -152,53 +163,38 @@ object AppProperties {
 
     val maxNrBatchRetries: Int = baseConfig.getInt("kolibri.execution.maxNrBatchRetries")
 
-    val awsS3Bucket: Option[String] = {
-      if (baseConfig.hasPath("kolibri.persistence.s3.bucket")) Some(baseConfig.getString("kolibri.persistence.s3.bucket"))
+    def safeGetString(path: String): Option[String] = {
+      if (baseConfig.hasPath(path)) Some(baseConfig.getString(path))
       else None
     }
 
-    val awsS3BucketPath: Option[String] = {
-      if (baseConfig.hasPath("kolibri.persistence.s3.bucketPath")) Some(baseConfig.getString("kolibri.persistence.s3.bucketPath"))
-      else None
-    }
+    val awsS3Bucket: Option[String] = safeGetString("kolibri.persistence.s3.bucket")
 
-    val awsS3Region: Option[Regions] = {
-      if (baseConfig.hasPath("kolibri.persistence.s3.region")) Some(baseConfig.getString("kolibri.persistence.s3.region"))
-        .map(x => Regions.valueOf(x))
-      else None
-    }
+    val awsS3BucketPath: Option[String] = safeGetString("kolibri.persistence.s3.bucketPath")
 
-    val gcpGSBucket: Option[String] = {
-      if (baseConfig.hasPath("kolibri.persistence.gs.bucket")) Some(baseConfig.getString("kolibri.persistence.gs.bucket"))
-      else None
-    }
+    val awsS3Region: Option[Regions] = safeGetString("kolibri.persistence.s3.region").map(x => Regions.valueOf(x))
 
-    val gcpGSBucketPath: Option[String] = {
-      if (baseConfig.hasPath("kolibri.persistence.gs.bucketPath")) Some(baseConfig.getString("kolibri.persistence.gs.bucketPath"))
-      else None
-    }
+    val gcpGSBucket: Option[String] = safeGetString("kolibri.persistence.gs.bucket")
 
-    val gcpGSProjectID: Option[String] = {
-      if (baseConfig.hasPath("kolibri.persistence.gs.projectID")) Some(baseConfig.getString("kolibri.persistence.gs.projectID"))
-      else None
-    }
+    val gcpGSBucketPath: Option[String] = safeGetString("kolibri.persistence.gs.bucketPath")
 
-    val localPersistenceDir: Option[String] = {
-      if (baseConfig.hasPath("kolibri.persistence.local.dir")) Some(baseConfig.getString("kolibri.persistence.local.dir"))
-      else None
-    }
+    val gcpGSProjectID: Option[String] = safeGetString("kolibri.persistence.gs.projectID")
+
+    val localPersistenceWriteBasePath: Option[String] = safeGetString("kolibri.persistence.local.writeBasePath")
+
+    val localPersistenceWriteResultsSubPath: Option[String] = safeGetString("kolibri.persistence.local.writeResultsSubPath")
+
+    val localPersistenceReadBasePath: Option[String] = safeGetString("kolibri.persistence.local.readBasePath")
+
+    val localResourceReadBasePath: Option[String] = safeGetString("kolibri.persistence.local.resources.readBasePath")
+
+    val jobTemplatesPath: Option[String] = safeGetString("kolibri.persistence.templates.jobTemplatesPath")
 
     val persistenceMode: String = baseConfig.getString("kolibri.persistence.mode")
-    val persistenceModuleClass: Option[String] = {
-      if (baseConfig.hasPath("kolibri.persistence.moduleClass")) Some(baseConfig.getString("kolibri.persistence.moduleClass"))
-      else None
-    }
+    val persistenceModuleClass: Option[String] = safeGetString("kolibri.persistence.moduleClass")
 
     val httpConnectionPoolMode: String = baseConfig.getString("kolibri.request.connection.pool.mode")
-    val httpConnectionPoolModuleClass: Option[String] = {
-      if (baseConfig.hasPath("kolibri.request.connection.pool.moduleClass")) Some(baseConfig.getString("kolibri.request.connection.pool.moduleClass"))
-      else None
-    }
+    val httpConnectionPoolModuleClass: Option[String] = safeGetString("kolibri.request.connection.pool.moduleClass")
 
     val directoryPathSeparator: String = baseConfig.getString("kolibri.persistence.directoryPathSeparator")
     val csvColumnSeparator: String = baseConfig.getString("kolibri.persistence.csvColumnSeparator")
@@ -217,6 +213,9 @@ object AppProperties {
       .split(",").map(x => x.trim).filter(x => x.nonEmpty)
     val judgementJsonLinesPlainProductIdSelector: String = baseConfig.getString("kolibri.format.judgements.jsonLines.productIdSelector")
     val judgementJsonLinesPlainJudgementSelector: String = baseConfig.getString("kolibri.format.judgements.jsonLines.judgementSelector")
+    val judgementJsonLinesJudgementValueTypeCast: JsonTypeCast.Val = JsonTypeCast.withName(baseConfig.getString("kolibri.format.judgements.jsonLines.judgementValueTypeCast")).asInstanceOf[JsonTypeCast]
+
+    val useInsecureSSLEngine: Boolean = baseConfig.getBoolean("kolibri.ssl.useInsecureEngine")
   }
 
 }

@@ -29,6 +29,10 @@ trait ExecutionExpectation extends Expectation[Any] {
 
   def succeededExpectations: Seq[Expectation[Any]]
 
+  def statusDesc: String
+
+  override def toString: String = statusDesc
+
   override def deepCopy: ExecutionExpectation
 
 }

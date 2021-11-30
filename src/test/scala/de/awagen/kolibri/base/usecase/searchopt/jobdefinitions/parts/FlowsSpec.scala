@@ -79,7 +79,7 @@ class FlowsSpec extends KolibriTestKitNoCluster
     "correctly generate processingFlow" in {
       // given
       val params: Map[String, Seq[String]] = Map("p1" -> Seq("v1"))
-      val flow: Flow[Modifier[RequestTemplateBuilder], ProcessingMessages.ProcessingMessage[RequestTemplate], NotUsed] = Flows.processingFlow("/testpath/", params)
+      val flow: Flow[Modifier[RequestTemplateBuilder], ProcessingMessages.ProcessingMessage[RequestTemplate], NotUsed] = Flows.modifiersToRequestTemplateMessageFlow("/testpath/", params)
       val modifier1: Modifier[RequestTemplateBuilder] = x => x.withContextPath("newContextPath/")
       val modifier2: Modifier[RequestTemplateBuilder] = x => x
       // when
@@ -208,7 +208,7 @@ class FlowsSpec extends KolibriTestKitNoCluster
           RequestParameterModifier(Map(QUERY_PARAM -> Seq("q1")), replace = true)
         )
       ).via(fullFlow)
-        .runWith(Sink.seq), 2 seconds).map(x => x.data)
+        .runWith(Sink.seq), 5 seconds).map(x => x.data)
       // then
       result.size mustBe 2
       result.head.metrics.keySet mustBe Set("metric1", NDCG5_NAME, NDCG10_NAME, NDCG2_NAME)

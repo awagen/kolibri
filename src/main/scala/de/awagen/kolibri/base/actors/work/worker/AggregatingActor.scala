@@ -34,17 +34,6 @@ import scala.concurrent.ExecutionContextExecutor
 
 object AggregatingActor {
 
-  /**
-    * @param aggregatorConfig
-    * @param expectationSupplier
-    * @param owner
-    * @param jobPartIdentifier
-    * @param writer
-    * @param sendResultBack
-    * @tparam U
-    * @tparam V
-    * @return
-    */
   def props[U, V <: WithCount](aggregatorConfig: AggregatorConfig[U, V],
                                expectationSupplier: () => ExecutionExpectation,
                                owner: ActorRef,
@@ -59,15 +48,22 @@ object AggregatingActor {
 
   trait AggregatingActorEvent extends KolibriSerializable
 
+  // the wrapper for the final result to report back (e.g this should be used for the final result
+  // after applying filters (if applicable) on the data to be sent back and taking the
+  // sendResultDataBackToOwner flag into account
+  case class FinalReportState(state: AggregationState[_]) extends AggregatingActorEvent
+
+  // temporary/final report state without data for owner to enable owner to answer state requests (e.g AggregatingActor itself
+  // will receive many messages in mailbox, so avoiding additional requests)
+  case class StateUpdateWithoutData(state: AggregationStateWithoutData[_], isFinal: Boolean) extends AggregatingActorEvent
+
   case object Close extends AggregatingActorCmd
 
-  case object ProvideStateAndStop
+  case object ProvideStateAndStop extends AggregatingActorCmd
 
-  case object ReportResults extends AggregatingActorCmd
+  case object Housekeeping extends AggregatingActorCmd
 
-  case object Housekeeping
-
-  case object ACK
+  case object ACK extends AggregatingActorEvent
 
 }
 
@@ -84,15 +80,16 @@ object AggregatingActor {
   * can already be stored to persistence, while on the receiving actor we might only be interested in incorporatimg all results and
   * not the single result tags).
   *
-  * @param aggregatorConfig
-  * @param expectationSupplier
-  * @param owner
-  * @param jobPartIdentifier
-  * @param writerOpt
-  * @param sendResultDataBackToOwner
-  * @tparam U
-  * @tparam V
-  */
+  * @param aggregatorConfig - config providing aggregator and optional filters for distinct granularities
+  * @param expectationSupplier - supplier of an expectation on the results to be received
+  * @param owner - the owner of this actor, e.g used for scheduled result reporting
+  * @param jobPartIdentifier - the part identifier for a job
+  * @param writerOpt - optional writer for the aggregation result
+  * @param sendResultDataBackToOwner - flag to indicate whether the full aggregation result shall be reported as result, otherwise only the summary without data will be sent
+  * @tparam U - single result type
+  * @tparam V - aggregation type
+  * @return
+*/
 class AggregatingActor[U, V <: WithCount](val aggregatorConfig: AggregatorConfig[U, V],
                                           val expectationSupplier: () => ExecutionExpectation,
                                           val owner: ActorRef,
@@ -108,33 +105,79 @@ class AggregatingActor[U, V <: WithCount](val aggregatorConfig: AggregatorConfig
   expectation.init
   val aggregator: Aggregator[ProcessingMessage[U], V] = aggregatorConfig.aggregatorSupplier.apply()
   val cancellableSchedule: Cancellable = context.system.scheduler.scheduleAtFixedRate(
-    initialDelay = config.runnableExecutionActorHousekeepingInterval,
-    interval = config.runnableExecutionActorHousekeepingInterval,
+    initialDelay = config.aggregatingActorHousekeepingInterval,
+    interval = config.aggregatingActorHousekeepingInterval,
     receiver = self,
     message = Housekeeping)
 
-  def sendAggregationState(receiver: ActorRef): Unit = {
+  val cancellableResultReport: Cancellable = context.system.scheduler.scheduleAtFixedRate(
+    initialDelay = config.aggregatingActorStateSendingInterval,
+    interval = config.aggregatingActorStateSendingInterval)(() => sendAggregationStateWithoutData(owner))
+
+
+  def sendAggregationStateWithoutData(sendTo: ActorRef): Unit = {
+    log.debug("sending state update to runnable actor")
+    val isFinal: Boolean = expectation.failed || expectation.succeeded
+    sendTo ! StateUpdateWithoutData(aggregationStateWithoutData(aggregator.aggregation), isFinal)
+  }
+
+  def sendFinalReportState(sendTo: ActorRef): Unit = {
+    sendTo ! FinalReportState(aggregationStateFiltered(sendResultDataBackToOwner))
+  }
+
+  /**
+    * Based on the passed aggregation data, compose AggregationState[V] without data
+    * @param aggregationData - the current data state of the aggregation
+    * @return
+    */
+  def aggregationStateWithoutData(aggregationData: V): AggregationStateWithoutData[V] = {
+    AggregationStateWithoutData(aggregationData.count, jobPartIdentifier.jobId, jobPartIdentifier.batchNr, expectation.deepCopy)
+  }
+
+  /**
+    * Based on the passed aggregation data, compose AggregationState[V] with data
+    * @param aggregationData - the current data state of the aggregation
+    * @return
+    */
+  def aggregationStateWithData(aggregationData: V): AggregationStateWithData[V] = {
+    AggregationStateWithData(aggregationData, jobPartIdentifier.jobId, jobPartIdentifier.batchNr, expectation.deepCopy)
+  }
+
+  /**
+    * In case some result filtering before sending is applied (see aggregatorConfig),
+    * apply this and based on this filtered data provide resulting AggregationState
+    * @param withData - flag to indicate whether data shall be included or not. Use true-setting with caution, as this
+    *                 might cause trouble in case of big amounts of data (e.g in case serialization is needed, that is if the requesting
+    *                 actor does not live on the same node. This is the case e.g for the final result
+    *                 returning here, as this will be reported back to JobManager. In those cases storing result
+    *                 and just returning an aggregation state without the actual data to the JobManager is the way to go)
+    * @return
+    */
+  def aggregationStateFiltered(withData: Boolean): AggregationState[V] = {
     val filteredMappedData: V = aggregatorConfig.filteringMapperForResultSending.map(aggregator.aggregation)
-    if (sendResultDataBackToOwner) {
-      // NOTE: in cases of very big responses this doesnt seem to successfully send (probably serialize-deserialize issue)
+    if (withData) {
+      // NOTE: in cases of very big responses this doesnt seem to successfully send if serialization needed (probably serialize-deserialize issue)
       // of expectation, which then is null, as well as jobId for some reason, while the log message above
       // is logged correctly before, referencing expectation
-      receiver ! AggregationStateWithData(filteredMappedData, jobPartIdentifier.jobId, jobPartIdentifier.batchNr, expectation.deepCopy)
+      aggregationStateWithData(filteredMappedData)
     }
     else {
-      receiver ! AggregationStateWithoutData(filteredMappedData.count, jobPartIdentifier.jobId, jobPartIdentifier.batchNr, expectation.deepCopy)
+      aggregationStateWithoutData(filteredMappedData)
     }
   }
 
   def handleExpectationStateAndCloseIfFinished(adjustReceive: Boolean): Unit = {
     if (expectation.succeeded || expectation.failed) {
       cancellableSchedule.cancel()
+      cancellableResultReport.cancel()
       log.info(s"expectation succeeded: ${expectation.succeeded}, expectation failed: ${expectation.failed}")
       log.info(s"sending aggregation state for batch: ${jobPartIdentifier.batchNr}")
 
-      // apply the mapper first to decide which parts of the data to be send to the result receiver
-      // TODO: place fail and success counts within aggregator and then pass them separate from the data (data then doesnt need to be of type WithCount)
-      sendAggregationState(owner)
+      // send state without data based on full, unfiltered data
+      sendAggregationStateWithoutData(owner)
+      // applying mapper first to decide which parts of the data to be send to the result receiver
+      // and then sending result marking it as final result
+      sendFinalReportState(owner)
 
       writerOpt.foreach(writer => {
         writer.write(aggregator.aggregation, StringTag(jobPartIdentifier.jobId))
@@ -162,13 +205,13 @@ class AggregatingActor[U, V <: WithCount](val aggregatorConfig: AggregatorConfig
   def handleAggregationStateMsg(msg: AggregationState[V]): Unit = {
     msg match {
       case e: AggregationStateWithData[V] =>
-        log.info("received aggregation result event with count: {}", e.data.count)
+        log.debug("received aggregation result event with count: {}", e.data.count)
         aggregator.addAggregate(aggregatorConfig.filterAggregationMapperForAggregator.map(e.data))
       case e: AggregationStateWithoutData[V] =>
-        log.info("received aggregation result event with count: {}", e.containedElementCount)
+        log.debug("received aggregation result event with count: {}", e.containedElementCount)
     }
     expectation.accept(msg)
-    log.info("overall partial result count: {}", aggregator.aggregation.count)
+    log.debug("overall partial result count: {}", aggregator.aggregation.count)
     log.debug("expectation state: {}", expectation.statusDesc)
     log.debug(s"expectation: $expectation")
     handleExpectationStateAndCloseIfFinished(true)
@@ -187,25 +230,23 @@ class AggregatingActor[U, V <: WithCount](val aggregatorConfig: AggregatorConfig
     case Close =>
       log.debug("aggregator switched to closed state")
       cancellableSchedule.cancel()
+      cancellableResultReport.cancel()
       context.become(closedState)
-    case ReportResults =>
-      handleExpectationStateAndCloseIfFinished(true)
     case ProvideStateAndStop =>
       log.debug("Providing aggregation state and stopping aggregator")
       cancellableSchedule.cancel()
-      sendAggregationState(owner)
+      cancellableResultReport.cancel()
+      sendAggregationStateWithoutData(sender())
+      // filter results if needed and send result
+      sendFinalReportState(sender())
       self ! PoisonPill
     case Housekeeping =>
       handleExpectationStateAndCloseIfFinished(adjustReceive = true)
-    case ReportResults =>
-      sendAggregationState(sender())
     case e =>
       log.warning("Received unmatched msg: {}", e)
   }
 
   def closedState: Receive = {
-    case ReportResults =>
-      sendAggregationState(sender())
     case _ =>
   }
 }

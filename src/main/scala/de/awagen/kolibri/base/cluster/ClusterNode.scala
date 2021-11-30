@@ -30,7 +30,8 @@ import de.awagen.kolibri.base.config.AppProperties.config.{kolibriDispatcherName
 import de.awagen.kolibri.base.http.server.routes.BaseRoutes._
 import de.awagen.kolibri.base.http.server.HttpServer
 import de.awagen.kolibri.base.http.server.routes.BaseRoutes
-import de.awagen.kolibri.base.http.server.routes.StatusRoutes.{finishedJobStates, health, jobStates, nodeState}
+import de.awagen.kolibri.base.http.server.routes.ResourceRoutes.{getJobTemplateByTypeAndIdentifier, getJobTemplateOverviewForType, getJobTemplateTypes, storeSearchEvaluationTemplate}
+import de.awagen.kolibri.base.http.server.routes.StatusRoutes.{finishedJobStates, getAllJobWorkerStates, getJobStatus, getJobWorkerStatus, getRunningJobIds, health, jobStates, nodeState}
 import kamon.Kamon
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -91,12 +92,6 @@ object ClusterNode extends App {
     implicit val actorSystem: ActorSystem = startSystem()
     implicit val mat: Materializer = Materializer(actorSystem)
     implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatchers.lookup(kolibriDispatcherName)
-    // need to initialiize the BaseRoutes to start Supervisor actor in current actorSystem
-    BaseRoutes.init
-    val usedRoute: Route = route.getOrElse(simpleHelloRoute ~ streamingUserRoutes ~ clusterStatusRoutee ~ killAllJobs
-      ~ getJobStatus ~ killJob ~ getJobWorkerStatus ~ getRunningJobIds ~ executeDistributedPiCalculationExample
-      ~ executeDistributedPiCalculationExampleWithoutSerialization ~ startSearchEval ~ startSearchEvalNoSerialize
-      ~ startExecution ~ nodeState ~ jobStates ~ finishedJobStates ~ health)
     val isHttpServerNode: Boolean = node_roles.contains(config.HTTP_SERVER_ROLE)
 
     logger.info(s"Node roles: $node_roles")
@@ -104,6 +99,15 @@ object ClusterNode extends App {
 
     if (isHttpServerNode) {
       logger.info("Starting httpserver")
+      // need to initialize the BaseRoutes to start Supervisor actor in current actorSystem
+      BaseRoutes.init
+      val usedRoute: Route = route.getOrElse(simpleHelloRoute ~ streamingUserRoutes ~ clusterStatusRoutee ~ killAllJobs
+        ~ getJobStatus ~ killJob ~ getJobWorkerStatus ~ getRunningJobIds ~ executeDistributedPiCalculationExample
+        ~ executeDistributedPiCalculationExampleWithoutSerialization ~ startSearchEval ~ startSearchEvalNoSerialize
+        ~ startExecution ~ nodeState ~ jobStates ~ finishedJobStates ~ health ~ getAllJobWorkerStates
+        ~ getJudgements ~ getAllJudgements ~ getJobTemplateOverviewForType ~ getJobTemplateByTypeAndIdentifier
+        ~ getJobTemplateTypes ~ storeSearchEvaluationTemplate ~ startExecutionDefinition)
+
       HttpServer.startHttpServer(usedRoute, interface = config.http_server_host, port = config.http_server_port).onComplete {
         case Success(serverBinding) => logger.info(s"listening to ${serverBinding.localAddress}")
         case Failure(error) => logger.info(s"error on server start: ${error.getMessage}")

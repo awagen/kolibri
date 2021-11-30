@@ -21,7 +21,7 @@ import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import de.awagen.kolibri.base.format.RegexUtils
 import de.awagen.kolibri.base.io.json.WeightProviderJsonProtocol._
 import de.awagen.kolibri.base.processing.execution.functions.AggregationFunctions.{AggregateFilesWeighted, AggregateFromDirectoryByRegexWeighted, DoNothing, MultiExecution}
-import de.awagen.kolibri.base.processing.execution.functions.AnalyzeFunctions.{GetImprovingAndLoosing, GetImprovingAndLoosingFromDirPerRegex}
+import de.awagen.kolibri.base.processing.execution.functions.AnalyzeFunctions.{GetImprovingAndLoosing, GetImprovingAndLoosingFromDirPerRegex, GetValueVarianceFromDirPerRegex}
 import de.awagen.kolibri.base.processing.execution.functions.Execution
 import de.awagen.kolibri.base.provider.WeightProviders.WeightProvider
 import spray.json.{DefaultJsonProtocol, JsValue, RootJsonFormat, enrichAny}
@@ -110,6 +110,14 @@ object ExecutionJsonProtocol extends DefaultJsonProtocol with SprayJsonSupport {
             n_best,
             n_worst
           )
+        case "ANALYZE_QUERY_METRIC_VARIANCE" =>
+          val directory: String = fields("directory").convertTo[String]
+          val regex: Regex = fields("regex").convertTo[String].r
+          val metricName: String = fields("metricName").convertTo[String]
+          val queryParamName: String = fields("queryParamName").convertTo[String]
+          val queryFromFileName: String => String = x => RegexUtils.findParamValueInString(param = queryParamName,
+            string = x, defaultValue = "MISSING_VALUE")
+          GetValueVarianceFromDirPerRegex(directory, regex, metricName, queryFromFileName)
         case "DO_NOTHING" => DoNothing()
       }
     }

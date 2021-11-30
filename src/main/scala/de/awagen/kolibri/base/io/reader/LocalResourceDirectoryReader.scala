@@ -34,9 +34,9 @@ case class LocalResourceDirectoryReader(baseDir: String,
     val fullDir = s"$normedBaseDir/$subDir".stripSuffix("/").stripPrefix("/")
     Source.fromInputStream(getClass.getClassLoader.getResourceAsStream(fullDir), encoding)
       .getLines()
+      .map(x => s"$fullDir/$x".stripSuffix("/"))
       .filter(baseFilenameFilter.apply)
       .filter(filenameFilter.apply)
-      .map(x => s"$fullDir/$x".stripSuffix("/"))
       .toSeq
   }
 

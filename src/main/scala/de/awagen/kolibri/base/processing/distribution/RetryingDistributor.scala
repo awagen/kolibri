@@ -69,7 +69,7 @@ class RetryingDistributor[T <: WithBatchNr, U](private[this] var maxParallel: In
   override def accept(element: AggregationState[U]): Boolean = {
     val didAccept: Boolean = currentDistributor.accept(element)
     if (didAccept) {
-      logger.info(s"accepted result for batch: ${element.batchNr}")
+      logger.debug(s"accepted result for batch: ${element.batchNr}")
       numResultsReceivedCount += 1
     }
     else {

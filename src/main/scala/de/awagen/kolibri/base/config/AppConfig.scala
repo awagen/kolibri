@@ -49,9 +49,20 @@ object AppConfig {
             filepath,
             judgementFileFormatConfig)
         case "JSON_LINES" =>
-          val jsonQuerySelector: SingleValueSelector[Any] = TypedJsonSingleValueSelector(name = "query", selector = PlainPathSelector(judgementJsonLinesPlainQueryPath), castType = JsonTypeCast.STRING)
-          val jsonProductsSelector: TypedJsonSeqSelector = TypedJsonSeqSelector(name = "products", selector = PlainAndRecursiveSelector(recursiveSelectorKey = judgementJsonLinesPlainProductIdSelector, plainSelectorKeys = judgementJsonLinesPlainProductsPath:_*), castType = JsonTypeCast.STRING)
-          val jsonJudgementsSelector: TypedJsonSeqSelector = TypedJsonSeqSelector(name = "judgements", selector = PlainAndRecursiveSelector(recursiveSelectorKey = judgementJsonLinesPlainJudgementSelector, plainSelectorKeys = judgementJsonLinesPlainProductsPath:_*), castType = JsonTypeCast.DOUBLE)
+          val jsonQuerySelector: SingleValueSelector[Any] = TypedJsonSingleValueSelector(
+            name = "query",
+            selector = PlainPathSelector(judgementJsonLinesPlainQueryPath),
+            castType = JsonTypeCast.STRING
+          )
+          val jsonProductsSelector: TypedJsonSeqSelector = TypedJsonSeqSelector(name = "products", selector = PlainAndRecursiveSelector(recursiveSelectorKey = judgementJsonLinesPlainProductIdSelector, plainSelectorKeys = judgementJsonLinesPlainProductsPath: _*), castType = JsonTypeCast.STRING)
+          val jsonJudgementsSelector: TypedJsonSeqSelector = TypedJsonSeqSelector(
+            name = "judgements",
+            selector = PlainAndRecursiveSelector(
+              recursiveSelectorKey = judgementJsonLinesPlainJudgementSelector,
+              plainSelectorKeys = judgementJsonLinesPlainProductsPath: _*
+            ),
+            castType = judgementJsonLinesJudgementValueTypeCast
+          )
           val queryProductDelimiter: String = judgementQueryAndProductDelimiter
           FileBasedJudgementProvider.createJsonLineBasedProvider(
             filepath,

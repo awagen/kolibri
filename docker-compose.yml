@@ -23,7 +23,7 @@ services:
     user: "1000:1000"
 
   kolibri1:
-    image: kolibri-base:0.1.0-beta7
+    image: kolibri-base:0.1.0-rc0
     ports:
       - "8000:8000"
       - "5266:5266"
@@ -81,13 +81,24 @@ services:
       AWS_S3_BUCKET: 'kolibri-dev'
       AWS_S3_PATH: 'metric_test'
       AWS_S3_REGION: 'EU_CENTRAL_1'
-      LOCAL_STORAGE_DIR: '/app/data'
+      # the file path in the job definitions are to be given relative to the path (or bucket path) defined
+      # for the respective configuration of persistence
+      LOCAL_STORAGE_WRITE_BASE_PATH: '/app/test-files'
+      LOCAL_STORAGE_WRITE_RESULTS_SUBPATH: 'test-results'
+      LOCAL_STORAGE_READ_BASE_PATH: '/app/test-files'
+      # JOB_TEMPLATES_PATH must be relative to the base path or bucket path, depending on the persistence selected
+      JOB_TEMPLATES_PATH: 'templates/jobs'
+      JUDGEMENT_FILE_SOURCE_TYPE: 'CSV'
+      # if judgement file format set to 'JSON_LINES', need to set 'DOUBLE' in case judgements are numeric in the json,
+      # if the numeric value is represented as string, use 'STRING'. This purely refers to how the json value is interpreted,
+      # later this will be cast to double either way
+      JUDGEMENT_FILE_JSON_LINES_JUDGEMENT_VALUE_TYPE_CAST: 'STRING'
+      USE_INSECURE_SSL_ENGINE: 'true'
     volumes:
-      - ./kolibri-test:/app/data
       - ./test-files:/app/test-files
 
   kolibri2:
-    image: kolibri-base:0.1.0-beta7
+    image: kolibri-base:0.1.0-rc0
     ports:
       - "5267:5267"
       - "9096:9096"
@@ -142,9 +153,18 @@ services:
       AWS_S3_BUCKET: 'kolibri-dev'
       AWS_S3_PATH: 'metric_test'
       AWS_S3_REGION: 'EU_CENTRAL_1'
-      LOCAL_STORAGE_DIR: '/app/data'
+      LOCAL_STORAGE_WRITE_BASE_PATH: '/app/test-files'
+      LOCAL_STORAGE_WRITE_RESULTS_SUBPATH: 'test-results'
+      LOCAL_STORAGE_READ_BASE_PATH: '/app/test-files'
+      # JOB_TEMPLATES_PATH must be relative to the base path or bucket path, depending on the persistence selected
+      JOB_TEMPLATES_PATH: 'templates/jobs'
+      JUDGEMENT_FILE_SOURCE_TYPE: 'CSV'
+      # if judgement file format set to 'JSON_LINES', need to set 'DOUBLE' in case judgements are numeric in the json,
+      # if the numeric value is represented as string, use 'STRING'. This purely refers to how the json value is interpreted,
+      # later this will be cast to double either way
+      JUDGEMENT_FILE_JSON_LINES_JUDGEMENT_VALUE_TYPE_CAST: 'STRING'
+      USE_INSECURE_SSL_ENGINE: 'true'
     volumes:
-      - ./kolibri-test:/app/data
       - ./test-files:/app/test-files
 
   # NOTE: starting response-juggler requires cloning https://github.com/awagen/response-juggler and building
@@ -156,13 +176,25 @@ services:
     user: "1000:1000"
     environment:
       PORT: 80
-      RESPONSE_SEARCH_MIN_PRODUCTS: 5
-      RESPONSE_SEARCH_MAX_PRODUCTS: 20
-      RESPONSE_SEARCH_VAR_DOCS_KEY: "#DOCS"
-      RESPONSE_SEARCH_VAR_PID_KEY: "#PID"
-      RESPONSE_SEARCH_VAR_PID_SAMPLE: "p0,p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12,p13,p14,p15,p16,p17,p18,p19"
-      RESPONSE_SEARCH_TEMPLATE: "searchresponse.json"
-      RESPONSE_SEARCH_DOC_PARTIAL: "doc.json"
+      NUM_CONNECTIONS: 100
+      RESPONSE_MAIN_TEMPLATE: "searchresponse.json"
+      RESPONSE_PARTIAL_IDENT_DOCS: "{{DOCS}}"
+      RESPONSE_PARTIAL_CONTENT_DOCS: "doc_bool_flag.json"
+      RESPONSE_PARTIAL_SAMPLER_TYPE_DOCS: "LIST"
+      RESPONSE_PARTIAL_SAMPLER_MIN_NUM_DOCS: 5
+      RESPONSE_PARTIAL_SAMPLER_MAX_NUM_DOCS: 20
+      RESPONSE_FIELD_IDENT_PID: "{{PID}}"
+      RESPONSE_FIELD_SAMPLER_TYPE_PID: "SINGLE"
+      RESPONSE_FIELD_SAMPLER_ELEMENT_CAST_PID: "STRING"
+      RESPONSE_FIELD_SAMPLER_SELECTION_PID: "p0,p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12,p13,p14,p15,p16,p17,p18,p19"
+      RESPONSE_FIELD_IDENT_BOOL: "{{BOOL}}"
+      RESPONSE_FIELD_SAMPLER_TYPE_BOOL: "SINGLE"
+      RESPONSE_FIELD_SAMPLER_ELEMENT_CAST_BOOL: "BOOL"
+      RESPONSE_FIELD_SAMPLER_SELECTION_BOOL: "True,False"
+      RESPONSE_FIELD_IDENT_NUM_FOUND: "{{NUM_FOUND}}"
+      RESPONSE_FIELD_SAMPLER_TYPE_NUM_FOUND: "SINGLE"
+      RESPONSE_FIELD_SAMPLER_ELEMENT_CAST_NUM_FOUND: "INT"
+      RESPONSE_FIELD_SAMPLER_SELECTION_NUM_FOUND: "1,5,6,8,10,12,100,50,200"
     ports:
       - "80:80"
 
@@ -171,12 +203,31 @@ services:
     user: "1000:1000"
     environment:
       PORT: 81
-      RESPONSE_SEARCH_MIN_PRODUCTS: 5
-      RESPONSE_SEARCH_MAX_PRODUCTS: 20
-      RESPONSE_SEARCH_VAR_DOCS_KEY: "#DOCS"
-      RESPONSE_SEARCH_VAR_PID_KEY: "#PID"
-      RESPONSE_SEARCH_VAR_PID_SAMPLE: "p0,p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12,p13,p14,p15,p16,p17,p18,p19"
-      RESPONSE_SEARCH_TEMPLATE: "searchresponse.json"
-      RESPONSE_SEARCH_DOC_PARTIAL: "doc.json"
+      NUM_CONNECTIONS: 100
+      RESPONSE_MAIN_TEMPLATE: "searchresponse.json"
+      RESPONSE_PARTIAL_IDENT_DOCS: "{{DOCS}}"
+      RESPONSE_PARTIAL_CONTENT_DOCS: "doc_bool_flag.json"
+      RESPONSE_PARTIAL_SAMPLER_TYPE_DOCS: "LIST"
+      RESPONSE_PARTIAL_SAMPLER_MIN_NUM_DOCS: 5
+      RESPONSE_PARTIAL_SAMPLER_MAX_NUM_DOCS: 20
+      RESPONSE_FIELD_IDENT_PID: "{{PID}}"
+      RESPONSE_FIELD_SAMPLER_TYPE_PID: "SINGLE"
+      RESPONSE_FIELD_SAMPLER_ELEMENT_CAST_PID: "STRING"
+      RESPONSE_FIELD_SAMPLER_SELECTION_PID: "p0,p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12,p13,p14,p15,p16,p17,p18,p19"
+      RESPONSE_FIELD_IDENT_BOOL: "{{BOOL}}"
+      RESPONSE_FIELD_SAMPLER_TYPE_BOOL: "SINGLE"
+      RESPONSE_FIELD_SAMPLER_ELEMENT_CAST_BOOL: "BOOL"
+      RESPONSE_FIELD_SAMPLER_SELECTION_BOOL: "True,False"
+      RESPONSE_FIELD_IDENT_NUM_FOUND: "{{NUM_FOUND}}"
+      RESPONSE_FIELD_SAMPLER_TYPE_NUM_FOUND: "SINGLE"
+      RESPONSE_FIELD_SAMPLER_ELEMENT_CAST_NUM_FOUND: "INT"
+      RESPONSE_FIELD_SAMPLER_SELECTION_NUM_FOUND: "1,5,6,8,10,12,100,50,200"
     ports:
       - "81:81"
+
+  kolibri-watch:
+    image: kolibri-watch:0.1.0
+    environment:
+      KOLIBRI_BASE_URL: "http://localhost:8000"
+    ports:
+      - "82:80"

@@ -34,19 +34,19 @@ Connection refused:
 
 - check ```ss -tnlp | grep :8558``` (e.g replace the port with the one used for contact probing (check discovery config/
   log messages for connection refused))
-- in case firewall blocks something, might wanna check ```sudo tcpdump -n icmp```
+- in case firewall blocks something, might wanna check ```tcpdump -n icmp```
 
 ## Build jar, build docker image, startup local
 
 - you might temporarily need to clone kolibri-datatypes and publish locally (see kolibri-datatypes README on instructions)
 - build jar (find it in target folder afterwards): ```./scripts/buildJar.sh```
-- build docker image for local usage: ```sudo docker build . -t kolibri-base:0.1.0-beta7```
+- build docker image for local usage: ```docker build . -t kolibri-base:0.1.0-rc0```
 - run single-node cluster (compute and httpserver role, access via localhost:
   8000): ```./scripts/docker_run_single_node.sh```
     - sets interface of http server to 0.0.0.0 to allow requests from host system to localhost:8000 reach the service
       within the container
 - start local 3-node cluster (one compute and httpserver node, two 'compute'-only nodes, access via localhost:
-  8000): ```sudo docker-compose up```
+  8000): ```docker-compose up```
   - NOTE: starting response-juggler as used in the docker-compose.yaml requires cloning ```https://github.com/awagen/response-juggler``` and building
   the image locally via ```docker build -t response-juggler:0.1.0 .```. 
   This service provides a basic response fake to avoid having to have a real search system running, and the parameters defined in the docker-compose
@@ -273,6 +273,38 @@ The commands to generate the reports are as follows:
 
 Its also possible to enable coverage for each build via sbt setting ```coverageEnabled := true```.
 For more settings (such as minimal coverage criteria for build to succeed), see above-referenced project page.
+
+## Adding templates for execution definitions
+Kolibri accepts posting job definitions to the server, which then is processed. In order to simplify the process
+of defining such a definition, templates can be referenced from the storage (see config settings to see the distinct 
+available storage types, e.g AWS, GCP, LOCAL,...). 
+For this, relative to the base path configured, config property ```JOB_TEMPLATES_PATH``` defines where to look for folders.
+Each folder corresponds to a distinct type. 
+The routes to retrieve available template types and corresponding json templates are given in ```ResourceRoutes```.
+Further, endpoint to store a new template of defined type is also defined here.
+On calling with a specified type (given by the folder name), this name is normalized
+(upper-cased and - replaced with _) and matched against values of ```TemplateTypeValidationAndExecutionInfo```.
+If there is a match, the enum value's ```isValid``` call tries to match to the specific type the json shall correspond to
+and its requestPath property defines against which endpoint the template can be thrown to actually execute it.
+This route is used within route ```startExecutionDefinition```, which redirects a passed execution json to the
+execution route for its particular type.
+Note that within a specific template folder, an ```info.json``` can be placed, containing a json with keys corresponding to the valid
+keys of the template structure and values giving descriptions of the possible values.
+On retrieval of a specific template via the ```ResourceRoute's routes```, if available this info is loaded and passed under the key
+```info``` in the response (the actual specific template is provided under key ```template```).
+
+Thus, simplified to add a new template, you have to do:
+- add a ```subfolder``` in the path given by ```JOB_TEMPLATES_PATH``` (which is relative to the configured base path)
+- in ```ResourceRoutes.TemplateTypeValidationAndExecutionInfo```, define an enumeration value that equals to the folder's name 
+after normalization (by default uppercase and - replaced with _; so folder search_evaluation corresponds to enum with name
+SEARCH_EVALUATION)
+- place the templates you want (and which should correspond to json representations of the defined template type) in there
+with suffix ```.json```
+- optionally place an ```info.json``` file in the folder, providing a json with keys being the possible template keys, 
+and the values corresponding to descriptions of the values
+- you can request available templates for given types via ```getJobTemplateOverviewForType``` route, and the content of
+a template along with (if info.json is placed) some descriptions of the fields and values via the 
+```getJobTemplateByTypeAndIdentifier``` route.
 
 ## Local execution - Issues and Fixes
 - starting the setup as provided in docker-compose file can be resource intensive. You might experience within the
