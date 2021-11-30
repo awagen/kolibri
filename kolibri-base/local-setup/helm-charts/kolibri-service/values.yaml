@@ -1,0 +1,243 @@
+# Default values for kolibri-service.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+
+image:
+  # workaround to enable local images for kind cluster,
+  # e.g using local repo localhost:5000
+  repository: localhost:5000/kolibri-base
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  #tag: ""
+
+imagePullSecrets: [ ]
+nameOverride: ""
+fullnameOverride: ""
+
+environmentalVars:
+  PROFILE: 'prod'
+  ROLES: 'httpserver'
+  KAMON_PROMETHEUS_PORT: '9095'
+  KAMON_STATUSPAGE_PORT: '5266'
+  CLUSTER_NODE_HOST: '<getHostAddress>'
+  CLUSTER_NODE_PORT: '8001'
+  CLUSTER_NODE_BIND_HOST: '0.0.0.0'
+  CLUSTER_NODE_BIND_PORT: '8001'
+  MANAGEMENT_HOST: '<getHostAddress>'
+  MANAGEMENT_PORT: '8558'
+  MANAGEMENT_BIND_HOSTNAME: '0.0.0.0'
+  MANAGEMENT_BIND_PORT: '8558'
+  HTTP_SERVER_INTERFACE: '0.0.0.0'
+  HTTP_SERVER_PORT: '8000'
+  DISCOVERY_SERVICE_NAME: 'kolibri-service'
+  KOLIBRI_ACTOR_SYSTEM_NAME: 'KolibriAppSystem'
+  DISCOVERY_METHOD: 'kubernetes-api'
+  REQUEST_PARALLELISM: '16'
+  USE_CONNECTION_POOL_FLOW: 'false'
+  RUNNING_TASK_PER_JOB_MAX_COUNT: '20'
+  RUNNING_TASK_PER_JOB_DEFAULT_COUNT: '2'
+  KOLIBRI_DISPATCHER_PARALLELISM_MIN: '8'
+  KOLIBRI_DISPATCHER_PARALLELISM_FACTOR: '8.0'
+  KOLIBRI_DISPATCHER_PARALLELISM_MAX: '32'
+  KOLIBRI_DISPATCHER_THROUGHPUT: '10'
+  DEFAULT_DISPATCHER_PARALLELISM_FACTOR: '1.0'
+  DEFAULT_DISPATCHER_PARALLELISM_MAX: '2'
+  DEFAULT_DISPATCHER_PARALLELISM_MIN: '1'
+  HTTP_CLIENT_CONNECTION_TIMEOUT: '5s'
+  HTTP_CLIENT_IDLE_TIMEOUT: '10s'
+  HTTP_CONNECTION_POOL_MAX_OPEN_REQUESTS: '1024'
+  HTTP_CONNECTION_POOL_MAX_RETRIES: '3'
+  HTTP_CONNECTION_POOL_MAX_CONNECTIONS: '1024'
+  HTTP_CONNECTION_POOL_SUBSCRIPTION_TIMEOUT: '60 seconds'
+  USE_RESULT_ELEMENT_GROUPING: 'true'
+  RESULT_ELEMENT_GROUPING_COUNT: '2000'
+  RESULT_ELEMENT_GROUPING_INTERVAL_IN_MS: '1000'
+  RESULT_ELEMENT_GROUPING_PARALLELISM: '1'
+  USE_AGGREGATOR_BACKPRESSURE: 'true'
+  AGGREGATOR_RECEIVE_PARALLELISM: '32'
+  MAX_NR_BATCH_RETRIES: '2'
+  PERSISTENCE_MODE: 'CLASS'
+  PERSISTENCE_MODULE_CLASS: 'de.awagen.kolibri.base.config.di.modules.persistence.LocalPersistenceModule'
+  LOCAL_STORAGE_WRITE_BASE_PATH: '/data/test-files'
+  LOCAL_STORAGE_WRITE_RESULTS_SUBPATH: 'k8s-test-results'
+  LOCAL_STORAGE_READ_BASE_PATH: '/data/test-files'
+  JOB_TEMPLATES_PATH: 'templates/jobs'
+
+environmentalVarsComputeNodes:
+  PROFILE: 'prod'
+  ROLES: 'compute'
+  KAMON_PROMETHEUS_PORT: '9095'
+  KAMON_STATUSPAGE_PORT: '5266'
+  CLUSTER_NODE_HOST: '<getHostAddress>'
+  CLUSTER_NODE_PORT: '8001'
+  CLUSTER_NODE_BIND_HOST: '0.0.0.0'
+  CLUSTER_NODE_BIND_PORT: '8001'
+  MANAGEMENT_HOST: '<getHostAddress>'
+  MANAGEMENT_PORT: '8558'
+  MANAGEMENT_BIND_HOSTNAME: '0.0.0.0'
+  MANAGEMENT_BIND_PORT: '8558'
+  DISCOVERY_SERVICE_NAME: 'kolibri-service'
+  KOLIBRI_ACTOR_SYSTEM_NAME: 'KolibriAppSystem'
+  DISCOVERY_METHOD: 'kubernetes-api'
+  REQUEST_PARALLELISM: '16'
+  USE_CONNECTION_POOL_FLOW: 'false'
+  RUNNING_TASK_PER_JOB_MAX_COUNT: '20'
+  RUNNING_TASK_PER_JOB_DEFAULT_COUNT: '2'
+  KOLIBRI_DISPATCHER_PARALLELISM_MIN: '8'
+  KOLIBRI_DISPATCHER_PARALLELISM_FACTOR: '8.0'
+  KOLIBRI_DISPATCHER_PARALLELISM_MAX: '32'
+  KOLIBRI_DISPATCHER_THROUGHPUT: '10'
+  DEFAULT_DISPATCHER_PARALLELISM_FACTOR: '1.0'
+  DEFAULT_DISPATCHER_PARALLELISM_MAX: '2'
+  DEFAULT_DISPATCHER_PARALLELISM_MIN: '1'
+  HTTP_CLIENT_CONNECTION_TIMEOUT: '5s'
+  HTTP_CLIENT_IDLE_TIMEOUT: '10s'
+  HTTP_CONNECTION_POOL_MAX_OPEN_REQUESTS: '1024'
+  HTTP_CONNECTION_POOL_MAX_RETRIES: '3'
+  HTTP_CONNECTION_POOL_MAX_CONNECTIONS: '1024'
+  HTTP_CONNECTION_POOL_SUBSCRIPTION_TIMEOUT: '60 seconds'
+  USE_RESULT_ELEMENT_GROUPING: 'true'
+  RESULT_ELEMENT_GROUPING_COUNT: '2000'
+  RESULT_ELEMENT_GROUPING_INTERVAL_IN_MS: '1000'
+  RESULT_ELEMENT_GROUPING_PARALLELISM: '1'
+  USE_AGGREGATOR_BACKPRESSURE: 'true'
+  AGGREGATOR_RECEIVE_PARALLELISM: '32'
+  MAX_NR_BATCH_RETRIES: '2'
+  PERSISTENCE_MODE: 'CLASS'
+  PERSISTENCE_MODULE_CLASS: 'de.awagen.kolibri.base.config.di.modules.persistence.LocalPersistenceModule'
+  LOCAL_STORAGE_WRITE_BASE_PATH: '/data/test-files'
+  LOCAL_STORAGE_WRITE_RESULTS_SUBPATH: 'k8s-test-results'
+  LOCAL_STORAGE_READ_BASE_PATH: '/data/test-files'
+  JOB_TEMPLATES_PATH: 'templates/jobs'
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: false
+  # Annotations to add to the service account
+  annotations: { }
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+podAnnotations:
+  # for faster cluster forming
+  service.alpha.kubernetes.io/tolerate-unready-endpoints: "true"
+
+podSecurityContext:
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+
+securityContext:
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+#  runAsNonRoot: false
+  runAsUser: 1000
+  runAsGroup: 1000
+  allowPrivilegeEscalation: false
+
+service:
+  type: ClusterIP
+  port: 8000
+  livenessProbe:
+    # exec here instead of httpGet would place a dummy probe that would always succeed
+    #    exec:
+    #      command: ["true"]
+    initialDelaySeconds: 1
+    failureThreshold: 300
+    httpGet:
+      path: /hello
+      port: 8000
+    periodSeconds: 10
+    successThreshold: 1
+    timeoutSeconds: 10
+  readinessProbe:
+    initialDelaySeconds: 1
+    failureThreshold: 300
+    httpGet:
+      path: /hello
+      port: 8000
+    periodSeconds: 10
+    successThreshold: 1
+    timeoutSeconds: 10
+  livenessProbeCompute:
+    initialDelaySeconds: 1
+    failureThreshold: 300
+    httpGet:
+      path: /alive
+      port: 8558
+    periodSeconds: 10
+    successThreshold: 1
+    timeoutSeconds: 10
+  readinessProbeCompute:
+    initialDelaySeconds: 1
+    failureThreshold: 300
+    httpGet:
+      path: /ready
+      port: 8558
+    periodSeconds: 10
+    successThreshold: 1
+    timeoutSeconds: 10
+
+ingress:
+  enabled: false
+  annotations: { }
+  hosts:
+    - host: kolibri-base.local
+      paths:
+        - path: /
+          backend:
+            serviceName: kolibri-service
+            servicePort: 8000
+  tls: [ ]
+
+resources: { }
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+#   cpu: 100m
+#   memory: 128Mi
+
+
+# for the httpserver we do not utilize autoscaling, since
+# computations happen on the compute nodes
+autoscaling:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 1
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 90
+
+autoscalingCompute:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 90
+
+volumeMounts:
+  - mountPath: "/data/test-files"
+    name: kolibri-pv-local-storage-readwrite
+
+localVolume:
+  enabled: true
+  hostPathReadWrite: /local-test-files
+
+nodeSelector: { }
+
+tolerations: [ ]
+
+affinity: { }
+
+labels:
+  app.kubernetes.io/name: kolibri-service

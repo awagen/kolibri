@@ -1,0 +1,11 @@
+{
+  "type": "AGGREGATE_FROM_DIR_BY_REGEX",
+  "weightProvider": {
+    "type": "CONSTANT",
+    "weight": 1.0
+  },
+  "regex": ".*[(]q=.+[)]",
+  "outputFilename": "(ALL1)",
+  "readSubDir": "test-results/testJob1",
+  "writeSubDir": "test-results/testJob1"
+}

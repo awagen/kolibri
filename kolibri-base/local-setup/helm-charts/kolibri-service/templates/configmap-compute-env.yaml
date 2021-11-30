@@ -1,0 +1,7 @@
+# config map for not-secret configuration data
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: configmap-http-env
+data:
+  {{- toYaml .Values.environmentalVarsComputeNodes | nindent 2 }}

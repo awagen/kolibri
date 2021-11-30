@@ -1,0 +1,127 @@
+# Default values for response-juggler.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+image:
+  repository: localhost:5000/response-juggler
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  # tag: ""
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+environmentalVars:
+  PORT: '80'
+  NUM_CONNECTIONS: '100'
+  RESPONSE_MAIN_TEMPLATE: "searchresponse.json"
+  RESPONSE_PARTIAL_IDENT_DOCS: "{{DOCS}}"
+  RESPONSE_PARTIAL_CONTENT_DOCS: "doc_bool_flag.json"
+  RESPONSE_PARTIAL_SAMPLER_TYPE_DOCS: "LIST"
+  RESPONSE_PARTIAL_SAMPLER_MIN_NUM_DOCS: "5"
+  RESPONSE_PARTIAL_SAMPLER_MAX_NUM_DOCS: "20"
+  RESPONSE_FIELD_IDENT_PID: "{{PID}}"
+  RESPONSE_FIELD_SAMPLER_TYPE_PID: "SINGLE"
+  RESPONSE_FIELD_SAMPLER_ELEMENT_CAST_PID: "STRING"
+  RESPONSE_FIELD_SAMPLER_SELECTION_PID: "p0,p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12,p13,p14,p15,p16,p17,p18,p19"
+  RESPONSE_FIELD_IDENT_BOOL: "{{BOOL}}"
+  RESPONSE_FIELD_SAMPLER_TYPE_BOOL: "SINGLE"
+  RESPONSE_FIELD_SAMPLER_ELEMENT_CAST_BOOL: "BOOL"
+  RESPONSE_FIELD_SAMPLER_SELECTION_BOOL: "True,False"
+  RESPONSE_FIELD_IDENT_NUM_FOUND: "{{NUM_FOUND}}"
+  RESPONSE_FIELD_SAMPLER_TYPE_NUM_FOUND: "SINGLE"
+  RESPONSE_FIELD_SAMPLER_ELEMENT_CAST_NUM_FOUND: "INT"
+  RESPONSE_FIELD_SAMPLER_SELECTION_NUM_FOUND: "1,5,6,8,10,12,100,50,200"
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: false
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+service:
+  type: ClusterIP
+  port: 80
+  livenessProbe:
+    initialDelaySeconds: 1
+    failureThreshold: 3000
+    httpGet:
+      path: /
+      port: 80
+    periodSeconds: 10
+    successThreshold: 1
+    timeoutSeconds: 10
+  readinessProbe:
+    initialDelaySeconds: 1
+    failureThreshold: 300
+    httpGet:
+      path: /
+      port: 80
+    periodSeconds: 10
+    successThreshold: 1
+    timeoutSeconds: 10
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  hosts:
+    - host: response-juggler.local
+      paths:
+        - path: /
+          backend:
+            serviceName: response-juggler
+            servicePort: 80
+  tls: []
+  #  - secretName: chart-example-tls
+  #    hosts:
+  #      - chart-example.local
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 1
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+labels:
+  app.kubernetes.io/name: response-juggler

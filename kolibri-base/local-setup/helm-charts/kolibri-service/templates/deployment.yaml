@@ -1,0 +1,118 @@
+# https://doc.akka.io/docs/akka-management/current/kubernetes-deployment/forming-a-cluster.html
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: kolibri
+  name: pod-reader
+rules:
+  - apiGroups: [ "" ]
+    resources: [ "pods" ]
+    verbs: [ "get", "watch", "list" ]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  namespace: kolibri
+  name: read-pods
+subjects:
+  - kind: ServiceAccount
+    name: default
+    namespace: kolibri
+roleRef:
+  kind: Role
+  name: pod-reader
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "kolibri-service.fullname" . }}
+  labels:
+    {{- include "kolibri-service.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "kolibri-service.selectorLabels" . | nindent 6 }}
+      {{- include "kolibri-service.selectorLabelsHttp" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "kolibri-service.selectorLabels" . | nindent 8 }}
+        {{- include "kolibri-service.selectorLabelsHttp" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "kolibri-service.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- if .Values.localVolume.enabled }}
+      volumes:
+        - name: kolibri-pv-local-storage-readwrite
+          persistentVolumeClaim:
+            claimName: kolibri-pv-readwrite-claim
+      {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: app-http
+              containerPort: 8000
+              protocol: TCP
+            - name: management
+              containerPort: 8558
+              protocol: TCP
+            - name: clusternode
+              containerPort: 8001
+              protocol: TCP
+            - name: prometheus
+              containerPort: 9095
+            - name: kamonstatus
+              containerPort: 5266
+          {{- if .Values.localVolume.enabled }}
+          volumeMounts:
+            {{- toYaml .Values.volumeMounts | nindent 12 }}
+          {{- end }}
+          livenessProbe:
+            {{- toYaml .Values.service.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.service.readinessProbe | nindent 12 }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          env:
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: status.podIP
+            - name: K8S_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.namespace
+          envFrom:
+            - configMapRef:
+                name: configmap-env
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

@@ -1,0 +1,233 @@
+version: '3.5'
+
+services:
+
+  prometheus:
+    image: prom/prometheus:v2.28.1
+    ports:
+      - "9000:9090"
+    user: "1000:1000"
+    volumes:
+      - ./prometheus:/etc/prometheus
+      # /prometheus is the default data dir
+      - ./prometheus/data:/prometheus
+    command: --web.enable-lifecycle  --config.file=/etc/prometheus/prometheus.yaml
+
+  grafana:
+    image: grafana/grafana:8.0.5
+    volumes:
+      - ./grafana:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    # user setting needed to be set to owner/group of the volume (above grafana folder on host machine)
+    user: "1000:1000"
+
+  kolibri1:
+    image: kolibri-base:0.1.0-rc0
+    ports:
+      - "8000:8000"
+      - "5266:5266"
+      - "9095:9095"
+    user: "1000:1000"
+    environment:
+      JVM_OPTS: >
+        -XX:+UseG1GC
+        -Xms1024m
+        -Xmx4096m
+      PROFILE: prod
+      ROLES: httpserver
+      KAMON_PROMETHEUS_PORT: 9095
+      KAMON_STATUSPAGE_PORT: 5266
+      CLUSTER_NODE_HOST: kolibri1
+      CLUSTER_NODE_PORT: 8001
+      HTTP_SERVER_INTERFACE: kolibri1
+      HTTP_SERVER_PORT: 8000
+      MANAGEMENT_HOST: kolibri1
+      MANAGEMENT_PORT: 8558
+      MANAGEMENT_BIND_HOSTNAME: '0.0.0.0'
+      MANAGEMENT_BIND_PORT: 8558
+      CLUSTER_NODE_BIND_HOST: '0.0.0.0'
+      CLUSTER_NODE_BIND_PORT: 8001
+      DISCOVERY_SERVICE_NAME: kolibri-service
+      KOLIBRI_ACTOR_SYSTEM_NAME: KolibriAppSystem
+      DISCOVERY_METHOD: config
+      REQUEST_PARALLELISM: 16
+      USE_CONNECTION_POOL_FLOW: 'false'
+      RUNNING_TASK_PER_JOB_MAX_COUNT: 100
+      RUNNING_TASK_PER_JOB_DEFAULT_COUNT: 3
+      KOLIBRI_DISPATCHER_PARALLELISM_MIN: 8
+      KOLIBRI_DISPATCHER_PARALLELISM_FACTOR: 8.0
+      KOLIBRI_DISPATCHER_PARALLELISM_MAX: 32
+      KOLIBRI_DISPATCHER_THROUGHPUT: 10
+      DEFAULT_DISPATCHER_PARALLELISM_FACTOR: 1.0
+      DEFAULT_DISPATCHER_PARALLELISM_MAX: 2
+      DEFAULT_DISPATCHER_PARALLELISM_MIN: 1
+      HTTP_CLIENT_CONNECTION_TIMEOUT: '5s'
+      HTTP_CLIENT_IDLE_TIMEOUT: '10s'
+      HTTP_CONNECTION_POOL_MAX_OPEN_REQUESTS: 1024
+      HTTP_CONNECTION_POOL_MAX_RETRIES: 3
+      HTTP_CONNECTION_POOL_MAX_CONNECTIONS: 1024
+      HTTP_CONNECTION_POOL_SUBSCRIPTION_TIMEOUT: '60 seconds'
+      USE_RESULT_ELEMENT_GROUPING: 'true'
+      RESULT_ELEMENT_GROUPING_COUNT: 2000
+      RESULT_ELEMENT_GROUPING_INTERVAL_IN_MS: 1000
+      RESULT_ELEMENT_GROUPING_PARALLELISM: 1
+      USE_AGGREGATOR_BACKPRESSURE: 'true'
+      AGGREGATOR_RECEIVE_PARALLELISM: 32
+      MAX_NR_BATCH_RETRIES: 2
+      PERSISTENCE_MODE: 'CLASS'
+      PERSISTENCE_MODULE_CLASS: 'de.awagen.kolibri.base.config.di.modules.persistence.LocalPersistenceModule'
+      AWS_PROFILE: 'developer'
+      AWS_S3_BUCKET: 'kolibri-dev'
+      AWS_S3_PATH: 'metric_test'
+      AWS_S3_REGION: 'EU_CENTRAL_1'
+      # the file path in the job definitions are to be given relative to the path (or bucket path) defined
+      # for the respective configuration of persistence
+      LOCAL_STORAGE_WRITE_BASE_PATH: '/app/test-files'
+      LOCAL_STORAGE_WRITE_RESULTS_SUBPATH: 'test-results'
+      LOCAL_STORAGE_READ_BASE_PATH: '/app/test-files'
+      # JOB_TEMPLATES_PATH must be relative to the base path or bucket path, depending on the persistence selected
+      JOB_TEMPLATES_PATH: 'templates/jobs'
+      JUDGEMENT_FILE_SOURCE_TYPE: 'CSV'
+      # if judgement file format set to 'JSON_LINES', need to set 'DOUBLE' in case judgements are numeric in the json,
+      # if the numeric value is represented as string, use 'STRING'. This purely refers to how the json value is interpreted,
+      # later this will be cast to double either way
+      JUDGEMENT_FILE_JSON_LINES_JUDGEMENT_VALUE_TYPE_CAST: 'STRING'
+      USE_INSECURE_SSL_ENGINE: 'true'
+    volumes:
+      - ./test-files:/app/test-files
+
+  kolibri2:
+    image: kolibri-base:0.1.0-rc0
+    ports:
+      - "5267:5267"
+      - "9096:9096"
+    user: "1000:1000"
+    environment:
+      JVM_OPTS: >
+        -XX:+UseG1GC
+        -Xms1024m
+        -Xmx4096m
+      PROFILE: prod
+      ROLES: compute
+      KAMON_PROMETHEUS_PORT: 9096
+      KAMON_STATUSPAGE_PORT: 5267
+      CLUSTER_NODE_HOST: kolibri2
+      CLUSTER_NODE_PORT: 8001
+      MANAGEMENT_HOST: kolibri2
+      MANAGEMENT_PORT: 8559
+      MANAGEMENT_BIND_HOSTNAME: '0.0.0.0'
+      MANAGEMENT_BIND_PORT: 8559
+      CLUSTER_NODE_BIND_HOST: '0.0.0.0'
+      CLUSTER_NODE_BIND_PORT: 8001
+      DISCOVERY_SERVICE_NAME: kolibri-service
+      KOLIBRI_ACTOR_SYSTEM_NAME: KolibriAppSystem
+      DISCOVERY_METHOD: config
+      REQUEST_PARALLELISM: 16
+      USE_CONNECTION_POOL_FLOW: 'false'
+      RUNNING_TASK_PER_JOB_MAX_COUNT: 100
+      RUNNING_TASK_PER_JOB_DEFAULT_COUNT: 3
+      KOLIBRI_DISPATCHER_PARALLELISM_MIN: 8
+      KOLIBRI_DISPATCHER_PARALLELISM_FACTOR: 8.0
+      KOLIBRI_DISPATCHER_PARALLELISM_MAX: 32
+      KOLIBRI_DISPATCHER_THROUGHPUT: 10
+      DEFAULT_DISPATCHER_PARALLELISM_FACTOR: 1.0
+      DEFAULT_DISPATCHER_PARALLELISM_MAX: 2
+      DEFAULT_DISPATCHER_PARALLELISM_MIN: 1
+      HTTP_CLIENT_CONNECTION_TIMEOUT: '5s'
+      HTTP_CLIENT_IDLE_TIMEOUT: '10s'
+      HTTP_CONNECTION_POOL_MAX_OPEN_REQUESTS: 1024
+      HTTP_CONNECTION_POOL_MAX_RETRIES: 3
+      HTTP_CONNECTION_POOL_MAX_CONNECTIONS: 1024
+      HTTP_CONNECTION_POOL_SUBSCRIPTION_TIMEOUT: '60 seconds'
+      USE_RESULT_ELEMENT_GROUPING: 'true'
+      RESULT_ELEMENT_GROUPING_COUNT: 2000
+      RESULT_ELEMENT_GROUPING_INTERVAL_IN_MS: 1000
+      RESULT_ELEMENT_GROUPING_PARALLELISM: 1
+      USE_AGGREGATOR_BACKPRESSURE: 'true'
+      AGGREGATOR_RECEIVE_PARALLELISM: 32
+      MAX_NR_BATCH_RETRIES: 2
+      PERSISTENCE_MODE: 'CLASS'
+      PERSISTENCE_MODULE_CLASS: 'de.awagen.kolibri.base.config.di.modules.persistence.LocalPersistenceModule'
+      AWS_PROFILE: 'developer'
+      AWS_S3_BUCKET: 'kolibri-dev'
+      AWS_S3_PATH: 'metric_test'
+      AWS_S3_REGION: 'EU_CENTRAL_1'
+      LOCAL_STORAGE_WRITE_BASE_PATH: '/app/test-files'
+      LOCAL_STORAGE_WRITE_RESULTS_SUBPATH: 'test-results'
+      LOCAL_STORAGE_READ_BASE_PATH: '/app/test-files'
+      # JOB_TEMPLATES_PATH must be relative to the base path or bucket path, depending on the persistence selected
+      JOB_TEMPLATES_PATH: 'templates/jobs'
+      JUDGEMENT_FILE_SOURCE_TYPE: 'CSV'
+      # if judgement file format set to 'JSON_LINES', need to set 'DOUBLE' in case judgements are numeric in the json,
+      # if the numeric value is represented as string, use 'STRING'. This purely refers to how the json value is interpreted,
+      # later this will be cast to double either way
+      JUDGEMENT_FILE_JSON_LINES_JUDGEMENT_VALUE_TYPE_CAST: 'STRING'
+      USE_INSECURE_SSL_ENGINE: 'true'
+    volumes:
+      - ./test-files:/app/test-files
+
+  # NOTE: starting response-juggler requires cloning https://github.com/awagen/response-juggler and building
+  # the image locally via 'docker build -t response-juggler:0.1.0 .'. It will respond to each request with a random
+  # sampling of the comma-separated PID_SAMPLEs, each result containing between MIN_PRODUCTS and MAX_PRODUCTS.
+  # If another response structure needed, this can easily be adjusted within the response-juggler
+  search-service:
+    image: response-juggler:0.1.0
+    user: "1000:1000"
+    environment:
+      PORT: 80
+      NUM_CONNECTIONS: 100
+      RESPONSE_MAIN_TEMPLATE: "searchresponse.json"
+      RESPONSE_PARTIAL_IDENT_DOCS: "{{DOCS}}"
+      RESPONSE_PARTIAL_CONTENT_DOCS: "doc_bool_flag.json"
+      RESPONSE_PARTIAL_SAMPLER_TYPE_DOCS: "LIST"
+      RESPONSE_PARTIAL_SAMPLER_MIN_NUM_DOCS: 5
+      RESPONSE_PARTIAL_SAMPLER_MAX_NUM_DOCS: 20
+      RESPONSE_FIELD_IDENT_PID: "{{PID}}"
+      RESPONSE_FIELD_SAMPLER_TYPE_PID: "SINGLE"
+      RESPONSE_FIELD_SAMPLER_ELEMENT_CAST_PID: "STRING"
+      RESPONSE_FIELD_SAMPLER_SELECTION_PID: "p0,p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12,p13,p14,p15,p16,p17,p18,p19"
+      RESPONSE_FIELD_IDENT_BOOL: "{{BOOL}}"
+      RESPONSE_FIELD_SAMPLER_TYPE_BOOL: "SINGLE"
+      RESPONSE_FIELD_SAMPLER_ELEMENT_CAST_BOOL: "BOOL"
+      RESPONSE_FIELD_SAMPLER_SELECTION_BOOL: "True,False"
+      RESPONSE_FIELD_IDENT_NUM_FOUND: "{{NUM_FOUND}}"
+      RESPONSE_FIELD_SAMPLER_TYPE_NUM_FOUND: "SINGLE"
+      RESPONSE_FIELD_SAMPLER_ELEMENT_CAST_NUM_FOUND: "INT"
+      RESPONSE_FIELD_SAMPLER_SELECTION_NUM_FOUND: "1,5,6,8,10,12,100,50,200"
+    ports:
+      - "80:80"
+
+  search-service1:
+    image: response-juggler:0.1.0
+    user: "1000:1000"
+    environment:
+      PORT: 81
+      NUM_CONNECTIONS: 100
+      RESPONSE_MAIN_TEMPLATE: "searchresponse.json"
+      RESPONSE_PARTIAL_IDENT_DOCS: "{{DOCS}}"
+      RESPONSE_PARTIAL_CONTENT_DOCS: "doc_bool_flag.json"
+      RESPONSE_PARTIAL_SAMPLER_TYPE_DOCS: "LIST"
+      RESPONSE_PARTIAL_SAMPLER_MIN_NUM_DOCS: 5
+      RESPONSE_PARTIAL_SAMPLER_MAX_NUM_DOCS: 20
+      RESPONSE_FIELD_IDENT_PID: "{{PID}}"
+      RESPONSE_FIELD_SAMPLER_TYPE_PID: "SINGLE"
+      RESPONSE_FIELD_SAMPLER_ELEMENT_CAST_PID: "STRING"
+      RESPONSE_FIELD_SAMPLER_SELECTION_PID: "p0,p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12,p13,p14,p15,p16,p17,p18,p19"
+      RESPONSE_FIELD_IDENT_BOOL: "{{BOOL}}"
+      RESPONSE_FIELD_SAMPLER_TYPE_BOOL: "SINGLE"
+      RESPONSE_FIELD_SAMPLER_ELEMENT_CAST_BOOL: "BOOL"
+      RESPONSE_FIELD_SAMPLER_SELECTION_BOOL: "True,False"
+      RESPONSE_FIELD_IDENT_NUM_FOUND: "{{NUM_FOUND}}"
+      RESPONSE_FIELD_SAMPLER_TYPE_NUM_FOUND: "SINGLE"
+      RESPONSE_FIELD_SAMPLER_ELEMENT_CAST_NUM_FOUND: "INT"
+      RESPONSE_FIELD_SAMPLER_SELECTION_NUM_FOUND: "1,5,6,8,10,12,100,50,200"
+    ports:
+      - "81:81"
+
+  kolibri-watch:
+    image: kolibri-watch:0.1.0
+    environment:
+      KOLIBRI_BASE_URL: "http://localhost:8000"
+    ports:
+      - "82:80"

@@ -1,0 +1,138 @@
+{
+  "jobName": "testJob",
+  "requestTasks": 6,
+  "fixedParams": {
+    "k1": [
+      "v1",
+      "v2"
+    ],
+    "k2": [
+      "v3"
+    ]
+  },
+  "contextPath": "search",
+  "connections": [
+    {
+      "host": "search-service",
+      "port": 80,
+      "useHttps": false
+    },
+    {
+      "host": "search-service1",
+      "port": 81,
+      "useHttps": false
+    }
+  ],
+  "requestPermutation": [
+    {
+      "type": "ALL",
+      "value": {
+        "params": {
+          "type": "FROM_FILES_LINES",
+          "values": {
+            "q": "test-paramfiles/test_queries.txt"
+          }
+        }
+      }
+    },
+    {
+      "type": "ALL",
+      "value": {
+        "params": {
+          "type": "GRID_FROM_VALUES_SEQ",
+          "values": [
+            {
+              "name": "a1",
+              "values": [
+                0.45,
+                0.32
+              ]
+            },
+            {
+              "name": "o",
+              "start": 0.0,
+              "end": 2000.0,
+              "stepSize": 1.0
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "batchByIndex": 0,
+  "parsingConfig": {
+    "singleSelectors": [],
+    "seqSelectors": [
+      {
+        "name": "productIds",
+        "castType": "STRING",
+        "selector": {
+          "type": "PLAINREC",
+          "path": "\\ response \\ docs \\\\ product_id"
+        }
+      }
+    ]
+  },
+  "excludeParamsFromMetricRow": [
+    "q"
+  ],
+  "taggingConfiguration": {
+    "initTagger": {
+      "type": "REQUEST_PARAMETER",
+      "parameter": "q",
+      "extend": false
+    },
+    "processedTagger": {
+      "type": "NOTHING"
+    },
+    "resultTagger": {
+      "type": "NOTHING"
+    }
+  },
+  "requestTemplateStorageKey": "requestTemplate",
+  "mapFutureMetricRowCalculation": {
+    "functionType": "IR_METRICS",
+    "name": "irMetrics",
+    "queryParamName": "q",
+    "requestTemplateKey": "requestTemplate",
+    "productIdsKey": "productIds",
+    "judgementProvider": {
+      "type": "FILE_BASED",
+      "filename": "test-judgements/test_judgements.txt"
+    },
+    "metricsCalculation": {
+      "metrics": [
+        {"name": "DCG_10", "function": {"type": "DCG", "k": 10}},
+        {"name": "NDCG_10", "function": {"type": "NDCG", "k": 10}},
+        {"name": "PRECISION_4", "function": {"type": "PRECISION", "k": 4, "threshold":  0.1}},
+        {"name": "ERR_10", "function": {"type": "ERR", "k": 10}}
+      ],
+      "judgementHandling": {
+        "validations": [
+          "EXIST_RESULTS",
+          "EXIST_JUDGEMENTS"
+        ],
+        "handling": "AS_ZEROS"
+      }
+    },
+    "excludeParams": [
+      "q"
+    ]
+  },
+  "singleMapCalculations": [],
+  "allowedTimePerElementInMillis": 1000,
+  "allowedTimePerBatchInSeconds": 6000,
+  "allowedTimeForJobInSeconds": 720000,
+  "expectResultsFromBatchCalculations": false,
+  "wrapUpFunction": {
+    "type": "AGGREGATE_FROM_DIR_BY_REGEX",
+    "weightProvider": {
+      "type": "CONSTANT",
+      "weight": 1.0
+    },
+    "regex": ".*[(]q=.+[)]",
+    "outputFilename": "(ALL1)",
+    "readSubDir": "test-results/testJob",
+    "writeSubDir": "test-results/testJob"
+  }
+}
