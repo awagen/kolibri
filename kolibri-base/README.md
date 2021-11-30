@@ -1,4 +1,4 @@
-[![Scala CI](https://github.com/awagen/kolibri-base/actions/workflows/scala.yml/badge.svg?event=push)](https://github.com/awagen/kolibri-base/actions/workflows/scala.yml)
+[![Scala CI](https://github.com/awagen/kolibri/kolibri-base/actions/workflows/scala.yml/badge.svg?event=push)](https://github.com/awagen/kolibri/kolibri-base/actions/workflows/scala.yml)
 
 
 # Kolibri Base
