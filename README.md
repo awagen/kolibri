@@ -19,6 +19,13 @@ of the responses of the search system.
 
 Documentation: ```https://awagen.github.io/kolibri/kolibri-base/```
 
+## Kolibri Watch
+Vue project providing a UI for Kolibri.
+The UI allows to start batch executions based on templates and watch the process for jobs overall
+and single batches in particular including resource consumption on the nodes.
+Jobs can also be killed via UI.
+Future iterations will also include result / analysis visualizations.
+
 ## Subproject Handling
 - executing sbt commands on single projects: include the project sub-path
 in the command, such as ```sbt kolibri-base/compile```
