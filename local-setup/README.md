@@ -49,9 +49,9 @@ After it is executed, images can be pushed and used as follows:
 In our case (substitute version accordingly to the version used in docker image tag):
 - ./scripts/kind-with-registry.sh (needed once to create repo and start kind cluster with repo enabled)
 - Then we tag and push push all images to make them available within kind registry:
-  - ```docker tag kolibri-base:0.1.0-beta7 localhost:5000/kolibri-base:0.1.0-beta7```
+  - ```docker tag kolibri-base:0.1.0-rc0 localhost:5000/kolibri-base:0.1.0-rc0```
   - ```docker tag response-juggler:0.1.0 localhost:5000/response-juggler:0.1.0```
-  - ```docker push localhost:5000/kolibri-base:0.1.0-beta7```
+  - ```docker push localhost:5000/kolibri-base:0.1.0-rc0```
   - ```docker push localhost:5000/response-juggler:0.1.0```
 - create namespace: ```kubectl create namespace kolibri```  
 - switch namespace: ```kubens kolibri```  
