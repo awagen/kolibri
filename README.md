@@ -9,7 +9,7 @@ The repository combines the distinct Kolibri projects.
 Provides basic data structures used throughout Kolibri to simplify data
 processing.
 
-Documentation: ```https://awagen.github.io/kolibri/kolibri-datatypes/```
+Documentation: <https://awagen.github.io/kolibri/kolibri-datatypes/>
 
 ## Kolibri Base
 Provides cluster forming, webserver and worker nodes, and batch execution logic including
@@ -17,7 +17,7 @@ jobs regarding batch search evaluation / optimization, requesting the search sys
 and evaluating results based on judgement files and/or custom properties
 of the responses of the search system.
 
-Documentation: ```https://awagen.github.io/kolibri/kolibri-base/```
+Documentation: <https://awagen.github.io/kolibri/kolibri-base/>
 
 ## Kolibri Watch
 Vue project providing a UI for Kolibri.
