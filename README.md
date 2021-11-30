@@ -1,3 +1,5 @@
+[![Scala CI](https://github.com/awagen/kolibri/actions/workflows/scala.yml/badge.svg?event=push)](https://github.com/awagen/kolibri/actions/workflows/scala.yml)
+
 # Kolibri
 The repository combines the distinct Kolibri projects.
 

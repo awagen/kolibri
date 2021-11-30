@@ -1,6 +1,3 @@
-[![Scala CI](https://github.com/awagen/kolibri/kolibri-base/actions/workflows/scala.yml/badge.svg?event=push)](https://github.com/awagen/kolibri/kolibri-base/actions/workflows/scala.yml)
-
-
 # Kolibri Base
 
 This project provides the mechanism to execute jobs based on akka, making use of clustering to distribute job batches.
