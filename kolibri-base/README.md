@@ -44,6 +44,7 @@ Connection refused:
       within the container
 - start local 3-node cluster (one compute and httpserver node, two 'compute'-only nodes, access via localhost:
   8000): ```docker-compose up```
+  - NOTE: for prometheus to start up, create folder named ```data``` in prometheus folder before executing docker-compose up.
   - NOTE: starting response-juggler as used in the docker-compose.yaml requires cloning ```https://github.com/awagen/response-juggler``` and building
   the image locally via ```docker build -t response-juggler:0.1.0 .```. 
   This service provides a basic response fake to avoid having to have a real search system running, and the parameters defined in the docker-compose
