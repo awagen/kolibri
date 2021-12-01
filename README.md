@@ -26,6 +26,16 @@ and single batches in particular including resource consumption on the nodes.
 Jobs can also be killed via UI.
 Future iterations will also include result / analysis visualizations.
 
+Status overview of cluster:
+![KolibriWatch Status](images/kolibri-watch-status.png?raw=true "KolibriWatch Status")
+
+Creating job definitions from templates and starting jobs:
+![KolibriWatch Templates](images/kolibri-watch-templates.png?raw=true "KolibriWatch Templates")
+
+Finished job history:
+![KolibriWatch History](images/kolibri-watch-finished-jobs.png?raw=true "KolibriWatch Finished Jobs")
+
+
 ## Subproject Handling
 - executing sbt commands on single projects: include the project sub-path
 in the command, such as ```sbt kolibri-base/compile```
