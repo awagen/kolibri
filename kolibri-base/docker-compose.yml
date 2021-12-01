@@ -23,7 +23,7 @@ services:
     user: "1000:1000"
 
   kolibri1:
-    image: kolibri-base:0.1.0-rc0
+    image: awagen/kolibri-base:0.1.0-rc0
     ports:
       - "8000:8000"
       - "5266:5266"
@@ -98,7 +98,7 @@ services:
       - ./test-files:/app/test-files
 
   kolibri2:
-    image: kolibri-base:0.1.0-rc0
+    image: awagen/kolibri-base:0.1.0-rc0
     ports:
       - "5267:5267"
       - "9096:9096"
@@ -172,7 +172,7 @@ services:
   # sampling of the comma-separated PID_SAMPLEs, each result containing between MIN_PRODUCTS and MAX_PRODUCTS.
   # If another response structure needed, this can easily be adjusted within the response-juggler
   search-service:
-    image: response-juggler:0.1.0
+    image: awagen/response-juggler:0.1.0
     user: "1000:1000"
     environment:
       PORT: 80
@@ -199,7 +199,7 @@ services:
       - "80:80"
 
   search-service1:
-    image: response-juggler:0.1.0
+    image: awagen/response-juggler:0.1.0
     user: "1000:1000"
     environment:
       PORT: 81
@@ -226,7 +226,7 @@ services:
       - "81:81"
 
   kolibri-watch:
-    image: kolibri-watch:0.1.0
+    image: awagen/kolibri-watch:0.1.0-rc0
     environment:
       KOLIBRI_BASE_URL: "http://localhost:8000"
     ports:
