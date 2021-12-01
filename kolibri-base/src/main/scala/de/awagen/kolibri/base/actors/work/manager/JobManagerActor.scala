@@ -1,18 +1,18 @@
 /**
-  * Copyright 2021 Andreas Wagenmann
-  *
-  * Licensed under the Apache License, Version 2.0 (the "License");
-  * you may not use this file except in compliance with the License.
-  * You may obtain a copy of the License at
-  *
-  * http://www.apache.org/licenses/LICENSE-2.0
-  *
-  * Unless required by applicable law or agreed to in writing, software
-  * distributed under the License is distributed on an "AS IS" BASIS,
-  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  * See the License for the specific language governing permissions and
-  * limitations under the License.
-  */
+ * Copyright 2021 Andreas Wagenmann
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package de.awagen.kolibri.base.actors.work.manager
 
@@ -126,6 +126,9 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
 
   implicit val system: ActorSystem = context.system
   implicit val ec: ExecutionContextExecutor = context.system.dispatchers.lookup(kolibriDispatcherName)
+
+  val SEARCH_EVALUATION_JOB_NAME = "SearchEvaluation"
+  val TEST_PI_CALCULATION_JOB_NAME = "TestPiCalculation"
 
   // processing state keeping track of received results and distribution of new batches
   val jobProcessingState: JobProcessingState[U] = JobProcessingState[U](jobId)
@@ -244,7 +247,7 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
       val jobToProcess = ByFunctionNrLimitedIndexedGenerator(numberBatches, batchNr => Some(JobBatchMsg(jobMsg.jobId, batchNr, testJobMsg)))
       jobProcessingState.initJobToProcess[T](
         jobId = jobId,
-        jobTypeName = "TestPiCalculation",
+        jobTypeName = TEST_PI_CALCULATION_JOB_NAME,
         job = jobToProcess,
         perJobAggregatorSupplier.apply(),
         writer,
@@ -267,7 +270,7 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
       val jobToProcess = ByFunctionNrLimitedIndexedGenerator(jobMsg.processElements.size, batchNr => Some(JobBatchMsg(jobMsg.jobId, batchNr, searchJobMsg)))
       jobProcessingState.initJobToProcess[T](
         jobId = jobId,
-        jobTypeName = "SearchEvaluation",
+        jobTypeName = SEARCH_EVALUATION_JOB_NAME,
         job = jobToProcess,
         perJobAggregatorSupplier.apply(),
         writer,

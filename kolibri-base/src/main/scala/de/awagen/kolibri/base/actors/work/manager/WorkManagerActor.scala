@@ -235,7 +235,7 @@ class WorkManagerActor() extends Actor with ActorLogging with KolibriSerializabl
   def distributeRunnable(runnable: ActorRunnable[_, _, _, _], writerOpt: Option[Writers.Writer[MetricAggregation[Tag], Tag, _]]): Unit = {
     log.debug("received runnable for execution")
     val reportTo = sender()
-    val runnableActor: ActorRef = context.actorOf(RunnableExecutionActor.probs(runnable.maxExecutionDuration, writerOpt))
+    val runnableActor: ActorRef = context.actorOf(RunnableExecutionActor.props(runnable.maxExecutionDuration, writerOpt))
     context.watch(runnableActor)
     val jobKey: String = workerKey(RUNNABLE, runnable.jobId, runnable.batchNr)
     workerKeyToJobManager.put(jobKey, reportTo)

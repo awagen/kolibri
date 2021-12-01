@@ -42,7 +42,7 @@ import scala.concurrent.{ExecutionContextExecutor, Future}
 
 object RunnableExecutionActor {
 
-  def probs[U <: WithCount](maxBatchDurationInSeconds: FiniteDuration,
+  def props[U <: WithCount](maxBatchDurationInSeconds: FiniteDuration,
                             writerOpt: Option[Writer[U, Tag, _]]): Props =
     Props(new RunnableExecutionActor[U](maxBatchDurationInSeconds, writerOpt)).withDispatcher(kolibriDispatcherName)
 
@@ -74,29 +74,31 @@ class RunnableExecutionActor[U <: WithCount](maxBatchDuration: FiniteDuration,
 
   implicit val system: ActorSystem = context.system
   implicit val ec: ExecutionContextExecutor = context.system.dispatchers.lookup(kolibriDispatcherName)
+
+  val AGGREGATION_STATE_SUCCESS_EXPECTATION_KEY = "aggregationState"
   // actual actor config to be able to pass actors for certain functions along
   // e.g actor for sink, actor to be passed as single execution sender and such
-  private[this] var actorConfig: JobActorConfig = _
+  var actorConfig: JobActorConfig = _
   // kill switch of the graph execution to stop the execution if needed
-  private[this] var killSwitch: UniqueKillSwitch = _
+  var killSwitch: UniqueKillSwitch = _
   // Future of the graph execution
-  private[this] var executionFuture: Future[Done] = _
+  var executionFuture: Future[Done] = _
   // expectation bound to the job execution.
   // actually the expectation from the actual ActorRunnable is only needed for
   // the aggregatingActor. Here we only need a simplified expectation,
   // that is a single AggregationState msg from the aggregatingActor, thats all
-  private[this] var expectation: ExecutionExpectation = _
+  var expectation: ExecutionExpectation = _
   // jobId and batch number
-  private[this] var runningJobId: String = _
-  private[this] var runningJobBatchNr: Int = _
+  var runningJobId: String = _
+  var runningJobBatchNr: Int = _
   // sender to send results of the aggregatingActor back to
-  private[this] var jobSender: ActorRef = _
+  var jobSender: ActorRef = _
   // the actor aggregating results
-  private[this] var aggregatingActor: ActorRef = _
+  var aggregatingActor: ActorRef = _
   // cancellable of housekeeping schedule
-  private[this] var housekeepingCancellable: Cancellable = _
+  var housekeepingCancellable: Cancellable = _
   // nr of elements processed in ActorRunnable
-  private[this] var elementsToProcessCount: Int = _
+  var elementsToProcessCount: Int = _
   var sendResultsBack: Boolean = true
   var batchStateUpdate: StateUpdateWithoutData = _
 
@@ -135,10 +137,10 @@ class RunnableExecutionActor[U <: WithCount](maxBatchDuration: FiniteDuration,
       val failExpectations: Seq[Expectation[Any]] = Seq(TimeExpectation(maxBatchDuration))
       expectation = BaseExecutionExpectation(
         fulfillAllForSuccess = Seq(
-          ClassifyingCountExpectation(Map("aggregationState" -> {
+          ClassifyingCountExpectation(Map(AGGREGATION_STATE_SUCCESS_EXPECTATION_KEY -> {
             case _: AggregationState[_] => true
             case _ => false
-          }), expectedClassCounts = Map("aggregationState" -> 1)),
+          }), expectedClassCounts = Map(AGGREGATION_STATE_SUCCESS_EXPECTATION_KEY -> 1)),
         ),
         fulfillAnyForFail = failExpectations)
       expectation.init

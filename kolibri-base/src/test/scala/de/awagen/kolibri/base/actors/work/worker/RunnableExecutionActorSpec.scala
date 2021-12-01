@@ -46,7 +46,7 @@ class RunnableExecutionActorSpec extends KolibriTestKitNoCluster
     "correctly execute ActorRunnable with REPORT_TO_ACTOR_SINK" in {
       // given
       val reportToActor: TestProbe = TestProbe()
-      val runnableExecutorActor: ActorRef = system.actorOf(RunnableExecutionActor.probs(2 seconds, None))
+      val runnableExecutorActor: ActorRef = system.actorOf(RunnableExecutionActor.props(2 seconds, None))
       // when
       runnableExecutorActor.tell(TestMessages.msg1, reportToActor.ref)
       // then
@@ -59,7 +59,7 @@ class RunnableExecutionActorSpec extends KolibriTestKitNoCluster
     "correctly execute ActorRunnable with IGNORE_SINK and reply receiving" in {
       // given
       val reportToActor: TestProbe = TestProbe()
-      val runnableExecutorActor: ActorRef = system.actorOf(RunnableExecutionActor.probs(2 seconds, None))
+      val runnableExecutorActor: ActorRef = system.actorOf(RunnableExecutionActor.props(2 seconds, None))
       // when
       runnableExecutorActor.tell(TestMessages.messagesToActorRefRunnable("testJob"), reportToActor.ref)
       // then
