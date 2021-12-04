@@ -96,7 +96,7 @@ spec:
                 fieldRef:
                   apiVersion: v1
                   fieldPath: status.podIP
-            - name: K8S_NAMESPACE
+            - name: K8S_DISCOVERY_POD_NAMESPACE
               valueFrom:
                 fieldRef:
                   apiVersion: v1

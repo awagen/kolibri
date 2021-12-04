@@ -1,0 +1,114 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kolibri-service-compute
+  labels:
+    app: kolibri-service
+    app.kubernetes.io/name: kolibri-service
+    app.kubernetes.io/instance: kolibri-service
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: kolibri-service
+      app.kubernetes.io/name: kolibri-service
+      app.kubernetes.io/instance: kolibri-service
+      type: compute
+  template:
+    metadata:
+      annotations:
+        service.alpha.kubernetes.io/tolerate-unready-endpoints: "true"
+      labels:
+        app: kolibri-service
+        app.kubernetes.io/name: kolibri-service
+        app.kubernetes.io/instance: kolibri-service
+        # actorSystemName should not be needed for setup to work, yet we add this as identifier to which actor
+        # system the pod belongs (should be same value as actor system name given in the configmap)
+        actorSystemName: KolibriAppSystem
+        # type label indicating it is a compute (or synonymously worker) node
+        type: compute
+    spec:
+      volumes:
+      # procedure of mounting key secret for the used service account described here:
+      # https://cloud.google.com/kubernetes-engine/docs/tutorials/authenticating-to-cloud-platform
+      - name: google-cloud-key
+        secret:
+          # TODO: substitute placeholder for real value
+          secretName: [secret-name-corresponding-to-your-sa-key.json]
+      # TODO: substitute placeholder for real value
+      serviceAccountName: [name-of-used-service-account]
+      containers:
+        - name: kolibri-service
+          image: awagen/kolibri-base:0.1.0-rc0
+          imagePullPolicy: Always
+          volumeMounts:
+          # part of mounting the secret, link to procedure given above
+          - name: google-cloud-key
+            mountPath: /var/secrets/google
+          ports:
+            # akka management port (internal use)
+            - name: management
+              containerPort: 8558
+              protocol: TCP
+            # cluster node ip (internal use)
+            - name: clusternode
+              containerPort: 8001
+              protocol: TCP
+            # prometheus metrics collection port
+            - name: prometheus
+              containerPort: 9095
+            # port to access kamon status-page
+            - name: kamonstatus
+              containerPort: 5266
+          livenessProbe:
+            failureThreshold: 300
+            httpGet:
+              path: /alive
+              port: 8558
+            initialDelaySeconds: 1
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 10
+          readinessProbe:
+            failureThreshold: 300
+            httpGet:
+              path: /ready
+              port: 8558
+            initialDelaySeconds: 1
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 10
+          resources:
+            limits:
+              memory: "1024Mi"
+              cpu: "2"
+            requests:
+              memory: "1024Mi"
+              cpu: "2"
+          env:
+            # what we mounted above we can now reference in the credentials env var that is picked up by gcp libraries
+            # to allow resource access (ull still need to assign the correct rights to your service account)
+            - name: GOOGLE_APPLICATION_CREDENTIALS
+              value: /var/secrets/google/key.json
+            # example how to extract some machine details and pass as env vars, here the ip of the pod
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: status.podIP
+            # this env var corresponding to the utilized namespace on deployment will be the one used by the backend
+            # to find the other pods
+            - name: K8S_DISCOVERY_POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.namespace
+          envFrom:
+            - configMapRef:
+                # referencing the config map resource specific to deployment of the worker node
+                name: kolibri-config-workernode

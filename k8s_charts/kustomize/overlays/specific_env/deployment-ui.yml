@@ -1,0 +1,14 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kolibri-watch
+spec:
+  template:
+    spec:
+#     TODO: if any nodeSelector wanted, fill in here
+#     nodeSelector:
+#       someTypeKey: [value]
+      containers:
+        - name: kolibri-ui
+          image: awagen/kolibri-watch:0.1.0-rc0
+          imagePullPolicy: Always

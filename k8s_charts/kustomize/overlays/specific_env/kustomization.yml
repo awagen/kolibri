@@ -1,0 +1,20 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+bases:
+  - ../../base
+# TODO: replace namespace name with name of namespace used
+namespace: used-namespace
+resources:
+  - hpa.yml
+  - hpaCompute.yml
+  - monitoring.yml
+patchesStrategicMerge:
+  - configmap-httpserver.yml
+  - configmap-workernode.yml
+  - configmap-ui.yml
+  - role-bindings.yml
+  - deployment-httpserver.yml
+  - deployment-workernode.yml
+  - deployment-ui.yml
+  - ingress.yml
+  - ingress-ui.yml

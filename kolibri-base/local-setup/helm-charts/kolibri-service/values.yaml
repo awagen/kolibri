@@ -65,7 +65,6 @@ environmentalVars:
   LOCAL_STORAGE_WRITE_RESULTS_SUBPATH: 'k8s-test-results'
   LOCAL_STORAGE_READ_BASE_PATH: '/data/test-files'
   JOB_TEMPLATES_PATH: 'templates/jobs'
-  K8S_DISCOVERY_POD_NAMESPACE: 'kolibri'
 
 environmentalVarsComputeNodes:
   PROFILE: 'prod'
@@ -113,7 +112,6 @@ environmentalVarsComputeNodes:
   LOCAL_STORAGE_WRITE_RESULTS_SUBPATH: 'k8s-test-results'
   LOCAL_STORAGE_READ_BASE_PATH: '/data/test-files'
   JOB_TEMPLATES_PATH: 'templates/jobs'
-  K8S_DISCOVERY_POD_NAMESPACE: 'kolibri'
 
 serviceAccount:
   # Specifies whether a service account should be created

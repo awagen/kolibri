@@ -1,0 +1,15 @@
+commonLabels:
+  metrics: prometheus
+resources:
+- configmap-httpserver.yml
+- configmap-workernode.yml
+- configmap-ui.yml
+- service-account.yml
+- role-bindings.yml
+- deployment-httpserver.yml
+- deployment-workernode.yml
+- deployment-ui.yml
+- ingress.yml
+- ingress-ui.yml
+- service.yml
+- service-ui.yml

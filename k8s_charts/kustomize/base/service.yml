@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: kolibri-service
+  labels:
+    app: kolibri-service
+    app.kubernetes.io/name: kolibri-service
+    app.kubernetes.io/instance: kolibri-service
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8000
+      targetPort: app-http
+      protocol: TCP
+      name: service-http
+  selector:
+    # limit this to the http node, we dont want to expose the compute pods
+    # as service
+    app: kolibri-service
+    app.kubernetes.io/name: kolibri-service
+    app.kubernetes.io/instance: kolibri-service
+    type: httpserver
+

@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: kolibri-ui
+  labels:
+    app: kolibri-ui
+    app.kubernetes.io/name: kolibri-ui
+    app.kubernetes.io/instance: kolibri-ui
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: ui-port
+      protocol: TCP
+      name: ui-http
+  selector:
+    app: kolibri-ui
+    app.kubernetes.io/name: kolibri-ui
+    app.kubernetes.io/instance: kolibri-ui
+    type: ui
+

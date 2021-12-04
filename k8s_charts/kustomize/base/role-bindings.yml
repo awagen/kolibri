@@ -1,0 +1,24 @@
+# https://doc.akka.io/docs/akka-management/current/kubernetes-deployment/forming-a-cluster.html
+# need below role assignment for node discovery to work
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: kolibri-pod-reader
+rules:
+  - apiGroups: [ "" ]
+    resources: [ "pods" ]
+    verbs: [ "get", "watch", "list" ]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: kolibri-read-pods
+subjects:
+  - kind: ServiceAccount
+    # TODO: this refers to the customly created service account as configured in service-account.yml.
+    # If you want to use another SA, replace the value with the corresponding SA name and remove/comment out service-account.yml
+    name: kolibri-sa
+roleRef:
+  kind: Role
+  name: kolibri-pod-reader
+  apiGroup: rbac.authorization.k8s.io

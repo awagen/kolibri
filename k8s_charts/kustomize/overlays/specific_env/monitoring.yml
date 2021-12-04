@@ -1,0 +1,21 @@
+# this is only relevant in case you have an prometheus-operator running to pickup the metrics
+
+#apiVersion: monitoring.coreos.com/v1
+#kind: ServiceMonitor
+#metadata:
+#  labels:
+#    metric: prometheus
+#    release: prometheus
+#  name: kolibri-service
+#spec:
+#  endpoints:
+#  - honorLabels: true
+#    port: prometheus
+#    path: /prometheus
+#  selector:
+#    matchLabels:
+#      app: kolibri-service
+#  namespaceSelector:
+#    matchNames:
+#    # TODO: here replace with name of used namespace
+#    - used-namespace

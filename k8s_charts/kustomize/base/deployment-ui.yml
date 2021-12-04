@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kolibri-watch
+  labels:
+    app: kolibri-ui
+    app.kubernetes.io/name: kolibri-ui
+    app.kubernetes.io/instance: kolibri-ui
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: kolibri-ui
+      app.kubernetes.io/name: kolibri-ui
+      app.kubernetes.io/instance: kolibri-ui
+      type: ui
+  template:
+    metadata:
+      labels:
+        app: kolibri-ui
+        app.kubernetes.io/name: kolibri-ui
+        app.kubernetes.io/instance: kolibri-ui
+        type: ui
+    spec:
+      containers:
+        - name: kolibri-ui
+          image: awagen/kolibri-watch:0.1.0-rc0
+          imagePullPolicy: Always
+          ports:
+            # port to reach the UI
+            - name: ui-port
+              containerPort: 80
+              protocol: TCP
+          livenessProbe:
+            failureThreshold: 300
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 1
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 10
+          readinessProbe:
+            failureThreshold: 300
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 1
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 10
+          resources:
+            limits:
+              memory: "256Mi"
+              cpu: "1"
+            requests:
+              memory: "256Mi"
+              cpu: "1"
+          envFrom:
+            - configMapRef:
+                # configmap specific for kolibri-watch config
+                name: kolibri-watch-config

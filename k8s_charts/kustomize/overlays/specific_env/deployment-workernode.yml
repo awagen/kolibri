@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kolibri-service-compute
+spec:
+  template:
+    spec:
+#     TODO: if any nodeSelector wanted, fill in here
+#     nodeSelector:
+#       someTypeKey: [value]
+      containers:
+        - name: kolibri-service
+          image: awagen/kolibri-base:0.1.0-rc0
+          imagePullPolicy: Always
+          # our worker nodes should come bit better resourced
+          # than the httpserver type, which is mainly used
+          # to accept job execution requests and status info
+          # heavy execution usually happens on the worker nodes
+          resources:
+            limits:
+              memory: "4096Mi"
+              cpu: "4"
+            requests:
+              memory: "4096Mi"
+              cpu: "4"

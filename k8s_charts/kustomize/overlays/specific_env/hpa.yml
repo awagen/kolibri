@@ -1,0 +1,30 @@
+apiVersion: autoscaling/v2beta1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: kolibri-service
+  labels:
+    app: kolibri-service
+    app.kubernetes.io/name: kolibri-service
+    app.kubernetes.io/instance: kolibri-service
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: kolibri-service
+  # having a hpa is pointless with 1 maxReplica, then replica setting suffices. For completeness given here,
+  # doesnt need to be deployed for the httpserver node (e.g only hpaCompute.yml for the compute nodes is enough
+  # if you dont intend to upscale your node max setting - the httpserver is not expected to have high resource consumption
+  # usually - further right now jobs are instantiated via the cluster's supervisor actor on the httpserver node,
+  # having multiple httpserver nodes would require some state keeping sync between the distinct supervisors. If only single
+  # httpserver node, nothing needs to be done.)
+  minReplicas: 1
+  maxReplicas: 1
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        targetAverageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        targetAverageUtilization: 80

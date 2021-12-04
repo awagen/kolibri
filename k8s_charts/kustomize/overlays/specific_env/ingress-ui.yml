@@ -1,0 +1,19 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+  labels:
+    name: kolibri-ui
+  name: kolibri-ui
+spec:
+  rules:
+    # TODO: fill in correct host here to accept requests for the kolibri-watch UI
+    - host: test.host.com
+      http:
+        paths:
+          - backend:
+              serviceName: kolibri-watch
+              servicePort: 80
+            path: /

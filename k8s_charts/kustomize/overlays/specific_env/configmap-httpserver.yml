@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  creationTimestamp: null
+  name: kolibri-config-httpserver
+data:
+  PERSISTENCE_MODE: 'GCP'
+  # TODO: replace placeholder with used bucket name
+  GCP_GS_BUCKET: ''
+  # TODO: replace placeholder with used bucket path (can be empty string if paths shall be starting on root bucket level)
+  GCP_GS_PATH: ''
+  # TODO: replace placeholder with used project id
+  GCP_GS_PROJECT_ID: ''
