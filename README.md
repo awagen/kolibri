@@ -26,6 +26,8 @@ and single batches in particular including resource consumption on the nodes.
 Jobs can also be killed via UI.
 Future iterations will also include result / analysis visualizations.
 
+Documentation: <https://awagen.github.io/kolibri/kolibri-watch/>
+
 Status overview of cluster:
 ![KolibriWatch Status](images/kolibri-watch-status.png?raw=true "KolibriWatch Status")
 
