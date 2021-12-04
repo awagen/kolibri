@@ -3,7 +3,7 @@ kind: Kustomization
 bases:
   - ../../base
 # TODO: replace namespace name with name of namespace used
-namespace: used-namespace
+namespace: ##NAMESPACE
 resources:
   - hpa.yml
   - hpaCompute.yml

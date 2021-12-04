@@ -5,6 +5,6 @@ metadata:
   name: kolibri-watch-config
 data:
   # TODO: fill in the url as reachable from your browser. Alternatively you can use k8s port-forwarding to the service
-  # in k8s to the correct port (e.g 'kubectl port-forward deployment/kolibri-service 8000:8000') and keep the
+  # in k8s to the correct port (e.g 'kubectl port-forward deployment/kolibri-service 8000:8000') and keep
   # http://localhost:8000
-  KOLIBRI_BASE_URL: 'http://localhost:8000'
+  KOLIBRI_BASE_URL: '##KOLIBRI_BASE_URL'

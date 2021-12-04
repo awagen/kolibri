@@ -10,7 +10,7 @@ metadata:
 spec:
   rules:
     # TODO: fill in correct host here to accept requests for the kolibri-watch UI
-    - host: test.host.com
+    - host: ##UI_INGRESS_HOST
       http:
         paths:
           - backend:

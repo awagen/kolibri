@@ -39,9 +39,9 @@ spec:
       - name: google-cloud-key
         secret:
           # TODO: substitute placeholder for real value
-          secretName: [secret-name-corresponding-to-your-sa-key.json]
+          secretName: ##GCP_CLOUD_KEY_SECRET_NAME
       # TODO: substitute placeholder for real value
-      serviceAccountName: [name-of-used-service-account]
+      serviceAccountName: ##GCP_SERVICE_ACCOUNT_NAME
       containers:
         - name: kolibri-service
           image: awagen/kolibri-base:0.1.0-rc0

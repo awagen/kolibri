@@ -11,7 +11,7 @@ spec:
   rules:
     # TODO: fill in correct host here to accept requests for the httpserver nodes of the kolibri-service
     # (make sure the selector in the service.yml only targets the httpserver nodes of the cluster)
-    - host: test.host.com
+    - host: ##INGRESS_HOST
       http:
         paths:
           - backend:
