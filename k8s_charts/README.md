@@ -6,7 +6,9 @@ yet the environment specific parts are few (mainly referring to the credential m
 similar procedure in AWS).
 Some values need substituting with your environment specific values, and those values are marked with an TODO
 at the moment. Thus before using them to deploy the stack, make sure to replace the values marked with TODO.
-A script to generate the scripts you need for your env will be added shortly.
+A script to generate the scripts you need for your env is provided in the kustomize folder (```copyAndFillIn.sh```).
+This allows you to enter the values that hold for you and on execution replaces the placeholders in the templates with 
+the values you defined in the script to provide executable deployment scripts.
 
 ## Helm Charts
 See an example in the project root's local-setup folder, which contains example helm charts.
