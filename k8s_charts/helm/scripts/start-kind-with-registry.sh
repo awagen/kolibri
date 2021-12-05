@@ -23,6 +23,7 @@ nodes:
   - role: control-plane
     extraMounts:
       # NOTE: you gotta adjust the paths to the root folder where kolibri-base project is located
+      # this serves to mount the local test-files path into the containers
       - hostPath: [your-local-repo-folder]/kolibri-base/test-files/
         containerPath: /local-test-files
 EOF

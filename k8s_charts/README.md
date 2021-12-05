@@ -11,6 +11,6 @@ This allows you to enter the values that hold for you and on execution replaces 
 the values you defined in the script to provide executable deployment scripts.
 
 ## Helm Charts
-See an example in the project root's local-setup folder, which contains example helm charts.
+See an example in the project root's k8s_charts/helm/charts folder, which contains example helm charts.
 Those are written to satisfy the need of starting up a local kind-cluster.
 Helm charts corresponding to above kustomize setup case will likely be added shortly.
