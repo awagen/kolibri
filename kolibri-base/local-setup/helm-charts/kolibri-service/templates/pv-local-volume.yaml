@@ -13,7 +13,7 @@ spec:
   storageClassName: standard
   # for kind setup set path to containerPath the local
   # node's storage (your local machine's) volume is mounted to
-  # see kind cluster config in kind-with-registry.sh script
+  # see kind cluster config in start-kind-with-registry.sh script
   hostPath:
     path: {{ .Values.localVolume.hostPathReadWrite }}
 {{- end }}

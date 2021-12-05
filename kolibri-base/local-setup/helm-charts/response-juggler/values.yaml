@@ -15,7 +15,7 @@ nameOverride: ""
 fullnameOverride: ""
 
 environmentalVars:
-  PORT: '80'
+  PORT: '81'
   NUM_CONNECTIONS: '100'
   RESPONSE_MAIN_TEMPLATE: "searchresponse.json"
   RESPONSE_PARTIAL_IDENT_DOCS: "{{DOCS}}"
@@ -60,13 +60,13 @@ securityContext: {}
 
 service:
   type: ClusterIP
-  port: 80
+  port: 81
   livenessProbe:
     initialDelaySeconds: 1
     failureThreshold: 3000
     httpGet:
       path: /
-      port: 80
+      port: 81
     periodSeconds: 10
     successThreshold: 1
     timeoutSeconds: 10
@@ -75,7 +75,7 @@ service:
     failureThreshold: 300
     httpGet:
       path: /
-      port: 80
+      port: 81
     periodSeconds: 10
     successThreshold: 1
     timeoutSeconds: 10
@@ -92,7 +92,7 @@ ingress:
         - path: /
           backend:
             serviceName: response-juggler
-            servicePort: 80
+            servicePort: 81
   tls: []
   #  - secretName: chart-example-tls
   #    hosts:

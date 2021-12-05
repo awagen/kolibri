@@ -21,10 +21,9 @@ docker tag awagen/response-juggler:$RESPONSE_JUGGLER_VERSION localhost:5000/resp
 docker push localhost:5000/kolibri-base:$KOLIBRI_BASE_VERSION
 docker push localhost:5000/kolibri-watch:$KOLIBRI_WATCH_VERSION
 docker push localhost:5000/response-juggler:$RESPONSE_JUGGLER_VERSION
-# install
+# install services
 helm install kolibri-service --debug ../helm-charts/kolibri-service
 helm install kolibri-watch --debug ../helm-charts/kolibri-watch
 helm install response-juggler --debug ../helm-charts/response-juggler
-
 # change dir back to the directory the script was called from
 cd $full_current_dir

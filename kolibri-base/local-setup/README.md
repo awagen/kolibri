@@ -29,7 +29,7 @@
 ### Use local registry with kind
 As documented here https://kind.sigs.k8s.io/docs/user/local-registry/
 as of now local docker registry has to be created and images pushed to 
-that specific registry. The script located at ```./scripts/kind-with-registry.sh```
+that specific registry. The script located at ```./scripts/start-kind-with-registry.sh```
 (delete and remove registry when you dont need it anymore with 
 ```docker container stop kind-registry && docker container rm -v kind-registry```)
 reflects the script provided in the above link and sets up a local registry
@@ -47,7 +47,7 @@ After it is executed, images can be pushed and used as follows:
   can be used within deployment as image localhost:5000/image:foo.
   
 In our case (substitute version accordingly to the version used in docker image tag):
-- ./scripts/kind-with-registry.sh (needed once to create repo and start kind cluster with repo enabled)
+- ./scripts/start-kind-with-registry.sh (needed once to create repo and start kind cluster with repo enabled)
 - Then we tag and push push all images to make them available within kind registry:
   - ```docker tag kolibri-base:0.1.0-rc0 localhost:5000/kolibri-base:0.1.0-rc0```
   - ```docker tag kolibri-watch:0.1.0-rc0 localhost:5000/kolibri-watch:0.1.0-rc0```
@@ -77,11 +77,11 @@ In our case (substitute version accordingly to the version used in docker image 
 
 ### Start and stop in short
 In the scripts folder you'll find some helper scripts
-- kind-with-registry.sh: starts up local kind cluster and startsup local docker image registry that can be used by kind cluster
+- start-kind-with-registry.sh: starts up local kind cluster and startup local docker image registry that can be used by kind cluster
 - installServices.sh: install service, ui and response-juggler
 - deleteServices.sh: delete service, ui and response-juggler deployments
 - deleteKindClusterAndRemoveKindRegistry.sh: terminate kind cluster and remove the local kind image registry
-  
+
 ### Using hpa locally
 - to allow hpa to pickup pod metrics locally, metrics server needs to be installed:
 https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale-walkthrough/

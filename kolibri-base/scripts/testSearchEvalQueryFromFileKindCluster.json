@@ -14,7 +14,7 @@
   "connections": [
     {
       "host": "response-juggler",
-      "port": 80,
+      "port": 81,
       "useHttps": false
     }
   ],
