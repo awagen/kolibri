@@ -31,9 +31,16 @@ spec:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       {{- if .Values.localVolume.enabled }}
       volumes:
+        {{- if .Values.localVolume.enabled }}
         - name: kolibri-pv-local-storage-readwrite
           persistentVolumeClaim:
             claimName: kolibri-pv-readwrite-claim
+        {{- end }}
+        {{- if .Values.gcpCloudAccess.enabled }}
+        - name: google-cloud-key
+          secret:
+            secretName: {{ .Values.gcpCloudAccess.secretName }}
+        {{- end }}
       {{- end }}
       containers:
         - name: {{ .Chart.Name }}
@@ -52,10 +59,8 @@ spec:
               containerPort: 9095
             - name: kamonstatus
               containerPort: 5266
-          {{- if .Values.localVolume.enabled }}
           volumeMounts:
             {{- toYaml .Values.volumeMounts | nindent 12 }}
-          {{- end }}
           livenessProbe:
             {{- toYaml .Values.service.livenessProbeCompute | nindent 12 }}
           readinessProbe:
@@ -63,6 +68,10 @@ spec:
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           env:
+            {{- if .Values.gcpCloudAccess.enabled }}
+            - name: GOOGLE_APPLICATION_CREDENTIALS
+              value: /var/secrets/google/key.json
+            {{- end }}
             - name: POD_IP
               valueFrom:
                 fieldRef:

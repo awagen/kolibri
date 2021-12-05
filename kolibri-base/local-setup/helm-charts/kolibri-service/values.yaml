@@ -117,7 +117,7 @@ serviceAccount:
   # Specifies whether a service account should be created
   create: false
   # Annotations to add to the service account
-  annotations: { }
+  annotations: {}
   # The name of the service account to use.
   # If not set and create is true, a name is generated using the fullname template
   name: ""
@@ -220,18 +220,29 @@ autoscaling:
 
 autoscalingCompute:
   enabled: true
-  minReplicas: 2
-  maxReplicas: 3
-  targetCPUUtilizationPercentage: 80
-  targetMemoryUtilizationPercentage: 90
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
 
+# NOTE: if no mount to set, set value to empty with value: {}
 volumeMounts:
   - mountPath: "/data/test-files"
     name: kolibri-pv-local-storage-readwrite
+  # NOTE: part of mounting the secret, need to uncomment in case gcp gcpCloudAccess.enabled: true
+#  - name: google-cloud-key
+#    mountPath: /var/secrets/google
 
 localVolume:
   enabled: true
   hostPathReadWrite: /local-test-files
+
+gcpCloudAccess:
+  # if set to true: procedure of mounting key secret for the used service account described here:
+  # https://cloud.google.com/kubernetes-engine/docs/tutorials/authenticating-to-cloud-platform
+  # see deployment yamls for setup
+  enabled: false
+  secretName: ''
 
 nodeSelector: { }
 

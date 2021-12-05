@@ -50,16 +50,24 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 
 {{/*
 Selector labels
-the app-selector label is needed for cluster forming
+the 'app' selector label is needed for cluster forming
 */}}
 {{- define "kolibri-service.selectorLabels" -}}
 app: {{ .Chart.Name  }}
 app.kubernetes.io/name: {{ include "kolibri-service.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
+
+{{/*
+Selector labels specifically for the webserver deployment
+*/}}
 {{- define "kolibri-service.selectorLabelsHttp" -}}
 type: httpserver
 {{- end }}
+
+{{/*
+Selector labels specifically for the compute nodes deployment
+*/}}
 {{- define "kolibri-service.selectorLabelsCompute" -}}
 type: compute
 {{- end }}
