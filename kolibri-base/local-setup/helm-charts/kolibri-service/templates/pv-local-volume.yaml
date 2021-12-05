@@ -16,4 +16,4 @@ spec:
   # see kind cluster config in kind-with-registry.sh script
   hostPath:
     path: {{ .Values.localVolume.hostPathReadWrite }}
-  {{- end }}
+{{- end }}
