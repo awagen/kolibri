@@ -12,5 +12,11 @@ the values you defined in the script to provide executable deployment scripts.
 
 ## Helm Charts
 See an example in the project root's k8s_charts/helm/charts folder, which contains example helm charts.
-Those are written to satisfy the need of starting up a local kind-cluster.
-Helm charts corresponding to above kustomize setup case will likely be added shortly.
+Those are written to satisfy the need of starting up a local kind-cluster. Corresponding startup scripts
+for kind cluster with docker registry available within the kind cluster and service installation are provided in the 
+k8s_charts/helm/scripts folder. The charts can be easily adjusted by modifying the config values defined in values.yaml.
+The setup defined in the charts correspond to above kustomize setup case.
+
+## Notes
+- the provided helm and kustomize charts might deviate at some point, at which the kustomize charts shall be seen as example,
+while the helm charts are to be seen as reference.
