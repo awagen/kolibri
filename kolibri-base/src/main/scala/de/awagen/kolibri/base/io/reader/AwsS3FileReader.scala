@@ -20,13 +20,18 @@ package de.awagen.kolibri.base.io.reader
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.s3.model.{GetObjectRequest, S3Object, S3ObjectInputStream}
 import com.amazonaws.services.s3.{AmazonS3, AmazonS3ClientBuilder}
+import de.awagen.kolibri.base.io.reader.ReaderUtils.normalizeBucketPath
 
 import java.util.Objects
 import scala.io.Source
 
+
 case class AwsS3FileReader(bucketName: String,
                            dirPath: String,
-                           region: Regions) extends Reader[String, Seq[String]] {
+                           region: Regions,
+                           delimiter: String = "/") extends Reader[String, Seq[String]] {
+
+  val dirPathNormalized: String = normalizeBucketPath(dirPath, delimiter)
 
   private[this] var s3Client: AmazonS3 = _
 
@@ -41,7 +46,11 @@ case class AwsS3FileReader(bucketName: String,
 
   override def getSource(fileIdentifier: String): Source = {
     setS3ClientIfNotSet()
-    val obj: S3Object = s3Client.getObject(new GetObjectRequest(bucketName, fileIdentifier))
+    val normalizedFileIdentifier = fileIdentifier.trim match {
+      case identifier if dirPathNormalized.nonEmpty && identifier.startsWith(dirPathNormalized) => identifier
+      case identifier => s"$dirPath$identifier".stripSuffix(delimiter)
+    }
+    val obj: S3Object = s3Client.getObject(new GetObjectRequest(bucketName, normalizedFileIdentifier))
     val objData: S3ObjectInputStream = obj.getObjectContent;
     Source.fromInputStream(objData)
   }

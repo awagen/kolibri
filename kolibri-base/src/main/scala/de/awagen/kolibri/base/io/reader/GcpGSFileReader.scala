@@ -23,6 +23,7 @@ import scala.io.Source
 import com.google.cloud.storage.BlobId
 import com.google.cloud.storage.Storage
 import com.google.cloud.storage.StorageOptions
+import de.awagen.kolibri.base.io.reader.ReaderUtils.{getFullBucketPath, normalizeBucketPath}
 
 
 /**
@@ -37,10 +38,7 @@ case class GcpGSFileReader(bucketName: String,
                            projectID: String,
                            delimiter: String = "/") extends Reader[String, Seq[String]] {
 
-  val dirPathNormalized: String = dirPath.trim.stripPrefix(delimiter).stripSuffix(delimiter).trim match {
-    case "" => ""
-    case path => s"$path$delimiter"
-  }
+  val dirPathNormalized: String = normalizeBucketPath(dirPath, delimiter)
 
   val storage: Storage = StorageOptions.newBuilder
     .setProjectId(projectID).build.getService
@@ -50,9 +48,7 @@ case class GcpGSFileReader(bucketName: String,
   }
 
   private[this] def getBlobPath(fileIdentifier: String): String = {
-    if (dirPathNormalized.nonEmpty && fileIdentifier.startsWith(dirPathNormalized)) fileIdentifier
-    else if (dirPathNormalized.isEmpty) fileIdentifier.stripPrefix(delimiter)
-    else s"$dirPathNormalized/${fileIdentifier.stripPrefix(delimiter)}"
+    getFullBucketPath(dirPathNormalized, fileIdentifier, delimiter)
   }
 
   override def getSource(fileIdentifier: String): Source = {

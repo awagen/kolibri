@@ -20,6 +20,7 @@ import com.amazonaws.regions.Regions
 import com.amazonaws.services.s3.model.{ObjectMetadata, PutObjectRequest, PutObjectResult}
 import com.amazonaws.services.s3.{AmazonS3, AmazonS3ClientBuilder}
 import com.amazonaws.{AmazonServiceException, SdkClientException}
+import de.awagen.kolibri.base.io.reader.ReaderUtils.normalizeBucketPath
 import de.awagen.kolibri.base.io.writer.Writers.FileWriter
 import org.apache.commons.io.IOUtils
 import org.slf4j.{Logger, LoggerFactory}
@@ -31,7 +32,10 @@ import java.util.Objects
 case class AwsS3FileWriter(bucketName: String,
                            dirPath: String,
                            region: Regions,
-                           contentType: String = "text/plain; charset=UTF-8") extends FileWriter[String, PutObjectResult] {
+                           contentType: String = "text/plain; charset=UTF-8",
+                           delimiter: String = "/") extends FileWriter[String, PutObjectResult] {
+
+  val dirPathNormalized: String = normalizeBucketPath(dirPath, delimiter)
 
   private val logger: Logger = LoggerFactory.getLogger(AwsS3FileWriter.getClass)
 
@@ -65,7 +69,7 @@ case class AwsS3FileWriter(bucketName: String,
       val metaData: ObjectMetadata = baseMetaData()
       metaData.setContentLength(data.getBytes(StandardCharsets.UTF_8).length)
       val contentStream = IOUtils.toInputStream(data, "UTF-8")
-      val key = s"${dirPath.stripSuffix("/")}/$targetIdentifier"
+      val key = s"$dirPathNormalized$targetIdentifier".stripSuffix(delimiter)
       val putObjectRequest: PutObjectRequest = new PutObjectRequest(bucketName, key , contentStream, metaData)
       val result = s3Client.putObject(putObjectRequest)
       logger.info(s"write result: $result")

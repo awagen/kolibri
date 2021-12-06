@@ -18,6 +18,7 @@
 package de.awagen.kolibri.base.io.writer.base
 
 import com.google.cloud.storage.{BlobId, BlobInfo, Storage, StorageOptions}
+import de.awagen.kolibri.base.io.reader.ReaderUtils.normalizeBucketPath
 import de.awagen.kolibri.base.io.writer.Writers.FileWriter
 
 /**
@@ -27,15 +28,17 @@ import de.awagen.kolibri.base.io.writer.Writers.FileWriter
   * @param projectID - the project id for which the bucket was created
   */
 case class GcpGSFileWriter(bucketName: String,
-                           var dirPath: String,
-                           projectID: String) extends FileWriter[String, Unit] {
-  val dirPathNormalized: String = dirPath.stripPrefix("/").stripSuffix("/")
+                           dirPath: String,
+                           projectID: String,
+                           delimiter: String = "/") extends FileWriter[String, Unit] {
+  val dirPathNormalized: String = normalizeBucketPath(dirPath, delimiter)
+
   val storage: Storage = StorageOptions.newBuilder
     .setProjectId(projectID).build.getService
 
   override def write(data: String, targetIdentifier: String): Either[Exception, Unit] = {
-    val targetIdentifierNormalized: String = targetIdentifier.stripPrefix("/")
-    val objectName = s"$dirPathNormalized/$targetIdentifierNormalized"
+    val targetIdentifierNormalized: String = targetIdentifier.stripPrefix(delimiter)
+    val objectName = s"$dirPathNormalized$targetIdentifierNormalized".stripPrefix(delimiter)
     val blobId: BlobId = BlobId.of(bucketName, objectName)
     val blobInfo: BlobInfo = BlobInfo.newBuilder(blobId).build
     try {
