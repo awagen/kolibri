@@ -84,7 +84,7 @@ ThisBuild / scalacOptions ++= Seq(
   "-unchecked", // additional warnings where generated code depends on assumptions
   "-Xlint", // recommended additional warnings
   "-Ywarn-value-discard", // Warn when non-Unit expression results are unused
-  "-Ywarn-dead-code",
+  "-Ywarn-dead-code"
 )
 //javaOptions
 ThisBuild / javaOptions in Runtime ++= jvmOptions
@@ -188,7 +188,7 @@ lazy val `kolibri-base` = (project in file("."))
     name := "kolibri-base",
     libraryDependencies ++= additionalDependencies,
     resolvers ++= additionalResolvers,
-    mainClass in assembly := Some("de.awagen.kolibri.base.cluster.ClusterNode"),
+    mainClass in assembly := Some("de.awagen.kolibri.base.cluster.ClusterNode")
   )
   .enablePlugins(JvmPlugin)
 

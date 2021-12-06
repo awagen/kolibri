@@ -19,6 +19,8 @@ package de.awagen.kolibri.base.io.reader
 
 import com.google.api.gax.paging.Page
 import com.google.cloud.storage.{Blob, Storage, StorageOptions}
+import org.slf4j.{Logger, LoggerFactory}
+
 import scala.jdk.CollectionConverters._
 
 
@@ -37,11 +39,17 @@ case class GcpGSDirectoryReader(bucketName: String,
                                 projectID: String,
                                 delimiter: String = "/",
                                 fileFilter: String => Boolean) extends DataOverviewReader {
-  val dirPathNormalized: String = dirPath.stripPrefix(delimiter).stripSuffix(delimiter)
+  val logger: Logger = LoggerFactory.getLogger(this.getClass)
+
+  val dirPathNormalized: String = dirPath.trim.stripPrefix(delimiter).stripSuffix(delimiter).trim match {
+    case "" => ""
+    case path => s"$path$delimiter"
+  }
   val storage: Storage = StorageOptions.newBuilder.setProjectId(projectID).build.getService
 
   override def listResources(subDir: String, baseFilenameFilter: String => Boolean): Seq[String] = {
-    val prefix = s"$dirPathNormalized$delimiter${subDir.stripPrefix(delimiter.stripSuffix(delimiter))}$delimiter"
+    val prefix = s"$dirPathNormalized${subDir.stripPrefix(delimiter).stripSuffix(delimiter)}$delimiter"
+    logger.info(s"looking for resources in bucket '$bucketName' and prefix '$prefix'")
     val blobs: Page[Blob] = storage.list(
       bucketName,
       // prefix determines the path prefix of the "filename"
@@ -49,10 +57,12 @@ case class GcpGSDirectoryReader(bucketName: String,
       // delimiter specifies the path delimiter
       Storage.BlobListOption.delimiter(delimiter)
     )
-    blobs.iterateAll().iterator().asScala.toSeq
+    val foundFiles = blobs.iterateAll().iterator().asScala.toSeq
       .filter(x => !x.isDirectory)
       // blob contains the full path from bucket root, thus we remove the base path here
       .map(x => x.getName.stripPrefix(dirPathNormalized).stripPrefix("/"))
       .filter(x => fileFilter.apply(x))
+    logger.info(s"found files in bucket '$bucketName' and prefix '$prefix': ${foundFiles.mkString(",")}")
+    foundFiles
   }
 }
