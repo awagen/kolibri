@@ -58,10 +58,10 @@ case class GcpGSDirectoryReader(bucketName: String,
       Storage.BlobListOption.delimiter(delimiter)
     )
     val foundFiles = blobs.iterateAll().iterator().asScala.toSeq
-      .filter(x => !x.isDirectory)
-      // blob contains the full path from bucket root, thus we remove the base path here
-      .map(x => x.getName.stripPrefix(dirPathNormalized).stripPrefix("/"))
+      // blob name contains the full path from bucket root
+      .map(x => x.getName)
       .filter(x => fileFilter.apply(x))
+      .filter(x => baseFilenameFilter.apply(x))
     logger.info(s"found files in bucket '$bucketName' and prefix '$prefix': ${foundFiles.mkString(",")}")
     foundFiles
   }

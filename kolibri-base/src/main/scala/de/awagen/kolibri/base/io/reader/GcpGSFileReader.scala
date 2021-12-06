@@ -34,9 +34,13 @@ import com.google.cloud.storage.StorageOptions
   */
 case class GcpGSFileReader(bucketName: String,
                            dirPath: String,
-                           projectID: String) extends Reader[String, Seq[String]] {
+                           projectID: String,
+                           delimiter: String = "/") extends Reader[String, Seq[String]] {
 
-  val dirPathNormalized: String = dirPath.stripPrefix("/").stripSuffix("/")
+  val dirPathNormalized: String = dirPath.trim.stripPrefix(delimiter).stripSuffix(delimiter).trim match {
+    case "" => ""
+    case path => s"$path$delimiter"
+  }
 
   val storage: Storage = StorageOptions.newBuilder
     .setProjectId(projectID).build.getService
@@ -46,7 +50,9 @@ case class GcpGSFileReader(bucketName: String,
   }
 
   private[this] def getBlobPath(fileIdentifier: String): String = {
-    s"$dirPathNormalized/${fileIdentifier.stripPrefix("/")}"
+    if (dirPathNormalized.nonEmpty && fileIdentifier.startsWith(dirPathNormalized)) fileIdentifier
+    else if (dirPathNormalized.isEmpty) fileIdentifier.stripPrefix(delimiter)
+    else s"$dirPathNormalized/${fileIdentifier.stripPrefix(delimiter)}"
   }
 
   override def getSource(fileIdentifier: String): Source = {
