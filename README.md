@@ -19,6 +19,9 @@ of the responses of the search system.
 
 Documentation: <https://awagen.github.io/kolibri/kolibri-base/>
 
+Grafana Board:
+![KolibriBase Grafana Board](images/Kolibri-Dashboard-Grafana.png?raw=true "KolibriBase Grafana Board")
+
 ## Kolibri Watch
 Vue project providing a UI for Kolibri.
 The UI allows to start batch executions based on templates and watch the process for jobs overall
