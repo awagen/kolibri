@@ -1,18 +1,18 @@
 /**
-  * Copyright 2021 Andreas Wagenmann
-  *
-  * Licensed under the Apache License, Version 2.0 (the "License");
-  * you may not use this file except in compliance with the License.
-  * You may obtain a copy of the License at
-  *
-  * http://www.apache.org/licenses/LICENSE-2.0
-  *
-  * Unless required by applicable law or agreed to in writing, software
-  * distributed under the License is distributed on an "AS IS" BASIS,
-  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  * See the License for the specific language governing permissions and
-  * limitations under the License.
-  */
+ * Copyright 2021 Andreas Wagenmann
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package de.awagen.kolibri.base.actors.work.aboveall
 
@@ -109,7 +109,11 @@ object SupervisorActor {
 
   case object KillAllChildren extends SupervisorCmd
 
-  case class GetJobWorkerStatus(job: String)
+  case class GetJobWorkerStatus(job: String) extends SupervisorCmd
+
+  case object GetAllJobWorkerStates extends SupervisorCmd
+
+  case class AllJobWorkerStates(states: Seq[WorkerStatusResponse]) extends SupervisorMsg
 
   type ActorRunnableJobGenerator[U, V, V1, W <: WithCount] = IndexedGenerator[ActorRunnable[U, V, V1, W]]
   type TaggedTypeTaggedMapBatch = Batch[TypeTaggedMap with TaggedWithType]
@@ -357,7 +361,7 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
     case KillAllChildren => context.children.foreach(x => context.stop(x))
     case GetJobWorkerStatus(jobId) =>
       val reportTo: ActorRef = sender()
-      implicit val timeout: Timeout = Timeout(5 seconds)
+      implicit val timeout: Timeout = Timeout(2 seconds)
       val setupAndExpectation: Option[(ActorSetup, ExecutionExpectation)] = jobIdToActorRefAndExpectation.get(jobId)
       setupAndExpectation.foreach(x => {
         x._1.executing.ask(GetStatusForWorkers)(timeout, self).onComplete({
@@ -372,6 +376,20 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
       if (setupAndExpectation.isEmpty) {
         reportTo ! WorkerStatusResponse(Seq.empty)
       }
+    case GetAllJobWorkerStates =>
+      val reportTo: ActorRef = sender()
+      implicit val timeout: Timeout = Timeout(2 seconds)
+      val futures: Seq[Future[WorkerStatusResponse]] = jobIdToActorRefAndExpectation.keys.map(jobId => {
+        jobIdToActorRefAndExpectation(jobId)._1.executing.ask(GetStatusForWorkers)(timeout, self)
+          .recover(e => WorkerStatusResponse(Seq(BatchProcessStateResult(jobId, -1, Left(e)))))
+          .map(x => x.asInstanceOf[WorkerStatusResponse])
+      }).toSeq
+      val future: Future[Seq[WorkerStatusResponse]] = Future.sequence(futures)
+      future.onComplete({
+        case Success(value: Seq[WorkerStatusResponse]) => reportTo ! AllJobWorkerStates(value)
+        case _ => reportTo ! AllJobWorkerStates(Seq.empty)
+      })
+
     case e =>
       log.warning("Unknown message (will be ignored): {}", e)
   }
@@ -379,10 +397,10 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
   override def receive: Receive = informationProvidingReceive.orElse(jobStartingReceive).orElse(stateKeepingReceive)
 
   /**
-    * We keep a very relaxed supervision here by just allowing the actors
-    * responsible for distributing the processing of single jobs to keep their state
-    * and continue listening to messages arriving at their inbox.
-    */
+   * We keep a very relaxed supervision here by just allowing the actors
+   * responsible for distributing the processing of single jobs to keep their state
+   * and continue listening to messages arriving at their inbox.
+   */
   override val supervisorStrategy: OneForOneStrategy =
     OneForOneStrategy(maxNrOfRetries = config.supervisorMaxNumOfRetries, withinTimeRange = config.supervisorMaxNumOfRetriesWithinTime) {
       case e: Exception =>

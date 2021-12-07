@@ -1,18 +1,18 @@
 /**
-  * Copyright 2021 Andreas Wagenmann
-  *
-  * Licensed under the Apache License, Version 2.0 (the "License");
-  * you may not use this file except in compliance with the License.
-  * You may obtain a copy of the License at
-  *
-  * http://www.apache.org/licenses/LICENSE-2.0
-  *
-  * Unless required by applicable law or agreed to in writing, software
-  * distributed under the License is distributed on an "AS IS" BASIS,
-  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  * See the License for the specific language governing permissions and
-  * limitations under the License.
-  */
+ * Copyright 2021 Andreas Wagenmann
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 
 package de.awagen.kolibri.base.http.server.routes
@@ -81,8 +81,8 @@ object StatusRoutes extends CORSHandler {
   }
 
   /**
-    * Order BatchProcessStates by jobId and by batchNr (in that order)
-    */
+   * Order BatchProcessStates by jobId and by batchNr (in that order)
+   */
   val batchProcessStateOrdering: Ordering[BatchProcessState] = Ordering.by[BatchProcessState, String](_.jobId)
     .orElseBy(_.batchNr)
 
@@ -91,43 +91,27 @@ object StatusRoutes extends CORSHandler {
     corsHandler(
       path("jobAllWorkerStates") {
         get {
-          val jobIdsFuture: Future[Any] = supervisorActor ? ProvideAllRunningJobIDs
-          val result: Future[Any] = jobIdsFuture.flatMap({
-            case value: RunningJobs =>
-              logger.debug(s"found running jobs: ${value.jobIDs}")
-              val results: Seq[Future[Any]] = value.jobIDs.map(jobId => {
-                (supervisorActor ? GetJobWorkerStatus(jobId))
-                  // recover to make sure we have some value in case we run in timeout
-                  .recover(err => WorkerStatusResponse(result = Seq(BatchProcessStateResult(jobId, -1, Left(err)))))
-              })
-
-              if (results.isEmpty) {
-                Future.successful(Seq.empty[String].toJson.toString())
-              }
-              else {
-                Future.sequence(results).map(values => {
-                  values.asInstanceOf[Seq[WorkerStatusResponse]]
-                    .flatMap(status => status.result)
-                    .filter(x => x.result.isRight)
-                    .map(x => x.result)
-                    .sorted(Ordering[Either[Throwable, BatchProcessState]]({
-                      case (Right(aa:BatchProcessState), Right(bb:BatchProcessState)) =>
-                        batchProcessStateOrdering.compare(aa, bb)
-                      case _ => 0
-                    }))
-                    .map(state => batchStateToJson(state))
-                    .toJson.toString()
-                })
-                  .recover(e => Seq(workerStatusToJson(WorkerStatusResponse(Seq(BatchProcessStateResult("unknown", 0, Left(e)))))).toJson.toString())
-              }
-            case _ => Future.successful(Seq(workerStatusToJson(WorkerStatusResponse(Seq.empty))).toJson.toString())
-          }).recover(e => {
-            Seq(workerStatusToJson(WorkerStatusResponse(Seq(BatchProcessStateResult("unknown", 0, Left(e)))))).toJson.toString()
-          })
-          onSuccess(result) {
+          val allJobStates: Future[String] = (supervisorActor ? GetAllJobWorkerStates)
+            .map(x => x.asInstanceOf[AllJobWorkerStates])
+            .recover(_ => AllJobWorkerStates(Seq.empty))
+            .map(values => {
+              values.states
+                .flatMap(status => status.result)
+                .filter(x => x.result.isRight)
+                .map(x => x.result)
+                .sorted(Ordering[Either[Throwable, BatchProcessState]]({
+                  case (Right(aa: BatchProcessState), Right(bb: BatchProcessState)) =>
+                    batchProcessStateOrdering.compare(aa, bb)
+                  case _ => 0
+                }))
+                .map(state => batchStateToJson(state))
+                .toJson.toString()
+            })
+            .recover(ex => Seq(workerStatusToJson(WorkerStatusResponse(Seq(BatchProcessStateResult("unknown", 0, Left(ex)))))).toJson.toString())
+          onSuccess(allJobStates) {
             e =>
               logger.debug(s"result: $e")
-              complete(e.toString)
+              complete(e)
           }
         }
       })
