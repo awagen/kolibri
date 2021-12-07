@@ -35,7 +35,7 @@ function retrieveNodeStatus() {
         .then(response => {
             return response.data.map(worker => {
                 let worker_state = {}
-                worker_state["avgCpuUsage"] = worker["cpuInfo"]["loadAvg"].toFixed(2) + "%"
+                worker_state["avgLoad"] = worker["cpuInfo"]["loadAvg"].toFixed(2)
                 worker_state["heapUsage"] = (100 * worker["heapInfo"]["heapUsed"] / worker["heapInfo"]["heapCommited"]).toFixed(2) + "%"
                 worker_state["host"] = worker["host"]
                 worker_state["port"] = worker["port"]

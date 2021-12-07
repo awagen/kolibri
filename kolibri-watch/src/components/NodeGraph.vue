@@ -52,7 +52,7 @@ export default {
       let supervisor = nodes.filter(x => x["type"] === "supervisor")[0];
       let workers = nodes.filter(x => x["type"] !== "supervisor").map(worker => {
             let worker_state = {}
-            worker_state["avgCpuUsage"] = (worker["cpuInfo"]["loadAvg"] / worker["cpuInfo"]["nrProcessors"]).toFixed(2) + "%"
+            worker_state["avgLoad"] = worker["cpuInfo"]["loadAvg"].toFixed(2)
             worker_state["heapUsage"] = (worker["heapInfo"]["heapUsed"] / worker["heapInfo"]["heapMax"]).toFixed(2) + "%"
             worker_state["host"] = worker["host"]
             worker_state["port"] = worker["port"]

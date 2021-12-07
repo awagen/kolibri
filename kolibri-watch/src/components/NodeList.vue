@@ -7,7 +7,7 @@
       <th>Host</th>
       <th>Port</th>
       <th>CPUs</th>
-      <th>CPU Usage</th>
+      <th>Load</th>
       <th>Heap Usage</th>
     </tr>
     </thead>
@@ -17,7 +17,7 @@
       <td>{{node.host}}</td>
       <td>{{node.port}}</td>
       <td>{{node.countCPUs}}</td>
-      <td>{{node.avgCpuUsage}}</td>
+      <td>{{node.avgLoad}}</td>
       <td>{{node.heapUsage}}</td>
     </tr>
     </tbody>
