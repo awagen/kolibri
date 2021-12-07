@@ -60,7 +60,9 @@ object JobManagerActor {
 
   val log: Logger = LoggerFactory.getLogger(JobManagerActor.getClass)
 
-  final def name(jobId: String) = s"jobManager-$jobId"
+  // in case jobId contains a dir delimiter, that conflicts with valid actor paths and thus can
+  // not be used as name for an actor. To work around, the slashes are replaced here
+  final def name(jobId: String) = s"jobManager-${jobId.replace("/", "_")}"
 
   type Batch = Any with WithBatchNr
 
@@ -143,7 +145,7 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
 
   var wrapUpFunction: Option[Execution[Any]] = None
 
-  val workerServiceRouter: ActorRef = createWorkerRoutingServiceForJob(jobId)
+  val workerServiceRouter: ActorRef = createWorkerRoutingServiceForJob(JobManagerActor.name(jobId))
 
   var scheduleCancellables: Seq[Cancellable] = Seq.empty
 
