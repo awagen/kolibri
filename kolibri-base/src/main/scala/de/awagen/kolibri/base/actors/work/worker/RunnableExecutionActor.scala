@@ -26,7 +26,7 @@ import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{Aggregation
 import de.awagen.kolibri.base.actors.work.worker.RunnableExecutionActor.{BatchProcessState, BatchProcessStateResult, ReportBatchState, RunnableHousekeeping}
 import de.awagen.kolibri.base.config.AppProperties.config
 import de.awagen.kolibri.base.config.AppProperties.config.kolibriDispatcherName
-import de.awagen.kolibri.base.config.EnvVariableKeys.CLUSTER_NODE_HOST
+import de.awagen.kolibri.base.config.EnvVariableKeys.{CLUSTER_NODE_HOST, POD_IP}
 import de.awagen.kolibri.base.io.writer.Writers.Writer
 import de.awagen.kolibri.base.processing.decider.Deciders.allResumeDecider
 import de.awagen.kolibri.base.processing.execution.expectation._
@@ -200,8 +200,14 @@ class RunnableExecutionActor[U <: WithCount](maxBatchDuration: FiniteDuration,
   }
 
   def batchProcessState(): BatchProcessState = {
+    // in case the k8s placeholder is used here, pick pod ip instead (note: this env variables needs to be set in k8s
+    // deployment chart (see POD_IP setting==
+    val node_identifier = CLUSTER_NODE_HOST.value match {
+      case host if host == "<getHostAddress>" => POD_IP.value
+      case host => host
+    }
     BatchProcessState(
-      CLUSTER_NODE_HOST.value,
+      node_identifier,
       batchStateUpdate.state.jobID,
       batchStateUpdate.state.batchNr,
       elementsToProcessCount,
