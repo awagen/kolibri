@@ -10,5 +10,5 @@ spec:
 #        someTypeKey: [value]
       containers:
         - name: kolibri-service
-          image: awagen/kolibri-base:0.1.0-rc0
+          image: awagen/kolibri-base:0.1.0-rc1
           imagePullPolicy: Always

@@ -46,7 +46,7 @@ spec:
       serviceAccountName: ##SERVICE_ACCOUNT_NAME
       containers:
         - name: kolibri-service
-          image: awagen/kolibri-base:0.1.0-rc0
+          image: awagen/kolibri-base:0.1.0-rc1
           imagePullPolicy: Always
           volumeMounts:
           # part of mounting the secret, link to procedure given above
