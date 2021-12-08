@@ -77,8 +77,13 @@ object MappingSupplierJsonProtocol extends DefaultJsonProtocol {
 
   /**
     * given directory, generates keys from filenames and assigns for each key the key itself as value for the paramName
-    * given by field "paramName". Useful e.g to map keys to themselves and generating a modifier from it
-    * NOTE: suboptimal, not quite straightforward
+    * given by field "paramName". Useful e.g to map keys to themselves and generating a modifier from it.
+   *  Can be used for cases where a mapping such as {"user1": {"userId": Seq("user1")}}.
+   *  While this seems a bit unintuitive, can simplify mappings. In the above case, if we want to generate data
+   *  specific to single users, can use "user[N]" (N to be filled in with index, e.g "user1") as napping key and
+   *  know we should use param "userId" and use "user1" as value
+   *
+    * NOTE: suboptimal, not quite straightforward.
     *
     * @param fields
     * @return
@@ -101,11 +106,12 @@ object MappingSupplierJsonProtocol extends DefaultJsonProtocol {
   /**
     * For map mapping paramName to directories, for each paramName look into respective directory,
     * and generate keys by removing suffix from filename, then extract from file the values for the paramName and key
-    * and put this in map (level1-key: file key, level2-key: paramName)
+    * and put this in map (level1-key: file key, level2-key: paramName),
+   *  that is {"[filePrefix1]": {"[paramName]": ["value1", "value2", ...], ...}}
     *
-    * @param fields
-    * @param lineToValueFunc
-    * @param normFunc
+    * @param fields - json fields, where the fields used are PARAM_NAMES_TO_DIR_MAP_FIELD, FILES_SUFFIX_FIELD
+    * @param lineToValueFunc - file line to value
+    * @param normFunc - normlization of the values after extracting from file
     * @tparam T
     * @return
     */
@@ -134,12 +140,28 @@ object MappingSupplierJsonProtocol extends DefaultJsonProtocol {
     keyToParamMap.view.mapValues(values => values.toMap).toMap
   }
 
+  /**
+   * Helper call  setting the lineToValueFunc to a splitting by passed row separator (provided by ROW_SEPARATOR_FIELD)
+   * and normalization being a simple trim
+   * @param fields - configuration mapping
+   * @return - mapping of identifier (as derived from file name, see doc of the called function above) to parameter map,
+   *         mapping each parameter name to a generator of Seq[String], to allow for multiple values for a parameter at once,
+   *         which here would be given by the values in single line being separated by the row separator given by
+   *         the key ROW_SEPARATOR_FIELD in the fields map
+   */
   def extractParamMapsFromDirs(fields: Map[String, JsValue]): Map[String, Map[String, IndexedGenerator[Seq[String]]]] = {
     val rowSeparator = fields(ROW_SEPARATOR_FIELD).convertTo[String]
     extractParamMapsFromDirs[Seq[String]](fields, x => x.split(rowSeparator), x => x.map(x => x.trim))
   }
 
-  implicit object StringToStringJsonProtocol extends JsonFormat[() => Map[String, String]] {
+  /**
+   * Format function allowing parsing json to supplier () => Map[String, String].
+   * The json needs to contain the data in the selected format in the "value" field.
+   * Allows two types to extract from:
+   * - FROM_JSON_MAP: json format
+   * - FROM_CSV: csv format
+   */
+  implicit object SingleValueMapSupplierJsonProtocol extends JsonFormat[() => Map[String, String]] {
     override def read(json: JsValue): () => Map[String, String] = {
       json match {
         case spray.json.JsObject(fields) => fields(TYPE_FIELD).convertTo[String] match {
@@ -166,6 +188,20 @@ object MappingSupplierJsonProtocol extends DefaultJsonProtocol {
     override def write(obj: () => Map[String, String]): JsValue = """{}""".toJson
   }
 
+  /**
+   * Format to parse json into supplier of Map[String, Map[String, IndexedGenerator[Seq[String]]]].
+   * This holds for a given key a map with paramName -> generator_of_value_seq, where the generated Seq represents
+   * multiple values that hold for the paramName at the same time (most of the times the Seq will only hold a single
+   * element, as multiple values per parameter are used less frequently)
+   *
+   * There are distinct types that determine how the values are extracted from the parsed json:
+   * - FROM_DIRECTORY_IDENTITY: extract file names (for mappings of paramName -> directory, for each paramName value
+   * look into directory and derive key from filename,
+   * then create mapping {"keyExtractedFromFile" -> {"paramName" -> Seq("keyExtractedFromFile")}}),
+   * - FROM_JSON_MAP: provide full mapping in json
+   * - FROM_DIRECTORY: for each directory corresponding to a given parameter, extract keys from contained file names and values
+   * per line from the respective file
+   */
   implicit object MappedParamMapJsonProtocol extends JsonFormat[() => Map[String, Map[String, IndexedGenerator[Seq[String]]]]] {
     override def read(json: JsValue): () => Map[String, Map[String, IndexedGenerator[Seq[String]]]] = json match {
       case spray.json.JsObject(fields) => fields(TYPE_FIELD).convertTo[String] match {
@@ -186,6 +222,11 @@ object MappingSupplierJsonProtocol extends DefaultJsonProtocol {
     override def write(obj: () => Map[String, Map[String, IndexedGenerator[Seq[String]]]]): JsValue = """{}""".toJson
   }
 
+  /**
+   * Format to parse json to Supplier of type Map[String, Map[String, IndexedGenerator[String]]]].
+   * Analogous to MappedParamMapJsonProtocol, but extracting only single values for the mapped IndexedGenerators
+   * (e.g corresponding to parameters that can only hold a single value at a time).
+   */
   implicit object MappedSingleValueMapJsonProtocol extends JsonFormat[() => Map[String, Map[String, IndexedGenerator[String]]]] {
     override def read(json: JsValue): () => Map[String, Map[String, IndexedGenerator[String]]] = json match {
       case spray.json.JsObject(fields) => fields(TYPE_FIELD).convertTo[String] match {
