@@ -22,7 +22,7 @@ import org.slf4j.{Logger, LoggerFactory}
 
 object OrderedMultiValuesImplicits {
 
-  val logger: Logger = LoggerFactory.getLogger(OrderedMultiValuesImplicits.getClass.toString)
+  private[this] val logger: Logger = LoggerFactory.getLogger(OrderedMultiValuesImplicits.getClass.toString)
 
   implicit class OrderedMultiValuesToParameterIterator(val multiValues: OrderedMultiValues) {
 

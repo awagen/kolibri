@@ -23,7 +23,7 @@ import org.slf4j.{Logger, LoggerFactory}
 
 object Deciders {
 
-  val logger: Logger = LoggerFactory.getLogger(this.getClass)
+  private[this] val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
   val allResumeDecider: Supervision.Decider = {
     e: Throwable =>

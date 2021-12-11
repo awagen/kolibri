@@ -22,7 +22,7 @@ import org.slf4j.{Logger, LoggerFactory}
 
 object FileBasedJudgementRepository extends AtomicMapPromiseStore[String, JudgementProvider[Double]] {
 
-  val logger: Logger = LoggerFactory.getLogger(FileBasedJudgementRepository.toString)
+  private[this] val logger: Logger = LoggerFactory.getLogger(FileBasedJudgementRepository.toString)
 
   override def calculateValue(key: String): JudgementProvider[Double] = {
     logger.debug("calculateValue")

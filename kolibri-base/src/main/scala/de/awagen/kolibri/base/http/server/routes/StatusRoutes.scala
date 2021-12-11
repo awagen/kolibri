@@ -31,11 +31,14 @@ import de.awagen.kolibri.base.config.AppProperties.config.{internalJobStatusRequ
 import de.awagen.kolibri.base.http.server.routes.BaseRoutes.{clusterMetricsListenerActor, supervisorActor}
 import de.awagen.kolibri.base.io.json.ClusterStatesJsonProtocol._
 import de.awagen.kolibri.base.io.json.JobStateJsonProtocol.jobStatusFormat
-import de.awagen.kolibri.base.processing.JobMessages.logger
+import org.slf4j.{Logger, LoggerFactory}
+
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.util.{Failure, Success}
 
 object StatusRoutes extends CORSHandler {
+
+  private[this] val logger: Logger = LoggerFactory.getLogger(this.getClass.getName)
 
   implicit val timeout: Timeout = Timeout(internalJobStatusRequestTimeout)
 

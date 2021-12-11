@@ -25,7 +25,7 @@ import spray.json.{DefaultJsonProtocol, DeserializationException, JsValue, JsonF
 
 object OrderedMultiValuesJsonProtocol extends DefaultJsonProtocol {
 
-  val logger: Logger = LoggerFactory.getLogger(this.getClass)
+  private[this] val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
   implicit object OrderedMultiValuesAnyFormat extends JsonFormat[OrderedMultiValues] {
     override def read(json: JsValue): OrderedMultiValues = {

@@ -114,6 +114,11 @@ class AggregatingActor[U, V <: WithCount](val aggregatorConfig: AggregatorConfig
     initialDelay = config.aggregatingActorStateSendingInterval,
     interval = config.aggregatingActorStateSendingInterval)(() => sendAggregationStateWithoutData(owner))
 
+  override def postStop(): Unit = {
+    cancellableSchedule.cancel()
+    cancellableResultReport.cancel()
+    super.postStop()
+  }
 
   def sendAggregationStateWithoutData(sendTo: ActorRef): Unit = {
     log.debug("sending state update to runnable actor")

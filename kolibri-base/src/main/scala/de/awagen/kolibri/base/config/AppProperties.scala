@@ -35,7 +35,7 @@ import scala.concurrent.duration._
   */
 object AppProperties {
 
-  val logger: Logger = LoggerFactory.getLogger(AppProperties.getClass)
+  private[this] val logger: Logger = LoggerFactory.getLogger(AppProperties.getClass)
 
   val profile: String = PROFILE.value
   val config: BaseConfig = BaseConfig(profile)

@@ -122,6 +122,12 @@ class WorkManagerActor() extends Actor with ActorLogging with KolibriSerializabl
     if (parts.length < 3) -1 else parts(2).toInt
   }
 
+  override def postStop(): Unit = {
+    cancellableBatchStateUpdate.cancel()
+    cancellableJobManagerReport.cancel()
+    super.postStop()
+  }
+
   /**
     * TaskWorkerActor and TaskExecutionWorkerActor both are sending results to the actor set as sender
     * (or this WorkManagerActor here in case the sender of the request here is not set as sender within

@@ -25,7 +25,7 @@ import scala.reflect.runtime.universe
 
 object TypeTaggedMapImplicits {
 
-  val logger: Logger = LoggerFactory.getLogger(TypeTaggedMapImplicits.getClass.toString)
+  private[this] val logger: Logger = LoggerFactory.getLogger(TypeTaggedMapImplicits.getClass.toString)
 
   class TaggedTypeTaggedMap(map: TypeTaggedMap) extends TypeTaggedMap with TaggedWithType {
     override def put[T: universe.TypeTag, V](key: ClassTyped[V], value: T): Option[Any] = map.put(key, value)

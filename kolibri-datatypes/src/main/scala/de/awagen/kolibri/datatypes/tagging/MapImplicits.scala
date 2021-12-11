@@ -17,13 +17,9 @@
 
 package de.awagen.kolibri.datatypes.tagging
 
-import org.slf4j.{Logger, LoggerFactory}
-
 import scala.collection.mutable
 
 object MapImplicits {
-
-  val logger: Logger = LoggerFactory.getLogger(MapImplicits.getClass.toString)
 
   class TaggedMap[K, V](map: Map[K, V]) extends Map[K, V] with TaggedWithType {
     override def removed(key: K): Map[K, V] = map.removed(key)

@@ -34,6 +34,8 @@ import scala.util.matching.Regex
 
 object AggregationFunctions {
 
+  private val logger: Logger = LoggerFactory.getLogger(this.getClass)
+
   /**
     * Within the given directorySubDir (the reader within persistenceDIModule already refers to some folder/bucket),
     * filter files by regex and aggregate those partial csv results, store the result in file named by outputFilename,
@@ -73,8 +75,6 @@ object AggregationFunctions {
                                     files: Seq[String],
                                     sampleIdentifierToWeight: WeightProvider[String],
                                     outputFilename: String) extends Execution[Unit] {
-    val logger: Logger = LoggerFactory.getLogger(this.getClass)
-
     lazy val persistenceModule: PersistenceModule = AppConfig.persistenceModule
     val csvFormat: CSVParameterBasedMetricDocumentFormat = CSVParameterBasedMetricDocumentFormat("\t")
 

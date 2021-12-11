@@ -46,7 +46,7 @@ import scala.util.{Failure, Success}
   */
 object ClusterNode extends App {
 
-  val logger: Logger = LoggerFactory.getLogger(ClusterNode.getClass.toString)
+  private[this] val logger: Logger = LoggerFactory.getLogger(ClusterNode.getClass.toString)
 
   // This line initializes all Kamon components
   // needs to happen before start of actor system

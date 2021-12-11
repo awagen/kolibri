@@ -16,8 +16,15 @@
 
 package de.awagen.kolibri.datatypes.collections.generators
 
+import de.awagen.kolibri.datatypes.collections.generators.NthIsNthForEachIndexedGenerator.logger
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 import org.slf4j.{Logger, LoggerFactory}
+
+object NthIsNthForEachIndexedGenerator {
+
+  private val logger: Logger = LoggerFactory.getLogger(NthIsNthForEachIndexedGenerator.getClass)
+
+}
 
 /**
   * IndexedGenerator that yields for index n the Seq of values made of one value per generator, while for each generator
@@ -25,7 +32,6 @@ import org.slf4j.{Logger, LoggerFactory}
   */
 case class NthIsNthForEachIndexedGenerator[+T](generators: Seq[IndexedGenerator[T]]) extends IndexedGenerator[Seq[T]] {
 
-  val logger: Logger = LoggerFactory.getLogger(NthIsNthForEachIndexedGenerator.getClass)
   val allSameSize: Boolean = generators.exists(x => x.nrOfElements != generators.head.nrOfElements)
   if (!allSameSize) {
     logger.warn("Using NthIsNthForEachIndexedGenerator with generators of different size")

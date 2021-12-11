@@ -32,7 +32,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 object HttpResponseHandlers extends BaseIO {
 
-  val logger: Logger = LoggerFactory.getLogger(this.getClass)
+  private[this] val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
   def discardingConsume(httpResponse: HttpResponse)(implicit actorSystem: ActorSystem, mat: Materializer): Future[Done] = {
     httpResponse.entity.dataBytes

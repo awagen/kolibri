@@ -18,7 +18,6 @@
 package de.awagen.kolibri.base.usecase.searchopt.parse
 
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
-import org.slf4j.{Logger, LoggerFactory}
 import play.api.libs.json._
 
 import scala.util.matching.Regex
@@ -34,8 +33,6 @@ import scala.util.matching.Regex
   * after a recursive "\\" selector, while here we want to be able to map further
   */
 object JsonSelectors {
-
-  val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
   // regex for single elements in the form "\ key1 \ key2 \ key3 ...",
   // yielding sequential key, here: Seq("key1", "key2", "ley3")

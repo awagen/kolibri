@@ -19,7 +19,6 @@ package de.awagen.kolibri.base.processing.execution.task
 import de.awagen.kolibri.base.processing.failure.TaskFailType.TaskFailType
 import de.awagen.kolibri.datatypes.ClassTyped
 import de.awagen.kolibri.datatypes.mutable.stores.TypeTaggedMap
-import org.slf4j.{Logger, LoggerFactory}
 
 import scala.concurrent.Future
 import scala.reflect.runtime.universe._
@@ -30,7 +29,4 @@ case class SimpleAsyncTask[T: TypeTag, U <: T](prerequisites: Seq[ClassTyped[Any
                                                failKey: ClassTyped[TaskFailType],
                                                futureFunc: TypeTaggedMap => Future[U],
                                                successHandler: (U, TypeTaggedMap) => Unit,
-                                               failureHandler: Throwable => Unit)(implicit val tag: TypeTag[U]) extends AsyncTask[T, U] {
-
-  val logger: Logger = LoggerFactory.getLogger(classOf[SimpleAsyncTask[T, _]])
-}
+                                               failureHandler: Throwable => Unit)(implicit val tag: TypeTag[U]) extends AsyncTask[T, U] {}

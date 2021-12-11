@@ -18,14 +18,13 @@ package de.awagen.kolibri.base.actors.work.manager
 
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Cancellable, PoisonPill, Props}
-import akka.pattern.ask
 import akka.util.Timeout
 import de.awagen.kolibri.base.actors.resources.BatchFreeSlotResourceCheckingActor.AddToRunningBaselineCount
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.{ActorRunnableJobGenerator, FinishedJobEvent}
 import de.awagen.kolibri.base.actors.work.manager.JobManagerActor._
 import de.awagen.kolibri.base.actors.work.manager.JobProcessingState.emptyJobStatusInfo
-import de.awagen.kolibri.base.actors.work.manager.WorkManagerActor.{ExecutionType, GetWorkerStatus, JobBatchMsg}
+import de.awagen.kolibri.base.actors.work.manager.WorkManagerActor.JobBatchMsg
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages._
 import de.awagen.kolibri.base.actors.work.worker.RunnableExecutionActor.BatchProcessStateResult
 import de.awagen.kolibri.base.config.AppProperties._
@@ -51,9 +50,8 @@ import org.slf4j.{Logger, LoggerFactory}
 
 import java.text.SimpleDateFormat
 import java.time.{Instant, ZoneId, ZonedDateTime}
+import scala.concurrent.ExecutionContextExecutor
 import scala.concurrent.duration._
-import scala.concurrent.{ExecutionContextExecutor, Future}
-import scala.util.{Failure, Success}
 
 
 object JobManagerActor {
@@ -150,7 +148,7 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
   var scheduleCancellables: Seq[Cancellable] = Seq.empty
 
   def acceptResultMsg(msg: AggregationState[U]): Unit = {
-    logger.debug(s"received aggregation state: $msg")
+    log.debug(s"received aggregation state: $msg")
     jobProcessingState.accept(msg)
     if (jobProcessingState.completed) {
       wrapUp()
@@ -170,6 +168,12 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
         log.debug(s"batches received from distributor (size: ${batches.size}): ${batches.map(x => x.batchNr)}")
         submitNextBatches(batches)
     }
+  }
+
+  // stop schedules
+  override def postStop(): Unit = {
+    scheduleCancellables.foreach(x => x.cancel())
+    super.postStop()
   }
 
   def wrapUp(): Unit = {
@@ -226,7 +230,7 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
       expectResultsFromBatchCalculations)
 
     switchToProcessingStateAndSetScheduler()
-    logger.info(s"started processing of job '$jobId'")
+    log.info(s"started processing of job '$jobId'")
     ()
   }
 
@@ -258,7 +262,7 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
         expectResultsFromBatchCalculations)
       log.debug(s"job contains ${jobToProcess.size} batches")
       switchToProcessingStateAndSetScheduler()
-      logger.info(s"started processing of job '$jobId'")
+      log.info(s"started processing of job '$jobId'")
       ()
     case searchJobMsg: SearchEvaluation =>
       log.debug(s"received job to process: $searchJobMsg")
@@ -281,7 +285,7 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
         expectResultsFromBatchCalculations)
 
       switchToProcessingStateAndSetScheduler()
-      logger.info(s"started processing of job '$jobId'")
+      log.info(s"started processing of job '$jobId'")
       ()
     case cmd: ProcessJobCmd[_, _, _, U] =>
       handleProcessJobCmd(cmd, "GeneralCommand")

@@ -39,7 +39,7 @@ import scala.concurrent.{ExecutionContext, Future}
   */
 object Calculations {
 
-  val logger: Logger = LoggerFactory.getLogger(this.getClass)
+  private[this] val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
   type CalculationResult[T] = Either[Seq[ComputeFailReason], T]
 

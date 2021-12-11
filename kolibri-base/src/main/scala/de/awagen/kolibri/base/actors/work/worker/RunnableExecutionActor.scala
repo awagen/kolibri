@@ -102,6 +102,11 @@ class RunnableExecutionActor[U <: WithCount](maxBatchDuration: FiniteDuration,
   var sendResultsBack: Boolean = true
   var batchStateUpdate: StateUpdateWithoutData = _
 
+  override def postStop(): Unit = {
+    housekeepingCancellable.cancel()
+    super.postStop()
+  }
+
   val readyForJob: Receive = {
     case runnable: ActorRunnable[_, _, _, U] =>
       sendResultsBack = runnable.sendResultsBack

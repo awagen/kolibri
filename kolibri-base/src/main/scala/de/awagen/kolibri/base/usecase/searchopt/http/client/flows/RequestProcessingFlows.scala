@@ -39,7 +39,7 @@ import scala.util.{Failure, Success, Try}
 
 object RequestProcessingFlows {
 
-  val logger: Logger = LoggerFactory.getLogger(RequestProcessingFlows.getClass)
+  private[this] val logger: Logger = LoggerFactory.getLogger(RequestProcessingFlows.getClass)
 
   /**
     * Creates request execution and parsing flow based on single requests, just picking the protocol, host, port details

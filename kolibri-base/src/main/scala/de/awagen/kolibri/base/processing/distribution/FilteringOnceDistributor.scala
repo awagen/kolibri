@@ -20,7 +20,13 @@ import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.AggregationS
 import de.awagen.kolibri.base.traits.Traits.WithBatchNr
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import org.slf4j.{Logger, LoggerFactory}
+import de.awagen.kolibri.base.processing.distribution.FilteringOnceDistributor.logger
 
+object FilteringOnceDistributor {
+
+  private val logger: Logger = LoggerFactory.getLogger(this.getClass)
+
+}
 
 /**
   * Distributor that distributes once and only accepts leftover results once
@@ -31,8 +37,6 @@ class FilteringOnceDistributor[T <: WithBatchNr, U](private[this] var maxParalle
   extends ProcessOnceDistributor[T, U](
     maxParallel,
     generator) {
-
-  val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
   override def accept(element: AggregationState[U]): Boolean = {
     logger.debug(s"distributor: received aggregation state: $element")

@@ -19,13 +19,15 @@ package de.awagen.kolibri.base.config.di.modules.connections
 
 import com.softwaremill.macwire.wire
 import de.awagen.kolibri.base.config.AppProperties
+import de.awagen.kolibri.base.config.di.modules.Modules.HttpConnectionPoolDIModule
+import de.awagen.kolibri.base.config.di.modules.connections.HttpModule.logger
 import org.slf4j.{Logger, LoggerFactory}
-import de.awagen.kolibri.base.config.di.modules.Modules.{GENERAL_MODULE, HttpConnectionPoolDIModule}
 
+object HttpModule {
+  lazy private val logger: Logger = LoggerFactory.getLogger(this.getClass)
+}
 
 class HttpModule {
-
-  lazy val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
   lazy val httpDIModule: HttpConnectionPoolDIModule = AppProperties.config.httpConnectionPoolMode match {
     case "STANDARD" => wire[HttpConnectionPoolModule]

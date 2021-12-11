@@ -53,7 +53,7 @@ import scala.concurrent.duration._
 
 object SearchJobDefinitions {
 
-  val logger: Logger = LoggerFactory.getLogger(this.getClass)
+  private[this] val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
 
   def jsValueToTypeTaggedMap(parsingConfig: ParsingConfig): SerializableFunction1[JsValue, WeaklyTypedMap[String]] = new SerializableFunction1[JsValue, WeaklyTypedMap[String]] {

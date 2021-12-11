@@ -23,14 +23,16 @@ import de.awagen.kolibri.datatypes.tagging.TagType.AGGREGATION
 import de.awagen.kolibri.datatypes.tagging.TaggedWithType
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.types.SerializableCallable.{SerializableFunction1, SerializableFunction2, SerializableSupplier}
-import de.awagen.kolibri.datatypes.values.{AggregateValue, DataPoint}
 import de.awagen.kolibri.datatypes.values.RunningValue.doubleAvgRunningValue
+import de.awagen.kolibri.datatypes.values.{AggregateValue, DataPoint}
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.mutable
 import scala.reflect.runtime.universe._
 
 object Aggregators {
+
+  private val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
   abstract class Aggregator[-U: TypeTag, V: TypeTag] extends KolibriSerializable {
 
@@ -118,8 +120,6 @@ object Aggregators {
     * @param ignoreIdDiff
     */
   class TagKeyMetricAggregationPerClassAggregator(keyMapFunction: SerializableFunction1[Tag, Tag], ignoreIdDiff: Boolean = false) extends Aggregator[TaggedWithType with DataPoint[MetricRow], MetricAggregation[Tag]] {
-    val logger: Logger = LoggerFactory.getLogger(this.getClass)
-
     val aggregationState: MetricAggregation[Tag] = MetricAggregation.empty[Tag](keyMapFunction)
 
     override def add(sample: TaggedWithType with DataPoint[MetricRow]): Unit = {
@@ -146,8 +146,6 @@ object Aggregators {
     * @tparam V
     */
   case class BaseAnyAggregator[T: TypeTag, V: TypeTag](aggregator: Aggregator[T, V]) extends Aggregator[Any, V] {
-    val logger: Logger = LoggerFactory.getLogger(BaseAnyAggregator.getClass)
-
     override def add(sample: Any): Unit = {
       try {
         val data: T = sample.asInstanceOf[T]

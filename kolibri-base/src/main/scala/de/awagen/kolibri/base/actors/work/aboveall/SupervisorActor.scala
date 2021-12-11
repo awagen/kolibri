@@ -17,7 +17,7 @@
 package de.awagen.kolibri.base.actors.work.aboveall
 
 import akka.actor.SupervisorStrategy.Stop
-import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, ActorSystem, OneForOneStrategy, PoisonPill, Props, Terminated}
+import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, ActorSystem, Cancellable, OneForOneStrategy, PoisonPill, Props, Terminated}
 import akka.pattern.ask
 import akka.util.Timeout
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor._
@@ -181,11 +181,16 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
     _ => JOB_HISTORY_PRIORITY_STORE_KEY)
 
   // schedule the housekeeping, checking each jobId
-  context.system.scheduler.scheduleAtFixedRate(
+  val houseKeepingCancellable: Cancellable = context.system.scheduler.scheduleAtFixedRate(
     initialDelay = config.supervisorHousekeepingInterval,
     interval = config.supervisorHousekeepingInterval,
     receiver = self,
     message = JobHousekeeping)
+
+  override def postStop(): Unit = {
+    houseKeepingCancellable.cancel()
+    super.postStop()
+  }
 
   val informationProvidingReceive: Receive = {
     case ProvideJobHistory =>

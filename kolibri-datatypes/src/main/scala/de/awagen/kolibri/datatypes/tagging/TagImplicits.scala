@@ -21,7 +21,7 @@ import org.slf4j.{Logger, LoggerFactory}
 
 object TagImplicits {
 
-  val logger: Logger = LoggerFactory.getLogger(TagImplicits.getClass.toString)
+  private[this] val logger: Logger = LoggerFactory.getLogger(TagImplicits.getClass.toString)
 
   implicit class TagToMultiTag(val tag: Tag) {
 

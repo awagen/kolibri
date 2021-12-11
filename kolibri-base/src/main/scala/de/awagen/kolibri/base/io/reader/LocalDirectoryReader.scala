@@ -17,15 +17,20 @@
 
 package de.awagen.kolibri.base.io.reader
 
+import de.awagen.kolibri.base.io.reader.LocalDirectoryReader.logger
 import org.slf4j.{Logger, LoggerFactory}
 
 import java.io.File
 
+object LocalDirectoryReader {
+
+  private val logger: Logger = LoggerFactory.getLogger(this.getClass)
+
+}
+
 case class LocalDirectoryReader(baseDir: String,
                                 baseFilenameFilter: String => Boolean = _ => true,
                                 encoding: String = "UTF-8") extends DataOverviewReader {
-  val logger: Logger = LoggerFactory.getLogger(this.getClass)
-
   val normedBaseDir: String = baseDir.stripSuffix("/")
 
   override def listResources(subDir: String, additionalFilenameFilter: String => Boolean): Seq[String] = {

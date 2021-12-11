@@ -30,7 +30,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 object SolrHttpResponseHandlers {
 
-  val logger: Logger = LoggerFactory.getLogger(this.getClass)
+  private[this] val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
   def httpResponseToTypeTaggedMapParseFunc(validationFunc: JsValue => Boolean,
                                            parseFunc: SerializableFunction1[JsValue, WeaklyTypedMap[String]])(implicit actorSystem: ActorSystem, mat: Materializer,

@@ -23,6 +23,8 @@ import org.slf4j.{Logger, LoggerFactory}
 
 object WeightProviders {
 
+  private val logger: Logger = LoggerFactory.getLogger(WeightProviders.getClass)
+
   trait WeightProvider[A] extends (A => Double) with KolibriSerializable
 
   case class ConstantWeightProvider(value: Double) extends WeightProvider[String] {
@@ -37,7 +39,6 @@ object WeightProviders {
                                                      keyColumn: Int,
                                                      weightColumn: Int,
                                                      defaultValue: Double) extends WeightProvider[String] {
-    val logger: Logger = LoggerFactory.getLogger(FileBasedStringIdentifierWeightProvider.getClass)
     val dataLines: Seq[String] = AppConfig.persistenceModule.persistenceDIModule.reader.read(filePath)
     logger.debug(s"dataLines: $dataLines")
     val mapping: Map[String, Double] = dataLines.map(x => x.split(columnDelimiter))

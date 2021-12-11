@@ -36,7 +36,7 @@ import scala.concurrent.duration._
 
 object FlowTestHelper {
 
-  val logger: Logger = LoggerFactory.getLogger(this.getClass.getName)
+  private[this] val logger: Logger = LoggerFactory.getLogger(this.getClass.getName)
 
   implicit val ec: ExecutionContext = global
 

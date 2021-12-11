@@ -19,10 +19,17 @@ package de.awagen.kolibri.base.io.reader
 
 import com.google.api.gax.paging.Page
 import com.google.cloud.storage.{Blob, Storage, StorageOptions}
+import de.awagen.kolibri.base.io.reader.GcpGSDirectoryReader.logger
 import de.awagen.kolibri.base.io.reader.ReaderUtils.normalizeBucketPath
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.jdk.CollectionConverters._
+
+object GcpGSDirectoryReader {
+
+  private val logger: Logger = LoggerFactory.getLogger(this.getClass)
+
+}
 
 
 /**
@@ -40,8 +47,6 @@ case class GcpGSDirectoryReader(bucketName: String,
                                 projectID: String,
                                 delimiter: String = "/",
                                 fileFilter: String => Boolean) extends DataOverviewReader {
-  val logger: Logger = LoggerFactory.getLogger(this.getClass)
-
   val dirPathNormalized: String = normalizeBucketPath(dirPath, delimiter)
   val storage: Storage = StorageOptions.newBuilder.setProjectId(projectID).build.getService
 

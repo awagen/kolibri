@@ -19,6 +19,7 @@ package de.awagen.kolibri.base.http.client.request
 import akka.http.scaladsl.model.{MessageEntity, _}
 import akka.http.scaladsl.model.headers.RawHeader
 import de.awagen.kolibri.base.actors.tracking.RequestTrackingActor._
+import de.awagen.kolibri.base.http.client.request.RequestTemplate.logger
 import de.awagen.kolibri.datatypes.utils.ParameterUtils
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -26,6 +27,8 @@ import scala.collection.immutable
 
 
 object RequestTemplate {
+
+  private val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
   def apply(contextPath: String,
             parameters: immutable.Map[String, Seq[String]],
@@ -61,8 +64,6 @@ class RequestTemplate(val contextPath: String,
                       val httpMethod: HttpMethod,
                       val protocol: HttpProtocol = HttpProtocols.`HTTP/1.1`)
   extends HttpRequestProvider {
-
-  val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
   val fullQueryString: String = ParameterUtils.queryStringFromParameterNamesAndValues(parameters)
   val buffer: StringBuffer = new StringBuffer("")

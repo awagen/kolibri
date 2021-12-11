@@ -48,7 +48,7 @@ import scala.language.implicitConversions
 
 object JobMessages {
 
-  val logger: Logger = LoggerFactory.getLogger(this.getClass)
+  private val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
   trait JobMessage extends KolibriSerializable {
 

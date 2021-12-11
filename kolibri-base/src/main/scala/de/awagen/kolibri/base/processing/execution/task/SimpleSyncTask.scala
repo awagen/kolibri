@@ -16,6 +16,7 @@
 
 package de.awagen.kolibri.base.processing.execution.task
 
+import de.awagen.kolibri.base.processing.execution.task.SimpleSyncTask.logger
 import de.awagen.kolibri.base.processing.failure.TaskFailType.TaskFailType
 import de.awagen.kolibri.datatypes.ClassTyped
 import de.awagen.kolibri.datatypes.mutable.stores.TypeTaggedMap
@@ -23,6 +24,13 @@ import org.slf4j.{Logger, LoggerFactory}
 
 import scala.concurrent.{Future, Promise}
 import scala.reflect.runtime.universe._
+
+
+object SimpleSyncTask {
+
+  private val logger: Logger = LoggerFactory.getLogger(SimpleSyncTask.getClass)
+
+}
 
 /**
   * Provides the method to calculate value based on a value map, the key of type ClassTyped[T] to be able to store
@@ -40,9 +48,6 @@ case class SimpleSyncTask[+T: TypeTag](prerequisites: Seq[ClassTyped[Any]],
                                        successKey: ClassTyped[T],
                                        failKey: ClassTyped[TaskFailType],
                                        func: TypeTaggedMap => Either[TaskFailType, T]) extends SyncTask[T] {
-
-  val logger: Logger = LoggerFactory.getLogger(classOf[SimpleSyncTask[T]])
-
   if (isFuture || isPromise) {
     logger.warn(s"func used that computes non-blocking (future/promise); you should not do this within this task definition; if needed" +
       s"rather wrap the execution within an async task type (e.g AsyncTask)")

@@ -21,6 +21,7 @@ import com.softwaremill.macwire.wire
 import de.awagen.kolibri.base.config.AppProperties
 import de.awagen.kolibri.base.config.AppProperties.config.directoryPathSeparator
 import de.awagen.kolibri.base.config.di.modules.Modules.PersistenceDIModule
+import de.awagen.kolibri.base.config.di.modules.persistence.PersistenceModule.logger
 import de.awagen.kolibri.base.io.writer.Writers.Writer
 import de.awagen.kolibri.base.io.writer.aggregation.BaseMetricDocumentWriter
 import de.awagen.kolibri.datatypes.metrics.aggregation.writer.{CSVParameterBasedMetricDocumentFormat, MetricDocumentFormat}
@@ -29,9 +30,13 @@ import de.awagen.kolibri.datatypes.tagging.Tags
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 import org.slf4j.{Logger, LoggerFactory}
 
-class PersistenceModule {
+object PersistenceModule {
 
-  lazy val logger: Logger = LoggerFactory.getLogger(this.getClass)
+  lazy private val logger: Logger = LoggerFactory.getLogger(this.getClass)
+
+}
+
+class PersistenceModule {
 
   lazy val persistenceDIModule: PersistenceDIModule = AppProperties.config.persistenceMode match {
     case "AWS" => wire[AwsPersistenceModule]
