@@ -19,7 +19,7 @@ package de.awagen.kolibri.base.actors.clusterinfo
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import akka.cluster.ddata.Replicator._
-import akka.cluster.ddata.{Key, ORSet, ORSetKey}
+import akka.cluster.ddata.{Key, ORSet}
 import de.awagen.kolibri.base.actors.work.worker.RunnableExecutionActor.BatchProcessStateResult
 import de.awagen.kolibri.base.cluster.ClusterNode
 
@@ -28,35 +28,27 @@ object LocalStateDistributorActor {
 
   def props: Props = Props[LocalStateDistributorActor]
 
-  val DD_BATCH_INFO_ACTOR_REF_KEY: String = "ddBatchInfoActor"
-  val ddBatchStatusActorRefKey: Key[ORSet[ActorRef]] = ORSetKey.create(DD_BATCH_INFO_ACTOR_REF_KEY)
-
-
 }
 
 
 case class LocalStateDistributorActor() extends Actor with ActorLogging {
 
-
   var batchStatusActor: Option[ActorRef] = None
+
+  val ddBatchStatusActorRefKey: Key[ORSet[ActorRef]] = DDResourceStateUtils.DD_BATCH_STATUS_ACTOR_REF_KEY
   // this will lead to Changed messages being received when the value changes
   // note that this actor will also receive a Changed msg in case the distributed data for the specified key is set
   // and the actor subscribes, thus we dont need the Replicator.Get here
-  ClusterNode.getSystemSetup.ddReplicator ! Subscribe(LocalStateDistributorActor.ddBatchStatusActorRefKey, self)
+  ClusterNode.getSystemSetup.ddReplicator ! Subscribe(ddBatchStatusActorRefKey, self)
 
-  def ddReceive: Receive = {
-    case c@Changed(LocalStateDistributorActor.ddBatchStatusActorRefKey) =>
-      log.info("successfully retrieved change for batch status actor ref distributed data")
-      val value: ActorRef = c.get(LocalStateDistributorActor.ddBatchStatusActorRefKey).elements.toSeq.last
-      batchStatusActor = Some(value)
-    case g@GetSuccess(LocalStateDistributorActor.ddBatchStatusActorRefKey, _) =>
-      log.info("successfully retrieved batch status actor ref distributed data")
-      val value: ActorRef = g.get[ORSet[ActorRef]](LocalStateDistributorActor.ddBatchStatusActorRefKey).elements.toSeq.head
-      batchStatusActor = Some(value)
-    case _@GetFailure(LocalStateDistributorActor.ddBatchStatusActorRefKey, _) =>
-      log.warning("failure retrieving batch status actor ref distributed data")
-    case NotFound(LocalStateDistributorActor.ddBatchStatusActorRefKey, _) =>
-      log.warning("batch status actor ref distributed data not found")
+  def ddReceive: Receive = DistributedDataActorHelper.stateChangeReceive[ORSet[ActorRef]](
+    ddBatchStatusActorRefKey,
+    "batch status actor ref",
+    valueHandleFunc)
+
+  val valueHandleFunc: ORSet[ActorRef] => Unit = set => {
+    val value: ActorRef = set.elements.toSeq.last
+    batchStatusActor = Some(value)
   }
 
 

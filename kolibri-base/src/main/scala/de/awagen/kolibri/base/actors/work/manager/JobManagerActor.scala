@@ -18,7 +18,11 @@ package de.awagen.kolibri.base.actors.work.manager
 
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Cancellable, PoisonPill, Props}
+import akka.cluster.ddata.Replicator.UpdateSuccess
 import akka.util.Timeout
+import de.awagen.kolibri.base.actors.clusterinfo.DDResourceStateUtils
+import de.awagen.kolibri.base.actors.clusterinfo.DDResourceStateUtils.DD_JUDGEMENT_JOB_MAPPING_KEY
+import de.awagen.kolibri.base.actors.clusterinfo.LocalResourceManagerActor.RemoveValueFromAllMappings
 import de.awagen.kolibri.base.actors.resources.BatchFreeSlotResourceCheckingActor.AddToRunningBaselineCount
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.{ActorRunnableJobGenerator, FinishedJobEvent}
@@ -27,6 +31,7 @@ import de.awagen.kolibri.base.actors.work.manager.JobProcessingState.emptyJobSta
 import de.awagen.kolibri.base.actors.work.manager.WorkManagerActor.JobBatchMsg
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages._
 import de.awagen.kolibri.base.actors.work.worker.RunnableExecutionActor.BatchProcessStateResult
+import de.awagen.kolibri.base.cluster.ClusterNode
 import de.awagen.kolibri.base.config.AppProperties._
 import de.awagen.kolibri.base.config.AppProperties.config.kolibriDispatcherName
 import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions.MapWithCount
@@ -37,7 +42,7 @@ import de.awagen.kolibri.base.processing.distribution.DistributionStates
 import de.awagen.kolibri.base.processing.execution.functions.Execution
 import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
 import de.awagen.kolibri.base.routing.Routers.createWorkerRoutingServiceForJob
-import de.awagen.kolibri.base.traits.Traits.WithBatchNr
+import de.awagen.kolibri.base.traits.Traits.{ResourceType, WithBatchNr}
 import de.awagen.kolibri.datatypes.collections.generators.ByFunctionNrLimitedIndexedGenerator
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
@@ -173,6 +178,8 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
   // stop schedules
   override def postStop(): Unit = {
     scheduleCancellables.foreach(x => x.cancel())
+    // tell local resource manager that global resource data needs an update
+    ClusterNode.getSystemSetup.localResourceManagerActor ! RemoveValueFromAllMappings(DD_JUDGEMENT_JOB_MAPPING_KEY, jobId)
     super.postStop()
   }
 
@@ -265,6 +272,16 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
       log.info(s"started processing of job '$jobId'")
       ()
     case searchJobMsg: SearchEvaluation =>
+      // register needed resources in distributed data
+      searchJobMsg.resources
+        .filter(x => x.resourceType == ResourceType.JUDGEMENTS_FILE)
+        .foreach(resource => {
+          ClusterNode.getSystemSetup.ddReplicator ! DDResourceStateUtils.ddJudgementJobMappingUpdateAdd(
+            ClusterNode.getSystemSetup.ddSelfUniqueAddress,
+            resource.identifier,
+            jobId
+          )
+        })
       log.debug(s"received job to process: $searchJobMsg")
       wrapUpFunction = searchJobMsg.wrapUpFunction
       implicit val timeout: Timeout = Timeout(10 minutes)
@@ -297,6 +314,8 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
     case e: ACK =>
       log.debug(s"received ACK: $e")
       jobProcessingState.removeBatchWaitingForACK(e.batchNr)
+    case UpdateSuccess(key, _) =>
+      log.info(s"successful distributed data update for key: $key")
     case CheckIfJobAckReceivedAndRemoveIfNot(batchNr) =>
       checkIfJobAckReceivedAndRemoveIfNot(batchNr)
     case ProvideJobStatus =>

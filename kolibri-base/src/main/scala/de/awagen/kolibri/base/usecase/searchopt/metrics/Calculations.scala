@@ -18,6 +18,7 @@
 package de.awagen.kolibri.base.usecase.searchopt.metrics
 
 import de.awagen.kolibri.base.http.client.request.RequestTemplate
+import de.awagen.kolibri.base.traits.Traits.WithResources
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.CalculationResult
 import de.awagen.kolibri.base.usecase.searchopt.metrics.ComputeFailReason.missingKeyFailReason
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Functions.{countValues, findFirstValue, throwableToMetricRowResponse}
@@ -49,7 +50,7 @@ object Calculations {
     def apply(in: In): Out
   }
 
-  trait FutureCalculation[In, ResultIdentifier, Out] extends KolibriSerializable {
+  trait FutureCalculation[In, ResultIdentifier, Out] extends KolibriSerializable with WithResources {
     val name: String
     val calculationResultIdentifier: ResultIdentifier
 

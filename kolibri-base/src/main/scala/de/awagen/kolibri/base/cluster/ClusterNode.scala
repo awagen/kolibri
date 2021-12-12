@@ -19,15 +19,15 @@ package de.awagen.kolibri.base.cluster
 import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.cluster.Cluster
 import akka.cluster.ddata.Replicator.Update
+import akka.cluster.ddata._
 import akka.cluster.ddata.typed.scaladsl.Replicator.WriteLocal
-import akka.cluster.ddata.{DistributedData, ORSet, SelfUniqueAddress}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.management.cluster.bootstrap.ClusterBootstrap
 import akka.management.scaladsl.AkkaManagement
 import akka.stream.Materializer
-import de.awagen.kolibri.base.actors.clusterinfo.LocalStateDistributorActor.ddBatchStatusActorRefKey
-import de.awagen.kolibri.base.actors.clusterinfo.{BatchStateActor, LocalStateDistributorActor}
+import de.awagen.kolibri.base.actors.clusterinfo.DDResourceStateUtils.DD_BATCH_STATUS_ACTOR_REF_KEY
+import de.awagen.kolibri.base.actors.clusterinfo.{BatchStateActor, LocalResourceManagerActor, LocalStateDistributorActor}
 import de.awagen.kolibri.base.actors.routing.RoutingActor
 import de.awagen.kolibri.base.config.AppProperties
 import de.awagen.kolibri.base.config.AppProperties.config
@@ -96,9 +96,13 @@ object ClusterNode extends App {
     implicit val mat: Materializer = Materializer(actorSystem)
     implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatchers.lookup(kolibriDispatcherName)
     // start replicator for distributed data on each node
-    val ddReplicator: ActorRef = DistributedData.get(actorSystem).replicator;
+    val ddReplicator: ActorRef = DistributedData.get(actorSystem).replicator
     implicit val ddSelfUniqueAddress: SelfUniqueAddress = DistributedData.get(actorSystem).selfUniqueAddress
     val localStateDistributorActor: ActorRef = actorSystem.actorOf(Props[LocalStateDistributorActor])
+    // adding one localResourceManagerActor per node to cause per-node handling (e.g cases such as
+    // clean up local resource when in whole cluster no job uses it anymore, such as within
+    // FileBasedJudgementRepository)
+    val localResourceManagerActor: ActorRef = actorSystem.actorOf(Props[LocalResourceManagerActor])
     val isHttpServerNode: Boolean = node_roles.contains(config.HTTP_SERVER_ROLE)
     logger.info(s"Node roles: $node_roles")
     logger.info(s"isHttpServerNode: $isHttpServerNode")
@@ -110,7 +114,7 @@ object ClusterNode extends App {
       // create BatchStateActor and publish the actor ref under respective topic
       batchStatusActor = Some(actorSystem.actorOf(BatchStateActor.props(10, 20)))
       val ddBatchStatusActorRefUpdate: Update[ORSet[ActorRef]] =
-        Update[ORSet[ActorRef]](ddBatchStatusActorRefKey, ORSet.empty[ActorRef], WriteLocal)(_ :+ batchStatusActor.get)
+        Update[ORSet[ActorRef]](DD_BATCH_STATUS_ACTOR_REF_KEY, ORSet.empty[ActorRef], WriteLocal)(_ :+ batchStatusActor.get)
       ddReplicator ! ddBatchStatusActorRefUpdate
       // need to initialize the BaseRoutes to start Supervisor actor in current actorSystem
       BaseRoutes.init

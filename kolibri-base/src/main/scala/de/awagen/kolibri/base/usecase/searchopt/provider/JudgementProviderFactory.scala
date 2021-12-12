@@ -16,9 +16,12 @@
 
 package de.awagen.kolibri.base.usecase.searchopt.provider
 
+import de.awagen.kolibri.base.traits.Traits.WithResources
+import de.awagen.kolibri.datatypes.io.KolibriSerializable
+
 import scala.concurrent.{ExecutionContext, Promise}
 
-trait JudgementProviderFactory[T] {
+trait JudgementProviderFactory[T] extends KolibriSerializable with WithResources {
 
   def getJudgements(implicit ec: ExecutionContext): Promise[JudgementProvider[T]]
 

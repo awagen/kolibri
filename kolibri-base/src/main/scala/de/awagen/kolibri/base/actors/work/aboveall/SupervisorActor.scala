@@ -111,10 +111,6 @@ object SupervisorActor {
 
   case class GetJobWorkerStatus(job: String) extends SupervisorCmd
 
-  case object GetAllJobWorkerStates extends SupervisorCmd
-
-  case class AllJobWorkerStates(states: Seq[WorkerStatusResponse]) extends SupervisorMsg
-
   type ActorRunnableJobGenerator[U, V, V1, W <: WithCount] = IndexedGenerator[ActorRunnable[U, V, V1, W]]
   type TaggedTypeTaggedMapBatch = Batch[TypeTaggedMap with TaggedWithType]
   type BatchTypeTaggedMapGenerator = IndexedGenerator[TaggedTypeTaggedMapBatch]
@@ -195,6 +191,8 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
   val informationProvidingReceive: Receive = {
     case ProvideJobHistory =>
       sender() ! JobHistory(finishedJobStateHistory.result.getOrElse(JOB_HISTORY_PRIORITY_STORE_KEY, Seq.empty))
+    // TODO: move this also to state handler that receives state information regularly with defined interval
+    // instead of polling on request
     case ProvideAllRunningJobStates =>
       // forward the status-requesting message to processing actor, which will send his response to the initial sender
       val reportTo: ActorRef = sender()
@@ -381,20 +379,6 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
       if (setupAndExpectation.isEmpty) {
         reportTo ! WorkerStatusResponse(Seq.empty)
       }
-    case GetAllJobWorkerStates =>
-      val reportTo: ActorRef = sender()
-      implicit val timeout: Timeout = Timeout(2 seconds)
-      val futures: Seq[Future[WorkerStatusResponse]] = jobIdToActorRefAndExpectation.keys.map(jobId => {
-        jobIdToActorRefAndExpectation(jobId)._1.executing.ask(GetStatusForWorkers)(timeout, self)
-          .recover(e => WorkerStatusResponse(Seq(BatchProcessStateResult(jobId, -1, Left(e)))))
-          .map(x => x.asInstanceOf[WorkerStatusResponse])
-      }).toSeq
-      val future: Future[Seq[WorkerStatusResponse]] = Future.sequence(futures)
-      future.onComplete({
-        case Success(value: Seq[WorkerStatusResponse]) => reportTo ! AllJobWorkerStates(value)
-        case _ => reportTo ! AllJobWorkerStates(Seq.empty)
-      })
-
     case e =>
       log.warning("Unknown message (will be ignored): {}", e)
   }

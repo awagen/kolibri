@@ -30,6 +30,7 @@ import de.awagen.kolibri.base.processing.modifiers.Modifier
 import de.awagen.kolibri.base.processing.modifiers.RequestPermutations.ModifierGeneratorProvider
 import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
 import de.awagen.kolibri.base.processing.tagging.TaggingConfigurations.BaseTaggingConfiguration
+import de.awagen.kolibri.base.traits.Traits.WithResources
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.SearchJobDefinitions
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.{Calculation, CalculationResult, FutureCalculation}
 import de.awagen.kolibri.base.usecase.searchopt.parse.ParsingConfig
@@ -76,9 +77,12 @@ object JobMessages {
                               allowedTimePerElementInMillis: Int = 1000,
                               allowedTimePerBatchInSeconds: Int = 600,
                               allowedTimeForJobInSeconds: Int = 7200,
-                              expectResultsFromBatchCalculations: Boolean = true) extends JobMessage {
+                              expectResultsFromBatchCalculations: Boolean = true) extends JobMessage with WithResources {
     val requestTemplateModifiers: Seq[IndexedGenerator[Modifier[RequestTemplateBuilder]]] = requestPermutation.flatMap(x => x.modifiers)
     logger.debug(s"found modifier generators: ${requestTemplateModifiers.size}")
+
+    // promote the resources needed in metric row calculations to the current job def
+    mapFutureMetricRowCalculation.resources.foreach(resource => this.addResource(resource))
   }
 }
 

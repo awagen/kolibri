@@ -16,6 +16,7 @@
 
 package de.awagen.kolibri.base.usecase.searchopt.io.json
 
+import de.awagen.kolibri.base.traits.Traits.{Resource, ResourceType}
 import de.awagen.kolibri.base.usecase.searchopt.provider.{FileBasedJudgementProviderFactory, JudgementProviderFactory}
 import spray.json.{DefaultJsonProtocol, DeserializationException, JsString, JsValue, JsonFormat}
 
@@ -26,7 +27,9 @@ object JudgementProviderFactoryJsonProtocol extends DefaultJsonProtocol {
     override def read(json: JsValue): JudgementProviderFactory[Double] = json match {
       case spray.json.JsObject(fields) if fields.contains("type") => fields("type").convertTo[String] match {
         case "FILE_BASED" =>
-          FileBasedJudgementProviderFactory(fields("filename").convertTo[String])
+          val provider = FileBasedJudgementProviderFactory(fields("filename").convertTo[String])
+          provider.addResource(Resource(ResourceType.JUDGEMENTS_FILE, provider.filename))
+          provider
         case e => throw DeserializationException(s"Expected a valid type for JudgementProviderFactory but got value $e")
       }
       case e => throw DeserializationException(s"Expected a value from JudgementProviderFactory but got value $e")

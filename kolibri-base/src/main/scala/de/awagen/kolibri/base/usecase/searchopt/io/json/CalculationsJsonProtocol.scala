@@ -17,9 +17,10 @@
 
 package de.awagen.kolibri.base.usecase.searchopt.io.json
 
+import de.awagen.kolibri.base.traits.Traits.ResourceType
 import de.awagen.kolibri.base.usecase.searchopt.io.json.JudgementProviderFactoryJsonProtocol._
 import de.awagen.kolibri.base.usecase.searchopt.io.json.MetricsCalculationJsonProtocol._
-import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.{Calculation, CalculationResult, FromMapCalculation, FromMapFutureCalculation, FutureCalculation, JudgementBasedMetricsCalculation}
+import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations._
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Functions.{booleanPrecision, countValues, findFirstValue}
 import de.awagen.kolibri.base.usecase.searchopt.metrics.{Functions, MetricsCalculation}
 import de.awagen.kolibri.base.usecase.searchopt.provider.JudgementProviderFactory
@@ -51,7 +52,10 @@ object CalculationsJsonProtocol extends DefaultJsonProtocol {
               metricsCalculation,
               excludeParamsFromMetricRow
             )
-            FromMapFutureCalculation(name, metricsCalculation.metrics.map(x => x.name).toSet, calculation)
+            val result = FromMapFutureCalculation(name, metricsCalculation.metrics.map(x => x.name).toSet, calculation)
+            judgementProviderFactory.resources.filter(resource => resource.resourceType == ResourceType.JUDGEMENTS_FILE)
+              .foreach(resource => result.addResource(resource))
+            result
         }
     }
 

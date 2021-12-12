@@ -16,8 +16,9 @@
 
 package de.awagen.kolibri.datatypes
 
-import java.util.concurrent.atomic.AtomicReference
+import org.slf4j.{Logger, LoggerFactory}
 
+import java.util.concurrent.atomic.AtomicReference
 import scala.concurrent.{ExecutionContext, Future, Promise}
 
 /**
@@ -31,6 +32,8 @@ import scala.concurrent.{ExecutionContext, Future, Promise}
   * @tparam V - the corresponding value
   */
 trait AtomicMapPromiseStore[U,V]  {
+
+  private[this] val logger: Logger = LoggerFactory.getLogger("AtomicMapPromiseStore")
 
   private[this] val valueMap: AtomicReference[Map[U, Promise[V]]] = new AtomicReference(Map.empty)
 
@@ -50,13 +53,18 @@ trait AtomicMapPromiseStore[U,V]  {
     else valueMap.get()(key)
   }
 
+  /**
+   * Remove the data corresponding to the passed key.
+   * @param key
+   */
   def remove(key: U): Unit = {
     var removedMapEntry: Boolean = false
     var currentMap = valueMap.get()
-    while (currentMap.contains(key)){
+    while (currentMap.contains(key) && !removedMapEntry){
       removedMapEntry = valueMap.compareAndSet(currentMap, currentMap - key)
       currentMap = valueMap.get()
     }
+    logger.info(s"removed key '$key', remaining keys: '${valueMap.get().keySet}'")
   }
 
   def clearAll(): Unit = {
