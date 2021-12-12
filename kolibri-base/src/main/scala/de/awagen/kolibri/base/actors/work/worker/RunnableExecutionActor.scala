@@ -1,18 +1,18 @@
 /**
-  * Copyright 2021 Andreas Wagenmann
-  *
-  * Licensed under the Apache License, Version 2.0 (the "License");
-  * you may not use this file except in compliance with the License.
-  * You may obtain a copy of the License at
-  *
-  * http://www.apache.org/licenses/LICENSE-2.0
-  *
-  * Unless required by applicable law or agreed to in writing, software
-  * distributed under the License is distributed on an "AS IS" BASIS,
-  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  * See the License for the specific language governing permissions and
-  * limitations under the License.
-  */
+ * Copyright 2021 Andreas Wagenmann
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package de.awagen.kolibri.base.actors.work.worker
 
@@ -24,6 +24,7 @@ import de.awagen.kolibri.base.actors.work.worker.AggregatingActor.{FinalReportSt
 import de.awagen.kolibri.base.actors.work.worker.JobPartIdentifiers.BaseJobPartIdentifier
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationState, AggregationStateWithoutData}
 import de.awagen.kolibri.base.actors.work.worker.RunnableExecutionActor.{BatchProcessState, BatchProcessStateResult, ReportBatchState, RunnableHousekeeping}
+import de.awagen.kolibri.base.cluster.ClusterNode
 import de.awagen.kolibri.base.config.AppProperties.config
 import de.awagen.kolibri.base.config.AppProperties.config.kolibriDispatcherName
 import de.awagen.kolibri.base.config.EnvVariableKeys.{CLUSTER_NODE_HOST, POD_IP}
@@ -63,12 +64,12 @@ object RunnableExecutionActor {
 }
 
 /**
-  * Actor to handle execution of an ActorRunnable.
-  * ActorRunnable provides the Iterable[U] over the elements to process and
-  * a flow which processes elements of type U to the message expected per element.
-  * This is send to the ActorRef given in JobActorConfig actor corresponding to ACTOR_SINK type
-  * if set and within ActorRunnable the sink type is NOT IGNORE_SINK.
-  */
+ * Actor to handle execution of an ActorRunnable.
+ * ActorRunnable provides the Iterable[U] over the elements to process and
+ * a flow which processes elements of type U to the message expected per element.
+ * This is send to the ActorRef given in JobActorConfig actor corresponding to ACTOR_SINK type
+ * if set and within ActorRunnable the sink type is NOT IGNORE_SINK.
+ */
 class RunnableExecutionActor[U <: WithCount](maxBatchDuration: FiniteDuration,
                                              val writerOpt: Option[Writer[U, Tag, _]]) extends Actor with ActorLogging with KolibriSerializable {
 
@@ -102,8 +103,15 @@ class RunnableExecutionActor[U <: WithCount](maxBatchDuration: FiniteDuration,
   var sendResultsBack: Boolean = true
   var batchStateUpdate: StateUpdateWithoutData = _
 
+  val statusUpdateCancellable: Cancellable = context.system.scheduler.scheduleAtFixedRate(
+    initialDelay = 2 seconds,
+    interval = 2 seconds)(() => {
+    ClusterNode.getSystemSetup.localStateDistributorActor ! BatchProcessStateResult(runningJobId, runningJobBatchNr, Right(batchProcessState()))
+  })
+
   override def postStop(): Unit = {
     housekeepingCancellable.cancel()
+    statusUpdateCancellable.cancel()
     super.postStop()
   }
 

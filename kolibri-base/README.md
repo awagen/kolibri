@@ -304,6 +304,29 @@ and the values corresponding to descriptions of the values
 a template along with (if info.json is placed) some descriptions of the fields and values via the 
 ```getJobTemplateByTypeAndIdentifier``` route.
 
+## Using distributed pubsub
+Using pubsub mechanism in the cluster is easy.
+- Create a pubsub mediator on cluster (one is enough): ```val mediator = DistributedPubSub.get(actorSystem).mediator```
+- register actors you want to listen to a topic (use ```self``` as ActorRef if actor wants to register himself, or replace
+it with any other ref):
+```
+mediator ! DistributedPubSubMediator.Subscribe("topic", self)
+```
+Further, make sure messages to be published under this topic are handled in the subscribed actor's receive method, 
+otherwise there will only be increase in unhandled messages.
+- publish a message on any node:
+```
+mediator ! DistributedPubSubMediator.Publish("topic", msg)
+```
+
+Note that the mediator will receive the message per node and then distribute it locally on each node.
+Further, if subscribers are added after publish, they wont see the message.
+Thus if you use this to keep some state updated, you either need to ensure all respective actors are already running
+when publishing, or to publish more frequently (well, or distribute it in other ways, such as distributed data or
+sending in messages, ...).
+
+Check for already started mediator before creating one yourself, e.g ClusterNode object might already provide one.
+
 ## Local execution - Issues and Fixes
 - starting the setup as provided in docker-compose file can be resource intensive. You might experience within the
 cluster heartbeat failures if not enough resources are available within docker. Thus make sure to allow sufficient 

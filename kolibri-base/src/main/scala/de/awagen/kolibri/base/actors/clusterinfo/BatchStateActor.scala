@@ -18,10 +18,11 @@
 package de.awagen.kolibri.base.actors.clusterinfo
 
 import akka.actor.{Actor, ActorLogging, ActorSystem, Cancellable, Props}
-import de.awagen.kolibri.base.actors.clusterinfo.BatchStateActor.{BatchFinishedEvent, HouseKeeping}
+import de.awagen.kolibri.base.actors.clusterinfo.BatchStateActor.{AllCurrentBatchStates, BatchFinishedEvent, GetAllCurrentBatchStates, HouseKeeping}
 import de.awagen.kolibri.base.actors.work.worker.RunnableExecutionActor
 import de.awagen.kolibri.base.actors.work.worker.RunnableExecutionActor.BatchProcessStateResult
 import de.awagen.kolibri.base.config.AppProperties.config.kolibriDispatcherName
+import de.awagen.kolibri.datatypes.io.KolibriSerializable
 
 import scala.collection.mutable
 import scala.concurrent.ExecutionContextExecutor
@@ -33,9 +34,15 @@ object BatchStateActor {
   def props(houseKeepingIntervalInSeconds: Int, houseKeepingMaxNonUpdateTimeInSeconds: Int): Props =
     Props(BatchStateActor(houseKeepingIntervalInSeconds, houseKeepingMaxNonUpdateTimeInSeconds))
 
-  case class BatchFinishedEvent(jobId: String, batchNr: Int)
+  trait BatchStateActorMsg extends KolibriSerializable
 
-  case object HouseKeeping
+  case class BatchFinishedEvent(jobId: String, batchNr: Int) extends BatchStateActorMsg
+
+  case object HouseKeeping extends BatchStateActorMsg
+
+  case object GetAllCurrentBatchStates extends BatchStateActorMsg
+
+  case class AllCurrentBatchStates(states: Seq[BatchProcessStateResult]) extends BatchStateActorMsg
 
 }
 
@@ -77,12 +84,12 @@ case class BatchStateActor(houseKeepingIntervalInSeconds: Int, houseKeepingMaxNo
 
   override def receive: Receive = {
     case batchState: RunnableExecutionActor.BatchProcessStateResult =>
-      log.info(s"received batch state update: $batchState")
+      log.debug(s"received batch state update: $batchState")
       val batchKey: (String, Int) = (batchState.jobId, batchState.batchNr)
       batchStates += (batchKey -> batchState)
       lastBatchUpdates += (batchKey -> System.currentTimeMillis())
     case BatchFinishedEvent(jobId, batchNr) =>
-      log.info(s"received batch finished event for jobId '$jobId' and batchNr '$batchNr'")
+      log.debug(s"received batch finished event for jobId '$jobId' and batchNr '$batchNr'")
       val batchKey: (String, Int) = (jobId, batchNr)
       deleteKey(batchKey)
     case HouseKeeping =>
@@ -90,10 +97,12 @@ case class BatchStateActor(houseKeepingIntervalInSeconds: Int, houseKeepingMaxNo
         lastBatchUpdates.get(x).foreach(time => {
           val expiredTime = (System.currentTimeMillis() - time) / 1000.0
           if (expiredTime > houseKeepingMaxNonUpdateTimeInSeconds) {
-            log.warning(s"didnt receive any update for batch with jobId '${x._1}', batchNr '${x._2}', removing from state tracking")
+            log.debug(s"didnt receive any update for batch with jobId '${x._1}', batchNr '${x._2}', removing from state tracking")
             deleteKey(x)
           }
         })
       })
+    case GetAllCurrentBatchStates =>
+      sender() ! AllCurrentBatchStates(batchStates.values.toSeq)
   }
 }

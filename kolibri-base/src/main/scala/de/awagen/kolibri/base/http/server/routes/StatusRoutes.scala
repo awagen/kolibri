@@ -22,11 +22,13 @@ import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Route
 import akka.pattern.ask
 import akka.util.Timeout
+import de.awagen.kolibri.base.actors.clusterinfo.BatchStateActor.{AllCurrentBatchStates, GetAllCurrentBatchStates}
 import de.awagen.kolibri.base.actors.clusterinfo.ClusterMetricsListenerActor.{MetricsProvided, ProvideMetrics}
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor._
 import de.awagen.kolibri.base.actors.work.manager.JobManagerActor.WorkerStatusResponse
 import de.awagen.kolibri.base.actors.work.manager.JobProcessingState.JobStatusInfo
 import de.awagen.kolibri.base.actors.work.worker.RunnableExecutionActor.{BatchProcessState, BatchProcessStateResult}
+import de.awagen.kolibri.base.cluster.ClusterNode
 import de.awagen.kolibri.base.config.AppProperties.config.{internalJobStatusRequestTimeout, kolibriDispatcherName}
 import de.awagen.kolibri.base.http.server.routes.BaseRoutes.{clusterMetricsListenerActor, supervisorActor}
 import de.awagen.kolibri.base.io.json.ClusterStatesJsonProtocol._
@@ -94,27 +96,32 @@ object StatusRoutes extends CORSHandler {
     corsHandler(
       path("jobAllWorkerStates") {
         get {
-          val allJobStates: Future[String] = (supervisorActor ? GetAllJobWorkerStates)
-            .map(x => x.asInstanceOf[AllJobWorkerStates])
-            .recover(_ => AllJobWorkerStates(Seq.empty))
-            .map(values => {
-              values.states
-                .flatMap(status => status.result)
-                .filter(x => x.result.isRight)
-                .map(x => x.result)
-                .sorted(Ordering[Either[Throwable, BatchProcessState]]({
-                  case (Right(aa: BatchProcessState), Right(bb: BatchProcessState)) =>
-                    batchProcessStateOrdering.compare(aa, bb)
-                  case _ => 0
-                }))
-                .map(state => batchStateToJson(state))
-                .toJson.toString()
-            })
-            .recover(ex => Seq(workerStatusToJson(WorkerStatusResponse(Seq(BatchProcessStateResult("unknown", 0, Left(ex)))))).toJson.toString())
-          onSuccess(allJobStates) {
-            e =>
-              logger.debug(s"result: $e")
-              complete(e)
+          if (ClusterNode.getSystemSetup.batchStatusActor.isEmpty) {
+            logger.warn("batch status actor not set, can not retrieve running job info")
+            complete(StatusCodes.NotFound)
+          }
+          else {
+            val allJobStates: Future[String] = (ClusterNode.getSystemSetup.batchStatusActor.get ? GetAllCurrentBatchStates)
+              .map(x => x.asInstanceOf[AllCurrentBatchStates])
+              .recover(_ => AllCurrentBatchStates(Seq.empty))
+              .map(values => {
+                values.states
+                  .filter(x => x.result.isRight)
+                  .map(x => x.result)
+                  .sorted(Ordering[Either[Throwable, BatchProcessState]]({
+                    case (Right(aa: BatchProcessState), Right(bb: BatchProcessState)) =>
+                      batchProcessStateOrdering.compare(aa, bb)
+                    case _ => 0
+                  }))
+                  .map(state => batchStateToJson(state))
+                  .toJson.toString()
+              })
+              .recover(ex => Seq(workerStatusToJson(WorkerStatusResponse(Seq(BatchProcessStateResult("unknown", 0, Left(ex)))))).toJson.toString())
+            onSuccess(allJobStates) {
+              e =>
+                logger.debug(s"result: $e")
+                complete(e)
+            }
           }
         }
       })

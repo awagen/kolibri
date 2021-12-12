@@ -1,35 +1,40 @@
 /**
-  * Copyright 2021 Andreas Wagenmann
-  *
-  * Licensed under the Apache License, Version 2.0 (the "License");
-  * you may not use this file except in compliance with the License.
-  * You may obtain a copy of the License at
-  *
-  * http://www.apache.org/licenses/LICENSE-2.0
-  *
-  * Unless required by applicable law or agreed to in writing, software
-  * distributed under the License is distributed on an "AS IS" BASIS,
-  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  * See the License for the specific language governing permissions and
-  * limitations under the License.
-  */
+ * Copyright 2021 Andreas Wagenmann
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package de.awagen.kolibri.base.cluster
 
-import akka.actor.ActorSystem
+import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.cluster.Cluster
+import akka.cluster.ddata.Replicator.Update
+import akka.cluster.ddata.typed.scaladsl.Replicator.WriteLocal
+import akka.cluster.ddata.{DistributedData, ORSet, SelfUniqueAddress}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.management.cluster.bootstrap.ClusterBootstrap
 import akka.management.scaladsl.AkkaManagement
 import akka.stream.Materializer
+import de.awagen.kolibri.base.actors.clusterinfo.LocalStateDistributorActor.ddBatchStatusActorRefKey
+import de.awagen.kolibri.base.actors.clusterinfo.{BatchStateActor, LocalStateDistributorActor}
 import de.awagen.kolibri.base.actors.routing.RoutingActor
 import de.awagen.kolibri.base.config.AppProperties
 import de.awagen.kolibri.base.config.AppProperties.config
 import de.awagen.kolibri.base.config.AppProperties.config.{kolibriDispatcherName, node_roles}
-import de.awagen.kolibri.base.http.server.routes.BaseRoutes._
 import de.awagen.kolibri.base.http.server.HttpServer
 import de.awagen.kolibri.base.http.server.routes.BaseRoutes
+import de.awagen.kolibri.base.http.server.routes.BaseRoutes._
 import de.awagen.kolibri.base.http.server.routes.ResourceRoutes.{getJobTemplateByTypeAndIdentifier, getJobTemplateOverviewForType, getJobTemplateTypes, storeSearchEvaluationTemplate}
 import de.awagen.kolibri.base.http.server.routes.StatusRoutes.{finishedJobStates, getAllJobWorkerStates, getJobStatus, getJobWorkerStatus, getRunningJobIds, health, jobStates, nodeState}
 import kamon.Kamon
@@ -42,8 +47,8 @@ import scala.util.{Failure, Success}
 
 
 /**
-  * App object to start a new cluster node
-  */
+ * App object to start a new cluster node
+ */
 object ClusterNode extends App {
 
   private[this] val logger: Logger = LoggerFactory.getLogger(ClusterNode.getClass.toString)
@@ -72,7 +77,6 @@ object ClusterNode extends App {
       startSystemSetup(None)
       setup
     }
-
   }
 
   def startSystemSetup(route: Option[Route]): Unit = {
@@ -88,17 +92,26 @@ object ClusterNode extends App {
   }
 
   case class SystemSetup(route: Option[Route] = None) {
-
     implicit val actorSystem: ActorSystem = startSystem()
     implicit val mat: Materializer = Materializer(actorSystem)
     implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatchers.lookup(kolibriDispatcherName)
+    // start replicator for distributed data on each node
+    val ddReplicator: ActorRef = DistributedData.get(actorSystem).replicator;
+    implicit val ddSelfUniqueAddress: SelfUniqueAddress = DistributedData.get(actorSystem).selfUniqueAddress
+    val localStateDistributorActor: ActorRef = actorSystem.actorOf(Props[LocalStateDistributorActor])
     val isHttpServerNode: Boolean = node_roles.contains(config.HTTP_SERVER_ROLE)
-
     logger.info(s"Node roles: $node_roles")
     logger.info(s"isHttpServerNode: $isHttpServerNode")
 
+    var batchStatusActor: Option[ActorRef] = None
     if (isHttpServerNode) {
       logger.info("Starting httpserver")
+      // first create and register batch status actor
+      // create BatchStateActor and publish the actor ref under respective topic
+      batchStatusActor = Some(actorSystem.actorOf(BatchStateActor.props(10, 20)))
+      val ddBatchStatusActorRefUpdate: Update[ORSet[ActorRef]] =
+        Update[ORSet[ActorRef]](ddBatchStatusActorRefKey, ORSet.empty[ActorRef], WriteLocal)(_ :+ batchStatusActor.get)
+      ddReplicator ! ddBatchStatusActorRefUpdate
       // need to initialize the BaseRoutes to start Supervisor actor in current actorSystem
       BaseRoutes.init
       val usedRoute: Route = route.getOrElse(simpleHelloRoute ~ streamingUserRoutes ~ clusterStatusRoutee ~ killAllJobs
@@ -115,8 +128,8 @@ object ClusterNode extends App {
     }
 
     /**
-      * @return
-      */
+     * @return
+     */
     def startSystem(): ActorSystem = {
       val system = ActorSystem(config.applicationName, AppProperties.config.baseConfig)
       AkkaManagement(system).start()
