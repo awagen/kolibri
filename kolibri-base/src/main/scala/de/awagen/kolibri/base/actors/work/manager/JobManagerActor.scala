@@ -20,6 +20,7 @@ package de.awagen.kolibri.base.actors.work.manager
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Cancellable, PoisonPill, Props}
 import akka.cluster.ddata.Replicator.UpdateSuccess
 import akka.util.Timeout
+import de.awagen.kolibri.base.actors.clusterinfo.BatchStateActor.WorkerStatusResponse
 import de.awagen.kolibri.base.actors.clusterinfo.DDResourceStateUtils
 import de.awagen.kolibri.base.actors.clusterinfo.DDResourceStateUtils.DD_JUDGEMENT_JOB_MAPPING_KEY
 import de.awagen.kolibri.base.actors.clusterinfo.LocalResourceManagerActor.RemoveValueFromAllMappings
@@ -90,8 +91,6 @@ object JobManagerActor {
 
   case class ProcessJobCmd[U, V, V1, W <: WithCount](job: ActorRunnableJobGenerator[U, V, V1, W]) extends ExternalJobManagerCmd
 
-  case object ProvideJobStatus extends ExternalJobManagerCmd
-
   case object ExpectationMet extends ExternalJobManagerCmd
 
   case object ExpectationFailed extends ExternalJobManagerCmd
@@ -112,10 +111,6 @@ object JobManagerActor {
   case class ACK(jobId: String, batchNr: Int, sender: ActorRef) extends JobManagerEvent
 
   case class MaxTimeExceededEvent(jobId: String) extends JobManagerEvent
-
-  case object GetStatusForWorkers extends ExternalJobManagerCmd
-
-  case class WorkerStatusResponse(result: Seq[BatchProcessStateResult]) extends JobManagerEvent
 
   case class WorkerKilled(batchNr: Int) extends JobManagerEvent
 
@@ -151,6 +146,19 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
   val workerServiceRouter: ActorRef = createWorkerRoutingServiceForJob(JobManagerActor.name(jobId))
 
   var scheduleCancellables: Seq[Cancellable] = Seq.empty
+  // schedule sending regular status updates to local state distributor which takes care
+  // of distributing the updates to right actor in cluster
+  val jobStatusUpdateCancellable: Cancellable = context.system.scheduler.scheduleAtFixedRate(
+    initialDelay = 2 seconds,
+    interval = 2 seconds)(() => {
+    if (!jobProcessingState.isJobToProcessSet) {
+      ClusterNode.getSystemSetup.localStateDistributorActor ! emptyJobStatusInfo
+    }
+    else {
+      ClusterNode.getSystemSetup.localStateDistributorActor ! jobProcessingState.jobStatusInfo(ProcessingResult.RUNNING)
+    }
+    ClusterNode.getSystemSetup.localResourceManagerActor ! WorkerStatusResponse(runningBatchesState.values.toSeq)
+  })
 
   def acceptResultMsg(msg: AggregationState[U]): Unit = {
     log.debug(s"received aggregation state: $msg")
@@ -178,6 +186,7 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
   // stop schedules
   override def postStop(): Unit = {
     scheduleCancellables.foreach(x => x.cancel())
+    jobStatusUpdateCancellable.cancel()
     // tell local resource manager that global resource data needs an update
     ClusterNode.getSystemSetup.localResourceManagerActor ! RemoveValueFromAllMappings(DD_JUDGEMENT_JOB_MAPPING_KEY, jobId)
     super.postStop()
@@ -318,13 +327,6 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
       log.info(s"successful distributed data update for key: $key")
     case CheckIfJobAckReceivedAndRemoveIfNot(batchNr) =>
       checkIfJobAckReceivedAndRemoveIfNot(batchNr)
-    case ProvideJobStatus =>
-      if (!jobProcessingState.isJobToProcessSet) {
-        sender() ! emptyJobStatusInfo
-      }
-      else {
-        sender() ! jobProcessingState.jobStatusInfo(ProcessingResult.RUNNING)
-      }
     case UpdateStateAndCheckForCompletion =>
       log.debug("received UpdateStateAndCheckForCompletion")
       jobProcessingState.updateSingleBatchExpectations()
@@ -369,9 +371,6 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
     case result: BatchProcessStateResult =>
       log.debug(s"received update on batch state: $result")
       runningBatchesState = runningBatchesState + (result.batchNr -> result)
-    // retrieve the currently processing actors and retrieve from all the status
-    case GetStatusForWorkers =>
-      sender() ! WorkerStatusResponse(runningBatchesState.values.toSeq)
     case WorkerKilled(batchNr) =>
       jobProcessingState.removeExpectationForBatchId(batchNr)
       runningBatchesState -= batchNr

@@ -20,6 +20,8 @@ package de.awagen.kolibri.base.actors.clusterinfo
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import akka.cluster.ddata.Replicator._
 import akka.cluster.ddata.{Key, ORSet}
+import de.awagen.kolibri.base.actors.clusterinfo.BatchStateActor.WorkerStatusResponse
+import de.awagen.kolibri.base.actors.work.manager.JobProcessingState.JobStatusInfo
 import de.awagen.kolibri.base.actors.work.worker.RunnableExecutionActor.BatchProcessStateResult
 import de.awagen.kolibri.base.cluster.ClusterNode
 
@@ -30,7 +32,10 @@ object LocalStateDistributorActor {
 
 }
 
-
+/**
+ * Actor keeping track of the global batch status actor reference to forward
+ * status messages to the right place
+ */
 case class LocalStateDistributorActor() extends Actor with ActorLogging {
 
   var batchStatusActor: Option[ActorRef] = None
@@ -55,6 +60,12 @@ case class LocalStateDistributorActor() extends Actor with ActorLogging {
   override def receive: Receive = ddReceive.orElse[Any, Unit](msg => msg match {
     case e: BatchProcessStateResult =>
       if (batchStatusActor.isEmpty) log.info("No batch state actor ref, can not send batch status update")
+      batchStatusActor.foreach(x => x.forward(e))
+    case e: JobStatusInfo =>
+      if (batchStatusActor.isEmpty) log.info("No batch state actor ref, can not send job status update")
+      batchStatusActor.foreach(x => x.forward(e))
+    case e: WorkerStatusResponse =>
+      if (batchStatusActor.isEmpty) log.info("No batch state actor ref, can not send worker status update")
       batchStatusActor.foreach(x => x.forward(e))
   })
 }

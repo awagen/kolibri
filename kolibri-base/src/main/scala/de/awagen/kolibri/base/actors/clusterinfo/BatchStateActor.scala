@@ -18,7 +18,9 @@
 package de.awagen.kolibri.base.actors.clusterinfo
 
 import akka.actor.{Actor, ActorLogging, ActorSystem, Cancellable, Props}
-import de.awagen.kolibri.base.actors.clusterinfo.BatchStateActor.{AllCurrentBatchStates, BatchFinishedEvent, GetAllCurrentBatchStates, HouseKeeping}
+import de.awagen.kolibri.base.actors.clusterinfo.BatchStateActor._
+import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.GetJobWorkerStatus
+import de.awagen.kolibri.base.actors.work.manager.JobProcessingState.{JobStatusInfo, emptyJobStatusInfo}
 import de.awagen.kolibri.base.actors.work.worker.RunnableExecutionActor
 import de.awagen.kolibri.base.actors.work.worker.RunnableExecutionActor.BatchProcessStateResult
 import de.awagen.kolibri.base.config.AppProperties.config.kolibriDispatcherName
@@ -42,8 +44,16 @@ object BatchStateActor {
 
   case object GetAllCurrentBatchStates extends BatchStateActorMsg
 
+  case object ProvideAllRunningJobStates extends BatchStateActorMsg
+
   case class AllCurrentBatchStates(states: Seq[BatchProcessStateResult]) extends BatchStateActorMsg
 
+
+  case object GetStatusForWorkers extends BatchStateActorMsg
+
+  case class WorkerStatusResponse(result: Seq[BatchProcessStateResult]) extends BatchStateActorMsg
+
+  case class ProvideJobStatus(jobId: String) extends BatchStateActorMsg
 }
 
 /**
@@ -59,8 +69,17 @@ case class BatchStateActor(houseKeepingIntervalInSeconds: Int, houseKeepingMaxNo
   implicit val system: ActorSystem = context.system
   implicit val ec: ExecutionContextExecutor = context.system.dispatchers.lookup(kolibriDispatcherName)
 
+  val batchStatusDesc: String = "Batch Status"
   var batchStates: mutable.Map[(String, Int), BatchProcessStateResult] = mutable.Map.empty
   var lastBatchUpdates: mutable.Map[(String, Int), Double] = mutable.Map.empty
+
+  val jobStatusDesc: String = "Job Status"
+  var jobStates: mutable.Map[String, JobStatusInfo] = mutable.Map.empty
+  var lastJobUpdates: mutable.Map[String, Double] = mutable.Map.empty
+
+  val workerStatusDesc: String = "Worker Status"
+  var workerStateAndLastUpdateTimestamp: Option[(WorkerStatusResponse, Double)] = None
+
 
   val houseKeepingSchedule: Cancellable = context.system.scheduler.scheduleAtFixedRate(
     initialDelay = houseKeepingIntervalInSeconds seconds,
@@ -68,7 +87,7 @@ case class BatchStateActor(houseKeepingIntervalInSeconds: Int, houseKeepingMaxNo
     receiver = self,
     message = HouseKeeping)
 
-  def deleteKey(key: (String, Int)): Unit = {
+  def deleteBatchKey(key: (String, Int)): Unit = {
     batchStates -= key
     lastBatchUpdates -= key
   }
@@ -82,6 +101,30 @@ case class BatchStateActor(houseKeepingIntervalInSeconds: Int, houseKeepingMaxNo
     super.postStop()
   }
 
+  def housekeeping[T, U](dataMap: mutable.Map[T, U], lastUpdateMap: mutable.Map[T, Double], dataDesc: String): Unit = {
+    dataMap.keys.foreach(x => {
+      lastUpdateMap.get(x).foreach(time => {
+        val expiredTime = (System.currentTimeMillis() - time) / 1000.0
+        if (expiredTime > houseKeepingMaxNonUpdateTimeInSeconds) {
+          log.debug(s"didnt receive any update for data with type '$dataDesc' and key '$x', removing from state tracking")
+          dataMap -= x
+          lastUpdateMap -= x
+        }
+      })
+    })
+  }
+
+  def isExpired[T](data: (T, Double), dataDesc: String): Boolean = {
+    val expiredTime = (System.currentTimeMillis() - data._2) / 1000.0
+    if (expiredTime > houseKeepingMaxNonUpdateTimeInSeconds) {
+      log.debug(s"didnt receive any update for data with type '$dataDesc', removing from state tracking")
+      true
+    }
+    else {
+      false
+    }
+  }
+
   override def receive: Receive = {
     case batchState: RunnableExecutionActor.BatchProcessStateResult =>
       log.debug(s"received batch state update: $batchState")
@@ -91,18 +134,35 @@ case class BatchStateActor(houseKeepingIntervalInSeconds: Int, houseKeepingMaxNo
     case BatchFinishedEvent(jobId, batchNr) =>
       log.debug(s"received batch finished event for jobId '$jobId' and batchNr '$batchNr'")
       val batchKey: (String, Int) = (jobId, batchNr)
-      deleteKey(batchKey)
+      deleteBatchKey(batchKey)
     case HouseKeeping =>
-      batchStates.keys.foreach(x => {
-        lastBatchUpdates.get(x).foreach(time => {
-          val expiredTime = (System.currentTimeMillis() - time) / 1000.0
-          if (expiredTime > houseKeepingMaxNonUpdateTimeInSeconds) {
-            log.debug(s"didnt receive any update for batch with jobId '${x._1}', batchNr '${x._2}', removing from state tracking")
-            deleteKey(x)
-          }
+      housekeeping(batchStates, lastBatchUpdates, batchStatusDesc)
+      housekeeping(jobStates, lastJobUpdates, jobStatusDesc)
+      workerStateAndLastUpdateTimestamp = workerStateAndLastUpdateTimestamp
+        .flatMap(x => {
+          if (isExpired(x, workerStatusDesc)) None
+          else Some(x)
         })
-      })
     case GetAllCurrentBatchStates =>
       sender() ! AllCurrentBatchStates(batchStates.values.toSeq)
+    case msg: JobStatusInfo =>
+      log.debug(s"received job state update: $msg")
+      jobStates += (msg.jobId -> msg)
+      lastJobUpdates += (msg.jobId -> System.currentTimeMillis())
+    case msg: ProvideJobStatus =>
+      log.info("received provide job status msg")
+      val response = jobStates.getOrElse(msg.jobId, emptyJobStatusInfo)
+      log.info(s"ProvideJobStatus response: $response")
+      sender() ! response
+    case msg: WorkerStatusResponse =>
+      log.debug(s"received worker state update: $msg")
+      workerStateAndLastUpdateTimestamp = Some((msg, System.currentTimeMillis()))
+    case GetJobWorkerStatus(jobId) =>
+      sender() ! workerStateAndLastUpdateTimestamp.map(x => x._1)
+        .map(x => WorkerStatusResponse(x.result.filter(state => state.jobId == jobId)))
+        .getOrElse(WorkerStatusResponse(Seq.empty))
+    case ProvideAllRunningJobStates =>
+      sender() ! jobStates.values.toSeq
+
   }
 }

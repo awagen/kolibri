@@ -18,14 +18,11 @@ package de.awagen.kolibri.base.actors.work.aboveall
 
 import akka.actor.SupervisorStrategy.Stop
 import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, ActorSystem, Cancellable, OneForOneStrategy, PoisonPill, Props, Terminated}
-import akka.pattern.ask
-import akka.util.Timeout
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor._
 import de.awagen.kolibri.base.actors.work.manager.JobManagerActor
 import de.awagen.kolibri.base.actors.work.manager.JobManagerActor._
 import de.awagen.kolibri.base.actors.work.manager.JobProcessingState.JobStatusInfo
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.ProcessingMessage
-import de.awagen.kolibri.base.actors.work.worker.RunnableExecutionActor.BatchProcessStateResult
 import de.awagen.kolibri.base.actors.work.worker.TaskExecutionWorkerActor
 import de.awagen.kolibri.base.config.AppProperties._
 import de.awagen.kolibri.base.config.AppProperties.config.kolibriDispatcherName
@@ -53,7 +50,6 @@ import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 import scala.collection.mutable
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import scala.concurrent.{ExecutionContextExecutor, Future}
-import scala.util.{Failure, Success}
 
 
 object SupervisorActor {
@@ -145,8 +141,6 @@ object SupervisorActor {
 
   case object ProvideAllRunningJobIDs extends SupervisorCmd
 
-  case object ProvideAllRunningJobStates extends SupervisorCmd
-
   case object ProvideJobHistory extends SupervisorCmd
 
   case class StopJob(jobId: String) extends SupervisorCmd
@@ -191,29 +185,8 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
   val informationProvidingReceive: Receive = {
     case ProvideJobHistory =>
       sender() ! JobHistory(finishedJobStateHistory.result.getOrElse(JOB_HISTORY_PRIORITY_STORE_KEY, Seq.empty))
-    // TODO: move this also to state handler that receives state information regularly with defined interval
-    // instead of polling on request
-    case ProvideAllRunningJobStates =>
-      // forward the status-requesting message to processing actor, which will send his response to the initial sender
-      val reportTo: ActorRef = sender()
-      implicit val timeout: Timeout = 1 second
-      val results: Iterable[Future[Any]] = jobIdToActorRefAndExpectation.values.map(actorSetupAndExpectation => {
-        actorSetupAndExpectation._1.executing ? ProvideJobStatus
-      })
-      val overallResults: Future[Iterable[Any]] = Future.sequence(results)
-      overallResults.onComplete(x => reportTo ! x)
     case ProvideAllRunningJobIDs =>
       sender() ! RunningJobs(jobIdToActorRefAndExpectation.keys.toSeq)
-    case ProvideJobState(jobId) =>
-      val requestingActor = sender()
-      val actorSetupAndExpectation: Option[(ActorSetup, ExecutionExpectation)] = jobIdToActorRefAndExpectation.get(jobId)
-      actorSetupAndExpectation.foreach(x => {
-        // forward the status-requesting message to processing actor, which will send his response to the initial sender
-        x._1.executing forward ProvideJobStatus
-      })
-      if (actorSetupAndExpectation.isEmpty) {
-        requestingActor ! JobNotFound(jobId: String)
-      }
   }
 
   val jobStartingReceive: Receive = {
@@ -362,23 +335,6 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
       jobIdToActorRefAndExpectation -= event.jobId
       finishedJobStateHistory.addEntry(event.jobStatusInfo)
     case KillAllChildren => context.children.foreach(x => context.stop(x))
-    case GetJobWorkerStatus(jobId) =>
-      val reportTo: ActorRef = sender()
-      implicit val timeout: Timeout = Timeout(2 seconds)
-      val setupAndExpectation: Option[(ActorSetup, ExecutionExpectation)] = jobIdToActorRefAndExpectation.get(jobId)
-      setupAndExpectation.foreach(x => {
-        x._1.executing.ask(GetStatusForWorkers)(timeout, self).onComplete({
-          case Success(response: WorkerStatusResponse) =>
-            log.debug(s"received batch status result: $response")
-            reportTo ! response
-          case Failure(e) =>
-            log.debug(s"received exception on batch status request: $e")
-            reportTo ! WorkerStatusResponse(Seq(BatchProcessStateResult(jobId, -1, Left(e))))
-        })
-      })
-      if (setupAndExpectation.isEmpty) {
-        reportTo ! WorkerStatusResponse(Seq.empty)
-      }
     case e =>
       log.warning("Unknown message (will be ignored): {}", e)
   }

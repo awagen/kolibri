@@ -22,10 +22,9 @@ import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Route
 import akka.pattern.ask
 import akka.util.Timeout
-import de.awagen.kolibri.base.actors.clusterinfo.BatchStateActor.{AllCurrentBatchStates, GetAllCurrentBatchStates}
+import de.awagen.kolibri.base.actors.clusterinfo.BatchStateActor.{apply => _, unapply => _, _}
 import de.awagen.kolibri.base.actors.clusterinfo.ClusterMetricsListenerActor.{MetricsProvided, ProvideMetrics}
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor._
-import de.awagen.kolibri.base.actors.work.manager.JobManagerActor.WorkerStatusResponse
 import de.awagen.kolibri.base.actors.work.manager.JobProcessingState.JobStatusInfo
 import de.awagen.kolibri.base.actors.work.worker.RunnableExecutionActor.{BatchProcessState, BatchProcessStateResult}
 import de.awagen.kolibri.base.cluster.ClusterNode
@@ -36,7 +35,6 @@ import de.awagen.kolibri.base.io.json.JobStateJsonProtocol.jobStatusFormat
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
-import scala.util.{Failure, Success}
 
 object StatusRoutes extends CORSHandler {
 
@@ -75,8 +73,14 @@ object StatusRoutes extends CORSHandler {
       path("jobWorkerStatus") {
         get {
           parameters("jobId") { jobId => {
-            onSuccess(supervisorActor ? GetJobWorkerStatus(jobId)) {
-              e => complete(workerStatusToJson(e.asInstanceOf[WorkerStatusResponse]))
+            if (ClusterNode.getSystemSetup.batchStatusActor.isEmpty) {
+              logger.warn("batch status actor not set, can not retrieve running job info")
+              complete(StatusCodes.NotFound)
+            }
+            else {
+              onSuccess(ClusterNode.getSystemSetup.batchStatusActor.get ? GetJobWorkerStatus(jobId)) {
+                e => complete(workerStatusToJson(e.asInstanceOf[WorkerStatusResponse]))
+              }
             }
           }
           }
@@ -147,8 +151,14 @@ object StatusRoutes extends CORSHandler {
         get {
           parameters("jobId") {
             jobId => {
-              onSuccess(supervisorActor ? ProvideJobState(jobId)) {
-                e => complete(e.toString)
+              if (ClusterNode.getSystemSetup.batchStatusActor.isEmpty) {
+                logger.warn("batch status actor not set, can not retrieve running job info")
+                complete(StatusCodes.NotFound)
+              }
+              else {
+                onSuccess(ClusterNode.getSystemSetup.batchStatusActor.get ? ProvideJobStatus(jobId)) {
+                  e => complete(e.asInstanceOf[JobStatusInfo].toJson.toString())
+                }
               }
             }
           }
@@ -190,17 +200,19 @@ object StatusRoutes extends CORSHandler {
     corsHandler(
       path("jobStates") {
         get {
-          onSuccess(supervisorActor ? ProvideAllRunningJobStates) {
-            case result: Success[Seq[JobStatusInfo]] =>
-              complete(StatusCodes.OK, s"""${result.get.toJson.toString()}""")
-            case result: Failure[Any] =>
-              complete(StatusCodes.ServerError.apply(500)(
-                result.exception.getMessage,
-                result.exception.getMessage).toString())
-            case _ =>
-              complete(StatusCodes.ServerError.apply(500)(
-                "unexpected server response",
-                "unexpected server response").toString())
+          if (ClusterNode.getSystemSetup.batchStatusActor.isEmpty) {
+            logger.warn("batch status actor not set, can not retrieve running job info")
+            complete(StatusCodes.NotFound)
+          }
+          else {
+            onSuccess(ClusterNode.getSystemSetup.batchStatusActor.get ? ProvideAllRunningJobStates) {
+              case result: Seq[JobStatusInfo] =>
+                complete(StatusCodes.OK, s"""${result.toJson.toString()}""")
+              case _ =>
+                complete(StatusCodes.ServerError.apply(500)(
+                  "unexpected server response",
+                  "unexpected server response").toString())
+            }
           }
         }
       }
