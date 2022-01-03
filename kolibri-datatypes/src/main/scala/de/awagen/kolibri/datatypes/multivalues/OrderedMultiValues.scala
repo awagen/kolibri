@@ -22,7 +22,7 @@ import de.awagen.kolibri.datatypes.values.OrderedValues
 
 trait OrderedMultiValues extends KolibriSerializable {
 
-  val values: Seq[OrderedValues[Any]]
+  def values: Seq[OrderedValues[Any]]
 
   /**
     * Remove value with given name.
@@ -34,6 +34,13 @@ trait OrderedMultiValues extends KolibriSerializable {
     */
   def removeValue(valueName: String): (OrderedMultiValues, Boolean)
 
+  /**
+   * Describes which index in the original OrderedMultiValues a passed index corresponds to. Here the n-th element
+   * is just the n-th element, but this might be overwritten e.g by batching implementations such as
+   * OrderedMultiValuesBatch that shifts the original index by a starting index
+   * @param n
+   * @return
+   */
   def originalValueIndexOf(n: Int): Int = n
 
   /**

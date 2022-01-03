@@ -69,6 +69,15 @@ object RunningValue {
   }
 }
 
+/**
+ *
+ * @param weight - current weight
+ * @param numSamples - number of samples that are contained in the aggregation
+ * @param value - the current value
+ * @param weightFunction - function taking current weight and new weight, providing new weight (used in call of weighted function)
+ * @param addFunc - function used to add two AggregateValues
+ * @tparam A - type of the value
+ */
 case class RunningValue[A](weight: Double,
                            numSamples: Int,
                            value: A,

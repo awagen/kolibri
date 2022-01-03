@@ -51,6 +51,10 @@ object RequestPermutations {
                              headersMapper: HeadersMapper,
                              bodyMapper: BodyMapper) extends ModifierGeneratorProvider {
 
+    /**
+     * Generate Seq of generators where each generator corresponds to the combinations belonging to single key
+     * @return
+     */
     def perKeyPermutations: Seq[IndexedGenerator[Modifier[RequestTemplateBuilder]]] = {
       var permutationsPerKeySeq: Seq[IndexedGenerator[Modifier[RequestTemplateBuilder]]] = Seq.empty
       keyGen.iterator.foreach(key => {
@@ -69,13 +73,21 @@ object RequestPermutations {
       permutationsPerKeySeq
     }
 
-    // to allow batching by key, and the parameters for distinct keys shall not be applied at the same time
-    // partitions provide the sequential list of IndexedGenerators that can be mixed in with the other IndexedGenerators
-    // to be permutated with them separately
+    /**
+     * to allow batching by key, and the parameters for distinct keys shall not be applied at the same time
+     * partitions provide the sequential list of IndexedGenerators that can be mixed in with the other IndexedGenerators
+     * to be permutated with them separately.
+     * Thus each generator generated reflects the values valid for a single key.
+     * @return
+     */
     override def partitions: IndexedGenerator[IndexedGenerator[Modifier[RequestTemplateBuilder]]] = {
       ByFunctionNrLimitedIndexedGenerator.createFromSeq(perKeyPermutations)
     }
 
+    /**
+     * @return Seq with single generator that generates the values for a single key, then the values for the next
+     *         till values for all keys where generated, one after another.
+     */
     override def modifiers: Seq[IndexedGenerator[Modifier[RequestTemplateBuilder]]] = {
       Seq(OneAfterAnotherIndexedGenerator(perKeyPermutations))
     }
@@ -102,13 +114,19 @@ object RequestPermutations {
       .filter(gen => gen.size > 0)
     val bodyModifierGenerator: Option[IndexedGenerator[BodyModifier]] = if (bodies.isEmpty) None else Some(bodiesToBodyModifier(bodies, bodyContentType))
 
-    // here each single element forms its own partition, which means
-    // that the generator is batched on Generator n, each batch will
-    // only contain one value of the values provided by the generator
+    /**
+     * First single-element generators are generated that refer to the single param
+     * modifiers, then the header modifiers, then the body modifiers, and no combinations of them will be generated.
+     * Thus its a generator of single-element generators only containing one single modification to the request.
+     */
     override def partitions: IndexedGenerator[IndexedGenerator[Modifier[RequestTemplateBuilder]]] = {
       OneAfterAnotherIndexedGenerator(modifiers).mapGen(x => ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq(x)))
     }
 
+    /**
+     * @return Seq of generators appended in following order: 1) param modifier generators, 2) header modifier
+     *         generators, 3) body modifier generators
+     */
     override def modifiers: Seq[IndexedGenerator[Modifier[RequestTemplateBuilder]]] = {
       val combined: Seq[IndexedGenerator[Modifier[RequestTemplateBuilder]]] = paramModifierGenerators ++ headerModifierGenerators
       bodyModifierGenerator.map(x => combined :+ x).getOrElse(combined)

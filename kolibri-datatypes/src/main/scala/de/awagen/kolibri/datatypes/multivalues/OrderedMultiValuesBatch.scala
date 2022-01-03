@@ -16,6 +16,10 @@
 
 package de.awagen.kolibri.datatypes.multivalues
 
+/**
+ * Trait adding batchSize, batchNr and batchStartElement (shift of indices relative to the original OrderedMultiValues,
+ * specifying at which element of the original the batch starts) to OrderedMultiValues
+ */
 trait OrderedMultiValuesBatch extends OrderedMultiValues  {
 
   val batchSize: Int

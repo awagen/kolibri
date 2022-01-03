@@ -18,11 +18,8 @@ package de.awagen.kolibri.datatypes.multivalues
 
 import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator}
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
-import org.slf4j.{Logger, LoggerFactory}
 
 object OrderedMultiValuesImplicits {
-
-  private[this] val logger: Logger = LoggerFactory.getLogger(OrderedMultiValuesImplicits.getClass.toString)
 
   implicit class OrderedMultiValuesToParameterIterator(val multiValues: OrderedMultiValues) {
 

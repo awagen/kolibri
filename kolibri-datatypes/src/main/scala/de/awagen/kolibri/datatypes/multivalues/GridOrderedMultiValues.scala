@@ -22,6 +22,10 @@ import de.awagen.kolibri.datatypes.values.OrderedValues
 import scala.collection.immutable
 
 
+/**
+ * Implementation of OrderedMultiValues assuming a value grid, providing the methods to find n-th permutations
+ * @param values - Seq of OrderedValues of any type
+ */
 case class GridOrderedMultiValues(values: Seq[OrderedValues[Any]]) extends OrderedMultiValues {
 
   val numberOfValuesPerParameter: immutable.Seq[Int] = values.map(x => x.totalValueCount).toList

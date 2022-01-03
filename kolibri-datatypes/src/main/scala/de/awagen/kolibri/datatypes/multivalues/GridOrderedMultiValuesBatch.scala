@@ -66,7 +66,7 @@ case class GridOrderedMultiValuesBatch(multiValues: OrderedMultiValues, batchSiz
 
   override def stepsForNthElementStartingFromFirstParam(n: Int): List[(Int, Int)] = {
     assert(n < batchSize && n >= 0, s"Batch element number must be > 0 and smaller batchSize ($batchSize), but is $n")
-    multiValues.stepsForNthElementStartingFromFirstParam(batchStartElement + n)
+    multiValues.stepsForNthElementStartingFromFirstParam(originalValueIndexOf(n))
   }
 
   override def addValue(values: OrderedValues[Any], prepend: Boolean): OrderedMultiValues = {
