@@ -7,14 +7,13 @@ val playLogbackVersion = "2.8.2"
 val sprayVersion = "1.3.5"
 
 ThisBuild / scalaVersion := "2.13.2"
-ThisBuild / version := "0.1.0-rc0"
+ThisBuild / version := "0.1.0-rc1"
 
 lazy val jvmOptions = Seq(
   "-Xms1G",
   "-Xmx4G",
   "-Xss1M",
-  "-XX:+CMSClassUnloadingEnabled",
-  "-XX:MaxPermSize=256M"
+  "-XX:+CMSClassUnloadingEnabled"
 )
 
 // scoverage plugin setting to exclude classes from coverage report

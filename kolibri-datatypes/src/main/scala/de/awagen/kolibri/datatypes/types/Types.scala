@@ -14,6 +14,11 @@ object Types {
 
   }
 
+  trait With[T] {
+
+    def withInstance: T
+
+  }
 
 
 }

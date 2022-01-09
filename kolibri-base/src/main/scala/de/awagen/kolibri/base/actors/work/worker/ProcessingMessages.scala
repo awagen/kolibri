@@ -26,6 +26,10 @@ import de.awagen.kolibri.datatypes.values.DataPoint
 
 object ProcessingMessages {
 
+  /**
+   * Trait for data points in processing stages
+   * @tparam T
+   */
   sealed trait ProcessingMessage[+T] extends KolibriSerializable with TaggedWithType with DataPoint[T] {
     val data: T
 
@@ -41,6 +45,10 @@ object ProcessingMessages {
     override val data: T = null.asInstanceOf[T]
   }
 
+  /**
+   * Trait for aggregation states
+   * @tparam T
+   */
   sealed trait AggregationState[+T] extends KolibriSerializable with TaggedWithType {
     val jobID: String
     val batchNr: Int
@@ -58,6 +66,16 @@ object ProcessingMessages {
                                           executionExpectation: ExecutionExpectation) extends AggregationState[V]
 
 
+  /**
+   * Summary of current state of results
+   * @param result - enum value of type ProcessingResult
+   * @param nrOfBatchesTotal - total number of batches in the job
+   * @param nrOfBatchesSentForProcessing - nr of batches that were sent to be processed
+   * @param nrOfResultsReceived - nr of batch results that were already received
+   * @param failedBatches - the indices for the batches that were observed as failed (depending on distribution strategy
+   *                      they might still be retried later, so if index appears here temporarilly, might disappear
+   *                      during further processing if processed successfully)
+   */
   case class ResultSummary(result: ProcessingResult.Value,
                            nrOfBatchesTotal: Int,
                            nrOfBatchesSentForProcessing: Int,
@@ -73,10 +91,6 @@ object ProcessingMessages {
 
   }
 
-  object ProcessingResult extends Enumeration {
-    val SUCCESS, FAILURE, RUNNING, UNKNOWN = Value
-  }
-
   def unknownJobResultSummary: ResultSummary = {
     ResultSummary(
       result = ProcessingResult.UNKNOWN,
@@ -87,6 +101,11 @@ object ProcessingMessages {
     )
   }
 
-
+  /**
+   * Enum for distinct processing states
+   */
+  object ProcessingResult extends Enumeration {
+    val SUCCESS, FAILURE, RUNNING, UNKNOWN = Value
+  }
 
 }

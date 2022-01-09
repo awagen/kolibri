@@ -27,8 +27,7 @@ lazy val jvmOptions = Seq(
   "-Xms1G",
   "-Xmx4G",
   "-Xss1M",
-  "-XX:+CMSClassUnloadingEnabled",
-  "-XX:MaxPermSize=256M"
+  "-XX:+CMSClassUnloadingEnabled"
 )
 
 // scoverage plugin setting to exclude classes from coverage report
