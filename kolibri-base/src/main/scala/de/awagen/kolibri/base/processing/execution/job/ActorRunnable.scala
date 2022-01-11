@@ -26,7 +26,7 @@ import de.awagen.kolibri.base.processing.execution.expectation.ExecutionExpectat
 import de.awagen.kolibri.base.processing.execution.job
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnable._
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnableSinkType._
-import de.awagen.kolibri.base.processing.execution.job.ActorRunnableUtils.{actorSinkFunction, sendToSeparateActorFlow}
+import de.awagen.kolibri.base.processing.execution.job.ActorRunnableUtils.{sendResultToActorFlowFunction, sendToSeparateActorFlow}
 import de.awagen.kolibri.base.traits.Traits.WithBatchNr
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
@@ -88,7 +88,8 @@ case class ActorRunnable[U, V, V1, Y <: WithCount](jobId: String,
       case REPORT_TO_ACTOR_SINK =>
         val reportTo: Option[ActorRef] = actorConfig.others.get(ActorType.ACTOR_SINK)
         val sink: Sink[ProcessingMessage[V1], Future[Done]] = reportTo.map(x => {
-          actorSinkFunction(jobId, batchNr, aggregatorConfig, expectationGenerator).apply(x)
+          sendResultToActorFlowFunction[ProcessingMessage[V1], V1, Y](jobId, batchNr, aggregatorConfig, expectationGenerator, identity, _ => Some(x))
+            .toMat(Sink.foreach[Any](_ => ()))(Keep.right)
         }).getOrElse(Sink.ignore)
         killSwitch.toMat(sink)(Keep.both)
       case e =>

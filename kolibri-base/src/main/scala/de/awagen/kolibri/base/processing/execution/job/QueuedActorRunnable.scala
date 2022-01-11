@@ -17,9 +17,9 @@
 
 package de.awagen.kolibri.base.processing.execution.job
 
-import akka.actor.{ActorContext, ActorSystem, Props}
+import akka.actor.{ActorContext, ActorRef, ActorSystem, Props}
 import akka.stream._
-import akka.stream.scaladsl.{Flow, Keep, RunnableGraph, Sink, Source, SourceQueueWithComplete}
+import akka.stream.scaladsl.{Flow, GraphDSL, Keep, RunnableGraph, Sink, Source, SourceQueueWithComplete, SubFlow, Unzip, Zip}
 import akka.{Done, NotUsed}
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.ProcessingMessage
 import de.awagen.kolibri.base.processing.consume.AggregatorConfigurations.AggregatorConfig
@@ -27,10 +27,10 @@ import de.awagen.kolibri.base.processing.execution.expectation.ExecutionExpectat
 import de.awagen.kolibri.base.processing.execution.job
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnable._
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnableSinkType._
-import de.awagen.kolibri.base.processing.execution.job.ActorRunnableUtils.{actorSinkFunction, getKillSwitch, sendToSeparateActorFlow}
+import de.awagen.kolibri.base.processing.execution.job.ActorRunnableUtils.{sendResultToActorFlowFunction, sendToSeparateActorFlow}
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
-import de.awagen.kolibri.datatypes.types.Types.{With, WithCount}
+import de.awagen.kolibri.datatypes.types.Types.WithCount
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.concurrent.duration._
@@ -65,36 +65,73 @@ import scala.concurrent.{ExecutionContext, Future}
  *                             does not happen in the sink here but messages are send to other processors which then provide the response
  * @param waitTimePerElement   - max time to wait per processing element (in case processingActorProps are not None; only used to set timeout to the respective ask future)
  */
-case class QueuedActorRunnable[U, V, V1 <: With[JobActorConfig], Y <: WithCount](jobId: String,
-                                                                                 batchNr: Int,
-                                                                                 supplier: IndexedGenerator[U],
-                                                                                 transformer: Flow[U, ProcessingMessage[V], NotUsed],
-                                                                                 processingActorProps: Option[Props],
-                                                                                 aggregatorConfig: AggregatorConfig[V1, Y],
-                                                                                 expectationGenerator: Int => ExecutionExpectation,
-                                                                                 sinkType: job.ActorRunnableSinkType.Value,
-                                                                                 waitTimePerElement: FiniteDuration,
-                                                                                 maxExecutionDuration: FiniteDuration,
-                                                                                 sendResultsBack: Boolean) extends KolibriSerializable with RunnableGraphProvider[U, (SourceQueueWithComplete[IndexedGenerator[U]], (UniqueKillSwitch, Future[Done]))] {
+case class QueuedActorRunnable[U, V, V1, Y <: WithCount](jobId: String,
+                                                         batchNr: Int,
+                                                         supplier: IndexedGenerator[(U, Option[ActorRef])],
+                                                         transformer: Flow[U, ProcessingMessage[V], NotUsed],
+                                                         processingActorProps: Option[Props],
+                                                         aggregatorConfig: AggregatorConfig[V1, Y],
+                                                         expectationGenerator: Int => ExecutionExpectation,
+                                                         sinkType: job.ActorRunnableSinkType.Value,
+                                                         waitTimePerElement: FiniteDuration,
+                                                         maxExecutionDuration: FiniteDuration,
+                                                         sendResultsBack: Boolean) extends KolibriSerializable with RunnableGraphProvider[(U, Option[ActorRef]), (SourceQueueWithComplete[IndexedGenerator[(U, Option[ActorRef])]], (UniqueKillSwitch, Future[Done]))] {
 
   val log: Logger = LoggerFactory.getLogger(QueuedActorRunnable.getClass)
 
-  private[job] def getSendToActorFlow: Flow[ProcessingMessage[V1], ProcessingMessage[V1], NotUsed] = {
+  private[job] def passThruFlow: Flow[(ProcessingMessage[V1], Option[ActorRef]), (ProcessingMessage[V1], Option[ActorRef]), NotUsed] = Flow.fromFunction[(ProcessingMessage[V1], Option[ActorRef]), (ProcessingMessage[V1], Option[ActorRef])](identity)
+
+  private[job] def getSendToActorFlow: Flow[(ProcessingMessage[V1], Option[ActorRef]), Any, NotUsed] = {
     sinkType match {
       case IGNORE_SINK =>
-        Flow.fromFunction[ProcessingMessage[V1], ProcessingMessage[V1]](identity)
+        passThruFlow
       case REPORT_TO_ACTOR_SINK =>
-        val sinkFunc: V1 => Unit = x => x.withInstance.others.get(ActorType.ACTOR_SINK).map(actorSink => {
-          actorSinkFunction(jobId, batchNr, aggregatorConfig, expectationGenerator).apply(actorSink)
-        }).getOrElse(())
-        Flow.fromFunction[ProcessingMessage[V1], ProcessingMessage[V1]](x => {
-          sinkFunc(x.data)
-          x
-        })
+        sendResultToActorFlowFunction[(ProcessingMessage[V1], Option[ActorRef]), V1, Y](jobId, batchNr, aggregatorConfig, expectationGenerator, x => x._1, x => x._2)
       case e =>
         log.warn(s"return type '$e' not covered, just passing processing element through")
-        Flow.fromFunction[ProcessingMessage[V1], ProcessingMessage[V1]](identity)
+        passThruFlow
     }
+  }
+
+  private[job] def getKillSwitch[Z]: Flow[Z, Z, UniqueKillSwitch] = {
+    Flow.fromGraph(KillSwitches.single[Z])
+  }
+
+  def getFlow(implicit actorSystem: ActorSystem, actorContext: ActorContext, mat: Materializer, ec: ExecutionContext): Flow[(U, Option[ActorRef]), Any, NotUsed] = {
+    val MaxSubStreams = 100
+    Flow.fromGraph(GraphDSL.create() {
+      implicit builder =>
+          import GraphDSL.Implicits._
+          // add stage to unzip the message itself and optional actor into two distinct flows
+          val flowUnzipStage: FanOutShape2[(U, Option[ActorRef]), U, Option[ActorRef]] = builder.add(Unzip[U, Option[ActorRef]])
+          // flow to execute computation as defined in passed transformer
+          val flowStage: FlowShape[U, ProcessingMessage[V]] = builder.add(transformer)
+
+          // stage sending message to separate actor if processingActorProps is set, otherwise
+          // not changing the input element
+          val sendStage: FlowShape[ProcessingMessage[V], ProcessingMessage[V1]] = builder.add(sendToSeparateActorFlow(processingActorProps, waitTimePerElement))
+
+          // combining the normal processing flow with the separate optional ActorRef
+          val combineValueWithConfigStage = builder.add(Zip[ProcessingMessage[V1], Option[ActorRef]])
+
+          // grouping by hash of the passed receiving ActorRef
+          val groupedFlow =
+            passThruFlow
+              .groupBy(
+                maxSubstreams = MaxSubStreams,
+                f = x => x._2.map(actorRef => actorRef.hashCode()).getOrElse(0),
+                allowClosedSubstreamRecreation = true
+              )
+          val groupAndSendAndMergeFlow: Flow[(ProcessingMessage[V1], Option[ActorRef]), Any, NotUsed] = groupedFlow.via(getSendToActorFlow).mergeSubstreams
+          val groupAndSendAndMergeStage = builder.add(groupAndSendAndMergeFlow)
+
+          // connect graph
+          // first split the input in two streams, one holding the data, the other the optional sink ActorRef (Option[ActorRef])
+          flowUnzipStage.out0 ~> flowStage ~> sendStage ~> combineValueWithConfigStage.in0
+          flowUnzipStage.out1 ~> combineValueWithConfigStage.in1
+          combineValueWithConfigStage.out ~> groupAndSendAndMergeStage
+          FlowShape(flowUnzipStage.in, groupAndSendAndMergeStage.out)
+    })
   }
 
   /**
@@ -102,26 +139,13 @@ case class QueuedActorRunnable[U, V, V1 <: With[JobActorConfig], Y <: WithCount]
    * Note that the aggregating actor reference is picked per element since we assume that the queue accepts
    * generators for distinct batches, and each batch is aggregated separately.
    * The queue is bounded and the result of the offer-call has to be handled.
-   *
-   * @param config - JobActorConfig to
-   * @param actorContext
-   * @param mat
-   * @param ec
-   * @tparam T
    */
-  override def getRunnableGraph(config: JobActorConfig)(implicit actorSystem: ActorSystem, actorContext: ActorContext, mat: Materializer, ec: ExecutionContext): RunnableGraph[(SourceQueueWithComplete[IndexedGenerator[U]], (UniqueKillSwitch, Future[Done]))] = {
+  override def getRunnableGraph(config: JobActorConfig)(implicit actorSystem: ActorSystem, actorContext: ActorContext, mat: Materializer, ec: ExecutionContext): RunnableGraph[(SourceQueueWithComplete[IndexedGenerator[(U, Option[ActorRef])]], (UniqueKillSwitch, Future[Done]))] = {
     val QueueSize = 10
-    Source.queue[IndexedGenerator[U]](QueueSize, OverflowStrategy.backpressure)
+    Source.queue[IndexedGenerator[(U, Option[ActorRef])]](QueueSize, OverflowStrategy.backpressure)
       .flatMapConcat(x => Source.fromIterator(() => x.iterator))
-      .via(transformer)
-      .via[ProcessingMessage[V1], NotUsed](sendToSeparateActorFlow(processingActorProps, waitTimePerElement))
-      // we need the grouping to be able to apply grouping of results before sending
-      // to aggregation actor. GroupBy creates substream per group
-      .groupBy(maxSubstreams = 10, f = x => x.data.withInstance.executing.hashCode(), allowClosedSubstreamRecreation = true)
-      // send partial results to aggregating actor
-      .via(getSendToActorFlow)
-      // after aggregation, we merge the streams again to get rid of per-group sub-streams
-      .mergeSubstreams
-      .toMat(getKillSwitch[V1].toMat(Sink.ignore)(Keep.both))((x, y) => (x, y))
+      .via(getFlow)
+      .toMat(getKillSwitch[Any].toMat(Sink.ignore)(Keep.both))((x, y) => (x, y))
   }
+
 }

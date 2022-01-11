@@ -18,7 +18,7 @@ package de.awagen.kolibri.base.actors.work.worker
 
 import akka.Done
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Cancellable, PoisonPill, Props}
-import akka.stream.scaladsl.RunnableGraph
+import akka.stream.scaladsl.{RunnableGraph, SourceQueueWithComplete}
 import akka.stream.{ActorAttributes, UniqueKillSwitch}
 import de.awagen.kolibri.base.actors.work.worker.AggregatingActor.{FinalReportState, ProvideStateAndStop, StateUpdateWithoutData}
 import de.awagen.kolibri.base.actors.work.worker.JobPartIdentifiers.BaseJobPartIdentifier
@@ -32,7 +32,8 @@ import de.awagen.kolibri.base.io.writer.Writers.Writer
 import de.awagen.kolibri.base.processing.decider.Deciders.allResumeDecider
 import de.awagen.kolibri.base.processing.execution.expectation._
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnable.JobActorConfig
-import de.awagen.kolibri.base.processing.execution.job.{ActorRunnable, ActorType}
+import de.awagen.kolibri.base.processing.execution.job.{ActorRunnable, ActorType, RunnableGraphProvider}
+import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.types.Types.WithCount
@@ -115,8 +116,44 @@ class RunnableExecutionActor[U <: WithCount](maxBatchDuration: FiniteDuration,
     super.postStop()
   }
 
+  /**
+   * given ActorRunnable, convert to queue-based graph and start it, waiting to add data generators to process
+   * to allow single flow materialization for distinct batches (e.g to allow flow-based connection pool usage without
+   * risking buffer overflow due to config limits holding per materialization)
+   */
+  def getSupplierAndQueuedGraph(runnable: ActorRunnable[Any, Any, Any, U]): (IndexedGenerator[(Any, Option[ActorRef])], (SourceQueueWithComplete[IndexedGenerator[(Any, Option[ActorRef])]], (UniqueKillSwitch, Future[Done]))) = {
+    import ActorRunnableImplicits._
+    val queuedRunnable: RunnableGraphProvider[(Any, Option[ActorRef]), (SourceQueueWithComplete[IndexedGenerator[(Any, Option[ActorRef])]], (UniqueKillSwitch, Future[Done]))] = runnable.toQueuedRunnable(actorConfig)
+    val runnableGraph: RunnableGraph[(SourceQueueWithComplete[IndexedGenerator[(Any, Option[ActorRef])]], (UniqueKillSwitch, Future[Done]))] = queuedRunnable.getRunnableGraph(actorConfig)
+      .withAttributes(ActorAttributes.supervisionStrategy(allResumeDecider))
+    val supplierAndSwitch = (queuedRunnable.supplier, runnableGraph.run())
+    killSwitch = supplierAndSwitch._2._2._1
+    executionFuture = supplierAndSwitch._2._2._2
+    supplierAndSwitch
+  }
+
+  /**
+   * In case no queue-based graph is needed, this just starts the execution on the data sample defined in the
+   * ActorRunnable
+   */
+  def runGraphAndSetOnCompleteWrapUp(runnable: ActorRunnable[Any, Any, Any, U]): (UniqueKillSwitch, Future[Done]) = {
+    // retrieving the runnable graph and running it
+    val runnableGraph: RunnableGraph[(UniqueKillSwitch, Future[Done])] = runnable.getRunnableGraph(actorConfig)
+      .withAttributes(ActorAttributes.supervisionStrategy(allResumeDecider))
+    val killSwitchAndCompletionFuture: (UniqueKillSwitch, Future[Done]) = runnableGraph.run()
+    // when complete, send the aggregation to the aggregating actor (well, aggregating actor actually not needed in that case)
+    killSwitchAndCompletionFuture._2.onComplete(_ => {
+      log.info("graph completed, notifying aggregator to send results and stop aggregating")
+      aggregatingActor ! ProvideStateAndStop
+      ()
+    })
+    killSwitch = killSwitchAndCompletionFuture._1
+    executionFuture = killSwitchAndCompletionFuture._2
+    killSwitchAndCompletionFuture
+  }
+
   val readyForJob: Receive = {
-    case runnable: ActorRunnable[_, _, _, U] =>
+    case runnable: ActorRunnable[Any, Any, Any, U] =>
       sendResultsBack = runnable.sendResultsBack
       jobSender = sender()
       // jobId and batchNr might be used as identifiers to filter received messages by
@@ -133,16 +170,6 @@ class RunnableExecutionActor[U <: WithCount](maxBatchDuration: FiniteDuration,
       ))
       // set the initial state to an empty one
       batchStateUpdate = StateUpdateWithoutData(AggregationStateWithoutData(0, runningJobId, runningJobBatchNr, BaseExecutionExpectation.empty()), isFinal = false)
-      // we set the aggregatingActor as receiver of all messages
-      // (whether graph sink is used or setting the aggregator as sender when sending
-      // messages to executing actors within the graph)
-      actorConfig = JobActorConfig(self,
-        Map(ActorType.ACTOR_SINK -> aggregatingActor))
-      log.debug(s"RunnableExecutionActor received actor runnable to process, jobId: ${runnable.jobId}, batchNr: ${runnable.batchNr}")
-
-      val runnableGraph: RunnableGraph[(UniqueKillSwitch, Future[Done])] = runnable.getRunnableGraph(actorConfig)
-        .withAttributes(ActorAttributes.supervisionStrategy(allResumeDecider))
-
       // the time allowed per execution is actually defined within the expectation
       // passed to the aggregation actor, thus if time ran out there the aggregation
       // state will be reported back, thus we only set expectation on receiving
@@ -157,15 +184,23 @@ class RunnableExecutionActor[U <: WithCount](maxBatchDuration: FiniteDuration,
         ),
         fulfillAnyForFail = failExpectations)
       expectation.init
-      val outcome: (UniqueKillSwitch, Future[Done]) = runnableGraph.run()
-      // when complete, send the aggregation to the aggregatig actor (well, aggregating actor actually not needed in that case)
-      outcome._2.onComplete(_ => {
-        log.info("graph completed, notifying aggregator to send results and stop aggregating")
-        aggregatingActor ! ProvideStateAndStop
-        ()
-      })
-      killSwitch = outcome._1
-      executionFuture = outcome._2
+
+      // we set the aggregatingActor as receiver of all messages
+      // (whether graph sink is used or setting the aggregator as sender when sending
+      // messages to executing actors within the graph)
+      actorConfig = JobActorConfig(self,
+        Map(ActorType.ACTOR_SINK -> aggregatingActor))
+      log.debug(s"RunnableExecutionActor received actor runnable to process, jobId: ${runnable.jobId}, batchNr: ${runnable.batchNr}")
+
+      // retrieving the runnable graph and running it (in non-queue mode)
+      //val outcome = runGraphAndSetOnCompleteWrapUp(runnable)
+
+      // retrieving the runnable graph and running it (in queue mode)
+      // TODO: right now just adds the to-be-processed data to queue. Needs changing to per-node and per-job central
+      // graph to which the supplier is sent to be processed without materializing flow multiple times
+      val outcome = getSupplierAndQueuedGraph(runnable)
+      outcome._2._1.offer(outcome._1)
+
       context.become(processing)
       // schedule the housekeeping, checking the runnable status
       housekeepingCancellable = context.system.scheduler.scheduleAtFixedRate(

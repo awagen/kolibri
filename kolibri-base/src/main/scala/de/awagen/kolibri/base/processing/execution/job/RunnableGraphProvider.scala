@@ -9,7 +9,7 @@ import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.FiniteDuration
 
-trait RunnableGraphProvider[U, V1] {
+trait RunnableGraphProvider[+U, +V1] {
 
   def jobId: String
 

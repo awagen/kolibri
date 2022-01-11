@@ -17,29 +17,30 @@
 
 package de.awagen.kolibri.base.processing.execution.job
 
-import akka.{Done, NotUsed}
+import akka.NotUsed
 import akka.actor.{ActorContext, ActorRef, Props}
-import akka.stream.{ActorAttributes, KillSwitches, UniqueKillSwitch}
-import akka.stream.scaladsl.{Flow, Keep, Sink}
+import akka.pattern.ask
+import akka.stream.ActorAttributes
+import akka.stream.scaladsl.Flow
 import akka.util.Timeout
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationStateWithData, BadCorn, ProcessingMessage}
-import de.awagen.kolibri.base.config.AppProperties.config.{aggregatorResultReceiveParallelism, resultElementGroupingCount, resultElementGroupingInterval, useAggregatorBackpressure, useResultElementGrouping}
+import de.awagen.kolibri.base.config.AppProperties.config
+import de.awagen.kolibri.base.config.AppProperties.config._
 import de.awagen.kolibri.base.processing.consume.AggregatorConfigurations.AggregatorConfig
 import de.awagen.kolibri.base.processing.decider.Deciders.allResumeDecider
 import de.awagen.kolibri.base.processing.execution.expectation.ExecutionExpectation
-import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
+import de.awagen.kolibri.base.processing.failure.TaskFailType
 import de.awagen.kolibri.datatypes.types.Types.WithCount
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
+import org.slf4j.{Logger, LoggerFactory}
 
-import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
-import akka.pattern.ask
-import de.awagen.kolibri.base.config.AppProperties.config
-import de.awagen.kolibri.base.processing.failure.TaskFailType
-
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
 object ActorRunnableUtils {
+
+  val logger: Logger = LoggerFactory.getLogger(ActorRunnableUtils.getClass)
 
   /**
    * Note that using the aggregating flow requires that the elements are
@@ -48,50 +49,67 @@ object ActorRunnableUtils {
    * This can be resolved in the graph definition by applying a grouping
    * before utilizing this flow though.
    */
-  def groupingAggregationFlow[V1, Y <: WithCount](jobId: String,
-                                                  batchNr: Int,
-                                                  aggregatingActor: ActorRef,
-                                                  aggregatorConfig: AggregatorConfig[V1, Y],
-                                                  expectationGenerator: Int => ExecutionExpectation
-                                                 ): Flow[ProcessingMessage[V1], Any, NotUsed] = {
-    Flow.fromFunction[ProcessingMessage[V1], ProcessingMessage[V1]](identity)
+  def groupingAggregationFlow[U, V1, Y <: WithCount](jobId: String,
+                                                     batchNr: Int,
+                                                     aggregatorConfig: AggregatorConfig[V1, Y],
+                                                     expectationGenerator: Int => ExecutionExpectation,
+                                                     elementExtractFunc: U => ProcessingMessage[V1],
+                                                     aggregatingActorExtractFunc: U => Option[ActorRef]): Flow[U, Any, NotUsed] = {
+    Flow.fromFunction[U, U](identity)
       .groupedWithin(resultElementGroupingCount, resultElementGroupingInterval)
       .mapAsync[Any](aggregatorResultReceiveParallelism)(messages => {
+        val aggregatingActorOpt = aggregatingActorExtractFunc(messages.head)
         val aggregator: Aggregator[ProcessingMessage[V1], Y] = aggregatorConfig.aggregatorSupplier.apply()
-        messages.foreach(element => aggregator.add(element))
+        messages.foreach(element => aggregator.add(elementExtractFunc(element)))
         val aggState = AggregationStateWithData(aggregator.aggregation, jobId, batchNr, expectationGenerator.apply(messages.size))
-        if (useAggregatorBackpressure) {
-          implicit val timeout: Timeout = Timeout(10 seconds)
-          aggregatingActor ? aggState
-        }
-        else {
-          aggregatingActor ! aggState
+        aggregatingActorOpt.map(aggregatingActor => {
+          if (useAggregatorBackpressure) {
+            implicit val timeout: Timeout = Timeout(10 seconds)
+            aggregatingActor ? aggState
+          }
+          else {
+            aggregatingActor ! aggState
+            Future.successful[Any](())
+          }
+        }).getOrElse({
+          logger.warn(s"No actor sink available in context, which will usually" +
+            s"cause results to be computed but not handled, so you might wanna stop execution and fix this")
           Future.successful[Any](())
-        }
+        })
       }).withAttributes(ActorAttributes.supervisionStrategy(allResumeDecider))
   }
 
-  def singleElementAggregatorFlow[V1](aggregatingActor: ActorRef): Flow[ProcessingMessage[V1], Any, NotUsed] = {
+  def singleElementAggregatorFlow[U, V1](elementExtractFunc: U => ProcessingMessage[V1], aggregatingActorExtractFunc: U => Option[ActorRef]): Flow[U, Any, NotUsed] = {
     if (useAggregatorBackpressure) {
       implicit val timeout: Timeout = Timeout(10 seconds)
-      Flow.fromFunction[ProcessingMessage[V1], ProcessingMessage[V1]](identity)
-        .mapAsync[Any](aggregatorResultReceiveParallelism)(e => aggregatingActor ? e)
+      Flow.fromFunction[U, U](identity)
+        .mapAsync[Any](aggregatorResultReceiveParallelism)(e => {
+          aggregatingActorExtractFunc.apply(e).map(aggregatingActor => {
+            aggregatingActor ? elementExtractFunc.apply(e)
+          }).getOrElse({
+            logger.warn(s"No actor sink available in context, which will usually" +
+              s"cause results to be computed but not handled, so you might wanna stop execution and fix this")
+            Future.successful[Any](())
+          })
+        })
         .withAttributes(ActorAttributes.supervisionStrategy(allResumeDecider))
     }
     else {
       Flow.fromFunction(x => {
-        aggregatingActor ! x
-        Future.successful[Any](())
+        aggregatingActorExtractFunc.apply(x).map(aggregatingActor => {
+          aggregatingActor ! elementExtractFunc(x)
+          Future.successful[Any](())
+        }).getOrElse({
+          logger.warn(s"No actor sink available in context, which will usually" +
+            s"cause results to be computed but not handled, so you might wanna stop execution and fix this")
+          Future.successful[Any](())
+        })
       })
     }
   }
 
-  def actorSinkFunction[V1, Y <: WithCount](jobId: String, batchNr: Int, aggregatorConfig: AggregatorConfig[V1, Y], expectationGenerator: Int => ExecutionExpectation): SerializableFunction1[ActorRef, Sink[ProcessingMessage[V1], Future[Done]]] = new SerializableFunction1[ActorRef, Sink[ProcessingMessage[V1], Future[Done]]] {
-
-    override def apply(actorRef: ActorRef): Sink[ProcessingMessage[V1], Future[Done]] = {
-      val flow = if (useResultElementGrouping) groupingAggregationFlow(jobId, batchNr, actorRef, aggregatorConfig, expectationGenerator) else singleElementAggregatorFlow(actorRef)
-      flow.toMat(Sink.foreach[Any](_ => ()))(Keep.right)
-    }
+  def sendResultToActorFlowFunction[U, V1, Y <: WithCount](jobId: String, batchNr: Int, aggregatorConfig: AggregatorConfig[V1, Y], expectationGenerator: Int => ExecutionExpectation, elementExtractFunc: U => ProcessingMessage[V1], aggregatingActorExtractFunc: U => Option[ActorRef]): Flow[U, Any, NotUsed] =  {
+    if (useResultElementGrouping) groupingAggregationFlow[U, V1, Y](jobId, batchNr, aggregatorConfig, expectationGenerator, elementExtractFunc, aggregatingActorExtractFunc) else singleElementAggregatorFlow[U, V1](elementExtractFunc, aggregatingActorExtractFunc)
   }
 
   /**
@@ -114,10 +132,6 @@ object ActorRunnableUtils {
           mappedResponseFuture
         }).withAttributes(ActorAttributes.supervisionStrategy(allResumeDecider))
     }).getOrElse(Flow.fromFunction[ProcessingMessage[V], ProcessingMessage[V1]](x => x.asInstanceOf[ProcessingMessage[V1]]))
-  }
-
-  def getKillSwitch[V1]: Flow[ProcessingMessage[V1], ProcessingMessage[V1], UniqueKillSwitch] = {
-    Flow.fromGraph(KillSwitches.single[ProcessingMessage[V1]])
   }
 
 }
