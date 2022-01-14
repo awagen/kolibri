@@ -16,6 +16,7 @@
 
 package de.awagen.kolibri.datatypes
 
+import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSupplier
 import org.slf4j.{Logger, LoggerFactory}
 
 import java.util.concurrent.atomic.AtomicReference
@@ -37,19 +38,36 @@ trait AtomicMapPromiseStore[U,V]  {
 
   private[this] val valueMap: AtomicReference[Map[U, Promise[V]]] = new AtomicReference(Map.empty)
 
-  private[this] def loadAndStoreValues(key: U)(implicit ec: ExecutionContext): Promise[V] = {
+  /**
+   *
+   * @param key - key for which the data is requested
+   * @param default - if set, this value will be taken instead of the one that would be generated from calling
+   *                calculateValue on the key value
+   * @param ec - the execution context
+   * @return the promise for the value requested for key. If none is set yet for the key, will utilize default supplier
+   *         if defined, otherwise call calculateValue on the requested key value to determine the requested value.
+   *         Also stores the determined value in the map (if not yet set)
+   */
+  private[this] def loadAndStoreValues(key: U, default: Option[SerializableSupplier[V]] = None)(implicit ec: ExecutionContext): Promise[V] = {
     var currentMap: Map[U, Promise[V]] = valueMap.get()
     var didSetPromise: Boolean = false
     while (!currentMap.keySet.contains(key)){
       didSetPromise = valueMap.compareAndSet(currentMap, currentMap + (key -> Promise[V]()))
-      if (didSetPromise) valueMap.get()(key).completeWith(Future{calculateValue(key)})
+      if (didSetPromise) valueMap.get()(key).completeWith(Future{default.map(x => x.apply()).getOrElse(calculateValue(key))})
       currentMap = valueMap.get()
     }
     valueMap.get()(key)
   }
 
-  def retrieveValue(key: U)(implicit ec: ExecutionContext): Promise[V] = {
-    if (!valueMap.get().contains(key)) loadAndStoreValues(key)
+  /**
+   * Retrieval function for value for a given key.
+   * @param key - key value
+   * @param default - supplier for value in case none is yet set for the key
+   * @param ec - execution context
+   * @return requested value for key
+   */
+  def retrieveValue(key: U, default: Option[SerializableSupplier[V]] = None)(implicit ec: ExecutionContext): Promise[V] = {
+    if (!valueMap.get().contains(key)) loadAndStoreValues(key, default)
     else valueMap.get()(key)
   }
 
@@ -67,6 +85,9 @@ trait AtomicMapPromiseStore[U,V]  {
     logger.info(s"removed key '$key', remaining keys: '${valueMap.get().keySet}'")
   }
 
+  /**
+   * Clears all values set so far
+   */
   def clearAll(): Unit = {
     var currentMap: Map[U, Promise[V]] = valueMap.get()
     var didRemoveAll: Boolean = false
@@ -77,9 +98,19 @@ trait AtomicMapPromiseStore[U,V]  {
 
   }
 
+  /**
+   * True if the mapping already contains the passed key value
+   * @param key
+   * @return
+   */
   def contains(key: U): Boolean = {
     valueMap.get().contains(key)
   }
 
+  /**
+   * Function to generate value for a passed key.
+   * @param key key value
+   * @return generated value
+   */
   def calculateValue(key: U): V
 }

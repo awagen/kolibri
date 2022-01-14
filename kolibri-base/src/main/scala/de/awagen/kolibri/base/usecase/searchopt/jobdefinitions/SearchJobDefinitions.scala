@@ -79,9 +79,11 @@ object SearchJobDefinitions {
     val persistenceModule = AppConfig.persistenceModule
     val writer = persistenceModule.persistenceDIModule.csvMetricAggregationWriter(subFolder = searchEvaluation.jobName, x => x.toString())
     JobMsgFactory.createActorRunnableJobCmd[Seq[IndexedGenerator[Modifier[RequestTemplateBuilder]]], RequestTemplateBuilderModifier, MetricRow, MetricRow, MetricAggregation[Tag]](
+      // the what (which job, which data, which batching method)
       jobId = searchEvaluation.jobName,
       data = searchEvaluation.requestTemplateModifiers,
       dataBatchGenerator = batchGenerator(batchByIndex = searchEvaluation.batchByIndex),
+      // data processing / including tagging and metrics calculations
       transformerFlow = Flows.fullProcessingFlow(
         contextPath = searchEvaluation.contextPath,
         fixedParams = searchEvaluation.fixedParams,
@@ -100,7 +102,9 @@ object SearchJobDefinitions {
         mapFutureMetricRowCalculation = searchEvaluation.mapFutureMetricRowCalculation,
         singleMapCalculations = searchEvaluation.singleMapCalculations,
       ),
+      // if set, sends the parsed data samples to created actor for those passed props for processing. Doesnt if set to none
       processingActorProps = None,
+      // expectations, aggregations, writing, returnType (e.g whether to send results to some actor and so on)
       perBatchExpectationGenerator = expectationPerBatchSupplier[MetricRow](
         searchEvaluation.allowedTimePerBatchInSeconds seconds,
         50,

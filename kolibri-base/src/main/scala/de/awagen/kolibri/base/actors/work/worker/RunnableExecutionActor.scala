@@ -33,13 +33,14 @@ import de.awagen.kolibri.base.processing.decider.Deciders.allResumeDecider
 import de.awagen.kolibri.base.processing.execution.expectation._
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnable.JobActorConfig
 import de.awagen.kolibri.base.processing.execution.job.{ActorRunnable, ActorType, RunnableGraphProvider}
+import de.awagen.kolibri.base.resources.QueuedRunnableRepository
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.types.Types.WithCount
 
 import scala.concurrent.duration._
-import scala.concurrent.{ExecutionContextExecutor, Future}
+import scala.concurrent.{ExecutionContextExecutor, Future, Promise}
 
 
 object RunnableExecutionActor {
@@ -72,7 +73,8 @@ object RunnableExecutionActor {
  * if set and within ActorRunnable the sink type is NOT IGNORE_SINK.
  */
 class RunnableExecutionActor[U <: WithCount](maxBatchDuration: FiniteDuration,
-                                             val writerOpt: Option[Writer[U, Tag, _]]) extends Actor with ActorLogging with KolibriSerializable {
+                                             val writerOpt: Option[Writer[U, Tag, _]],
+                                             viaCentralGraphMaterialization: Boolean = false) extends Actor with ActorLogging with KolibriSerializable {
 
   implicit val system: ActorSystem = context.system
   implicit val ec: ExecutionContextExecutor = context.system.dispatchers.lookup(kolibriDispatcherName)
@@ -121,15 +123,21 @@ class RunnableExecutionActor[U <: WithCount](maxBatchDuration: FiniteDuration,
    * to allow single flow materialization for distinct batches (e.g to allow flow-based connection pool usage without
    * risking buffer overflow due to config limits holding per materialization)
    */
-  def getSupplierAndQueuedGraph(runnable: ActorRunnable[Any, Any, Any, U]): (IndexedGenerator[(Any, Option[ActorRef])], (SourceQueueWithComplete[IndexedGenerator[(Any, Option[ActorRef])]], (UniqueKillSwitch, Future[Done]))) = {
+  def getSupplierAndStartedQueuedGraph(runnable: ActorRunnable[Any, Any, Any, U]): (IndexedGenerator[(Any, Option[ActorRef])], (SourceQueueWithComplete[IndexedGenerator[(Any, Option[ActorRef])]], (UniqueKillSwitch, Future[Done]))) = {
+    val supplierAndRunnableGraph = getQueuedRunnableGraphAndSupplier(runnable)
+    val runnableGraph: RunnableGraph[(SourceQueueWithComplete[IndexedGenerator[(Any, Option[ActorRef])]], (UniqueKillSwitch, Future[Done]))] = supplierAndRunnableGraph._2
+    val runGraph: (SourceQueueWithComplete[IndexedGenerator[(Any, Option[ActorRef])]], (UniqueKillSwitch, Future[Done])) = runnableGraph.run()
+    killSwitch = runGraph._2._1
+    executionFuture = runGraph._2._2
+    (supplierAndRunnableGraph._1, runGraph)
+  }
+
+  def getQueuedRunnableGraphAndSupplier(runnable: ActorRunnable[Any, Any, Any, U]): (IndexedGenerator[(Any, Option[ActorRef])], RunnableGraph[(SourceQueueWithComplete[IndexedGenerator[(Any, Option[ActorRef])]], (UniqueKillSwitch, Future[Done]))]) = {
     import ActorRunnableImplicits._
     val queuedRunnable: RunnableGraphProvider[(Any, Option[ActorRef]), (SourceQueueWithComplete[IndexedGenerator[(Any, Option[ActorRef])]], (UniqueKillSwitch, Future[Done]))] = runnable.toQueuedRunnable(actorConfig)
     val runnableGraph: RunnableGraph[(SourceQueueWithComplete[IndexedGenerator[(Any, Option[ActorRef])]], (UniqueKillSwitch, Future[Done]))] = queuedRunnable.getRunnableGraph(actorConfig)
       .withAttributes(ActorAttributes.supervisionStrategy(allResumeDecider))
-    val supplierAndSwitch = (queuedRunnable.supplier, runnableGraph.run())
-    killSwitch = supplierAndSwitch._2._2._1
-    executionFuture = supplierAndSwitch._2._2._2
-    supplierAndSwitch
+    (queuedRunnable.supplier, runnableGraph)
   }
 
   /**
@@ -192,15 +200,20 @@ class RunnableExecutionActor[U <: WithCount](maxBatchDuration: FiniteDuration,
         Map(ActorType.ACTOR_SINK -> aggregatingActor))
       log.debug(s"RunnableExecutionActor received actor runnable to process, jobId: ${runnable.jobId}, batchNr: ${runnable.batchNr}")
 
-      // retrieving the runnable graph and running it (in non-queue mode)
-      //val outcome = runGraphAndSetOnCompleteWrapUp(runnable)
-
-      // retrieving the runnable graph and running it (in queue mode)
-      // TODO: right now just adds the to-be-processed data to queue. Needs changing to per-node and per-job central
-      // graph to which the supplier is sent to be processed without materializing flow multiple times
-      val outcome = getSupplierAndQueuedGraph(runnable)
-      outcome._2._1.offer(outcome._1)
-
+      if (!viaCentralGraphMaterialization) {
+        // retrieving the runnable graph and running it (in non-queue mode)
+        runGraphAndSetOnCompleteWrapUp(runnable)
+      }
+      else {
+        // retrieving the runnable graph and running it (in queue mode)
+        // instead of materializing the graph per batch, create one time and retrieve the queue from central state keeper
+        val outcome = getQueuedRunnableGraphAndSupplier(runnable)
+        val queueAndKillSwitch: Promise[(SourceQueueWithComplete[IndexedGenerator[(Any, Option[ActorRef])]], (UniqueKillSwitch, Future[Done]))] = QueuedRunnableRepository.retrieveValue(key = runningJobId, default = Some(() => outcome._2.run()))
+        queueAndKillSwitch.future.onComplete(x => {
+          // TODO: handle result of offer (might not be accepted)
+          x.get._1.offer(outcome._1)
+        })
+      }
       context.become(processing)
       // schedule the housekeeping, checking the runnable status
       housekeepingCancellable = context.system.scheduler.scheduleAtFixedRate(

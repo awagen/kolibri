@@ -19,7 +19,7 @@ package de.awagen.kolibri.base.processing.execution.job
 
 import akka.actor.{ActorContext, ActorRef, ActorSystem, Props}
 import akka.stream._
-import akka.stream.scaladsl.{Flow, GraphDSL, Keep, RunnableGraph, Sink, Source, SourceQueueWithComplete, SubFlow, Unzip, Zip}
+import akka.stream.scaladsl.{Flow, GraphDSL, Keep, RunnableGraph, Sink, Source, SourceQueueWithComplete, Unzip, Zip}
 import akka.{Done, NotUsed}
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.ProcessingMessage
 import de.awagen.kolibri.base.processing.consume.AggregatorConfigurations.AggregatorConfig

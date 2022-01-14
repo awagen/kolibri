@@ -22,13 +22,13 @@ import de.awagen.kolibri.datatypes.io.KolibriSerializable
 object SerializableCallable {
 
   @FunctionalInterface
-  trait SerializableSupplier[T] extends (() => T) with KolibriSerializable
+  trait SerializableSupplier[+T] extends (() => T) with KolibriSerializable
 
   @FunctionalInterface
   trait SerializableFunction1[-T, +U] extends (T => U) with KolibriSerializable
 
   @FunctionalInterface
-  trait SerializableFunction2[-T1, -T2, R] extends ((T1, T2) => R) with KolibriSerializable
+  trait SerializableFunction2[-T1, -T2, +R] extends ((T1, T2) => R) with KolibriSerializable
 
   @FunctionalInterface
   trait SerializableConsumer[T] extends (T => ()) with KolibriSerializable
