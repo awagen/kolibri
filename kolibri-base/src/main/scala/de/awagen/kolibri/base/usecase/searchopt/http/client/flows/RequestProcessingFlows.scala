@@ -167,7 +167,7 @@ object RequestProcessingFlows {
     // [warn] a.h.i.e.c.PoolId - [56 (WaitingForResponseEntitySubscription)]Response entity was not subscribed after 3 seconds. Make sure to read the response `entity` body or call `entity.discardBytes()` on it -- in case you deal with `HttpResponse`, use the shortcut `response.discardEntityBytes()`. GET /search Empty -> 200 OK Default(433 bytes)
     // which means the available response was not consumed in time
     // see discussions like the following: https://discuss.lightbend.com/t/a-lot-requests-results-in-response-entity-was-not-subscribed-after/7797/4
-    // if singleRequestFlow is used, its its consumed when available and thus not prone to timeout in buffer
+    // if singleRequestFlow is used, its consumed when available and thus not prone to timeout in buffer
     val connectionFlows: Seq[Flow[ProcessingMessage[RequestTemplate], ProcessingMessage[(Either[Throwable, T], RequestTemplate)], NotUsed]] = connections
       .map(x => connectionToFlowFunc(x))
     val merge = b.add(Merge[ProcessingMessage[(Either[Throwable, T], RequestTemplate)]](connections.size))
