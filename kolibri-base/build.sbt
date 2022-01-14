@@ -5,7 +5,6 @@ val sl4jApiVersion = "1.7.30"
 val scalaTestVersion = "3.2.2"
 val scalaMockVersion = "5.1.0"
 val kolibriDatatypesVersion = "0.1.0-rc1"
-
 val akkaVersion = "2.6.14"
 val akkaContribVersion = "2.5.31"
 val akkaHttpVersion = "10.2.1"
@@ -20,8 +19,7 @@ val kamonVersion = "2.2.0"
 val macwireVersion = "2.4.0"
 val scalacScoverageRuntimeVersion = "1.4.9"
 
-ThisBuild / scalaVersion := "2.13.2"
-ThisBuild / version := "0.1.0-rc1"
+version := "0.1.0-rc1"
 
 lazy val jvmOptions = Seq(
   "-Xms1G",
@@ -29,6 +27,9 @@ lazy val jvmOptions = Seq(
   "-Xss1M",
   "-XX:+CMSClassUnloadingEnabled"
 )
+// set javaOptions
+javaOptions in Runtime ++= jvmOptions
+javaOptions in Test ++= jvmOptions
 
 // scoverage plugin setting to exclude classes from coverage report
 coverageExcludedPackages := "de\\.awagen\\.kolibri\\.base\\.config\\..*;" +
@@ -43,6 +44,7 @@ coverageExcludedPackages := "de\\.awagen\\.kolibri\\.base\\.config\\..*;" +
   "de\\.awagen\\.kolibri\\.base\\.usecase\\.searchopt\\.parse\\.ParsingConfig;" +
   "de\\.awagen\\.kolibri\\.base\\.actors\\.flows\\.GenericFlows"
 
+// defining fixed env vars for test scope
 envVars in Test := Map("PROFILE" -> "test")
 
 test in assembly := {} //causes no tests to be executed when calling "sbt assembly" (without this setting executes all)
@@ -74,55 +76,12 @@ assemblyMergeStrategy in assembly := {
     oldStrategy(x)
 }
 
-// Scala Compiler Options
-ThisBuild / scalacOptions ++= Seq(
-  //"-target:jvm-8",
-  "-encoding", "UTF-8",
-  "-deprecation", // warning and location for usages of deprecated APIs
-  "-feature", // warning and location for usages of features that should be imported explicitly
-  "-unchecked", // additional warnings where generated code depends on assumptions
-  "-Xlint", // recommended additional warnings
-  "-Ywarn-value-discard", // Warn when non-Unit expression results are unused
-  "-Ywarn-dead-code"
-)
-//javaOptions
-ThisBuild / javaOptions in Runtime ++= jvmOptions
-ThisBuild / javaOptions in Test ++= jvmOptions
-
-//javacOptions
-ThisBuild / javacOptions ++= Seq(
-  "-source", "13",
-  "-target", "13"
-)
-
-//scalacOptions
-ThisBuild / scalacOptions ++= Seq(
-  "-encoding", "utf8", // Option and arguments on same line
-  "-language:postfixOps" // New lines for each options
-)
-
-//by default run types run on same JVM as sbt. This might lead to problems, thus we fork the JVM.
-ThisBuild / fork in Runtime := true
-ThisBuild / fork in Test := true
-ThisBuild / fork in run := true
-
-//logging
-//disables buffered logging (buffering would cause results of tests to be logged only at end of all tests)
-//http://www.scalatest.org/user_guide/using_scalatest_with_sbt
-ThisBuild / logBuffered in Test := false
-//disable version conflict messages
-ThisBuild / evictionWarningOptions in update := EvictionWarningOptions.default
-  .withWarnTransitiveEvictions(false)
-  .withWarnDirectEvictions(false)
-
 val additionalResolvers = Seq(
   ("scalaz-bintray" at "https://dl.bintray.com/scalaz/releases").withAllowInsecureProtocol(false),
   ("Akka Snapshot Repository" at "https://repo.akka.io/snapshots/").withAllowInsecureProtocol(false),
   Resolver.sonatypeRepo("releases"),
   Resolver.sonatypeRepo("snapshots"),
   Resolver.bintrayIvyRepo("kamon-io", "sbt-plugins"))
-//  Resolver.mavenLocal)
-
 
 val additionalDependencies = Seq(
   //akka-management there to host HTTP endpoints used during bootstrap process
@@ -181,44 +140,18 @@ val additionalDependencies = Seq(
   "org.scoverage" %% "scalac-scoverage-runtime" % scalacScoverageRuntimeVersion % Test
 )
 
+name := "kolibri-base"
+libraryDependencies ++= additionalDependencies
+resolvers ++= additionalResolvers
+mainClass in assembly := Some("de.awagen.kolibri.base.cluster.ClusterNode")
 
-lazy val `kolibri-base` = (project in file("."))
-  .settings(
-    name := "kolibri-base",
-    libraryDependencies ++= additionalDependencies,
-    resolvers ++= additionalResolvers,
-    mainClass in assembly := Some("de.awagen.kolibri.base.cluster.ClusterNode")
-  )
-  .enablePlugins(JvmPlugin)
-
-// settings for publishing
-ThisBuild / organization := "de.awagen.kolibri"
-ThisBuild / organizationName := "awagen"
-ThisBuild / organizationHomepage := Some(url("http://awagen.de"))
-ThisBuild / scmInfo := Some(
+// ---- start settings for publishing to mvn central
+scmInfo := Some(
   ScmInfo(
     url("https://github.com/awagen/kolibri-base"),
     "scm:git@github.com:awagen/kolibri-base.git"
   )
 )
-ThisBuild / developers := List(
-  Developer(
-    id = "awagen",
-    name = "Andreas Wagenmann",
-    email = "awagen@posteo.net",
-    url = url("https://github.com/awagen")
-  )
-)
-
-ThisBuild / description := "kolibri-base provides the execution mechanicsm for the the kolibri project. Kolibri provides a clusterable job execution framework based on Akka."
-ThisBuild / licenses := List("Apache 2" -> new URL("http://www.apache.org/licenses/LICENSE-2.0.txt"))
-ThisBuild / homepage := Some(url("https://github.com/awagen/kolibri-base"))
-
-// Remove all additional repository other than Maven Central from POM
-ThisBuild / pomIncludeRepository := { _ => false }
-ThisBuild / publishTo := {
-  val nexus = "https://s01.oss.sonatype.org/"
-  if (isSnapshot.value) Some("snapshots" at nexus + "content/repositories/snapshots")
-  else Some("releases" at nexus + "service/local/staging/deploy/maven2")
-}
-ThisBuild / publishMavenStyle := true
+description := "kolibri-base provides the execution mechanism for the the kolibri project. Kolibri provides a clusterable job execution framework based on Akka."
+homepage := Some(url("https://github.com/awagen/kolibri-base"))
+// ---- end settings for publishing to mvn central
