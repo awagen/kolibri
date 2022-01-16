@@ -216,6 +216,8 @@ object AppProperties {
     val judgementJsonLinesJudgementValueTypeCast: JsonTypeCast.Val = JsonTypeCast.withName(baseConfig.getString("kolibri.format.judgements.jsonLines.judgementValueTypeCast")).asInstanceOf[JsonTypeCast]
 
     val useInsecureSSLEngine: Boolean = baseConfig.getBoolean("kolibri.ssl.useInsecureEngine")
+
+    val useRequestEventShardingAndEndpoints: Boolean = baseConfig.getBoolean("kolibri.state.useShardingAndEndpoints")
   }
 
 }

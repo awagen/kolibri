@@ -21,6 +21,7 @@ import akka.cluster.Cluster
 import akka.cluster.ddata.Replicator.Update
 import akka.cluster.ddata._
 import akka.cluster.ddata.typed.scaladsl.Replicator.WriteLocal
+import akka.cluster.sharding.typed.scaladsl.{ClusterSharding, Entity, EntityTypeKey}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.management.cluster.bootstrap.ClusterBootstrap
@@ -31,12 +32,14 @@ import de.awagen.kolibri.base.actors.clusterinfo.{BatchStateActor, LocalResource
 import de.awagen.kolibri.base.actors.routing.RoutingActor
 import de.awagen.kolibri.base.config.AppProperties
 import de.awagen.kolibri.base.config.AppProperties.config
-import de.awagen.kolibri.base.config.AppProperties.config.{kolibriDispatcherName, node_roles}
+import de.awagen.kolibri.base.config.AppProperties.config.{kolibriDispatcherName, node_roles, useRequestEventShardingAndEndpoints}
 import de.awagen.kolibri.base.http.server.HttpServer
 import de.awagen.kolibri.base.http.server.routes.BaseRoutes
 import de.awagen.kolibri.base.http.server.routes.BaseRoutes._
 import de.awagen.kolibri.base.http.server.routes.ResourceRoutes.{getJobTemplateByTypeAndIdentifier, getJobTemplateOverviewForType, getJobTemplateTypes, storeSearchEvaluationTemplate}
 import de.awagen.kolibri.base.http.server.routes.StatusRoutes.{finishedJobStates, getAllJobWorkerStates, getJobStatus, getJobWorkerStatus, getRunningJobIds, health, jobStates, nodeState}
+import de.awagen.kolibri.base.usecase.statesharding.actors.EventAggregatingActor
+import de.awagen.kolibri.base.usecase.statesharding.routes.StateRoutes.{sendKeyValueEvent, sendCombinedEvent, sendEntityEvent}
 import kamon.Kamon
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -92,9 +95,26 @@ object ClusterNode extends App {
   }
 
   case class SystemSetup(route: Option[Route] = None) {
+    // adds support for actors to a classic actor system and context
+
+    import akka.actor.typed.scaladsl.adapter._
+
     implicit val actorSystem: ActorSystem = startSystem()
     implicit val mat: Materializer = Materializer(actorSystem)
     implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatchers.lookup(kolibriDispatcherName)
+
+    // start cluster-sharding (right now we only need this if we make use of the state-sharding use-case)
+    var sharding: ClusterSharding = _
+    var EventAggregatingActorTypeKey: EntityTypeKey[EventAggregatingActor.RequestEvent] = _
+    if (useRequestEventShardingAndEndpoints) {
+      sharding = ClusterSharding(actorSystem.toTyped)
+      EventAggregatingActorTypeKey = EntityTypeKey[EventAggregatingActor.RequestEvent]("contextAggregator")
+      sharding
+        .init(Entity(EventAggregatingActorTypeKey)(createBehavior = _ =>
+          EventAggregatingActor.apply(EventAggregatingActor.RequestEventStore.empty, storeSequence = true, Seq.empty, maxEvents = 3)
+        ))
+    }
+
     // start replicator for distributed data on each node
     val ddReplicator: ActorRef = DistributedData.get(actorSystem).replicator
     implicit val ddSelfUniqueAddress: SelfUniqueAddress = DistributedData.get(actorSystem).selfUniqueAddress
@@ -118,12 +138,16 @@ object ClusterNode extends App {
       ddReplicator ! ddBatchStatusActorRefUpdate
       // need to initialize the BaseRoutes to start Supervisor actor in current actorSystem
       BaseRoutes.init
-      val usedRoute: Route = route.getOrElse(simpleHelloRoute ~ streamingUserRoutes ~ clusterStatusRoutee ~ killAllJobs
+      val commonRoute: Route = route.getOrElse(simpleHelloRoute ~ streamingUserRoutes ~ clusterStatusRoutee ~ killAllJobs
         ~ getJobStatus ~ killJob ~ getJobWorkerStatus ~ getRunningJobIds ~ executeDistributedPiCalculationExample
         ~ executeDistributedPiCalculationExampleWithoutSerialization ~ startSearchEval ~ startSearchEvalNoSerialize
         ~ startExecution ~ nodeState ~ jobStates ~ finishedJobStates ~ health ~ getAllJobWorkerStates
         ~ getJudgements ~ getAllJudgements ~ getJobTemplateOverviewForType ~ getJobTemplateByTypeAndIdentifier
-        ~ getJobTemplateTypes ~ storeSearchEvaluationTemplate ~ startExecutionDefinition)
+        ~ getJobTemplateTypes ~ storeSearchEvaluationTemplate ~ startExecutionDefinition
+      )
+      val usedRoute: Route = if (useRequestEventShardingAndEndpoints) {
+        commonRoute ~ sendCombinedEvent ~ sendEntityEvent ~ sendKeyValueEvent
+      } else commonRoute
 
       HttpServer.startHttpServer(usedRoute, interface = config.http_server_host, port = config.http_server_port).onComplete {
         case Success(serverBinding) => logger.info(s"listening to ${serverBinding.localAddress}")

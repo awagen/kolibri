@@ -94,6 +94,10 @@ services:
       # later this will be cast to double either way
       JUDGEMENT_FILE_JSON_LINES_JUDGEMENT_VALUE_TYPE_CAST: 'STRING'
       USE_INSECURE_SSL_ENGINE: 'true'
+      # If set to true, initializes ClusterSharding on node and in case roles of node include httpserver (see setting
+      # above), also activate the routes for event sending which get collected within one actor per sourceId,
+      # sharded over cluster
+      USE_SHARDING_AND_ENDPOINTS: 'true'
     volumes:
       - ./test-files:/app/test-files
 
@@ -164,6 +168,7 @@ services:
       # later this will be cast to double either way
       JUDGEMENT_FILE_JSON_LINES_JUDGEMENT_VALUE_TYPE_CAST: 'STRING'
       USE_INSECURE_SSL_ENGINE: 'true'
+      USE_SHARDING_AND_ENDPOINTS: 'true'
     volumes:
       - ./test-files:/app/test-files
 

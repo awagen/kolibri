@@ -8,17 +8,13 @@ ThisBuild / scalacOptions ++= Seq(
   "-unchecked", // additional warnings where generated code depends on assumptions
   "-Xlint", // recommended additional warnings
   "-Ywarn-value-discard", // Warn when non-Unit expression results are unused
-  "-Ywarn-dead-code"
+  "-Ywarn-dead-code",
+  "-language:postfixOps" // New lines for each options
 )
 //javacOptions
 ThisBuild / javacOptions ++= Seq(
-  "-source", "1.13",
-  "-target", "1.13"
-)
-//scalacOptions
-ThisBuild / scalacOptions ++= Seq(
-  "-encoding", "utf8", // Option and arguments on same line
-  "-language:postfixOps" // New lines for each options
+  "-source", "13",
+  "-target", "13"
 )
 
 //by default run types run on same JVM as sbt. This might lead to crashing, thus we fork the JVM.
