@@ -331,6 +331,17 @@ sending in messages, ...).
 
 Check for already started mediator before creating one yourself, e.g ClusterNode object might already provide one.
 
+## Notes on ClusterSharding
+ClusterSharding can be activated with USE_SHARDING_AND_ENDPOINTS environment variable (see docker-compose.yml in kolibri-base).
+This will start the ClusterSharding extension on each node and initialize it for actors that handle EventAggregatingActor.RequestEvent
+messages (see ClusterNode object) and set some routes (see StateRoutes object) that allow posting of RequestEvent messages
+with a given source. On posting a message, if within the cluster no actor for the sourceId passed in the message exists,
+one is created, otherwise the new message is aggregated into the state of the already existing actor. This currently is rather
+an example of usage, and activating this via USE_SHARDING_AND_ENDPOINTS should not affect anything other than adding this example use-case
+accessible via the added routes.
+
+Example curl: ```curl -XPOST localhost:8000/event/entity -H 'Content-Type: application/json' -d '{"sourceId": "b", "requestId": "q2", "event": "click", "targetEntityId": "p2"}'```shell
+
 ## Local execution - Issues and Fixes
 - starting the setup as provided in docker-compose file can be resource intensive. You might experience within the
 cluster heartbeat failures if not enough resources are available within docker. Thus make sure to allow sufficient 
