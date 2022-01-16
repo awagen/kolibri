@@ -36,14 +36,18 @@ Connection refused:
 ## Build jar, build docker image, startup local
 
 - you might temporarily need to clone kolibri-datatypes and publish locally (see kolibri-datatypes README on instructions)
-- build jar (find it in target folder afterwards): ```./scripts/buildJar.sh```
-- build docker image for local usage: ```docker build . -t kolibri-base:0.1.0-rc1```
-- run single-node cluster (compute and httpserver role, access via localhost:
+- build jar (from root folder; find it in target folder of kolibri-base sub-folder afterwards): ```./scripts/buildKolibriBaseJar.sh```
+- build docker image for local usage (kolibri-base sub-folder): ```docker build . -t kolibri-base:0.1.0-rc1```
+- run single-node cluster (kolibri-base subfolder; compute and httpserver role, access via localhost:
   8000): ```./scripts/docker_run_single_node.sh```
     - sets interface of http server to 0.0.0.0 to allow requests from host system to localhost:8000 reach the service
       within the container
-- start local 3-node cluster (one compute and httpserver node, two 'compute'-only nodes, access via localhost:
+- start local 3-node cluster (kolibri-base subfolder; one compute and httpserver node, two 'compute'-only nodes, access via localhost:
   8000): ```docker-compose up```
+  - NOTE: the docker-compose setup uses the discovery mode 'config' for specifying which nodes form a cluster. Thus
+  for this example, the nodes are hard-coded in akka-discovery.conf. This is just the case for the example setup, 
+  the 'production' setups such as the k8s example charts are configured such that the nodes find each other
+  automatically whenever a new node is started up without specifying it specifically in any config (node-discovery).
   - NOTE: for prometheus to start up, create folder named ```data``` in prometheus folder before executing docker-compose up.
   - NOTE: starting response-juggler as used in the docker-compose.yaml requires cloning ```https://github.com/awagen/response-juggler``` and building
   the image locally via ```docker build -t response-juggler:0.1.0 .```. 
