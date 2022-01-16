@@ -19,7 +19,7 @@ val kamonVersion = "2.2.0"
 val macwireVersion = "2.4.0"
 val scalacScoverageRuntimeVersion = "1.4.9"
 
-version := "0.1.0-rc1"
+version := "0.1.0-rc2"
 
 lazy val jvmOptions = Seq(
   "-Xms1G",

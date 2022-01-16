@@ -10,7 +10,7 @@ spec:
 #       someTypeKey: [value]
       containers:
         - name: kolibri-service
-          image: awagen/kolibri-base:0.1.0-rc1
+          image: awagen/kolibri-base:0.1.0-rc2
           imagePullPolicy: Always
           # our worker nodes should come bit better resourced
           # than the httpserver type, which is mainly used
