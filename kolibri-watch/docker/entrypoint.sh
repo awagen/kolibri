@@ -9,7 +9,7 @@ ROOT_DIR=/app
 
 # Replace env vars in JavaScript files
 echo "Replacing env constants in JS"
-for file in $ROOT_DIR/_assets/*.js $ROOT_DIR/index.html;
+for file in $ROOT_DIR/assets/*.js $ROOT_DIR/index.html;
 do
   echo "Processing $file ...";
   sed -i 's|##VITE_KOLIBRI_BASE_URL|'${KOLIBRI_BASE_URL}'|g' $file
