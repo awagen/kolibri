@@ -48,25 +48,3 @@ lazy val `kolibri-datatypes` = (project in file("kolibri-datatypes"))
 lazy val `kolibri-base` = (project in file("kolibri-base"))
   .dependsOn(`kolibri-datatypes` % "compile->compile")
   .enablePlugins(JvmPlugin)
-
-// ---- start common common settings for publishing to mvn central
-ThisBuild / organization := "de.awagen.kolibri"
-ThisBuild / organizationName := "awagen"
-ThisBuild / organizationHomepage := Some(url("http://awagen.de"))
-ThisBuild / developers := List(
-  Developer(
-    id    = "awagen",
-    name  = "Andreas Wagenmann",
-    email = "awagen@posteo.net",
-    url   = url("https://github.com/awagen")
-  )
-)
-ThisBuild / licenses := List("Apache 2" -> new URL("http://www.apache.org/licenses/LICENSE-2.0.txt"))
-ThisBuild / pomIncludeRepository := { _ => false } // Remove all additional repository other than Maven Central from POM
-ThisBuild / publishTo := {
-  val nexus = "https://s01.oss.sonatype.org/"
-  if (isSnapshot.value) Some("snapshots" at nexus + "content/repositories/snapshots")
-  else Some("releases" at nexus + "service/local/staging/deploy/maven2")
-}
-ThisBuild / publishMavenStyle := true
-// ---- end common settings for publishing to mvn central

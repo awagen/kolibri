@@ -146,6 +146,27 @@ resolvers ++= additionalResolvers
 mainClass in assembly := Some("de.awagen.kolibri.base.cluster.ClusterNode")
 
 // ---- start settings for publishing to mvn central
+// (needs to fully be in build.sbt of sub-project, also the non-project-specific parts)
+organization := "de.awagen.kolibri"
+organizationName := "awagen"
+organizationHomepage := Some(url("http://awagen.de"))
+developers := List(
+  Developer(
+    id    = "awagen",
+    name  = "Andreas Wagenmann",
+    email = "awagen@posteo.net",
+    url   = url("https://github.com/awagen")
+  )
+)
+licenses := List("Apache 2" -> new URL("http://www.apache.org/licenses/LICENSE-2.0.txt"))
+pomIncludeRepository := { _ => false } // Remove all additional repository other than Maven Central from POM
+publishTo := {
+  val nexus = "https://s01.oss.sonatype.org/"
+  if (isSnapshot.value) Some("snapshots" at nexus + "content/repositories/snapshots")
+  else Some("releases" at nexus + "service/local/staging/deploy/maven2")
+}
+publishMavenStyle := true
+
 scmInfo := Some(
   ScmInfo(
     url("https://github.com/awagen/kolibri-base"),
