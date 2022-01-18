@@ -10,12 +10,12 @@
 #spec:
 #  endpoints:
 #  - honorLabels: true
-#    port: prometheus
-#    path: /prometheus
+#    port: service-prometheus
+#    path: /metrics
 #  selector:
 #    matchLabels:
 #      app: kolibri-service
 #  namespaceSelector:
 #    matchNames:
 #    # TODO: here replace with name of used namespace
-#    - used-namespace
+#    - [usedNamespace]

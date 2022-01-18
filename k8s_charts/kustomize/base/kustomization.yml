@@ -12,4 +12,5 @@ resources:
 - ingress.yml
 - ingress-ui.yml
 - service.yml
+- service-compute.yml
 - service-ui.yml
