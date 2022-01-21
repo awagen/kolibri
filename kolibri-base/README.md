@@ -342,6 +342,24 @@ accessible via the added routes.
 
 Example curl: ```curl -XPOST localhost:8000/event/entity -H 'Content-Type: application/json' -d '{"sourceId": "b", "requestId": "q2", "event": "click", "targetEntityId": "p2"}'```shell
 
+## Notes on balancing request settings
+Currently each batch corresponds to an execution graph materialization. In case the task requires a connection pool
+(as soon as ure requesting via akka-http that is the case and the provided job definitions do so), if you select many
+concurrent tasks (meaning nr of batches) for the job, you might temporarily see a buffer overflow, indicating too many
+concurrent requests.
+This is due to balance of two settings ```akka.http.host-connection-pool.max-connections``` and 
+```akka.http.host-connection-pool.max-open-requests```. That is, each flow has at most max-connections concurrent requests,
+yet the pool's maximal nr of open requests is given by the max-open-requests settings.
+Thus nr-of-batches-on-single-node * max-connections should not exceed max-open-requests, otherwise you'll see the 
+overflow log messages.
+So lets say youre requesting 10 tasks, have 3 compute nodes in the cluster those are distributed on, you should
+make max-connections 1/4 of max-open-requests, since the most tasks any single node should have is 4 (this
+could vary depending on the speed single batches are processed on the distinct nodes and the distribution mode selected, 
+e.g round-robin could yield more than 4, but this would then be not in the initial stage of execution anymore but after some
+batches are processed, in which case backpressure is likely already reducing the pull in the other materializations).
+That being said, a distribution strategy avoiding this by e.g allowing definition of a max nr of tasks per node
+will likely be included shortly.
+
 ## Local execution - Issues and Fixes
 - starting the setup as provided in docker-compose file can be resource intensive. You might experience within the
 cluster heartbeat failures if not enough resources are available within docker. Thus make sure to allow sufficient 
