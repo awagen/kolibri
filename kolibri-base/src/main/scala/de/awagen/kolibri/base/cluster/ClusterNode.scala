@@ -36,10 +36,11 @@ import de.awagen.kolibri.base.config.AppProperties.config.{kolibriDispatcherName
 import de.awagen.kolibri.base.http.server.HttpServer
 import de.awagen.kolibri.base.http.server.routes.BaseRoutes
 import de.awagen.kolibri.base.http.server.routes.BaseRoutes._
+import de.awagen.kolibri.base.http.server.routes.DataRoutes._
 import de.awagen.kolibri.base.http.server.routes.ResourceRoutes.{getJobTemplateByTypeAndIdentifier, getJobTemplateOverviewForType, getJobTemplateTypes, storeSearchEvaluationTemplate}
 import de.awagen.kolibri.base.http.server.routes.StatusRoutes.{finishedJobStates, getAllJobWorkerStates, getJobStatus, getJobWorkerStatus, getRunningJobIds, health, jobStates, nodeState}
 import de.awagen.kolibri.base.usecase.statesharding.actors.EventAggregatingActor
-import de.awagen.kolibri.base.usecase.statesharding.routes.StateRoutes.{sendKeyValueEvent, sendCombinedEvent, sendEntityEvent}
+import de.awagen.kolibri.base.usecase.statesharding.routes.StateRoutes.{sendCombinedEvent, sendEntityEvent, sendKeyValueEvent}
 import kamon.Kamon
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -144,6 +145,7 @@ object ClusterNode extends App {
         ~ startExecution ~ nodeState ~ jobStates ~ finishedJobStates ~ health ~ getAllJobWorkerStates
         ~ getJudgements ~ getAllJudgements ~ getJobTemplateOverviewForType ~ getJobTemplateByTypeAndIdentifier
         ~ getJobTemplateTypes ~ storeSearchEvaluationTemplate ~ startExecutionDefinition
+        ~ getIndexedGeneratorInfo ~ getDataFilesByType ~ getValuesByTypeAndFile
       )
       val usedRoute: Route = if (useRequestEventShardingAndEndpoints) {
         commonRoute ~ sendCombinedEvent ~ sendEntityEvent ~ sendKeyValueEvent

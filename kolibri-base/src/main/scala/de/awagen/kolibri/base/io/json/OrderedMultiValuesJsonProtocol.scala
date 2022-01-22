@@ -47,6 +47,17 @@ object OrderedMultiValuesJsonProtocol extends DefaultJsonProtocol {
               })
               logger.debug(s"params size=${params.size}, values=$params")
               GridOrderedMultiValues(params)
+            case "FROM_VALUES" =>
+              val paramNameToValues = fields("values").convertTo[Map[String, Seq[String]]]
+              var params: Seq[OrderedValues[String]] = Seq.empty
+              paramNameToValues.foreach(x => {
+                val name: String = x._1
+                val values: Seq[String] = x._2.map(x => x.trim).filter(x => x.nonEmpty)
+                logger.debug(s"found ${values.size} values for param $name, values: $values")
+                params = params :+ DistinctValues[String](name, values)
+              })
+              logger.debug(s"params size=${params.size}, values=$params")
+              GridOrderedMultiValues(params)
           }
         }
       }

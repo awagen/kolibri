@@ -88,6 +88,9 @@ services:
       LOCAL_STORAGE_READ_BASE_PATH: '/app/test-files'
       # JOB_TEMPLATES_PATH must be relative to the base path or bucket path, depending on the persistence selected
       JOB_TEMPLATES_PATH: 'templates/jobs'
+      # relative to base path or bucket path, defines the folder where
+      # the subfolders for input data types are located
+      INPUT_DATA_PATH: 'inputdata'
       JUDGEMENT_FILE_SOURCE_TYPE: 'CSV'
       # if judgement file format set to 'JSON_LINES', need to set 'DOUBLE' in case judgements are numeric in the json,
       # if the numeric value is represented as string, use 'STRING'. This purely refers to how the json value is interpreted,
@@ -162,6 +165,7 @@ services:
       LOCAL_STORAGE_READ_BASE_PATH: '/app/test-files'
       # JOB_TEMPLATES_PATH must be relative to the base path or bucket path, depending on the persistence selected
       JOB_TEMPLATES_PATH: 'templates/jobs'
+      INPUT_DATA_PATH: 'inputdata'
       JUDGEMENT_FILE_SOURCE_TYPE: 'CSV'
       # if judgement file format set to 'JSON_LINES', need to set 'DOUBLE' in case judgements are numeric in the json,
       # if the numeric value is represented as string, use 'STRING'. This purely refers to how the json value is interpreted,

@@ -17,15 +17,16 @@
 
 package de.awagen.kolibri.base.io.json
 
+import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import de.awagen.kolibri.base.config.AppConfig
 import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator}
-import de.awagen.kolibri.datatypes.multivalues.OrderedMultiValues
-import spray.json.{DefaultJsonProtocol, DeserializationException, JsValue, JsonFormat, enrichAny}
 import de.awagen.kolibri.datatypes.io.json.OrderedMultiValuesJsonProtocol._
+import de.awagen.kolibri.datatypes.multivalues.OrderedMultiValues
+import spray.json.{DefaultJsonProtocol, DeserializationException, JsValue, RootJsonFormat, enrichAny}
 
-object IndexedGeneratorJsonProtocol extends DefaultJsonProtocol {
+object IndexedGeneratorJsonProtocol extends DefaultJsonProtocol with SprayJsonSupport {
 
-  implicit object SeqMapIndexedGeneratorFormat extends JsonFormat[IndexedGenerator[Map[String, Seq[String]]]] {
+  implicit object SeqMapIndexedGeneratorFormat extends RootJsonFormat[IndexedGenerator[Map[String, Seq[String]]]] {
     override def read(json: JsValue): IndexedGenerator[Map[String, Seq[String]]] = json match {
       case spray.json.JsObject(fields) => fields("type").convertTo[String] match {
         // That case is unlikely, since in case single OrderedMultiValues contains several values for a key
@@ -47,7 +48,7 @@ object IndexedGeneratorJsonProtocol extends DefaultJsonProtocol {
     override def write(obj: IndexedGenerator[Map[String, Seq[String]]]): JsValue = """{}""".toJson
   }
 
-  implicit object MapIndexedGeneratorFormat extends JsonFormat[IndexedGenerator[Map[String, String]]] {
+  implicit object MapIndexedGeneratorFormat extends RootJsonFormat[IndexedGenerator[Map[String, String]]] {
     override def read(json: JsValue): IndexedGenerator[Map[String, String]] = json match {
       case spray.json.JsObject(fields) => fields("type").convertTo[String] match {
         case "BY_VALUES_SEQ" =>
@@ -60,7 +61,7 @@ object IndexedGeneratorJsonProtocol extends DefaultJsonProtocol {
     override def write(obj: IndexedGenerator[Map[String, String]]): JsValue = """{}""".toJson
   }
 
-  implicit object StringIndexedGeneratorFormat extends JsonFormat[IndexedGenerator[String]] {
+  implicit object StringIndexedGeneratorFormat extends RootJsonFormat[IndexedGenerator[String]] {
     override def read(json: JsValue): IndexedGenerator[String] = json match {
       case spray.json.JsObject(fields) => fields("type").convertTo[String] match {
         case "BY_VALUES_SEQ" =>
@@ -80,7 +81,7 @@ object IndexedGeneratorJsonProtocol extends DefaultJsonProtocol {
     override def write(obj: IndexedGenerator[String]): JsValue = """{}""".toJson
   }
 
-  implicit object SeqStringIndexedGeneratorFormat extends JsonFormat[IndexedGenerator[Seq[String]]] {
+  implicit object SeqStringIndexedGeneratorFormat extends RootJsonFormat[IndexedGenerator[Seq[String]]] {
     override def read(json: JsValue): IndexedGenerator[Seq[String]] = json match {
       case spray.json.JsObject(fields) => fields("type").convertTo[String] match {
         case "BY_VALUES_SEQ" =>

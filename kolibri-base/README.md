@@ -360,6 +360,11 @@ batches are processed, in which case backpressure is likely already reducing the
 That being said, a distribution strategy avoiding this by e.g allowing definition of a max nr of tasks per node
 will likely be included shortly.
 
+## Endpoints for local data file retrieval
+- ```curl "localhost:8000/data/filesByType?type=PARAMETER"```
+- ```curl "localhost:8000/data/readFile?type=PARAMETER&identifier=test_queries.txt"```
+- ```curl -XGET  "localhost:8000/generator/info?returnNSamples=10" --header "Content-Type: application/json" -d '{"type": "FROM_FILES_LINES", "values": {"q": "inputdata/PARAMETER/test_queries.txt"}}'```
+
 ## Local execution - Issues and Fixes
 - starting the setup as provided in docker-compose file can be resource intensive. You might experience within the
 cluster heartbeat failures if not enough resources are available within docker. Thus make sure to allow sufficient 

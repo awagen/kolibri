@@ -24,14 +24,15 @@ import akka.http.scaladsl.server.Route
 import de.awagen.kolibri.base.config.AppConfig.persistenceModule
 import de.awagen.kolibri.base.config.AppProperties
 import de.awagen.kolibri.base.http.server.routes.StatusRoutes.corsHandler
+import de.awagen.kolibri.base.io.reader.ReaderUtils.safeContentRead
 import de.awagen.kolibri.base.io.reader.{DataOverviewReader, Reader}
 import de.awagen.kolibri.base.io.writer.Writers
 import de.awagen.kolibri.base.processing.JobMessages.SearchEvaluation
 import org.slf4j.{Logger, LoggerFactory}
 import spray.json.DefaultJsonProtocol.{StringJsonFormat, immSeqFormat}
 import spray.json.{JsValue, JsonReader, enrichAny}
-import scala.reflect.runtime.universe._
 
+import scala.reflect.runtime.universe._
 import scala.reflect.runtime.universe.typeOf
 
 object ResourceRoutes {
@@ -187,17 +188,6 @@ object ResourceRoutes {
         }
       }
     )
-  }
-
-  def safeContentRead(path: String, default: String, logOnFail: Boolean): String = {
-    try {
-      contentReader.getSource(path).getLines().mkString("\n")
-    }
-    catch {
-      case e: Exception =>
-        if (logOnFail) logger.warn(s"could not load content from path $path", e)
-        default
-    }
   }
 
   def getJobTemplateByTypeAndIdentifier(implicit system: ActorSystem): Route = {

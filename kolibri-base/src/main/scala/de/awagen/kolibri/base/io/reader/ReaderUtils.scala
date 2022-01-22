@@ -17,7 +17,14 @@
 
 package de.awagen.kolibri.base.io.reader
 
+import de.awagen.kolibri.base.config.AppConfig.persistenceModule
+import org.slf4j.{Logger, LoggerFactory}
+
 object ReaderUtils {
+
+  private[this] val logger: Logger = LoggerFactory.getLogger(this.getClass)
+  private[this] val contentReader: Reader[String, Seq[String]] = persistenceModule.persistenceDIModule.reader
+
 
   /**
    * Given some base path and delimiter, normalize such that it doesnt start with delimiter but ends with it
@@ -45,6 +52,21 @@ object ReaderUtils {
     if (dirPath.nonEmpty && fileIdentifier.startsWith(dirPath)) fileIdentifier
     else if (dirPath.isEmpty) fileIdentifier.stripPrefix(delimiter)
     else s"$dirPath${fileIdentifier.stripPrefix(delimiter)}"
+  }
+
+  def safeContentLinesRead(path: String, default: Iterator[String], logOnFail: Boolean): Iterator[String] = {
+    try {
+      contentReader.getSource(path).getLines()
+    }
+    catch {
+      case e: Exception =>
+        if (logOnFail) logger.warn(s"could not load content from path $path", e)
+        default
+    }
+  }
+
+  def safeContentRead(path: String, default: String, logOnFail: Boolean): String = {
+    safeContentLinesRead(path, Seq(default).iterator, logOnFail).mkString("\n")
   }
 
 }
