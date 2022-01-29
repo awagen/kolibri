@@ -30,6 +30,7 @@ const store = createStore({
             // data files available
             fileDataByType: {},
             selectedDataFileType: "",
+            selectedDataFiles: [],
 
             // the names of template types for which specific templates can be requested
             templateTypes: [],
@@ -92,6 +93,18 @@ const store = createStore({
 
         updateSelectedDataFileType(state, fileType) {
             state.selectedDataFileType = fileType
+        },
+
+        addSelectedDataFile(state, fileObj){
+            state.selectedDataFiles.push(fileObj)
+        },
+
+        removeSelectedDataFile(state, fileObj){
+          let toBeRemoved = state.selectedDataFiles.findLast(element => {
+            return element["fileType"] === fileObj["fileType"] &&
+                element["fileName"] === fileObj["fileName"];
+          });
+          state.selectedDataFiles.removeItem(toBeRemoved)
         },
 
         updateAvailableTemplateTypes(state) {

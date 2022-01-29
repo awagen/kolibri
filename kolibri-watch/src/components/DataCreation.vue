@@ -2,18 +2,9 @@
 
   <h2 class="nodeListHeader">STORED DATA</h2>
 
-  <div class="row-container columns">
-    <ul class="tab tab-block">
-      <li v-for="(dataValues, dataType, index) in this.$store.state.fileDataByType"
-          v-bind:class="{'tab-item active':(this.$store.state.selectedDataFileType === dataType)}">
-        <a href="#" @click="selectDataFileType(dataType)" class="badge" :data-badge="dataValues.length">
-          <span class="choice-title">{{ dataType }}</span>
-        </a>
-      </li>
-    </ul>
-  </div>
+  <DataFileSelectTabs/>
 
-  <template v-for="(dataValues, dataType, index) in this.$store.state.fileDataByType">
+  <template v-for="(dataValues, dataType, _) in this.$store.state.fileDataByType">
     <template v-if="dataType === this.$store.state.selectedDataFileType">
       <div class="row-container columns">
         <div class="col-12 col-sm-12 columns">
@@ -50,7 +41,7 @@
                 <!-- TODO: using add button shall add the data samples to the composer.
                  Composer to be added below the stored data
                  -->
-                <button class="btn btn-action k-add-button s-circle"><i class="icon icon-plus"></i></button>
+                <button @click="addDataToComposer(dataFile)" class="btn btn-action k-add-button s-circle"><i class="icon icon-plus"></i></button>
               </div>
           </span>
         </div>
@@ -60,6 +51,10 @@
 
   <div class="divider"></div>
 
+  <!-- composer can be hierarchical, meaning root array elements would be permutated across each other, while
+   an element that itself is an array would represent a subgrouping where its n-th element is the n-th permutation
+   of the elements contained in it (thus supplies multiple values)
+   -->
   <h2 class="nodeListHeader">COMPOSER</h2>
   Coming shortly .. :)
 
@@ -69,13 +64,21 @@
 <script>
 
 import {onMounted} from "vue";
+import DataFileSelectTabs from "../components/partials/DataFileSelectTabs.vue";
 
 export default {
 
   props: [],
+  components: {DataFileSelectTabs},
   methods: {
     selectDataFileType(fileType) {
       this.$store.commit("updateSelectedDataFileType", fileType)
+    },
+    addDataToComposer(fileObj){
+      this.$store.commit("addSelectedDataFile", fileObj)
+    },
+    removeDataFromComposer(fileObj){
+      this.$store.commit("removeSelectedDataFile", fileObj)
     }
   },
   setup(props) {
