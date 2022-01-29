@@ -4,9 +4,10 @@
 
   <div class="row-container columns">
     <ul class="tab tab-block">
-      <li v-for="(dataValues, dataType, index) in this.$store.state.fileDataByType" v-bind:class="{'tab-item active':(this.$store.state.selectedDataFileType === dataType)}">
-        <a href="#" @click="selectDataFileType(dataType)"  class="badge" :data-badge="dataValues.length">
-          <span class="choice-title">{{dataType}}</span>
+      <li v-for="(dataValues, dataType, index) in this.$store.state.fileDataByType"
+          v-bind:class="{'tab-item active':(this.$store.state.selectedDataFileType === dataType)}">
+        <a href="#" @click="selectDataFileType(dataType)" class="badge" :data-badge="dataValues.length">
+          <span class="choice-title">{{ dataType }}</span>
         </a>
       </li>
     </ul>
@@ -16,10 +17,11 @@
     <template v-if="dataType === this.$store.state.selectedDataFileType">
       <div class="row-container columns">
         <div class="col-12 col-sm-12 columns">
-          <span v-for="dataFile in dataValues" class="badge" :data-badge=dataFile.totalNrOfSamples>
+          <span v-for="dataFile in dataValues">
+            <span class="badge" :data-badge=dataFile.totalNrOfSamples>
             <!-- TODO: comment in in case some delete functionality shall be added -->
             <!--        <a href="#" class="btn btn-clear" aria-label="Close" role="button"></a>-->
-            {{dataFile.identifier}}: {{dataFile.fileName}}
+            {{ dataFile.identifier }}: {{ dataFile.fileName }}
 
             <!-- if available, display some field info here -->
               <div class="popover popover-right">
@@ -31,17 +33,24 @@
                     </div>
                     <div class="card-body">
                       <div v-for="(sample, index) in dataFile.samples">
-                        {{index}}: {{ sample }}
+                        {{ index }}: {{ sample }}
                       </div>
                     </div>
                     <div class="card-footer">
                       <div>
                         <b>Description</b> <br>
-                        {{dataFile.description}}
+                        {{ dataFile.description }}
                       </div>
                     </div>
                   </div>
                 </div>
+              </div>
+              </span>
+              <div>
+                <!-- TODO: using add button shall add the data samples to the composer.
+                 Composer to be added below the stored data
+                 -->
+                <button class="btn btn-success k-add-button s-circle"><i class="icon icon-plus"></i></button>
               </div>
           </span>
         </div>
@@ -50,6 +59,9 @@
   </template>
 
   <div class="divider"></div>
+
+  <h2 class="nodeListHeader">COMPOSER</h2>
+  Coming shortly .. :)
 
 
 </template>
@@ -116,7 +128,7 @@ span.add-entry {
 .popover button {
   background-color: #588274;
   border-width: 0;
-  margin:0.3em;
+  margin: 0.3em;
 }
 
 .card {
@@ -128,7 +140,7 @@ span.add-entry {
   display: inline-block;
   text-transform: lowercase;
   color: #9C9C9C;
-  margin-right:1.5em;
+  margin-right: 1.5em;
 }
 
 .tab li {
@@ -145,6 +157,11 @@ span.add-entry {
 
 .tab a .choice-title::first-letter {
   text-transform: uppercase;
+}
+
+button.k-add-button {
+  background-color: transparent;
+  border-width: 0;
 }
 
 </style>
