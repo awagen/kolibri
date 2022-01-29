@@ -29,6 +29,7 @@ const store = createStore({
 
             // data files available
             fileDataByType: {},
+            selectedDataFileType: "",
 
             // the names of template types for which specific templates can be requested
             templateTypes: [],
@@ -83,7 +84,14 @@ const store = createStore({
         updateAvailableDataFiles(state, numReturnSamples) {
             retrieveDataFileInfoAll(numReturnSamples).then(response => {
                 state.fileDataByType = response
+                if (Object.keys(response).length > 0 && state.selectedDataFileType === ""){
+                    state.selectedDataFileType = Object.keys(response)[0]
+                }
             })
+        },
+
+        updateSelectedDataFileType(state, fileType) {
+            state.selectedDataFileType = fileType
         },
 
         updateAvailableTemplateTypes(state) {

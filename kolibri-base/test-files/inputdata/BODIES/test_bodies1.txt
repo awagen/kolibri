@@ -1,0 +1,5 @@
+#identifier=Test Bodies
+#description=Some example body values. Must be single line jsons.
+{"key1": "value1", "key2": ["value2_1", "value2_2"], "key3": {"key3_1": "value3_1"}}
+{"key4": "value4", "key5": ["value5_1", "value5_2"], "key6": {"key6_1": "value6_1"}}
+{"key7": "value7", "key8": ["value8_1", "value8_2"], "key9": {"key9_1": "value9_1"}}

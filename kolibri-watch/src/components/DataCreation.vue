@@ -1,43 +1,53 @@
 <template>
 
-  <div v-for="(dataValues, dataType, index) in this.$store.state.fileDataByType" class="row-container columns">
-    <h3 class="title">
-      {{dataType}}
-    </h3>
+  <h2 class="nodeListHeader">STORED DATA</h2>
 
-    <!-- TODO: add the "add"-function (needs type, e.g FROM_FILE, BY_VALUES, name,... -->
-    <!-- <span class="add-entry"><i class="icon icon-plus"></i></span> -->
+  <div class="row-container columns">
+    <ul class="tab tab-block">
+      <li v-for="(dataValues, dataType, index) in this.$store.state.fileDataByType" v-bind:class="{'tab-item active':(this.$store.state.selectedDataFileType === dataType)}">
+        <a href="#" @click="selectDataFileType(dataType)"  class="badge" :data-badge="dataValues.length">
+          <span class="choice-title">{{dataType}}</span>
+        </a>
+      </li>
+    </ul>
+  </div>
 
-    <div class="col-12 col-sm-12 columns">
-      <span v-for="dataFile in dataValues" class="badge" :data-badge=dataFile.totalNrOfSamples>
-        <a href="#" class="btn btn-clear" aria-label="Close" role="button"></a>
-        {{dataFile.identifier}}: {{dataFile.fileName}}
+  <template v-for="(dataValues, dataType, index) in this.$store.state.fileDataByType">
+    <template v-if="dataType === this.$store.state.selectedDataFileType">
+      <div class="row-container columns">
+        <div class="col-12 col-sm-12 columns">
+          <span v-for="dataFile in dataValues" class="badge" :data-badge=dataFile.totalNrOfSamples>
+            <!-- TODO: comment in in case some delete functionality shall be added -->
+            <!--        <a href="#" class="btn btn-clear" aria-label="Close" role="button"></a>-->
+            {{dataFile.identifier}}: {{dataFile.fileName}}
 
-        <!-- if available, display some field info here -->
-          <div class="popover popover-right">
-            <button class="btn btn-action s-circle"><i class="icon icon-message"></i></button>
-            <div class="popover-container">
-              <div class="card">
-                <div class="card-header">
-                  <b>Sample Values</b>
-                </div>
-                <div class="card-body">
-                  <div v-for="(sample, index) in dataFile.samples">
-                    {{index}}: {{ sample }}
-                  </div>
-                </div>
-                <div class="card-footer">
-                  <div>
-                    <b>Description</b> <br>
-                    {{dataFile.description}}
+            <!-- if available, display some field info here -->
+              <div class="popover popover-right">
+                <button class="btn btn-action s-circle"><i class="icon icon-message"></i></button>
+                <div class="popover-container">
+                  <div class="card">
+                    <div class="card-header">
+                      <b>Sample Values</b>
+                    </div>
+                    <div class="card-body">
+                      <div v-for="(sample, index) in dataFile.samples">
+                        {{index}}: {{ sample }}
+                      </div>
+                    </div>
+                    <div class="card-footer">
+                      <div>
+                        <b>Description</b> <br>
+                        {{dataFile.description}}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
-      </span>
-    </div>
-  </div>
+          </span>
+        </div>
+      </div>
+    </template>
+  </template>
 
   <div class="divider"></div>
 
@@ -51,7 +61,11 @@ import {onMounted} from "vue";
 export default {
 
   props: [],
-  methods: {},
+  methods: {
+    selectDataFileType(fileType) {
+      this.$store.commit("updateSelectedDataFileType", fileType)
+    }
+  },
   setup(props) {
     onMounted(() => {
     })
@@ -109,6 +123,29 @@ span.add-entry {
   white-space: break-spaces;
 }
 
+.tab a .choice-title {
+  /* need block style such that only uppercasing first char works */
+  display: inline-block;
+  text-transform: lowercase;
+  color: #9C9C9C;
+  margin-right:1.5em;
+}
+
+.tab li {
+  margin-right: 2em;
+}
+
+.tab-item.active .choice-title {
+  color: black;
+}
+
+.tab-item.active a {
+  border-bottom: none;
+}
+
+.tab a .choice-title::first-letter {
+  text-transform: uppercase;
+}
 
 </style>
 
