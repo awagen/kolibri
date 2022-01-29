@@ -50,7 +50,7 @@
                 <!-- TODO: using add button shall add the data samples to the composer.
                  Composer to be added below the stored data
                  -->
-                <button class="btn btn-success k-add-button s-circle"><i class="icon icon-plus"></i></button>
+                <button class="btn btn-action k-add-button s-circle"><i class="icon icon-plus"></i></button>
               </div>
           </span>
         </div>
@@ -100,7 +100,7 @@ export default {
 
 .badge[data-badge]::after {
   background: #25333C;
-  box-shadow: 0 0 0 0.1rem grey;
+  box-shadow: 0 0 0 0.1rem #588274;
   color: lightgrey;
   margin-left: 0.5em;
 }
@@ -162,6 +162,11 @@ span.add-entry {
 button.k-add-button {
   background-color: transparent;
   border-width: 0;
+  color: white;
+}
+
+button.k-add-button:hover {
+  background-color: #588274;
 }
 
 </style>

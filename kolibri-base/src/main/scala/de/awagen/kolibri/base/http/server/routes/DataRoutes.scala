@@ -51,6 +51,19 @@ object DataRoutes extends DefaultJsonProtocol {
   trait DataMsg extends KolibriSerializable
 
   case class BaseFileDataSourceInfo(totalNrOfSamples: Int, jsonDefinition: String, samples: Seq[Seq[String]]) extends DataMsg
+
+  /**
+   * Case class specifying the response for a single file data source.
+   * @param fileType - File type the file corresponds to
+   * @param fileName - the filename
+   * @param identifier - an identifer, specifying what data is used for. Lets say fileType is PARAMETER, the identifier
+   *                   should correspond to the url parameter name (if set in the source file as line with prefix FILE_HEADER_IDENTIFIER_PREFIX)
+   * @param description - a description for the data (if set in the source file as line with prefix FILE_HEADER_DESCRIPTION_PREFIX)
+   * @param totalNrOfSamples - specifies how many samples in total are contained in the file source
+   * @param jsonDefinition - the json definition corresponding to the OrderedMultiValues element given by the file (see OrderedMultiValuesJsonProtocol).
+   *                       Allows retrieving the whole data by parsing the json definition into the object.
+   * @param samples - a selected nr of samples representing the file content
+   */
   case class FileDataSourceInfo(fileType: DataFileType.Val, fileName: String, identifier: String, description: String, totalNrOfSamples: Int, jsonDefinition: String, samples: Seq[Seq[String]]) extends DataMsg
 
   implicit val fileDataSourceInfoFormat: RootJsonFormat[FileDataSourceInfo] = jsonFormat7(FileDataSourceInfo)
