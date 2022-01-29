@@ -1,7 +1,7 @@
 import axios from "axios";
 import {jobHistoryUrl, jobStateUrl, appIsUpUrl, nodeStateUrl, templateOverviewForTypeUrl,
     templateTypeUrl, templateSaveUrl, templateExecuteUrl,
-    templateContentUrl} from '../utils/globalConstants'
+    templateContentUrl, dataFileInfoAllUrl} from '../utils/globalConstants'
 
 
 function retrieveJobs(historical, updateFunc) {
@@ -10,12 +10,42 @@ function retrieveJobs(historical, updateFunc) {
         .get(url)
         .then(response => {
             let result = response.data
-            result.forEach(function (item, index) {
+            result.forEach(function (item, _) {
                 item["progress"] = Math.round((item["resultSummary"]["nrOfResultsReceived"] / item["resultSummary"]["nrOfBatchesTotal"]) * 100)
             });
             updateFunc(result)
         }).catch(_ => {
             updateFunc([])
+        })
+}
+
+function retrieveDataFileInfoAll(returnNSamples){
+    const url = dataFileInfoAllUrl + "?returnNSamples=" + returnNSamples
+    return axios
+        .get(url)
+        .then(response => {
+            let dataByType = {}
+            response.data.forEach(function(item, _) {
+                let returnValue = {}
+                let fileType = item["fileType"]
+                returnValue["fileName"] = item["fileName"].split("/").pop()
+                returnValue["totalNrOfSamples"] = item["totalNrOfSamples"]
+                returnValue["jsonDefinition"] = item["jsonDefinition"]
+                returnValue["samples"] = item["samples"].map(x => x[0])
+                returnValue["identifier"] = item["identifier"]
+                returnValue["description"] = item["description"]
+                if (fileType in dataByType) {
+                    dataByType[fileType].push(returnValue)
+                }
+                else {
+                    dataByType[fileType] = [returnValue]
+                }
+            });
+            return dataByType;
+        })
+        .catch(e => {
+            console.log(e)
+            return []
         })
 }
 
@@ -112,4 +142,4 @@ function retrieveTemplateContentAndInfo(typeName, templateName) {
 
 export {retrieveJobs, retrieveServiceUpState, retrieveNodeStatus,
     retrieveTemplatesForType, retrieveTemplateTypes, saveTemplate, executeJob,
-    retrieveTemplateContentAndInfo}
+    retrieveTemplateContentAndInfo, retrieveDataFileInfoAll}

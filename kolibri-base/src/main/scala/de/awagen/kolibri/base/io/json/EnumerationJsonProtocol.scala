@@ -23,6 +23,7 @@ import de.awagen.kolibri.base.domain.jobdefinitions.RunnableExpectationGenerator
 import de.awagen.kolibri.base.domain.jobdefinitions.TaskDefinitions.TaskDefinitions
 import de.awagen.kolibri.base.domain.jobdefinitions.provider.data.DataKeys
 import de.awagen.kolibri.base.domain.jobdefinitions.{MapTransformerFlows, ProcessingActorProps, RunnableExpectationGenerators, TaskDefinitions}
+import de.awagen.kolibri.base.http.server.routes.DataRoutes.DataFileType
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnableSinkType
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnableSinkType.ActorRunnableSinkType
 import de.awagen.kolibri.datatypes.io.json.EnumerationJsonProtocol.EnumerationProtocol
@@ -37,6 +38,15 @@ object EnumerationJsonProtocol extends DefaultJsonProtocol {
       json match {
         case JsString(txt) => ProcessingResult.withName(txt)
         case e => throw DeserializationException(s"Expected a value from ProcessingResult.Value but got value $e")
+      }
+    }
+  }
+
+  implicit object dataFileTypeFormat extends EnumerationProtocol[DataFileType.Val] {
+    override def read(json: JsValue): DataFileType.Val = {
+      json match {
+        case JsString(txt) => DataFileType.byName(txt)
+        case e => throw DeserializationException(s"Expected a value from DataFileType.Val but got value $e")
       }
     }
   }

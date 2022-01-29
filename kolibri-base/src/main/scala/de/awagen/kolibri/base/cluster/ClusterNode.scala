@@ -145,7 +145,9 @@ object ClusterNode extends App {
         ~ startExecution ~ nodeState ~ jobStates ~ finishedJobStates ~ health ~ getAllJobWorkerStates
         ~ getJudgements ~ getAllJudgements ~ getJobTemplateOverviewForType ~ getJobTemplateByTypeAndIdentifier
         ~ getJobTemplateTypes ~ storeSearchEvaluationTemplate ~ startExecutionDefinition
-        ~ getIndexedGeneratorInfo ~ getDataFilesByType ~ getValuesByTypeAndFile
+        ~ getAllIndexedGeneratorInfosForFileData
+        ~ getIndexedGeneratorInfoForOrderedMultiValuesBody ~ getDataFilesByType
+        ~ getValuesByTypeAndFile
       )
       val usedRoute: Route = if (useRequestEventShardingAndEndpoints) {
         commonRoute ~ sendCombinedEvent ~ sendEntityEvent ~ sendKeyValueEvent

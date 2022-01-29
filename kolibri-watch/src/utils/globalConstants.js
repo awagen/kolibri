@@ -11,6 +11,9 @@ export const jobBatchStateUrl = `${kolibriBaseUrl}/${import.meta.env.VITE_KOLIBR
 export const jobHistoryUrl = `${kolibriBaseUrl}/${import.meta.env.VITE_KOLIBRI_JOB_HISTORY_PATH}`
 export const stopJobUrl = `${kolibriBaseUrl}/${import.meta.env.VITE_KOLIBRI_STOP_JOB_PATH}`
 
+// url to retrieve available data files by type
+export const dataFileInfoAllUrl = `${kolibriBaseUrl}/${import.meta.env.VITE_KOLIBRI_DATA_INFO_ALL_PATH}`
+
 // url to request available template types
 export const templateTypeUrl = `${kolibriBaseUrl}/${import.meta.env.VITE_KOLIBRI_TEMPLATE_TYPES_PATH}`
 // url to retrieve the templates overview from. This endpoint provides available templates that can be retrieved

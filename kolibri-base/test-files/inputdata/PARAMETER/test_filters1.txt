@@ -1,0 +1,12 @@
+#identifier=filter
+#description=Some filter examples
+cat:f1
+cat:f2
+cat:f3
+cat:f4
+cat:f5
+cat:f6
+cat:f7
+cat:f8
+cat:f9
+cat:f10

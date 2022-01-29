@@ -7,7 +7,8 @@ import {
     retrieveJobs,
     retrieveNodeStatus,
     retrieveServiceUpState, retrieveTemplateContentAndInfo,
-    retrieveTemplatesForType, retrieveTemplateTypes
+    retrieveTemplatesForType, retrieveTemplateTypes,
+    retrieveDataFileInfoAll
 } from './utils/retrievalFunctions'
 
 // we could just reference style sheets relatively from assets folder, but we keep one central scss file instead
@@ -25,7 +26,9 @@ const store = createStore({
             runningNodes: [],
             runningJobs: [],
             jobHistory: [],
-            // template editing state
+
+            // data files available
+            fileDataByType: {},
 
             // the names of template types for which specific templates can be requested
             templateTypes: [],
@@ -74,6 +77,12 @@ const store = createStore({
         updateJobHistory(state) {
             return retrieveJobs(true, x => {
                 state.jobHistory = x
+            })
+        },
+
+        updateAvailableDataFiles(state, numReturnSamples) {
+            retrieveDataFileInfoAll(numReturnSamples).then(response => {
+                state.fileDataByType = response
             })
         },
 
@@ -129,6 +138,7 @@ store.commit("updateNodeStatus")
 store.commit("updateRunningJobs")
 store.commit("updateJobHistory")
 store.commit("updateAvailableTemplateTypes")
+store.commit("updateAvailableDataFiles", 5)
 // regular scheduling
 window.setInterval(() => {
     store.commit("updateServiceUpState")

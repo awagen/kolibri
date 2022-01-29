@@ -27,6 +27,12 @@ object OrderedMultiValuesJsonProtocol extends DefaultJsonProtocol {
 
   private[this] val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
+  val FROM_FILES_LINES_TYPE = "FROM_FILES_LINES"
+  val FROM_VALUES_TYPE = "FROM_VALUES"
+  val TYPE_KEY = "type"
+  val VALUES_KEY = "values"
+
+
   implicit object OrderedMultiValuesAnyFormat extends JsonFormat[OrderedMultiValues] {
     override def read(json: JsValue): OrderedMultiValues = {
       try {
@@ -34,9 +40,9 @@ object OrderedMultiValuesJsonProtocol extends DefaultJsonProtocol {
       }
       catch {
         case _: DeserializationException => json match {
-          case spray.json.JsObject(fields) => fields("type").convertTo[String] match {
-            case "FROM_FILES_LINES" =>
-              val paramNameToFile = fields("values").convertTo[Map[String, String]]
+          case spray.json.JsObject(fields) => fields(TYPE_KEY).convertTo[String] match {
+            case FROM_FILES_LINES_TYPE =>
+              val paramNameToFile = fields(VALUES_KEY).convertTo[Map[String, String]]
               var params: Seq[OrderedValues[String]] = Seq.empty
               val fileReader = AppConfig.persistenceModule.persistenceDIModule.reader
               paramNameToFile.foreach(x => {
@@ -47,8 +53,8 @@ object OrderedMultiValuesJsonProtocol extends DefaultJsonProtocol {
               })
               logger.debug(s"params size=${params.size}, values=$params")
               GridOrderedMultiValues(params)
-            case "FROM_VALUES" =>
-              val paramNameToValues = fields("values").convertTo[Map[String, Seq[String]]]
+            case FROM_VALUES_TYPE =>
+              val paramNameToValues = fields(VALUES_KEY).convertTo[Map[String, Seq[String]]]
               var params: Seq[OrderedValues[String]] = Seq.empty
               paramNameToValues.foreach(x => {
                 val name: String = x._1

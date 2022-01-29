@@ -1,3 +1,5 @@
+#identifier=q
+#description=Some query examples
 q1
 q2
 q3

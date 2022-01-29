@@ -364,6 +364,7 @@ will likely be included shortly.
 - ```curl "localhost:8000/data/filesByType?type=PARAMETER"```
 - ```curl "localhost:8000/data/readFile?type=PARAMETER&identifier=test_queries.txt"```
 - ```curl -XGET  "localhost:8000/generator/info?returnNSamples=10" --header "Content-Type: application/json" -d '{"type": "FROM_FILES_LINES", "values": {"q": "inputdata/PARAMETER/test_queries.txt"}}'```
+- ```curl -XGET  "localhost:8000/data/info/all?returnNSamples=10"```
 
 ## Local execution - Issues and Fixes
 - starting the setup as provided in docker-compose file can be resource intensive. You might experience within the
