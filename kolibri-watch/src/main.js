@@ -100,11 +100,13 @@ const store = createStore({
         },
 
         removeSelectedDataFile(state, fileObj){
-          let toBeRemoved = state.selectedDataFiles.findLast(element => {
-            return element["fileType"] === fileObj["fileType"] &&
-                element["fileName"] === fileObj["fileName"];
-          });
-          state.selectedDataFiles.removeItem(toBeRemoved)
+            let toBeRemoved = state.selectedDataFiles.filter(element => {
+                return element["fileType"] === fileObj["fileType"] &&
+                    element["fileName"] === fileObj["fileName"];
+            });
+            if (toBeRemoved.length > 0) {
+                state.selectedDataFiles.splice(state.selectedDataFiles.indexOf(toBeRemoved[toBeRemoved.length - 1]), 1)
+            }
         },
 
         updateAvailableTemplateTypes(state) {
