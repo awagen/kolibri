@@ -79,7 +79,8 @@ class ParameterValuesSpec extends UnitTestSpec {
       parameterValues.iterator.toSeq mustBe Seq(
         ParameterValue("p1", ValueType.URL_PARAMETER, "v1"),
         ParameterValue("p1", ValueType.URL_PARAMETER, "v2"),
-        ParameterValue("p1", ValueType.URL_PARAMETER, "v3"))
+        ParameterValue("p1", ValueType.URL_PARAMETER, "v3"),
+        ParameterValue("p1", ValueType.URL_PARAMETER, "v4"))
     }
   }
 
