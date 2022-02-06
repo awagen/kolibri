@@ -93,7 +93,7 @@ object ParameterValues {
 
     def removeTopLevelKeysWithMissingMappings(pVals: ParameterValues): ParameterValues = {
       // extract those indices we need to check (only those mapped to index 0)
-      val checkMappedValueIndices = ArrayBuffer(mappedValues.indices:_*)
+      val checkMappedValueIndices = ArrayBuffer(mappedValues.indices: _*)
       mappingKeyValueAssignments.filter(x => x._1 != 0).map(x => x._2).foreach(index => checkMappedValueIndices.remove(index - 1))
       var removeValues = Seq.empty[String]
       pVals.values.iterator.foreach(value => {
@@ -116,8 +116,9 @@ object ParameterValues {
 
     /**
      * Generates all mapped values for a given ParameterValue providing the key and a single MappedParameterValue instance
+     *
      * @param parameterValue - single value providing the key
-     * @param mappedValues - the mapped value to generate parameter values for
+     * @param mappedValues   - the mapped value to generate parameter values for
      * @return
      */
     private[modifiers] def generateMappedValueFromParameterValue(parameterValue: ParameterValue, mappedValues: MappedParameterValues): Option[IndexedGenerator[ParameterValue]] = {
@@ -128,6 +129,7 @@ object ParameterValues {
     /**
      * For a passed ParameterValue, generate all permutations with the mapped values. This allows backward reference
      * to allow mapping to another mapped value
+     *
      * @param pValue - the single ParameterValue to generate mappings for (should usually be an element from the unmapped
      *               values provided by 'values'
      * @return
@@ -235,6 +237,7 @@ object ParameterValues {
      * (note that all mappings will need to exist, e.g if some mapping refers to another mapped value,
      * also this full chain of mappings has to exist to have the parameter sequence included here, e.g
      * no partials will be returned
+     *
      * @param keyValue
      * @return
      */
