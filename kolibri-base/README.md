@@ -360,11 +360,26 @@ batches are processed, in which case backpressure is likely already reducing the
 That being said, a distribution strategy avoiding this by e.g allowing definition of a max nr of tasks per node
 will likely be included shortly.
 
-## Endpoints for local data file retrieval
+## Endpoints for data file retrieval (e.g data prefefined within files)
+This contains distinct kinds of parameter values. 
+This can be preppred beforehand such that there is a selection of parameters 
+to compose, e.g important queries or similar.
 - ```curl "localhost:8000/data/filesByType?type=PARAMETER"```
 - ```curl "localhost:8000/data/readFile?type=PARAMETER&identifier=test_queries.txt"```
 - ```curl -XGET  "localhost:8000/generator/info?returnNSamples=10" --header "Content-Type: application/json" -d '{"type": "FROM_FILES_LINES", "values": {"q": "inputdata/PARAMETER/test_queries.txt"}}'```
 - ```curl -XGET  "localhost:8000/data/info/all?returnNSamples=10"```
+
+## Endpoints for result retrieval
+- Overview of executions for which results are available: ```http://localhost:8000/results/executions```
+- Overview of single partial / aggregated results for any of the values returned by above endpoint: ```http://localhost:8000/results/executions/[executionId]```
+- Full file overview: ```http://localhost:8000/results/executions/[executionId]/byId?id=[FILE_NAME]```
+- Filtered file overview: ```http://localhost:8000/results/executions/[executionId]/byIdFiltered?id=[FILE_NAME]&sortByMetric=NDCG_10&topN=50&reversed=false```
+The latter endpoint allows sorting by some given metric and filtering down to reduced set of results.
+
+## Endpoints for result retrieval
+- analyze top/flop queries for given parameters: 
+```http://localhost:8000/analyze/topsFlops -H 'Content-Type: application/json' -d '{"type": "ANALYZE_BEST_WORST_REGEX", "directory": "", "regex": "", "currentParams": {"": [""]}, "compareParams": [{"", [""]}], "metricName": "", "queryParamName": "", "n_best": 10, "n_worst": 10}'```
+
 
 ## Local execution - Issues and Fixes
 - starting the setup as provided in docker-compose file can be resource intensive. You might experience within the

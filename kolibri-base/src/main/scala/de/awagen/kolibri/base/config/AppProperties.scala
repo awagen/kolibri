@@ -190,6 +190,7 @@ object AppProperties {
 
     val jobTemplatesPath: Option[String] = safeGetString("kolibri.persistence.templates.jobTemplatesPath")
     val inputDataPath: Option[String] = safeGetString("kolibri.persistence.inputs.dataPath")
+    val outputResultsPath: Option[String] = safeGetString("kolibri.persistence.outputs.resultsPath")
 
     val persistenceMode: String = baseConfig.getString("kolibri.persistence.mode")
     val persistenceModuleClass: Option[String] = safeGetString("kolibri.persistence.moduleClass")

@@ -95,7 +95,7 @@ object AnalyzeFunctions {
     * @param dir               - the result (sub)folder
     * @param fileRegex         - the regex to determine which result files to take into account
     * @param metricName        - metric name to calculate variance by
-    * @param queryFromFilename - functiom to determine the query from the filename
+    * @param queryFromFilename - function to determine the query from the filename
     */
   case class GetValueVarianceFromDirPerRegex(dir: String,
                                              fileRegex: Regex,
@@ -119,6 +119,19 @@ object AnalyzeFunctions {
     }
   }
 
+  /**
+   * Generates over the files to compare and for all parameter sets the most winning / loosing queries compared to
+   * the values corresponding to current parameters.
+   * Result has HIGHEST_RESULT_KEY and LOWEST_RESULT_KEY and for each a mapping parameterMap (of compareParams) ->
+   * (query, double (formatted string)) tuples
+   * @param compareFiles
+   * @param currentParams
+   * @param compareParams
+   * @param metricName
+   * @param queryFromFilename
+   * @param n_best
+   * @param n_worst
+   */
   case class GetImprovingAndLoosing(compareFiles: Seq[String],
                                     currentParams: Map[String, Seq[String]],
                                     compareParams: Seq[Map[String, Seq[String]]],

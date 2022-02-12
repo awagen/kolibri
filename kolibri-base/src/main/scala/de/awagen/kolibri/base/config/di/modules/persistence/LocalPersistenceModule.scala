@@ -37,7 +37,11 @@ class LocalPersistenceModule extends PersistenceDIModule with tagging.Tag[LOCAL_
     LocalDirectoryFileWriter(directory = AppProperties.config.localPersistenceWriteBasePath.get)
 
   lazy val reader: Reader[String, Seq[String]] =
-    LocalResourceFileReader(basePath = AppProperties.config.localPersistenceReadBasePath.get, delimiterAndPosition = None, fromClassPath = false)
+    LocalResourceFileReader(
+      basePath = AppProperties.config.localPersistenceReadBasePath.get,
+      delimiterAndPosition = None,
+      fromClassPath = false
+    )
 
   override def dataOverviewReader(fileFilter: String => Boolean): DataOverviewReader = LocalDirectoryReader(
     baseDir = AppProperties.config.localPersistenceReadBasePath.get,

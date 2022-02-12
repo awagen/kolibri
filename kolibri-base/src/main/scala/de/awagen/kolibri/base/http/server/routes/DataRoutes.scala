@@ -93,20 +93,18 @@ object DataRoutes extends DefaultJsonProtocol {
     val PARAMETER, HEADER, BODIES: Val = Val(stringToValueSeqFunc(x => JsString(x)))
   }
 
-  val DATA_PATH_PREFIX = "data"
-  val FILES_BY_TYPE_PATH = "filesByType"
-  val READ_FILE_PATH = "readFile"
-  val PARAM_TYPE = "type"
-  val GENERATOR_PATH_PREFIX = "generator"
-  val INFO_PATH = "info"
+  private[this] val DATA_PATH_PREFIX = "data"
+  private[this] val FILES_BY_TYPE_PATH = "filesByType"
+  private[this] val READ_FILE_PATH = "readFile"
+  private[this] val PARAM_TYPE = "type"
+  private[this] val GENERATOR_PATH_PREFIX = "generator"
+  private[this] val INFO_PATH = "info"
 
-  val FILE_HEADER_IDENTIFIER_PREFIX = "#identifier="
-  val FILE_HEADER_DESCRIPTION_PREFIX = "#description="
-
-  val DIRECTORY_PATH_DELIMITER = "/"
-
-  val ALL_PATH = "all"
-  val EMPTY_STRING = ""
+  private[this] val FILE_HEADER_IDENTIFIER_PREFIX = "#identifier="
+  private[this] val FILE_HEADER_DESCRIPTION_PREFIX = "#description="
+  private[this] val DIRECTORY_PATH_DELIMITER = "/"
+  private[this] val ALL_PATH = "all"
+  private[this] val EMPTY_STRING = ""
 
 
   /**

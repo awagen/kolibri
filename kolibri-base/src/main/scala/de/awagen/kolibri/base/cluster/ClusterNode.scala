@@ -34,6 +34,7 @@ import de.awagen.kolibri.base.config.AppProperties
 import de.awagen.kolibri.base.config.AppProperties.config
 import de.awagen.kolibri.base.config.AppProperties.config.{kolibriDispatcherName, node_roles, useRequestEventShardingAndEndpoints}
 import de.awagen.kolibri.base.http.server.HttpServer
+import de.awagen.kolibri.base.http.server.routes.AnalysisRoutes.{getPartialResultsOverview, getResultBaseFolders, getSingleResult, getSingleResultFiltered}
 import de.awagen.kolibri.base.http.server.routes.BaseRoutes
 import de.awagen.kolibri.base.http.server.routes.BaseRoutes._
 import de.awagen.kolibri.base.http.server.routes.DataRoutes._
@@ -148,6 +149,8 @@ object ClusterNode extends App {
         ~ getAllIndexedGeneratorInfosForFileData
         ~ getIndexedGeneratorInfoForOrderedMultiValuesBody ~ getDataFilesByType
         ~ getValuesByTypeAndFile
+        ~ getResultBaseFolders ~ getPartialResultsOverview ~ getSingleResult
+        ~ getSingleResultFiltered
       )
       val usedRoute: Route = if (useRequestEventShardingAndEndpoints) {
         commonRoute ~ sendCombinedEvent ~ sendEntityEvent ~ sendKeyValueEvent

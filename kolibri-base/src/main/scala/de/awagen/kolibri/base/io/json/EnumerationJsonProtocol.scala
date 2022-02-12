@@ -26,12 +26,22 @@ import de.awagen.kolibri.base.domain.jobdefinitions.{MapTransformerFlows, Proces
 import de.awagen.kolibri.base.http.server.routes.DataRoutes.DataFileType
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnableSinkType
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnableSinkType.ActorRunnableSinkType
+import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ValueType
 import de.awagen.kolibri.datatypes.io.json.EnumerationJsonProtocol.EnumerationProtocol
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import spray.json.{DefaultJsonProtocol, DeserializationException, JsString, JsValue}
 
 
 object EnumerationJsonProtocol extends DefaultJsonProtocol {
+
+  implicit object valueTypeFormat extends EnumerationProtocol[ValueType.Value] {
+    override def read(json: JsValue): ValueType.Value = {
+      json match {
+        case JsString(txt) => ValueType.withName(txt.toUpperCase)
+        case e => throw DeserializationException(s"Expected a value from ValueType.Value but got value $e")
+      }
+    }
+  }
 
   implicit object processingResultFormat extends EnumerationProtocol[ProcessingResult.Value] {
     override def read(json: JsValue): ProcessingResult.Value = {
