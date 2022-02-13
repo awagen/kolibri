@@ -26,7 +26,7 @@ import de.awagen.kolibri.base.config.AppProperties
 import de.awagen.kolibri.base.http.server.routes.StatusRoutes.corsHandler
 import de.awagen.kolibri.base.io.json.ExecutionJsonProtocol._
 import de.awagen.kolibri.base.io.reader.{DataOverviewReader, Reader}
-import de.awagen.kolibri.base.processing.execution.functions.AnalyzeFunctions.{ExecutionSummary, GetImprovingAndLoosingFromDirPerRegex}
+import de.awagen.kolibri.base.processing.execution.functions.AnalyzeFunctions.{ExecutionSummary, GetImprovingAndLoosingFromDirPerRegex, GetValueVarianceFromDirPerRegex}
 import de.awagen.kolibri.base.processing.execution.functions.Execution
 import de.awagen.kolibri.base.processing.failure.TaskFailType
 import de.awagen.kolibri.datatypes.stores.PriorityStores.{BasePriorityStore, PriorityStore}
@@ -59,6 +59,10 @@ object AnalysisRoutes extends DefaultJsonProtocol {
   private[this] val TOP_N_PARAM = "topN"
   private[this] val REVERSED_PARAM = "reversed"
   private[this] val TOPS_FLOPS_PATH = "topsflops"
+  private[this] val VARIANCES_PATH = "variances"
+
+  private[this] val HIGHEST_VALUES_KEY = "highest"
+  private[this] val LOWEST_VALUES_KEY = "lowest"
 
   private[this] val evaluationColumnNames: Seq[String] = Seq(
     FAIL_COUNT_PREFIX,
@@ -74,7 +78,8 @@ object AnalysisRoutes extends DefaultJsonProtocol {
   // level 2: overview of single files in that folder
   // level 3: retrieve content of a file
   // level 3.1: retrieve filtered content of a file
-  // level 4: analyze global properties of a file (e.g per parameter variance,..)
+  // level 4: analyze global properties of a file (e.g per metric variance observed within a group,
+  // highest increases / decreases per group (e.g query level), ...)
 
   /**
    * Get all folders corresponding to single experiments
@@ -255,12 +260,22 @@ object AnalysisRoutes extends DefaultJsonProtocol {
                 complete(StatusCodes.InternalServerError, s"Analysis failed with failType: '$failType'")
               case Right(summary) =>
 
-                val highest: Map[Map[String, Seq[String]], Seq[(String, String)]] = summary.result.find(x => x._1 == "highest").get._2
-                val lowest: Map[Map[String, Seq[String]], Seq[(String, String)]] = summary.result.find(x => x._1 == "lowest").get._2
+                val highest: Map[Map[String, Seq[String]], Seq[(String, String)]] = summary.result.find(x => x._1 == HIGHEST_VALUES_KEY).get._2
+                val lowest: Map[Map[String, Seq[String]], Seq[(String, String)]] = summary.result.find(x => x._1 == LOWEST_VALUES_KEY).get._2
                 val uniqueParamKeys: Set[Map[String, Seq[String]]] = highest.keySet ++ lowest.keySet
                 val results: Set[ResultForParameterSet] = uniqueParamKeys.map(paramsMapping => {
-                  val highestValued: Seq[IdWithValue] = highest.get(paramsMapping).map(pairSeq => pairSeq.map(x => IdWithValue(x._1, x._2))).getOrElse(Seq.empty)
-                  val lowestValued: Seq[IdWithValue] = lowest.get(paramsMapping).map(pairSeq => pairSeq.map(x => IdWithValue(x._1, x._2))).getOrElse(Seq.empty)
+                  val highestValued: Seq[IdWithValue] = highest.get(paramsMapping)
+                    .map(pairSeq => pairSeq
+                      .filter(x => x._2.toFloat > 0.0)
+                      .map(x => IdWithValue(x._1, x._2))
+                    )
+                    .getOrElse(Seq.empty)
+                  val lowestValued: Seq[IdWithValue] = lowest.get(paramsMapping)
+                    .map(pairSeq =>
+                      pairSeq
+                        .filter(x => x._2.toFloat < 0.0)
+                        .map(x => IdWithValue(x._1, x._2))
+                    ).getOrElse(Seq.empty)
                   ResultForParameterSet(parameters = paramsMapping, winning = highestValued, loosing = lowestValued)
                 })
                 complete(StatusCodes.OK, results.toJson.toString())
@@ -280,5 +295,40 @@ object AnalysisRoutes extends DefaultJsonProtocol {
   implicit val idWithValueFormat: RootJsonFormat[IdWithValue] = jsonFormat2(IdWithValue)
   implicit val resultForParameterSetFormat: RootJsonFormat[ResultForParameterSet] = jsonFormat3(ResultForParameterSet)
 
+
+  /**
+   * Pick result files from directory and calculate variances.
+   *
+   * @return Group id and variance value on selected metric in descending order.
+   */
+  def getValueVarianceFromDir(implicit system: ActorSystem): Route = {
+    val matcher: PathMatcher0 = ANALYZE_PREFIX / VARIANCES_PATH
+    corsHandler(
+      path(matcher) {
+        get {
+          entity(as[Execution[Any]]) { analysisDef => {
+            val castExecution = analysisDef.asInstanceOf[GetValueVarianceFromDirPerRegex]
+            val executionId = castExecution.dir.stripSuffix("/")
+            // NOTE: here we overwrite the dir to contain the outputResultsPath, its not the same as
+            // executing the execution above thru its own Execution endpoint
+            val execution = castExecution.copy(dir = s"$outputResultsPath/$executionId")
+            val results: Either[TaskFailType.TaskFailType, ExecutionSummary[Seq[(String, Double)]]] = execution.execute
+            results match {
+              case Left(failType) =>
+                complete(StatusCodes.InternalServerError, s"Analysis failed with failType: '$failType'")
+              case Right(values) =>
+                val varianceSortedSeq = values.result
+                  .sortBy[Double](x => x._2)
+                  .reverseIterator
+                  .map(x => IdWithValue(x._1, "%.4f".formatLocal(java.util.Locale.US, x._2)))
+                  .toSeq
+                complete(StatusCodes.OK, varianceSortedSeq.toJson.toString())
+            }
+          }
+          }
+        }
+      }
+    )
+  }
 
 }
