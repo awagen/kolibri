@@ -1,11 +1,201 @@
 import axios from "axios";
-import {jobHistoryUrl, jobStateUrl, appIsUpUrl, nodeStateUrl, templateOverviewForTypeUrl,
+import {
+    jobHistoryUrl, jobStateUrl, appIsUpUrl, nodeStateUrl, templateOverviewForTypeUrl,
     templateTypeUrl, templateSaveUrl, templateExecuteUrl,
-    templateContentUrl, dataFileInfoAllUrl} from '../utils/globalConstants'
+    templateContentUrl, dataFileInfoAllUrl,
+    resultExecutionIdsOverviewUrl, resultExecutionIdsSingleResultsOverviewUrl,
+    resultExecutionIdGetDataByIdUrl, resultExecutionIdGetFilteredDataByIdUrl,
+    resultAnalysisTopFlowUrl, resultAnalysisVarianceUrl
+} from '../utils/globalConstants'
 
+
+/**
+ * Retrieve list of execution / experiment ids for which results are available
+ */
+function retrieveExecutionIDs() {
+    const url = resultExecutionIdsOverviewUrl
+    return axios
+        .get(url)
+        .then(response => {
+            return response.data
+        }).catch(_ => {
+            return []
+        })
+}
+
+/**
+ * For a given execution / experiment ID, provide list of
+ * single partial / aggregated results
+ * @param executionId
+ */
+function retrieveSingleResultIDsForExecutionID(executionId) {
+    const url = resultExecutionIdsSingleResultsOverviewUrl.replace("#EXECUTION_ID", executionId)
+    return axios
+        .get(url)
+        .then(response => {
+            return response.data
+        }).catch(_ => {
+            return []
+        })
+}
+
+/**
+ * retrieve a single result for an executionId (execitionId refers to a single experiment / execution)
+ * @param executionId - the id of the execution / experiment
+ * @param resultId - id of the result, usually will correspond to result file name
+ */
+function retrieveSingleResultById(executionId, resultId) {
+    const url = resultExecutionIdGetDataByIdUrl.replace("#EXECUTION_ID", executionId) + "?id=" + resultId
+    return axios
+        .get(url)
+        .then(response => {
+            let result = response.data
+            let returnValue = {}
+            // list of parameter names (parameters valied)
+            returnValue["paramNames"] = result["paramNames"]
+            // list of metric names (single metrics calculated)
+            returnValue["metricNames"] = result["metricNames"]
+            // list of all column names, includes parameter names and
+            // prefixed metricNames (e.g metric name prefixed with "value-[metricName]")
+            returnValue["columnNames"] = result["columnNames"]
+            // actual data lines. This is list of lists, where each top-level list represents
+            // a row and the contained list the distinct columns corresponding to columnNames
+            returnValue["dataLinesAsColumns"] = result["dataLinesAsColumns"]
+            return returnValue
+        }).catch(_ => {
+            return {}
+        })
+}
+
+/**
+ * Similar to retrieveSingleResultById, yet allows sorting by passed metric name
+ * and only return topN results. If topN < 0, all results will be retrieved.
+ * If reversed is set to true, will reverse sorting, e.g with metric value asc.
+ * @param executionId
+ * @param resultId
+ * @param metricName
+ * @param topN
+ * @param reversed
+ */
+function retrieveSingleResultByIdFiltered(executionId, resultId, metricName, topN, reversed) {
+    const url = resultExecutionIdGetFilteredDataByIdUrl
+        .replace("#EXECUTION_ID", executionId)
+        + "?id=" + resultId
+        + "&sortByMetric=" +  metricName
+        + "&topN=" + topN
+        + "&reversed=" + reversed
+    return axios
+        .get(url)
+        .then(response => {
+            let result = response.data
+            let returnValue = {}
+            // list of parameter names (parameters valied)
+            returnValue["paramNames"] = result["paramNames"]
+            // list of metric names (single metrics calculated)
+            returnValue["metricNames"] = result["metricNames"]
+            // list of all column names, includes parameter names and
+            // prefixed metricNames (e.g metric name prefixed with "value-[metricName]")
+            returnValue["columnNames"] = result["columnNames"]
+            // actual data lines. This is list of lists, where each top-level list represents
+            // a row and the contained list the distinct columns corresponding to columnNames
+            returnValue["dataLinesAsColumns"] = result["dataLinesAsColumns"]
+            return returnValue
+        }).catch(_ => {
+            return {}
+        })
+}
+
+/**
+ * Retrieve for a given execution / experiment the top winning / loosing queries
+ * for given parameter setting compared with a current parameter setting.
+ * The criterion to determine winners / loosers is the change in value for
+ * the metric given by metricName (e.g NDCG_10).
+ * Returns at most n_best, n_worst respectively for winner / looser queries.
+ * @param executionId
+ * @param currentParams
+ * @param compareParams
+ * @param metricName
+ * @param queryParamName
+ * @param n_best
+ * @param n_worst
+ */
+function retrieveAnalysisTopFlow(executionId,
+                                 currentParams,
+                                 compareParams,
+                                 metricName,
+                                 queryParamName,
+                                 n_best,
+                                 n_worst) {
+    const url = resultAnalysisTopFlowUrl
+    const data = {
+        "type": "ANALYZE_BEST_WORST_REGEX",
+        "directory": executionId,
+        "regex": ".*[(]q=.+[)]",
+        "currentParams": currentParams,
+        "compareParams": compareParams,
+        "metricName": metricName,
+        "queryParamName": queryParamName,
+        "n_best": n_best,
+        "n_worst": n_worst
+    }
+    const config = {
+        headers: {
+            "Content-Type" : "application/json"
+        },
+        data: data
+    }
+    return axios
+        .get(url, config)
+        .then(response => {
+            console.info("retrieved top flop results")
+            console.log(response)
+            return response.data
+        }).catch(_ => {
+            {}
+        })
+}
+
+/**
+ * Retrieve for a given execution / experiment the variance regarding the
+ * metric given by metricName (e.g NDCG_10) over all queries.
+ * Result is sorted desc by variance value.
+ * Serves to understand if, given the distinct parameter settings, the results
+ * for a given query vary or remain relatively stale (e.g due to manual editing,
+ * which prevents passed parameters to have effect)
+ * @param executionId
+ * @param metricName
+ * @param queryParamName
+ */
+function retrieveAnalysisVariance(executionId,
+                                 metricName,
+                                 queryParamName) {
+    const url = resultAnalysisVarianceUrl
+    const data = {
+        "type": "ANALYZE_QUERY_METRIC_VARIANCE",
+        "directory": executionId,
+        "regex": ".*[(]q=.+[)]",
+        "metricName": metricName,
+        "queryParamName": queryParamName
+    }
+    const config = {
+        headers: {
+            "Content-Type" : "application/json"
+        },
+        data: data
+    }
+    return axios
+        .get(url, config)
+        .then(response => {
+            console.info("retrieved variances results")
+            console.log(response)
+            return response.data
+        }).catch(_ => {
+            {}
+        })
+}
 
 function retrieveJobs(historical, updateFunc) {
-    const  url = historical ? jobHistoryUrl : jobStateUrl
+    const url = historical ? jobHistoryUrl : jobStateUrl
     return axios
         .get(url)
         .then(response => {
@@ -19,13 +209,13 @@ function retrieveJobs(historical, updateFunc) {
         })
 }
 
-function retrieveDataFileInfoAll(returnNSamples){
+function retrieveDataFileInfoAll(returnNSamples) {
     const url = dataFileInfoAllUrl + "?returnNSamples=" + returnNSamples
     return axios
         .get(url)
         .then(response => {
             let dataByType = {}
-            response.data.forEach(function(item, _) {
+            response.data.forEach(function (item, _) {
                 let returnValue = {}
                 let fileType = item["fileType"]
                 returnValue["fileName"] = item["fileName"].split("/").pop()
@@ -36,8 +226,7 @@ function retrieveDataFileInfoAll(returnNSamples){
                 returnValue["description"] = item["description"]
                 if (fileType in dataByType) {
                     dataByType[fileType].push(returnValue)
-                }
-                else {
+                } else {
                     dataByType[fileType] = [returnValue]
                 }
             });
@@ -140,6 +329,11 @@ function retrieveTemplateContentAndInfo(typeName, templateName) {
         })
 }
 
-export {retrieveJobs, retrieveServiceUpState, retrieveNodeStatus,
+export {
+    retrieveJobs, retrieveServiceUpState, retrieveNodeStatus,
     retrieveTemplatesForType, retrieveTemplateTypes, saveTemplate, executeJob,
-    retrieveTemplateContentAndInfo, retrieveDataFileInfoAll}
+    retrieveTemplateContentAndInfo, retrieveDataFileInfoAll,
+    retrieveExecutionIDs, retrieveSingleResultIDsForExecutionID,
+    retrieveSingleResultById, retrieveSingleResultByIdFiltered,
+    retrieveAnalysisTopFlow, retrieveAnalysisVariance
+}

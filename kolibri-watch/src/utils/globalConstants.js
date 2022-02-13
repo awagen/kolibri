@@ -14,6 +14,15 @@ export const stopJobUrl = `${kolibriBaseUrl}/${import.meta.env.VITE_KOLIBRI_STOP
 // url to retrieve available data files by type
 export const dataFileInfoAllUrl = `${kolibriBaseUrl}/${import.meta.env.VITE_KOLIBRI_DATA_INFO_ALL_PATH}`
 
+// urls to retrieve some result information
+export const resultExecutionIdsOverviewUrl = `${kolibriBaseUrl}/${import.meta.env.VITE_KOLIBRI_RESULT_IDS_OVERVIEW_PATH}`
+export const resultExecutionIdsSingleResultsOverviewUrl = `${kolibriBaseUrl}/${import.meta.env.VITE_KOLIBRI_RESULT_IDS_SINGLE_RESULT_OVERVIEW_PATH}`
+export const resultExecutionIdGetDataByIdUrl = `${kolibriBaseUrl}/${import.meta.env.VITE_KOLIBRI_RESULT_IDS_GET_DATA_PATH}`
+export const resultExecutionIdGetFilteredDataByIdUrl = `${kolibriBaseUrl}/${import.meta.env.VITE_KOLIBRI_RESULT_IDS_GET_FILTERED_DATA_PATH}`
+// urls to retrieve result analysis results
+export const resultAnalysisTopFlowUrl = `${kolibriBaseUrl}/${import.meta.env.VITE_KOLIBRI_RESULT_ANALYSIS_TOP_FLOP_PATH}`
+export const resultAnalysisVarianceUrl = `${kolibriBaseUrl}/${import.meta.env.VITE_KOLIBRI_RESULT_ANALYSIS_VARIANCE_PATH}`
+
 // url to request available template types
 export const templateTypeUrl = `${kolibriBaseUrl}/${import.meta.env.VITE_KOLIBRI_TEMPLATE_TYPES_PATH}`
 // url to retrieve the templates overview from. This endpoint provides available templates that can be retrieved
