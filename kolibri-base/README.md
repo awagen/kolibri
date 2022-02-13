@@ -378,9 +378,9 @@ The latter endpoint allows sorting by some given metric and filtering down to re
 
 ## Endpoints for result analysis
 - analyze top/flop queries for given parameters: 
-```curl -XGET http://localhost:8000/analyze/topsflops -H 'Content-Type: application/json' -d '{"type": "ANALYZE_BEST_WORST_REGEX", "directory": "testJob1", "regex": ".*[(]q=.+[)]","currentParams": {"a1": ["0.45"], "k1": ["v1", "v2"], "k2": ["v3"], "o": ["479.0"]},"compareParams": [{"a1": ["0.32"],"k1": ["v1", "v2"],"k2": ["v3"],"o": ["1760.0"]},{"a1": ["0.45"],"k1": ["v1", "v2"],"k2": ["v3"],"o": ["384.0"]},{"a1": ["0.45"],"k1": ["v1", "v2"],"k2": ["v3"],"o": ["1325.0"]}], "metricName": "NDCG_10", "queryParamName": "q", "n_best": 10, "n_worst": 10}'```
+```curl -XPOST http://localhost:8000/analyze/topsflops -H 'Content-Type: application/json' -d '{"type": "ANALYZE_BEST_WORST_REGEX", "directory": "testJob1", "regex": ".*[(]q=.+[)]","currentParams": {"a1": ["0.45"], "k1": ["v1", "v2"], "k2": ["v3"], "o": ["479.0"]},"compareParams": [{"a1": ["0.32"],"k1": ["v1", "v2"],"k2": ["v3"],"o": ["1760.0"]},{"a1": ["0.45"],"k1": ["v1", "v2"],"k2": ["v3"],"o": ["384.0"]},{"a1": ["0.45"],"k1": ["v1", "v2"],"k2": ["v3"],"o": ["1325.0"]}], "metricName": "NDCG_10", "queryParamName": "q", "n_best": 10, "n_worst": 10}'```
 - calculate variance of selected metric for grouping (e.g per query):
-  ```curl -XGET http://localhost:8000/analyze/variances -H 'Content-Type: application/json' -d '{"type": "ANALYZE_QUERY_METRIC_VARIANCE", "directory": "testJob1", "regex": ".*[(]q=.+[)]", "metricName": "NDCG_10", "queryParamName": "q"}'```
+  ```curl -XPOST http://localhost:8000/analyze/variances -H 'Content-Type: application/json' -d '{"type": "ANALYZE_QUERY_METRIC_VARIANCE", "directory": "testJob1", "regex": ".*[(]q=.+[)]", "metricName": "NDCG_10", "queryParamName": "q"}'```
 
 
 ## Local execution - Issues and Fixes

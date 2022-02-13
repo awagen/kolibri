@@ -247,7 +247,7 @@ object AnalysisRoutes extends DefaultJsonProtocol {
     val matcher: PathMatcher0 = ANALYZE_PREFIX / TOPS_FLOPS_PATH
     corsHandler(
       path(matcher) {
-        get {
+        post {
           entity(as[Execution[Any]]) { analysisDef => {
             val castExecution = analysisDef.asInstanceOf[GetImprovingAndLoosingFromDirPerRegex]
             val executionId = castExecution.dir.stripSuffix("/")
@@ -305,7 +305,7 @@ object AnalysisRoutes extends DefaultJsonProtocol {
     val matcher: PathMatcher0 = ANALYZE_PREFIX / VARIANCES_PATH
     corsHandler(
       path(matcher) {
-        get {
+        post {
           entity(as[Execution[Any]]) { analysisDef => {
             val castExecution = analysisDef.asInstanceOf[GetValueVarianceFromDirPerRegex]
             val executionId = castExecution.dir.stripSuffix("/")
