@@ -119,7 +119,7 @@ function retrieveSingleResultByIdFiltered(executionId, resultId, metricName, top
  * @param n_best
  * @param n_worst
  */
-function retrieveAnalysisTopFlow(executionId,
+function retrieveAnalysisTopFlop(executionId,
                                  currentParams,
                                  compareParams,
                                  metricName,
@@ -138,14 +138,14 @@ function retrieveAnalysisTopFlow(executionId,
         "n_best": n_best,
         "n_worst": n_worst
     }
+    console.log(data)
     const config = {
         headers: {
             "Content-Type" : "application/json"
-        },
-        data: data
+        }
     }
     return axios
-        .get(url, config)
+        .post(url, data,  config)
         .then(response => {
             console.info("retrieved top flop results")
             console.log(response)
@@ -180,11 +180,10 @@ function retrieveAnalysisVariance(executionId,
     const config = {
         headers: {
             "Content-Type" : "application/json"
-        },
-        data: data
+        }
     }
     return axios
-        .get(url, config)
+        .post(url, data, config)
         .then(response => {
             console.info("retrieved variances results")
             console.log(response)
@@ -335,5 +334,5 @@ export {
     retrieveTemplateContentAndInfo, retrieveDataFileInfoAll,
     retrieveExecutionIDs, retrieveSingleResultIDsForExecutionID,
     retrieveSingleResultById, retrieveSingleResultByIdFiltered,
-    retrieveAnalysisTopFlow, retrieveAnalysisVariance
+    retrieveAnalysisTopFlop, retrieveAnalysisVariance
 }

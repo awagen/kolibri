@@ -8,7 +8,10 @@ import {
     retrieveNodeStatus,
     retrieveServiceUpState, retrieveTemplateContentAndInfo,
     retrieveTemplatesForType, retrieveTemplateTypes,
-    retrieveDataFileInfoAll
+    retrieveDataFileInfoAll,
+    retrieveExecutionIDs, retrieveSingleResultIDsForExecutionID,
+    retrieveSingleResultById, retrieveSingleResultByIdFiltered,
+    retrieveAnalysisTopFlop, retrieveAnalysisVariance
 } from './utils/retrievalFunctions'
 
 // we could just reference style sheets relatively from assets folder, but we keep one central scss file instead
@@ -57,11 +60,52 @@ const store = createStore({
             // the stringyfied values of the retrieved json
             selectedTemplateJsonString: "",
             // the changes to be applied to the selected template
-            changedTemplateParts: {}
+            changedTemplateParts: {},
+
+            // result states
+            availableResultExecutionIDs: [],
+            currentlySelectedExecutionID: "",
+            availableResultsForSelectedExecutionID: [],
+            fullResultForExecutionIDAndResultID: {},
+            filteredResultForExecutionIDAndResultID: {},
+            // analysis states
+            analysisTopFlop: {},
+            analysisVariances: {}
         }
     },
 
     mutations: {
+        updateAvailableResultExecutionIDs(state) {
+            retrieveExecutionIDs().then(response => state.availableResultExecutionIDs = response)
+        },
+
+        updateAvailableResultsForExecutionID(state, executionId) {
+            state.currentlySelectedExecutionID = executionId
+            retrieveSingleResultIDsForExecutionID(executionId)
+                .then(response => state.availableResultsForSelectedExecutionID = response)
+        },
+
+        updateSingleResultState(state, {executionId, resultId}) {
+            retrieveSingleResultById(executionId, resultId)
+                .then(response => state.fullResultForExecutionIDAndResultID = response)
+        },
+
+        updateSingleResultStateFiltered(state, {executionId, resultId, metricName, topN, reversed}) {
+            retrieveSingleResultByIdFiltered(executionId, resultId, metricName, topN, reversed)
+                .then(response => state.filteredResultForExecutionIDAndResultID = response)
+        },
+
+        updateAnalysisTopFlop(state, {executionId, currentParams, compareParams, metricName, queryParamName,
+            n_best, n_worst}) {
+            retrieveAnalysisTopFlop(executionId, currentParams, compareParams, metricName, queryParamName, n_best, n_worst)
+                .then(response => state.analysisTopFlop = response)
+        },
+
+        updateAnalysisVariance(state, {executionId, metricName, queryParamName}) {
+            retrieveAnalysisVariance(executionId, metricName, queryParamName)
+                .then(response => state.analysisVariances = response)
+        },
+
         updateServiceUpState(state) {
             retrieveServiceUpState().then(response => state.serviceIsUp = response)
         },
@@ -162,6 +206,9 @@ store.commit("updateRunningJobs")
 store.commit("updateJobHistory")
 store.commit("updateAvailableTemplateTypes")
 store.commit("updateAvailableDataFiles", 5)
+// initial loading of executionIds for which results are available
+store.commit("updateAvailableResultExecutionIDs")
+
 // regular scheduling
 window.setInterval(() => {
     store.commit("updateServiceUpState")
