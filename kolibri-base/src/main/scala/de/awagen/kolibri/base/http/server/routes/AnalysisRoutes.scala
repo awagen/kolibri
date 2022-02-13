@@ -24,6 +24,7 @@ import akka.http.scaladsl.server.{PathMatcher0, PathMatcher1, Route}
 import de.awagen.kolibri.base.config.AppConfig.persistenceModule
 import de.awagen.kolibri.base.config.AppProperties
 import de.awagen.kolibri.base.http.server.routes.StatusRoutes.corsHandler
+import de.awagen.kolibri.base.io.json.ExecutionJsonProtocol._
 import de.awagen.kolibri.base.io.reader.{DataOverviewReader, Reader}
 import de.awagen.kolibri.base.processing.execution.functions.AnalyzeFunctions.{ExecutionSummary, GetImprovingAndLoosingFromDirPerRegex}
 import de.awagen.kolibri.base.processing.execution.functions.Execution
@@ -31,7 +32,6 @@ import de.awagen.kolibri.base.processing.failure.TaskFailType
 import de.awagen.kolibri.datatypes.stores.PriorityStores.{BasePriorityStore, PriorityStore}
 import org.slf4j.{Logger, LoggerFactory}
 import spray.json.{DefaultJsonProtocol, RootJsonFormat, enrichAny}
-import de.awagen.kolibri.base.io.json.ExecutionJsonProtocol._
 
 object AnalysisRoutes extends DefaultJsonProtocol {
 
@@ -58,7 +58,7 @@ object AnalysisRoutes extends DefaultJsonProtocol {
   private[this] val SORT_BY_METRIC_PARAM = "sortByMetric"
   private[this] val TOP_N_PARAM = "topN"
   private[this] val REVERSED_PARAM = "reversed"
-  private[this] val TOPS_FLOPS_PATH = "topsFlops"
+  private[this] val TOPS_FLOPS_PATH = "topsflops"
 
   private[this] val evaluationColumnNames: Seq[String] = Seq(
     FAIL_COUNT_PREFIX,
@@ -246,19 +246,39 @@ object AnalysisRoutes extends DefaultJsonProtocol {
           entity(as[Execution[Any]]) { analysisDef => {
             val castExecution = analysisDef.asInstanceOf[GetImprovingAndLoosingFromDirPerRegex]
             val executionId = castExecution.dir.stripSuffix("/")
+            // NOTE: here we overwrite the dir to contain the outputResultsPath, its not the same as
+            // executing the execution above thru its own Execution endpoint
             val execution = castExecution.copy(dir = s"$outputResultsPath/$executionId")
             val result: Either[TaskFailType.TaskFailType, ExecutionSummary[Map[String, Map[Map[String, Seq[String]], Seq[(String, String)]]]]] = execution.execute
             result match {
               case Left(failType) =>
                 complete(StatusCodes.InternalServerError, s"Analysis failed with failType: '$failType'")
               case Right(summary) =>
-                complete(StatusCodes.OK, summary.result.toJson.toString())
+
+                val highest: Map[Map[String, Seq[String]], Seq[(String, String)]] = summary.result.find(x => x._1 == "highest").get._2
+                val lowest: Map[Map[String, Seq[String]], Seq[(String, String)]] = summary.result.find(x => x._1 == "lowest").get._2
+                val uniqueParamKeys: Set[Map[String, Seq[String]]] = highest.keySet ++ lowest.keySet
+                val results: Set[ResultForParameterSet] = uniqueParamKeys.map(paramsMapping => {
+                  val highestValued: Seq[IdWithValue] = highest.get(paramsMapping).map(pairSeq => pairSeq.map(x => IdWithValue(x._1, x._2))).getOrElse(Seq.empty)
+                  val lowestValued: Seq[IdWithValue] = lowest.get(paramsMapping).map(pairSeq => pairSeq.map(x => IdWithValue(x._1, x._2))).getOrElse(Seq.empty)
+                  ResultForParameterSet(parameters = paramsMapping, winning = highestValued, loosing = lowestValued)
+                })
+                complete(StatusCodes.OK, results.toJson.toString())
             }
           }
           }
         }
       })
   }
+
+  case class IdWithValue(id: String, value: String)
+
+  case class ResultForParameterSet(parameters: Map[String, Seq[String]],
+                                   winning: Seq[IdWithValue],
+                                   loosing: Seq[IdWithValue])
+
+  implicit val idWithValueFormat: RootJsonFormat[IdWithValue] = jsonFormat2(IdWithValue)
+  implicit val resultForParameterSetFormat: RootJsonFormat[ResultForParameterSet] = jsonFormat3(ResultForParameterSet)
 
 
 }

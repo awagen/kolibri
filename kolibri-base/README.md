@@ -378,7 +378,7 @@ The latter endpoint allows sorting by some given metric and filtering down to re
 
 ## Endpoints for result retrieval
 - analyze top/flop queries for given parameters: 
-```http://localhost:8000/analyze/topsFlops -H 'Content-Type: application/json' -d '{"type": "ANALYZE_BEST_WORST_REGEX", "directory": "", "regex": "", "currentParams": {"": [""]}, "compareParams": [{"", [""]}], "metricName": "", "queryParamName": "", "n_best": 10, "n_worst": 10}'```
+```curl -XGET http://localhost:8000/analyze/topsflops -H 'Content-Type: application/json' -d '{"type": "ANALYZE_BEST_WORST_REGEX", "directory": "test-results/testJob1", "regex": ".*[(]q=.+[)]","currentParams": {"a1": ["0.45"], "k1": ["v1", "v2"], "k2": ["v3"], "o": ["479.0"]},"compareParams": [{"a1": ["0.32"],"k1": ["v1", "v2"],"k2": ["v3"],"o": ["1760.0"]},{"a1": ["0.45"],"k1": ["v1", "v2"],"k2": ["v3"],"o": ["384.0"]},{"a1": ["0.45"],"k1": ["v1", "v2"],"k2": ["v3"],"o": ["1325.0"]}], "metricName": "NDCG_10", "queryParamName": "q", "n_best": 10, "n_worst": 10}'```
 
 
 ## Local execution - Issues and Fixes
