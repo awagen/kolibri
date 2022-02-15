@@ -18,16 +18,13 @@
 package de.awagen.kolibri.base.io.json
 
 import de.awagen.kolibri.base.io.json.EnumerationJsonProtocol._
-import de.awagen.kolibri.base.io.json.OrderedMultiValuesJsonProtocol.OrderedMultiValuesAnyFormat
+import de.awagen.kolibri.base.io.json.OrderedValuesJsonProtocol._
 import de.awagen.kolibri.base.processing.modifiers.ParameterValues._
 import de.awagen.kolibri.datatypes.collections.generators.ByFunctionNrLimitedIndexedGenerator
-import de.awagen.kolibri.datatypes.multivalues.OrderedMultiValues
-import org.slf4j.{Logger, LoggerFactory}
+import de.awagen.kolibri.datatypes.values.OrderedValues
 import spray.json.{DefaultJsonProtocol, JsValue, JsonFormat, enrichAny}
 
 object ParameterValuesJsonProtocol extends DefaultJsonProtocol {
-
-  private[this] val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
   val TYPE_KEY = "type"
   val VALUES_TYPE_KEY = "values_type"
@@ -41,18 +38,16 @@ object ParameterValuesJsonProtocol extends DefaultJsonProtocol {
     override def read(json: JsValue): ParameterValues = json match {
       case spray.json.JsObject(fields) => fields(TYPE_KEY).convertTo[String] match {
         case FROM_MULTIVALUES_TYPE =>
-          // TODO: actually here we only need a single OrderedValues object and not OrderedMultiValues to then pick
-          // only the first OrderedValues
-          val values = fields(VALUES_KEY).convertTo[OrderedMultiValues]
-          val first = values.values.head
+          val values = fields(VALUES_KEY).convertTo[OrderedValues[String]]
           val parameterValuesType = fields(PARAMETER_VALUES_TYPE_KEY).convertTo[ValueType.Value]
           ParameterValues(
-            first.name,
+            values.name,
             parameterValuesType,
-            ByFunctionNrLimitedIndexedGenerator.createFromSeq(first.getAll.map(x => x.toString))
+            ByFunctionNrLimitedIndexedGenerator.createFromSeq(values.getAll)
           )
       }
     }
+
     override def write(obj: ParameterValues): JsValue = """{}""".toJson
   }
 

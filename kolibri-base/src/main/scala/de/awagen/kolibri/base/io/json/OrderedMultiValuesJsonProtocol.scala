@@ -17,19 +17,13 @@
 
 package de.awagen.kolibri.base.io.json
 
-import de.awagen.kolibri.base.config.AppConfig
+import de.awagen.kolibri.base.io.json.OrderedValuesJsonProtocol.{OrderedValuesMapFormat, OrderedValuesStringFormat, SeqOrderedValuesFormat}
+import de.awagen.kolibri.base.utils.OrderedValuesUtils.fromCsvFileByColumnNames
 import de.awagen.kolibri.datatypes.multivalues.{GridOrderedMultiValues, OrderedMultiValues}
-import de.awagen.kolibri.datatypes.values.{DistinctValues, OrderedValues}
-import org.slf4j.{Logger, LoggerFactory}
+import de.awagen.kolibri.datatypes.values.OrderedValues
 import spray.json._
 
 object OrderedMultiValuesJsonProtocol extends DefaultJsonProtocol {
-
-  private[this] val logger: Logger = LoggerFactory.getLogger(this.getClass)
-
-  val DIRECTORY_KEY = "directory"
-  val DIRECTORY_SEPARATOR = "/"
-  val FILES_SUFFIX_KEY = "filesSuffix"
 
   val FROM_FILES_LINES_TYPE = "FROM_FILES_LINES"
   val FROM_VALUES_TYPE = "FROM_VALUES"
@@ -38,13 +32,10 @@ object OrderedMultiValuesJsonProtocol extends DefaultJsonProtocol {
   val FROM_CSV_WITH_KEY_AND_VALUE_NAMES_FROM_HEADERS = "FROM_CSV_WITH_HEADER_NAMES"
   val FROM_JSON_FILE_MAPPING_TYPE = "FROM_JSON_FILE_MAPPING"
   val TYPE_KEY = "type"
-  val VALUES_KEY = "values"
   val VALUE_NAME = "valueName"
   val FILE_KEY = "file"
-
   val COLUMN_SEPARATOR_KEY = "columnSeparator"
-  val KEY_COLUMN_KEY = "keyColumn"
-  val VALUE_COLUMN_KEY = "valueColumn"
+  val KEY_NAME_KEY = "keyName"
 
   implicit object OrderedMultiValuesAnyFormat extends JsonFormat[OrderedMultiValues] {
     override def read(json: JsValue): OrderedMultiValues = {
@@ -57,62 +48,29 @@ object OrderedMultiValuesJsonProtocol extends DefaultJsonProtocol {
             case FROM_FILES_LINES_TYPE =>
               // passing a parameter name to file mapping, for each parameter extract values from file (one value per
               // line) and return data for all mappings
-              val paramNameToFile = fields(VALUES_KEY).convertTo[Map[String, String]]
-              var params: Seq[OrderedValues[String]] = Seq.empty
-              val fileReader = AppConfig.persistenceModule.persistenceDIModule.reader
-              paramNameToFile.foreach(x => {
-                val name: String = x._1
-                val values: Seq[String] = fileReader.read(x._2).map(x => x.trim).filter(x => x.nonEmpty)
-                logger.debug(s"found ${values.size} values for param $name, values: $values")
-                params = params :+ DistinctValues[String](name, values)
-              })
-              logger.debug(s"params size=${params.size}, values=$params")
+              val params: Seq[OrderedValues[String]] = json.convertTo[Seq[OrderedValues[String]]]
               GridOrderedMultiValues(params)
             case FROM_VALUES_TYPE =>
-              // values by passing name to values mappings
-              val paramNameToValues = fields(VALUES_KEY).convertTo[Map[String, Seq[String]]]
-              var params: Seq[OrderedValues[String]] = Seq.empty
-              paramNameToValues.foreach(x => {
-                val name: String = x._1
-                val values: Seq[String] = x._2.map(x => x.trim).filter(x => x.nonEmpty)
-                logger.debug(s"found ${values.size} values for param $name, values: $values")
-                params = params :+ DistinctValues[String](name, values)
-              })
-              logger.debug(s"params size=${params.size}, values=$params")
+              val params = json.convertTo[Seq[OrderedValues[String]]]
               GridOrderedMultiValues(params)
             // this would create a generator over the names in the passed folder with given suffix
             // not the full path but just the filename. It would not not extract any values from the files though
             case FROM_FILENAME_KEYS_TYPE =>
-              // reading values from filename prefix
-              val directory: String = fields(DIRECTORY_KEY).convertTo[String]
-              val filesSuffix: String = fields(FILES_SUFFIX_KEY).convertTo[String]
-              val valueName = fields(VALUE_NAME).convertTo[String]
-              val directoryReader = AppConfig.persistenceModule.persistenceDIModule.dataOverviewReader(x => x.endsWith(filesSuffix))
-              val keys: Seq[String] = directoryReader.listResources(directory, _ => true)
-                .map(file => file.split(DIRECTORY_SEPARATOR).last.stripSuffix(filesSuffix))
-              GridOrderedMultiValues(Seq(DistinctValues[String](valueName, keys)))
+              val values = json.convertTo[OrderedValues[String]]
+              GridOrderedMultiValues(Seq(values))
             case FROM_CSV_FILE_TYPE =>
-              // reading mappings from csv file
-              val fileReader = AppConfig.persistenceModule.persistenceDIModule.reader
+              val mappings = json.convertTo[OrderedValues[Map[String, String]]]
+              GridOrderedMultiValues(Seq(mappings))
+            case FROM_JSON_FILE_MAPPING_TYPE =>
+              val values = json.convertTo[OrderedValues[Map[String, String]]]
+              GridOrderedMultiValues(Seq(values))
+            case FROM_CSV_WITH_KEY_AND_VALUE_NAMES_FROM_HEADERS =>
               val file: String = fields(FILE_KEY).convertTo[String]
               val columnSeparator: String = fields(COLUMN_SEPARATOR_KEY).convertTo[String]
-              val keyColumn: Int = fields(KEY_COLUMN_KEY).convertTo[Int]
-              val valueColumn: Int = fields(VALUE_COLUMN_KEY).convertTo[Int]
-              val valueName = fields(VALUE_NAME).convertTo[String]
-              val mappings: Map[String, String] = fileReader.read(file)
-                .map(x => x.trim.split(columnSeparator))
-                .filter(x => x.length >= math.max(keyColumn, valueColumn))
-                .map(x => (x(valueColumn), x(keyColumn)))
-                .toMap
-              GridOrderedMultiValues(Seq(DistinctValues[Map[String, String]](valueName, Seq(mappings))))
-            case FROM_JSON_FILE_MAPPING_TYPE =>
-              // reading mappings from json file
-              val fileReader = AppConfig.persistenceModule.persistenceDIModule.reader
-              val file: String = fields(FILE_KEY).convertTo[String]
-              val valueName = fields(VALUE_NAME).convertTo[String]
-              val jsValue: JsValue = fileReader.getSource(file).mkString("\n").parseJson
-              val mapping: Map[String, String] = jsValue.convertTo[Map[String, JsValue]].view.mapValues(x => x.toString()).toMap
-              GridOrderedMultiValues(Seq(DistinctValues[Map[String, String]](valueName, Seq(mapping))))
+              val keyName: String = fields(KEY_NAME_KEY).convertTo[String]
+              val valueName: String = fields(VALUE_NAME).convertTo[String]
+              val values = fromCsvFileByColumnNames(file, columnSeparator, keyName, valueName)
+              GridOrderedMultiValues(Seq(values))
           }
         }
       }

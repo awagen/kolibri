@@ -26,7 +26,7 @@ import de.awagen.kolibri.base.config.AppProperties
 import de.awagen.kolibri.base.config.AppProperties.config.kolibriDispatcherName
 import de.awagen.kolibri.base.http.server.routes.StatusRoutes.corsHandler
 import de.awagen.kolibri.base.io.json.EnumerationJsonProtocol.dataFileTypeFormat
-import de.awagen.kolibri.base.io.json.OrderedMultiValuesJsonProtocol
+import de.awagen.kolibri.base.io.json.{OrderedMultiValuesJsonProtocol, OrderedValuesJsonProtocol}
 import de.awagen.kolibri.base.io.json.OrderedMultiValuesJsonProtocol.OrderedMultiValuesAnyFormat
 import de.awagen.kolibri.base.io.reader.ReaderUtils.safeContentRead
 import de.awagen.kolibri.base.io.reader.{DataOverviewReader, Reader}
@@ -199,7 +199,7 @@ object DataRoutes extends DefaultJsonProtocol {
                       val fileMap: JsValue = Map(dataIdentifier -> fullPath).toJson
                       val orderedMultiValuesJsObject = JsObject(
                         OrderedMultiValuesJsonProtocol.TYPE_KEY -> JsString(OrderedMultiValuesJsonProtocol.FROM_FILES_LINES_TYPE),
-                        OrderedMultiValuesJsonProtocol.VALUES_KEY -> fileMap
+                        OrderedValuesJsonProtocol.VALUES_KEY -> fileMap
                       ).toString()
                       val response = FileDataSourceInfo(
                         dType,
