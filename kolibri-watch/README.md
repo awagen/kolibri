@@ -21,6 +21,8 @@ Prepares resources to be served in dist folder.
 vue client is executed should have highest prio and not be overwritten
 
 ## Example state commits for result retrieval and analysis result retrieval
+- Getting executionIds for which results exist: 
+```store.commit("updateAvailableResultExecutionIDs")```
 - Getting single resultIds for an executionId
 ```store.commit("updateAvailableResultsForExecutionID", "testJob1")```
 - Retrieve full result data for resultId for given executionId:

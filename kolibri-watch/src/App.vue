@@ -11,7 +11,7 @@
     </section>
     <section class="navbar-section">
       <router-link class="btn btn-link" to="/dataCompose">DATA_COMPOSE</router-link>
-<!--      <router-link class="btn btn-link" to="/analyze">ANALYZE</router-link>-->
+      <router-link class="btn btn-link" to="/analyze">ANALYZE</router-link>
 <!--      <router-link class="btn btn-link" to="/result">RESULT</router-link>-->
     </section>
   </header>

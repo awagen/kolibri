@@ -19,6 +19,7 @@ import {
 import './assets/css/styles.scss';
 import {kolibriStateRefreshInterval} from "./utils/globalConstants";
 import {objectToJsonStringAndSyntaxHighlight, stringifyObj} from "./utils/formatFunctions";
+import {filteredResultsReduced} from "./utils/dataFunctions";
 
 // Create a new store instance.
 const store = createStore({
@@ -68,6 +69,7 @@ const store = createStore({
             availableResultsForSelectedExecutionID: [],
             fullResultForExecutionIDAndResultID: {},
             filteredResultForExecutionIDAndResultID: {},
+            reducedFilteredResultForExecutionIDAndResultID: {},
             // analysis states
             analysisTopFlop: {},
             analysisVariances: {}
@@ -82,7 +84,7 @@ const store = createStore({
         updateAvailableResultsForExecutionID(state, executionId) {
             state.currentlySelectedExecutionID = executionId
             retrieveSingleResultIDsForExecutionID(executionId)
-                .then(response => state.availableResultsForSelectedExecutionID = response)
+                .then(response => state.availableResultsForSelectedExecutionID = response.sort())
         },
 
         updateSingleResultState(state, {executionId, resultId}) {
@@ -92,7 +94,10 @@ const store = createStore({
 
         updateSingleResultStateFiltered(state, {executionId, resultId, metricName, topN, reversed}) {
             retrieveSingleResultByIdFiltered(executionId, resultId, metricName, topN, reversed)
-                .then(response => state.filteredResultForExecutionIDAndResultID = response)
+                .then(response => {
+                    state.filteredResultForExecutionIDAndResultID = response
+                    state.reducedFilteredResultForExecutionIDAndResultID = filteredResultsReduced(response)
+                })
         },
 
         updateAnalysisTopFlop(state, {executionId, currentParams, compareParams, metricName, queryParamName,
@@ -194,7 +199,8 @@ const store = createStore({
             state.selectedTemplateContent = Object.assign({}, JSON.parse(stringifyObj(state.selectedTemplateContent)), state.changedTemplateParts)
             state.selectedTemplateJsonString = objectToJsonStringAndSyntaxHighlight(state.selectedTemplateContent)
         }
-
+    },
+    computed: {
 
     }
 })

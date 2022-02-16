@@ -1,25 +1,23 @@
 <template>
-  <pre>
-  {{ json }}
-  </pre>
+  <DataAnalysisOverview></DataAnalysisOverview>
 </template>
 
 <script>
-import {onMounted, ref} from "vue";
+import DataAnalysisOverview from "../components/DataAnalysisOverview.vue";
+
 
 export default {
 
   components: {
+    DataAnalysisOverview
+  },
+  data() {
+    return {}
   },
   props: [],
   setup(props) {
-    const json = ref(JSON.stringify({"data": "val1", "p": "y"}, null, '\t'))
-    onMounted(() => {
-    })
 
-    return {
-      json
-    }
+    return {}
   },
 
 
