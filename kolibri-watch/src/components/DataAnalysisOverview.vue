@@ -33,18 +33,10 @@
       <!-- add some display of tabular data -->
       <div class="form-group">
         <div class="col-9 col-sm-12">
-          <table class="table">
-            <thead>
-            <tr>
-              <th v-for="column in this.$store.state.reducedFilteredResultForExecutionIDAndResultID.columnNames">{{ column }}</th>
-            </tr>
-            </thead>
-            <tbody>
-            <tr v-for="row in this.$store.state.reducedFilteredResultForExecutionIDAndResultID.dataLinesAsColumns">
-              <td v-for="column in row">{{ column }}</td>
-            </tr>
-            </tbody>
-          </table>
+          <Table
+              :column-headers="this.$store.state.reducedFilteredResultForExecutionIDAndResultID.columnNames"
+              :data="this.$store.state.reducedFilteredResultForExecutionIDAndResultID.dataLinesAsColumns">
+          </Table>
         </div>
       </div>
     </form>
@@ -66,9 +58,10 @@
 <script>
 import {onMounted} from "vue";
 import IdValueChart from "./partials/IdValueChart.vue";
+import Table from "./partials/Table.vue";
 
 export default {
-  components: {IdValueChart},
+  components: {Table, IdValueChart},
   props: [],
   data() {
     return {
@@ -197,11 +190,6 @@ export default {
 .popover button {
   background-color: #588274;
   border-width: 0;
-}
-
-.table {
-  font-size: .6rem;
-  margin-left: 2em;
 }
 
 select.form-select.k-value-selector {
