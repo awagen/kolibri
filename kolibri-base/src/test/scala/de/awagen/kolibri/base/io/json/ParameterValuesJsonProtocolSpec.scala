@@ -1,7 +1,7 @@
 package de.awagen.kolibri.base.io.json
 
-import de.awagen.kolibri.base.io.json.ParameterValuesJsonProtocol.{MappedParameterValuesFormat, ParameterValuesFormat}
-import de.awagen.kolibri.base.processing.modifiers.ParameterValues.{MappedParameterValues, ParameterValues, ValueType}
+import de.awagen.kolibri.base.io.json.ParameterValuesJsonProtocol.{MappedParameterValuesFormat, ParameterValueMappingFormat, ParameterValuesFormat}
+import de.awagen.kolibri.base.processing.modifiers.ParameterValues.{MappedParameterValues, ParameterValue, ParameterValueMapping, ParameterValues, ValueType}
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
 import spray.json._
 
@@ -12,7 +12,7 @@ class ParameterValuesJsonProtocolSpec extends UnitTestSpec {
       """
         |{
         |"type": "FROM_ORDERED_VALUES",
-        |"values": {"type": "FROM_VALUES", "name": "param1", "values": ["value1", "value2", "value3"]},
+        |"values": {"type": "FROM_VALUES", "name": "param1", "values": ["key1", "key2", "key3"]},
         |"values_type": "URL_PARAMETER"
         |}
         |""".stripMargin
@@ -86,6 +86,17 @@ class ParameterValuesJsonProtocolSpec extends UnitTestSpec {
 
   }
 
+  object ParameterValueMappingDefinitions {
+    val jsonMapping =
+      s"""
+        |{
+        |"key_values": ${ParameterValuesJsonDefinitions.parameterValuesFromOrderedValuesJson},
+        |"mapped_values": [${MappedParameterValuesDefinitions.jsonFullKeyValuesMappingJson}],
+        |"key_mapping_assignments": [[0,1]]
+        |}
+        |""".stripMargin
+  }
+
   "ParameterValuesJsonProtocol" must {
 
     "parse ParameterValues from OrderedValues" in {
@@ -94,7 +105,7 @@ class ParameterValuesJsonProtocolSpec extends UnitTestSpec {
       // then
       values.name mustBe "param1"
       values.valueType mustBe ValueType.URL_PARAMETER
-      values.values.iterator.toSeq mustBe Seq("value1", "value2", "value3")
+      values.values.iterator.toSeq mustBe Seq("key1", "key2", "key3")
     }
 
     "parse ParameterValues by passing values" in {
@@ -160,6 +171,17 @@ class ParameterValuesJsonProtocolSpec extends UnitTestSpec {
           "val4_5, val4_6, val4_7",
           "val4_8")
       )
+    }
+
+    "parse ParameterValueMapping" in {
+      // given, when
+      val values = ParameterValueMappingDefinitions.jsonMapping.parseJson.convertTo[ParameterValueMapping]
+      // then
+      values.nrOfElements mustBe 4
+      values.get(0).get mustBe Seq(ParameterValue("param1", ValueType.URL_PARAMETER, "key1"), ParameterValue("mappedParam1", ValueType.URL_PARAMETER, "key1_val1"))
+      values.get(1).get mustBe Seq(ParameterValue("param1", ValueType.URL_PARAMETER, "key1"), ParameterValue("mappedParam1", ValueType.URL_PARAMETER, "key1_val2"))
+      values.get(2).get mustBe Seq(ParameterValue("param1", ValueType.URL_PARAMETER, "key2"), ParameterValue("mappedParam1", ValueType.URL_PARAMETER, "key2_val1"))
+      values.get(3).get mustBe Seq(ParameterValue("param1", ValueType.URL_PARAMETER, "key2"), ParameterValue("mappedParam1", ValueType.URL_PARAMETER, "key2_val2"))
     }
 
   }
