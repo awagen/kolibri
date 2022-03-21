@@ -18,6 +18,7 @@
 package de.awagen.kolibri.base.utils
 
 import de.awagen.kolibri.base.config.AppConfig
+import de.awagen.kolibri.base.io.reader.FileReaderUtils
 import de.awagen.kolibri.datatypes.values.{DistinctValues, OrderedValues}
 import org.slf4j.{Logger, LoggerFactory}
 import spray.json._
@@ -29,6 +30,12 @@ object OrderedValuesUtils extends DefaultJsonProtocol {
 
   def logValues(values: Seq[Any], name: String): Unit = {
     logger.debug(s"found ${values.size} values for param $name, values: $values")
+  }
+
+  def loadLinesFromFile(file: String, valuesName: String): OrderedValues[String] = {
+    val fileReader = AppConfig.persistenceModule.persistenceDIModule.reader
+    val values = FileReaderUtils.loadLinesFromFile(file, fileReader)
+    DistinctValues(valuesName, values)
   }
 
   /**

@@ -17,8 +17,8 @@
 
 package de.awagen.kolibri.base.io.json
 
-import de.awagen.kolibri.base.utils.OrderedValuesUtils.{folderToFilenamesOrderedValues, fromCsvFileByColumnNames, fromJsonFileMappingToOrderedValues, mappingsFromCsvFile, paramNameToFileMappingToOrderedValues, paramNameToValuesMappingToOrderedValues}
-import de.awagen.kolibri.datatypes.values.OrderedValues
+import de.awagen.kolibri.base.utils.OrderedValuesUtils.{folderToFilenamesOrderedValues, fromCsvFileByColumnNames, fromJsonFileMappingToOrderedValues, loadLinesFromFile, mappingsFromCsvFile, paramNameToFileMappingToOrderedValues, paramNameToValuesMappingToOrderedValues}
+import de.awagen.kolibri.datatypes.values.{DistinctValues, OrderedValues}
 import spray.json._
 
 
@@ -34,6 +34,7 @@ object OrderedValuesJsonProtocol extends DefaultJsonProtocol {
   val VALUE_NAME = "valueName"
   val FROM_CSV_FILE_TYPE = "FROM_CSV_FILE"
   val FILE_KEY = "file"
+  val NAME_KEY = "name"
   val COLUMN_SEPARATOR_KEY = "columnSeparator"
   val KEY_COLUMN_KEY = "keyColumn"
   val VALUE_COLUMN_KEY = "valueColumn"
@@ -51,6 +52,14 @@ object OrderedValuesJsonProtocol extends DefaultJsonProtocol {
           val filesSuffix: String = fields(FILES_SUFFIX_KEY).convertTo[String]
           val valueName = fields(VALUE_NAME).convertTo[String]
           folderToFilenamesOrderedValues(directory, filesSuffix, valueName)
+        case FROM_FILES_LINES_TYPE =>
+          val file: String = fields(FILE_KEY).convertTo[String]
+          val valueName = fields(VALUE_NAME).convertTo[String]
+          loadLinesFromFile(file, valueName)
+        case FROM_VALUES_TYPE =>
+          val name = fields(NAME_KEY).convertTo[String]
+          val values = fields(VALUES_KEY).convertTo[Seq[String]]
+          DistinctValues(name, values)
       }
     }
 

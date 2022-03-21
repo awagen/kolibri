@@ -16,10 +16,13 @@
 
 package de.awagen.kolibri.base.io.reader
 
+import de.awagen.kolibri.base.config.AppConfig
+import spray.json._
+
 import scala.collection.immutable
 import scala.io.Source
 
-object FileReaderUtils {
+object FileReaderUtils extends DefaultJsonProtocol  {
 
   def localResourceSource(filename: String, encoding: String = "UTF-8"): Source = {
     Source.fromInputStream(getClass.getClassLoader.getResourceAsStream(filename), encoding)
@@ -109,6 +112,52 @@ object FileReaderUtils {
     */
   def isLocalResourceFileAvailable(filename: String): Boolean = {
     getClass.getClassLoader.getResource(filename) != null
+  }
+
+  /**
+   * Passing file and reader, provides the lines contained in the file
+   * @param file
+   * @param reader
+   * @return
+   */
+  def loadLinesFromFile(file: String, reader: Reader[String, Seq[String]]): Seq[String] = {
+    reader.read(file)
+      .map(x => x.trim)
+      .filter(x => x.nonEmpty)
+      .filter(x => !x.startsWith("#"))
+  }
+
+  /**
+   * read mapping from json file
+   * @param file - file containing the json mapping
+   * @return
+   */
+  def readJsonMapping(file: String, reader: Reader[String, Seq[String]]): Map[String, Seq[String]] = {
+    val jsonContent = reader.getSource(file).getLines().mkString("\n")
+    val jsValue: JsValue = jsonContent.parseJson
+    jsValue.convertTo[Map[String, Seq[String]]]
+  }
+
+  /**
+   * Search in directory for files with given fileSuffix, then remove directory path and the suffix to retrieve
+   * the file identifier, and extract per-line values from file and map the values to its file identifier
+   * @param directory - directory to identify valid files as per passed suffix
+   * @param filesSuffix - suffix used to filter files
+   * @return
+   */
+  def extractFilePrefixToLineValuesMapping(directory: String, filesSuffix: String, directorySeparator: String = "/"): Map[String, Seq[String]] = {
+    val fileReader = AppConfig.persistenceModule.persistenceDIModule.reader
+    val directoryReader = AppConfig.persistenceModule.persistenceDIModule.dataOverviewReader(x => x.endsWith(filesSuffix))
+    directoryReader.listResources(directory, _ => true)
+      .map(file => {
+        val fileIdentifier = file.split(directorySeparator).last.stripSuffix(filesSuffix)
+        val values = fileReader.getSource(file).getLines()
+          .map(l => l.trim)
+          .filter(l => l.nonEmpty)
+          .filter(l => !l.startsWith("#"))
+          .toSeq
+        (fileIdentifier, values)
+      }).toMap
   }
 
 }
