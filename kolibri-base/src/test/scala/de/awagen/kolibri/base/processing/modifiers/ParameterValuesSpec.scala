@@ -87,7 +87,7 @@ class ParameterValuesSpec extends UnitTestSpec {
   "ParameterValueMapping" must {
     "correctly represent mappings" in {
       // given
-      val mapping = new ParameterValueMapping(values = parameterValues, mappedValues = Seq(mappedValue1, mappedValue2),
+      val mapping = new ParameterValueMapping(keyValues = parameterValues, mappedValues = Seq(mappedValue1, mappedValue2),
         mappingKeyValueAssignments = Seq((1, 2))
       )
       // when
@@ -115,7 +115,7 @@ class ParameterValuesSpec extends UnitTestSpec {
 
     "correctly represent larger mappings and ignore incomplete" in {
       // given
-      val mapping = new ParameterValueMapping(values = range1000keyValues, mappedValues = Seq(range1000MappedValues1,
+      val mapping = new ParameterValueMapping(keyValues = range1000keyValues, mappedValues = Seq(range1000MappedValues1,
         range1000OnlyFirst500MappedValues2),
         mappingKeyValueAssignments = Seq((1, 2))
       )
@@ -132,7 +132,7 @@ class ParameterValuesSpec extends UnitTestSpec {
 
     "correctly explode mappings for multiple mapped values" in {
       // given
-      val mapping = new ParameterValueMapping(values = range1000keyValues, mappedValues = Seq(range1000MappedValues1,
+      val mapping = new ParameterValueMapping(keyValues = range1000keyValues, mappedValues = Seq(range1000MappedValues1,
         range1000MappedValuesOnlyFirst500MultipleMappedValues2),
         mappingKeyValueAssignments = Seq((1, 2))
       )

@@ -24,7 +24,7 @@ import de.awagen.kolibri.base.io.reader.FileReaderUtils
 import de.awagen.kolibri.base.processing.modifiers.ParameterValues._
 import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator}
 import de.awagen.kolibri.datatypes.values.OrderedValues
-import spray.json.{DefaultJsonProtocol, JsValue, JsonFormat, enrichAny}
+import spray.json.{DefaultJsonProtocol, JsValue, JsonFormat, RootJsonFormat, enrichAny}
 
 object ParameterValuesJsonProtocol extends DefaultJsonProtocol {
 
@@ -42,12 +42,37 @@ object ParameterValuesJsonProtocol extends DefaultJsonProtocol {
   val JSON_VALUES_MAPPING_TYPE = "JSON_VALUES_MAPPING_TYPE"
   val JSON_VALUES_FILES_MAPPING_TYPE = "JSON_VALUES_FILES_MAPPING_TYPE"
   val JSON_MAPPINGS_TYPE = "JSON_MAPPINGS_TYPE"
-  val FILE_PREFIX_TO_FILE_LINES_TYPE = "FILE_PREFIX_TO_FILE_LINES_TYPE"
+  val FILE_PREFIX_TO_FILE_LINES_MAPPING_TYPE = "FILE_PREFIX_TO_FILE_LINES_TYPE"
 
+  /**
+   * Allows passing of arbitrary combinations of either single value generators
+   * (ParameterValues instances) or mappings (ParameterValueMappings instances),
+   * creates overall generator of value sequences
+   */
+  implicit val parameterValuesGenSeqToValueSeqGeneratorFormat: RootJsonFormat[ParameterValuesGenSeqToValueSeqGenerator] = jsonFormat1(ParameterValuesGenSeqToValueSeqGenerator)
 
+  /**
+   * Reusing below formats for the general trait ValuesSeqGenProvider
+   */
+  implicit object ValueSeqGenProviderFormat extends JsonFormat[ValueSeqGenProvider] {
+    override def read(json: JsValue): ValueSeqGenProvider = {
+      try{
+        ParameterValuesFormat.read(json)
+      }
+      catch {
+        case _: MatchError => ParameterValueMappingFormat.read(json)
+      }
+    }
+
+    override def write(obj: ValueSeqGenProvider): JsValue = """{}""".toJson
+  }
+
+  /**
+   * Format for creation of ParameterValues (Seq of values for single type and name)
+   */
   implicit object ParameterValuesFormat extends JsonFormat[ParameterValues] {
     override def read(json: JsValue): ParameterValues = json match {
-      case spray.json.JsObject(fields) => fields(TYPE_KEY).convertTo[String] match {
+      case spray.json.JsObject(fields) if fields.contains(TYPE_KEY) => fields(TYPE_KEY).convertTo[String] match {
         // for this case, can use any OrderedValues specification (see respective JsonProtocol implementation)
         case FROM_ORDERED_VALUES_TYPE =>
           val values = fields(VALUES_KEY).convertTo[OrderedValues[String]]
@@ -107,7 +132,7 @@ object ParameterValuesJsonProtocol extends DefaultJsonProtocol {
           MappedParameterValues(name, valueType, jsonMapping)
         // reading file prefixes in folder, and creating mapping for each where prefix is key and values are the values
         // given in the file, one value per line
-        case FILE_PREFIX_TO_FILE_LINES_TYPE =>
+        case FILE_PREFIX_TO_FILE_LINES_MAPPING_TYPE =>
           val directory = fields(DIRECTORY_KEY).convertTo[String]
           val filesSuffix: String = fields(FILES_SUFFIX_KEY).convertTo[String]
           val name = fields(NAME_KEY).convertTo[String]

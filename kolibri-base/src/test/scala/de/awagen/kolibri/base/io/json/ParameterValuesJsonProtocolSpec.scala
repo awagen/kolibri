@@ -1,7 +1,7 @@
 package de.awagen.kolibri.base.io.json
 
-import de.awagen.kolibri.base.io.json.ParameterValuesJsonProtocol.{MappedParameterValuesFormat, ParameterValueMappingFormat, ParameterValuesFormat}
-import de.awagen.kolibri.base.processing.modifiers.ParameterValues.{MappedParameterValues, ParameterValue, ParameterValueMapping, ParameterValues, ValueType}
+import de.awagen.kolibri.base.io.json.ParameterValuesJsonProtocol.{MappedParameterValuesFormat, ParameterValueMappingFormat, ParameterValuesFormat, ValueSeqGenProviderFormat}
+import de.awagen.kolibri.base.processing.modifiers.ParameterValues.{MappedParameterValues, ParameterValue, ParameterValueMapping, ParameterValues, ValueSeqGenProvider, ValueType}
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
 import spray.json._
 
@@ -30,7 +30,7 @@ class ParameterValuesJsonProtocolSpec extends UnitTestSpec {
 
   object MappedParameterValuesDefinitions {
 
-    val jsonFullKeyValuesMappingJson =
+    val jsonFullKeyValuesMappingJson: String =
       """{
         |"type": "JSON_VALUES_MAPPING_TYPE",
         |"name": "mappedParam1",
@@ -42,7 +42,7 @@ class ParameterValuesJsonProtocolSpec extends UnitTestSpec {
         |}
         |""".stripMargin
 
-    val jsonKeyToValuesFileMappingJson =
+    val jsonKeyToValuesFileMappingJson: String =
       """{
         |"type": "JSON_VALUES_FILES_MAPPING_TYPE",
         |"name": "mappedParam1",
@@ -55,7 +55,7 @@ class ParameterValuesJsonProtocolSpec extends UnitTestSpec {
         |}
         |""".stripMargin
 
-    val jsonKeyToValuesMappingJson =
+    val jsonKeyToValuesMappingJson: String =
       """{
         |"type": "JSON_MAPPINGS_TYPE",
         |"name": "mappedParam1",
@@ -64,7 +64,7 @@ class ParameterValuesJsonProtocolSpec extends UnitTestSpec {
         |}
         |""".stripMargin
 
-    val filePrefixToLinesValuesMappingJson =
+    val filePrefixToLinesValuesMappingJson: String =
       """{
         |"type": "FILE_PREFIX_TO_FILE_LINES_TYPE",
         |"name": "mappedParam1",
@@ -74,7 +74,7 @@ class ParameterValuesJsonProtocolSpec extends UnitTestSpec {
         |}
         |""".stripMargin
 
-    val filePrefixToLinesValuesMappingJson2 =
+    val filePrefixToLinesValuesMappingJson2: String =
       """{
         |"type": "FILE_PREFIX_TO_FILE_LINES_TYPE",
         |"name": "mappedParam1",
@@ -87,7 +87,7 @@ class ParameterValuesJsonProtocolSpec extends UnitTestSpec {
   }
 
   object ParameterValueMappingDefinitions {
-    val jsonMapping =
+    val jsonMapping: String =
       s"""
         |{
         |"key_values": ${ParameterValuesJsonDefinitions.parameterValuesFromOrderedValuesJson},
@@ -182,6 +182,15 @@ class ParameterValuesJsonProtocolSpec extends UnitTestSpec {
       values.get(1).get mustBe Seq(ParameterValue("param1", ValueType.URL_PARAMETER, "key1"), ParameterValue("mappedParam1", ValueType.URL_PARAMETER, "key1_val2"))
       values.get(2).get mustBe Seq(ParameterValue("param1", ValueType.URL_PARAMETER, "key2"), ParameterValue("mappedParam1", ValueType.URL_PARAMETER, "key2_val1"))
       values.get(3).get mustBe Seq(ParameterValue("param1", ValueType.URL_PARAMETER, "key2"), ParameterValue("mappedParam1", ValueType.URL_PARAMETER, "key2_val2"))
+    }
+
+    "parse ValueSeqGenProvider" in {
+      // given, when
+      val parameterValues = ParameterValuesJsonDefinitions.parameterValuesFromOrderedValuesJson.parseJson.convertTo[ValueSeqGenProvider]
+      val mapping = ParameterValueMappingDefinitions.jsonMapping.parseJson.convertTo[ValueSeqGenProvider]
+      // then
+      parameterValues.isInstanceOf[ParameterValues] mustBe true
+      mapping.isInstanceOf[ParameterValueMapping] mustBe true
     }
 
   }
