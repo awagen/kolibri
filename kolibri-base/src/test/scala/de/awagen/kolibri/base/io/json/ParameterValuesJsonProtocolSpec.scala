@@ -70,7 +70,7 @@ class ParameterValuesJsonProtocolSpec extends UnitTestSpec {
         |"name": "mappedParam1",
         |"values_type": "URL_PARAMETER",
         |"directory": "data/mappedParameterValuesTest",
-        |"filesSuffix": ".txt"
+        |"files_suffix": ".txt"
         |}
         |""".stripMargin
 
@@ -80,7 +80,19 @@ class ParameterValuesJsonProtocolSpec extends UnitTestSpec {
         |"name": "mappedParam1",
         |"values_type": "URL_PARAMETER",
         |"directory": "data/fileMappingValueSeqTest",
-        |"filesSuffix": ".txt"
+        |"files_suffix": ".txt"
+        |}
+        |""".stripMargin
+
+    val csvMappingJson1: String =
+      """{
+        |"type": "CSV_MAPPING_TYPE",
+        |"name": "csvMappedParam1",
+        |"values_type": "URL_PARAMETER",
+        |"values": "data/csvMappedParameterTest/mapping1.csv",
+        |"column_delimiter": ",",
+        |"key_column_index": 0,
+        |"value_column_index": 1
         |}
         |""".stripMargin
 
@@ -170,6 +182,17 @@ class ParameterValuesJsonProtocolSpec extends UnitTestSpec {
         "key4" -> Seq("val4_1, val4_2", "val4_3,  val4_4",
           "val4_5, val4_6, val4_7",
           "val4_8")
+      )
+    }
+
+    "parse csv based mapping" in {
+      //given, when
+      val values = MappedParameterValuesDefinitions.csvMappingJson1.parseJson.convertTo[MappedParameterValues]
+      // then
+      values.values.map(x => (x._1, x._2.iterator.toSet)) mustBe Map(
+        "key1" -> Set("value1", "value2", "value3"),
+        "key2" -> Set("value1"),
+        "key3" -> Set("value2")
       )
     }
 

@@ -35,13 +35,17 @@ object ParameterValuesJsonProtocol extends DefaultJsonProtocol {
   val KEY_MAPPING_ASSIGNMENTS_KEY = "key_mapping_assignments"
   val NAME_KEY = "name"
   val VALUES_KEY = "values"
+  val COLUMN_DELIMITER_KEY = "column_delimiter"
+  val KEY_COLUMN_INDEX_KEY = "key_column_index"
+  val VALUE_COLUMN_INDEX_KEY = "value_column_index"
   val DIRECTORY_KEY = "directory"
-  val FILES_SUFFIX_KEY = "filesSuffix"
+  val FILES_SUFFIX_KEY = "files_suffix"
   val PARAMETER_VALUES_TYPE_KEY = "parameter_values_type"
   val FROM_ORDERED_VALUES_TYPE = "FROM_ORDERED_VALUES"
   val JSON_VALUES_MAPPING_TYPE = "JSON_VALUES_MAPPING_TYPE"
   val JSON_VALUES_FILES_MAPPING_TYPE = "JSON_VALUES_FILES_MAPPING_TYPE"
   val JSON_MAPPINGS_TYPE = "JSON_MAPPINGS_TYPE"
+  val CSV_MAPPINGS_TYPE = "CSV_MAPPING_TYPE"
   val FILE_PREFIX_TO_FILE_LINES_MAPPING_TYPE = "FILE_PREFIX_TO_FILE_LINES_TYPE"
 
   /**
@@ -140,6 +144,23 @@ object ParameterValuesJsonProtocol extends DefaultJsonProtocol {
           val mapping = FileReaderUtils.extractFilePrefixToLineValuesMapping(directory, filesSuffix, "/")
           .map(x => (x._1, ByFunctionNrLimitedIndexedGenerator.createFromSeq(x._2)))
           MappedParameterValues(name, valueType, mapping)
+        // picking mappings from csv with a key column and a value column. If multiple distinct values are contained
+        // for a key, they will be preserved as distinct values in the generator per key value
+        case CSV_MAPPINGS_TYPE =>
+          val fileReader = AppConfig.persistenceModule.persistenceDIModule.reader
+          val name = fields(NAME_KEY).convertTo[String]
+          val valueType = fields(VALUES_TYPE_KEY).convertTo[ValueType.Value]
+          val mappingsCsvFile = fields(VALUES_KEY).convertTo[String]
+          val columnDelimiter = fields(COLUMN_DELIMITER_KEY).convertTo[String]
+          val keyColumnIndex = fields(KEY_COLUMN_INDEX_KEY).convertTo[Int]
+          val valueColumnIndex = fields(VALUE_COLUMN_INDEX_KEY).convertTo[Int]
+          val keyValuesMapping = FileReaderUtils.multiMappingFromCSVFile[String](
+            source = fileReader.getSource(mappingsCsvFile),
+            columnDelimiter = columnDelimiter,
+            filterLessColumnsThan = math.max(keyColumnIndex, valueColumnIndex) + 1,
+            valsToKey = x => x(keyColumnIndex),
+            columnsToValue = x => x(valueColumnIndex))
+          MappedParameterValues(name, valueType, keyValuesMapping.map(x => (x._1, ByFunctionNrLimitedIndexedGenerator.createFromSeq(x._2.toSeq))))
       }
     }
 
