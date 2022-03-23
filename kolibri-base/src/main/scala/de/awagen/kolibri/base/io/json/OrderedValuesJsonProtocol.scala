@@ -18,29 +18,33 @@
 package de.awagen.kolibri.base.io.json
 
 import de.awagen.kolibri.base.utils.OrderedValuesUtils.{folderToFilenamesOrderedValues, fromCsvFileByColumnNames, fromJsonFileMappingToOrderedValues, loadLinesFromFile, mappingsFromCsvFile, paramNameToFileMappingToOrderedValues, paramNameToValuesMappingToOrderedValues}
-import de.awagen.kolibri.datatypes.values.{DistinctValues, OrderedValues}
+import de.awagen.kolibri.datatypes.values.{DistinctValues, OrderedValues, RangeValues}
 import spray.json._
 
 
 object OrderedValuesJsonProtocol extends DefaultJsonProtocol {
 
   val TYPE_KEY = "type"
-  val FROM_FILES_LINES_TYPE = "FROM_FILES_LINES"
+  val FROM_FILES_LINES_TYPE = "FROM_FILES_LINES_TYPE"
   val VALUES_KEY = "values"
-  val FROM_VALUES_TYPE = "FROM_VALUES"
-  val FROM_FILENAME_KEYS_TYPE = "FROM_FILENAME_KEYS"
+  val FROM_VALUES_TYPE = "FROM_VALUES_TYPE"
+  val FROM_RANGE_TYPE = "FROM_RANGE_TYPE"
+  val FROM_FILENAME_KEYS_TYPE = "FROM_FILENAME_KEYS_TYPE"
   val DIRECTORY_KEY = "directory"
   val FILES_SUFFIX_KEY = "filesSuffix"
   val VALUE_NAME = "valueName"
-  val FROM_CSV_FILE_TYPE = "FROM_CSV_FILE"
+  val FROM_CSV_FILE_TYPE = "FROM_CSV_FILE_TYPE"
   val FILE_KEY = "file"
   val NAME_KEY = "name"
   val COLUMN_SEPARATOR_KEY = "columnSeparator"
   val KEY_COLUMN_KEY = "keyColumn"
   val VALUE_COLUMN_KEY = "valueColumn"
-  val FROM_JSON_FILE_MAPPING_TYPE = "FROM_JSON_FILE_MAPPING"
-  val FROM_CSV_WITH_KEY_AND_VALUE_NAMES_FROM_HEADERS = "FROM_CSV_WITH_HEADER_NAMES"
+  val FROM_JSON_FILE_MAPPING_TYPE = "FROM_JSON_FILE_MAPPING_TYPE"
+  val FROM_CSV_WITH_KEY_AND_VALUE_NAMES_FROM_HEADERS_TYPE = "FROM_CSV_WITH_HEADER_NAMES_TYPE"
   val KEY_NAME_KEY = "keyName"
+  val START_VALUE_KEY = "start"
+  val END_VALUE_KEY = "end"
+  val STEP_SIZE_KEY = "stepSize"
 
 
   implicit object OrderedValuesStringFormat extends JsonFormat[OrderedValues[String]] {
@@ -60,6 +64,14 @@ object OrderedValuesJsonProtocol extends DefaultJsonProtocol {
           val name = fields(NAME_KEY).convertTo[String]
           val values = fields(VALUES_KEY).convertTo[Seq[String]]
           DistinctValues(name, values)
+        case FROM_RANGE_TYPE =>
+          val name = fields(NAME_KEY).convertTo[String]
+          val start = fields(START_VALUE_KEY).convertTo[Double]
+          val end = fields(END_VALUE_KEY).convertTo[Double]
+          val stepSize = fields(STEP_SIZE_KEY).convertTo[Double]
+          // TODO: change this to avoid having to generate the full range
+          // right now its just a quick workaround
+          DistinctValues(name, RangeValues(name, start, end, stepSize).getAll.map(x => String.format("%.4f",x)))
       }
     }
 
@@ -107,7 +119,7 @@ object OrderedValuesJsonProtocol extends DefaultJsonProtocol {
   implicit object OrderedValuesMultiMapFormat extends JsonFormat[OrderedValues[Map[String, Seq[String]]]] {
     override def read(json: JsValue): OrderedValues[Map[String, Seq[String]]] = json match {
       case spray.json.JsObject(fields) => fields(TYPE_KEY).convertTo[String] match {
-        case FROM_CSV_WITH_KEY_AND_VALUE_NAMES_FROM_HEADERS =>
+        case FROM_CSV_WITH_KEY_AND_VALUE_NAMES_FROM_HEADERS_TYPE =>
           val file: String = fields(FILE_KEY).convertTo[String]
           val columnSeparator: String = fields(COLUMN_SEPARATOR_KEY).convertTo[String]
           val keyName: String = fields(KEY_NAME_KEY).convertTo[String]

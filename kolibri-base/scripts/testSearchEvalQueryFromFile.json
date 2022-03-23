@@ -23,39 +23,37 @@
       "useHttps": false
     }
   ],
-  "requestPermutation": [
+  "requestParameterPermutateSeq": [
     {
-      "type": "ALL",
-      "value": {
-        "params": {
-          "type": "FROM_FILES_LINES",
-          "values": {
-            "q": "test-paramfiles/test_queries.txt"
-          }
-        }
+      "type": "FROM_ORDERED_VALUES_TYPE",
+      "values_type": "URL_PARAMETER",
+      "values": {
+        "type": "FROM_FILES_LINES_TYPE",
+        "valueName": "q",
+        "file": "test-paramfiles/test_queries.txt"
       }
     },
     {
-      "type": "ALL",
-      "value": {
-        "params": {
-          "type": "GRID_FROM_VALUES_SEQ",
-          "values": [
-            {
-              "name": "a1",
-              "values": [
-                0.45,
-                0.32
-              ]
-            },
-            {
-              "name": "o",
-              "start": 0.0,
-              "end": 2000.0,
-              "stepSize": 1.0
-            }
-          ]
-        }
+      "type": "FROM_ORDERED_VALUES_TYPE",
+      "values_type": "URL_PARAMETER",
+      "values": {
+        "type": "FROM_VALUES_TYPE",
+        "name": "a1",
+        "values": [
+          "0.45",
+          "0.32"
+        ]
+      }
+    },
+    {
+      "type": "FROM_ORDERED_VALUES_TYPE",
+      "values_type": "URL_PARAMETER",
+      "values": {
+        "type": "FROM_RANGE_TYPE",
+        "name": "o",
+        "start": 0.0,
+        "end": 2000.0,
+        "stepSize": 1.0
       }
     }
   ],

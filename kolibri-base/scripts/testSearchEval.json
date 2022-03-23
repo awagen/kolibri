@@ -23,59 +23,58 @@
       "useHttps": false
     }
   ],
-  "requestPermutation": [
+  "requestParameterPermutateSeq": [
     {
-      "type": "ALL",
-      "value": {
-        "params": {
-          "type": "GRID_FROM_VALUES_SEQ",
+      "type": "FROM_ORDERED_VALUES_TYPE",
+      "values_type": "URL_PARAMETER",
+      "values": {
+          "type": "FROM_VALUES_TYPE",
+          "name": "q",
           "values": [
-            {
-              "name": "q",
-              "values": [
-                "q1",
-                "q2",
-                "q3",
-                "q4",
-                "q5",
-                "q6",
-                "q7",
-                "q8",
-                "q9",
-                "q10",
-                "q11",
-                "q12",
-                "q13",
-                "q14",
-                "q15",
-                "q16",
-                "q17",
-                "q18",
-                "q19",
-                "q20"
-              ]
-            },
-            {
-              "name": "a1",
-              "values": [
-                0.45,
-                0.32
-              ]
-            },
-            {
-              "name": "o",
-              "start": 0.0,
-              "end": 2000.0,
-              "stepSize": 1.0
-            }
+            "q1",
+            "q2",
+            "q3",
+            "q4",
+            "q5",
+            "q6",
+            "q7",
+            "q8",
+            "q9",
+            "q10",
+            "q11",
+            "q12",
+            "q13",
+            "q14",
+            "q15",
+            "q16",
+            "q17",
+            "q18",
+            "q19",
+            "q20"
           ]
-        },
-        "headers": {
-          "type": "GRID_FROM_VALUES_SEQ",
-          "values": []
-        },
-        "bodies": [],
-        "bodyContentType": "json"
+      }
+    },
+    {
+      "type": "FROM_ORDERED_VALUES_TYPE",
+      "values_type": "URL_PARAMETER",
+      "values": {
+        "type": "FROM_VALUES_TYPE",
+        "name": "a1",
+        "values": [
+          "0.45",
+          "0.32"
+        ]
+      }
+    },
+    {
+      "type": "FROM_ORDERED_VALUES_TYPE",
+      "values_type": "URL_PARAMETER",
+      "values": {
+        "type": "FROM_RANGE_TYPE",
+        "name": "o",
+        "start": 0.0,
+        "end": 2000.0,
+        "stepSize": 1.0
       }
     }
   ],

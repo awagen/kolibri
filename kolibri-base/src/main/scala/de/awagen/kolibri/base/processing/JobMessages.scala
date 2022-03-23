@@ -27,7 +27,7 @@ import de.awagen.kolibri.base.http.client.request.{RequestTemplate, RequestTempl
 import de.awagen.kolibri.base.processing.JobMessages.{SearchEvaluation, TestPiCalculation}
 import de.awagen.kolibri.base.processing.execution.functions.Execution
 import de.awagen.kolibri.base.processing.modifiers.Modifier
-import de.awagen.kolibri.base.processing.modifiers.RequestPermutations.ModifierGeneratorProvider
+import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ValueSeqGenProvider
 import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
 import de.awagen.kolibri.base.processing.tagging.TaggingConfigurations.BaseTaggingConfiguration
 import de.awagen.kolibri.base.traits.Traits.WithResources
@@ -60,16 +60,21 @@ object JobMessages {
 
   case class TestPiCalculation(jobName: String, requestTasks: Int, nrThrows: Int, batchSize: Int, resultDir: String) extends JobMessage
 
+  // TODO: replace writing of batch results by their tags with additional appendix making possible to disinguish different batches with same tagging
   case class SearchEvaluation(jobName: String,
                               requestTasks: Int,
                               fixedParams: Map[String, Seq[String]],
                               contextPath: String,
                               connections: Seq[Connection],
-                              requestPermutation: Seq[ModifierGeneratorProvider],
+                              requestParameterPermutateSeq: Seq[ValueSeqGenProvider],
                               batchByIndex: Int,
                               parsingConfig: ParsingConfig,
                               excludeParamsFromMetricRow: Seq[String],
                               requestTemplateStorageKey: String,
+                              // TODO: distinction between this and singleMapCalculation only needed since resources are
+                              // not expected to be loaded already when batch starts, e.g loaded on demand.
+                              // move this to WorkManager though before any batch is started (handle generally as expiring resource)
+                              // and then resort to normal calculations instead (as in singleMapCalculations)
                               mapFutureMetricRowCalculation: FutureCalculation[WeaklyTypedMap[String], Set[String], MetricRow],
                               singleMapCalculations: Seq[Calculation[WeaklyTypedMap[String], CalculationResult[Double]]],
                               taggingConfiguration: Option[BaseTaggingConfiguration[RequestTemplate, (Either[Throwable, WeaklyTypedMap[String]], RequestTemplate), MetricRow]],
@@ -78,7 +83,11 @@ object JobMessages {
                               allowedTimePerBatchInSeconds: Int = 600,
                               allowedTimeForJobInSeconds: Int = 7200,
                               expectResultsFromBatchCalculations: Boolean = true) extends JobMessage with WithResources {
-    val requestTemplateModifiers: Seq[IndexedGenerator[Modifier[RequestTemplateBuilder]]] = requestPermutation.flatMap(x => x.modifiers)
+
+    import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ParameterValuesImplicits._
+
+    val requestTemplateModifiers: Seq[IndexedGenerator[Modifier[RequestTemplateBuilder]]] =
+      requestParameterPermutateSeq.map(x => x.toSeqGenerator).map(x => x.mapGen(y => y.toModifier))
     logger.debug(s"found modifier generators: ${requestTemplateModifiers.size}")
 
     // promote the resources needed in metric row calculations to the current job def

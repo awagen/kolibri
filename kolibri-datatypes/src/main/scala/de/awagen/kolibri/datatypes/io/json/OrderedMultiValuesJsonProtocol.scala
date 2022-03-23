@@ -25,15 +25,23 @@ import spray.json.{DefaultJsonProtocol, DeserializationException, JsValue, JsonF
 
 object OrderedMultiValuesJsonProtocol extends DefaultJsonProtocol {
 
+  val GRID_FROM_VALUES_SEQ_TYPE = "GRID_FROM_VALUES_SEQ_TYPE"
+  val GRID_BATCH_FROM_VALUES_SEQ_TYPE = "GRID_BATCH_FROM_VALUES_SEQ_TYPE"
+  val TYPE_KEY = "type"
+  val VALUES_KEY = "values"
+  val MULTI_VALUES_KEY = "multiValues"
+  val BATCH_SIZE_KEY = "batchSize"
+  val BATCH_NR_KEY = "batchNr"
+
   implicit object OrderedMultiValuesAnyFormat extends JsonFormat[OrderedMultiValues] {
     override def read(json: JsValue): OrderedMultiValues = json match {
-      case spray.json.JsObject(fields) => fields("type").convertTo[String] match {
-        case "GRID_FROM_VALUES_SEQ" =>
-          val values: Seq[OrderedValues[_]] = fields("values").convertTo[Seq[OrderedValues[_]]]
+      case spray.json.JsObject(fields) => fields(TYPE_KEY).convertTo[String] match {
+        case GRID_FROM_VALUES_SEQ_TYPE =>
+          val values: Seq[OrderedValues[_]] = fields(VALUES_KEY).convertTo[Seq[OrderedValues[_]]]
           multivalues.GridOrderedMultiValues(values)
-        case "GRID_BATCH_FROM_VALUES_SEQ" =>
-          multivalues.GridOrderedMultiValuesBatch(multivalues.GridOrderedMultiValues(fields("multiValues").asJsObject.getFields("values").head.convertTo[Seq[OrderedValues[_]]]),
-            fields("batchSize").convertTo[Int], fields("batchNr").convertTo[Int])
+        case GRID_BATCH_FROM_VALUES_SEQ_TYPE =>
+          multivalues.GridOrderedMultiValuesBatch(multivalues.GridOrderedMultiValues(fields(MULTI_VALUES_KEY).asJsObject.getFields(VALUES_KEY).head.convertTo[Seq[OrderedValues[_]]]),
+            fields(BATCH_SIZE_KEY).convertTo[Int], fields(BATCH_NR_KEY).convertTo[Int])
         case e =>  throw DeserializationException(s"Expected a valid type for OrderedMultiValues but got $e")
       }
       case e =>  throw DeserializationException(s"Expected a value for OrderedMultiValues but got $e")
@@ -47,9 +55,9 @@ object OrderedMultiValuesJsonProtocol extends DefaultJsonProtocol {
 
 
   implicit def gridOrderedMultiValuesFormat: RootJsonFormat[GridOrderedMultiValues] =
-    jsonFormat(GridOrderedMultiValues, "values")
+    jsonFormat(GridOrderedMultiValues, VALUES_KEY)
 
   implicit def gridOrderedMultiValuesBatchFormat: RootJsonFormat[GridOrderedMultiValuesBatch] =
-    jsonFormat(GridOrderedMultiValuesBatch, "multiValues", "batchSize", "batchNr")
+    jsonFormat(GridOrderedMultiValuesBatch, MULTI_VALUES_KEY, BATCH_SIZE_KEY, BATCH_NR_KEY)
 
 }

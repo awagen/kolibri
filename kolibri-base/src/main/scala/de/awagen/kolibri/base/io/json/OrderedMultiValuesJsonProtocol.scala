@@ -25,12 +25,12 @@ import spray.json._
 
 object OrderedMultiValuesJsonProtocol extends DefaultJsonProtocol {
 
-  val FROM_FILES_LINES_TYPE = "FROM_FILES_LINES"
-  val FROM_VALUES_TYPE = "FROM_VALUES"
-  val FROM_FILENAME_KEYS_TYPE = "FROM_FILENAME_KEYS"
-  val FROM_CSV_FILE_TYPE = "FROM_CSV_FILE"
-  val FROM_CSV_WITH_KEY_AND_VALUE_NAMES_FROM_HEADERS = "FROM_CSV_WITH_HEADER_NAMES"
-  val FROM_JSON_FILE_MAPPING_TYPE = "FROM_JSON_FILE_MAPPING"
+  val FROM_FILES_LINES_TYPE = "FROM_FILES_LINES_TYPE"
+  val FROM_VALUES_TYPE = "FROM_VALUES_TYPE"
+  val FROM_FILENAME_KEYS_TYPE = "FROM_FILENAME_KEYS_TYPE"
+  val FROM_CSV_FILE_TYPE = "FROM_CSV_FILE_TYPE"
+  val FROM_CSV_WITH_KEY_AND_VALUE_NAMES_FROM_HEADERS_TYPE = "FROM_CSV_WITH_HEADER_NAMES_TYPE"
+  val FROM_JSON_FILE_MAPPING_TYPE = "FROM_JSON_FILE_MAPPING_TYPE"
   val TYPE_KEY = "type"
   val VALUE_NAME = "valueName"
   val FILE_KEY = "file"
@@ -64,7 +64,7 @@ object OrderedMultiValuesJsonProtocol extends DefaultJsonProtocol {
             case FROM_JSON_FILE_MAPPING_TYPE =>
               val values = json.convertTo[OrderedValues[Map[String, String]]]
               GridOrderedMultiValues(Seq(values))
-            case FROM_CSV_WITH_KEY_AND_VALUE_NAMES_FROM_HEADERS =>
+            case FROM_CSV_WITH_KEY_AND_VALUE_NAMES_FROM_HEADERS_TYPE =>
               val file: String = fields(FILE_KEY).convertTo[String]
               val columnSeparator: String = fields(COLUMN_SEPARATOR_KEY).convertTo[String]
               val keyName: String = fields(KEY_NAME_KEY).convertTo[String]

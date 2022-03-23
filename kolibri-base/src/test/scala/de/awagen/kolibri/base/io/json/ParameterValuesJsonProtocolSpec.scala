@@ -11,8 +11,8 @@ class ParameterValuesJsonProtocolSpec extends UnitTestSpec {
     val parameterValuesFromOrderedValuesJson: String =
       """
         |{
-        |"type": "FROM_ORDERED_VALUES",
-        |"values": {"type": "FROM_VALUES", "name": "param1", "values": ["key1", "key2", "key3"]},
+        |"type": "FROM_ORDERED_VALUES_TYPE",
+        |"values": {"type": "FROM_VALUES_TYPE", "name": "param1", "values": ["key1", "key2", "key3"]},
         |"values_type": "URL_PARAMETER"
         |}
         |""".stripMargin
@@ -20,12 +20,43 @@ class ParameterValuesJsonProtocolSpec extends UnitTestSpec {
     val parameterValuesPassedJson: String =
       """
         |{
-        |"type": "parameter_values_type",
+        |"type": "PARAMETER_VALUES_TYPE",
         |"name": "param1",
         |"values": ["value1", "value2"],
         |"values_type": "URL_PARAMETER"
         |}
         |""".stripMargin
+
+    val parameterValuesFromOrderedValuesFromFileJson: String = {
+      """
+        |{
+        |"type": "FROM_ORDERED_VALUES_TYPE",
+        |"values_type": "URL_PARAMETER",
+        |"values": {
+        |  "type": "FROM_FILES_LINES_TYPE",
+        |  "valueName": "q",
+        |  "file": "data/queryterms.txt"
+        |}
+        |}
+        |""".stripMargin
+    }
+
+    val parameterValuesFromRangeJson: String = {
+      """
+        |{
+        |"type": "FROM_ORDERED_VALUES_TYPE",
+        |"values_type": "URL_PARAMETER",
+        |"values": {
+        |  "type": "FROM_RANGE_TYPE",
+        |  "name": "o",
+        |  "start": 0.0,
+        |  "end": 2000.0,
+        |  "stepSize": 1.0
+        |}
+        |}
+        |""".stripMargin
+    }
+
   }
 
   object MappedParameterValuesDefinitions {
@@ -128,6 +159,28 @@ class ParameterValuesJsonProtocolSpec extends UnitTestSpec {
       values.valueType mustBe ValueType.URL_PARAMETER
       values.values.iterator.toSeq mustBe Seq("value1", "value2")
     }
+
+    "parse ParameterValues from file" in {
+      // given, when
+      val values = ParameterValuesJsonDefinitions.parameterValuesFromOrderedValuesFromFileJson.parseJson.convertTo[ParameterValues]
+      // then
+      values.name mustBe "q"
+      values.valueType mustBe ValueType.URL_PARAMETER
+      values.values.iterator.toSeq mustBe Seq("schuh", "spiegel", "uhr", "hose", "jeans", "tv")
+    }
+
+    "parse ParameterValues from range" in {
+      // given, when
+      val values = ParameterValuesJsonDefinitions.parameterValuesFromRangeJson.parseJson.convertTo[ParameterValues]
+      // then
+      values.name mustBe "o"
+      values.valueType mustBe ValueType.URL_PARAMETER
+      values.values.size mustBe 2001
+      values.get(0).get.value.toDouble.toInt mustBe 0
+      values.get(2000).get.value.toDouble.toInt mustBe 2000
+    }
+
+
 
     "parse MappedParameterValues from json values mapping" in {
       // given, when

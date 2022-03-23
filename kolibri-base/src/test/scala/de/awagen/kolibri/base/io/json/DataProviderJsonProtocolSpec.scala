@@ -30,7 +30,7 @@ class DataProviderJsonProtocolSpec extends UnitTestSpec {
     """
       |{
       |"data": {
-      | "type": "GRID_FROM_VALUES_SEQ", "values":[{"name": "test", "values": [0.45, 0.32]}]
+      | "type": "GRID_FROM_VALUES_SEQ_TYPE", "values":[{"name": "test", "values": [0.45, 0.32]}]
       |}
       |}
       |""".stripMargin.parseJson

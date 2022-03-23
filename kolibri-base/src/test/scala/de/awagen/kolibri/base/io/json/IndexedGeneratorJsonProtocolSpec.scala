@@ -30,8 +30,8 @@ class IndexedGeneratorJsonProtocolSpec extends UnitTestSpec {
       |{
       |"type": "BY_MULTIVALUES",
       |"values": [
-      |{"type": "GRID_FROM_VALUES_SEQ", "values":[{"name": "test1", "values": [0.10, 0.11]}]},
-      |{"type": "GRID_FROM_VALUES_SEQ", "values":[{"name": "test2", "values": [0.21, 0.22]}]}
+      |{"type": "GRID_FROM_VALUES_SEQ_TYPE", "values":[{"name": "test1", "values": [0.10, 0.11]}]},
+      |{"type": "GRID_FROM_VALUES_SEQ_TYPE", "values":[{"name": "test2", "values": [0.21, 0.22]}]}
       |]
       |}
       |""".stripMargin.parseJson

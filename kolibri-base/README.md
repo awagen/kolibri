@@ -366,7 +366,7 @@ This can be preppred beforehand such that there is a selection of parameters
 to compose, e.g important queries or similar.
 - ```curl "localhost:8000/data/filesByType?type=PARAMETER"```
 - ```curl "localhost:8000/data/readFile?type=PARAMETER&identifier=test_queries.txt"```
-- ```curl -XGET  "localhost:8000/generator/info?returnNSamples=10" --header "Content-Type: application/json" -d '{"type": "FROM_FILES_LINES", "values": {"q": "inputdata/PARAMETER/test_queries.txt"}}'```
+- ```curl -XGET  "localhost:8000/generator/info?returnNSamples=10" --header "Content-Type: application/json" -d '{"type": "FROM_FILES_LINES_TYPE", "values": {"q": "inputdata/PARAMETER/test_queries.txt"}}'```
 - ```curl -XGET  "localhost:8000/data/info/all?returnNSamples=10"```
 
 ## Endpoints for result retrieval

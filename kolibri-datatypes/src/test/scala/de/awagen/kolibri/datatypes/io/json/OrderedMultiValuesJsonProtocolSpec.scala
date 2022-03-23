@@ -29,9 +29,9 @@ class OrderedMultiValuesJsonProtocolSpec extends UnitTestSpec {
     "correctly be parsed to GridOrderedMultiValues" in {
       //given
       val jsonDouble: JsValue =
-        """{"type": "GRID_FROM_VALUES_SEQ", "values":[{"name": "test", "values": [0.45, 0.32]}]}""".parseJson
+        """{"type": "GRID_FROM_VALUES_SEQ_TYPE", "values":[{"name": "test", "values": [0.45, 0.32]}]}""".parseJson
       val jsonString: JsValue =
-        """{"type": "GRID_FROM_VALUES_SEQ", "values":[{"name": "test", "values": ["v1", "v2"]}]}""".parseJson
+        """{"type": "GRID_FROM_VALUES_SEQ_TYPE", "values":[{"name": "test", "values": ["v1", "v2"]}]}""".parseJson
       //when, then
       jsonDouble.convertTo[GridOrderedMultiValues] mustBe GridOrderedMultiValues(Seq(DistinctValues[Double]("test", Seq(0.45, 0.32))))
       jsonDouble.convertTo[OrderedMultiValues] mustBe GridOrderedMultiValues(Seq(DistinctValues[Double]("test", Seq(0.45, 0.32))))
@@ -42,9 +42,9 @@ class OrderedMultiValuesJsonProtocolSpec extends UnitTestSpec {
     "correctly be parsed to GridOrderedMultiValuesBatch" in {
       //given
       val json1: JsValue =
-        """{"type": "GRID_BATCH_FROM_VALUES_SEQ", "multiValues": {"values":[{"name": "test", "values": [0.45, 0.32]}]}, "batchSize": 10, "batchNr": 2}""".parseJson
+        """{"type": "GRID_BATCH_FROM_VALUES_SEQ_TYPE", "multiValues": {"values":[{"name": "test", "values": [0.45, 0.32]}]}, "batchSize": 10, "batchNr": 2}""".parseJson
       val json2: JsValue =
-        """{"type": "GRID_BATCH_FROM_VALUES_SEQ", "multiValues": {"values":[{"name": "test", "values": [0.45, 0.32]},{"name": "test1", "values": ["v10", "v20"]}]}, "batchSize": 10, "batchNr": 2}""".parseJson
+        """{"type": "GRID_BATCH_FROM_VALUES_SEQ_TYPE", "multiValues": {"values":[{"name": "test", "values": [0.45, 0.32]},{"name": "test1", "values": ["v10", "v20"]}]}, "batchSize": 10, "batchNr": 2}""".parseJson
       //when, then
       json1.convertTo[OrderedMultiValues] mustBe GridOrderedMultiValuesBatch(GridOrderedMultiValues(Seq(DistinctValues[Double]("test", Seq(0.45, 0.32)))), 10, 2)
       json2.convertTo[OrderedMultiValues] mustBe GridOrderedMultiValuesBatch(GridOrderedMultiValues(Seq(DistinctValues[Double]("test", Seq(0.45, 0.32)), DistinctValues[String]("test1", Seq("v10", "v20")))), 10, 2)
