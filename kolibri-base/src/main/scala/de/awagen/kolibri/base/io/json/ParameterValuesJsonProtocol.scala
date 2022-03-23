@@ -45,13 +45,6 @@ object ParameterValuesJsonProtocol extends DefaultJsonProtocol {
   val FILE_PREFIX_TO_FILE_LINES_MAPPING_TYPE = "FILE_PREFIX_TO_FILE_LINES_TYPE"
 
   /**
-   * Allows passing of arbitrary combinations of either single value generators
-   * (ParameterValues instances) or mappings (ParameterValueMappings instances),
-   * creates overall generator of value sequences
-   */
-  implicit val parameterValuesGenSeqToValueSeqGeneratorFormat: RootJsonFormat[ParameterValuesGenSeqToValueSeqGenerator] = jsonFormat1(ParameterValuesGenSeqToValueSeqGenerator)
-
-  /**
    * Reusing below formats for the general trait ValuesSeqGenProvider
    */
   implicit object ValueSeqGenProviderFormat extends JsonFormat[ValueSeqGenProvider] {
@@ -66,6 +59,13 @@ object ParameterValuesJsonProtocol extends DefaultJsonProtocol {
 
     override def write(obj: ValueSeqGenProvider): JsValue = """{}""".toJson
   }
+
+  /**
+   * Allows passing of arbitrary combinations of either single value generators
+   * (ParameterValues instances) or mappings (ParameterValueMappings instances),
+   * creates overall generator of value sequences
+   */
+  implicit val parameterValuesGenSeqToValueSeqGeneratorFormat: RootJsonFormat[ParameterValuesGenSeqToValueSeqGenerator] = jsonFormat((values: Seq[ValueSeqGenProvider]) => ParameterValuesGenSeqToValueSeqGenerator.apply(values), "values")
 
   /**
    * Format for creation of ParameterValues (Seq of values for single type and name)
