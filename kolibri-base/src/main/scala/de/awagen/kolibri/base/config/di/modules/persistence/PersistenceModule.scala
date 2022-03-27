@@ -30,6 +30,8 @@ import de.awagen.kolibri.datatypes.tagging.Tags
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 import org.slf4j.{Logger, LoggerFactory}
 
+import scala.util.Random
+
 object PersistenceModule {
 
   lazy private val logger: Logger = LoggerFactory.getLogger(this.getClass)
@@ -55,12 +57,14 @@ class PersistenceModule {
   lazy val metricDocFormat: MetricDocumentFormat = CSVParameterBasedMetricDocumentFormat("\t")
 
   lazy val keyToFilenameFunc: SerializableFunction1[Tags.Tag, String] = new SerializableFunction1[Tags.Tag, String] {
-    override def apply(v1: Tags.Tag): String = v1.toString
+    val randomAdd: String = Random.alphanumeric.take(5).mkString
+    override def apply(v1: Tags.Tag): String = s"${v1.toString}-$randomAdd"
   }
 
   // apply qualifiers by specifying tagging value
   def metricDocumentWriter(subfolder: String): Writer[MetricDocument[Tags.Tag], Tags.Tag, Any] =
-    BaseMetricDocumentWriter(writer, metricDocFormat, subfolder, directoryPathSeparator)
+    BaseMetricDocumentWriter(writer, metricDocFormat, subfolder, directoryPathSeparator,
+      keyToFilenameFunc)
 
 
 }

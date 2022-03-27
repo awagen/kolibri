@@ -1,7 +1,7 @@
 {
   "type": "ANALYZE_BEST_WORST_REGEX",
   "directory": "test-results/testJob",
-  "regex": ".*[(]q=.+[)]",
+  "regex": ".*[(]q=.+[)].*",
   "currentParams": {
     "a1": ["0.45"],
     "k1": ["v1", "v2"],

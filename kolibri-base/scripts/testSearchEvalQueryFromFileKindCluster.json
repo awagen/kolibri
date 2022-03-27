@@ -123,7 +123,7 @@
       "type": "CONSTANT",
       "weight": 1.0
     },
-    "regex": ".*[(]q=.+[)]",
+    "regex": ".*[(]q=.+[)].*",
     "outputFilename": "(ALL1)",
     "readSubDir": "k8s-test-results/testJob",
     "writeSubDir": "k8s-test-results/testJob"

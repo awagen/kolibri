@@ -1,7 +1,7 @@
 {
   "type": "ANALYZE_QUERY_METRIC_VARIANCE",
   "directory": "test-results/testJob",
-  "regex": ".*[(]q=.+[)]",
+  "regex": ".*[(]q=.+[)].*",
   "metricName": "NDCG_10",
   "queryParamName": "q"
 }

@@ -50,6 +50,7 @@ import play.api.libs.json.JsValue
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
+import scala.util.Random
 
 object SearchJobDefinitions {
 
@@ -77,7 +78,10 @@ object SearchJobDefinitions {
   def searchEvaluationToRunnableJobCmd(searchEvaluation: SearchEvaluation)(implicit as: ActorSystem, ec: ExecutionContext):
   SupervisorActor.ProcessActorRunnableJobCmd[RequestTemplateBuilderModifier, MetricRow, MetricRow, MetricAggregation[Tag]] = {
     val persistenceModule = AppConfig.persistenceModule
-    val writer = persistenceModule.persistenceDIModule.csvMetricAggregationWriter(subFolder = searchEvaluation.jobName, x => x.toString())
+    val writer = persistenceModule.persistenceDIModule.csvMetricAggregationWriter(subFolder = searchEvaluation.jobName, x => {
+      val randomAdd: String = Random.alphanumeric.take(5).mkString
+      s"${x.toString()}-$randomAdd"
+    })
     JobMsgFactory.createActorRunnableJobCmd[Seq[IndexedGenerator[Modifier[RequestTemplateBuilder]]], RequestTemplateBuilderModifier, MetricRow, MetricRow, MetricAggregation[Tag]](
       // the what (which job, which data, which batching method)
       jobId = searchEvaluation.jobName,

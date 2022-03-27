@@ -42,11 +42,14 @@ import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.types.Types.WithCount
 import de.awagen.kolibri.datatypes.values.AggregateValue
+import org.slf4j.{Logger, LoggerFactory}
 
 import scala.concurrent.ExecutionContext
 import scala.language.implicitConversions
 
 object JobMessages {
+
+  private[this] val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
   trait JobMessage extends KolibriSerializable {
 

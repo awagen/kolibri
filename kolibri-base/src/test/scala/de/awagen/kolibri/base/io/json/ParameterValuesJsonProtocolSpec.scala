@@ -138,6 +138,51 @@ class ParameterValuesJsonProtocolSpec extends UnitTestSpec {
         |"key_mapping_assignments": [[0,1]]
         |}
         |""".stripMargin
+
+    val jsonMultiMapping: String =
+      s"""
+         |{
+         |      "key_values": {
+         |        "type": "FROM_ORDERED_VALUES_TYPE",
+         |        "values": {
+         |          "type": "FROM_FILENAME_KEYS_TYPE",
+         |          "directory": "data/queries_for_id",
+         |          "filesSuffix": ".txt",
+         |          "valueName": "id"
+         |        },
+         |        "values_type": "URL_PARAMETER"
+         |      },
+         |      "mapped_values": [
+         |        {
+         |          "type": "FILE_PREFIX_TO_FILE_LINES_TYPE",
+         |          "directory": "data/queries_for_id",
+         |          "files_suffix": ".txt",
+         |          "name": "q",
+         |          "values_type": "URL_PARAMETER"
+         |        },
+         |        {
+         |          "type": "CSV_MAPPING_TYPE",
+         |          "name": "section_id",
+         |          "values_type": "URL_PARAMETER",
+         |          "values": "data/section_for_id/section_for_id.csv",
+         |          "column_delimiter": ";",
+         |          "key_column_index": 0,
+         |          "value_column_index": 1
+         |        },
+         |        {
+         |          "type": "JSON_MAPPINGS_TYPE",
+         |          "name": "section_header",
+         |          "values_type": "HEADER",
+         |          "values": "data/section_headers/section_header_mapping.json"
+         |        }
+         |      ],
+         |      "key_mapping_assignments": [
+         |        [0, 1],
+         |        [0, 2],
+         |        [2, 3]
+         |      ]
+         |    }
+         |""".stripMargin
   }
 
   "ParameterValuesJsonProtocol" must {
@@ -258,6 +303,11 @@ class ParameterValuesJsonProtocolSpec extends UnitTestSpec {
       values.get(1).get mustBe Seq(ParameterValue("param1", ValueType.URL_PARAMETER, "key1"), ParameterValue("mappedParam1", ValueType.URL_PARAMETER, "key1_val2"))
       values.get(2).get mustBe Seq(ParameterValue("param1", ValueType.URL_PARAMETER, "key2"), ParameterValue("mappedParam1", ValueType.URL_PARAMETER, "key2_val1"))
       values.get(3).get mustBe Seq(ParameterValue("param1", ValueType.URL_PARAMETER, "key2"), ParameterValue("mappedParam1", ValueType.URL_PARAMETER, "key2_val2"))
+    }
+
+    "parse ParameterValueMapping multiple mapping" in {
+      // given, when, then
+      ParameterValueMappingDefinitions.jsonMultiMapping.parseJson.convertTo[ParameterValueMapping].nrOfElements mustBe 17
     }
 
     "parse ValueSeqGenProvider" in {
