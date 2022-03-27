@@ -1,0 +1,1 @@
+curl -vX POST http://localhost:8000/search_eval_no_ser -d @testSearchEvalWithParamMappings.json --header "Content-Type: application/json"

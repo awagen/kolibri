@@ -34,7 +34,7 @@ import de.awagen.kolibri.base.usecase.searchopt.http.client.flows.RequestProcess
 import de.awagen.kolibri.base.usecase.searchopt.http.client.flows.RequestProcessingFlows.connectionToProcessingFunc
 import de.awagen.kolibri.base.usecase.searchopt.http.client.flows.responsehandlers.SolrHttpResponseHandlers
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.Aggregators.{fullJobToSingleTagAggregatorSupplier, singleBatchAggregatorSupplier}
-import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.BatchGenerators.batchGenerator
+import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.BatchGenerators.batchByGeneratorAtIndex
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.Expectations.expectationPerBatchSupplier
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.Flows
 import de.awagen.kolibri.base.usecase.searchopt.parse.ParsingConfig
@@ -82,7 +82,7 @@ object SearchJobDefinitions {
       // the what (which job, which data, which batching method)
       jobId = searchEvaluation.jobName,
       data = searchEvaluation.requestTemplateModifiers,
-      dataBatchGenerator = batchGenerator(batchByIndex = searchEvaluation.batchByIndex),
+      dataBatchGenerator = batchByGeneratorAtIndex(batchByIndex = searchEvaluation.batchByIndex),
       // data processing / including tagging and metrics calculations
       transformerFlow = Flows.fullProcessingFlow(
         contextPath = searchEvaluation.contextPath,

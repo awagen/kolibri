@@ -59,5 +59,7 @@ case class PartitionByGroupIndexedGenerator[T](groups: Seq[IndexedGenerator[T]])
     * @tparam B : the type the original element type is mapped to
     * @return : new generator providing the new type
     */
-  override def mapGen[B](f: SerializableCallable.SerializableFunction1[T, B]): IndexedGenerator[B] = allElementSequentialGenerator.mapGen(f)
+  override def mapGen[B](f: SerializableCallable.SerializableFunction1[T, B]): IndexedGenerator[B] = {
+    PartitionByGroupIndexedGenerator(groups.map(x => x.mapGen(f)))
+  }
 }

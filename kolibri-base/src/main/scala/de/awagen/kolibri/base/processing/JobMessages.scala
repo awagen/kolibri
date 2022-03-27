@@ -42,14 +42,11 @@ import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.types.Types.WithCount
 import de.awagen.kolibri.datatypes.values.AggregateValue
-import org.slf4j.{Logger, LoggerFactory}
 
 import scala.concurrent.ExecutionContext
 import scala.language.implicitConversions
 
 object JobMessages {
-
-  private val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
   trait JobMessage extends KolibriSerializable {
 
@@ -60,7 +57,6 @@ object JobMessages {
 
   case class TestPiCalculation(jobName: String, requestTasks: Int, nrThrows: Int, batchSize: Int, resultDir: String) extends JobMessage
 
-  // TODO: replace writing of batch results by their tags with additional appendix making possible to disinguish different batches with same tagging
   case class SearchEvaluation(jobName: String,
                               requestTasks: Int,
                               fixedParams: Map[String, Seq[String]],
@@ -71,10 +67,6 @@ object JobMessages {
                               parsingConfig: ParsingConfig,
                               excludeParamsFromMetricRow: Seq[String],
                               requestTemplateStorageKey: String,
-                              // TODO: distinction between this and singleMapCalculation only needed since resources are
-                              // not expected to be loaded already when batch starts, e.g loaded on demand.
-                              // move this to WorkManager though before any batch is started (handle generally as expiring resource)
-                              // and then resort to normal calculations instead (as in singleMapCalculations)
                               mapFutureMetricRowCalculation: FutureCalculation[WeaklyTypedMap[String], Set[String], MetricRow],
                               singleMapCalculations: Seq[Calculation[WeaklyTypedMap[String], CalculationResult[Double]]],
                               taggingConfiguration: Option[BaseTaggingConfiguration[RequestTemplate, (Either[Throwable, WeaklyTypedMap[String]], RequestTemplate), MetricRow]],
@@ -113,7 +105,6 @@ object JobMessagesImplicits {
         batchSize = calc.batchSize,
         resultDir = calc.resultDir)
     }
-
   }
 
   implicit class SearchEvaluationToRunnable(eval: SearchEvaluation) extends RunnableConvertible {

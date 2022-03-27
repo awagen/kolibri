@@ -1,18 +1,18 @@
 /**
-  * Copyright 2021 Andreas Wagenmann
-  *
-  * Licensed under the Apache License, Version 2.0 (the "License");
-  * you may not use this file except in compliance with the License.
-  * You may obtain a copy of the License at
-  *
-  * http://www.apache.org/licenses/LICENSE-2.0
-  *
-  * Unless required by applicable law or agreed to in writing, software
-  * distributed under the License is distributed on an "AS IS" BASIS,
-  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  * See the License for the specific language governing permissions and
-  * limitations under the License.
-  */
+ * Copyright 2021 Andreas Wagenmann
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package de.awagen.kolibri.datatypes.collections.generators
 
@@ -25,12 +25,12 @@ case class BatchByGeneratorIndexedGenerator[+T](generators: Seq[IndexedGenerator
   override val nrOfElements: Int = generators(batchByIndex).partitions.size
 
   /**
-    * create generator that only generates a part of the original generator.
-    *
-    * @param startIndex : startIndex (inclusive)
-    * @param endIndex   : endIndex (exclusive)
-    * @return generator generating the subpart of the generator as given by startIndex and endIndex
-    */
+   * create generator that only generates a part of the original generator.
+   *
+   * @param startIndex : startIndex (inclusive)
+   * @param endIndex   : endIndex (exclusive)
+   * @return generator generating the subpart of the generator as given by startIndex and endIndex
+   */
   override def getPart(startIndex: Int, endIndex: Int): IndexedGenerator[IndexedGenerator[Seq[T]]] = {
     val start = math.min(math.max(0, startIndex), nrOfElements - 1)
     val end = math.min(math.max(0, endIndex), nrOfElements)
@@ -46,11 +46,11 @@ case class BatchByGeneratorIndexedGenerator[+T](generators: Seq[IndexedGenerator
   }
 
   /**
-    * Get the index-th element
-    *
-    * @param index
-    * @return
-    */
+   * Get the index-th element
+   *
+   * @param index
+   * @return
+   */
   override def get(index: Int): Option[IndexedGenerator[Seq[T]]] = {
     generators(batchByIndex).get(index).map(x => {
       PermutatingIndexedGenerator(generators.indices.map({
@@ -61,14 +61,21 @@ case class BatchByGeneratorIndexedGenerator[+T](generators: Seq[IndexedGenerator
   }
 
   /**
-    * Provided a mapping function, create generator of new type where elements are created by current generator
-    * and then mapped by the provided function
-    *
-    * @param f : mapping function
-    * @tparam B : the type the original element type is mapped to
-    * @return : new generator providing the new type
-    */
+   * Provided a mapping function, create generator of new type where elements are created by current generator
+   * and then mapped by the provided function
+   *
+   * @param f : mapping function
+   * @tparam B : the type the original element type is mapped to
+   * @return : new generator providing the new type
+   *
+   * NOTE: in implementations of mapGen has to be ensured that all elements
+   * are still generated, and take partitionings into account.
+   */
   override def mapGen[B](f: SerializableCallable.SerializableFunction1[IndexedGenerator[Seq[T]], B]): IndexedGenerator[B] = {
-    new ByFunctionNrLimitedIndexedGenerator[B](nrOfElements, x => get(x).map(f))
+    val g: IndexedGenerator[IndexedGenerator[Seq[T]]] = generators(batchByIndex).partitions.mapGen(x =>
+      PermutatingIndexedGenerator(
+        Seq(x) ++ generators.indices.filter(ind => ind != batchByIndex).map(n => generators(n)))
+    )
+    g.mapGen(u => f.apply(u))
   }
 }

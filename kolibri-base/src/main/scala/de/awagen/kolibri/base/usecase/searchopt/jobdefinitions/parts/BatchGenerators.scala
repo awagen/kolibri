@@ -34,9 +34,9 @@ object BatchGenerators {
     * @param batchByIndex : Int - The index of the generator of modifiers to create batches by
     * @return
     */
-  def batchGenerator(batchByIndex: Int): Seq[IndexedGenerator[Modifier[RequestTemplateBuilder]]] => IndexedGenerator[Batch[Modifier[RequestTemplateBuilder]]] =
+  def batchByGeneratorAtIndex(batchByIndex: Int): Seq[IndexedGenerator[Modifier[RequestTemplateBuilder]]] => IndexedGenerator[Batch[Modifier[RequestTemplateBuilder]]] =
     modifierGenerators => {
-      val generator: IndexedGenerator[IndexedGenerator[CombinedModifier[RequestTemplateBuilder]]] = BatchByGeneratorIndexedGenerator(modifierGenerators, batchByIndex)
+      val generator: IndexedGenerator[IndexedGenerator[Modifier[RequestTemplateBuilder]]] = BatchByGeneratorIndexedGenerator(modifierGenerators, batchByIndex)
         .mapGen(x => x.mapGen(y => CombinedModifier(y)))
       ByFunctionNrLimitedIndexedGenerator.createFromSeq(Range(0, generator.size).map(index => Batch(index, generator.get(index).get)))
     }
