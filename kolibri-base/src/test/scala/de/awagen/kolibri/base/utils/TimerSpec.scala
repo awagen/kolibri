@@ -39,7 +39,7 @@ class TimerSpec extends UnitTestSpec {
         "testResult"
       }, 10)
       result.gt(Duration.fromNanos(Math.pow(10, 8)) * 10.0) mustBe true
-      result.lt(Duration.fromNanos(Math.pow(10, 8)) * 10.03) mustBe true
+      result.lt(Duration.fromNanos(Math.pow(10, 8)) * 11.0) mustBe true
     }
   }
 
