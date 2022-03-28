@@ -1,5 +1,5 @@
 {
-  "sec1": ["{\"section\":  1}"],
-  "sec2": ["{\"section\":  2}"],
-  "sec3": ["{\"section\":  3}"]
+  "sec1": "[{'section':  1}]",
+  "sec2": "[{'section':  2}]",
+  "sec3": "[{'section':  3}]"
 }

@@ -88,7 +88,7 @@ class ParameterValuesJsonProtocolSpec extends UnitTestSpec {
 
     val jsonKeyToValuesMappingJson: String =
       """{
-        |"type": "JSON_MAPPINGS_TYPE",
+        |"type": "JSON_ARRAY_MAPPINGS_TYPE",
         |"name": "mappedParam1",
         |"values_type": "URL_PARAMETER",
         |"values": "data/mappedParameterValuesTest/fullKeyValueMappingJson.json"
@@ -170,7 +170,7 @@ class ParameterValuesJsonProtocolSpec extends UnitTestSpec {
          |          "value_column_index": 1
          |        },
          |        {
-         |          "type": "JSON_MAPPINGS_TYPE",
+         |          "type": "JSON_SINGLE_MAPPINGS_TYPE",
          |          "name": "section_header",
          |          "values_type": "HEADER",
          |          "values": "data/section_headers/section_header_mapping.json"

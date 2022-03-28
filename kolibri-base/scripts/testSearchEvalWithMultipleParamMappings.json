@@ -53,7 +53,7 @@
           "value_column_index": 1
         },
         {
-          "type": "JSON_MAPPINGS_TYPE",
+          "type": "JSON_SINGLE_MAPPINGS_TYPE",
           "name": "section_header",
           "values_type": "HEADER",
           "values": "test-paramfiles/section_headers/section_header_mapping.json"

@@ -44,7 +44,8 @@ object ParameterValuesJsonProtocol extends DefaultJsonProtocol {
   val FROM_ORDERED_VALUES_TYPE = "FROM_ORDERED_VALUES_TYPE"
   val JSON_VALUES_MAPPING_TYPE = "JSON_VALUES_MAPPING_TYPE"
   val JSON_VALUES_FILES_MAPPING_TYPE = "JSON_VALUES_FILES_MAPPING_TYPE"
-  val JSON_MAPPINGS_TYPE = "JSON_MAPPINGS_TYPE"
+  val JSON_SINGLE_MAPPINGS_TYPE = "JSON_SINGLE_MAPPINGS_TYPE"
+  val JSON_ARRAY_MAPPINGS_TYPE = "JSON_ARRAY_MAPPINGS_TYPE"
   val CSV_MAPPINGS_TYPE = "CSV_MAPPING_TYPE"
   val FILE_PREFIX_TO_FILE_LINES_MAPPING_TYPE = "FILE_PREFIX_TO_FILE_LINES_TYPE"
 
@@ -126,12 +127,21 @@ object ParameterValuesJsonProtocol extends DefaultJsonProtocol {
           })
           MappedParameterValues(name, valueType, keyToValuesMap)
         // assumes a json with full key value mappings under the values key
-        case JSON_MAPPINGS_TYPE =>
+        case JSON_SINGLE_MAPPINGS_TYPE =>
           val fileReader = AppConfig.persistenceModule.persistenceDIModule.reader
           val name = fields(NAME_KEY).convertTo[String]
           val valueType = fields(VALUES_TYPE_KEY).convertTo[ValueType.Value]
           val mappingsJsonFile = fields(VALUES_KEY).convertTo[String]
-          val jsonMapping = FileReaderUtils.readJsonMapping(mappingsJsonFile, fileReader)
+          val jsonMapping = FileReaderUtils.readJsonMapping(mappingsJsonFile, fileReader, x => x.convertTo[String])
+            .map(x => (x._1, Seq(x._2)))
+            .map(x => (x._1, ByFunctionNrLimitedIndexedGenerator.createFromSeq(x._2)))
+          MappedParameterValues(name, valueType, jsonMapping)
+        case JSON_ARRAY_MAPPINGS_TYPE =>
+          val fileReader = AppConfig.persistenceModule.persistenceDIModule.reader
+          val name = fields(NAME_KEY).convertTo[String]
+          val valueType = fields(VALUES_TYPE_KEY).convertTo[ValueType.Value]
+          val mappingsJsonFile = fields(VALUES_KEY).convertTo[String]
+          val jsonMapping = FileReaderUtils.readJsonMapping(mappingsJsonFile, fileReader, x => x.convertTo[Seq[String]])
             .map(x => (x._1, ByFunctionNrLimitedIndexedGenerator.createFromSeq(x._2)))
           MappedParameterValues(name, valueType, jsonMapping)
         // reading file prefixes in folder, and creating mapping for each where prefix is key and values are the values
