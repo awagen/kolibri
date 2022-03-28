@@ -130,7 +130,7 @@ function retrieveAnalysisTopFlop(executionId,
     const data = {
         "type": "ANALYZE_BEST_WORST_REGEX",
         "directory": executionId,
-        "regex": ".*[(]q=.+[)]",
+        "regex": ".*[(]q=.+[)].*",
         "currentParams": currentParams,
         "compareParams": compareParams,
         "metricName": metricName,
@@ -173,7 +173,7 @@ function retrieveAnalysisVariance(executionId,
     const data = {
         "type": "ANALYZE_QUERY_METRIC_VARIANCE",
         "directory": executionId,
-        "regex": ".*[(]q=.+[)]",
+        "regex": ".*[(]q=.+[)].*",
         "metricName": metricName,
         "queryParamName": queryParamName
     }
