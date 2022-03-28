@@ -341,11 +341,6 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
 
   override def receive: Receive = informationProvidingReceive.orElse(jobStartingReceive).orElse(stateKeepingReceive)
 
-  /**
-   * We keep a very relaxed supervision here by just allowing the actors
-   * responsible for distributing the processing of single jobs to keep their state
-   * and continue listening to messages arriving at their inbox.
-   */
   override val supervisorStrategy: OneForOneStrategy =
     OneForOneStrategy(maxNrOfRetries = config.supervisorMaxNumOfRetries, withinTimeRange = config.supervisorMaxNumOfRetriesWithinTime) {
       case e: Exception =>
