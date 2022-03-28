@@ -1,4 +1,4 @@
-FROM adoptopenjdk/openjdk13:jdk-13.0.2_8-alpine-slim
+FROM adoptopenjdk/openjdk11:jdk-11.0.11_9-alpine-slim
 
 ENV JVM_OPTS "-XX:+UseG1GC -Xms512m -Xmx1024m"
 

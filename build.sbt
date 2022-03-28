@@ -13,8 +13,8 @@ ThisBuild / scalacOptions ++= Seq(
 )
 //javacOptions
 ThisBuild / javacOptions ++= Seq(
-  "-source", "13",
-  "-target", "13"
+  "-source", "11",
+  "-target", "11"
 )
 
 //by default run types run on same JVM as sbt. This might lead to crashing, thus we fork the JVM.
