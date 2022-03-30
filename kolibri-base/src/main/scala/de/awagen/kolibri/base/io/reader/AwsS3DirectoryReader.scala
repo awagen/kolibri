@@ -49,26 +49,38 @@ case class AwsS3DirectoryReader(bucketName: String,
     }
   }
 
+  private[reader] def applyPathFilter(baseFilenameFilter: String => Boolean): String => Boolean = {
+    x => {
+      val fileName = x.split(delimiter).map(x => x.trim).filter(x => x.nonEmpty).last
+      fileFilter.apply(fileName) && baseFilenameFilter.apply(fileName)
+    }
+  }
+
   override def listResources(subDir: String, baseFilenameFilter: String => Boolean): Seq[String] = {
     try {
       setS3ClientIfNotSet()
       var fullprefix = s"$dirPathNormalized${subDir.stripPrefix(delimiter)}".stripPrefix(delimiter).stripSuffix(delimiter) + delimiter
       if (fullprefix == delimiter) fullprefix = ""
+      // behavior of the listObjectsV2Request: using no delimiter here will cause no common prefixes to be found,
+      // yet all paths containing the prefix will be listed in object summaries (whether directory or file; all hierarchies
+      // up if containing the prefix).
+      // If delimiter is defined, only the level directly after the prefix (should end with delimiter) will be
+      // contained within common prefixes but no object fill be found if there is no file on that level
       val req = new ListObjectsV2Request()
         .withBucketName(bucketName)
         .withPrefix(fullprefix)
         .withDelimiter(delimiter)
-      // listing contains directories as common prefixes
       val listing = s3Client.listObjectsV2(req)
       // listing contains files as objects
       val files: Seq[S3ObjectSummary] = listing.getObjectSummaries.asScala.toSeq
+      // listing contains directories as common prefixes (ending with delimiter set in the request, if any)
+      val folders: Seq[String] = listing.getCommonPrefixes.asScala.toSeq
       val filePaths: Seq[String] = files
         .map(x => x.getKey)
-        .filter(x => {
-          val fileName = x.split(delimiter).map(x => x.trim).filter(x => x.nonEmpty).last
-          fileFilter.apply(fileName) && baseFilenameFilter.apply(fileName)
-        })
-      filePaths
+        .filter(x => applyPathFilter(baseFilenameFilter).apply(x))
+      val folderPaths: Seq[String] = folders
+        .filter(x => applyPathFilter(baseFilenameFilter).apply(x))
+      filePaths ++ folderPaths
     }
     catch {
       case e: Throwable =>

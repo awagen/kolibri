@@ -178,6 +178,9 @@ credentials). See example within docker-compose.yaml.
 Note that if the configuration file is not in the default location ```~/.aws/config```, additionally the env variable
 ```AWS_CONFIG_FILE``` has to be set to the directory within the container where the config file was mounted to.
 
+In case you login via temporary token via sso, check aws doc how to retrieve respective credentials for programmatic
+access (you can go to your sso web interface and select the account and then programmatic access).
+
 ## Notes on local execution with access to GCP account
 Analogue to the description of enabling AWS access, which refers to a credentials folder,
 for GCP we have to set the env variable ```GOOGLE_APPLICATION_CREDENTIALS``` to the full path

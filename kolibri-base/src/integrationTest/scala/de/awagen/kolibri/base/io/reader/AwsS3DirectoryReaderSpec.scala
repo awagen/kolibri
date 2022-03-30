@@ -53,6 +53,7 @@ class AwsS3DirectoryReaderSpec extends UnitTestSpec with BeforeAndAfterAll {
     client.putObject("testbucket", "dir1/dir2/dir3/dir3_1", "testcontent1")
     client.putObject("testbucket", "dir1/dir2/dir3/dir3_2", "testcontent2")
     client.putObject("testbucket", "dir1/dir2/dir3/file.txt", "testcontent3")
+    client.putObject("testbucket", "dir1/dir2/dir3/dir4/file1.txt", "testcontent3")
     client
   }
 
@@ -67,10 +68,13 @@ class AwsS3DirectoryReaderSpec extends UnitTestSpec with BeforeAndAfterAll {
         awsS3Client = Some(s3)
       )
       // when
-      val data: Seq[String] = directoryReader.listResources("dir2/dir3", _ => true)
+      val dataFilesAndFolder: Seq[String] = directoryReader.listResources("dir2/dir3", _ => true)
+      val dataOnlyFolders: Seq[String] = directoryReader.listResources("dir2", _ => true)
       // then
-      data.size mustBe 2
-      data mustBe Seq("dir1/dir2/dir3/dir3_1", "dir1/dir2/dir3/dir3_2")
+      dataFilesAndFolder.size mustBe 3
+      dataOnlyFolders.size mustBe 1
+      dataFilesAndFolder.toSet mustBe Set("dir1/dir2/dir3/dir3_1", "dir1/dir2/dir3/dir3_2", "dir1/dir2/dir3/dir4/")
+      dataOnlyFolders mustBe Seq("dir1/dir2/dir3/")
     }
 
   }
