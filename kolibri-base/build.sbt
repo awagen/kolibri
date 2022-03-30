@@ -18,6 +18,7 @@ val apacheCommonsIOVersion = "2.8.0"
 val kamonVersion = "2.2.0"
 val macwireVersion = "2.4.0"
 val scalacScoverageRuntimeVersion = "1.4.9"
+val testcontainersVersion = "1.16.3"
 
 version := "0.1.0-rc2"
 
@@ -137,7 +138,9 @@ val additionalDependencies = Seq(
   "com.softwaremill.macwire" %% "macros" % macwireVersion,
   "com.softwaremill.macwire" %% "util" % macwireVersion,
   "org.scalamock" %% "scalamock" % scalaMockVersion % Test,
-  "org.scoverage" %% "scalac-scoverage-runtime" % scalacScoverageRuntimeVersion % Test
+  "org.scoverage" %% "scalac-scoverage-runtime" % scalacScoverageRuntimeVersion % Test,
+  "org.testcontainers" % "testcontainers" % testcontainersVersion % Test,
+  "org.testcontainers" % "localstack" % testcontainersVersion % Test
 )
 
 name := "kolibri-base"

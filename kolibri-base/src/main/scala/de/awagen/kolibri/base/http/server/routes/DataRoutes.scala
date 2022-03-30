@@ -189,7 +189,7 @@ object DataRoutes extends DefaultJsonProtocol {
                             EMPTY_STRING
                           case x if x.startsWith(FILE_HEADER_DESCRIPTION_PREFIX) =>
                             dataDescription = x.stripPrefix(FILE_HEADER_DESCRIPTION_PREFIX).trim
-                            ""
+                            EMPTY_STRING
                           case x => x
                         }
                         .filter(x => x.nonEmpty && !x.startsWith("#"))

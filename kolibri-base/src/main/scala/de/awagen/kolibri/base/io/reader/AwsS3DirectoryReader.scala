@@ -31,13 +31,14 @@ case class AwsS3DirectoryReader(bucketName: String,
                                 dirPath: String,
                                 region: Regions,
                                 delimiter: String = "/",
-                                fileFilter: String => Boolean) extends DataOverviewReader {
+                                fileFilter: String => Boolean,
+                                awsS3Client: Option[AmazonS3] = None) extends DataOverviewReader {
 
   val dirPathNormalized: String = normalizeBucketPath(dirPath, delimiter)
 
   private val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
-  private[this] var s3Client: AmazonS3 = _
+  private[this] var s3Client: AmazonS3 = awsS3Client.orNull
 
   // workaround for serialization
   def setS3ClientIfNotSet(): Unit = {
