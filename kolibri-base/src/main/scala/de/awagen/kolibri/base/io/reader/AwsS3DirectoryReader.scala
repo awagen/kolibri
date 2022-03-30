@@ -75,12 +75,12 @@ case class AwsS3DirectoryReader(bucketName: String,
       val files: Seq[S3ObjectSummary] = listing.getObjectSummaries.asScala.toSeq
       // listing contains directories as common prefixes (ending with delimiter set in the request, if any)
       val folders: Seq[String] = listing.getCommonPrefixes.asScala.toSeq
-      val filePaths: Seq[String] = files
+        .filter(x => !fullprefix.equals(x))
+      val paths: Seq[String] = files
         .map(x => x.getKey)
+        .concat(folders)
         .filter(x => applyPathFilter(baseFilenameFilter).apply(x))
-      val folderPaths: Seq[String] = folders
-        .filter(x => applyPathFilter(baseFilenameFilter).apply(x))
-      filePaths ++ folderPaths
+      paths
     }
     catch {
       case e: Throwable =>
