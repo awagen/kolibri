@@ -20,6 +20,7 @@ ThisBuild / javacOptions ++= Seq(
 //by default run types run on same JVM as sbt. This might lead to crashing, thus we fork the JVM.
 ThisBuild / fork in Runtime := true
 ThisBuild / fork in Test := true
+ThisBuild / fork in IntegrationTest := true
 ThisBuild / fork in run := true
 
 // with TrackIfMissing, sbt will not try to compile internal
@@ -31,6 +32,7 @@ ThisBuild / trackInternalDependencies := TrackLevel.TrackIfMissing
 //disables buffered logging (buffering would cause results of tests to be logged only at end of all tests)
 //http://www.scalatest.org/user_guide/using_scalatest_with_sbt
 ThisBuild / logBuffered in Test := false
+ThisBuild / logBuffered in IntegrationTest := false
 //disable version conflict messages
 ThisBuild / evictionWarningOptions in update := EvictionWarningOptions.default
   .withWarnTransitiveEvictions(false)
@@ -48,3 +50,7 @@ lazy val `kolibri-datatypes` = (project in file("kolibri-datatypes"))
 lazy val `kolibri-base` = (project in file("kolibri-base"))
   .dependsOn(`kolibri-datatypes` % "compile->compile")
   .enablePlugins(JvmPlugin)
+  .configs(IntegrationTest)
+  .settings(
+    Defaults.itSettings
+  )

@@ -65,7 +65,9 @@ case class AwsS3DirectoryReader(bucketName: String,
       // yet all paths containing the prefix will be listed in object summaries (whether directory or file; all hierarchies
       // up if containing the prefix).
       // If delimiter is defined, only the level directly after the prefix (should end with delimiter) will be
-      // contained within common prefixes but no object fill be found if there is no file on that level
+      // contained within common prefixes but no object fill be found if there is no file on that level.
+      // Exception to above: if delimiter defined and path ending on delimiter passed, will return the folder matching
+      // exactly this path as object, thus the below filtering to avoid retrieving this.
       val req = new ListObjectsV2Request()
         .withBucketName(bucketName)
         .withPrefix(fullprefix)

@@ -20,3 +20,5 @@ jobs:
         java-version: 11
     - name: Run tests
       run: sbt test
+    - name: Run integration tests
+      run: sbt IntegrationTest/test

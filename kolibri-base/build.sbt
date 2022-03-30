@@ -31,6 +31,7 @@ lazy val jvmOptions = Seq(
 // set javaOptions
 javaOptions in Runtime ++= jvmOptions
 javaOptions in Test ++= jvmOptions
+javaOptions in IntegrationTest ++= jvmOptions
 
 // scoverage plugin setting to exclude classes from coverage report
 coverageExcludedPackages := "de\\.awagen\\.kolibri\\.base\\.config\\..*;" +
@@ -47,6 +48,7 @@ coverageExcludedPackages := "de\\.awagen\\.kolibri\\.base\\.config\\..*;" +
 
 // defining fixed env vars for test scope
 envVars in Test := Map("PROFILE" -> "test")
+envVars in IntegrationTest := Map("PROFILE" -> "test")
 
 test in assembly := {} //causes no tests to be executed when calling "sbt assembly" (without this setting executes all)
 assemblyJarName in assembly := s"kolibri-base.${version.value}.jar" //jar name
@@ -116,13 +118,13 @@ val additionalDependencies = Seq(
   "com.typesafe.akka" %% "akka-protobuf-v3" % akkaVersion,
   "com.typesafe.akka" %% "akka-testkit" % akkaVersion,
   //scala test framework (scalactic is recommended but not required)(http://www.scalatest.org/install)
-  "org.scalactic" %% "scalactic" % scalaTestVersion % Test,
-  "org.scalatest" %% "scalatest" % scalaTestVersion % Test,
+  "org.scalactic" %% "scalactic" % scalaTestVersion % "test,it",
+  "org.scalatest" %% "scalatest" % scalaTestVersion % "test,it",
   "com.typesafe.akka" %% "akka-http" % akkaHttpVersion,
   "com.typesafe.akka" %% "akka-http-spray-json" % akkaHttpVersion,
   "com.typesafe.akka" %% "akka-http2-support" % akkaHttpVersion,
   "com.typesafe.akka" %% "akka-stream" % akkaVersion,
-  "com.typesafe.akka" %% "akka-stream-testkit" % akkaVersion % Test,
+  "com.typesafe.akka" %% "akka-stream-testkit" % akkaVersion % "test,it",
   "com.typesafe.akka" %% "akka-slf4j" % akkaVersion,
   "ch.qos.logback" % "logback-classic" % logbackVersion,
   "com.chuusai" %% "shapeless" % shapelessVersion,
@@ -137,10 +139,10 @@ val additionalDependencies = Seq(
   "io.kamon" %% "kamon-prometheus" % kamonVersion,
   "com.softwaremill.macwire" %% "macros" % macwireVersion,
   "com.softwaremill.macwire" %% "util" % macwireVersion,
-  "org.scalamock" %% "scalamock" % scalaMockVersion % Test,
-  "org.scoverage" %% "scalac-scoverage-runtime" % scalacScoverageRuntimeVersion % Test,
-  "org.testcontainers" % "testcontainers" % testcontainersVersion % Test,
-  "org.testcontainers" % "localstack" % testcontainersVersion % Test
+  "org.scalamock" %% "scalamock" % scalaMockVersion % "test,it",
+  "org.scoverage" %% "scalac-scoverage-runtime" % scalacScoverageRuntimeVersion % "test,it",
+  "org.testcontainers" % "testcontainers" % testcontainersVersion % IntegrationTest,
+  "org.testcontainers" % "localstack" % testcontainersVersion % IntegrationTest
 )
 
 name := "kolibri-base"
