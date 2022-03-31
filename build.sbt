@@ -50,7 +50,8 @@ lazy val `kolibri-datatypes` = (project in file("kolibri-datatypes"))
 lazy val `kolibri-base` = (project in file("kolibri-base"))
   .dependsOn(`kolibri-datatypes` % "compile->compile")
   .enablePlugins(JvmPlugin)
-  .configs(IntegrationTest)
+  // extending Test config here to have access to test classpath
+  .configs(IntegrationTest.extend(Test))
   .settings(
     Defaults.itSettings
   )

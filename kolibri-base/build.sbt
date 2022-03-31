@@ -139,10 +139,10 @@ val additionalDependencies = Seq(
   "io.kamon" %% "kamon-prometheus" % kamonVersion,
   "com.softwaremill.macwire" %% "macros" % macwireVersion,
   "com.softwaremill.macwire" %% "util" % macwireVersion,
-  "org.scalamock" %% "scalamock" % scalaMockVersion % "test,it",
-  "org.scoverage" %% "scalac-scoverage-runtime" % scalacScoverageRuntimeVersion % "test,it",
-  "org.testcontainers" % "testcontainers" % testcontainersVersion % IntegrationTest,
-  "org.testcontainers" % "localstack" % testcontainersVersion % IntegrationTest
+  "org.scalamock" %% "scalamock" % scalaMockVersion % Test,
+  "org.scoverage" %% "scalac-scoverage-runtime" % scalacScoverageRuntimeVersion % Test,
+  "org.testcontainers" % "testcontainers" % testcontainersVersion % Test,
+  "org.testcontainers" % "localstack" % testcontainersVersion % Test
 )
 
 name := "kolibri-base"
