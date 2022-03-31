@@ -29,11 +29,12 @@ import scala.io.Source
 case class AwsS3FileReader(bucketName: String,
                            dirPath: String,
                            region: Regions,
-                           delimiter: String = "/") extends Reader[String, Seq[String]] {
+                           delimiter: String = "/",
+                           awsS3Client: Option[AmazonS3] = None) extends Reader[String, Seq[String]] {
 
   val dirPathNormalized: String = normalizeBucketPath(dirPath, delimiter)
 
-  private[this] var s3Client: AmazonS3 = _
+  private[this] var s3Client: AmazonS3 = awsS3Client.orNull
 
   // workaround for serialization
   def setS3ClientIfNotSet(): Unit = {
