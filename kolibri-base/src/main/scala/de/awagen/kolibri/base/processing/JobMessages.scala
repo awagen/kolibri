@@ -30,7 +30,7 @@ import de.awagen.kolibri.base.processing.modifiers.Modifier
 import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ValueSeqGenProvider
 import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
 import de.awagen.kolibri.base.processing.tagging.TaggingConfigurations.BaseTaggingConfiguration
-import de.awagen.kolibri.base.traits.Traits.WithResources
+import de.awagen.kolibri.base.resources.Resources.WithResources
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.SearchJobDefinitions
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.{Calculation, CalculationResult, FutureCalculation}
 import de.awagen.kolibri.base.usecase.searchopt.parse.ParsingConfig

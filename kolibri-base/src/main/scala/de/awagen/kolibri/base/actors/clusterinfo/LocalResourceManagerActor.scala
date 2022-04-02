@@ -71,7 +71,7 @@ case class LocalResourceManagerActor() extends Actor with ActorLogging {
     judgementResourceToJobMapping = value
   }
 
-  override def receive: Receive = ddReceive.orElse[Any, Unit](msg => msg match {
+  override def receive: Receive = ddReceive.orElse[Any, Unit] {
     case GetExistingJudgementResourceMapping =>
       sender() ! ExistingJudgementResourceMapping(judgementResourceToJobMapping)
     case msg@RemoveValueFromAllMappings(resourceKey, jobId) =>
@@ -108,5 +108,5 @@ case class LocalResourceManagerActor() extends Actor with ActorLogging {
               }
             })
         })
-  })
+  }
 }

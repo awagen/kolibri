@@ -16,7 +16,7 @@
 
 package de.awagen.kolibri.base.usecase.searchopt.io.json
 
-import de.awagen.kolibri.base.traits.Traits.{Resource, ResourceType}
+import de.awagen.kolibri.base.resources.Resources.{Resource, ResourceType}
 import de.awagen.kolibri.base.usecase.searchopt.provider.{FileBasedJudgementProviderFactory, JudgementProviderFactory}
 import spray.json.{DefaultJsonProtocol, DeserializationException, JsString, JsValue, JsonFormat}
 

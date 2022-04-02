@@ -17,7 +17,7 @@
 
 package de.awagen.kolibri.base.usecase.searchopt.io.json
 
-import de.awagen.kolibri.base.traits.Traits.ResourceType
+import de.awagen.kolibri.base.resources.Resources.ResourceType
 import de.awagen.kolibri.base.usecase.searchopt.io.json.JudgementProviderFactoryJsonProtocol._
 import de.awagen.kolibri.base.usecase.searchopt.io.json.MetricsCalculationJsonProtocol._
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations._

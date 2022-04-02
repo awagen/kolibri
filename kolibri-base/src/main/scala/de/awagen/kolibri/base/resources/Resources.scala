@@ -15,15 +15,33 @@
  */
 
 
-package de.awagen.kolibri.base.traits
+package de.awagen.kolibri.base.resources
 
+import de.awagen.kolibri.base.resources.Resources.ResourceType.ResourceType
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 
-object Traits {
+import scala.collection.mutable
 
-  trait WithBatchNr extends KolibriSerializable {
+object Resources {
 
-    def batchNr: Int
+  object ResourceType extends Enumeration {
+    type ResourceType = Value
+
+    val JUDGEMENTS_FILE: Value = Value
+
+  }
+
+  case class Resource(resourceType: ResourceType, identifier: String) extends KolibriSerializable
+
+  trait WithResources extends KolibriSerializable {
+
+    private[this] val resourceSet: mutable.Set[Resource] = mutable.Set.empty[Resource]
+
+    def resources: Set[Resource] = resourceSet.toSet
+
+    def addResource(resource: Resource): Unit = {
+      resourceSet += resource
+    }
 
   }
 

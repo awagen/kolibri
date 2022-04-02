@@ -43,7 +43,8 @@ import de.awagen.kolibri.base.processing.distribution.DistributionStates
 import de.awagen.kolibri.base.processing.execution.functions.Execution
 import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
 import de.awagen.kolibri.base.routing.Routers.createWorkerRoutingServiceForJob
-import de.awagen.kolibri.base.traits.Traits.{ResourceType, WithBatchNr}
+import de.awagen.kolibri.base.resources.Resources.ResourceType
+import de.awagen.kolibri.base.traits.Traits.WithBatchNr
 import de.awagen.kolibri.datatypes.collections.generators.ByFunctionNrLimitedIndexedGenerator
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
