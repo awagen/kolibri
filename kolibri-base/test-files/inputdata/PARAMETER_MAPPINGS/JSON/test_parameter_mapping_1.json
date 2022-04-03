@@ -1,0 +1,7 @@
+{
+  "q1": ["v1", "v2", "v3"],
+  "q2": ["v1"],
+  "q3": ["v5", "v6"]
+}
+#identifier=v1
+#description=Example header values

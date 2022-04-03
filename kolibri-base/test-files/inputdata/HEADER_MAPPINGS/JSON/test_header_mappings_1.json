@@ -1,0 +1,7 @@
+{
+  "q1": ["[{'section':  1}]"],
+  "q2": ["[{'section':  2}]"],
+  "q3": ["[{'section':  3}]"]
+}
+#identifier=x-obj
+#description=Example header values

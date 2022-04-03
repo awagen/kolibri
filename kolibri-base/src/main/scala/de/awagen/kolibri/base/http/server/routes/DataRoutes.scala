@@ -26,14 +26,15 @@ import de.awagen.kolibri.base.config.AppProperties
 import de.awagen.kolibri.base.config.AppProperties.config.kolibriDispatcherName
 import de.awagen.kolibri.base.http.server.routes.StatusRoutes.corsHandler
 import de.awagen.kolibri.base.io.json.EnumerationJsonProtocol.dataFileTypeFormat
-import de.awagen.kolibri.base.io.json.{OrderedMultiValuesJsonProtocol, OrderedValuesJsonProtocol}
 import de.awagen.kolibri.base.io.json.OrderedMultiValuesJsonProtocol.OrderedMultiValuesAnyFormat
+import de.awagen.kolibri.base.io.reader.FileReaderUtils.JsValueOps._
+import de.awagen.kolibri.base.io.reader.FileReaderUtils._
 import de.awagen.kolibri.base.io.reader.ReaderUtils.safeContentRead
-import de.awagen.kolibri.base.io.reader.{DataOverviewReader, Reader}
+import de.awagen.kolibri.base.io.reader.{DataOverviewReader, FileReaderUtils, Reader}
+import de.awagen.kolibri.base.processing.modifiers.ParameterValues._
 import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator, PermutatingIndexedGenerator}
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.multivalues.OrderedMultiValues
-import de.awagen.kolibri.datatypes.values.DistinctValues
 import org.slf4j.{Logger, LoggerFactory}
 import spray.json._
 
@@ -54,17 +55,18 @@ object DataRoutes extends DefaultJsonProtocol {
 
   /**
    * Case class specifying the response for a single file data source.
-   * @param fileType - File type the file corresponds to
-   * @param fileName - the filename
-   * @param identifier - an identifer, specifying what data is used for. Lets say fileType is PARAMETER, the identifier
-   *                   should correspond to the url parameter name (if set in the source file as line with prefix FILE_HEADER_IDENTIFIER_PREFIX)
-   * @param description - a description for the data (if set in the source file as line with prefix FILE_HEADER_DESCRIPTION_PREFIX)
+   *
+   * @param fileType         - File type the file corresponds to
+   * @param fileName         - the filename
+   * @param identifier       - an identifer, specifying what data is used for. Lets say fileType is PARAMETER, the identifier
+   *                         should correspond to the url parameter name (if set in the source file as line with prefix FILE_HEADER_IDENTIFIER_PREFIX)
+   * @param description      - a description for the data (if set in the source file as line with prefix FILE_HEADER_DESCRIPTION_PREFIX)
    * @param totalNrOfSamples - specifies how many samples in total are contained in the file source
-   * @param jsonDefinition - the json definition corresponding to the OrderedMultiValues element given by the file (see OrderedMultiValuesJsonProtocol).
-   *                       Allows retrieving the whole data by parsing the json definition into the object.
-   * @param samples - a selected nr of samples representing the file content
+   * @param jsonDefinition   - the json definition corresponding to the OrderedMultiValues element given by the file (see OrderedMultiValuesJsonProtocol).
+   *                         Allows retrieving the whole data by parsing the json definition into the object.
+   * @param samples          - a selected nr of samples representing the file content
    */
-  case class FileDataSourceInfo(fileType: DataFileType.Val, fileName: String, identifier: String, description: String, totalNrOfSamples: Int, jsonDefinition: String, samples: Seq[Seq[String]]) extends DataMsg
+  case class FileDataSourceInfo(fileType: DataFileType.Val, fileName: String, identifier: String, description: String, totalNrOfSamples: Int, jsonDefinition: JsValue, samples: JsArray) extends DataMsg
 
   implicit val fileDataSourceInfoFormat: RootJsonFormat[FileDataSourceInfo] = jsonFormat7(FileDataSourceInfo)
   implicit val baseFileDataSourceInfoFormat: RootJsonFormat[BaseFileDataSourceInfo] = jsonFormat3(BaseFileDataSourceInfo)
@@ -74,23 +76,33 @@ object DataRoutes extends DefaultJsonProtocol {
    */
   object DataFileType extends Enumeration {
 
-    case class Val(contentToData: String => JsArray) extends super.Val
-
-    def stringToValueSeqFunc(castFunc: String => JsValue): String => JsArray = x => {
-      JsArray(x.split("\n").map(x => x.trim)
-        .filter(x => x.nonEmpty)
-        .map(x => castFunc.apply(x))
-        .toSeq: _*)
-    }
+    case class Val(contentToData: String => JsValue,
+                   subFolder: String,
+                   valueToSize: JsValue => Int,
+                   valueToSampleOfSize: Int => JsValue => JsArray) extends super.Val
 
     def byName(name: String): Val = name.toUpperCase match {
       case "PARAMETER" => PARAMETER
+      case "PARAMETER_MAPPING_CSV" => PARAMETER_MAPPING_CSV
+      case "PARAMETER_MAPPING_JSON" => PARAMETER_MAPPING_JSON
       case "HEADER" => HEADER
+      case "HEADER_MAPPING_CSV" => HEADER_MAPPING_CSV
+      case "HEADER_MAPPING_JSON" => HEADER_MAPPING_JSON
       case "BODIES" => BODIES
+      case "BODIES_MAPPING_CSV" => BODIES_MAPPING_CSV
+      case "BODIES_MAPPING_JSON" => BODIES_MAPPING_JSON
       case _ => throw new IllegalArgumentException(s"no DataFileType by name '$name' found")
     }
 
-    val PARAMETER, HEADER, BODIES: Val = Val(stringToValueSeqFunc(x => JsString(x)))
+    val PARAMETER: Val = Val(stringToValueSeqFunc(x => JsString(x)), "PARAMETER", JS_ARRAY_SIZE, num => jsArraySamples(num))
+    val HEADER: Val = Val(stringToValueSeqFunc(x => JsString(x)), "HEADER", JS_ARRAY_SIZE, num => jsArraySamples(num))
+    val BODIES: Val = Val(stringToValueSeqFunc(x => x.parseJson), "BODIES", JS_ARRAY_SIZE, num => jsArraySamples(num))
+    val PARAMETER_MAPPING_CSV: Val = Val(csvToMapping, "PARAMETER_MAPPINGS/CSV", JS_OBJECT_KEY_SIZE, num => jsObjectMappingSamples(num))
+    val PARAMETER_MAPPING_JSON: Val = Val(parseJsonContent, "PARAMETER_MAPPINGS/JSON", JS_OBJECT_KEY_SIZE, num => jsObjectMappingSamples(num))
+    val HEADER_MAPPING_CSV: Val = Val(csvToMapping, "HEADER_MAPPINGS/CSV", JS_OBJECT_KEY_SIZE, num => jsObjectMappingSamples(num))
+    val HEADER_MAPPING_JSON: Val = Val(parseJsonContent, "HEADER_MAPPINGS/JSON", JS_OBJECT_KEY_SIZE, num => jsObjectMappingSamples(num))
+    val BODIES_MAPPING_CSV: Val = Val(csvToMapping, "BODIES_MAPPINGS/CSV", JS_OBJECT_KEY_SIZE, num => jsObjectMappingSamples(num))
+    val BODIES_MAPPING_JSON: Val = Val(parseJsonContent, "BODIES_MAPPINGS/JSON", JS_OBJECT_KEY_SIZE, num => jsObjectMappingSamples(num))
   }
 
   private[this] val DATA_PATH_PREFIX = "data"
@@ -100,11 +112,13 @@ object DataRoutes extends DefaultJsonProtocol {
   private[this] val GENERATOR_PATH_PREFIX = "generator"
   private[this] val INFO_PATH = "info"
 
-  private[this] val FILE_HEADER_IDENTIFIER_PREFIX = "#identifier="
-  private[this] val FILE_HEADER_DESCRIPTION_PREFIX = "#description="
+  private[this] val FILE_HEADER_IDENTIFIER_KEY = "identifier"
+  private[this] val FILE_HEADER_DESCRIPTION_KEY = "description"
+  private[this] val FILE_HEADER_CSV_COLUMN_DELIMITER_KEY = "delimiter"
   private[this] val DIRECTORY_PATH_DELIMITER = "/"
   private[this] val ALL_PATH = "all"
-  private[this] val EMPTY_STRING = ""
+
+  private[this] val RETURN_N_SAMPLES_PARAM = "returnNSamples"
 
 
   /**
@@ -130,14 +144,33 @@ object DataRoutes extends DefaultJsonProtocol {
       })
   }
 
-  def getFilesByType(typeName: String): Seq[String] = {
-    val path = s"$inputDataPath/${typeName.toUpperCase}"
+  /**
+   * Given a particular type name, returns all available files for it
+   *
+   * @param typeName - the file type
+   * @return
+   */
+  private[routes] def getFilesByType(typeName: String): Seq[String] = {
+    val path = s"$inputDataPath/${DataFileType.byName(typeName.toUpperCase).subFolder}"
     logger.debug(s"checking for files in path: $path")
-    fileOverviewReader
-      .listResources(path, _ => true)
-      .map(filepath => filepath.split(DIRECTORY_PATH_DELIMITER).last.trim)
+    try {
+      fileOverviewReader
+        .listResources(path, _ => true)
+        .map(filepath => filepath.split(DIRECTORY_PATH_DELIMITER).last.trim)
+    }
+    catch {
+      case e: Exception =>
+        logger.error(s"Could not read directory for typeName '$typeName'", e)
+        Seq.empty
+    }
   }
 
+  /**
+   * For a particular type and identifier, load the available data and return it
+   *
+   * @param system
+   * @return
+   */
   def getValuesByTypeAndFile(implicit system: ActorSystem): Route = {
     implicit val ec: ExecutionContextExecutor = system.dispatchers.lookup(kolibriDispatcherName)
     corsHandler(
@@ -154,14 +187,27 @@ object DataRoutes extends DefaultJsonProtocol {
       })
   }
 
-  def getResourceInfoForType(dataType: DataFileType.Val, identifier: String): JsArray = {
-    val fullPath = s"$inputDataPath/${dataType.toString().toUpperCase}/$identifier"
+  /**
+   * Given a particular DataFileType and identifier, read full content and apply the dataType's value casting.
+   *
+   * @param dataType   - the data type for the identifier
+   * @param identifier - the resource identifier (e.g right now simple the filePath relative to the datatype's folder)
+   * @return
+   */
+  private[routes] def getResourceInfoForType(dataType: DataFileType.Val, identifier: String): JsValue = {
+    val fullPath = s"$inputDataPath/${dataType.subFolder}/$identifier"
     logger.debug(s"trying to read file: $fullPath")
     val content: String = safeContentRead(fullPath, "", logOnFail = true)
     logger.debug(s"content: $content")
     dataType.contentToData.apply(content)
   }
 
+  /**
+   * Endpoint to retrieve available data files for all data types.
+   *
+   * @param system
+   * @return
+   */
   def getAllIndexedGeneratorInfosForFileData(implicit system: ActorSystem): Route = {
     implicit val ec: ExecutionContextExecutor = system.dispatchers.lookup(kolibriDispatcherName)
     corsHandler(
@@ -169,46 +215,99 @@ object DataRoutes extends DefaultJsonProtocol {
         pathPrefix(INFO_PATH) {
           path(ALL_PATH) {
             get {
-              parameters("returnNSamples") { numSamples => {
+              parameters(RETURN_N_SAMPLES_PARAM) { numSamples => {
                 var responses: Seq[FileDataSourceInfo] = Seq.empty
                 DataFileType.values.foreach(x => {
                   val dType = DataFileType.byName(x.toString)
                   val filesForType: Seq[String] = getFilesByType(x.toString)
                   filesForType.map(y => {
-                    val fullPath = s"$inputDataPath/${dType.toString().toUpperCase}/$y"
+                    val fullPath = s"$inputDataPath/${dType.subFolder}/$y"
                     try {
-                      var dataIdentifier: String = ""
-                      var dataDescription: String = ""
-                      // data samples collected from file
-                      val fileContent: Seq[JsArray] = contentReader.getSource(fullPath)
-                        .getLines()
-                        .map(x => x.trim)
-                        .map {
-                          case x if x.startsWith(FILE_HEADER_IDENTIFIER_PREFIX) =>
-                            dataIdentifier = x.stripPrefix(FILE_HEADER_IDENTIFIER_PREFIX).trim
-                            EMPTY_STRING
-                          case x if x.startsWith(FILE_HEADER_DESCRIPTION_PREFIX) =>
-                            dataDescription = x.stripPrefix(FILE_HEADER_DESCRIPTION_PREFIX).trim
-                            EMPTY_STRING
-                          case x => x
-                        }
-                        .filter(x => x.nonEmpty && !x.startsWith("#"))
-                        .map(x => dType.contentToData.apply(x))
-                        .toSeq
-                      val values = DistinctValues[String](dataIdentifier, fileContent.map(x => x.toString()))
-                      val fileMap: JsValue = Map(dataIdentifier -> fullPath).toJson
-                      val orderedMultiValuesJsObject = JsObject(
-                        OrderedMultiValuesJsonProtocol.TYPE_KEY -> JsString(OrderedMultiValuesJsonProtocol.FROM_FILES_LINES_TYPE),
-                        OrderedValuesJsonProtocol.VALUES_KEY -> fileMap
-                      ).toString()
+                      val fileContent: String = contentReader.getSource(fullPath).getLines().mkString("\n")
+                      val metaData: Map[String, String] = FileReaderUtils.extractMetaData(fileContent)
+                      logger.debug(s"found metaData for file '$fullPath': $metaData")
+                      val dataIdentifier: String = metaData.getOrElse(FILE_HEADER_IDENTIFIER_KEY, "")
+                      val dataDescription: String = metaData.getOrElse(FILE_HEADER_DESCRIPTION_KEY, "")
+                      val parsedData = dType.contentToData.apply(fileContent)
+                      val dataSize: Int = dType.valueToSize(parsedData)
+                      val dataSamples: JsArray = dType.valueToSampleOfSize(numSamples.toInt).apply(parsedData)
+
+                      // TODO: move out those ParameterValues json definitions to some utility class
+                      def valuesFromLinesJson(valuesType: String, paramIdentifier: String, filePath: String): String = {
+                        s"""
+                           |{
+                           |"type": "FROM_ORDERED_VALUES_TYPE",
+                           |"values_type": "$valuesType",
+                           |"values": {
+                           |  "type": "FROM_FILES_LINES_TYPE",
+                           |  "valueName": "$paramIdentifier",
+                           |  "file": "$filePath"
+                           |}
+                           |}
+                           |""".stripMargin
+                      }
+
+                      def valuesFromCsvMapping(valuesType: String, paramIdentifier: String, filePath: String,
+                                               delimiter: String): String = {
+                        s"""{
+                           |"type": "CSV_MAPPING_TYPE",
+                           |"name": "$paramIdentifier",
+                           |"values_type": "$valuesType",
+                           |"values": "$filePath",
+                           |"column_delimiter": "$delimiter",
+                           |"key_column_index": 0,
+                           |"value_column_index": 1
+                           |}
+                           |""".stripMargin
+                      }
+
+                      def valuesFromJsonMapping(valuesType: String, paramIdentifier: String, filePath: String): String = {
+                        s"""{
+                           |"type": "JSON_ARRAY_MAPPINGS_TYPE",
+                           |"name": "$paramIdentifier",
+                           |"values_type": "$valuesType",
+                           |"values": "$filePath"
+                           |}
+                           |""".stripMargin
+                      }
+
+                      val parameterValueType: ValueType.Value = dType match {
+                        case e if e == DataFileType.PARAMETER || e == DataFileType.PARAMETER_MAPPING_CSV ||
+                          e == DataFileType.PARAMETER_MAPPING_JSON => ValueType.URL_PARAMETER
+                        case e if e == DataFileType.BODIES || e == DataFileType.BODIES_MAPPING_CSV ||
+                          e == DataFileType.BODIES_MAPPING_JSON => ValueType.BODY
+                        case e if e == DataFileType.HEADER || e == DataFileType.HEADER_MAPPING_CSV ||
+                          e == DataFileType.HEADER_MAPPING_JSON => ValueType.HEADER
+                      }
+
+                      val parameterValueJsObject = dType match {
+                        case e if e == DataFileType.PARAMETER || e == DataFileType.HEADER || e == DataFileType.BODIES =>
+                          valuesFromLinesJson(parameterValueType.toString, dataIdentifier, fullPath)
+                        case e if e == DataFileType.PARAMETER_MAPPING_CSV || e == DataFileType.HEADER_MAPPING_CSV ||
+                          e == DataFileType.BODIES_MAPPING_CSV =>
+                          valuesFromCsvMapping(
+                            parameterValueType.toString,
+                            dataIdentifier,
+                            fullPath,
+                            metaData.getOrElse(FILE_HEADER_CSV_COLUMN_DELIMITER_KEY, ",")
+                          )
+                        case  e if e == DataFileType.PARAMETER_MAPPING_JSON || e == DataFileType.HEADER_MAPPING_JSON ||
+                          e == DataFileType.BODIES_MAPPING_JSON =>
+                          valuesFromJsonMapping(
+                            parameterValueType.toString,
+                            dataIdentifier,
+                            fullPath
+                          )
+                      }
+
                       val response = FileDataSourceInfo(
                         dType,
                         fullPath,
                         dataIdentifier,
                         dataDescription,
-                        values.values.size,
-                        orderedMultiValuesJsObject,
-                        values.values.take(numSamples.toInt).map(x => Seq(x))
+                        dataSize,
+                        parameterValueJsObject.parseJson,
+                        dataSamples
                       )
                       responses = responses :+ response
                     }
@@ -227,6 +326,7 @@ object DataRoutes extends DefaultJsonProtocol {
       })
   }
 
+  // TODO: adjust this to actually parse a Seq of ParameterValues
   def getIndexedGeneratorInfoForOrderedMultiValuesBody(implicit system: ActorSystem): Route = {
     implicit val ec: ExecutionContextExecutor = system.dispatchers.lookup(kolibriDispatcherName)
     corsHandler(
