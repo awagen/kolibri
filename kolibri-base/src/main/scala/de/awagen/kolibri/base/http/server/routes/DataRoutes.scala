@@ -27,6 +27,7 @@ import de.awagen.kolibri.base.config.AppProperties.config.kolibriDispatcherName
 import de.awagen.kolibri.base.http.server.routes.StatusRoutes.corsHandler
 import de.awagen.kolibri.base.io.json.EnumerationJsonProtocol.dataFileTypeFormat
 import de.awagen.kolibri.base.io.json.OrderedMultiValuesJsonProtocol.OrderedMultiValuesAnyFormat
+import de.awagen.kolibri.base.io.json.ParameterValuesJsonProtocol.FormatOps
 import de.awagen.kolibri.base.io.reader.FileReaderUtils.JsValueOps._
 import de.awagen.kolibri.base.io.reader.FileReaderUtils._
 import de.awagen.kolibri.base.io.reader.ReaderUtils.safeContentRead
@@ -232,45 +233,6 @@ object DataRoutes extends DefaultJsonProtocol {
                       val dataSize: Int = dType.valueToSize(parsedData)
                       val dataSamples: JsArray = dType.valueToSampleOfSize(numSamples.toInt).apply(parsedData)
 
-                      // TODO: move out those ParameterValues json definitions to some utility class
-                      def valuesFromLinesJson(valuesType: String, paramIdentifier: String, filePath: String): String = {
-                        s"""
-                           |{
-                           |"type": "FROM_ORDERED_VALUES_TYPE",
-                           |"values_type": "$valuesType",
-                           |"values": {
-                           |  "type": "FROM_FILES_LINES_TYPE",
-                           |  "valueName": "$paramIdentifier",
-                           |  "file": "$filePath"
-                           |}
-                           |}
-                           |""".stripMargin
-                      }
-
-                      def valuesFromCsvMapping(valuesType: String, paramIdentifier: String, filePath: String,
-                                               delimiter: String): String = {
-                        s"""{
-                           |"type": "CSV_MAPPING_TYPE",
-                           |"name": "$paramIdentifier",
-                           |"values_type": "$valuesType",
-                           |"values": "$filePath",
-                           |"column_delimiter": "$delimiter",
-                           |"key_column_index": 0,
-                           |"value_column_index": 1
-                           |}
-                           |""".stripMargin
-                      }
-
-                      def valuesFromJsonMapping(valuesType: String, paramIdentifier: String, filePath: String): String = {
-                        s"""{
-                           |"type": "JSON_ARRAY_MAPPINGS_TYPE",
-                           |"name": "$paramIdentifier",
-                           |"values_type": "$valuesType",
-                           |"values": "$filePath"
-                           |}
-                           |""".stripMargin
-                      }
-
                       val parameterValueType: ValueType.Value = dType match {
                         case e if e == DataFileType.PARAMETER || e == DataFileType.PARAMETER_MAPPING_CSV ||
                           e == DataFileType.PARAMETER_MAPPING_JSON => ValueType.URL_PARAMETER
@@ -282,19 +244,19 @@ object DataRoutes extends DefaultJsonProtocol {
 
                       val parameterValueJsObject = dType match {
                         case e if e == DataFileType.PARAMETER || e == DataFileType.HEADER || e == DataFileType.BODIES =>
-                          valuesFromLinesJson(parameterValueType.toString, dataIdentifier, fullPath)
+                          FormatOps.valuesFromLinesJson(parameterValueType, dataIdentifier, fullPath)
                         case e if e == DataFileType.PARAMETER_MAPPING_CSV || e == DataFileType.HEADER_MAPPING_CSV ||
                           e == DataFileType.BODIES_MAPPING_CSV =>
-                          valuesFromCsvMapping(
-                            parameterValueType.toString,
+                          FormatOps.valuesFromCsvMapping(
+                            parameterValueType,
                             dataIdentifier,
                             fullPath,
                             metaData.getOrElse(FILE_HEADER_CSV_COLUMN_DELIMITER_KEY, ",")
                           )
                         case  e if e == DataFileType.PARAMETER_MAPPING_JSON || e == DataFileType.HEADER_MAPPING_JSON ||
                           e == DataFileType.BODIES_MAPPING_JSON =>
-                          valuesFromJsonMapping(
-                            parameterValueType.toString,
+                          FormatOps.valuesFromJsonMapping(
+                            parameterValueType,
                             dataIdentifier,
                             fullPath
                           )
