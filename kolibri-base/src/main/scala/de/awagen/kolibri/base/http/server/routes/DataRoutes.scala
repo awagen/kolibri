@@ -298,7 +298,7 @@ object DataRoutes extends DefaultJsonProtocol {
    */
   def getIndexedGeneratorInfoForValueSeqGenProviderSeqBody(implicit system: ActorSystem): Route = {
     implicit val ec: ExecutionContextExecutor = system.dispatchers.lookup(kolibriDispatcherName)
-    import de.awagen.kolibri.base.io.json.ParameterValuesJsonProtocol._
+    import de.awagen.kolibri.base.io.json.ParameterValuesJsonProtocol.ValueSeqGenProviderFormat
     corsHandler(
       pathPrefix(GENERATOR_PATH_PREFIX) {
         path(INFO_PATH) {
