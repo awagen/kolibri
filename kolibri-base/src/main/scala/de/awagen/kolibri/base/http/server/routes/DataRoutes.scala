@@ -26,16 +26,16 @@ import de.awagen.kolibri.base.config.AppProperties
 import de.awagen.kolibri.base.config.AppProperties.config.kolibriDispatcherName
 import de.awagen.kolibri.base.http.server.routes.StatusRoutes.corsHandler
 import de.awagen.kolibri.base.io.json.EnumerationJsonProtocol.dataFileTypeFormat
-import de.awagen.kolibri.base.io.json.OrderedMultiValuesJsonProtocol.OrderedMultiValuesAnyFormat
 import de.awagen.kolibri.base.io.json.ParameterValuesJsonProtocol.FormatOps
 import de.awagen.kolibri.base.io.reader.FileReaderUtils.JsValueOps._
 import de.awagen.kolibri.base.io.reader.FileReaderUtils._
 import de.awagen.kolibri.base.io.reader.ReaderUtils.safeContentRead
 import de.awagen.kolibri.base.io.reader.{DataOverviewReader, FileReaderUtils, Reader}
+import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ParameterValuesImplicits.ParameterValueSeqToRequestBuilderModifier
 import de.awagen.kolibri.base.processing.modifiers.ParameterValues._
-import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator, PermutatingIndexedGenerator}
+import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
+import de.awagen.kolibri.datatypes.collections.generators.{IndexedGenerator, PermutatingIndexedGenerator}
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
-import de.awagen.kolibri.datatypes.multivalues.OrderedMultiValues
 import org.slf4j.{Logger, LoggerFactory}
 import spray.json._
 
@@ -253,7 +253,7 @@ object DataRoutes extends DefaultJsonProtocol {
                             fullPath,
                             metaData.getOrElse(FILE_HEADER_CSV_COLUMN_DELIMITER_KEY, ",")
                           )
-                        case  e if e == DataFileType.PARAMETER_MAPPING_JSON || e == DataFileType.HEADER_MAPPING_JSON ||
+                        case e if e == DataFileType.PARAMETER_MAPPING_JSON || e == DataFileType.HEADER_MAPPING_JSON ||
                           e == DataFileType.BODIES_MAPPING_JSON =>
                           FormatOps.valuesFromJsonMapping(
                             parameterValueType,
@@ -288,20 +288,27 @@ object DataRoutes extends DefaultJsonProtocol {
       })
   }
 
-  // TODO: adjust this to actually parse a Seq of ParameterValues
-  def getIndexedGeneratorInfoForOrderedMultiValuesBody(implicit system: ActorSystem): Route = {
+  /**
+   * Route takes a sequence of ValueSeqGenProvider json definitions
+   * (which are either single standalong values or mappings with key provider and assigned values)
+   * and generates the combinations resulting from permutating the ValueSeqGenProvider sequence
+   *
+   * @param system
+   * @return
+   */
+  def getIndexedGeneratorInfoForValueSeqGenProviderSeqBody(implicit system: ActorSystem): Route = {
     implicit val ec: ExecutionContextExecutor = system.dispatchers.lookup(kolibriDispatcherName)
+    import de.awagen.kolibri.base.io.json.ParameterValuesJsonProtocol._
     corsHandler(
       pathPrefix(GENERATOR_PATH_PREFIX) {
         path(INFO_PATH) {
           get {
-            parameters("returnNSamples") { numSamples => {
+            parameters(RETURN_N_SAMPLES_PARAM) { numSamples => {
               entity(as[String]) { generatorJson => {
                 // pickup string of the actual response, then parse it here
-                val values = generatorJson.parseJson.convertTo[OrderedMultiValues]
-                val generators: Seq[IndexedGenerator[Any]] =
-                  values.values.map(x => ByFunctionNrLimitedIndexedGenerator.createFromSeq(x.getAll))
-                val combinedGenerator: IndexedGenerator[Seq[Any]] = PermutatingIndexedGenerator(generators)
+                val values = generatorJson.parseJson.convertTo[Seq[ValueSeqGenProvider]]
+                val modifierGenerators: Seq[IndexedGenerator[RequestTemplateBuilderModifier]] = values.map(x => x.toSeqGenerator).map(x => x.mapGen(y => y.toModifier))
+                val combinedGenerator: IndexedGenerator[Seq[Any]] = PermutatingIndexedGenerator(modifierGenerators)
                 val response = BaseFileDataSourceInfo(
                   combinedGenerator.size,
                   generatorJson,

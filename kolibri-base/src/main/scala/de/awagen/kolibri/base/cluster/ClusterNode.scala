@@ -147,7 +147,7 @@ object ClusterNode extends App {
         ~ getJudgements ~ getAllJudgements ~ getJobTemplateOverviewForType ~ getJobTemplateByTypeAndIdentifier
         ~ getJobTemplateTypes ~ storeSearchEvaluationTemplate ~ startExecutionDefinition
         ~ getAllIndexedGeneratorInfosForFileData
-        ~ getIndexedGeneratorInfoForOrderedMultiValuesBody ~ getDataFilesByType
+        ~ getIndexedGeneratorInfoForValueSeqGenProviderSeqBody ~ getDataFilesByType
         ~ getValuesByTypeAndFile
         ~ getResultBaseFolders ~ getPartialResultsOverview ~ getSingleResult
         ~ getSingleResultFiltered ~ getImproovingAndLoosing ~ getValueVarianceFromDir
