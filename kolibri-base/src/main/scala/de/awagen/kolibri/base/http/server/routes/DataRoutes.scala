@@ -67,9 +67,17 @@ object DataRoutes extends DefaultJsonProtocol {
    *                         Allows retrieving the whole data by parsing the json definition into the object.
    * @param samples          - a selected nr of samples representing the file content
    */
-  case class FileDataSourceInfo(fileType: DataFileType.Val, fileName: String, identifier: String, description: String, totalNrOfSamples: Int, jsonDefinition: JsValue, samples: JsArray) extends DataMsg
+  case class FileDataSourceInfo(group: String,
+                                isMapping: Boolean,
+                                fileType: DataFileType.Val,
+                                fileName: String,
+                                identifier: String,
+                                description: String,
+                                totalNrOfSamples: Int,
+                                jsonDefinition: JsValue,
+                                samples: JsArray) extends DataMsg
 
-  implicit val fileDataSourceInfoFormat: RootJsonFormat[FileDataSourceInfo] = jsonFormat7(FileDataSourceInfo)
+  implicit val fileDataSourceInfoFormat: RootJsonFormat[FileDataSourceInfo] = jsonFormat9(FileDataSourceInfo)
   implicit val baseFileDataSourceInfoFormat: RootJsonFormat[BaseFileDataSourceInfo] = jsonFormat3(BaseFileDataSourceInfo)
 
   /**
@@ -77,7 +85,9 @@ object DataRoutes extends DefaultJsonProtocol {
    */
   object DataFileType extends Enumeration {
 
-    case class Val(contentToData: String => JsValue,
+    case class Val(group: String,
+                   isMapping: Boolean,
+                   contentToData: String => JsValue,
                    subFolder: String,
                    valueToSize: JsValue => Int,
                    valueToSampleOfSize: Int => JsValue => JsArray) extends super.Val
@@ -95,15 +105,19 @@ object DataRoutes extends DefaultJsonProtocol {
       case _ => throw new IllegalArgumentException(s"no DataFileType by name '$name' found")
     }
 
-    val PARAMETER: Val = Val(stringToValueSeqFunc(x => JsString(x)), "PARAMETER", JS_ARRAY_SIZE, num => jsArraySamples(num))
-    val HEADER: Val = Val(stringToValueSeqFunc(x => JsString(x)), "HEADER", JS_ARRAY_SIZE, num => jsArraySamples(num))
-    val BODIES: Val = Val(stringToValueSeqFunc(x => x.parseJson), "BODIES", JS_ARRAY_SIZE, num => jsArraySamples(num))
-    val PARAMETER_MAPPING_CSV: Val = Val(csvToMapping, "PARAMETER_MAPPINGS/CSV", JS_OBJECT_KEY_SIZE, num => jsObjectMappingSamples(num))
-    val PARAMETER_MAPPING_JSON: Val = Val(parseJsonContent, "PARAMETER_MAPPINGS/JSON", JS_OBJECT_KEY_SIZE, num => jsObjectMappingSamples(num))
-    val HEADER_MAPPING_CSV: Val = Val(csvToMapping, "HEADER_MAPPINGS/CSV", JS_OBJECT_KEY_SIZE, num => jsObjectMappingSamples(num))
-    val HEADER_MAPPING_JSON: Val = Val(parseJsonContent, "HEADER_MAPPINGS/JSON", JS_OBJECT_KEY_SIZE, num => jsObjectMappingSamples(num))
-    val BODIES_MAPPING_CSV: Val = Val(csvToMapping, "BODIES_MAPPINGS/CSV", JS_OBJECT_KEY_SIZE, num => jsObjectMappingSamples(num))
-    val BODIES_MAPPING_JSON: Val = Val(parseJsonContent, "BODIES_MAPPINGS/JSON", JS_OBJECT_KEY_SIZE, num => jsObjectMappingSamples(num))
+    val PARAMETER: Val = Val("PARAMETER", false, stringToValueSeqFunc(x => JsString(x)), "PARAMETER", JS_ARRAY_SIZE, num => jsArraySamples(num))
+    val HEADER: Val = Val("HEADER", false, stringToValueSeqFunc(x => JsString(x)), "HEADER", JS_ARRAY_SIZE, num => jsArraySamples(num))
+    val BODIES: Val = Val("BODIES", false, stringToValueSeqFunc(x => x.parseJson), "BODIES", JS_ARRAY_SIZE, num => jsArraySamples(num))
+    val PARAMETER_MAPPING_CSV: Val = Val("PARAMETER", true, csvToMapping(x => x(1)), "PARAMETER_MAPPINGS/CSV", JS_OBJECT_KEY_SIZE, num => jsObjectMappingSamples(num))
+    val PARAMETER_MAPPING_JSON: Val = Val("PARAMETER", true, parseJsonContent, "PARAMETER_MAPPINGS/JSON", JS_OBJECT_KEY_SIZE, num => jsObjectMappingSamples(num))
+    val HEADER_MAPPING_CSV: Val = Val("HEADER", true, csvToMapping(x => x(1)), "HEADER_MAPPINGS/CSV", JS_OBJECT_KEY_SIZE, num => jsObjectMappingSamples(num))
+    val HEADER_MAPPING_JSON: Val = Val("HEADER", true, parseJsonContent, "HEADER_MAPPINGS/JSON", JS_OBJECT_KEY_SIZE, num => jsObjectMappingSamples(num))
+    val BODIES_MAPPING_CSV: Val = Val("BODIES", true, csvToMapping(x => x(1).parseJson), "BODIES_MAPPINGS/CSV", JS_OBJECT_KEY_SIZE, num => jsObjectMappingSamples(num))
+    val BODIES_MAPPING_JSON: Val = Val("BODIES", true, parseJsonContent, "BODIES_MAPPINGS/JSON", JS_OBJECT_KEY_SIZE, num => jsObjectMappingSamples(num))
+
+    val PARAMETER_TYPES: Seq[Val] = Seq(PARAMETER, PARAMETER_MAPPING_CSV, PARAMETER_MAPPING_JSON)
+    val HEADER_TYPES: Seq[Val] = Seq(HEADER, HEADER_MAPPING_CSV, HEADER_MAPPING_JSON)
+    val BODY_TYPES: Seq[Val] = Seq(BODIES, BODIES_MAPPING_CSV, BODIES_MAPPING_JSON)
   }
 
   private[this] val DATA_PATH_PREFIX = "data"
@@ -234,12 +248,9 @@ object DataRoutes extends DefaultJsonProtocol {
                       val dataSamples: JsArray = dType.valueToSampleOfSize(numSamples.toInt).apply(parsedData)
 
                       val parameterValueType: ValueType.Value = dType match {
-                        case e if e == DataFileType.PARAMETER || e == DataFileType.PARAMETER_MAPPING_CSV ||
-                          e == DataFileType.PARAMETER_MAPPING_JSON => ValueType.URL_PARAMETER
-                        case e if e == DataFileType.BODIES || e == DataFileType.BODIES_MAPPING_CSV ||
-                          e == DataFileType.BODIES_MAPPING_JSON => ValueType.BODY
-                        case e if e == DataFileType.HEADER || e == DataFileType.HEADER_MAPPING_CSV ||
-                          e == DataFileType.HEADER_MAPPING_JSON => ValueType.HEADER
+                        case e if DataFileType.PARAMETER_TYPES.contains(e)  => ValueType.URL_PARAMETER
+                        case e if DataFileType.BODY_TYPES.contains(e) => ValueType.BODY
+                        case e if DataFileType.HEADER_TYPES.contains(e) => ValueType.HEADER
                       }
 
                       val parameterValueJsObject = dType match {
@@ -263,6 +274,8 @@ object DataRoutes extends DefaultJsonProtocol {
                       }
 
                       val response = FileDataSourceInfo(
+                        dType.group,
+                        dType.isMapping,
                         dType,
                         fullPath,
                         dataIdentifier,

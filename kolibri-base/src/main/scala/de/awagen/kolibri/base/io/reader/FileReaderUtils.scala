@@ -177,25 +177,24 @@ object FileReaderUtils extends DefaultJsonProtocol {
   }
 
   /**
-   * Given string in csv format, extract a mapping Map[String, Seq[String]] where
+   * Given string in csv format, extract a mapping Map[String, Seq[T]] where
    * column1 holds the key values, column2 holds the value for the key,
    * and in case a key occurs multiple times just keeps all values in a value Seq,
-   * thus the actual json returned will reflect a Map[String, Seq[String]]
+   * thus the actual json returned will reflect a Map[String, Seq[T]]
    *
    * @return
    */
-  def csvToMapping: String => JsValue = x => {
+  def csvToMapping[T](columnsToValueFunc: Array[String] => T)(implicit writer: JsonWriter[Map[String, Set[T]]]): String => JsValue = x => {
     val metaData: Map[String, String] = extractMetaData(x)
     val delimiter = metaData.getOrElse("delimiter", ",")
-    multiMappingFromCSVFile[String](
+    multiMappingFromCSVFile[T](
       source = Source.fromString(x),
       columnDelimiter = delimiter,
       filterLessColumnsThan = 2,
       valsToKey = x => x.head,
-      columnsToValue = x => x(1)
+      columnsToValue = columnsToValueFunc
     ).toJson
   }
-
 
   /**
    * From a passed source in csv format extract key to (multiple) values mapping.
