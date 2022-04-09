@@ -33,9 +33,9 @@
     </span>
 
     <!-- if some mapping index is specified, the sample info reflects a mapping with editable mapping index -->
-    <div v-if="mappingKeysIndex >= 0 && mappingValuesIndex >= 0" class="form-group key-index">
+    <div v-if="mappingValuesIndex >= 0" class="form-group key-index">
       <label class="form-label" for="key-index-input">Mapped To Index:</label>
-      <input class="form-input" type="number" id="key-index-input" :value="mappingKeysIndex">
+      <input class="form-input" type="number" v-model="dataSampleInfo.mappedToIndex" id="key-index-input">
     </div>
 
     <div>
@@ -79,7 +79,7 @@ export default {
 
 <style scoped>
 
-.popover-container {
+.popover, .popover-right, .popover-container {
   overflow: visible;
 }
 

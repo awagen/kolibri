@@ -209,8 +209,7 @@ const store = createStore({
                     "type": "mapping",
                     "data": {
                         "keyValues": fileObj,
-                        "mappedValues": [],
-                        "mappedToIndices": []
+                        "mappedValues": []
                     }
                 }
                 console.info("adding standalone value as mapping key:")
@@ -226,14 +225,7 @@ const store = createStore({
                 console.info("adding mapped value to existing mapping:")
                 console.log(fileObj)
                 state.selectedDataMapping.data.mappedValues.push(fileObj)
-                // NOTE: the index related to mapped values itself is one less, but what we record as index
-                // here is taking keys on index 0 into account
-                let newMappedValueIndex = state.selectedDataMapping.data.mappedValues.length
-                // NOTE: the indices are in the order key-provider, mapping-provider index
-                // and strictly holds key-provider-index < mapping-provider-index
-                // per default is mapped to the keys, but can be adjusted to relate to any of
-                // the indices referring to a mapping that comes before in the sequence
-                state.selectedDataMapping.data.mappedToIndices.push([0, newMappedValueIndex])
+                fileObj["mappedToIndex"] = 0
             }
         },
 
@@ -289,7 +281,6 @@ const store = createStore({
             let removeIndex = removeFrom.mappedValues.indexOf(fileObj)
             if (removeIndex >= 0) {
                 removeFrom.mappedValues.splice(removeIndex, 1)
-                removeFrom.mappedToIndices.splice(removeIndex, 1)
             }
             else {
                 console.info("could not find fileObj in mappingObj. Ignoring request for deletion")

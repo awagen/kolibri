@@ -26,7 +26,6 @@
                         :show-add-button="false"
                         :data-sample-info="sample"
                         :mapping-info="mappingInfo"
-                        :mapping-keys-index="0"
                         :mapping-values-index="index + 1"/>
       </div>
     </div>
@@ -85,17 +84,13 @@ export default {
 
 <style scoped>
 
-.panel {
-  height: 100%;
-  width: 100%;
-}
-
-.panel, .panel-body, .panel-header {
-  overflow: hidden;
+.panel .panel-body {
+  overflow: visible;
 }
 
 .mapping-data-info-container {
-  width: 40em;
+  width: auto;
+  padding-bottom: 1em;
 }
 
 .popover button {
