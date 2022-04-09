@@ -2,14 +2,18 @@
 
   <div class="row-container columns">
     <div class="col-12 col-sm-12 columns">
-      <DataSampleInfo v-for="dataFile in dataFileObjArray" :show-delete-button="showDeleteButton"
-                      @remove-data-func="removeData"
-                      @add-data-file-func="addDataToComposer"
-                      @add-data-to-mapping-func="addDataToComposerMapping"
-                      :show-add-as-key-button="showAddAsKeyButton"
-                      :show-add-button="showAddButton"
-                      :data-sample-info="dataFile"
-                      :mapping-info="null"/>
+          <span class="composer-data-info-container" v-for="dataFile in dataFileObjArray">
+            <DataSampleInfo v-if="dataFile.type === 'standalone'" :show-delete-button="true"
+                            @remove-data-func="removeData"
+                            @add-data-file-func="addDataToComposer"
+                            @add-data-to-mapping-func="addDataToComposerMapping"
+                            :show-add-as-key-button="false"
+                            :show-add-button="false"
+                            :data-sample-info="dataFile.data"
+                            :mapping-info="null"/>
+            <DataMappingInfo v-if="dataFile.type === 'mapping'"
+                            :mapping-info="dataFile.data"/>
+          </span>
     </div>
   </div>
 
@@ -19,16 +23,17 @@
 
 import {onMounted} from "vue";
 import DataSampleInfo from "./DataSampleInfo.vue";
+import DataMappingInfo from "./DataMappingInfo.vue";
 
 export default {
   props: [
-      'dataFileObjArray',
-      'showAddButton',
-      'showDeleteButton',
-      'showAddAsKeyButton',
-      'isMappings'
+    'dataFileObjArray',
+    'showAddButton',
+    'showDeleteButton',
+    'showAddAsKeyButton',
+    'isMappings'
   ],
-  components: {DataSampleInfo},
+  components: {DataMappingInfo, DataSampleInfo},
   methods: {
     addDataToComposer(fileObj){
       if (this.isMappings) this.addDataToComposerMapping(fileObj)
@@ -47,16 +52,16 @@ export default {
       this.$store.commit("removeSelectedDataFile", fileObj)
     },
 
-    removeData({fileObj, mappingObj}){
+    removeData(fileObj, mappingObj){
       console.info("trying to delete fileObj:")
       console.log(fileObj)
       console.info("from mappingObj")
       console.log(mappingObj)
-      if (!fileObj.isMapping && mappingObj !== undefined && fileObj === mappingObj.data.keyValues) {
+      if (!fileObj.isMapping && mappingObj && fileObj === mappingObj.data.keyValues) {
         console.info("deletion: is key for mapping")
         this.removeMappingFromComposer(mappingObj)
       }
-      else if (!fileObj.isMapping && mappingObj === undefined){
+      else if (!fileObj.isMapping && !mappingObj){
         console.info("deletion: is standalone")
         this.removeDataFromComposer(fileObj)
       }
@@ -82,6 +87,10 @@ export default {
 </script>
 
 <style scoped>
+
+.composer-data-info-container {
+  margin-top: 1em;
+}
 
 .row-container {
   margin: 3em;

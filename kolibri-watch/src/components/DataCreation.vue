@@ -1,19 +1,45 @@
 <template>
 
-  <h2 class="nodeListHeader">STORED DATA</h2>
+  <h2 class="nodeListHeader">DATA</h2>
 
-  <DataFileSelectTabs/>
+  <DataFileSelectTabs :file-data-by-type-mapping="this.$store.state.standaloneFileDataByType"
+                      :selected-data-file-type="this.$store.state.selectedStandaloneDataFileType"
+                      @file-type-update-call="selectStandaloneDataFileType"/>
 
-  <template v-for="(dataValues, dataType, _) in this.$store.state.fileDataByType">
-    <template v-if="dataType === this.$store.state.selectedDataFileType">
-      <DataFileOverview :show-add-button="true" :show-delete-button="false" :dataFileObjArray="dataValues" @addDataFile="addDataToComposer"/>
+  <template v-for="(dataValues, dataType, _) in this.$store.state.standaloneFileDataByType">
+    <template v-if="dataType === this.$store.state.selectedStandaloneDataFileType">
+      <DataFileOverview :show-add-button="true"
+                        :show-delete-button="false"
+                        :show-add-as-key-button="true"
+                        :dataFileObjArray="dataValues"
+                        :is-mappings="false"
+      />
+    </template>
+  </template>
+
+  <div class="divider"></div>
+
+  <h2 class="nodeListHeader">MAPPED DATA</h2>
+
+  <DataFileSelectTabs :file-data-by-type-mapping="this.$store.state.mappingFileDataByType"
+                      :selected-data-file-type="this.$store.state.selectedMappingDataFileType"
+                      @file-type-update-call="selectMappingDataFileType"
+  />
+
+  <template v-for="(dataValues, dataType, _) in this.$store.state.mappingFileDataByType">
+    <template v-if="dataType === this.$store.state.selectedMappingDataFileType">
+      <DataFileOverview :show-add-button="true"
+                        :show-delete-button="false"
+                        :show-add-as-key-button="false"
+                        :dataFileObjArray="dataValues"
+                        :is-mappings="true"/>
     </template>
   </template>
 
   <div class="divider"></div>
 
   <h2 class="nodeListHeader">COMPOSER</h2>
-  <DataFileOverview :show-add-button="false" :show-delete-button="true" :dataFileObjArray="this.$store.state.selectedDataFiles" @removeDataFile="removeDataFromComposer"/>
+  <DataComposerOverview :dataFileObjArray="this.$store.state.selectedData"/>
 
 
 </template>
@@ -23,20 +49,18 @@
 import {onMounted} from "vue";
 import DataFileSelectTabs from "../components/partials/DataFileSelectTabs.vue";
 import DataFileOverview from "../components/partials/DataFileOverview.vue";
+import DataComposerOverview from "../components/partials/DataComposerOverview.vue";
 
 export default {
 
   props: [],
-  components: {DataFileSelectTabs, DataFileOverview},
+  components: {DataFileSelectTabs, DataFileOverview, DataComposerOverview},
   methods: {
-    selectDataFileType(fileType) {
-      this.$store.commit("updateSelectedDataFileType", fileType)
+    selectStandaloneDataFileType(fileType) {
+      this.$store.commit("updateSelectedStandaloneDataFileType", fileType)
     },
-    addDataToComposer(fileObj){
-      this.$store.commit("addSelectedDataFile", fileObj)
-    },
-    removeDataFromComposer(fileObj){
-      this.$store.commit("removeSelectedDataFile", fileObj)
+    selectMappingDataFileType(fileType) {
+      this.$store.commit("updateSelectedMappingDataFileType", fileType)
     }
   },
   setup(props) {

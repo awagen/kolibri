@@ -216,17 +216,18 @@ function retrieveDataFileInfoAll(returnNSamples) {
             let dataByType = {}
             response.data.forEach(function (item, _) {
                 let returnValue = {}
-                let fileType = item["fileType"]
+                let group = item["group"]
+                returnValue["isMapping"] = item["isMapping"]
                 returnValue["fileName"] = item["fileName"].split("/").pop()
                 returnValue["totalNrOfSamples"] = item["totalNrOfSamples"]
                 returnValue["jsonDefinition"] = item["jsonDefinition"]
-                returnValue["samples"] = item["samples"].map(x => x[0])
+                returnValue["samples"] = item["samples"]
                 returnValue["identifier"] = item["identifier"]
                 returnValue["description"] = item["description"]
-                if (fileType in dataByType) {
-                    dataByType[fileType].push(returnValue)
+                if (group in dataByType) {
+                    dataByType[group].push(returnValue)
                 } else {
-                    dataByType[fileType] = [returnValue]
+                    dataByType[group] = [returnValue]
                 }
             });
             return dataByType;

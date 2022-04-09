@@ -32,9 +32,16 @@ const store = createStore({
             jobHistory: [],
 
             // data files available
-            fileDataByType: {},
-            selectedDataFileType: "",
-            selectedDataFiles: [],
+            standaloneFileDataByType: {},
+            mappingFileDataByType: {},
+            selectedStandaloneDataFileType: "",
+            selectedMappingDataFileType: "",
+            // the files added to the composer so far (standalone values or mappings)
+            selectedData: [],
+            // selectedDataMapping should contain one standalone data sample to provide keys and
+            // arbitrary number of values mapped to a key or another mapped value before it in the sequence
+            // and is the one selected for editing
+            selectedDataMapping: {},
 
             // the names of template types for which specific templates can be requested
             templateTypes: [],
@@ -100,8 +107,10 @@ const store = createStore({
                 })
         },
 
-        updateAnalysisTopFlop(state, {executionId, currentParams, compareParams, metricName, queryParamName,
-            n_best, n_worst}) {
+        updateAnalysisTopFlop(state, {
+            executionId, currentParams, compareParams, metricName, queryParamName,
+            n_best, n_worst
+        }) {
             retrieveAnalysisTopFlop(executionId, currentParams, compareParams, metricName, queryParamName, n_best, n_worst)
                 .then(response => state.analysisTopFlop = response)
         },
@@ -133,28 +142,157 @@ const store = createStore({
 
         updateAvailableDataFiles(state, numReturnSamples) {
             retrieveDataFileInfoAll(numReturnSamples).then(response => {
-                state.fileDataByType = response
-                if (Object.keys(response).length > 0 && state.selectedDataFileType === ""){
-                    state.selectedDataFileType = Object.keys(response)[0]
+                console.info("retrieved available data response: ")
+                console.log(response)
+                state.standaloneFileDataByType = {}
+                state.mappingFileDataByType = {}
+                Object.keys(response).forEach(group => {
+                    state.standaloneFileDataByType[group] = response[group].filter(data => {
+                        return data["isMapping"] === false
+                    })
+                    state.mappingFileDataByType[group] = response[group].filter(data => {
+                        return data["isMapping"] === true
+                    })
+                })
+                if (Object.keys(state.standaloneFileDataByType).length > 0 && state.selectedStandaloneDataFileType === "") {
+                    state.selectedStandaloneDataFileType = Object.keys(state.standaloneFileDataByType)[0]
+                }
+                if (Object.keys(state.mappingFileDataByType).length > 0 && state.selectedMappingDataFileType === "") {
+                    state.selectedMappingDataFileType = Object.keys(state.mappingFileDataByType)[0]
                 }
             })
         },
 
-        updateSelectedDataFileType(state, fileType) {
-            state.selectedDataFileType = fileType
+        updateSelectedStandaloneDataFileType(state, fileType) {
+            state.selectedStandaloneDataFileType = fileType
         },
 
-        addSelectedDataFile(state, fileObj){
-            state.selectedDataFiles.push(fileObj)
+        updateSelectedMappingDataFileType(state, fileType) {
+            state.selectedMappingDataFileType = fileType
         },
 
-        removeSelectedDataFile(state, fileObj){
-            let toBeRemoved = state.selectedDataFiles.filter(element => {
-                return element["fileType"] === fileObj["fileType"] &&
-                    element["fileName"] === fileObj["fileName"];
+        /**
+         * Add some non-mapping data sample to the list of parameters
+         *
+         * @param state
+         * @param fileObj
+         */
+        addSelectedDataFile(state, fileObj) {
+            if (fileObj.isMapping) {
+                console.info("trying to add mapping as standalone data. Will be ignored.")
+                return
+            }
+            let newElement = {
+                "type": "standalone",
+                "data": fileObj
+            }
+            console.info("adding standalone data file:")
+            console.log(newElement)
+            state.selectedData.push(newElement)
+
+        },
+
+        /**
+         * Given either standalone data or mapped value, add this to a mapping.
+         * In case a standalone value is added, a new mapping is added with the value as keyValues.
+         * In case a mapping is added, this will be appended to the mappings of the selectedDataMapping.
+         * In case no mapping has yet been initialized with some key value, adding a mapping will
+         * not work, since it requires some selectedDataMapping which is set to the latest mapping
+         * created by adding a key value.
+         * @param state
+         * @param fileObj
+         */
+        addSelectedDataToMapping(state, fileObj) {
+            if (!fileObj.isMapping) {
+                // create new mapping and add both to selectedData and to selectedDataMapping
+                let newMapping = {
+                    "type": "mapping",
+                    "data": {
+                        "keyValues": fileObj,
+                        "mappedValues": [],
+                        "mappedToIndices": []
+                    }
+                }
+                console.info("adding standalone value as mapping key:")
+                console.log(newMapping)
+                state.selectedDataMapping = newMapping
+                state.selectedData.push(newMapping)
+            } else {
+                if (state.selectedDataMapping === null || Object.keys(state.selectedDataMapping).length === 0) {
+                    console.info("can not add mapped values since no selected data mapping exists." +
+                        "Create one first by adding standalone data as key values.")
+                    return
+                }
+                console.info("adding mapped value to existing mapping:")
+                console.log(fileObj)
+                state.selectedDataMapping.data.mappedValues.push(fileObj)
+                // NOTE: the index related to mapped values itself is one less, but what we record as index
+                // here is taking keys on index 0 into account
+                let newMappedValueIndex = state.selectedDataMapping.data.mappedValues.length
+                // NOTE: the indices are in the order key-provider, mapping-provider index
+                // and strictly holds key-provider-index < mapping-provider-index
+                // per default is mapped to the keys, but can be adjusted to relate to any of
+                // the indices referring to a mapping that comes before in the sequence
+                state.selectedDataMapping.data.mappedToIndices.push([0, newMappedValueIndex])
+            }
+        },
+
+        /**
+         * Removes standalone data from the selected data
+         * @param state
+         * @param fileObj
+         */
+        removeSelectedDataFile(state, fileObj) {
+            let toBeRemoved = state.selectedData.filter(element => {
+                return element.type === "standalone" && element.data["fileType"] === fileObj["fileType"] &&
+                    element.data["fileName"] === fileObj["fileName"];
             });
             if (toBeRemoved.length > 0) {
-                state.selectedDataFiles.splice(state.selectedDataFiles.indexOf(toBeRemoved[toBeRemoved.length - 1]), 1)
+                state.selectedData.splice(state.selectedData.indexOf(toBeRemoved[toBeRemoved.length - 1]), 1)
+            }
+        },
+
+        /**
+         * Removes a complete mapping from selected data
+         * @param state
+         * @param mappingObj
+         */
+        removeSelectedMapping(state, mappingObj) {
+            console.info("remove selected state from mapping obj")
+            console.log(state)
+            console.log(mappingObj)
+            let removeIndex = state.selectedData.map(x => x.data).indexOf(mappingObj)
+            console.info("found index of mapping obj in selectedData" + removeIndex)
+            console.info("selected data")
+            console.log(state.selectedData)
+            if (removeIndex >= 0) {
+                state.selectedData.splice(removeIndex, 1)
+            }
+            if (state.selectedDataMapping.data === mappingObj) {
+                state.selectedDataMapping = {}
+            }
+        },
+
+        /**
+         * Deletes a single mapped value from a given mapping
+         * @param state
+         * @param fileObj
+         * @param mappingObj
+         */
+        removeMappingFromMappedValues(state, {fileObj, mappingObj}) {
+            let removeFromMappingIndex = state.selectedData.map(x => x.data).indexOf(mappingObj)
+            if (removeFromMappingIndex < 0) {
+                console.info("mapping obj not found, can not delete data from it")
+                return
+            }
+            let removeFrom = state.selectedData[removeFromMappingIndex].data
+            let removeIndex = removeFrom.mappedValues.indexOf(fileObj)
+            if (removeIndex >= 0) {
+                removeFrom.mappedValues.splice(removeIndex, 1)
+                removeFrom.mappedToIndices.splice(removeIndex, 1)
+            }
+            else {
+                console.info("could not find fileObj in mappingObj. Ignoring request for deletion")
             }
         },
 
@@ -200,9 +338,7 @@ const store = createStore({
             state.selectedTemplateJsonString = objectToJsonStringAndSyntaxHighlight(state.selectedTemplateContent)
         }
     },
-    computed: {
-
-    }
+    computed: {}
 })
 
 // initial service status check

@@ -2,9 +2,9 @@
 
   <div class="row-container columns">
     <ul class="tab tab-block">
-      <li v-for="(dataValues, dataType, _) in this.$store.state.fileDataByType"
-          v-bind:class="{'tab-item active':(this.$store.state.selectedDataFileType === dataType)}">
-        <a href="#" @click="selectDataFileType(dataType)" class="badge" :data-badge="dataValues.length">
+      <li v-for="(dataValues, dataType, _) in fileDataByTypeMapping"
+          v-bind:class="{'tab-item active':(selectedDataFileType === dataType)}">
+        <a href="#" @click="this.$emit('fileTypeUpdateCall', dataType)" class="badge" :data-badge="dataValues.length">
           <span class="choice-title">{{ dataType }}</span>
         </a>
       </li>
@@ -18,12 +18,8 @@
 import {onMounted} from "vue";
 
 export default {
-  props: [],
-  methods: {
-    selectDataFileType(fileType) {
-      this.$store.commit("updateSelectedDataFileType", fileType)
-    }
-  },
+  props: ["fileDataByTypeMapping", "selectedDataFileType"],
+  methods: {},
   setup(props) {
     onMounted(() => {
     })
