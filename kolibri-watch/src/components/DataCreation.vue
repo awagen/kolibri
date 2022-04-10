@@ -48,7 +48,17 @@
     </form>
 
     <form class="form-horizontal col-6 column k-json-panel">
-      <pre id="template-content-display-1" v-html="this.$store.state.selectedDataJsonString"/>
+      <div class="accordion">
+        <input type="checkbox" id="accordion-1" name="accordion-checkbox" hidden>
+        <label class="accordion-header" for="accordion-1">
+          <i class="icon icon-arrow-right mr-1"></i>
+          Composition Json
+        </label>
+        <div class="accordion-body">
+          <pre id="template-content-display-1" v-html="this.$store.state.selectedDataJsonString"/>
+        </div>
+      </div>
+      <div class="form-separator"></div>
     </form>
   </div>
 
@@ -84,6 +94,10 @@ export default {
 </script>
 
 <style scoped>
+
+.accordion input:checked ~ .accordion-body, .accordion[open] .accordion-body {
+  max-height: 100%;
+}
 
 .divider {
   border-color: #353535;
