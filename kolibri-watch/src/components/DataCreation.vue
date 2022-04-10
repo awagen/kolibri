@@ -39,7 +39,7 @@
   <div class="divider"></div>
 
   <h2 class="nodeListHeader">COMPOSER</h2>
-  <button @click="this.$store.commit('retrieveRequestSamplesForSelectedData')" class="btn btn-primary">Retrieve Sample
+  <button @click="this.$store.commit('retrieveRequestSamplesForSelectedData')" class="btn btn-primary k-action-green">Retrieve Sample
     Requests
   </button>
 
@@ -123,6 +123,11 @@ export default {
 </script>
 
 <style scoped>
+
+button.k-action-green {
+  background-color: #588274;
+  border: none;
+}
 
 .accordion input:checked ~ .accordion-body, .accordion[open] .accordion-body {
   max-height: 100%;
