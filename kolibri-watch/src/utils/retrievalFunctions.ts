@@ -5,7 +5,7 @@ import {
     templateContentUrl, dataFileInfoAllUrl,
     resultExecutionIdsOverviewUrl, resultExecutionIdsSingleResultsOverviewUrl,
     resultExecutionIdGetDataByIdUrl, resultExecutionIdGetFilteredDataByIdUrl,
-    resultAnalysisTopFlowUrl, resultAnalysisVarianceUrl
+    resultAnalysisTopFlowUrl, resultAnalysisVarianceUrl, parameterValuesSampleRequestUrl
 } from '../utils/globalConstants'
 
 
@@ -238,6 +238,24 @@ function retrieveDataFileInfoAll(returnNSamples) {
         })
 }
 
+function retrieveRequestSamplesForData(dataJson, numSamples) {
+    const url = parameterValuesSampleRequestUrl + "?returnNSamples=" + numSamples
+    const config = {
+        headers: {
+            "Content-Type" : "application/json"
+        }
+    }
+    return axios
+        .post(url, dataJson, config)
+        .then(response => {
+            console.info("retrieved request sample for passed data")
+            console.log(response)
+            return response.data
+        }).catch(_ => {
+            return {}
+        })
+}
+
 function retrieveServiceUpState() {
     return axios
         .get(appIsUpUrl)
@@ -335,5 +353,5 @@ export {
     retrieveTemplateContentAndInfo, retrieveDataFileInfoAll,
     retrieveExecutionIDs, retrieveSingleResultIDsForExecutionID,
     retrieveSingleResultById, retrieveSingleResultByIdFiltered,
-    retrieveAnalysisTopFlop, retrieveAnalysisVariance
+    retrieveAnalysisTopFlop, retrieveAnalysisVariance, retrieveRequestSamplesForData
 }

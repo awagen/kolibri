@@ -24,9 +24,12 @@ import de.awagen.kolibri.base.io.reader.FileReaderUtils
 import de.awagen.kolibri.base.processing.modifiers.ParameterValues._
 import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator}
 import de.awagen.kolibri.datatypes.values.OrderedValues
+import org.slf4j.LoggerFactory
 import spray.json.{DefaultJsonProtocol, JsValue, JsonFormat, RootJsonFormat, enrichAny}
 
 object ParameterValuesJsonProtocol extends DefaultJsonProtocol {
+
+  private[this] val logger = LoggerFactory.getLogger(this.getClass)
 
   object FormatOps {
 
@@ -179,13 +182,19 @@ object ParameterValuesJsonProtocol extends DefaultJsonProtocol {
             .map(x => (x._1, ByFunctionNrLimitedIndexedGenerator.createFromSeq(x._2)))
           MappedParameterValues(name, valueType, jsonMapping)
         case JSON_ARRAY_MAPPINGS_TYPE =>
-          val fileReader = AppConfig.persistenceModule.persistenceDIModule.reader
-          val name = fields(NAME_KEY).convertTo[String]
-          val valueType = fields(VALUES_TYPE_KEY).convertTo[ValueType.Value]
-          val mappingsJsonFile = fields(VALUES_KEY).convertTo[String]
-          val jsonMapping = FileReaderUtils.readJsonMapping(mappingsJsonFile, fileReader, x => x.convertTo[Seq[String]])
-            .map(x => (x._1, ByFunctionNrLimitedIndexedGenerator.createFromSeq(x._2)))
-          MappedParameterValues(name, valueType, jsonMapping)
+          try {
+            val fileReader = AppConfig.persistenceModule.persistenceDIModule.reader
+            val name = fields(NAME_KEY).convertTo[String]
+            val valueType = fields(VALUES_TYPE_KEY).convertTo[ValueType.Value]
+            val mappingsJsonFile = fields(VALUES_KEY).convertTo[String]
+            val jsonMapping = FileReaderUtils.readJsonMapping(mappingsJsonFile, fileReader, x => x.convertTo[Seq[JsValue]].map(x => x.toString))
+              .map(x => (x._1, ByFunctionNrLimitedIndexedGenerator.createFromSeq(x._2)))
+            MappedParameterValues(name, valueType, jsonMapping)
+          }
+          catch {
+            case e: Throwable => logger.error("failed reading json file of format 'JSON_ARRAY_MAPPINGS_TYPE'", e)
+              throw e
+          }
         // reading file prefixes in folder, and creating mapping for each where prefix is key and values are the values
         // given in the file, one value per line
         case FILE_PREFIX_TO_FILE_LINES_MAPPING_TYPE =>

@@ -41,9 +41,9 @@ function selectedDataToParameterValuesJson(selectedData){
         }
         else if (x.type === "mapping") {
             return {
-                "keyValues": x.data.keyValues.jsonDefinition,
-                "mappedValues": x.data.mappedValues.map(x => x.jsonDefinition),
-                "mappingKeyValueAssignments": x.data.mappedValues.map((value, index) => {
+                "key_values": x.data.keyValues.jsonDefinition,
+                "mapped_values": x.data.mappedValues.map(x => x.jsonDefinition),
+                "key_mapping_assignments": x.data.mappedValues.map((value, index) => {
                     return [value.mappedToIndex, index + 1]
                 })
             }

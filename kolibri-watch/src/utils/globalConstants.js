@@ -14,6 +14,8 @@ export const stopJobUrl = `${kolibriBaseUrl}/${import.meta.env.VITE_KOLIBRI_STOP
 // url to retrieve available data files by type
 export const dataFileInfoAllUrl = `${kolibriBaseUrl}/${import.meta.env.VITE_KOLIBRI_DATA_INFO_ALL_PATH}`
 
+export const parameterValuesSampleRequestUrl = `${kolibriBaseUrl}/${import.meta.env.VITE_KOLIBRI_DATA_REQUEST_SAMPLE_PATH}`
+
 // urls to retrieve some result information
 export const resultExecutionIdsOverviewUrl = `${kolibriBaseUrl}/${import.meta.env.VITE_KOLIBRI_RESULT_IDS_OVERVIEW_PATH}`
 export const resultExecutionIdsSingleResultsOverviewUrl = `${kolibriBaseUrl}/${import.meta.env.VITE_KOLIBRI_RESULT_IDS_SINGLE_RESULT_OVERVIEW_PATH}`

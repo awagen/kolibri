@@ -11,7 +11,8 @@ import {
     retrieveDataFileInfoAll,
     retrieveExecutionIDs, retrieveSingleResultIDsForExecutionID,
     retrieveSingleResultById, retrieveSingleResultByIdFiltered,
-    retrieveAnalysisTopFlop, retrieveAnalysisVariance
+    retrieveAnalysisTopFlop, retrieveAnalysisVariance,
+    retrieveRequestSamplesForData
 } from './utils/retrievalFunctions'
 
 // we could just reference style sheets relatively from assets folder, but we keep one central scss file instead
@@ -38,6 +39,7 @@ const store = createStore({
             selectedMappingDataFileType: "",
             // the files added to the composer so far (standalone values or mappings)
             selectedData: [],
+            selectedDataRequestSamples: [],
             // the stringified json array representing the selected data values
             // this should directly reflect the json representation of a list of
             // ParameterValue instances (standalone or mapping), that can be directly
@@ -92,6 +94,12 @@ const store = createStore({
         recalculateSelectedDataJsonString(state) {
             let jsonObj = selectedDataToParameterValuesJson(state.selectedData)
             state.selectedDataJsonString = objectToJsonStringAndSyntaxHighlight(jsonObj)
+        },
+
+        retrieveRequestSamplesForSelectedData(state) {
+          state.selectedDataRequestSamples = []
+          let dataObj = selectedDataToParameterValuesJson(state.selectedData)
+            retrieveRequestSamplesForData(dataObj, 10).then(response => state.selectedDataRequestSamples = response)
         },
 
         updateAvailableResultExecutionIDs(state) {

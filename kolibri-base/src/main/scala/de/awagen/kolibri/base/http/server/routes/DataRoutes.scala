@@ -19,11 +19,12 @@ package de.awagen.kolibri.base.http.server.routes
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.StatusCodes
-import akka.http.scaladsl.server.Directives.{as, complete, entity, get, parameters, path, pathPrefix}
+import akka.http.scaladsl.server.Directives.{as, complete, entity, get, parameters, path, pathPrefix, post}
 import akka.http.scaladsl.server.Route
 import de.awagen.kolibri.base.config.AppConfig.persistenceModule
 import de.awagen.kolibri.base.config.AppProperties
 import de.awagen.kolibri.base.config.AppProperties.config.kolibriDispatcherName
+import de.awagen.kolibri.base.http.client.request.{RequestTemplate, RequestTemplateBuilder}
 import de.awagen.kolibri.base.http.server.routes.StatusRoutes.corsHandler
 import de.awagen.kolibri.base.io.json.EnumerationJsonProtocol.dataFileTypeFormat
 import de.awagen.kolibri.base.io.json.ParameterValuesJsonProtocol.FormatOps
@@ -33,13 +34,13 @@ import de.awagen.kolibri.base.io.reader.ReaderUtils.safeContentRead
 import de.awagen.kolibri.base.io.reader.{DataOverviewReader, FileReaderUtils, Reader}
 import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ParameterValuesImplicits.ParameterValueSeqToRequestBuilderModifier
 import de.awagen.kolibri.base.processing.modifiers.ParameterValues._
-import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
+import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.{CombinedModifier, RequestTemplateBuilderModifier}
 import de.awagen.kolibri.datatypes.collections.generators.{IndexedGenerator, PermutatingIndexedGenerator}
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import org.slf4j.{Logger, LoggerFactory}
 import spray.json._
 
-import scala.concurrent.ExecutionContextExecutor
+import scala.concurrent.{Await, ExecutionContextExecutor}
 
 
 object DataRoutes extends DefaultJsonProtocol {
@@ -126,6 +127,7 @@ object DataRoutes extends DefaultJsonProtocol {
   private[this] val PARAM_TYPE = "type"
   private[this] val GENERATOR_PATH_PREFIX = "generator"
   private[this] val INFO_PATH = "info"
+  private[this] val REQUEST_SAMPLE_PATH = "requestSample"
 
   private[this] val FILE_HEADER_IDENTIFIER_KEY = "identifier"
   private[this] val FILE_HEADER_DESCRIPTION_KEY = "description"
@@ -248,7 +250,7 @@ object DataRoutes extends DefaultJsonProtocol {
                       val dataSamples: JsArray = dType.valueToSampleOfSize(numSamples.toInt).apply(parsedData)
 
                       val parameterValueType: ValueType.Value = dType match {
-                        case e if DataFileType.PARAMETER_TYPES.contains(e)  => ValueType.URL_PARAMETER
+                        case e if DataFileType.PARAMETER_TYPES.contains(e) => ValueType.URL_PARAMETER
                         case e if DataFileType.BODY_TYPES.contains(e) => ValueType.BODY
                         case e if DataFileType.HEADER_TYPES.contains(e) => ValueType.HEADER
                       }
@@ -315,10 +317,9 @@ object DataRoutes extends DefaultJsonProtocol {
     corsHandler(
       pathPrefix(GENERATOR_PATH_PREFIX) {
         path(INFO_PATH) {
-          get {
+          post {
             parameters(RETURN_N_SAMPLES_PARAM) { numSamples => {
               entity(as[String]) { generatorJson => {
-                // pickup string of the actual response, then parse it here
                 val values = generatorJson.parseJson.convertTo[Seq[ValueSeqGenProvider]]
                 val modifierGenerators: Seq[IndexedGenerator[RequestTemplateBuilderModifier]] = values.map(x => x.toSeqGenerator).map(x => x.mapGen(y => y.toModifier))
                 val combinedGenerator: IndexedGenerator[Seq[Any]] = PermutatingIndexedGenerator(modifierGenerators)
@@ -328,6 +329,53 @@ object DataRoutes extends DefaultJsonProtocol {
                   combinedGenerator.getPart(0, numSamples.toInt).mapGen(x => x.map(y => y.toString)).iterator.toSeq
                 )
                 complete(StatusCodes.OK, response.toJson.toString())
+              }
+              }
+            }
+            }
+          }
+        }
+      })
+  }
+
+  def getExampleQueriesForValueSeqGenProviderSequence(implicit system: ActorSystem): Route = {
+    implicit val ec: ExecutionContextExecutor = system.dispatchers.lookup(kolibriDispatcherName)
+    import de.awagen.kolibri.base.io.json.ParameterValuesJsonProtocol.ValueSeqGenProviderFormat
+    import scala.concurrent.duration._
+
+    corsHandler(
+      pathPrefix(GENERATOR_PATH_PREFIX) {
+        path(REQUEST_SAMPLE_PATH) {
+          post {
+            parameters(RETURN_N_SAMPLES_PARAM) { (numSamples) => {
+              entity(as[String]) { generatorJson => {
+                val values = generatorJson.parseJson.convertTo[Seq[ValueSeqGenProvider]]
+                val modifierGenerators: Seq[IndexedGenerator[RequestTemplateBuilderModifier]] = values.map(x => x.toSeqGenerator).map(x => x.mapGen(y => y.toModifier))
+                val sampleRequestTemplateBuilderSupplier: () => RequestTemplateBuilder = () => new RequestTemplateBuilder().withContextPath("test")
+                val permutatingModifierGenerator: IndexedGenerator[RequestTemplateBuilderModifier] = PermutatingIndexedGenerator(modifierGenerators)
+                  .mapGen(x => CombinedModifier(x))
+
+                val resultingRequestSample: Seq[JsObject] = permutatingModifierGenerator
+                  .getPart(0, numSamples.toInt).iterator.toSeq.map(modifier => {
+                  val requestTemplate: RequestTemplate = modifier.apply(sampleRequestTemplateBuilderSupplier.apply()).build()
+                  val bodyStr: String = Await.result(requestTemplate.body.toStrict(1 second), 1 second)
+                    .data.decodeString("UTF-8")
+                  val body = bodyStr.trim match {
+                    case "" => new JsObject(Map.empty)
+                    case e => e.parseJson
+                  }
+                  JsObject(
+                    Map(
+                      "body" -> body,
+                      "request" -> JsString(requestTemplate.query),
+                      "header" -> JsObject(requestTemplate.headers
+                        .map(header => (header.name(), JsString(header.value)))
+                        .toMap
+                      )
+                    )
+                  )
+                })
+                complete(StatusCodes.OK, resultingRequestSample.toJson.toString())
               }
               }
             }

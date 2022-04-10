@@ -39,6 +39,9 @@
   <div class="divider"></div>
 
   <h2 class="nodeListHeader">COMPOSER</h2>
+  <button @click="this.$store.commit('retrieveRequestSamplesForSelectedData')" class="btn btn-primary">Retrieve Sample
+    Requests
+  </button>
 
   <div class="columns">
 
@@ -59,6 +62,32 @@
         </div>
       </div>
       <div class="form-separator"></div>
+      <div class="accordion">
+        <input type="checkbox" id="accordion-2" name="accordion-checkbox" hidden>
+        <label class="accordion-header" for="accordion-2">
+          <i class="icon icon-arrow-right mr-1"></i>
+          Sample Requests
+        </label>
+        <div class="accordion-body">
+          <template v-for="(request, index) in this.$store.state.selectedDataRequestSamples">
+            <div class="accordion">
+              <input type="checkbox" :id="'accordion-inner-' + index" name="accordion-checkbox" hidden>
+              <label class="accordion-header" :for="'accordion-inner-' + index">
+                <i class="icon icon-arrow-right mr-1"></i>
+                {{ request.request }}
+              </label>
+              <div class="accordion-body">
+                <div>
+                  BODY: {{request.body}}
+                </div>
+                <div>
+                  HEADER: {{request.header}}
+                </div>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
     </form>
   </div>
 

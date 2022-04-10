@@ -151,6 +151,7 @@ object ClusterNode extends App {
         ~ getValuesByTypeAndFile
         ~ getResultBaseFolders ~ getPartialResultsOverview ~ getSingleResult
         ~ getSingleResultFiltered ~ getImproovingAndLoosing ~ getValueVarianceFromDir
+        ~ getExampleQueriesForValueSeqGenProviderSequence
       )
       val usedRoute: Route = if (useRequestEventShardingAndEndpoints) {
         commonRoute ~ sendCombinedEvent ~ sendEntityEvent ~ sendKeyValueEvent

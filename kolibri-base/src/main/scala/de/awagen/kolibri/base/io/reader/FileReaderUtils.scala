@@ -260,7 +260,8 @@ object FileReaderUtils extends DefaultJsonProtocol {
    * @return
    */
   def readJsonMapping[T](file: String, reader: Reader[String, Seq[String]], valueConversion: JsValue => T): Map[String, T] = {
-    val jsonContent = reader.getSource(file).getLines().mkString("\n")
+    val jsonContent = loadLinesFromFile(file, reader)
+      .mkString("\n")
     val jsValue: JsValue = jsonContent.parseJson
     jsValue.convertTo[Map[String, JsValue]].map(x => (x._1, valueConversion.apply(x._2)))
   }
