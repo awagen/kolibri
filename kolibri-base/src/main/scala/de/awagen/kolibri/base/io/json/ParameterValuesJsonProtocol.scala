@@ -25,7 +25,7 @@ import de.awagen.kolibri.base.processing.modifiers.ParameterValues._
 import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator}
 import de.awagen.kolibri.datatypes.values.OrderedValues
 import org.slf4j.LoggerFactory
-import spray.json.{DefaultJsonProtocol, JsValue, JsonFormat, RootJsonFormat, enrichAny}
+import spray.json.{DefaultJsonProtocol, JsString, JsValue, JsonFormat, RootJsonFormat, enrichAny}
 
 object ParameterValuesJsonProtocol extends DefaultJsonProtocol {
 
@@ -148,6 +148,11 @@ object ParameterValuesJsonProtocol extends DefaultJsonProtocol {
     override def write(obj: ParameterValues): JsValue = """{}""".toJson
   }
 
+  def jsValueStringConversion(jsValue: JsValue): String = jsValue match {
+    case e: JsString => e.convertTo[String]
+    case e => e.toString()
+  }
+
   /**
    * Format for mappings, defined by the values (Seq[String]) that hold for a given
    * key
@@ -177,7 +182,7 @@ object ParameterValuesJsonProtocol extends DefaultJsonProtocol {
           val name = fields(NAME_KEY).convertTo[String]
           val valueType = fields(VALUES_TYPE_KEY).convertTo[ValueType.Value]
           val mappingsJsonFile = fields(VALUES_KEY).convertTo[String]
-          val jsonMapping = FileReaderUtils.readJsonMapping(mappingsJsonFile, fileReader, x => x.convertTo[String])
+          val jsonMapping = FileReaderUtils.readJsonMapping(mappingsJsonFile, fileReader, x => jsValueStringConversion(x))
             .map(x => (x._1, Seq(x._2)))
             .map(x => (x._1, ByFunctionNrLimitedIndexedGenerator.createFromSeq(x._2)))
           MappedParameterValues(name, valueType, jsonMapping)
@@ -187,7 +192,7 @@ object ParameterValuesJsonProtocol extends DefaultJsonProtocol {
             val name = fields(NAME_KEY).convertTo[String]
             val valueType = fields(VALUES_TYPE_KEY).convertTo[ValueType.Value]
             val mappingsJsonFile = fields(VALUES_KEY).convertTo[String]
-            val jsonMapping = FileReaderUtils.readJsonMapping(mappingsJsonFile, fileReader, x => x.convertTo[Seq[JsValue]].map(x => x.toString))
+            val jsonMapping = FileReaderUtils.readJsonMapping(mappingsJsonFile, fileReader, x => x.convertTo[Seq[JsValue]].map(x => jsValueStringConversion(x)))
               .map(x => (x._1, ByFunctionNrLimitedIndexedGenerator.createFromSeq(x._2)))
             MappedParameterValues(name, valueType, jsonMapping)
           }
