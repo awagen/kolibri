@@ -39,8 +39,18 @@
   <div class="divider"></div>
 
   <h2 class="nodeListHeader">COMPOSER</h2>
-  <DataComposerOverview :dataFileObjArray="this.$store.state.selectedData"/>
 
+  <div class="columns">
+
+    <form class="form-horizontal col-6 column">
+      <DataComposerOverview :dataFileObjArray="this.$store.state.selectedData"/>
+      <div class="form-separator"></div>
+    </form>
+
+    <form class="form-horizontal col-6 column k-json-panel">
+      <pre id="template-content-display-1" v-html="this.$store.state.selectedDataJsonString"/>
+    </form>
+  </div>
 
 </template>
 
@@ -77,6 +87,40 @@ export default {
 
 .divider {
   border-color: #353535;
+}
+
+/* need some deep selectors here since otherwise code loaded in v-html directive doesnt get styled */
+::v-deep(pre) {
+  padding-left: 2em;
+  padding-top: 0;
+  margin: 5px;
+  text-align: left;
+}
+
+::v-deep(.string) {
+  color: green;
+}
+
+::v-deep(.number) {
+  color: darkorange;
+}
+
+::v-deep(.boolean) {
+  color: black;
+}
+
+::v-deep(.null) {
+  color: magenta;
+}
+
+::v-deep(.key) {
+  color: #9c9c9c;
+}
+
+pre#template-content-display-1 {
+
+  margin-top: 2em;
+
 }
 
 </style>

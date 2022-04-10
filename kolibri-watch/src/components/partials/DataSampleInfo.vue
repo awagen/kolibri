@@ -35,7 +35,7 @@
     <!-- if some mapping index is specified, the sample info reflects a mapping with editable mapping index -->
     <div v-if="mappingValuesIndex >= 0" class="form-group key-index">
       <label class="form-label" for="key-index-input">Mapped To Index:</label>
-      <input class="form-input" type="number" v-model="dataSampleInfo.mappedToIndex" id="key-index-input">
+      <input class="form-input" @change="this.$store.commit('recalculateSelectedDataJsonString')" type="number" v-model="dataSampleInfo.mappedToIndex" id="key-index-input">
     </div>
 
     <div>

@@ -19,7 +19,7 @@ import {
 import './assets/css/styles.scss';
 import {kolibriStateRefreshInterval} from "./utils/globalConstants";
 import {objectToJsonStringAndSyntaxHighlight, stringifyObj} from "./utils/formatFunctions";
-import {filteredResultsReduced} from "./utils/dataFunctions";
+import {filteredResultsReduced, selectedDataToParameterValuesJson} from "./utils/dataFunctions";
 
 // Create a new store instance.
 const store = createStore({
@@ -38,6 +38,11 @@ const store = createStore({
             selectedMappingDataFileType: "",
             // the files added to the composer so far (standalone values or mappings)
             selectedData: [],
+            // the stringified json array representing the selected data values
+            // this should directly reflect the json representation of a list of
+            // ParameterValue instances (standalone or mapping), that can be directly
+            // consumed by the backend (ParameterValuesJsonProtocol)
+            selectedDataJsonString: "",
             // selectedDataMapping should contain one standalone data sample to provide keys and
             // arbitrary number of values mapped to a key or another mapped value before it in the sequence
             // and is the one selected for editing
@@ -84,6 +89,11 @@ const store = createStore({
     },
 
     mutations: {
+        recalculateSelectedDataJsonString(state) {
+            let jsonObj = selectedDataToParameterValuesJson(state.selectedData)
+            state.selectedDataJsonString = objectToJsonStringAndSyntaxHighlight(jsonObj)
+        },
+
         updateAvailableResultExecutionIDs(state) {
             retrieveExecutionIDs().then(response => state.availableResultExecutionIDs = response)
         },
@@ -189,7 +199,7 @@ const store = createStore({
             console.info("adding standalone data file:")
             console.log(newElement)
             state.selectedData.push(newElement)
-
+            this.commit("recalculateSelectedDataJsonString")
         },
 
         /**
@@ -227,6 +237,7 @@ const store = createStore({
                 state.selectedDataMapping.data.mappedValues.push(fileObj)
                 fileObj["mappedToIndex"] = 0
             }
+            this.commit("recalculateSelectedDataJsonString")
         },
 
         /**
@@ -242,6 +253,7 @@ const store = createStore({
             if (toBeRemoved.length > 0) {
                 state.selectedData.splice(state.selectedData.indexOf(toBeRemoved[toBeRemoved.length - 1]), 1)
             }
+            this.commit("recalculateSelectedDataJsonString")
         },
 
         /**
@@ -263,6 +275,7 @@ const store = createStore({
             if (state.selectedDataMapping.data === mappingObj) {
                 state.selectedDataMapping = {}
             }
+            this.commit("recalculateSelectedDataJsonString")
         },
 
         /**
@@ -285,6 +298,7 @@ const store = createStore({
             else {
                 console.info("could not find fileObj in mappingObj. Ignoring request for deletion")
             }
+            this.commit("recalculateSelectedDataJsonString")
         },
 
         updateAvailableTemplateTypes(state) {
@@ -329,7 +343,7 @@ const store = createStore({
             state.selectedTemplateJsonString = objectToJsonStringAndSyntaxHighlight(state.selectedTemplateContent)
         }
     },
-    computed: {}
+    actions: {}
 })
 
 // initial service status check
