@@ -2,7 +2,8 @@
 
   <div class="row-container columns">
     <div class="col-12 col-sm-12 columns">
-          <span class="composer-data-info-container" v-for="dataFile in dataFileObjArray">
+          <span class="composer-data-info-container" v-for="(dataFile, index) in dataFileObjArray">
+            {{index}} )
             <DataSampleInfo v-if="dataFile.type === 'standalone'" :show-delete-button="true"
                             @remove-data-func="removeData"
                             @add-data-file-func="addDataToComposer"

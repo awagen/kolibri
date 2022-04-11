@@ -39,7 +39,8 @@
   <div class="divider"></div>
 
   <h2 class="nodeListHeader">COMPOSER</h2>
-  <button @click="this.$store.commit('retrieveRequestSamplesForSelectedData')" class="btn btn-primary k-action-green">Retrieve Sample
+  <button @click="this.$store.commit('retrieveRequestSamplesForSelectedData')" class="btn btn-primary k-action-green">
+    Retrieve Sample
     Requests
   </button>
 
@@ -50,42 +51,45 @@
       <div class="form-separator"></div>
     </form>
 
-    <form class="form-horizontal col-6 column k-json-panel">
-      <div class="accordion">
-        <input type="checkbox" id="accordion-1" name="accordion-checkbox" hidden>
-        <label class="accordion-header" for="accordion-1">
-          <i class="icon icon-arrow-right mr-1"></i>
-          Composition Json
-        </label>
-        <div class="accordion-body">
-          <pre id="template-content-display-1" v-html="this.$store.state.selectedDataJsonString"/>
+    <form class="form-horizontal col-6 column">
+      <div class="row-container">
+        <div class="accordion top">
+          <input type="checkbox" id="accordion-1" name="accordion-checkbox" hidden>
+          <label class="accordion-header" for="accordion-1">
+            <i class="icon icon-arrow-right mr-1"></i>
+            Composition Json
+          </label>
+          <div class="accordion-body">
+            <pre id="template-content-display-1" v-html="this.$store.state.selectedDataJsonString"/>
+          </div>
         </div>
-      </div>
-      <div class="form-separator"></div>
-      <div class="accordion">
-        <input type="checkbox" id="accordion-2" name="accordion-checkbox" hidden>
-        <label class="accordion-header" for="accordion-2">
-          <i class="icon icon-arrow-right mr-1"></i>
-          Sample Requests
-        </label>
-        <div class="accordion-body">
-          <template v-for="(request, index) in this.$store.state.selectedDataRequestSamples">
-            <div class="accordion">
-              <input type="checkbox" :id="'accordion-inner-' + index" name="accordion-checkbox" hidden>
-              <label class="accordion-header" :for="'accordion-inner-' + index">
-                <i class="icon icon-arrow-right mr-1"></i>
-                {{ request.request }}
-              </label>
-              <div class="accordion-body">
-                <div>
-                  BODY: {{request.body}}
-                </div>
-                <div>
-                  HEADER: {{request.header}}
+        <div class="form-separator"></div>
+        <div class="accordion">
+          <input type="checkbox" id="accordion-2" name="accordion-checkbox" hidden>
+          <label class="accordion-header" for="accordion-2">
+            <i class="icon icon-arrow-right mr-1"></i>
+            Sample Requests
+          </label>
+          <div class="accordion-body">
+            <template v-for="(request, index) in this.$store.state.selectedDataRequestSamples">
+              <div class="divider"></div>
+              <div class="accordion nested">
+                <input type="checkbox" :id="'accordion-inner-' + index" name="accordion-checkbox" hidden>
+                <label class="accordion-header" :for="'accordion-inner-' + index">
+                  <i class="icon icon-arrow-right mr-1"></i>
+                  {{ request.request }}
+                </label>
+                <div class="accordion-body">
+                  <div>
+                    BODY: {{ request.body }}
+                  </div>
+                  <div>
+                    HEADER: {{ request.header }}
+                  </div>
                 </div>
               </div>
-            </div>
-          </template>
+            </template>
+          </div>
         </div>
       </div>
     </form>
@@ -123,6 +127,18 @@ export default {
 </script>
 
 <style scoped>
+
+.row-container {
+  margin: 3em;
+}
+
+.accordion.nested .accordion-header {
+  margin-left: 1em;
+}
+
+.accordion .accordion-header {
+  text-align: left;
+}
 
 button.k-action-green {
   background-color: #588274;
