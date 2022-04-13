@@ -4,7 +4,7 @@ import sbt.url
 val sl4jApiVersion = "1.7.30"
 val scalaTestVersion = "3.2.2"
 val scalaMockVersion = "5.1.0"
-val kolibriDatatypesVersion = "0.1.0-rc1"
+val kolibriDatatypesVersion = "0.1.0-rc2"
 val akkaVersion = "2.6.14"
 val akkaContribVersion = "2.5.31"
 val akkaHttpVersion = "10.2.1"
@@ -20,7 +20,7 @@ val macwireVersion = "2.4.0"
 val scalacScoverageRuntimeVersion = "1.4.9"
 val testcontainersVersion = "1.16.3"
 
-version := "0.1.0-rc3"
+version := "0.1.0-rc4"
 
 lazy val jvmOptions = Seq(
   "-Xms1G",

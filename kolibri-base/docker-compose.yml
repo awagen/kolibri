@@ -23,7 +23,7 @@ services:
     user: "1000:1000"
 
   kolibri1:
-    image: awagen/kolibri-base:0.1.0-rc3
+    image: awagen/kolibri-base:0.1.0-rc4
     ports:
       - "8000:8000"
       - "5266:5266"
@@ -106,7 +106,7 @@ services:
       - ./test-files:/app/test-files
 
   kolibri2:
-    image: awagen/kolibri-base:0.1.0-rc3
+    image: awagen/kolibri-base:0.1.0-rc4
     ports:
       - "5267:5267"
       - "9096:9096"
@@ -237,7 +237,7 @@ services:
       - "81:81"
 
   kolibri-watch:
-    image: awagen/kolibri-watch:0.1.0-rc0
+    image: awagen/kolibri-watch:0.1.0-rc1
     environment:
       KOLIBRI_BASE_URL: "http://localhost:8000"
     ports:

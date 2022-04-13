@@ -10,5 +10,5 @@ spec:
 #       someTypeKey: [value]
       containers:
         - name: kolibri-ui
-          image: awagen/kolibri-watch:0.1.0-rc0
+          image: awagen/kolibri-watch:0.1.0-rc1
           imagePullPolicy: Always

@@ -7,7 +7,7 @@ val playVersion = "2.9.1"
 val playLogbackVersion = "2.8.2"
 val sprayVersion = "1.3.5"
 
-version := "0.1.0-rc1"
+version := "0.1.0-rc2"
 
 // scoverage plugin setting to exclude classes from coverage report
 coverageExcludedPackages := ""
