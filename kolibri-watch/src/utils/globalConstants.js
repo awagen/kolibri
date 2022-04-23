@@ -16,6 +16,11 @@ export const dataFileInfoAllUrl = `${kolibriBaseUrl}/${import.meta.env.VITE_KOLI
 
 export const parameterValuesSampleRequestUrl = `${kolibriBaseUrl}/${import.meta.env.VITE_KOLIBRI_DATA_REQUEST_SAMPLE_PATH}`
 
+//retrieve all available information retrieval metrics together with type hints
+export const irMetricsAllUrl = `${kolibriBaseUrl}/${import.meta.env.VITE_KOLIBRI_IR_METRICS_ALL_PATH}`
+// transform the format given via irMetricsAllUrl to the actual jsons needed within job definition
+export const irMetricsReducedToFullJsonListUrl = `${kolibriBaseUrl}/${import.meta.env.VITE_KOLIBRI_IR_METRICS_REDUCED_TO_FULL_JSON}`
+
 // urls to retrieve some result information
 export const resultExecutionIdsOverviewUrl = `${kolibriBaseUrl}/${import.meta.env.VITE_KOLIBRI_RESULT_IDS_OVERVIEW_PATH}`
 export const resultExecutionIdsSingleResultsOverviewUrl = `${kolibriBaseUrl}/${import.meta.env.VITE_KOLIBRI_RESULT_IDS_SINGLE_RESULT_OVERVIEW_PATH}`

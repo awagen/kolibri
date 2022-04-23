@@ -5,7 +5,8 @@ import {
     templateContentUrl, dataFileInfoAllUrl,
     resultExecutionIdsOverviewUrl, resultExecutionIdsSingleResultsOverviewUrl,
     resultExecutionIdGetDataByIdUrl, resultExecutionIdGetFilteredDataByIdUrl,
-    resultAnalysisTopFlowUrl, resultAnalysisVarianceUrl, parameterValuesSampleRequestUrl
+    resultAnalysisTopFlowUrl, resultAnalysisVarianceUrl, parameterValuesSampleRequestUrl,
+    irMetricsAllUrl, irMetricsReducedToFullJsonListUrl
 } from '../utils/globalConstants'
 
 
@@ -256,6 +257,35 @@ function retrieveRequestSamplesForData(dataJson, numSamples) {
         })
 }
 
+function retrieveAllAvailableIRMetrics(){
+    const url = irMetricsAllUrl
+    return axios
+        .get(url)
+        .then(response => {
+            return response.data
+        }).catch(_ => {
+            return []
+        })
+}
+
+function changeReducedToFullMetricsJsonList(dataObj){
+    const url = irMetricsReducedToFullJsonListUrl
+    const config = {
+        headers: {
+            "Content-Type" : "application/json"
+        }
+    }
+    return axios
+        .post(url, dataObj, config)
+        .then(response => {
+            console.info("retrieved list of full ir metric json representations")
+            console.log(response)
+            return response.data
+        }).catch(_ => {
+            return []
+        })
+}
+
 function retrieveServiceUpState() {
     return axios
         .get(appIsUpUrl)
@@ -353,5 +383,6 @@ export {
     retrieveTemplateContentAndInfo, retrieveDataFileInfoAll,
     retrieveExecutionIDs, retrieveSingleResultIDsForExecutionID,
     retrieveSingleResultById, retrieveSingleResultByIdFiltered,
-    retrieveAnalysisTopFlop, retrieveAnalysisVariance, retrieveRequestSamplesForData
+    retrieveAnalysisTopFlop, retrieveAnalysisVariance, retrieveRequestSamplesForData,
+    retrieveAllAvailableIRMetrics, changeReducedToFullMetricsJsonList
 }

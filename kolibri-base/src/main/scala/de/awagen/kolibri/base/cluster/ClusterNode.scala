@@ -38,6 +38,7 @@ import de.awagen.kolibri.base.http.server.routes.AnalysisRoutes.{getImproovingAn
 import de.awagen.kolibri.base.http.server.routes.BaseRoutes
 import de.awagen.kolibri.base.http.server.routes.BaseRoutes._
 import de.awagen.kolibri.base.http.server.routes.DataRoutes._
+import de.awagen.kolibri.base.http.server.routes.MetricRoutes.{getAvailableIRMetrics, getIRMetricJsonsFromReducedJsons}
 import de.awagen.kolibri.base.http.server.routes.ResourceRoutes.{getJobTemplateByTypeAndIdentifier, getJobTemplateOverviewForType, getJobTemplateTypes, storeSearchEvaluationTemplate}
 import de.awagen.kolibri.base.http.server.routes.StatusRoutes.{finishedJobStates, getAllJobWorkerStates, getJobStatus, getJobWorkerStatus, getRunningJobIds, health, jobStates, nodeState}
 import de.awagen.kolibri.base.usecase.statesharding.actors.EventAggregatingActor
@@ -152,6 +153,7 @@ object ClusterNode extends App {
         ~ getResultBaseFolders ~ getPartialResultsOverview ~ getSingleResult
         ~ getSingleResultFiltered ~ getImproovingAndLoosing ~ getValueVarianceFromDir
         ~ getExampleQueriesForValueSeqGenProviderSequence
+        ~ getAvailableIRMetrics ~ getIRMetricJsonsFromReducedJsons
       )
       val usedRoute: Route = if (useRequestEventShardingAndEndpoints) {
         commonRoute ~ sendCombinedEvent ~ sendEntityEvent ~ sendKeyValueEvent

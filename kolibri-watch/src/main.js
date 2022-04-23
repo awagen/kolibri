@@ -12,7 +12,7 @@ import {
     retrieveExecutionIDs, retrieveSingleResultIDsForExecutionID,
     retrieveSingleResultById, retrieveSingleResultByIdFiltered,
     retrieveAnalysisTopFlop, retrieveAnalysisVariance,
-    retrieveRequestSamplesForData
+    retrieveRequestSamplesForData, retrieveAllAvailableIRMetrics
 } from './utils/retrievalFunctions'
 
 // we could just reference style sheets relatively from assets folder, but we keep one central scss file instead
@@ -49,6 +49,9 @@ const store = createStore({
             // arbitrary number of values mapped to a key or another mapped value before it in the sequence
             // and is the one selected for editing
             selectedDataMapping: {},
+
+            // list of available IR metrics
+            availableIRMetrics: [],
 
             // the names of template types for which specific templates can be requested
             templateTypes: [],
@@ -349,6 +352,12 @@ const store = createStore({
             state.changedTemplateParts = JSON.parse(changes)
             state.selectedTemplateContent = Object.assign({}, JSON.parse(stringifyObj(state.selectedTemplateContent)), state.changedTemplateParts)
             state.selectedTemplateJsonString = objectToJsonStringAndSyntaxHighlight(state.selectedTemplateContent)
+        },
+
+        updateAvailableIRMetrics(state){
+            retrieveAllAvailableIRMetrics().then(response => {
+                state.availableIRMetrics = response
+            })
         }
     },
     actions: {}
@@ -363,6 +372,8 @@ store.commit("updateAvailableTemplateTypes")
 store.commit("updateAvailableDataFiles", 5)
 // initial loading of executionIds for which results are available
 store.commit("updateAvailableResultExecutionIDs")
+// load list of available ir metrics
+store.commit("updateAvailableIRMetrics")
 
 // regular scheduling
 window.setInterval(() => {

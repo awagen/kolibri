@@ -95,6 +95,51 @@
     </form>
   </div>
 
+  <div class="divider"></div>
+
+  <!-- some metric information / selection -->
+  <form class="form-horizontal col-6 column">
+    <div class="row-container">
+      <div class="accordion">
+        <input type="checkbox" id="accordion-3" name="accordion-checkbox" hidden>
+        <label class="accordion-header" for="accordion-3">
+          <i class="icon icon-arrow-right mr-1"></i>
+          <h2>IR Metrics</h2>
+        </label>
+        <div class="accordion-body metric">
+          <template v-for="(metric, _) in this.$store.state.availableIRMetrics">
+            <div class="divider"></div>
+            <div class="form-group metric">
+              <span>{{metric.type}}</span>
+            </div>
+            <template v-for="(value, propertyName, index) in metric">
+              <template v-if="!propertyName.endsWith('_type') && propertyName !== 'type'">
+              <div class="form-group metric">
+                <label class="form-inline">
+                  {{propertyName}}
+                  <input v-if="['INT', 'FLOAT'].indexOf(metric[propertyName + '_type']) >= 0" class="form-input metric" type="number" v-model="metric[propertyName]">
+                  <input v-if="metric[propertyName + '_type'] === 'STRING'" class="form-input metric" type="text" v-model="metric[propertyName]">
+                </label>
+              </div>
+              </template>
+            </template>
+            <!-- TODO: add the onclick adding of the object to the selected metrics -->
+            <!-- <button @click="this.$emit('addDataFileFunc', dataSampleInfo)" class="btn btn-action k-add-button s-circle">-->
+            <button class="btn btn-action k-add-button s-circle">
+              <i class="icon icon-plus"></i>
+            </button>
+          </template>
+        </div>
+      </div>
+    </div>
+  </form>
+
+  <!-- current metric composition overview -->
+  <form class="form-horizontal col-6 column">
+
+  </form>
+
+
 </template>
 
 <script>
@@ -128,6 +173,22 @@ export default {
 
 <style scoped>
 
+.accordion-body.metric {
+  text-align: left;
+}
+
+.form-group.metric {
+  display: inline-block;
+  margin-left: 2em;
+  width: 10em;
+  /*text-align: left;*/
+}
+
+.form-input.metric {
+  display: inline-block;
+  /*text-align: left;*/
+}
+
 .row-container {
   margin: 3em;
 }
@@ -138,6 +199,16 @@ export default {
 
 .accordion .accordion-header {
   text-align: left;
+}
+
+button.k-add-button {
+  background-color: transparent;
+  border-width: 0;
+  color: white;
+}
+
+button.k-add-button:hover {
+  background-color: #588274;
 }
 
 button.k-action-green {
