@@ -98,15 +98,20 @@
   <div class="divider"></div>
 
   <!-- some metric information / selection -->
-  <form class="form-horizontal col-6 column">
-    <div class="row-container">
-      <div class="accordion">
-        <input type="checkbox" id="accordion-3" name="accordion-checkbox" hidden>
-        <label class="accordion-header" for="accordion-3">
-          <i class="icon icon-arrow-right mr-1"></i>
-          <h2 class="k-title">IR Metrics</h2>
-        </label>
-        <div class="accordion-body metric">
+  <div class="row-container">
+  <div class="accordion col-12">
+
+    <input type="checkbox" id="accordion-3" name="accordion-checkbox" hidden>
+
+    <label class="accordion-header" for="accordion-3">
+      <i class="icon icon-arrow-right mr-1"></i>
+      <h2 class="k-title">IR Metrics</h2>
+    </label>
+
+    <div class="accordion-body metric">
+
+      <div class="columns">
+        <form class="form-horizontal col-6 column">
           <template v-for="(metric, _) in this.$store.state.metricState.availableIRMetrics">
             <div class="divider"></div>
             <div class="form-group metric">
@@ -117,28 +122,30 @@
               <div class="form-group metric">
                 <label class="form-inline">
                   {{propertyName}}
-                  <input v-if="['INT', 'FLOAT'].indexOf(metric[propertyName + '_type']) >= 0" class="form-input metric" type="number" v-model="metric[propertyName]">
+                  <input v-if="['INT'].indexOf(metric[propertyName + '_type']) >= 0" class="form-input metric" type="number" step=1 v-model="metric[propertyName]">
+                  <input v-if="['FLOAT'].indexOf(metric[propertyName + '_type']) >= 0" class="form-input metric" type="number" step=0.0001 v-model="metric[propertyName]">
                   <input v-if="metric[propertyName + '_type'] === 'STRING'" class="form-input metric" type="text" v-model="metric[propertyName]">
                 </label>
               </div>
               </template>
             </template>
-            <!-- TODO: add the onclick adding of the object to the selected metrics -->
-            <!-- TODO: we might wanna add the metrics to a selection list and on demand transform it to the json definition needed by job -->
-<!--            <button @click="retrieveReducedMetricsListAsJsonDefinition()" class="btn btn-action k-add-button s-circle">-->
-            <button class="btn btn-action k-add-button s-circle">
+            <button @click.prevent="this.$store.commit('addIRMetricToSelected', metric.type)" class="btn btn-action k-add-button s-circle">
               <i class="icon icon-plus"></i>
             </button>
           </template>
-        </div>
+        </form>
+
+        <!-- current metric composition overview -->
+        <form class="form-horizontal col-6 column">
+            <pre id="metrics-content-display" v-html="this.$store.state.metricState.selectedIRMetricsFormattedJsonString"/>
+        </form>
       </div>
     </div>
-  </form>
 
-  <!-- current metric composition overview -->
-  <form class="form-horizontal col-6 column">
+  </div>
+  </div>
 
-  </form>
+
 
 
 </template>
@@ -149,18 +156,12 @@ import {onMounted} from "vue";
 import DataFileSelectTabs from "../components/partials/DataFileSelectTabs.vue";
 import DataFileOverview from "../components/partials/DataFileOverview.vue";
 import DataComposerOverview from "../components/partials/DataComposerOverview.vue";
-import {changeReducedToFullMetricsJsonList} from "../utils/retrievalFunctions";
 
 export default {
 
   props: [],
   components: {DataFileSelectTabs, DataFileOverview, DataComposerOverview},
   methods: {
-    retrieveReducedMetricsListAsJsonDefinition(list) {
-      const jsonDef = changeReducedToFullMetricsJsonList(list)
-      console.info("retrieved json definition for metric")
-      console.log(jsonDef)
-    },
 
     selectStandaloneDataFileType(fileType) {
       this.$store.commit("updateSelectedStandaloneDataFileType", fileType)
@@ -189,12 +190,10 @@ export default {
   display: inline-block;
   margin-left: 2em;
   width: 10em;
-  /*text-align: left;*/
 }
 
 .form-input.metric {
   display: inline-block;
-  /*text-align: left;*/
 }
 
 .row-container {

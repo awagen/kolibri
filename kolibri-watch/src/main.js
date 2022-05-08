@@ -12,7 +12,7 @@ import {
     retrieveExecutionIDs, retrieveSingleResultIDsForExecutionID,
     retrieveSingleResultById, retrieveSingleResultByIdFiltered,
     retrieveAnalysisTopFlop, retrieveAnalysisVariance,
-    retrieveRequestSamplesForData, retrieveAllAvailableIRMetrics
+    retrieveRequestSamplesForData, retrieveAllAvailableIRMetrics, changeReducedToFullMetricsJsonList
 } from './utils/retrievalFunctions'
 
 // we could just reference style sheets relatively from assets folder, but we keep one central scss file instead
@@ -56,7 +56,12 @@ const store = createStore({
 
             metricState: {
                 // list of available IR metrics
-                availableIRMetrics: []
+                availableIRMetrics: [],
+                // list of selected IR metrics
+                selectedIRMetrics: [],
+                // conversion of selected IR metrics to respective json definition needed by the job config
+                selectedIRMetricsJson: [],
+                selectedIRMetricsFormattedJsonString: ""
             },
 
             templateState: {
@@ -371,6 +376,18 @@ const store = createStore({
             retrieveAllAvailableIRMetrics().then(response => {
                 state.metricState.availableIRMetrics = response
             })
+        },
+
+        addIRMetricToSelected(state, metricType) {
+            console.info("adding metric to selected: " + metricType)
+            state.metricState.availableIRMetrics
+                .filter(metric => metric.type === metricType)
+                .forEach(metric => state.metricState.selectedIRMetrics.push(Object.assign({}, metric)))
+            changeReducedToFullMetricsJsonList(state.metricState.selectedIRMetrics)
+                .then(response => {
+                    state.metricState.selectedIRMetricsJson = response
+                    state.metricState.selectedIRMetricsFormattedJsonString = objectToJsonStringAndSyntaxHighlight(response)
+                })
         }
     },
     actions: {}
