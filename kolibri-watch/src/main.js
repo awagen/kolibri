@@ -54,46 +54,55 @@ const store = createStore({
                 selectedDataMapping: {}
             },
 
-            // list of available IR metrics
-            availableIRMetrics: [],
+            metricState: {
+                // list of available IR metrics
+                availableIRMetrics: []
+            },
 
-            // the names of template types for which specific templates can be requested
-            templateTypes: [],
-            // the names of the available templates as retrieved via the templates url
-            templateNames: [],
-            // template field selected for edit
-            selectedTemplateField: "",
-            // boolean to indicate whether any field info is available for the selected field
-            fieldInfoAvailable: false,
-            // the actual current value for the selectedTemplateField
-            selectedTemplateFieldValue: "",
-            // the info/description (if available) for the selectedTemplateField
-            selectedTemplateFieldInfo: "",
-            // the partial selected for editing, e.g {selectedTemplateField: selectedTemplateFieldValue}
-            selectedTemplateFieldPartial: {},
-            // selected type of template
-            selectedTemplateType: "",
-            // selected name of template
-            selectedTemplateName: "",
-            // the retrieved template content
-            selectedTemplateContent: {},
-            // description per field for the retrieved content
-            selectedTemplateContentInfo: {},
-            // the stringyfied values of the retrieved json
-            selectedTemplateJsonString: "",
-            // the changes to be applied to the selected template
-            changedTemplateParts: {},
+            templateState: {
+                // the names of template types for which specific templates can be requested
+                templateTypes: [],
+                // the names of the available templates as retrieved via the templates url
+                templateNames: [],
+                // template field selected for edit
+                selectedTemplateField: "",
+                // boolean to indicate whether any field info is available for the selected field
+                fieldInfoAvailable: false,
+                // the actual current value for the selectedTemplateField
+                selectedTemplateFieldValue: "",
+                // the info/description (if available) for the selectedTemplateField
+                selectedTemplateFieldInfo: "",
+                // the partial selected for editing, e.g {selectedTemplateField: selectedTemplateFieldValue}
+                selectedTemplateFieldPartial: {},
+                // selected type of template
+                selectedTemplateType: "",
+                // selected name of template
+                selectedTemplateName: "",
+                // the retrieved template content
+                selectedTemplateContent: {},
+                // description per field for the retrieved content
+                selectedTemplateContentInfo: {},
+                // the stringyfied values of the retrieved json
+                selectedTemplateJsonString: "",
+                // the changes to be applied to the selected template
+                changedTemplateParts: {}
+            },
 
-            // result states
-            availableResultExecutionIDs: [],
-            currentlySelectedExecutionID: "",
-            availableResultsForSelectedExecutionID: [],
-            fullResultForExecutionIDAndResultID: {},
-            filteredResultForExecutionIDAndResultID: {},
-            reducedFilteredResultForExecutionIDAndResultID: {},
-            // analysis states
-            analysisTopFlop: {},
-            analysisVariances: {}
+            resultState: {
+                // result states
+                availableResultExecutionIDs: [],
+                currentlySelectedExecutionID: "",
+                availableResultsForSelectedExecutionID: [],
+                fullResultForExecutionIDAndResultID: {},
+                filteredResultForExecutionIDAndResultID: {},
+                reducedFilteredResultForExecutionIDAndResultID: {}
+            },
+
+            analysisState: {
+                // analysis states
+                analysisTopFlop: {},
+                analysisVariances: {}
+            }
         }
     },
 
@@ -110,25 +119,25 @@ const store = createStore({
         },
 
         updateAvailableResultExecutionIDs(state) {
-            retrieveExecutionIDs().then(response => state.availableResultExecutionIDs = response)
+            retrieveExecutionIDs().then(response => state.resultState.availableResultExecutionIDs = response)
         },
 
         updateAvailableResultsForExecutionID(state, executionId) {
-            state.currentlySelectedExecutionID = executionId
+            state.resultState.currentlySelectedExecutionID = executionId
             retrieveSingleResultIDsForExecutionID(executionId)
-                .then(response => state.availableResultsForSelectedExecutionID = response.sort())
+                .then(response => state.resultState.availableResultsForSelectedExecutionID = response.sort())
         },
 
         updateSingleResultState(state, {executionId, resultId}) {
             retrieveSingleResultById(executionId, resultId)
-                .then(response => state.fullResultForExecutionIDAndResultID = response)
+                .then(response => state.resultState.fullResultForExecutionIDAndResultID = response)
         },
 
         updateSingleResultStateFiltered(state, {executionId, resultId, metricName, topN, reversed}) {
             retrieveSingleResultByIdFiltered(executionId, resultId, metricName, topN, reversed)
                 .then(response => {
-                    state.filteredResultForExecutionIDAndResultID = response
-                    state.reducedFilteredResultForExecutionIDAndResultID = filteredResultsReduced(response)
+                    state.resultState.filteredResultForExecutionIDAndResultID = response
+                    state.resultState.reducedFilteredResultForExecutionIDAndResultID = filteredResultsReduced(response)
                 })
         },
 
@@ -137,12 +146,12 @@ const store = createStore({
             n_best, n_worst
         }) {
             retrieveAnalysisTopFlop(executionId, currentParams, compareParams, metricName, queryParamName, n_best, n_worst)
-                .then(response => state.analysisTopFlop = response)
+                .then(response => state.analysisState.analysisTopFlop = response)
         },
 
         updateAnalysisVariance(state, {executionId, metricName, queryParamName}) {
             retrieveAnalysisVariance(executionId, metricName, queryParamName)
-                .then(response => state.analysisVariances = response)
+                .then(response => state.analysisState.analysisVariances = response)
         },
 
         updateServiceUpState(state) {
@@ -317,50 +326,50 @@ const store = createStore({
         },
 
         updateAvailableTemplateTypes(state) {
-            retrieveTemplateTypes().then(response => state.templateTypes = response)
+            retrieveTemplateTypes().then(response => state.templateState.templateTypes = response)
         },
 
         updateSelectedTemplateType(state, type) {
-            state.selectedTemplateType = type
+            state.templateState.selectedTemplateType = type
             retrieveTemplatesForType(type).then(response => {
-                state.templateNames = response
+                state.templateState.templateNames = response
             })
         },
 
         updateSelectedTemplate(state, templateName) {
-            state.selectedTemplateName = templateName
-            retrieveTemplateContentAndInfo(state.selectedTemplateType, templateName).then(response => {
+            state.templateState.selectedTemplateName = templateName
+            retrieveTemplateContentAndInfo(state.templateState.selectedTemplateType, templateName).then(response => {
                 if (Object.keys(response).length === 0) {
-                    state.selectedTemplateContent = {};
-                    state.selectedTemplateContentInfo = {}
-                    state.selectedTemplateJsonString = "";
+                    state.templateState.selectedTemplateContent = {};
+                    state.templateState.selectedTemplateContentInfo = {}
+                    state.templateState.selectedTemplateJsonString = "";
                 } else {
-                    state.selectedTemplateContent = response["template"]
-                    state.selectedTemplateContentInfo = response["info"]
-                    state.selectedTemplateJsonString = objectToJsonStringAndSyntaxHighlight(state.selectedTemplateContent)
+                    state.templateState.selectedTemplateContent = response["template"]
+                    state.templateState.selectedTemplateContentInfo = response["info"]
+                    state.templateState.selectedTemplateJsonString = objectToJsonStringAndSyntaxHighlight(state.templateState.selectedTemplateContent)
                 }
             })
         },
 
         updateTemplateFieldEditSelection(state, templateField) {
-            state.selectedTemplateFieldPartial = {}
-            state.selectedTemplateField = templateField
+            state.templateState.selectedTemplateFieldPartial = {}
+            state.templateState.selectedTemplateField = templateField
             // load the current field value for the selected field and the info (if any is provided)
-            state.selectedTemplateFieldValue = state.selectedTemplateContent[state.selectedTemplateField]
-            state.selectedTemplateFieldInfo = state.selectedTemplateContentInfo[state.selectedTemplateField]
-            state.fieldInfoAvailable = state.selectedTemplateFieldInfo != null
-            state.selectedTemplateFieldPartial[state.selectedTemplateField] = state.selectedTemplateFieldValue
+            state.templateState.selectedTemplateFieldValue = state.templateState.selectedTemplateContent[state.templateState.selectedTemplateField]
+            state.templateState.selectedTemplateFieldInfo = state.templateState.selectedTemplateContentInfo[state.templateState.selectedTemplateField]
+            state.templateState.fieldInfoAvailable = state.templateState.selectedTemplateFieldInfo != null
+            state.templateState.selectedTemplateFieldPartial[state.templateState.selectedTemplateField] = state.templateState.selectedTemplateFieldValue
         },
 
         updateTemplateState(state, changes) {
-            state.changedTemplateParts = JSON.parse(changes)
-            state.selectedTemplateContent = Object.assign({}, JSON.parse(stringifyObj(state.selectedTemplateContent)), state.changedTemplateParts)
-            state.selectedTemplateJsonString = objectToJsonStringAndSyntaxHighlight(state.selectedTemplateContent)
+            state.templateState.changedTemplateParts = JSON.parse(changes)
+            state.templateState.selectedTemplateContent = Object.assign({}, JSON.parse(stringifyObj(state.templateState.selectedTemplateContent)), state.templateState.changedTemplateParts)
+            state.templateState.selectedTemplateJsonString = objectToJsonStringAndSyntaxHighlight(state.templateState.selectedTemplateContent)
         },
 
         updateAvailableIRMetrics(state){
             retrieveAllAvailableIRMetrics().then(response => {
-                state.availableIRMetrics = response
+                state.metricState.availableIRMetrics = response
             })
         }
     },

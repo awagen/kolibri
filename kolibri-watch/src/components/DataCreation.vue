@@ -107,7 +107,7 @@
           <h2 class="k-title">IR Metrics</h2>
         </label>
         <div class="accordion-body metric">
-          <template v-for="(metric, _) in this.$store.state.availableIRMetrics">
+          <template v-for="(metric, _) in this.$store.state.metricState.availableIRMetrics">
             <div class="divider"></div>
             <div class="form-group metric">
               <span>{{metric.type}}</span>

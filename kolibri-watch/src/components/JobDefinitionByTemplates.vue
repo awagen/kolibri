@@ -13,7 +13,7 @@
         <div class="col-9 col-sm-12">
           <select @change="jobTypeSelectEvent($event)" class="form-select k-value-selector" id="template-type-1">
             <option>Choose an option</option>
-            <option v-for="templateType in this.$store.state.templateTypes">{{ templateType }}</option>
+            <option v-for="templateType in this.$store.state.templateState.templateTypes">{{ templateType }}</option>
           </select>
         </div>
         <div class="k-form-separator"></div>
@@ -25,7 +25,7 @@
           <select @change="templateSelectEvent($event)" class="form-select k-field k-value-selector"
                   id="template-name-1">
             <option>Choose an option</option>
-            <option v-for="templateName in this.$store.state.templateNames">{{ templateName }}</option>
+            <option v-for="templateName in this.$store.state.templateState.templateNames">{{ templateName }}</option>
           </select>
         </div>
       </div>
@@ -39,7 +39,7 @@
           <select @change="jobTemplateFieldEditSelectEvent($event)" class="form-select k-value-selector"
                   id="template-field-1">
             <option>Choose an option (or edit freely)</option>
-            <option v-for="fieldName in Object.keys(this.$store.state.selectedTemplateContent)">{{ fieldName }}</option>
+            <option v-for="fieldName in Object.keys(this.$store.state.templateState.selectedTemplateContent)">{{ fieldName }}</option>
           </select>
         </div>
       </div>
@@ -49,15 +49,15 @@
         <div class="col-3 col-sm-12">
           <label class="form-label" for="template-edit-1">Replace Template Content</label>
           <!-- if available, display some field info here -->
-          <div v-if="this.$store.state.fieldInfoAvailable" class="popover popover-right">
+          <div v-if="this.$store.state.templateState.fieldInfoAvailable" class="popover popover-right">
             <button class="btn btn-action s-circle"><i class="icon icon-message"></i></button>
             <div class="popover-container">
               <div class="card">
                 <div class="card-header">
-                  <b>Field: {{ this.$store.state.selectedTemplateField }}</b>
+                  <b>Field: {{ this.$store.state.templateState.selectedTemplateField }}</b>
                 </div>
                 <div class="card-body">
-                  {{ this.$store.state.selectedTemplateFieldInfo }}
+                  {{ this.$store.state.templateState.selectedTemplateFieldInfo }}
                 </div>
               </div>
             </div>
@@ -117,7 +117,7 @@
       </div>
 
       <div class="form-separator"></div>
-      <pre id="template-content-display-1" v-html="this.$store.state.selectedTemplateJsonString"/>
+      <pre id="template-content-display-1" v-html="this.$store.state.templateState.selectedTemplateJsonString"/>
     </form>
   </div>
 </template>
@@ -144,21 +144,21 @@ export default {
 
     jobTemplateFieldEditSelectEvent(event) {
       this.$store.commit("updateTemplateFieldEditSelection", event.target.value)
-      document.getElementById("template-edit-1").value = baseJsonFormatting(this.$store.state.selectedTemplateFieldPartial)
+      document.getElementById("template-edit-1").value = baseJsonFormatting(this.$store.state.templateState.selectedTemplateFieldPartial)
     },
 
     getSelectionsAndSaveTemplate() {
       let templateName = document.getElementById("template-edit-saveto-filename-1").value
-      let typeName = this.$store.state.selectedTemplateType
+      let typeName = this.$store.state.templateState.selectedTemplateType
       if (templateName === "") {
         console.info("empty template name, not sending for storage")
       }
-      saveTemplate(typeName, templateName, this.$store.state.selectedTemplateContent)
+      saveTemplate(typeName, templateName, this.$store.state.templateState.selectedTemplateContent)
     },
 
     getSelectionAndExecuteJob() {
-      let typeName = this.$store.state.selectedTemplateType
-      executeJob(typeName, this.$store.state.selectedTemplateContent)
+      let typeName = this.$store.state.templateState.selectedTemplateType
+      executeJob(typeName, this.$store.state.templateState.selectedTemplateContent)
     },
 
     applyChanges() {

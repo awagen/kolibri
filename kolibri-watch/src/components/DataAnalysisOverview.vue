@@ -14,7 +14,7 @@
           <div class="col-9 col-sm-12">
             <select @change="experimentSelectEvent($event)" class="form-select k-value-selector" id="template-type-1">
               <option>Choose an option</option>
-              <option v-for="executionId in this.$store.state.availableResultExecutionIDs">{{ executionId }}</option>
+              <option v-for="executionId in this.$store.state.resultState.availableResultExecutionIDs">{{ executionId }}</option>
             </select>
           </div>
           <div class="k-form-separator"></div>
@@ -23,10 +23,10 @@
             <label class="form-label" for="template-name-1">Select Result</label>
           </div>
           <div class="col-9 col-sm-12">
-            <select @change="filteredResultSelectEvent($event, this.$store.state.currentlySelectedExecutionID)" class="form-select k-field k-value-selector"
+            <select @change="filteredResultSelectEvent($event, this.$store.state.resultState.currentlySelectedExecutionID)" class="form-select k-field k-value-selector"
                     id="template-name-1">
               <option>Choose an option</option>
-              <option v-for="resultId in this.$store.state.availableResultsForSelectedExecutionID">{{ resultId }}</option>
+              <option v-for="resultId in this.$store.state.resultState.availableResultsForSelectedExecutionID">{{ resultId }}</option>
             </select>
           </div>
         </div>
@@ -34,7 +34,7 @@
     </div>
 
       <!-- add some display of tabular data -->
-    <form v-if="Object.entries(this.$store.state.reducedFilteredResultForExecutionIDAndResultID).length > 0" class="form-horizontal col-6 column k-card-column">
+    <form v-if="Object.entries(this.$store.state.resultState.reducedFilteredResultForExecutionIDAndResultID).length > 0" class="form-horizontal col-6 column k-card-column">
       <div class="k-card-wrapper">
         <h3 class="k-title">
           Value Table
@@ -42,8 +42,8 @@
         <div class="form-group">
           <div class="col-12 col-sm-12">
             <Table
-                :column-headers="this.$store.state.reducedFilteredResultForExecutionIDAndResultID.columnNames"
-                :data="this.$store.state.reducedFilteredResultForExecutionIDAndResultID.dataLinesAsColumns">
+                :column-headers="this.$store.state.resultState.reducedFilteredResultForExecutionIDAndResultID.columnNames"
+                :data="this.$store.state.resultState.reducedFilteredResultForExecutionIDAndResultID.dataLinesAsColumns">
             </Table>
           </div>
         </div>
@@ -59,7 +59,7 @@
         </h3>
         <div class="form-group">
           <div class="col-12 col-sm-12">
-            <IdValueChart :idValueArray="this.$store.state.analysisVariances"></IdValueChart>
+            <IdValueChart :idValueArray="this.$store.state.analysisState.analysisVariances"></IdValueChart>
           </div>
         </div>
       </div>
