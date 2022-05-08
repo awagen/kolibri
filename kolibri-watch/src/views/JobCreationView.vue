@@ -2,13 +2,13 @@
 
   <div class="row-container columns">
     <ul class="tab tab-block">
-      <li>
-        <a href="#" @click="this.selectDisplay('template')">
+      <li class="tab-item" v-bind:class="{'active':(isActiveTemplateView)}">
+        <a href="#" @click.prevent="this.selectDisplay('template')">
           <span class="choice-title">Templates</span>
         </a>
       </li>
-      <li>
-        <a href="#" @click="this.selectDisplay('creation')">
+      <li class="tab-item" v-bind:class="{'active':(isActiveCreationView)}">
+        <a href="#" @click.prevent="this.selectDisplay('creation')">
           <span class="choice-title">Parameter Composer</span>
         </a>
       </li>
@@ -70,15 +70,27 @@ export default {
   display: inline-block;
   text-transform: uppercase;
   color: #9C9C9C;
-  margin-right: 1.5em;
+}
+
+.tab {
+  border-bottom: none;
 }
 
 .tab li {
   margin-right: 2em;
+  border-bottom: .05rem solid grey;
+}
+
+.tab li.active {
+  border-bottom: .1rem solid white;
+}
+
+.tab.tab-block .tab-item {
+  flex: 1 0 auto;
 }
 
 .tab-item.active .choice-title {
-  color: black;
+  color: white;
 }
 
 .tab-item.active a {

@@ -79,7 +79,7 @@ export default {
           .append('text')
           .attr('class', 'label')
           .attr('x', -(chart_height / 2) - margin)
-          .attr('y', margin / 2.4)
+          .attr('y', margin / 4.8)
           .attr('transform', 'rotate(-90)')
           .attr('text-anchor', 'middle')
           .text('Values')
@@ -91,14 +91,6 @@ export default {
           .attr('y', chart_height + margin * 1.7)
           .attr('text-anchor', 'middle')
           .text('ID')
-
-      svg
-          .append('text')
-          .attr('class', 'title')
-          .attr('x', chart_width / 2 + margin)
-          .attr('y', 40)
-          .attr('text-anchor', 'middle')
-          .text('Variances')
     }
 
   }
@@ -107,6 +99,5 @@ export default {
 </script>
 
 <style scoped>
-
 
 </style>

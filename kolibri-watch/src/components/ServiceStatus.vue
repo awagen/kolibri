@@ -1,7 +1,7 @@
 <template>
   <div class="connection-status-container">
     <span class="connection-status-text">Status:</span>
-    <span v-bind:class="{ connected: this.$store.state.serviceIsUp }"
+    <span v-bind:class="{ connected: this.$store.state.serviceState.serviceIsUp }"
           class="s-circle connection-status">
   </span>
   </div>

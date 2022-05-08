@@ -13,7 +13,7 @@
     </thead>
     <tbody>
     <!-- list all running nodes -->
-    <tr v-for="node in this.$store.state.runningNodes">
+    <tr v-for="node in this.$store.state.serviceState.runningNodes">
       <td>{{node.host}}</td>
       <td>{{node.port}}</td>
       <td>{{node.countCPUs}}</td>

@@ -1,54 +1,66 @@
 <template>
   <div class="form-container-experiment-create columns">
-    <form class="form-horizontal col-6 column">
-      <h3 class="title">
-        Analysis Selection
-      </h3>
+    <div class="form-horizontal col-12">
+      <form class="form-horizontal col-6 column">
+        <h3 class="k-title">
+          Analysis Selection
+        </h3>
 
-      <!-- dropdown button group -->
-      <div class="form-group">
-        <div class="col-3 col-sm-12">
-          <label class="form-label" for="template-type-1">Select Execution / Experiment</label>
+        <!-- dropdown button group -->
+        <div class="form-group">
+          <div class="col-3 col-sm-12">
+            <label class="form-label" for="template-type-1">Select Execution / Experiment</label>
+          </div>
+          <div class="col-9 col-sm-12">
+            <select @change="experimentSelectEvent($event)" class="form-select k-value-selector" id="template-type-1">
+              <option>Choose an option</option>
+              <option v-for="executionId in this.$store.state.availableResultExecutionIDs">{{ executionId }}</option>
+            </select>
+          </div>
+          <div class="k-form-separator"></div>
+          <!-- select the needed template based on above selection -->
+          <div class="col-3 col-sm-12">
+            <label class="form-label" for="template-name-1">Select Result</label>
+          </div>
+          <div class="col-9 col-sm-12">
+            <select @change="filteredResultSelectEvent($event, this.$store.state.currentlySelectedExecutionID)" class="form-select k-field k-value-selector"
+                    id="template-name-1">
+              <option>Choose an option</option>
+              <option v-for="resultId in this.$store.state.availableResultsForSelectedExecutionID">{{ resultId }}</option>
+            </select>
+          </div>
         </div>
-        <div class="col-9 col-sm-12">
-          <select @change="experimentSelectEvent($event)" class="form-select k-value-selector" id="template-type-1">
-            <option>Choose an option</option>
-            <option v-for="executionId in this.$store.state.availableResultExecutionIDs">{{ executionId }}</option>
-          </select>
-        </div>
-        <div class="k-form-separator"></div>
-        <!-- select the needed template based on above selection -->
-        <div class="col-3 col-sm-12">
-          <label class="form-label" for="template-name-1">Select Result</label>
-        </div>
-        <div class="col-9 col-sm-12">
-          <select @change="filteredResultSelectEvent($event, this.$store.state.currentlySelectedExecutionID)" class="form-select k-field k-value-selector"
-                  id="template-name-1">
-            <option>Choose an option</option>
-            <option v-for="resultId in this.$store.state.availableResultsForSelectedExecutionID">{{ resultId }}</option>
-          </select>
-        </div>
-      </div>
+      </form>
+    </div>
 
       <!-- add some display of tabular data -->
-      <div class="form-group">
-        <div class="col-9 col-sm-12">
-          <Table
-              :column-headers="this.$store.state.reducedFilteredResultForExecutionIDAndResultID.columnNames"
-              :data="this.$store.state.reducedFilteredResultForExecutionIDAndResultID.dataLinesAsColumns">
-          </Table>
+    <form v-if="Object.entries(this.$store.state.reducedFilteredResultForExecutionIDAndResultID).length > 0" class="form-horizontal col-6 column k-card-column">
+      <div class="k-card-wrapper">
+        <h3 class="k-title">
+          Value Table
+        </h3>
+        <div class="form-group">
+          <div class="col-12 col-sm-12">
+            <Table
+                :column-headers="this.$store.state.reducedFilteredResultForExecutionIDAndResultID.columnNames"
+                :data="this.$store.state.reducedFilteredResultForExecutionIDAndResultID.dataLinesAsColumns">
+            </Table>
+          </div>
         </div>
       </div>
     </form>
 
+
     <!-- Right part of the display, used for visualizations -->
-    <form class="form-horizontal col-6 column k-json-panel">
-      <h3 class="title">
-        Visualization
-      </h3>
-      <div class="form-group">
-        <div class="col-12 col-sm-12">
-          <IdValueChart :idValueArray="this.$store.state.analysisVariances"></IdValueChart>
+    <form v-bind:style="{'display':varianceDisplay}" class="form-horizontal col-6 column k-json-panel">
+      <div class="k-card-wrapper">
+        <h3 class="k-title">
+          Variances
+        </h3>
+        <div class="form-group">
+          <div class="col-12 col-sm-12">
+            <IdValueChart :idValueArray="this.$store.state.analysisVariances"></IdValueChart>
+          </div>
         </div>
       </div>
     </form>
@@ -65,7 +77,10 @@ export default {
   props: [],
   data() {
     return {
-      chart: null
+      chart: null,
+      /* TODO: this flag is only here to set variance display active / inactive ... can remove as soon as single evaluations
+      * are selected on demand or some default is generated on the fly */
+      varianceDisplay: 'none'
     };
   },
   methods: {
@@ -87,7 +102,7 @@ export default {
         "resultId": resultID,
         // TODO: make those hardcoded values selectable
         "metricName": "NDCG_10",
-        "topN": 20,
+        "topN": 20000000,
         "reversed": false
       }
       this.$store.commit("updateSingleResultStateFiltered", payload)
@@ -117,6 +132,7 @@ export default {
         "queryParamName": "q"
       }
       this.$store.commit("updateAnalysisVariance", payload)
+      this.varianceDisplay = 'inline-block'
     },
 
   },
@@ -143,14 +159,19 @@ export default {
 }
 
 .form-container-experiment-create {
-  margin-top: 3em;
+  margin-top: 2em;
 }
 
 .column {
   padding: .4rem 0 0;
 }
 
-.title {
+.column.k-card-column {
+  padding-right: 0;
+}
+
+.k-title {
+  margin-top: 0.5em;
   margin-bottom: 1em;
   text-align: center;
 }
@@ -194,6 +215,22 @@ export default {
 
 select.form-select.k-value-selector {
   width: 95%;
+}
+
+/* TODO: adjust settings such that the layout with the cards looks fine
+    and add sorting options
+    */
+.k-card-wrapper {
+  font-size: .6rem;
+  margin-left: 2em;
+  border-style: dashed;
+  border-width: 1px;
+  float: left; /* needed to fit the width of content */
+  width: 95%;
+}
+
+.k-json-panel .k-card-wrapper {
+  height: 67em;
 }
 
 </style>

@@ -1,6 +1,6 @@
 <template>
   <NodeList/>
-  <JobList :data="this.$store.state.runningJobs" :show-kill-button="true" header="RUNNING JOBS"/>
+  <JobList :data="this.$store.state.serviceState.runningJobs" :show-kill-button="true" header="RUNNING JOBS"/>
   <JobBatchStatusList :batch-retrieval-url="retrieveBatchStateUrl" header="BATCH STATUS"/>
 </template>
 

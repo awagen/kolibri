@@ -1,16 +1,20 @@
 <template>
-  <table class="table">
-    <thead>
-    <tr>
-      <th v-for="column in columnHeaders">{{ column }}</th>
-    </tr>
-    </thead>
-    <tbody>
-    <tr v-for="row in data">
-      <td v-for="column in row">{{ column }}</td>
-    </tr>
-    </tbody>
-  </table>
+  <div class="k-table-wrapper">
+    <table class="table">
+      <thead>
+      <tr>
+        <th>nr</th>
+        <th v-for="column in columnHeaders">{{ column }}</th>
+      </tr>
+      </thead>
+      <tbody>
+      <tr v-for="(row, index) in data">
+        <td>{{index}}</td>
+        <td v-for="column in row">{{ column }}</td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
 </template>
 
 <script>
@@ -31,9 +35,25 @@ export default {
 
 <style scoped>
 
-.table {
-  font-size: .6rem;
-  margin-left: 2em;
+.k-table-wrapper {
+  display: inline-block;
+  height: auto;
+  max-height:60em;
+  overflow: auto;
+  width:100%;
+}
+
+/* keeps the header at the top while scrolling */
+table thead {
+  position: -webkit-sticky;
+  position: sticky;
+  top: 0;
+  background-color: #25333C;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
 }
 
 </style>

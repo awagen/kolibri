@@ -26,29 +26,33 @@ import {filteredResultsReduced, selectedDataToParameterValuesJson} from "./utils
 const store = createStore({
     state() {
         return {
-            serviceIsUp: false,
-            statusRefreshIntervalInMs: kolibriStateRefreshInterval,
-            runningNodes: [],
-            runningJobs: [],
-            jobHistory: [],
+            serviceState: {
+                serviceIsUp: false,
+                statusRefreshIntervalInMs: kolibriStateRefreshInterval,
+                runningNodes: [],
+                runningJobs: [],
+                jobHistory: []
+            },
 
             // data files available
-            standaloneFileDataByType: {},
-            mappingFileDataByType: {},
-            selectedStandaloneDataFileType: "",
-            selectedMappingDataFileType: "",
-            // the files added to the composer so far (standalone values or mappings)
-            selectedData: [],
-            selectedDataRequestSamples: [],
-            // the stringified json array representing the selected data values
-            // this should directly reflect the json representation of a list of
-            // ParameterValue instances (standalone or mapping), that can be directly
-            // consumed by the backend (ParameterValuesJsonProtocol)
-            selectedDataJsonString: "",
-            // selectedDataMapping should contain one standalone data sample to provide keys and
-            // arbitrary number of values mapped to a key or another mapped value before it in the sequence
-            // and is the one selected for editing
-            selectedDataMapping: {},
+            dataState: {
+                standaloneFileDataByType: {},
+                mappingFileDataByType: {},
+                selectedStandaloneDataFileType: "",
+                selectedMappingDataFileType: "",
+                // the files added to the composer so far (standalone values or mappings)
+                selectedData: [],
+                selectedDataRequestSamples: [],
+                // the stringified json array representing the selected data values
+                // this should directly reflect the json representation of a list of
+                // ParameterValue instances (standalone or mapping), that can be directly
+                // consumed by the backend (ParameterValuesJsonProtocol)
+                selectedDataJsonString: "",
+                // selectedDataMapping should contain one standalone data sample to provide keys and
+                // arbitrary number of values mapped to a key or another mapped value before it in the sequence
+                // and is the one selected for editing
+                selectedDataMapping: {}
+            },
 
             // list of available IR metrics
             availableIRMetrics: [],
@@ -95,14 +99,14 @@ const store = createStore({
 
     mutations: {
         recalculateSelectedDataJsonString(state) {
-            let jsonObj = selectedDataToParameterValuesJson(state.selectedData)
-            state.selectedDataJsonString = objectToJsonStringAndSyntaxHighlight(jsonObj)
+            let jsonObj = selectedDataToParameterValuesJson(state.dataState.selectedData)
+            state.dataState.selectedDataJsonString = objectToJsonStringAndSyntaxHighlight(jsonObj)
         },
 
         retrieveRequestSamplesForSelectedData(state) {
-          state.selectedDataRequestSamples = []
-          let dataObj = selectedDataToParameterValuesJson(state.selectedData)
-            retrieveRequestSamplesForData(dataObj, 10).then(response => state.selectedDataRequestSamples = response)
+          state.dataState.selectedDataRequestSamples = []
+          let dataObj = selectedDataToParameterValuesJson(state.dataState.selectedData)
+            retrieveRequestSamplesForData(dataObj, 10).then(response => state.dataState.selectedDataRequestSamples = response)
         },
 
         updateAvailableResultExecutionIDs(state) {
@@ -142,22 +146,22 @@ const store = createStore({
         },
 
         updateServiceUpState(state) {
-            retrieveServiceUpState().then(response => state.serviceIsUp = response)
+            retrieveServiceUpState().then(response => state.serviceState.serviceIsUp = response)
         },
 
         updateNodeStatus(state) {
-            retrieveNodeStatus().then(response => state.runningNodes = response)
+            retrieveNodeStatus().then(response => state.serviceState.runningNodes = response)
         },
 
         updateRunningJobs(state) {
             return retrieveJobs(false, x => {
-                state.runningJobs = x
+                state.serviceState.runningJobs = x
             })
         },
 
         updateJobHistory(state) {
             return retrieveJobs(true, x => {
-                state.jobHistory = x
+                state.serviceState.jobHistory = x
             })
         },
 
@@ -165,31 +169,31 @@ const store = createStore({
             retrieveDataFileInfoAll(numReturnSamples).then(response => {
                 console.info("retrieved available data response: ")
                 console.log(response)
-                state.standaloneFileDataByType = {}
-                state.mappingFileDataByType = {}
+                state.dataState.standaloneFileDataByType = {}
+                state.dataState.mappingFileDataByType = {}
                 Object.keys(response).forEach(group => {
-                    state.standaloneFileDataByType[group] = response[group].filter(data => {
+                    state.dataState.standaloneFileDataByType[group] = response[group].filter(data => {
                         return data["isMapping"] === false
                     })
-                    state.mappingFileDataByType[group] = response[group].filter(data => {
+                    state.dataState.mappingFileDataByType[group] = response[group].filter(data => {
                         return data["isMapping"] === true
                     })
                 })
-                if (Object.keys(state.standaloneFileDataByType).length > 0 && state.selectedStandaloneDataFileType === "") {
-                    state.selectedStandaloneDataFileType = Object.keys(state.standaloneFileDataByType)[0]
+                if (Object.keys(state.dataState.standaloneFileDataByType).length > 0 && state.dataState.selectedStandaloneDataFileType === "") {
+                    state.dataState.selectedStandaloneDataFileType = Object.keys(state.dataState.standaloneFileDataByType)[0]
                 }
-                if (Object.keys(state.mappingFileDataByType).length > 0 && state.selectedMappingDataFileType === "") {
-                    state.selectedMappingDataFileType = Object.keys(state.mappingFileDataByType)[0]
+                if (Object.keys(state.dataState.mappingFileDataByType).length > 0 && state.dataState.selectedMappingDataFileType === "") {
+                    state.dataState.selectedMappingDataFileType = Object.keys(state.dataState.mappingFileDataByType)[0]
                 }
             })
         },
 
         updateSelectedStandaloneDataFileType(state, fileType) {
-            state.selectedStandaloneDataFileType = fileType
+            state.dataState.selectedStandaloneDataFileType = fileType
         },
 
         updateSelectedMappingDataFileType(state, fileType) {
-            state.selectedMappingDataFileType = fileType
+            state.dataState.selectedMappingDataFileType = fileType
         },
 
         /**
@@ -209,7 +213,7 @@ const store = createStore({
             }
             console.info("adding standalone data file:")
             console.log(newElement)
-            state.selectedData.push(newElement)
+            state.dataState.selectedData.push(newElement)
             this.commit("recalculateSelectedDataJsonString")
         },
 
@@ -235,17 +239,17 @@ const store = createStore({
                 }
                 console.info("adding standalone value as mapping key:")
                 console.log(newMapping)
-                state.selectedDataMapping = newMapping
-                state.selectedData.push(newMapping)
+                state.dataState.selectedDataMapping = newMapping
+                state.dataState.selectedData.push(newMapping)
             } else {
-                if (state.selectedDataMapping === null || Object.keys(state.selectedDataMapping).length === 0) {
+                if (state.dataState.selectedDataMapping === null || Object.keys(state.dataState.selectedDataMapping).length === 0) {
                     console.info("can not add mapped values since no selected data mapping exists." +
                         "Create one first by adding standalone data as key values.")
                     return
                 }
                 console.info("adding mapped value to existing mapping:")
                 console.log(fileObj)
-                state.selectedDataMapping.data.mappedValues.push(fileObj)
+                state.dataState.selectedDataMapping.data.mappedValues.push(fileObj)
                 fileObj["mappedToIndex"] = 0
             }
             this.commit("recalculateSelectedDataJsonString")
@@ -257,12 +261,12 @@ const store = createStore({
          * @param fileObj
          */
         removeSelectedDataFile(state, fileObj) {
-            let toBeRemoved = state.selectedData.filter(element => {
+            let toBeRemoved = state.dataState.selectedData.filter(element => {
                 return element.type === "standalone" && element.data["fileType"] === fileObj["fileType"] &&
                     element.data["fileName"] === fileObj["fileName"];
             });
             if (toBeRemoved.length > 0) {
-                state.selectedData.splice(state.selectedData.indexOf(toBeRemoved[toBeRemoved.length - 1]), 1)
+                state.dataState.selectedData.splice(state.dataState.selectedData.indexOf(toBeRemoved[toBeRemoved.length - 1]), 1)
             }
             this.commit("recalculateSelectedDataJsonString")
         },
@@ -276,15 +280,15 @@ const store = createStore({
             console.info("remove selected state from mapping obj")
             console.log(state)
             console.log(mappingObj)
-            let removeIndex = state.selectedData.map(x => x.data).indexOf(mappingObj)
+            let removeIndex = state.dataState.selectedData.map(x => x.data).indexOf(mappingObj)
             console.info("found index of mapping obj in selectedData" + removeIndex)
             console.info("selected data")
-            console.log(state.selectedData)
+            console.log(state.dataState.selectedData)
             if (removeIndex >= 0) {
-                state.selectedData.splice(removeIndex, 1)
+                state.dataState.selectedData.splice(removeIndex, 1)
             }
-            if (state.selectedDataMapping.data === mappingObj) {
-                state.selectedDataMapping = {}
+            if (state.dataState.selectedDataMapping.data === mappingObj) {
+                state.dataState.selectedDataMapping = {}
             }
             this.commit("recalculateSelectedDataJsonString")
         },
@@ -296,12 +300,12 @@ const store = createStore({
          * @param mappingObj
          */
         removeMappingFromMappedValues(state, {fileObj, mappingObj}) {
-            let removeFromMappingIndex = state.selectedData.map(x => x.data).indexOf(mappingObj)
+            let removeFromMappingIndex = state.dataState.selectedData.map(x => x.data).indexOf(mappingObj)
             if (removeFromMappingIndex < 0) {
                 console.info("mapping obj not found, can not delete data from it")
                 return
             }
-            let removeFrom = state.selectedData[removeFromMappingIndex].data
+            let removeFrom = state.dataState.selectedData[removeFromMappingIndex].data
             let removeIndex = removeFrom.mappedValues.indexOf(fileObj)
             if (removeIndex >= 0) {
                 removeFrom.mappedValues.splice(removeIndex, 1)
@@ -381,7 +385,7 @@ window.setInterval(() => {
     store.commit("updateNodeStatus")
     store.commit("updateRunningJobs")
     store.commit("updateJobHistory")
-}, store.state.statusRefreshIntervalInMs)
+}, store.state.serviceState.statusRefreshIntervalInMs)
 
 
 const app = createApp(App);

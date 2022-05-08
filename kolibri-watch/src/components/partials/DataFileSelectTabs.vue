@@ -2,9 +2,9 @@
 
   <div class="row-container columns">
     <ul class="tab tab-block">
-      <li v-for="(dataValues, dataType, _) in fileDataByTypeMapping"
-          v-bind:class="{'tab-item active':(selectedDataFileType === dataType)}">
-        <a href="#" @click="this.$emit('fileTypeUpdateCall', dataType)" class="badge" :data-badge="dataValues.length">
+      <li v-for="(dataValues, dataType, _) in fileDataByTypeMapping" class="tab-item"
+          v-bind:class="{'active':(selectedDataFileType === dataType)}">
+        <a href="#" @click.prevent="this.$emit('fileTypeUpdateCall', dataType)" class="badge" :data-badge="dataValues.length">
           <span class="choice-title">{{ dataType }}</span>
         </a>
       </li>
@@ -55,12 +55,25 @@ export default {
   margin-right: 1.5em;
 }
 
+.tab {
+  border-bottom: none;
+}
+
 .tab li {
   margin-right: 2em;
+  border-bottom: .05rem solid grey;
+}
+
+.tab li.active {
+  border-bottom: .1rem solid white;
+}
+
+.tab.tab-block .tab-item {
+  flex: 1 0 auto;
 }
 
 .tab-item.active .choice-title {
-  color: black;
+  color: white;
 }
 
 .tab-item.active a {

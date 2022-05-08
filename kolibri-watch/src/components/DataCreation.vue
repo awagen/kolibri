@@ -2,12 +2,12 @@
 
   <h2 class="nodeListHeader">DATA</h2>
 
-  <DataFileSelectTabs :file-data-by-type-mapping="this.$store.state.standaloneFileDataByType"
-                      :selected-data-file-type="this.$store.state.selectedStandaloneDataFileType"
+  <DataFileSelectTabs :file-data-by-type-mapping="this.$store.state.dataState.standaloneFileDataByType"
+                      :selected-data-file-type="this.$store.state.dataState.selectedStandaloneDataFileType"
                       @file-type-update-call="selectStandaloneDataFileType"/>
 
-  <template v-for="(dataValues, dataType, _) in this.$store.state.standaloneFileDataByType">
-    <template v-if="dataType === this.$store.state.selectedStandaloneDataFileType">
+  <template v-for="(dataValues, dataType, _) in this.$store.state.dataState.standaloneFileDataByType">
+    <template v-if="dataType === this.$store.state.dataState.selectedStandaloneDataFileType">
       <DataFileOverview :show-add-button="true"
                         :show-delete-button="false"
                         :show-add-as-key-button="true"
@@ -21,13 +21,13 @@
 
   <h2 class="nodeListHeader">MAPPED DATA</h2>
 
-  <DataFileSelectTabs :file-data-by-type-mapping="this.$store.state.mappingFileDataByType"
-                      :selected-data-file-type="this.$store.state.selectedMappingDataFileType"
+  <DataFileSelectTabs :file-data-by-type-mapping="this.$store.state.dataState.mappingFileDataByType"
+                      :selected-data-file-type="this.$store.state.dataState.selectedMappingDataFileType"
                       @file-type-update-call="selectMappingDataFileType"
   />
 
-  <template v-for="(dataValues, dataType, _) in this.$store.state.mappingFileDataByType">
-    <template v-if="dataType === this.$store.state.selectedMappingDataFileType">
+  <template v-for="(dataValues, dataType, _) in this.$store.state.dataState.mappingFileDataByType">
+    <template v-if="dataType === this.$store.state.dataState.selectedMappingDataFileType">
       <DataFileOverview :show-add-button="true"
                         :show-delete-button="false"
                         :show-add-as-key-button="false"
@@ -47,7 +47,7 @@
   <div class="columns">
 
     <form class="form-horizontal col-6 column">
-      <DataComposerOverview :dataFileObjArray="this.$store.state.selectedData"/>
+      <DataComposerOverview :dataFileObjArray="this.$store.state.dataState.selectedData"/>
       <div class="form-separator"></div>
     </form>
 
@@ -60,7 +60,7 @@
             Composition Json
           </label>
           <div class="accordion-body">
-            <pre id="template-content-display-1" v-html="this.$store.state.selectedDataJsonString"/>
+            <pre id="template-content-display-1" v-html="this.$store.state.dataState.selectedDataJsonString"/>
           </div>
         </div>
         <div class="form-separator"></div>
@@ -71,7 +71,7 @@
             Sample Requests
           </label>
           <div class="accordion-body">
-            <template v-for="(request, index) in this.$store.state.selectedDataRequestSamples">
+            <template v-for="(request, index) in this.$store.state.dataState.selectedDataRequestSamples">
               <div class="divider"></div>
               <div class="accordion nested">
                 <input type="checkbox" :id="'accordion-inner-' + index" name="accordion-checkbox" hidden>
@@ -104,7 +104,7 @@
         <input type="checkbox" id="accordion-3" name="accordion-checkbox" hidden>
         <label class="accordion-header" for="accordion-3">
           <i class="icon icon-arrow-right mr-1"></i>
-          <h2>IR Metrics</h2>
+          <h2 class="k-title">IR Metrics</h2>
         </label>
         <div class="accordion-body metric">
           <template v-for="(metric, _) in this.$store.state.availableIRMetrics">
@@ -124,7 +124,8 @@
               </template>
             </template>
             <!-- TODO: add the onclick adding of the object to the selected metrics -->
-            <!-- <button @click="this.$emit('addDataFileFunc', dataSampleInfo)" class="btn btn-action k-add-button s-circle">-->
+            <!-- TODO: we might wanna add the metrics to a selection list and on demand transform it to the json definition needed by job -->
+<!--            <button @click="retrieveReducedMetricsListAsJsonDefinition()" class="btn btn-action k-add-button s-circle">-->
             <button class="btn btn-action k-add-button s-circle">
               <i class="icon icon-plus"></i>
             </button>
@@ -148,12 +149,19 @@ import {onMounted} from "vue";
 import DataFileSelectTabs from "../components/partials/DataFileSelectTabs.vue";
 import DataFileOverview from "../components/partials/DataFileOverview.vue";
 import DataComposerOverview from "../components/partials/DataComposerOverview.vue";
+import {changeReducedToFullMetricsJsonList} from "../utils/retrievalFunctions";
 
 export default {
 
   props: [],
   components: {DataFileSelectTabs, DataFileOverview, DataComposerOverview},
   methods: {
+    retrieveReducedMetricsListAsJsonDefinition(list) {
+      const jsonDef = changeReducedToFullMetricsJsonList(list)
+      console.info("retrieved json definition for metric")
+      console.log(jsonDef)
+    },
+
     selectStandaloneDataFileType(fileType) {
       this.$store.commit("updateSelectedStandaloneDataFileType", fileType)
     },
@@ -256,6 +264,11 @@ pre#template-content-display-1 {
 
   margin-top: 2em;
 
+}
+
+h2.k-title {
+  display: inline-block;
+  padding-left: 1em;
 }
 
 </style>
