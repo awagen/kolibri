@@ -19,7 +19,7 @@ package de.awagen.kolibri.base.usecase.searchopt.provider
 
 import de.awagen.kolibri.base.config.AppConfig.persistenceModule.persistenceDIModule
 import de.awagen.kolibri.base.io.reader.{FileReaderUtils, Reader}
-import de.awagen.kolibri.base.usecase.searchopt.parse.TypedJsonSelectors.{SingleValueSelector, TypedJsonSeqSelector}
+import de.awagen.kolibri.base.usecase.searchopt.parse.TypedJsonSelectors.NamedAndTypedSelector
 import play.api.libs.json.Json
 
 import scala.io.Source
@@ -72,9 +72,9 @@ object FileBasedJudgementProvider {
     * @return
     */
   def createJsonLineBasedProvider(filepath: String,
-                                  jsonQuerySelector: SingleValueSelector[Any],
-                                  jsonProductsSelector: TypedJsonSeqSelector,
-                                  jsonJudgementsSelector: TypedJsonSeqSelector,
+                                  jsonQuerySelector: NamedAndTypedSelector[Option[Any]],
+                                  jsonProductsSelector: NamedAndTypedSelector[Seq[Any]],
+                                  jsonJudgementsSelector: NamedAndTypedSelector[Seq[Any]],
                                   queryProductDelimiter: String = "\u0000"): FileBasedJudgementProvider = {
     new FileBasedJudgementProvider(
       filepath,
@@ -105,9 +105,9 @@ object FileBasedJudgementProvider {
     * @param queryProductDelimiter  - delimiter used to combine query and product to a single key
     * @return
     */
-  def jsonLineSourceToJudgementMapping(jsonQuerySelector: SingleValueSelector[Any],
-                                       jsonProductsSelector: TypedJsonSeqSelector,
-                                       jsonJudgementsSelector: TypedJsonSeqSelector,
+  def jsonLineSourceToJudgementMapping(jsonQuerySelector: NamedAndTypedSelector[Option[Any]],
+                                       jsonProductsSelector: NamedAndTypedSelector[Seq[Any]],
+                                       jsonJudgementsSelector: NamedAndTypedSelector[Seq[Any]],
                                        queryProductDelimiter: String = "\u0000"): Source => Map[String, Double] = {
     source => {
       source.getLines()

@@ -1,22 +1,24 @@
 /**
-  * Copyright 2021 Andreas Wagenmann
-  *
-  * Licensed under the Apache License, Version 2.0 (the "License");
-  * you may not use this file except in compliance with the License.
-  * You may obtain a copy of the License at
-  *
-  * http://www.apache.org/licenses/LICENSE-2.0
-  *
-  * Unless required by applicable law or agreed to in writing, software
-  * distributed under the License is distributed on an "AS IS" BASIS,
-  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  * See the License for the specific language governing permissions and
-  * limitations under the License.
-  */
+ * Copyright 2021 Andreas Wagenmann
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 
 package de.awagen.kolibri.base.usecase.searchopt.parse
 
+import de.awagen.kolibri.base.usecase.searchopt.io.json.JsonSelectorJsonProtocol.{PLAINREC_TYPE, PLAIN_SELECTOR_PLAIN_PATH_TYPE, RECPLAIN_TYPE, RECREC_TYPE, SINGLEREC_TYPE}
+import de.awagen.kolibri.base.usecase.searchopt.parse.JsonSelectors.JsonSelectorPathRegularExpressions.{plainPathKeyGroupingRegex, recursivePathKeyGroupingRegex}
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 import play.api.libs.json._
 
@@ -24,24 +26,107 @@ import scala.util.matching.Regex
 
 
 /**
-  * Provides objects that represent json path selections. This includes single selections as well as
-  * recursive selections, further either path or recursive selections applied to recursive selections,
-  * to be able to dive into the depth needed.
-  * Note: instead of distinct types and combinations of selectors
-  * we could utilize a single state machine parser, just looking at the sequence on the fly
-  * and applying mappings. Out of the box the play json api does not offer to add selectors
-  * after a recursive "\\" selector, while here we want to be able to map further
-  */
+ * Provides objects that represent json path selections. This includes single selections as well as
+ * recursive selections, further either path or recursive selections applied to recursive selections,
+ * to be able to dive into the depth needed.
+ * Note: instead of distinct types and combinations of selectors
+ * we could utilize a single state machine parser, just looking at the sequence on the fly
+ * and applying mappings. Out of the box the play json api does not offer to add selectors
+ * after a recursive "\\" selector, while here we want to be able to map further
+ */
 object JsonSelectors {
 
-  // regex for single elements in the form "\ key1 \ key2 \ key3 ...",
-  // yielding sequential key, here: Seq("key1", "key2", "ley3")
-//  val plainPathKeyGroupingRegex: Regex = """^\\\s+(\w+)(?:\s+\\\s+(\w+))*$""".r
-  val plainPathKeyGroupingRegex: Regex = """^\\\s+(\w+)((?:\s+\\\s+\w+)*)$""".r
-  // regex for recursive elements in the form "\ key1 \ key2 \\ key3 ..."
-  // yielding sequential key, here: Seq("key1", "key2", "ley3"). Assumes arbitrary number
-  // of single keys prepended by "\ " followed by final recursive key prepended with "\\ "
-  val recursivePathKeyGroupingRegex: Regex = """^((?:\s*\\\s+\w+)*)\s*\\\\\s+(\w+)$""".r
+  object JsonSelectorPathRegularExpressions {
+
+    /**
+     * regex for single elements in the form "\ key1 \ key2 \ key3 ...",
+     * yielding sequential key, here: Seq("key1", "key2", "ley3")
+     */
+    val plainPathKeyGroupingRegex: Regex = """^\\\s+(\w+)((?:\s+\\\s+\w+)*)$""".r
+
+    /**
+     * regex for recursive elements in the form "\ key1 \ key2 \\ key3 ..."
+     * yielding sequential key, here: Seq("key1", "key2", "ley3"). Assumes arbitrary number
+     * of single keys prepended by "\ " followed by final recursive key prepended with "\\ "
+     * (corresponds to SINGLEREC / PLAINREC type)
+     */
+    val recursivePathKeyGroupingRegex: Regex = """^((?:\s*\\\s+\w+)*)\s*\\\\\s+(\w+)$""".r
+
+    /**
+     * corresponds to RECPLAIN type (e.g recursive followed by plain)
+     * adjusted grouping such that only split into the two groups that make it
+     */
+    val recursivePlainPathKeyGroupingRegex: Regex = """^((?:\s*\\\s+\w+)*\s*\\\\\s+\w+)\s+(\\\s+\w+(?:\s+\\\s+\w+)*)$""".r
+
+    /**
+     * corresponds to RECREC type (e.g recursive followed by recursive, two consecutive PLAINREC)
+     * adjusted grouping such that only split into the two groups that make it
+     */
+    val recursiveRecursivePathKeyGroupingRegex: Regex = """^((?:\s*\\\s+\w+)*\s*\\\\\s+\w+)((?:\s*\\\s+\w+)*\s*\\\\\s+\w+)$""".r
+
+    def findPathType(path: String): Option[String] = path match {
+      case e if plainPathKeyGroupingRegex.matches(e) => Some(PLAIN_SELECTOR_PLAIN_PATH_TYPE)
+      case e if recursivePathKeyGroupingRegex.matches(e) =>
+        val subgroups = recursivePathKeyGroupingRegex.findAllIn(e).subgroups
+          .filter(x => x.nonEmpty)
+        // if only one group, its SINGLEREC, if multiple groups, its PLAINREC
+        if (subgroups.size > 1) Some(PLAINREC_TYPE) else Some(SINGLEREC_TYPE)
+      case e if recursivePlainPathKeyGroupingRegex.matches(e) => Some(RECPLAIN_TYPE)
+      case e if recursiveRecursivePathKeyGroupingRegex.matches(e) => Some(RECREC_TYPE)
+      case _ => None
+    }
+
+    def recursiveAndPlainSelectorKeysToSelector(recursiveSelectorKeys: Seq[String], plainSelectorKeys: Seq[String]): JsValueSeqSelector = {
+      val recursive = PlainAndRecursiveSelector(recursiveSelectorKeys.last, recursiveSelectorKeys.slice(0, recursiveSelectorKeys.length - 1): _*)
+      val plain = PlainPathSelector(plainSelectorKeys)
+      RecursiveAndPlainSelector(recursive, plain)
+    }
+
+    def recursiveAndRecursiveSelectorKeysToSelector(recursiveSelectorKeys1: Seq[String], recursiveSelectorKeys2: Seq[String]): JsValueSeqSelector = {
+      val recursive1 = PlainAndRecursiveSelector(recursiveSelectorKeys1.last, recursiveSelectorKeys1.slice(0, recursiveSelectorKeys1.length - 1): _*)
+      val recursive2 = PlainAndRecursiveSelector(recursiveSelectorKeys2.last, recursiveSelectorKeys2.slice(0, recursiveSelectorKeys2.length - 1): _*)
+      RecursiveAndRecursiveSelector(recursive1, recursive2)
+    }
+
+    /**
+     * transforms path (single key prefixed with "\ ", recursive one with "\\ ") to respective selector
+     * @param path
+     * @return
+     */
+    def pathToSelector(path: String): Option[Selector[_]] = path match {
+      case e if plainPathKeyGroupingRegex.matches(e) =>
+        Some(JsonSelectors.pathToPlainSelector(e))
+      case e if recursivePathKeyGroupingRegex.matches(e) =>
+        val selectorKeys: Seq[String] = JsonSelectors.findRecursivePathKeys(path)
+        // if only one group, its SINGLEREC, if multiple groups, its PLAINREC
+        if (selectorKeys.size == 1) Some(RecursiveSelector(selectorKeys.head))
+        else Some(PlainAndRecursiveSelector(selectorKeys.last, selectorKeys.slice(0, selectorKeys.length - 1): _*))
+      case e if recursivePlainPathKeyGroupingRegex.matches(e) =>
+        // in the subgroups, should contain of two selectors, first the recursive, the other one the plain
+        val subgroups = recursivePlainPathKeyGroupingRegex.findAllIn(e).subgroups
+          .filter(x => x.nonEmpty)
+        if (subgroups.size != 2) {
+          throw new RuntimeException("Selector should be recursive selector followed by plain path selector, but found" +
+            "less than two groups")
+        }
+        val recSelectorKeys: Seq[String] = JsonSelectors.findRecursivePathKeys(subgroups.head)
+        val plainSelectorKeys: Seq[String] = JsonSelectors.findPlainPathKeys(subgroups(1))
+        Some(recursiveAndPlainSelectorKeysToSelector(recSelectorKeys, plainSelectorKeys))
+      case e if recursiveRecursivePathKeyGroupingRegex.matches(e) =>
+        val subgroups = recursiveRecursivePathKeyGroupingRegex.findAllIn(e).subgroups
+          .filter(x => x.nonEmpty)
+        if (subgroups.size != 2) {
+          throw new RuntimeException("Selector should be recursive selector followed by recursive selector, but found" +
+            "less than two groups")
+        }
+        val recSelectorKeys1: Seq[String] = JsonSelectors.findRecursivePathKeys(subgroups.head)
+        val recSelectorKeys2: Seq[String] = JsonSelectors.findRecursivePathKeys(subgroups(1))
+        Some(recursiveAndRecursiveSelectorKeysToSelector(recSelectorKeys1, recSelectorKeys2))
+      case _ =>
+        None
+    }
+  }
+
 
   def findPlainPathKeys(selector: String): Seq[String] = {
     plainPathKeyGroupingRegex.findAllIn(selector).subgroups
@@ -54,9 +139,9 @@ object JsonSelectors {
   def findRecursivePathKeys(selector: String): Seq[String] = {
     val subgroups: Seq[String] = recursivePathKeyGroupingRegex.findAllIn(selector).subgroups
     subgroups.flatMap(x => x.split("""\\""").map(x => x.trim).filter(x => x.nonEmpty) match {
-        case e if e.isEmpty => Seq.empty
-        case e if e.length >= 1 => e
-      })
+      case e if e.isEmpty => Seq.empty
+      case e if e.length >= 1 => e
+    })
   }
 
   trait Selector[+T] {
@@ -78,12 +163,12 @@ object JsonSelectors {
   }
 
   /**
-    * Single key selector. Keeps JsLookupResult as outcome that can either
-    * be JsDefined or JsUndefined, as some kind of Option equivalent
-    * for selections
-    *
-    * @param key
-    */
+   * Single key selector. Keeps JsLookupResult as outcome that can either
+   * be JsDefined or JsUndefined, as some kind of Option equivalent
+   * for selections
+   *
+   * @param key
+   */
   case class SingleKeySelector(key: String) extends PlainSelector {
     override def select(jsValue: JsValue): JsLookupResult = jsValue \ key
 
@@ -91,11 +176,11 @@ object JsonSelectors {
   }
 
   /**
-    * Utilizes recursive selector, e.g in case values for a single key
-    * shall be selected from an array of json values.
-    *
-    * @param key - key to collect values for
-    */
+   * Utilizes recursive selector, e.g in case values for a single key
+   * shall be selected from an array of json values.
+   *
+   * @param key - key to collect values for
+   */
   case class RecursiveSelector(key: String) extends JsValueSeqSelector {
     override def select(jsValue: JsValue): collection.Seq[JsValue] = jsValue \\ key
 
@@ -103,11 +188,11 @@ object JsonSelectors {
   }
 
   /**
-    * Passing a sequence of selectors, pick up the value that corresponds
-    * to this selector path
-    *
-    * @param selectorKeys - sequential keys
-    */
+   * Passing a sequence of selectors, pick up the value that corresponds
+   * to this selector path
+   *
+   * @param selectorKeys - sequential keys
+   */
   case class PlainPathSelector(selectorKeys: Seq[String]) extends PlainSelector {
 
     val selectors: Seq[SingleKeySelector] = selectorKeys.map(x => SingleKeySelector(x))
@@ -131,11 +216,11 @@ object JsonSelectors {
   }
 
   /**
-    * Cobining plain path selector followed by a recursive selector
-    *
-    * @param recursiveSelectorKey - the key for the recursive selector
-    * @param plainSelectorKeys    - the keys for the plain path query before applying the recursive selector
-    */
+   * Cobining plain path selector followed by a recursive selector
+   *
+   * @param recursiveSelectorKey - the key for the recursive selector
+   * @param plainSelectorKeys    - the keys for the plain path query before applying the recursive selector
+   */
   case class PlainAndRecursiveSelector(recursiveSelectorKey: String, plainSelectorKeys: String*) extends JsValueSeqSelector {
     def select(lookup: JsLookupResult): collection.Seq[JsValue] = lookup match {
       case JsDefined(value) => select(value)
@@ -170,13 +255,13 @@ object JsonSelectors {
   }
 
   /**
-    * Selector config, allowing combination of plain path selectors and
-    * recursive selector. Defines the result type as well to be used in
-    * the result conversion.
-    *
-    * @param plainSelectorKeys    - seq of plain selector keys, can be empty
-    * @param recursiveSelectorKey - key for recursive selector
-    */
+   * Selector config, allowing combination of plain path selectors and
+   * recursive selector. Defines the result type as well to be used in
+   * the result conversion.
+   *
+   * @param plainSelectorKeys    - seq of plain selector keys, can be empty
+   * @param recursiveSelectorKey - key for recursive selector
+   */
   case class RecursiveValueSelector[T](plainSelectorKeys: Seq[String],
                                        recursiveSelectorKey: String)(implicit reads: Reads[T]) {
 
@@ -189,11 +274,11 @@ object JsonSelectors {
   }
 
   /**
-    * From selection string in the form "\ key1 \ key2 \ key3..." create the Selector
-    *
-    * @param path
-    * @return
-    */
+   * From selection string in the form "\ key1 \ key2 \ key3..." create the Selector
+   *
+   * @param path
+   * @return
+   */
   def pathToPlainSelector(path: String): PlainSelector = {
     // path must start with "\" and end with some non-empty string that is not only "\" or "\\"
     val normedPath: String = path.trim
@@ -224,12 +309,12 @@ object JsonSelectors {
   }
 
   /**
-    * Generate the right selector. Can be either plain path or path containing a
-    * recursive selector at its end
-    *
-    * @param path
-    * @return
-    */
+   * Generate the right selector. Can be either plain path or path containing a
+   * recursive selector at its end
+   *
+   * @param path
+   * @return
+   */
   def classifyPath(path: String): Selector[_] = {
     if (recursivePathKeyGroupingRegex.matches(path)) {
       pathToSingleRecursiveSelector(path)

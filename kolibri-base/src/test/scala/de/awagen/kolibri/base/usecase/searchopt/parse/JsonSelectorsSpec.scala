@@ -18,8 +18,10 @@
 package de.awagen.kolibri.base.usecase.searchopt.parse
 
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
-import de.awagen.kolibri.base.usecase.searchopt.parse.JsonSelectors.{JsValueSeqSelector, PlainAndRecursiveSelector, PlainPathSelector, PlainSelector, RecursiveSelector, Selector, SingleKeySelector, classifyPath, findPlainPathKeys, findRecursivePathKeys, pathToPlainSelector, pathToSingleRecursiveSelector, plainPathKeyGroupingRegex, recursivePathKeyGroupingRegex}
-import play.api.libs.json.{DefaultReads, JsDefined, JsLookupResult, JsValue, Json}
+import de.awagen.kolibri.base.usecase.searchopt.io.json.JsonSelectorJsonProtocol.{PLAINREC_TYPE, PLAIN_SELECTOR_PLAIN_PATH_TYPE, RECPLAIN_TYPE, RECREC_TYPE, SINGLEREC_TYPE}
+import de.awagen.kolibri.base.usecase.searchopt.parse.JsonSelectors.JsonSelectorPathRegularExpressions._
+import de.awagen.kolibri.base.usecase.searchopt.parse.JsonSelectors._
+import play.api.libs.json._
 
 
 class JsonSelectorsSpec extends UnitTestSpec with DefaultReads {
@@ -121,6 +123,28 @@ class JsonSelectorsSpec extends UnitTestSpec with DefaultReads {
       val path2: String = "\\ p1 \\ p2 \\ p3"
       classifyPath(path1).isInstanceOf[JsValueSeqSelector] mustBe true
       classifyPath(path2).isInstanceOf[PlainSelector] mustBe true
+    }
+
+    "correctly find path type" in {
+      JsonSelectors.JsonSelectorPathRegularExpressions.findPathType("\\ e \\ c") mustBe Some(PLAIN_SELECTOR_PLAIN_PATH_TYPE)
+      JsonSelectors.JsonSelectorPathRegularExpressions.findPathType("\\ e \\\\ c") mustBe Some(PLAINREC_TYPE)
+      JsonSelectors.JsonSelectorPathRegularExpressions.findPathType("\\\\ c") mustBe Some(SINGLEREC_TYPE)
+      JsonSelectors.JsonSelectorPathRegularExpressions.findPathType("\\ e \\\\ c \\ d") mustBe Some(RECPLAIN_TYPE)
+      JsonSelectors.JsonSelectorPathRegularExpressions.findPathType("\\ e \\\\ c \\ d \\\\ e") mustBe Some(RECREC_TYPE)
+    }
+
+    "correctly parse path to selector" in {
+      JsonSelectors.JsonSelectorPathRegularExpressions.pathToSelector("\\ e \\ c") mustBe Some(PlainPathSelector(Seq("e", "c")))
+      JsonSelectors.JsonSelectorPathRegularExpressions.pathToSelector("\\ c") mustBe Some(PlainPathSelector(Seq("c")))
+      JsonSelectors.JsonSelectorPathRegularExpressions.pathToSelector("\\ e \\\\ c") mustBe Some(PlainAndRecursiveSelector("c", "e"))
+      JsonSelectors.JsonSelectorPathRegularExpressions.pathToSelector("\\\\ c") mustBe Some(RecursiveSelector("c"))
+      val recursive = PlainAndRecursiveSelector("c", "e")
+      val plain = PlainPathSelector(Seq("d"))
+      JsonSelectors.JsonSelectorPathRegularExpressions.pathToSelector("\\ e \\\\ c \\ d") mustBe Some(RecursiveAndPlainSelector(recursive, plain))
+      val recursive1 = PlainAndRecursiveSelector("c", "e")
+      val recursive2 = PlainAndRecursiveSelector("e", "d")
+      JsonSelectors.JsonSelectorPathRegularExpressions.pathToSelector("\\ e \\\\ c \\ d \\\\ e") mustBe Some(RecursiveAndRecursiveSelector(recursive1, recursive2))
+      JsonSelectors.JsonSelectorPathRegularExpressions.pathToSelector("abc") mustBe None
     }
 
   }

@@ -22,7 +22,7 @@ import de.awagen.kolibri.base.config.AppProperties.config._
 import de.awagen.kolibri.base.config.di.modules.connections.HttpModule
 import de.awagen.kolibri.base.config.di.modules.persistence.PersistenceModule
 import de.awagen.kolibri.base.usecase.searchopt.parse.JsonSelectors.{PlainAndRecursiveSelector, PlainPathSelector}
-import de.awagen.kolibri.base.usecase.searchopt.parse.TypedJsonSelectors.{SingleValueSelector, TypedJsonSeqSelector, TypedJsonSingleValueSelector}
+import de.awagen.kolibri.base.usecase.searchopt.parse.TypedJsonSelectors.{NamedAndTypedSelector, TypedJsonSeqSelector, TypedJsonSingleValueSelector}
 import de.awagen.kolibri.base.usecase.searchopt.provider.FileBasedJudgementProvider.JudgementFileCSVFormatConfig
 import de.awagen.kolibri.base.usecase.searchopt.provider.{FileBasedJudgementProvider, JudgementProvider}
 import de.awagen.kolibri.datatypes.JsonTypeCast
@@ -49,7 +49,7 @@ object AppConfig {
             filepath,
             judgementFileFormatConfig)
         case "JSON_LINES" =>
-          val jsonQuerySelector: SingleValueSelector[Any] = TypedJsonSingleValueSelector(
+          val jsonQuerySelector: NamedAndTypedSelector[Option[Any]] = TypedJsonSingleValueSelector(
             name = "query",
             selector = PlainPathSelector(judgementJsonLinesPlainQueryPath),
             castType = JsonTypeCast.STRING

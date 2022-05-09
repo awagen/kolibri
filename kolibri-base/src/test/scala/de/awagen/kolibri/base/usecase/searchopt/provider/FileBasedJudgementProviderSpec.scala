@@ -19,7 +19,7 @@ package de.awagen.kolibri.base.usecase.searchopt.provider
 
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
 import de.awagen.kolibri.base.usecase.searchopt.parse.JsonSelectors.{PlainAndRecursiveSelector, PlainPathSelector}
-import de.awagen.kolibri.base.usecase.searchopt.parse.TypedJsonSelectors.{SingleValueSelector, TypedJsonSeqSelector, TypedJsonSingleValueSelector}
+import de.awagen.kolibri.base.usecase.searchopt.parse.TypedJsonSelectors.{NamedAndTypedSelector, TypedJsonSeqSelector, TypedJsonSingleValueSelector}
 import de.awagen.kolibri.datatypes.JsonTypeCast
 
 class FileBasedJudgementProviderSpec extends UnitTestSpec {
@@ -28,9 +28,9 @@ class FileBasedJudgementProviderSpec extends UnitTestSpec {
 
     "correctly read from JSON_LINES format" in {
       // given
-      val jsonQuerySelector: SingleValueSelector[Any] = TypedJsonSingleValueSelector(name = "query", selector = PlainPathSelector(Seq("query")), castType = JsonTypeCast.STRING)
-      val jsonProductsSelector: TypedJsonSeqSelector = TypedJsonSeqSelector(name = "products", selector = PlainAndRecursiveSelector(recursiveSelectorKey = "productId", plainSelectorKeys = "products"), castType = JsonTypeCast.STRING)
-      val jsonJudgementsSelector: TypedJsonSeqSelector = TypedJsonSeqSelector(name = "judgements", selector = PlainAndRecursiveSelector(recursiveSelectorKey = "score", plainSelectorKeys = "products"), castType = JsonTypeCast.DOUBLE)
+      val jsonQuerySelector: NamedAndTypedSelector[Option[Any]] = TypedJsonSingleValueSelector(name = "query", selector = PlainPathSelector(Seq("query")), castType = JsonTypeCast.STRING)
+      val jsonProductsSelector: NamedAndTypedSelector[Seq[Any]] = TypedJsonSeqSelector(name = "products", selector = PlainAndRecursiveSelector(recursiveSelectorKey = "productId", plainSelectorKeys = "products"), castType = JsonTypeCast.STRING)
+      val jsonJudgementsSelector: NamedAndTypedSelector[Seq[Any]] = TypedJsonSeqSelector(name = "judgements", selector = PlainAndRecursiveSelector(recursiveSelectorKey = "score", plainSelectorKeys = "products"), castType = JsonTypeCast.DOUBLE)
       val queryProductDelimiter: String = "-"
       val judgementProvider = FileBasedJudgementProvider.createJsonLineBasedProvider(
         "data/json_lines_judgements.txt",

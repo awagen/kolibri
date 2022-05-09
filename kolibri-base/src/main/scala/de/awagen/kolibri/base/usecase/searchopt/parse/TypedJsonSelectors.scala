@@ -33,15 +33,12 @@ object TypedJsonSelectors {
     def select(jsValue: JsValue): T
   }
 
-  trait SingleValueSelector[+T] extends Selector[Option[T]] {
-    def select(jsValue: JsValue): Option[T]
+  trait NamedAndTypedSelector[+T] extends KolibriSerializable with Selector[T] {
+    def name: String
+    def classTyped: NamedClassTyped[_]
   }
 
-  trait SeqSelector[+T] extends Selector[Seq[T]] {
-    def select(jsValue: JsValue): Seq[T]
-  }
-
-  case class TypedJsonSeqSelector(name: String, selector: JsValueSeqSelector, castType: JsonTypeCast) extends SeqSelector[Any] {
+  case class TypedJsonSeqSelector(name: String, selector: JsValueSeqSelector, castType: JsonTypeCast) extends NamedAndTypedSelector[Seq[Any]] {
     // note that here we need to assume the SEQ version of the passed castType. Convention for the respective enum naming
     // is SEQ_ prepended to the type contained in the seq, e.g SEQ_STRING, SEQ_BOOLEAN, SEQ_DOUBLE, SEQ_FLOAT,... (all uppercase)
     // The passed castType is for single elements of the Seq
@@ -50,7 +47,7 @@ object TypedJsonSelectors {
     def select(jsValue: JsValue): Seq[_] = selector.select(jsValue).map(x => castType.cast(x)).toSeq
   }
 
-  case class TypedJsonSingleValueSelector(name: String, selector: PlainSelector, castType: JsonTypeCast) extends SingleValueSelector[Any] {
+  case class TypedJsonSingleValueSelector(name: String, selector: PlainSelector, castType: JsonTypeCast) extends NamedAndTypedSelector[Option[Any]] {
     def classTyped: NamedClassTyped[_] = castType.toNamedClassType(name)
 
     def select(jsValue: JsValue): Option[_] = selector.select(jsValue).toOption.map(x => castType.cast(x))
