@@ -133,6 +133,15 @@
               <i class="icon icon-plus"></i>
             </button>
           </template>
+
+          <div class="divider"></div>
+          <template v-for="selectedMetric in this.$store.state.metricState.selectedIRMetrics">
+            <span class="chip">
+              {{ selectedMetric.kId }}
+              <a @click.prevent="this.$store.commit('removeMetricIdFromSelected', selectedMetric.kId)" href="#" class="btn btn-clear" aria-label="Close" role="button"></a>
+            </span>
+          </template>
+
         </form>
 
         <!-- current metric composition overview -->

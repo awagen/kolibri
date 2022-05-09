@@ -21,6 +21,7 @@ import './assets/css/styles.scss';
 import {kolibriStateRefreshInterval} from "./utils/globalConstants";
 import {objectToJsonStringAndSyntaxHighlight, stringifyObj} from "./utils/formatFunctions";
 import {filteredResultsReduced, selectedDataToParameterValuesJson} from "./utils/dataFunctions";
+import {idForMetric} from "./utils/metricFunctions";
 
 // Create a new store instance.
 const store = createStore({
@@ -378,17 +379,42 @@ const store = createStore({
             })
         },
 
-        addIRMetricToSelected(state, metricType) {
-            console.info("adding metric to selected: " + metricType)
-            state.metricState.availableIRMetrics
-                .filter(metric => metric.type === metricType)
-                .forEach(metric => state.metricState.selectedIRMetrics.push(Object.assign({}, metric)))
-            changeReducedToFullMetricsJsonList(state.metricState.selectedIRMetrics)
+        updateSelectedIRMetricsJson(state){
+            // remove the id generated for identification purposes before sending to json transformation
+            // endpoint
+            changeReducedToFullMetricsJsonList(state.metricState.selectedIRMetrics.map(metric => {
+                let newObj = Object.assign({}, metric)
+                delete newObj["kId"]
+                return newObj
+            }))
                 .then(response => {
                     state.metricState.selectedIRMetricsJson = response
                     state.metricState.selectedIRMetricsFormattedJsonString = objectToJsonStringAndSyntaxHighlight(response)
                 })
-        }
+        },
+
+        addIRMetricToSelected(state, metricType) {
+            console.info("adding metric to selected: " + metricType)
+            let existingMetricIds = state.metricState.selectedIRMetrics.map(x => x.kId)
+            let addCandidates = state.metricState.availableIRMetrics
+                .filter(metric => metric.type === metricType)
+                .map(metric => Object.assign({}, metric))
+                // add id to check against on further adds
+                .map(metric => {
+                    metric["kId"] = idForMetric(metric)
+                    return metric
+                })
+                .filter(metric => existingMetricIds.indexOf(metric.kId) < 0)
+            addCandidates.forEach(metric => state.metricState.selectedIRMetrics.push(metric))
+            this.commit("updateSelectedIRMetricsJson")
+        },
+
+        removeMetricIdFromSelected(state, metricId) {
+            state.metricState.selectedIRMetrics = state.metricState.selectedIRMetrics
+                .filter(metric => !(metric.kId === metricId))
+            this.commit("updateSelectedIRMetricsJson")
+        },
+
     },
     actions: {}
 })
