@@ -136,7 +136,7 @@
 
           <div class="divider"></div>
           <template v-for="selectedMetric in this.$store.state.metricState.selectedIRMetrics">
-            <span class="chip">
+            <span class="chip k-chip">
               {{ selectedMetric.kId }}
               <a @click.prevent="this.$store.commit('removeMetricIdFromSelected', selectedMetric.kId)" href="#" class="btn btn-clear" aria-label="Close" role="button"></a>
             </span>
@@ -277,6 +277,11 @@ pre#template-content-display-1 {
 h2.k-title {
   display: inline-block;
   padding-left: 1em;
+}
+
+.chip.k-chip {
+  color:black;
+  margin-top:.5em;
 }
 
 </style>
