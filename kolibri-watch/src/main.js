@@ -65,6 +65,13 @@ const store = createStore({
                 selectedIRMetricsFormattedJsonString: ""
             },
 
+            // state representing json selectors to retrieve fields from responses
+            // that can be utilized to calculate metrics
+            parsingState: {
+                selectedParsingSelectors: [],
+                selectedParsingSelectorsFormattedJsonString: ""
+            },
+
             templateState: {
                 // the names of template types for which specific templates can be requested
                 templateTypes: [],
@@ -414,6 +421,28 @@ const store = createStore({
                 .filter(metric => !(metric.kId === metricId))
             this.commit("updateSelectedIRMetricsJson")
         },
+
+        updateSelectedParsingSelectorsJson(state){
+            state.parsingState.selectedParsingSelectorsFormattedJsonString = objectToJsonStringAndSyntaxHighlight(
+                state.parsingState.selectedParsingSelectors
+            )
+        },
+
+        removeParsingSelectorFromSelected(state, name){
+            state.parsingState.selectedParsingSelectors = state.parsingState.selectedParsingSelectors
+                .filter(selector => !(selector.name === name))
+            this.commit("updateSelectedParsingSelectorsJson")
+        },
+
+        addParsingSelector(state, {fieldName, selector, fieldType}) {
+            let selectorJson = {"name": fieldName, "selector": selector, "castType": fieldType}
+            let existingSelectors = state.parsingState.selectedParsingSelectors.map(sel => sel.name)
+            if (existingSelectors.indexOf(selectorJson.name) < 0) {
+                state.parsingState.selectedParsingSelectors.push(selectorJson)
+                // update the json representation
+                this.commit("updateSelectedParsingSelectorsJson")
+            }
+        }
 
     },
     actions: {}

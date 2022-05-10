@@ -97,7 +97,14 @@
 
   <div class="divider"></div>
 
+  <!-- selection of IR metrics -->
   <MetricOverview/>
+
+  <div class="divider"></div>
+
+  <!-- TODO: add parsing definitions here (\ for single selector and \\ for recursive -->
+  <ParsingOverview/>
+
 
 </template>
 
@@ -108,11 +115,13 @@ import DataFileSelectTabs from "../components/partials/DataFileSelectTabs.vue";
 import DataFileOverview from "../components/partials/DataFileOverview.vue";
 import DataComposerOverview from "../components/partials/DataComposerOverview.vue";
 import MetricOverview from "../components/partials/MetricOverview.vue";
+import ParsingOverview from "../components/partials/ParsingOverview.vue";
 
 export default {
 
   props: [],
-  components: {DataFileSelectTabs, DataFileOverview, DataComposerOverview, MetricOverview},
+  components: {DataFileSelectTabs, DataFileOverview, DataComposerOverview,
+    MetricOverview, ParsingOverview},
   methods: {
 
     selectStandaloneDataFileType(fileType) {
