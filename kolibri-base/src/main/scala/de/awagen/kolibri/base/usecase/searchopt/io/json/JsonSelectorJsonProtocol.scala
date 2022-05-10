@@ -20,6 +20,9 @@ package de.awagen.kolibri.base.usecase.searchopt.io.json
 import de.awagen.kolibri.base.usecase.searchopt.parse.JsonSelectors
 import de.awagen.kolibri.base.usecase.searchopt.parse.JsonSelectors.JsonSelectorPathRegularExpressions.{recursiveAndPlainSelectorKeysToSelector, recursiveAndRecursiveSelectorKeysToSelector}
 import de.awagen.kolibri.base.usecase.searchopt.parse.JsonSelectors._
+import de.awagen.kolibri.base.usecase.searchopt.parse.TypedJsonSelectors.{NamedAndTypedSelector, TypedJsonSeqSelector, TypedJsonSingleValueSelector}
+import de.awagen.kolibri.datatypes.JsonTypeCast.JsonTypeCast
+import de.awagen.kolibri.datatypes.io.json.EnumerationJsonProtocol.namedTypesFormat
 import play.api.libs.json.DefaultReads
 import spray.json.{DefaultJsonProtocol, DeserializationException, JsValue, JsonFormat, RootJsonFormat, enrichAny}
 
@@ -116,6 +119,29 @@ object JsonSelectorJsonProtocol extends DefaultJsonProtocol with DefaultReads {
 
     // TODO
     override def write(obj: Selector[Any]): JsValue = """{}""".toJson
+  }
+
+  implicit object NamedAndTypedSelectorFormat extends JsonFormat[NamedAndTypedSelector[Any]] {
+    override def read(json: JsValue): NamedAndTypedSelector[Any] = json match {
+      case spray.json.JsObject(fields)  =>
+        val selectorPath = fields("selector").convertTo[String]
+        val name = fields("name").convertTo[String]
+        val castType = fields("castType").convertTo[JsonTypeCast]
+        val selector: Option[Selector[_]] = JsonSelectors.JsonSelectorPathRegularExpressions.pathToSelector(selectorPath)
+        val namedSelectorOpt: Option[NamedAndTypedSelector[Any]] = selector.flatMap({
+          case e: PlainSelector =>
+            Some(TypedJsonSingleValueSelector(name, e, castType))
+          case e: JsValueSeqSelector =>
+            Some(TypedJsonSeqSelector(name, e, castType))
+          case _ => None
+        })
+        if (namedSelectorOpt.isEmpty) throw new RuntimeException(s"could not parse json '$json' to named selector")
+        namedSelectorOpt.get
+      case _ => throw new RuntimeException(s"could not parse json '$json' to named selector")
+    }
+
+    // TODO
+    override def write(obj: NamedAndTypedSelector[Any]): JsValue = """{}""".toJson
   }
 
 }

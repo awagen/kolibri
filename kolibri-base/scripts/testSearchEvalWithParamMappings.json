@@ -71,23 +71,16 @@
   ],
   "batchByIndex": 0,
   "parsingConfig": {
-    "singleSelectors": [],
-    "seqSelectors": [
+    "selectors": [
       {
         "name": "productIds",
         "castType": "STRING",
-        "selector": {
-          "type": "PLAINREC",
-          "path": "\\ response \\ docs \\\\ product_id"
-        }
+        "selector": "\\ response \\ docs \\\\ product_id"
       },
       {
         "name": "bools",
         "castType": "BOOLEAN",
-        "selector": {
-          "type": "PLAINREC",
-          "path": "\\ response \\ docs \\\\ bool"
-        }
+        "selector": "\\ response \\ docs \\\\ bool"
       }
     ]
   },

@@ -17,13 +17,13 @@
 
 package de.awagen.kolibri.base.usecase.searchopt.io.json
 
-import de.awagen.kolibri.base.usecase.searchopt.io.json.TypedJsonSelectorJsonProtocol._
+import de.awagen.kolibri.base.usecase.searchopt.io.json.JsonSelectorJsonProtocol.NamedAndTypedSelectorFormat
 import de.awagen.kolibri.base.usecase.searchopt.parse.ParsingConfig
 import spray.json.{DefaultJsonProtocol, RootJsonFormat}
 
 object ParsingConfigJsonProtocol extends DefaultJsonProtocol {
 
   implicit val parsingConfigJsonFormat: RootJsonFormat[ParsingConfig] =
-    jsonFormat2(ParsingConfig.apply)
+    jsonFormat1(ParsingConfig.apply)
 
 }

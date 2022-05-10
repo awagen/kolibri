@@ -80,15 +80,11 @@
   ],
   "batchByIndex": 0,
   "parsingConfig": {
-    "singleSelectors": [],
-    "seqSelectors": [
+    "selectors": [
       {
         "name": "productIds",
         "castType": "STRING",
-        "selector": {
-          "type": "PLAINREC",
-          "path": "\\ response \\ docs \\\\ product_id"
-        }
+        "selector": "\\ response \\ docs \\\\ product_id"
       }
     ]
   },

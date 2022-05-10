@@ -17,7 +17,7 @@
 
 package de.awagen.kolibri.base.usecase.searchopt.parse
 
-import de.awagen.kolibri.base.usecase.searchopt.parse.TypedJsonSelectors.{TypedJsonSeqSelector, TypedJsonSingleValueSelector}
+import de.awagen.kolibri.base.usecase.searchopt.parse.TypedJsonSelectors.NamedAndTypedSelector
 
 
 /**
@@ -29,4 +29,4 @@ import de.awagen.kolibri.base.usecase.searchopt.parse.TypedJsonSelectors.{TypedJ
   * @param singleSelectors - single value selector, e.g non-recursive
   * @param seqSelectors    - seq selectors, e.g recursive
   */
-case class ParsingConfig(singleSelectors: Seq[TypedJsonSingleValueSelector], seqSelectors: Seq[TypedJsonSeqSelector])
+case class ParsingConfig(selectors: Seq[NamedAndTypedSelector[Any]])

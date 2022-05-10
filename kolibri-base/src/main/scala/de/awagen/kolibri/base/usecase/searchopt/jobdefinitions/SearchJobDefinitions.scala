@@ -60,13 +60,13 @@ object SearchJobDefinitions {
   def jsValueToTypeTaggedMap(parsingConfig: ParsingConfig): SerializableFunction1[JsValue, WeaklyTypedMap[String]] = new SerializableFunction1[JsValue, WeaklyTypedMap[String]] {
     override def apply(jsValue: JsValue): WeaklyTypedMap[String] = {
       val typedMap = BaseWeaklyTypedMap(mutable.Map.empty)
-      parsingConfig.seqSelectors.foreach(seqSelector => {
-        val value: Seq[_] = seqSelector.select(jsValue)
-        typedMap.put(seqSelector.name, value)
-      })
-      parsingConfig.singleSelectors.foreach(selector => {
-        val valueOpt: Option[Any] = selector.select(jsValue)
-        valueOpt.foreach(value => typedMap.put(selector.name, value))
+      parsingConfig.selectors.foreach(selector => {
+        val value: Any = selector.select(jsValue)
+        value match {
+          case v: Option[_] => v.foreach(value => typedMap.put(selector.name, value))
+          case _ => typedMap.put(selector.name, value)
+        }
+
       })
       if (typedMap.keys.isEmpty) {
         logger.warn("no data placed in typed map")
