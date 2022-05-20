@@ -18,9 +18,9 @@
 package de.awagen.kolibri.base.usecase.searchopt.parse
 
 import de.awagen.kolibri.base.usecase.searchopt.parse.JsonSelectors.{JsValueSeqSelector, PlainSelector}
-import de.awagen.kolibri.datatypes.JsonTypeCast.JsonTypeCast
+import de.awagen.kolibri.datatypes.types.JsonTypeCast.JsonTypeCast
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
-import de.awagen.kolibri.datatypes.{JsonTypeCast, NamedClassTyped}
+import de.awagen.kolibri.datatypes.types.{JsonTypeCast, NamedClassTyped}
 import play.api.libs.json.JsValue
 
 

@@ -24,11 +24,11 @@ import de.awagen.kolibri.base.config.AppProperties.config.kolibriDispatcherName
 import de.awagen.kolibri.base.processing.execution.task.Task
 import de.awagen.kolibri.base.processing.execution.task.TaskStates.{Done, Running, TaskState}
 import de.awagen.kolibri.base.processing.failure.TaskFailType.{FailedByException, MissingResultKey, TaskFailType}
-import de.awagen.kolibri.datatypes.ClassTyped
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.mutable.stores.TypeTaggedMap
 import de.awagen.kolibri.datatypes.tagging.TagType._
 import de.awagen.kolibri.datatypes.tagging.TaggedWithType
+import de.awagen.kolibri.datatypes.types.ClassTyped
 
 import scala.concurrent.ExecutionContextExecutor
 import scala.util.{Failure, Success}

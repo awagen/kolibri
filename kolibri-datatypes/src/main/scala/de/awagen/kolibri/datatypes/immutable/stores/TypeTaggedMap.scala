@@ -16,8 +16,8 @@
 
 package de.awagen.kolibri.datatypes.immutable.stores
 
-import de.awagen.kolibri.datatypes.ClassTyped
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
+import de.awagen.kolibri.datatypes.types.ClassTyped
 
 import scala.reflect.runtime.universe._
 

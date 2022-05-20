@@ -15,7 +15,7 @@
   */
 
 
-package de.awagen.kolibri.datatypes
+package de.awagen.kolibri.datatypes.types
 
 import de.awagen.kolibri.datatypes.testclasses.UnitTestSpec
 

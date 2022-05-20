@@ -20,7 +20,7 @@ package de.awagen.kolibri.base.usecase.searchopt.provider
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
 import de.awagen.kolibri.base.usecase.searchopt.parse.JsonSelectors.{PlainAndRecursiveSelector, PlainPathSelector}
 import de.awagen.kolibri.base.usecase.searchopt.parse.TypedJsonSelectors.{NamedAndTypedSelector, TypedJsonSeqSelector, TypedJsonSingleValueSelector}
-import de.awagen.kolibri.datatypes.JsonTypeCast
+import de.awagen.kolibri.datatypes.types.JsonTypeCast
 
 class FileBasedJudgementProviderSpec extends UnitTestSpec {
 

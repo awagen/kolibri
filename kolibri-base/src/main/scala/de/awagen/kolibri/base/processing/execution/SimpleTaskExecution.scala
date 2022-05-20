@@ -20,9 +20,9 @@ import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.ProcessingMe
 import de.awagen.kolibri.base.processing.execution.task.Task
 import de.awagen.kolibri.base.processing.execution.task.TaskStates.{Done, NoState, Running, TaskState}
 import de.awagen.kolibri.base.processing.failure.TaskFailType.{FailedByException, MissingPrerequisites, TaskFailType}
-import de.awagen.kolibri.datatypes.ClassTyped
 import de.awagen.kolibri.datatypes.mutable.stores.TypeTaggedMap
 import de.awagen.kolibri.datatypes.tagging.TaggedWithType
+import de.awagen.kolibri.datatypes.types.ClassTyped
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.ExecutionContext

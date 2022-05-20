@@ -20,8 +20,8 @@ package de.awagen.kolibri.datatypes.io.json
 import de.awagen.kolibri.datatypes.testclasses.UnitTestSpec
 import spray.json.{JsString, JsValue}
 import EnumerationJsonProtocol._
-import de.awagen.kolibri.datatypes.JsonTypeCast
-import de.awagen.kolibri.datatypes.JsonTypeCast.JsonTypeCast
+import de.awagen.kolibri.datatypes.types.JsonTypeCast.JsonTypeCast
+import de.awagen.kolibri.datatypes.types.JsonTypeCast
 
 class EnumerationJsonProtocolSpec extends UnitTestSpec {
 

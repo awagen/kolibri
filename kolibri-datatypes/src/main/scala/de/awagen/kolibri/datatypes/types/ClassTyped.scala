@@ -14,10 +14,11 @@
   * limitations under the License.
   */
 
-package de.awagen.kolibri.datatypes
+package de.awagen.kolibri.datatypes.types
 
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
+
 import scala.reflect.runtime.universe._
 
 

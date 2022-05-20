@@ -25,7 +25,7 @@ import de.awagen.kolibri.base.usecase.searchopt.parse.JsonSelectors.{PlainAndRec
 import de.awagen.kolibri.base.usecase.searchopt.parse.TypedJsonSelectors.{NamedAndTypedSelector, TypedJsonSeqSelector, TypedJsonSingleValueSelector}
 import de.awagen.kolibri.base.usecase.searchopt.provider.FileBasedJudgementProvider.JudgementFileCSVFormatConfig
 import de.awagen.kolibri.base.usecase.searchopt.provider.{FileBasedJudgementProvider, JudgementProvider}
-import de.awagen.kolibri.datatypes.JsonTypeCast
+import de.awagen.kolibri.datatypes.types.JsonTypeCast
 
 object AppConfig {
 

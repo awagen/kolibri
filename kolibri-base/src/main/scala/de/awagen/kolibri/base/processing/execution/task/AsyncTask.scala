@@ -18,8 +18,8 @@ package de.awagen.kolibri.base.processing.execution.task
 
 import de.awagen.kolibri.base.processing.execution.task.TaskStates.{Done, Running, TaskState}
 import de.awagen.kolibri.base.processing.failure.TaskFailType.{FailedByException, MissingPrerequisites}
-import de.awagen.kolibri.datatypes.ClassTyped
 import de.awagen.kolibri.datatypes.mutable.stores.TypeTaggedMap
+import de.awagen.kolibri.datatypes.types.ClassTyped
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.reflect.runtime.universe

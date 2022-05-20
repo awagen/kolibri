@@ -154,12 +154,12 @@
     {
       "name": "FIRST_TRUE_BOOL",
       "dataKey": "bools",
-      "functionType": "FIRST_TRUE"
+      "type": "FIRST_TRUE"
     },
     {
       "name": "COUNT_TRUE_BOOL",
       "dataKey": "bools",
-      "functionType": "TRUE_COUNT"
+      "type": "TRUE_COUNT"
     }
   ],
   "allowedTimePerElementInMillis": 1000,

@@ -20,9 +20,9 @@ import de.awagen.kolibri.base.processing.TestTaskHelper._
 import de.awagen.kolibri.base.processing.execution
 import de.awagen.kolibri.base.processing.execution.task.{SimpleSyncTask, SyncTask}
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
-import de.awagen.kolibri.datatypes.ClassTyped
 import de.awagen.kolibri.datatypes.mutable.stores.TypedMapStore
 import de.awagen.kolibri.datatypes.tagging.TypeTaggedMapImplicits._
+import de.awagen.kolibri.datatypes.types.ClassTyped
 
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext

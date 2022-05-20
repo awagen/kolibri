@@ -16,7 +16,7 @@
 
 package de.awagen.kolibri.base.processing.failure
 
-import de.awagen.kolibri.datatypes.ClassTyped
+import de.awagen.kolibri.datatypes.types.ClassTyped
 
 import scala.reflect.runtime.universe._
 

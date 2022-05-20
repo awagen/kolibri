@@ -16,8 +16,8 @@
 
 package de.awagen.kolibri.datatypes.immutable.stores
 
-import de.awagen.kolibri.datatypes.ClassTyped
 import de.awagen.kolibri.datatypes.testclasses.UnitTestSpec
+import de.awagen.kolibri.datatypes.types.ClassTyped
 import de.awagen.kolibri.datatypes.utils.TestHelper.TestTypedClass
 
 import scala.collection.immutable

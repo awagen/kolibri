@@ -20,7 +20,7 @@ package de.awagen.kolibri.base.usecase.searchopt.io.json
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
 import de.awagen.kolibri.base.usecase.searchopt.io.json.TypedJsonSelectorJsonProtocol._
 import de.awagen.kolibri.base.usecase.searchopt.parse.TypedJsonSelectors.TypedJsonSeqSelector
-import de.awagen.kolibri.datatypes.JsonTypeCast
+import de.awagen.kolibri.datatypes.types.JsonTypeCast
 import play.api.libs.json.Json
 import spray.json._
 

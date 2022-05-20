@@ -16,7 +16,7 @@
 
 package de.awagen.kolibri.datatypes.mutable.stores
 
-import de.awagen.kolibri.datatypes.ClassTyped
+import de.awagen.kolibri.datatypes.types.ClassTyped
 import org.slf4j.LoggerFactory
 
 import scala.collection.mutable

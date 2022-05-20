@@ -17,8 +17,8 @@
 
 package de.awagen.kolibri.datatypes.tagging
 
-import de.awagen.kolibri.datatypes.ClassTyped
 import de.awagen.kolibri.datatypes.mutable.stores.TypeTaggedMap
+import de.awagen.kolibri.datatypes.types.ClassTyped
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.reflect.runtime.universe

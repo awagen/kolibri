@@ -20,7 +20,7 @@ package de.awagen.kolibri.base.usecase.searchopt.io.json
 import de.awagen.kolibri.base.usecase.searchopt.io.json.JsonSelectorJsonProtocol.{PlainSelectorFormat, _}
 import de.awagen.kolibri.base.usecase.searchopt.parse.JsonSelectors.{JsValueSeqSelector, PlainSelector}
 import de.awagen.kolibri.base.usecase.searchopt.parse.TypedJsonSelectors.{TypedJsonSeqSelector, TypedJsonSingleValueSelector}
-import de.awagen.kolibri.datatypes.JsonTypeCast.JsonTypeCast
+import de.awagen.kolibri.datatypes.types.JsonTypeCast.JsonTypeCast
 import de.awagen.kolibri.datatypes.io.json.EnumerationJsonProtocol.namedTypesFormat
 import spray.json.{DefaultJsonProtocol, JsValue, JsonFormat, enrichAny}
 

@@ -17,7 +17,7 @@
 
 package de.awagen.kolibri.base.usecase.searchopt.io.json
 
-import de.awagen.kolibri.datatypes.NamedClassTyped
+import de.awagen.kolibri.datatypes.types.NamedClassTyped
 import spray.json.{DefaultJsonProtocol, DeserializationException, JsValue, JsonFormat, enrichAny}
 
 object NamedClassTypedKeyJsonProtocol extends DefaultJsonProtocol {

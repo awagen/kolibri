@@ -16,7 +16,8 @@
 
 package de.awagen.kolibri.datatypes.utils
 
-import de.awagen.kolibri.datatypes.ClassTyped
+import de.awagen.kolibri.datatypes.types.ClassTyped
+
 import scala.reflect.runtime.universe._
 
 object TestHelper {

@@ -19,7 +19,7 @@ package de.awagen.kolibri.base.usecase.searchopt.io.json
 
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
 import de.awagen.kolibri.base.usecase.searchopt.io.json.NamedClassTypedKeyJsonProtocol._
-import de.awagen.kolibri.datatypes.NamedClassTyped
+import de.awagen.kolibri.datatypes.types.NamedClassTyped
 import spray.json._
 
 class NamedClassTypedKeyJsonProtocolSpec extends UnitTestSpec {

@@ -18,7 +18,7 @@ package de.awagen.kolibri.base.utils
 
 import akka.http.scaladsl.model.HttpMethods
 import de.awagen.kolibri.base.http.client.request.RequestTemplate
-import de.awagen.kolibri.datatypes.ClassTyped
+import de.awagen.kolibri.datatypes.types.ClassTyped
 
 import scala.reflect.runtime.universe._
 

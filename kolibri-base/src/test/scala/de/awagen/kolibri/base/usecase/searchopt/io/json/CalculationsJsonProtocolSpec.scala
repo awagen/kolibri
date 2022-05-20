@@ -58,7 +58,7 @@ class CalculationsJsonProtocolSpec extends UnitTestSpec {
     """{
       |"name": "firstTrue",
       |"dataKey": "seq_bool_key",
-      |"functionType": "FIRST_TRUE"
+      |"type": "FIRST_TRUE"
       |}""".stripMargin.parseJson
 
     "FromMapFutureCalculationSeqStringToMetricRowFormat" must {

@@ -21,7 +21,7 @@ import de.awagen.kolibri.base.usecase.searchopt.parse.JsonSelectors
 import de.awagen.kolibri.base.usecase.searchopt.parse.JsonSelectors.JsonSelectorPathRegularExpressions.{recursiveAndPlainSelectorKeysToSelector, recursiveAndRecursiveSelectorKeysToSelector}
 import de.awagen.kolibri.base.usecase.searchopt.parse.JsonSelectors._
 import de.awagen.kolibri.base.usecase.searchopt.parse.TypedJsonSelectors.{NamedAndTypedSelector, TypedJsonSeqSelector, TypedJsonSingleValueSelector}
-import de.awagen.kolibri.datatypes.JsonTypeCast.JsonTypeCast
+import de.awagen.kolibri.datatypes.types.JsonTypeCast.JsonTypeCast
 import de.awagen.kolibri.datatypes.io.json.EnumerationJsonProtocol.namedTypesFormat
 import play.api.libs.json.DefaultReads
 import spray.json.{DefaultJsonProtocol, DeserializationException, JsValue, JsonFormat, RootJsonFormat, enrichAny}

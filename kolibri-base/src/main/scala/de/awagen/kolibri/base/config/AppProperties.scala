@@ -21,9 +21,9 @@ import com.typesafe.config.{Config, ConfigFactory}
 import de.awagen.kolibri.base.actors.resources.{CPUBasedResourceChecker, ResourceChecker}
 import de.awagen.kolibri.base.cluster.ClusterStates.ClusterStatus
 import de.awagen.kolibri.base.config.EnvVariableKeys.{IS_SINGLENODE, NODE_ROLES, POD_IP, PROFILE}
-import de.awagen.kolibri.datatypes.JsonTypeCast
-import de.awagen.kolibri.datatypes.JsonTypeCast.JsonTypeCast
+import de.awagen.kolibri.datatypes.types.JsonTypeCast.JsonTypeCast
 import de.awagen.kolibri.datatypes.metrics.aggregation.writer.{CSVParameterBasedMetricDocumentFormat, MetricDocumentFormat}
+import de.awagen.kolibri.datatypes.types.JsonTypeCast
 import org.slf4j.{Logger, LoggerFactory}
 
 import java.util

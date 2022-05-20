@@ -20,8 +20,8 @@ import de.awagen.kolibri.base.processing.TestTaskHelper._
 import de.awagen.kolibri.base.processing.execution.task.TaskStates.{Running, TaskState}
 import de.awagen.kolibri.base.processing.failure.TaskFailType.TaskFailType
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
-import de.awagen.kolibri.datatypes.ClassTyped
 import de.awagen.kolibri.datatypes.mutable.stores.{TypeTaggedMap, TypedMapStore}
+import de.awagen.kolibri.datatypes.types.ClassTyped
 
 import scala.collection.mutable
 import scala.concurrent.duration._

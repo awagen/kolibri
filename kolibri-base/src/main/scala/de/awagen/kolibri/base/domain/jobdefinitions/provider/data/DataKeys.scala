@@ -16,8 +16,8 @@
 
 package de.awagen.kolibri.base.domain.jobdefinitions.provider.data
 
-import de.awagen.kolibri.datatypes.ClassTyped
 import de.awagen.kolibri.datatypes.multivalues.OrderedMultiValues
+import de.awagen.kolibri.datatypes.types.ClassTyped
 
 import scala.collection.mutable
 import scala.reflect.runtime.universe._
