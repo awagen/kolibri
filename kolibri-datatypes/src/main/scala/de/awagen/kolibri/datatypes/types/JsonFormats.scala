@@ -118,6 +118,7 @@ object JsonFormats {
    * @tparam T - type to cast to
    */
   class MinMaxFormat[T](min: T, max: T)(implicit ev: Numeric[T], evR: JsonReader[T]) extends Format[T](withinMinMax(min, max))
+  case class IntMinMaxFormat(min: Int, max: Int) extends MinMaxFormat[Int](min, max)
   case class FloatMinMaxFormat(min: Float, max: Float) extends MinMaxFormat[Float](min, max)
   case class DoubleMinMaxFormat(min: Double, max: Double) extends MinMaxFormat[Double](min, max)
 
@@ -132,6 +133,7 @@ object JsonFormats {
    * @tparam T - type of the elements
    */
   class SeqMinMaxFormat[T](min: T, max: T)(implicit ev: Numeric[T], evR: JsonReader[Seq[T]]) extends Format[Seq[T]](seqWithinMinMax(min, max))
+  case class IntSeqMinMaxFormat(min: Int, max: Int) extends SeqMinMaxFormat[Int](min, max)
   case class FloatSeqMinMaxFormat(min: Float, max: Float) extends SeqMinMaxFormat[Float](min, max)
   case class DoubleSeqMinMaxFormat(min: Double, max: Double) extends SeqMinMaxFormat[Double](min, max)
 

@@ -53,7 +53,9 @@ object JsonFormatsJsonProtocol {
     val SEQ_CHOICE_STRING_TYPE = "SEQ_CHOICE_STRING"
     val SEQ_MIN_MAX_FLOAT_TYPE = "SEQ_MIN_MAX_FLOAT"
     val SEQ_MIN_MAX_DOUBLE_TYPE = "SEQ_MIN_MAX_DOUBLE"
+    val SEQ_MIN_MAX_INT_TYPE = "SEQ_MIN_MAX_INT"
     val NESTED_TYPE = "NESTED"
+    val MIN_MAX_INT_TYPE = "MIN_MAX_INT"
     val MIN_MAX_FLOAT_TYPE = "MIN_MAX_FLOAT"
     val MIN_MAX_DOUBLE_TYPE = "MIN_MAX_DOUBLE"
   }
@@ -65,6 +67,10 @@ object JsonFormatsJsonProtocol {
   implicit object JsonFormatsFormat extends JsonFormat[Format[_]] {
     override def read(json: JsValue): Format[_] = json match {
       case JsObject(fields) if fields.contains(TYPE_KEY) => fields(TYPE_KEY).convertTo[String] match {
+        case FormatTypes.MIN_MAX_INT_TYPE =>
+          val min = fields(MIN_KEY).convertTo[Int]
+          val max = fields(MAX_KEY).convertTo[Int]
+          IntMinMaxFormat(min, max)
         case FormatTypes.MIN_MAX_FLOAT_TYPE =>
           val min = fields(MIN_KEY).convertTo[Float]
           val max = fields(MAX_KEY).convertTo[Float]
@@ -73,6 +79,10 @@ object JsonFormatsJsonProtocol {
           val min = fields(MIN_KEY).convertTo[Double]
           val max = fields(MAX_KEY).convertTo[Double]
           DoubleMinMaxFormat(min, max)
+        case FormatTypes.SEQ_MIN_MAX_INT_TYPE =>
+          val min = fields(MIN_KEY).convertTo[Int]
+          val max = fields(MAX_KEY).convertTo[Int]
+          IntSeqMinMaxFormat(min, max)
         case FormatTypes.SEQ_MIN_MAX_DOUBLE_TYPE =>
           val min = fields(MIN_KEY).convertTo[Double]
           val max = fields(MAX_KEY).convertTo[Double]
@@ -131,6 +141,11 @@ object JsonFormatsJsonProtocol {
         TYPE_KEY -> JsString(SEQ_CHOICE_STRING_TYPE),
         CHOICES_KEY -> new JsArray(f.choices.map(x => JsString(x)).toVector),
       ))
+      case IntMinMaxFormat(min, max) => new JsObject(Map(
+        TYPE_KEY -> JsString(MIN_MAX_INT_TYPE),
+        MIN_KEY -> JsNumber(min),
+        MAX_KEY -> JsNumber(max)
+      ))
       case FloatMinMaxFormat(min, max) => new JsObject(Map(
         TYPE_KEY -> JsString(MIN_MAX_FLOAT_TYPE),
         MIN_KEY -> JsNumber(min),
@@ -138,6 +153,11 @@ object JsonFormatsJsonProtocol {
       ))
       case DoubleMinMaxFormat(min, max) => new JsObject(Map(
         TYPE_KEY -> JsString(MIN_MAX_DOUBLE_TYPE),
+        MIN_KEY -> JsNumber(min),
+        MAX_KEY -> JsNumber(max)
+      ))
+      case IntSeqMinMaxFormat(min, max) => new JsObject(Map(
+        TYPE_KEY -> JsString(SEQ_MIN_MAX_INT_TYPE),
         MIN_KEY -> JsNumber(min),
         MAX_KEY -> JsNumber(max)
       ))

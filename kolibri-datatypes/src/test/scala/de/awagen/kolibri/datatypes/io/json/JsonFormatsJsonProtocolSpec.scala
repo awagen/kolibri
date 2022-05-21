@@ -31,6 +31,17 @@ class JsonFormatsJsonProtocolSpec extends UnitTestSpec {
 
     case class JsonAndObj(json: JsValue, obj: Any)
 
+    val minMaxIntFormatJsonString: JsValue =
+      s"""
+         |{
+         |"type": "$MIN_MAX_INT_TYPE",
+         |"min": 4,
+         |"max": 5
+         |}
+         |""".stripMargin.parseJson
+
+    val minMaxIntSample = JsonAndObj(minMaxIntFormatJsonString, IntMinMaxFormat(4, 5))
+
     val minMaxFloatFormatJsonString: JsValue =
       s"""
         |{
@@ -52,6 +63,18 @@ class JsonFormatsJsonProtocolSpec extends UnitTestSpec {
         |""".stripMargin.parseJson
 
     val minMaxDoubleSample = JsonAndObj(minMaxDoubleFormatJsonString, DoubleMinMaxFormat(0.0f, 1.0f))
+
+    val seqMinMaxIntFormatJsonString: JsValue =
+      s"""
+         |{
+         |"type": "$SEQ_MIN_MAX_INT_TYPE",
+         |"min": 5,
+         |"max": 8
+         |}
+         |""".stripMargin.parseJson
+
+    val seqMinMaxIntSample = JsonAndObj(seqMinMaxIntFormatJsonString, IntSeqMinMaxFormat(5, 8))
+
 
     val seqMinMaxDoubleFormatJsonString: JsValue =
       s"""
@@ -162,8 +185,10 @@ class JsonFormatsJsonProtocolSpec extends UnitTestSpec {
     val sampleCollection1 = Seq(
       minMaxFloatSample,
       minMaxDoubleSample,
+      minMaxIntSample,
       seqMinMaxDoubleSample,
       seqMinMaxFloatSample,
+      seqMinMaxIntSample,
       intChoiceSample,
       stringChoiceSample,
       seqIntChoiceSample,
