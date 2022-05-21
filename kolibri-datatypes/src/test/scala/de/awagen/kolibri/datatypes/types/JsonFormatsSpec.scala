@@ -18,11 +18,56 @@
 package de.awagen.kolibri.datatypes.types
 
 import de.awagen.kolibri.datatypes.testclasses.UnitTestSpec
+import de.awagen.kolibri.datatypes.types.Formats.{choiceFormat1, invalidRegex2NestedFormat1Obj, minMaxFormat, nestedFormat1, regexFormat1, regexFormat2, seqChoiceFormat1, seqMinMaxFormat, seqRegexFormat1, validNestedFormat1Obj}
 import de.awagen.kolibri.datatypes.types.JsonFormats._
 import spray.json.DefaultJsonProtocol.{DoubleJsonFormat, StringJsonFormat, immSeqFormat}
-import spray.json.{DeserializationException, JsArray, JsBoolean, JsNumber, JsString}
+import spray.json.{DeserializationException, JsArray, JsBoolean, JsNumber, JsObject, JsString}
+
+object Formats {
+  val regexFormat1: Format[_] = RegexFormat("^itWas$".r)
+  val regexFormat2: Format[_] = RegexFormat("^\\w+\\s+$".r)
+  val seqRegexFormat1: Format[_] = SeqRegexFormat("^\\w+\\s+$".r)
+  val choiceFormat1: Format[_] = ChoiceFormat[String](Seq("a", "b"))
+  val seqChoiceFormat1: Format[_] = SeqChoiceFormat[String](Seq("a", "b"))
+  val minMaxFormat: Format[_] = MinMaxFormat[Double](1.0, 2.0)
+  val seqMinMaxFormat: Format[_] = SeqMinMaxFormat[Double](1.0, 2.0)
+
+  val nestedFormat1: Format[_] = NestedFormat(Seq(
+    Fields.regexFormat1Field,
+    Fields.regexFormat2Field,
+    Fields.choiceFormat1Field,
+    Fields.seqChoiceFormat1Field
+  ))
+
+  val validNestedFormat1Obj = new JsObject(Map(
+    "regex1" -> JsString("itWas"),
+    "regex2" -> JsString("aaa "),
+    "choice1" -> JsString("a"),
+    "seqChoice1" -> JsArray(JsString("a"), JsString("b")),
+  ))
+
+  val invalidRegex2NestedFormat1Obj = new JsObject(Map(
+    "regex1" -> JsString("itWas"),
+    "regex2" -> JsString("aaa"),
+    "choice1" -> JsString("a"),
+    "seqChoice1" -> JsArray(JsString("a"), JsString("b")),
+  ))
+
+}
+
+object Fields {
+  val regexFormat1Field: FieldType = FieldType("regex1", regexFormat1, required = true)
+  val regexFormat2Field: FieldType = FieldType("regex2", regexFormat2, required = true)
+  val seqRegexFormat1Field: FieldType = FieldType("seqRegex1", seqRegexFormat1, required = true)
+  val choiceFormat1Field: FieldType = FieldType("choice1", choiceFormat1, required = true)
+  val seqChoiceFormat1Field: FieldType = FieldType("seqChoice1", seqChoiceFormat1, required = true)
+  val minMaxFormatField: FieldType = FieldType("minMax1", minMaxFormat, required = true)
+  val seqMinMaxFormatField: FieldType = FieldType("seqMinMax1", seqMinMaxFormat, required = true)
+}
 
 class JsonFormatsSpec extends UnitTestSpec {
+
+
 
   "JsonFormats" should {
     "Format should cast" in {
@@ -46,8 +91,6 @@ class JsonFormatsSpec extends UnitTestSpec {
     }
 
     "Regex format should cherish regex" in {
-      val regexFormat1 = RegexFormat("^itWas$".r)
-      val regexFormat2 = RegexFormat("^\\w+\\s+$".r)
       regexFormat1.cast(JsString("itWas")) mustBe "itWas"
       intercept[IllegalArgumentException] {
         regexFormat1.cast(JsString("itWas11"))
@@ -59,15 +102,13 @@ class JsonFormatsSpec extends UnitTestSpec {
     }
 
     "Regex Seq format should cherish regex over whole sequence" in {
-      val regexFormat1 = SeqRegexFormat("^\\w+\\s+$".r)
-      regexFormat1.cast(JsArray(JsString("aaa "), JsString("b  "))) mustBe Seq("aaa ", "b  ")
+      seqRegexFormat1.cast(JsArray(JsString("aaa "), JsString("b  "))) mustBe Seq("aaa ", "b  ")
       intercept[IllegalArgumentException] {
-        regexFormat1.cast(JsArray(JsString("a"), JsString("b")))
+        seqRegexFormat1.cast(JsArray(JsString("a"), JsString("b")))
       }
     }
 
     "Choice format should cherish choices" in {
-      val choiceFormat1 = ChoiceFormat[String](Seq("a", "b"))
       choiceFormat1.cast(JsString("a")) mustBe "a"
       choiceFormat1.cast(JsString("b")) mustBe "b"
       intercept[IllegalArgumentException] {
@@ -76,15 +117,13 @@ class JsonFormatsSpec extends UnitTestSpec {
     }
 
     "Choice Seq format should cherish choices over sequence" in {
-      val choiceFormat1 = SeqChoiceFormat[String](Seq("a", "b"))
-      choiceFormat1.cast(JsArray(JsString("a"), JsString("b"))) mustBe Seq("a", "b")
+      seqChoiceFormat1.cast(JsArray(JsString("a"), JsString("b"))) mustBe Seq("a", "b")
       intercept[IllegalArgumentException] {
-        choiceFormat1.cast(JsArray(JsString("a"), JsString("c")))
+        seqChoiceFormat1.cast(JsArray(JsString("a"), JsString("c")))
       }
     }
 
     "Min Max format should cherish boundaries" in {
-      val minMaxFormat = MinMaxFormat[Double](1.0, 2.0)
       minMaxFormat.cast(JsNumber(1.0)) mustBe 1.0
       minMaxFormat.cast(JsNumber(1.5)) mustBe 1.5
       minMaxFormat.cast(JsNumber(2.0)) mustBe 2.0
@@ -94,10 +133,19 @@ class JsonFormatsSpec extends UnitTestSpec {
     }
 
     "Seq Min Max format should cherish boundaries" in {
-      val minMaxFormat = SeqMinMaxFormat[Double](1.0, 2.0)
-      minMaxFormat.cast(JsArray(JsNumber(1.0), JsNumber(1.5))) mustBe Seq(1.0, 1.5)
+      seqMinMaxFormat.cast(JsArray(JsNumber(1.0), JsNumber(1.5))) mustBe Seq(1.0, 1.5)
       intercept[IllegalArgumentException] {
-        minMaxFormat.cast(JsArray(JsNumber(2.0), JsNumber(2.1)))
+        seqMinMaxFormat.cast(JsArray(JsNumber(2.0), JsNumber(2.1)))
+      }
+    }
+
+    "NestedFormat should correctly parse single attributes" in {
+      nestedFormat1.cast(validNestedFormat1Obj) mustBe validNestedFormat1Obj
+    }
+
+    "NestedFormat should detect non-matching fields" in {
+      intercept[IllegalArgumentException] {
+        nestedFormat1.cast(invalidRegex2NestedFormat1Obj)
       }
     }
 

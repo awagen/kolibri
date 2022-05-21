@@ -18,6 +18,7 @@
 package de.awagen.kolibri.datatypes.types
 
 import de.awagen.kolibri.datatypes.types.JsonFormats.Validations.{matchesJsObject, matchesOneOfChoices, matchesRegex, seqMatchesOneOfChoices, seqMatchesRegex, seqWithinMinMax, withinMinMax}
+import org.slf4j.{Logger, LoggerFactory}
 import spray.json.DefaultJsonProtocol.{BooleanJsonFormat, DoubleJsonFormat, FloatJsonFormat, IntJsonFormat, RootJsObjectFormat, StringJsonFormat, immSeqFormat}
 import spray.json.{JsObject, JsValue, JsonReader}
 
@@ -27,6 +28,8 @@ import scala.util.matching.Regex
 object JsonFormats {
 
   object Validations {
+
+    val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
     def matchesRegex(regex: Regex): String => Boolean = x => regex.matches(x)
 
@@ -40,7 +43,7 @@ object JsonFormats {
 
     def seqWithinMinMax[T: Numeric](min: T, max: T): Seq[T] => Boolean = values => values.forall(withinMinMax(min, max))
 
-    def matchesJsObject(fields: Seq[FieldType[Any]]): JsObject => Boolean = jsObj => {
+    def matchesJsObject(fields: Seq[FieldType]): JsObject => Boolean = jsObj => {
       fields.forall(field => {
         try {
           if (!(field.required || jsObj.fields.contains(field.name))) true
@@ -50,7 +53,9 @@ object JsonFormats {
           }
         }
         catch {
-          case _: Exception => false
+          case _: Exception =>
+            logger.warn(s"field '$field' did not pass validation for given object '$jsObj'")
+            false
         }
       })
     }
@@ -142,8 +147,8 @@ object JsonFormats {
 
   object BoolSeqFormat extends Format[Seq[Boolean]](_ => true)
 
-  case class FieldType[T](name: String, format: Format[T], required: Boolean)
+  case class FieldType(name: String, format: Format[_], required: Boolean)
 
-  case class NestedFormat(fields: Seq[FieldType[Any]]) extends Format[JsObject](matchesJsObject(fields))
+  case class NestedFormat(fields: Seq[FieldType]) extends Format[JsObject](matchesJsObject(fields))
 
 }
