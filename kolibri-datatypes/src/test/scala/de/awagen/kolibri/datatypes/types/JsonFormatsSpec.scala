@@ -18,19 +18,19 @@
 package de.awagen.kolibri.datatypes.types
 
 import de.awagen.kolibri.datatypes.testclasses.UnitTestSpec
-import de.awagen.kolibri.datatypes.types.Formats.{choiceFormat1, invalidRegex2NestedFormat1Obj, minMaxFormat, nestedFormat1, regexFormat1, regexFormat2, seqChoiceFormat1, seqMinMaxFormat, seqRegexFormat1, validNestedFormat1Obj}
+import de.awagen.kolibri.datatypes.types.Formats._
 import de.awagen.kolibri.datatypes.types.JsonFormats._
-import spray.json.DefaultJsonProtocol.{DoubleJsonFormat, StringJsonFormat, immSeqFormat}
+import de.awagen.kolibri.datatypes.utils.MathUtils
 import spray.json.{DeserializationException, JsArray, JsBoolean, JsNumber, JsObject, JsString}
 
 object Formats {
   val regexFormat1: Format[_] = RegexFormat("^itWas$".r)
   val regexFormat2: Format[_] = RegexFormat("^\\w+\\s+$".r)
   val seqRegexFormat1: Format[_] = SeqRegexFormat("^\\w+\\s+$".r)
-  val choiceFormat1: Format[_] = ChoiceFormat[String](Seq("a", "b"))
-  val seqChoiceFormat1: Format[_] = SeqChoiceFormat[String](Seq("a", "b"))
-  val minMaxFormat: Format[_] = MinMaxFormat[Double](1.0, 2.0)
-  val seqMinMaxFormat: Format[_] = SeqMinMaxFormat[Double](1.0, 2.0)
+  val choiceFormat1: Format[_] = StringChoiceFormat(Seq("a", "b"))
+  val seqChoiceFormat1: Format[_] = StringSeqChoiceFormat(Seq("a", "b"))
+  val minMaxFormat: Format[_] = DoubleMinMaxFormat(1.0, 2.0)
+  val seqMinMaxFormat: Format[_] = DoubleSeqMinMaxFormat(1.0, 2.0)
 
   val nestedFormat1: Format[_] = NestedFormat(Seq(
     Fields.regexFormat1Field,
@@ -67,8 +67,6 @@ object Fields {
 
 class JsonFormatsSpec extends UnitTestSpec {
 
-
-
   "JsonFormats" should {
     "Format should cast" in {
       IntFormat.cast(JsNumber(1)) mustBe 1
@@ -86,7 +84,7 @@ class JsonFormatsSpec extends UnitTestSpec {
       IntSeqFormat.cast(JsArray(JsNumber(1), JsNumber(2))) mustBe Seq(1, 2)
       StringSeqFormat.cast(JsArray(JsString("1"), JsString("2"))) mustBe Seq("1", "2")
       DoubleSeqFormat.cast(JsArray(JsNumber(1.2), JsNumber(2.4))) mustBe Seq(1.2, 2.4)
-      FloatSeqFormat.cast(JsArray(JsNumber(1.2), JsNumber(2.4))) mustBe Seq(1.2, 2.4)
+      MathUtils.equalWithPrecision(FloatSeqFormat.cast(JsArray(JsNumber(1.2), JsNumber(2.4))), Seq(1.2f, 2.4f), 0.001f) mustBe true
       BoolSeqFormat.cast(JsArray(JsBoolean(false), JsBoolean(true))) mustBe Seq(false, true)
     }
 

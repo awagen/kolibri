@@ -23,9 +23,9 @@ import spray.json._
 
 object MetricDocumentFormatJsonProtocol {
 
-  val TYPE_KEY = "type"
-  val TYPE_VALUE_CSV = "csv"
-  val COLUMN_SEPARATOR_KEY = "columnSeparator"
+  private[json] val TYPE_KEY = "type"
+  private[json] val TYPE_VALUE_CSV = "csv"
+  private[json] val COLUMN_SEPARATOR_KEY = "columnSeparator"
 
   implicit object MetricDocumentCSVFormatFormat extends JsonFormat[MetricDocumentFormat] {
     override def read(json: JsValue): MetricDocumentFormat = json match {

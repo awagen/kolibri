@@ -93,7 +93,9 @@ object JsonFormats {
    * @param ev      - implicit json reader for specified type T
    * @tparam T - type to cast to
    */
-  case class ChoiceFormat[T](choices: Seq[T])(implicit ev: JsonReader[T]) extends Format[T](matchesOneOfChoices(choices))
+  class ChoiceFormat[T](choices: Seq[T])(implicit ev: JsonReader[T]) extends Format[T](matchesOneOfChoices(choices))
+  case class IntChoiceFormat(choices: Seq[Int]) extends ChoiceFormat[Int](choices)
+  case class StringChoiceFormat(choices: Seq[String]) extends ChoiceFormat[String](choices)
 
   /**
    * format for sequence of values of type T, where each element must be contained within the passed choices
@@ -102,7 +104,9 @@ object JsonFormats {
    * @param ev      - implicit json reader for specified type T
    * @tparam T - type to cast to
    */
-  case class SeqChoiceFormat[T](choices: Seq[T])(implicit ev: JsonReader[Seq[T]]) extends Format[Seq[T]](seqMatchesOneOfChoices(choices))
+  class SeqChoiceFormat[T](choices: Seq[T])(implicit ev: JsonReader[Seq[T]]) extends Format[Seq[T]](seqMatchesOneOfChoices(choices))
+  case class IntSeqChoiceFormat(choices: Seq[Int]) extends SeqChoiceFormat[Int](choices)
+  case class StringSeqChoiceFormat(choices: Seq[String]) extends SeqChoiceFormat[String](choices)
 
   /**
    * Format requiring value (must be numeric) to be within range defined by min and max value
@@ -113,7 +117,9 @@ object JsonFormats {
    * @param evR - implicit json reader for type T
    * @tparam T - type to cast to
    */
-  case class MinMaxFormat[T](min: T, max: T)(implicit ev: Numeric[T], evR: JsonReader[T]) extends Format[T](withinMinMax(min, max))
+  class MinMaxFormat[T](min: T, max: T)(implicit ev: Numeric[T], evR: JsonReader[T]) extends Format[T](withinMinMax(min, max))
+  case class FloatMinMaxFormat(min: Float, max: Float) extends MinMaxFormat[Float](min, max)
+  case class DoubleMinMaxFormat(min: Double, max: Double) extends MinMaxFormat[Double](min, max)
 
   /**
    * Format for sequence of numerical values where each needs to be within the defined min and max values
@@ -125,7 +131,10 @@ object JsonFormats {
    * @param evR - implicit reader for Seq[T]
    * @tparam T - type of the elements
    */
-  case class SeqMinMaxFormat[T](min: T, max: T)(implicit ev: Numeric[T], evR: JsonReader[Seq[T]]) extends Format[Seq[T]](seqWithinMinMax(min, max))
+  class SeqMinMaxFormat[T](min: T, max: T)(implicit ev: Numeric[T], evR: JsonReader[Seq[T]]) extends Format[Seq[T]](seqWithinMinMax(min, max))
+  case class FloatSeqMinMaxFormat(min: Float, max: Float) extends SeqMinMaxFormat[Float](min, max)
+  case class DoubleSeqMinMaxFormat(min: Double, max: Double) extends SeqMinMaxFormat[Double](min, max)
+
 
   object IntFormat extends Format[Int](_ => true)
 
