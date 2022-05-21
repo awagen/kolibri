@@ -18,7 +18,7 @@
 package de.awagen.kolibri.base.usecase.searchopt.io.json
 
 import de.awagen.kolibri.base.resources.Resources.ResourceType
-import de.awagen.kolibri.base.usecase.searchopt.io.json.CalculationsJsonProtocol.CalculationName._
+import de.awagen.kolibri.base.usecase.searchopt.io.json.CalculationName.{IDENTITY, FIRST_TRUE, FIRST_FALSE, TRUE_COUNT, FALSE_COUNT, BINARY_PRECISION_TRUE_AS_YES, BINARY_PRECISION_FALSE_AS_YES}
 import de.awagen.kolibri.base.usecase.searchopt.io.json.JudgementProviderFactoryJsonProtocol._
 import de.awagen.kolibri.base.usecase.searchopt.io.json.MetricsCalculationJsonProtocol._
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations._
@@ -31,18 +31,6 @@ import spray.json.{DefaultJsonProtocol, JsValue, JsonFormat, enrichAny}
 
 
 object CalculationsJsonProtocol extends DefaultJsonProtocol {
-
-  object CalculationName extends Enumeration {
-    type CalculationName = Value
-
-    val IDENTITY,
-    FIRST_TRUE,
-    FIRST_FALSE,
-    TRUE_COUNT,
-    FALSE_COUNT,
-    BINARY_PRECISION_TRUE_AS_YES,
-    BINARY_PRECISION_FALSE_AS_YES = Value
-  }
 
   implicit object FromMapFutureCalculationSeqStringToMetricRowFormat extends JsonFormat[FutureCalculation[WeaklyTypedMap[String], Set[String], MetricRow]] {
     override def read(json: JsValue): FutureCalculation[WeaklyTypedMap[String], Set[String], MetricRow] = json match {
@@ -83,20 +71,20 @@ object CalculationsJsonProtocol extends DefaultJsonProtocol {
         val metricName: String = fields("name").convertTo[String]
         val dataKey: String = fields("dataKey").convertTo[String]
         fields("type").convertTo[String] match {
-          case IDENTITY.toString =>
+          case IDENTITY.name =>
             FromMapCalculation[Double, Double](metricName, dataKey, Functions.identity[Double])
-          case FIRST_TRUE.toString =>
+          case FIRST_TRUE.name =>
             FromMapCalculation[Seq[Boolean], Double](metricName, dataKey, findFirstValue(true))
-          case FIRST_FALSE.toString =>
+          case FIRST_FALSE.name =>
             FromMapCalculation[Seq[Boolean], Double](metricName, dataKey, findFirstValue(false))
-          case TRUE_COUNT.toString =>
+          case TRUE_COUNT.name =>
             FromMapCalculation[Seq[Boolean], Double](metricName, dataKey, countValues(true))
-          case FALSE_COUNT.toString =>
+          case FALSE_COUNT.name =>
             FromMapCalculation[Seq[Boolean], Double](metricName, dataKey, countValues(false))
-          case BINARY_PRECISION_TRUE_AS_YES.toString =>
+          case BINARY_PRECISION_TRUE_AS_YES.name =>
             val k: Int = fields("k").convertTo[Int]
             FromMapCalculation[Seq[Boolean], Double](metricName, dataKey, booleanPrecision(useTrue = true, k))
-          case BINARY_PRECISION_FALSE_AS_YES.toString =>
+          case BINARY_PRECISION_FALSE_AS_YES.name =>
             val k: Int = fields("k").convertTo[Int]
             FromMapCalculation[Seq[Boolean], Double](metricName, dataKey, booleanPrecision(useTrue = false, k))
         }
