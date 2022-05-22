@@ -43,13 +43,39 @@ object JsonFormats {
 
     def seqWithinMinMax[T: Numeric](min: T, max: T): Seq[T] => Boolean = values => values.forall(withinMinMax(min, max))
 
+    def getJsObjKeyForFormat(field: FieldType, jsObject: JsObject): Option[String] = {
+      jsObject.fields.keys.find(x => field.nameFormat.isValid(x))
+    }
+
+    def canBeCastToCorrectType(jsValue: JsValue, format: Format[_]): Boolean = {
+      try {
+        format.cast(jsValue)
+        true
+      }
+      catch {
+        case _: Exception =>
+          logger.warn(s"json value '$jsValue' did not pass validation defined by format '$format'")
+          false
+      }
+    }
+
+    def jsObjectContainsKeyWithValidValue(field: FieldType, jsObject: JsObject): Boolean = {
+      val found = getJsObjKeyForFormat(field, jsObject)
+      found.exists(foundField => canBeCastToCorrectType(jsObject.fields(foundField), field.format))
+    }
+
     def matchesJsObject(fields: Seq[FieldType]): JsObject => Boolean = jsObj => {
       fields.forall(field => {
+        val matchingJsObjKey = getJsObjKeyForFormat(field, jsObj)
         try {
-          if (!(field.required || jsObj.fields.contains(field.name))) true
+          if (!field.required) {
+            if (matchingJsObjKey.nonEmpty){
+              canBeCastToCorrectType(jsObj.fields(matchingJsObjKey.get), field.format)
+            }
+            else true
+          }
           else {
-            field.format.cast(jsObj.fields(field.name))
-            true
+            jsObjectContainsKeyWithValidValue(field, jsObj)
           }
         }
         catch {
@@ -158,7 +184,9 @@ object JsonFormats {
 
   object BoolSeqFormat extends Format[Seq[Boolean]](_ => true)
 
-  case class FieldType(name: String, format: Format[_], required: Boolean)
+  case class StringConstantFormat(value: String) extends Format[String](x => x.equals(value))
+
+  case class FieldType(nameFormat: Format[String], format: Format[_], required: Boolean)
 
   case class NestedFormat(fields: Seq[FieldType]) extends Format[JsObject](matchesJsObject(fields))
 

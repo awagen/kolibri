@@ -56,13 +56,13 @@ object Formats {
 }
 
 object Fields {
-  val regexFormat1Field: FieldType = FieldType("regex1", regexFormat1, required = true)
-  val regexFormat2Field: FieldType = FieldType("regex2", regexFormat2, required = true)
-  val seqRegexFormat1Field: FieldType = FieldType("seqRegex1", seqRegexFormat1, required = true)
-  val choiceFormat1Field: FieldType = FieldType("choice1", choiceFormat1, required = true)
-  val seqChoiceFormat1Field: FieldType = FieldType("seqChoice1", seqChoiceFormat1, required = true)
-  val minMaxFormatField: FieldType = FieldType("minMax1", minMaxFormat, required = true)
-  val seqMinMaxFormatField: FieldType = FieldType("seqMinMax1", seqMinMaxFormat, required = true)
+  val regexFormat1Field: FieldType = FieldType(StringConstantFormat("regex1"), regexFormat1, required = true)
+  val regexFormat2Field: FieldType = FieldType(StringConstantFormat("regex2"), regexFormat2, required = true)
+  val seqRegexFormat1Field: FieldType = FieldType(StringConstantFormat("seqRegex1"), seqRegexFormat1, required = true)
+  val choiceFormat1Field: FieldType = FieldType(StringConstantFormat("choice1"), choiceFormat1, required = true)
+  val seqChoiceFormat1Field: FieldType = FieldType(StringConstantFormat("seqChoice1"), seqChoiceFormat1, required = true)
+  val minMaxFormatField: FieldType = FieldType(StringConstantFormat("minMax1"), minMaxFormat, required = true)
+  val seqMinMaxFormatField: FieldType = FieldType(StringConstantFormat("seqMinMax1"), seqMinMaxFormat, required = true)
 }
 
 class JsonFormatsSpec extends UnitTestSpec {

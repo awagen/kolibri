@@ -108,6 +108,16 @@ class JsonFormatsJsonProtocolSpec extends UnitTestSpec {
 
     val regexSample = JsonAndObj(regexFormatJsonString, RegexFormat("\\s+\\S+".r))
 
+    val stringConstantFormatJsonString: JsValue =
+      """
+        |{
+        |"type": "STRING_CONSTANT",
+        |"value": "constantValue"
+        |}
+        |""".stripMargin.parseJson
+
+    val stringConstantSample = JsonAndObj(stringConstantFormatJsonString, StringConstantFormat("constantValue"))
+
     val seqRegexFormatJsonString: JsValue =
       """
         |{
@@ -164,12 +174,18 @@ class JsonFormatsJsonProtocolSpec extends UnitTestSpec {
          |"type": "$NESTED_TYPE",
          |"fields": [
          | {
-         |  "name": "a",
+         |  "nameFormat": {
+         |    "type": "STRING_CONSTANT",
+         |    "value": "a"
+         |  },
          |  "format": $intChoiceFormatJsonString,
          |  "required": true
          | },
          | {
-         |  "name": "b",
+         |  "nameFormat": {
+         |    "type": "STRING_CONSTANT",
+         |    "value": "b"
+         |  },
          |  "format": $seqIntChoiceFormatJsonString,
          |  "required": true
          | }
@@ -178,11 +194,11 @@ class JsonFormatsJsonProtocolSpec extends UnitTestSpec {
          |""".stripMargin.parseJson
 
     val nestedSample = JsonAndObj(nestedFormatJsonString, NestedFormat(Seq(
-      FieldType("a", intChoiceSample.obj.asInstanceOf[Format[_]], required = true),
-      FieldType("b", seqIntChoiceSample.obj.asInstanceOf[Format[_]], required = true)
+      FieldType(StringConstantFormat("a"), intChoiceSample.obj.asInstanceOf[Format[_]], required = true),
+      FieldType(StringConstantFormat("b"), seqIntChoiceSample.obj.asInstanceOf[Format[_]], required = true)
     )))
 
-    val sampleCollection1 = Seq(
+    val sampleCollection1: Seq[JsonAndObj] = Seq(
       minMaxFloatSample,
       minMaxDoubleSample,
       minMaxIntSample,
@@ -192,7 +208,8 @@ class JsonFormatsJsonProtocolSpec extends UnitTestSpec {
       intChoiceSample,
       stringChoiceSample,
       seqIntChoiceSample,
-      nestedSample
+      nestedSample,
+      stringConstantSample
     )
 
   }

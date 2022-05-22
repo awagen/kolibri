@@ -31,17 +31,19 @@ object JsonFormatsJsonProtocol {
   object JsonKeys {
     val TYPE_KEY = "type"
     val REGEX_KEY = "regex"
+    val VALUE_KEY = "value"
     val CHOICES_KEY = "choices"
     val MIN_KEY = "min"
     val MAX_KEY = "max"
     val FIELDS_KEY = "fields"
-    val NAME_KEY = "name"
+    val NAME_FORMAT_KEY = "nameFormat"
     val REQUIRED_KEY = "required"
     val FORMAT_KEY = "format"
   }
 
   object FormatTypes {
     val REGEX_TYPE = "REGEX"
+    val STRING_CONSTANT_TYPE = "STRING_CONSTANT"
     val SEQ_REGEX_TYPE = "SEQ_REGEX"
     val CHOICE_INT_TYPE = "CHOICE_INT"
     val CHOICE_FLOAT_TYPE = "CHOICE_FLOAT"
@@ -60,13 +62,34 @@ object JsonFormatsJsonProtocol {
     val MIN_MAX_DOUBLE_TYPE = "MIN_MAX_DOUBLE"
   }
 
+  object FormatClassifications {
+    val allStringTypes = Seq(FormatTypes.STRING_CONSTANT_TYPE, FormatTypes.REGEX_TYPE,
+      FormatTypes.CHOICE_STRING_TYPE)
+  }
+
   // needed to satisfy the demand for JsonFormat[Format[_]] in fieldTypeFormat
   implicit val lazyJsonFormatsFormat: JsonFormat[Format[_]] = lazyFormat(JsonFormatsFormat)
+  implicit val lazyJsonStringFormatsFormat: JsonFormat[Format[String]] = lazyFormat(JsonStringFormatsFormat)
   implicit val fieldTypeFormat: RootJsonFormat[FieldType] = rootFormat(lazyFormat(jsonFormat3(FieldType)))
+
+  implicit object JsonStringFormatsFormat extends JsonFormat[Format[String]] {
+    override def read(json: JsValue): Format[String] = json match {
+      case JsObject(fields) if fields.contains(TYPE_KEY) => fields(TYPE_KEY).convertTo[String] match {
+        case t if FormatClassifications.allStringTypes.contains(t) =>
+          JsonFormatsFormat.read(json).asInstanceOf[Format[String]]
+      }
+    }
+
+    override def write(obj: Format[String]): JsValue = JsonFormatsFormat.write(obj)
+
+  }
 
   implicit object JsonFormatsFormat extends JsonFormat[Format[_]] {
     override def read(json: JsValue): Format[_] = json match {
       case JsObject(fields) if fields.contains(TYPE_KEY) => fields(TYPE_KEY).convertTo[String] match {
+        case FormatTypes.STRING_CONSTANT_TYPE =>
+          val value = fields(VALUE_KEY).convertTo[String]
+          StringConstantFormat(value)
         case FormatTypes.MIN_MAX_INT_TYPE =>
           val min = fields(MIN_KEY).convertTo[Int]
           val max = fields(MAX_KEY).convertTo[Int]
@@ -120,6 +143,10 @@ object JsonFormatsJsonProtocol {
       case RegexFormat(regex) => new JsObject(Map(
         TYPE_KEY -> JsString(REGEX_TYPE),
         REGEX_KEY -> JsString(regex.toString()),
+      ))
+      case f: StringConstantFormat => new JsObject(Map(
+        TYPE_KEY -> JsString(STRING_CONSTANT_TYPE),
+        VALUE_KEY -> JsString(f.value)
       ))
       case SeqRegexFormat(regex) => new JsObject(Map(
         TYPE_KEY -> JsString(SEQ_REGEX_TYPE),
@@ -175,7 +202,7 @@ object JsonFormatsJsonProtocol {
         TYPE_KEY -> JsString(NESTED_TYPE),
         FIELDS_KEY -> new JsArray(fields.map(x => {
           new JsObject(Map(
-            NAME_KEY -> JsString(x.name),
+            NAME_FORMAT_KEY -> write(x.nameFormat),
             REQUIRED_KEY -> JsBoolean(x.required),
             FORMAT_KEY -> write(x.format)
           ))
