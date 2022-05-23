@@ -17,7 +17,9 @@
 
 package de.awagen.kolibri.datatypes.types
 
-import de.awagen.kolibri.datatypes.types.JsonFormats.Validations.{matchesJsObject, matchesOneOfChoices, matchesRegex, seqMatchesOneOfChoices, seqMatchesRegex, seqWithinMinMax, withinMinMax}
+import de.awagen.kolibri.datatypes.io.json.AnyJsonProtocol.AnyJsonFormat
+import de.awagen.kolibri.datatypes.types.JsonFormats.Validations.FunctionConversions._
+import de.awagen.kolibri.datatypes.types.JsonFormats.Validations.{jsObjectFulfillsKeyAndValueFormat, logger, matchesJsObject, matchesOneOfChoices, matchesRegex, seqMatchesOneOfChoices, seqMatchesRegex, seqWithinMinMax, withinMinMax}
 import org.slf4j.{Logger, LoggerFactory}
 import spray.json.DefaultJsonProtocol.{BooleanJsonFormat, DoubleJsonFormat, FloatJsonFormat, IntJsonFormat, RootJsObjectFormat, StringJsonFormat, immSeqFormat}
 import spray.json.{JsObject, JsValue, JsonReader}
@@ -25,11 +27,33 @@ import spray.json.{JsObject, JsValue, JsonReader}
 import scala.math.Ordering.Implicits.infixOrderingOps
 import scala.util.matching.Regex
 
+
 object JsonFormats {
 
   object Validations {
 
     val logger: Logger = LoggerFactory.getLogger(this.getClass)
+
+    object FunctionConversions {
+
+      def toAnyInput[T](func: T => Boolean): Any => Boolean = {
+        x => {
+          x match {
+            case t: T => func.apply(t)
+            case _ => false
+          }
+        }
+      }
+
+    }
+
+    implicit class StringTypedAnyCheck(func: String => Boolean) {
+
+      def toAnyInput: Any => Boolean = FunctionConversions.toAnyInput(func)
+
+    }
+
+
 
     def matchesRegex(regex: Regex): String => Boolean = x => regex.matches(x)
 
@@ -85,6 +109,20 @@ object JsonFormats {
         }
       })
     }
+
+    def jsObjectFulfillsKeyAndValueFormat(keyFormat: Format[String], valueFormat: Format[_], jsObj: JsObject): Boolean = {
+      val failedKeyValidations: Iterable[String] = jsObj.fields.keys.filter(key => !keyFormat.isValid(key))
+      val failedValueValidations: Iterable[JsValue] = jsObj.fields.values.filter(value => {
+        !canBeCastToCorrectType(value, valueFormat)
+      })
+      failedKeyValidations.foreach(x => {
+        logger.warn(s"wrong format for key '$x' ")
+      })
+      failedValueValidations.foreach(x => {
+        logger.warn(s"wrong format for value '$x'")
+      })
+      failedValueValidations.isEmpty && failedValueValidations.isEmpty
+    }
   }
 
   /**
@@ -93,7 +131,9 @@ object JsonFormats {
    * @param ev - implicit json reader for specified type T
    * @tparam T - type to cast to
    */
-  class Format[T](val isValid: T => Boolean)(implicit ev: JsonReader[T]) {
+  abstract class Format[+T](val isValidFunc: Any => Boolean)(implicit ev: JsonReader[T]) {
+
+    def isValid(el: Any): Boolean = isValidFunc.apply(el)
 
     def cast(value: JsValue): T = {
       value.convertTo[T] match {
@@ -108,9 +148,9 @@ object JsonFormats {
    * Format
    * @param regex
    */
-  case class RegexFormat(regex: Regex) extends Format[String](matchesRegex(regex))
+  case class RegexFormat(regex: Regex) extends Format[String](toAnyInput(matchesRegex(regex)))
 
-  case class SeqRegexFormat(regex: Regex) extends Format[Seq[String]](seqMatchesRegex(regex))
+  case class SeqRegexFormat(regex: Regex) extends Format[Seq[String]](toAnyInput(seqMatchesRegex(regex)))
 
   /**
    * Format only allowing values within predefined choices
@@ -130,7 +170,7 @@ object JsonFormats {
    * @param ev      - implicit json reader for specified type T
    * @tparam T - type to cast to
    */
-  class SeqChoiceFormat[T](choices: Seq[T])(implicit ev: JsonReader[Seq[T]]) extends Format[Seq[T]](seqMatchesOneOfChoices(choices))
+  class SeqChoiceFormat[T](choices: Seq[T])(implicit ev: JsonReader[Seq[T]]) extends Format[Seq[T]](toAnyInput(seqMatchesOneOfChoices(choices)))
   case class IntSeqChoiceFormat(choices: Seq[Int]) extends SeqChoiceFormat[Int](choices)
   case class StringSeqChoiceFormat(choices: Seq[String]) extends SeqChoiceFormat[String](choices)
 
@@ -143,7 +183,7 @@ object JsonFormats {
    * @param evR - implicit json reader for type T
    * @tparam T - type to cast to
    */
-  class MinMaxFormat[T](min: T, max: T)(implicit ev: Numeric[T], evR: JsonReader[T]) extends Format[T](withinMinMax(min, max))
+  class MinMaxFormat[T](min: T, max: T)(implicit ev: Numeric[T], evR: JsonReader[T]) extends Format[T](toAnyInput(withinMinMax(min, max)))
   case class IntMinMaxFormat(min: Int, max: Int) extends MinMaxFormat[Int](min, max)
   case class FloatMinMaxFormat(min: Float, max: Float) extends MinMaxFormat[Float](min, max)
   case class DoubleMinMaxFormat(min: Double, max: Double) extends MinMaxFormat[Double](min, max)
@@ -158,7 +198,7 @@ object JsonFormats {
    * @param evR - implicit reader for Seq[T]
    * @tparam T - type of the elements
    */
-  class SeqMinMaxFormat[T](min: T, max: T)(implicit ev: Numeric[T], evR: JsonReader[Seq[T]]) extends Format[Seq[T]](seqWithinMinMax(min, max))
+  class SeqMinMaxFormat[T](min: T, max: T)(implicit ev: Numeric[T], evR: JsonReader[Seq[T]]) extends Format[Seq[T]](toAnyInput(seqWithinMinMax(min, max)))
   case class IntSeqMinMaxFormat(min: Int, max: Int) extends SeqMinMaxFormat[Int](min, max)
   case class FloatSeqMinMaxFormat(min: Float, max: Float) extends SeqMinMaxFormat[Float](min, max)
   case class DoubleSeqMinMaxFormat(min: Double, max: Double) extends SeqMinMaxFormat[Double](min, max)
@@ -178,6 +218,32 @@ object JsonFormats {
 
   object StringSeqFormat extends Format[Seq[String]](_ => true)
 
+  /**
+   * Format accepting elements that is validated by any of the formats
+   * (uses the first one thatr works)
+   */
+  case class EitherOfFormat(formats: Seq[Format[_]]) extends Format[Any](x => formats.exists(format => format.isValid(x))) {
+
+    def isValidFormat(format: Format[_], element: JsValue): Boolean = {
+      try {
+        val castValue = format.cast(element)
+        format.isValid(castValue)
+      }
+      catch {
+        case _: Exception =>
+          false
+      }
+    }
+
+    override def cast(value: JsValue): Any = {
+      val format: Option[Format[_]] = formats.find(x => isValidFormat(x, value))
+      val castValueOpt: Option[Any] = format.map(x => x.cast(value))
+      if (castValueOpt.isEmpty) throw new IllegalArgumentException(s"value '$value' can not be validated by any available format $formats")
+      castValueOpt.get
+    }
+
+  }
+
   object DoubleSeqFormat extends Format[Seq[Double]](_ => true)
 
   object FloatSeqFormat extends Format[Seq[Float]](_ => true)
@@ -188,6 +254,16 @@ object JsonFormats {
 
   case class FieldType(nameFormat: Format[String], format: Format[_], required: Boolean)
 
-  case class NestedFormat(fields: Seq[FieldType]) extends Format[JsObject](matchesJsObject(fields))
+  /**
+   * Suitable if a nested format shall be specified where specific key values are not specified
+   * but are subjected to the same format check
+   */
+  case class MapFormat(keyFormat: Format[String], valueFormat: Format[_]) extends Format[JsObject](toAnyInput(x => jsObjectFulfillsKeyAndValueFormat(keyFormat, valueFormat, x)))
+
+  /**
+   * Format for nested structure where field names are known and each name/value pair have their
+   * own formats (separately for key and value, see FieldType)
+   */
+  case class NestedFormat(fields: Seq[FieldType]) extends Format[JsObject](toAnyInput(matchesJsObject(fields)))
 
 }

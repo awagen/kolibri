@@ -30,6 +30,8 @@ object JsonFormatsJsonProtocol {
 
   object JsonKeys {
     val TYPE_KEY = "type"
+    val KEY_FORMAT_KEY = "keyFormat"
+    val VALUE_FORMAT_KEY = "valueFormat"
     val REGEX_KEY = "regex"
     val VALUE_KEY = "value"
     val CHOICES_KEY = "choices"
@@ -57,6 +59,7 @@ object JsonFormatsJsonProtocol {
     val SEQ_MIN_MAX_DOUBLE_TYPE = "SEQ_MIN_MAX_DOUBLE"
     val SEQ_MIN_MAX_INT_TYPE = "SEQ_MIN_MAX_INT"
     val NESTED_TYPE = "NESTED"
+    val MAP_TYPE = "MAP"
     val MIN_MAX_INT_TYPE = "MIN_MAX_INT"
     val MIN_MAX_FLOAT_TYPE = "MIN_MAX_FLOAT"
     val MIN_MAX_DOUBLE_TYPE = "MIN_MAX_DOUBLE"
@@ -135,6 +138,10 @@ object JsonFormatsJsonProtocol {
         case FormatTypes.NESTED_TYPE =>
           val types = fields(FIELDS_KEY).convertTo[Seq[FieldType]]
           NestedFormat(types)
+        case FormatTypes.MAP_TYPE =>
+          val keyFormat = fields("keyFormat").convertTo[Format[String]]
+          val valueFormat = fields("valueFormat").convertTo[Format[_]]
+          MapFormat(keyFormat, valueFormat)
       }
 
     }
@@ -207,6 +214,11 @@ object JsonFormatsJsonProtocol {
             FORMAT_KEY -> write(x.format)
           ))
         }).toVector)
+      ))
+      case MapFormat(keyFormat, valueFormat) => new JsObject(Map(
+        TYPE_KEY -> JsString(MAP_TYPE),
+        KEY_FORMAT_KEY -> write(keyFormat),
+        VALUE_FORMAT_KEY -> write(valueFormat)
       ))
       case _ => throw new IllegalArgumentException(s"no json conversion defined for object '$obj'")
     }

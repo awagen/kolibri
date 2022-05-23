@@ -31,6 +31,14 @@ object Formats {
   val seqChoiceFormat1: Format[_] = StringSeqChoiceFormat(Seq("a", "b"))
   val minMaxFormat: Format[_] = DoubleMinMaxFormat(1.0, 2.0)
   val seqMinMaxFormat: Format[_] = DoubleSeqMinMaxFormat(1.0, 2.0)
+  val keyFormat1: Format[_] = RegexFormat("^k\\w+".r)
+  val stringConstantFormat1: Format[_] = StringConstantFormat("constValue")
+
+  val eitherOfFormat1: Format[_] = EitherOfFormat(Seq(
+    keyFormat1,
+    stringConstantFormat1,
+    seqChoiceFormat1
+  ))
 
   val nestedFormat1: Format[_] = NestedFormat(Seq(
     Fields.regexFormat1Field,
@@ -144,6 +152,24 @@ class JsonFormatsSpec extends UnitTestSpec {
     "NestedFormat should detect non-matching fields" in {
       intercept[IllegalArgumentException] {
         nestedFormat1.cast(invalidRegex2NestedFormat1Obj)
+      }
+    }
+
+    "EitherOfFormat should declare valid if either format applies" in {
+      eitherOfFormat1.cast(JsString("constValue")) mustBe "constValue"
+      eitherOfFormat1.cast(JsString("k1")) mustBe "k1"
+      eitherOfFormat1.cast(JsArray(Seq(JsString("a"), JsString("b")).toVector)) mustBe Seq("a", "b")
+    }
+
+    "EitherOfFormat should declare invalid if neither format applies" in {
+      intercept[IllegalArgumentException] {
+        eitherOfFormat1.cast(JsString("constValueeee"))
+      }
+      intercept[IllegalArgumentException] {
+        eitherOfFormat1.cast(JsString("k"))
+      }
+      intercept[IllegalArgumentException] {
+        eitherOfFormat1.cast(JsArray(Seq(JsString("a"), JsString("c")).toVector))
       }
     }
 

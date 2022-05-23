@@ -16,7 +16,7 @@
 
 package de.awagen.kolibri.datatypes.io.json
 
-import spray.json.{DefaultJsonProtocol, JsFalse, JsNumber, JsString, JsTrue, JsValue, JsonFormat}
+import spray.json.{DefaultJsonProtocol, JsArray, JsFalse, JsNumber, JsObject, JsString, JsTrue, JsValue, JsonFormat}
 
 
 object AnyJsonProtocol extends DefaultJsonProtocol {
@@ -24,9 +24,13 @@ object AnyJsonProtocol extends DefaultJsonProtocol {
   implicit object AnyJsonFormat extends JsonFormat[Any] {
     def write(x: Any): JsValue = x match {
       case n: Int => JsNumber(n)
+      case n: Float => JsNumber(n)
+      case n: Double => JsNumber(n)
       case s: String => JsString(s)
       case b: Boolean if b => JsTrue
       case b: Boolean if !b => JsFalse
+      case s: Seq[_] => new JsArray(s.map(x => write(x)).toVector)
+      case m: Map[String, Any] => JsObject(m.map(x => (x._1, write(x._2))))
     }
 
     def read(value: JsValue): Any = value match {
@@ -37,6 +41,8 @@ object AnyJsonProtocol extends DefaultJsonProtocol {
       case JsString(s) => s
       case JsTrue => true
       case JsFalse => false
+      case JsArray(elements) => elements.map(x => read(x))
+      case JsObject(fields) => fields.view.mapValues(x => read(x))
     }
   }
 
