@@ -20,7 +20,7 @@ package de.awagen.kolibri.datatypes.io.json
 import de.awagen.kolibri.datatypes.io.json.JsonFormatsJsonProtocol.FormatTypes._
 import de.awagen.kolibri.datatypes.io.json.JsonFormatsJsonProtocol.JsonKeys._
 import de.awagen.kolibri.datatypes.types.JsonFormats._
-import spray.json.DefaultJsonProtocol.{BooleanJsonFormat, DoubleJsonFormat, FloatJsonFormat, IntJsonFormat, StringJsonFormat, immSeqFormat, jsonFormat3, lazyFormat, rootFormat}
+import spray.json.DefaultJsonProtocol.{BooleanJsonFormat, DoubleJsonFormat, FloatJsonFormat, IntJsonFormat, StringJsonFormat, immSeqFormat, jsonFormat3, lazyFormat, mapFormat, rootFormat}
 import spray.json.{JsArray, JsBoolean, JsNumber, JsObject, JsString, JsValue, JsonFormat, RootJsonFormat}
 
 import scala.util.matching.Regex
@@ -42,6 +42,8 @@ object JsonFormatsJsonProtocol {
     val REQUIRED_KEY = "required"
     val FORMAT_KEY = "format"
     val FORMATS_KEY = "formats"
+    val CONDITION_FIELD_ID_KEY = "conditionFieldId"
+    val CONDITION_FIELD_VALUES_TO_FORMAT_KEY = "conditionFieldValuesToFormat"
   }
 
   object FormatTypes {
@@ -62,6 +64,7 @@ object JsonFormatsJsonProtocol {
     val NESTED_TYPE = "NESTED"
     val MAP_TYPE = "MAP"
     val EITHER_OF_TYPE = "EITHER_OF"
+    val CONDITIONAL_CHOICE_TYPE = "CONDITIONAL_CHOICE"
     val MIN_MAX_INT_TYPE = "MIN_MAX_INT"
     val MIN_MAX_FLOAT_TYPE = "MIN_MAX_FLOAT"
     val MIN_MAX_DOUBLE_TYPE = "MIN_MAX_DOUBLE"
@@ -90,6 +93,7 @@ object JsonFormatsJsonProtocol {
   }
 
   implicit object JsonFormatsFormat extends JsonFormat[Format[_]] {
+
     override def read(json: JsValue): Format[_] = json match {
       case JsObject(fields) if fields.contains(TYPE_KEY) => fields(TYPE_KEY).convertTo[String] match {
         case FormatTypes.STRING_CONSTANT_TYPE =>
@@ -147,6 +151,10 @@ object JsonFormatsJsonProtocol {
         case FormatTypes.EITHER_OF_TYPE =>
           val formats = fields(FORMATS_KEY).convertTo[Seq[Format[_]]]
           EitherOfFormat(formats)
+        case FormatTypes.CONDITIONAL_CHOICE_TYPE =>
+          val conditionFieldId = fields(CONDITION_FIELD_ID_KEY).convertTo[String]
+          val conditionFieldValuesToFormat = fields(CONDITION_FIELD_VALUES_TO_FORMAT_KEY).convertTo[Map[String, Format[_]]]
+          ConditionalFieldValueChoiceFormat(conditionFieldId, conditionFieldValuesToFormat)
       }
 
     }
@@ -229,6 +237,12 @@ object JsonFormatsJsonProtocol {
         TYPE_KEY -> JsString(EITHER_OF_TYPE),
         FORMATS_KEY -> JsArray(formats.map(format => write(format)).toVector)
       ))
+      case ConditionalFieldValueChoiceFormat(conditionFieldId, conditionFieldValuesToFormat) => new JsObject(Map(
+        TYPE_KEY -> JsString(CONDITIONAL_CHOICE_TYPE),
+        CONDITION_FIELD_ID_KEY -> JsString(conditionFieldId),
+        CONDITION_FIELD_VALUES_TO_FORMAT_KEY -> JsObject(conditionFieldValuesToFormat.view.map(x => (x._1, write(x._2))).toSeq:_*)
+      ))
+
       case _ => throw new IllegalArgumentException(s"no json conversion defined for object '$obj'")
     }
   }

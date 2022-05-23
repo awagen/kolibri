@@ -34,6 +34,11 @@ object Formats {
   val keyFormat1: Format[_] = RegexFormat("^k\\w+".r)
   val stringConstantFormat1: Format[_] = StringConstantFormat("constValue")
 
+  val conditionalChoiceFormat: Format[_] = ConditionalFieldValueChoiceFormat(
+    "field1",
+    Map("value1" -> minMaxFormat, "value2" -> choiceFormat1)
+  )
+
   val eitherOfFormat1: Format[_] = EitherOfFormat(Seq(
     keyFormat1,
     stringConstantFormat1,
@@ -170,6 +175,17 @@ class JsonFormatsSpec extends UnitTestSpec {
       }
       intercept[IllegalArgumentException] {
         eitherOfFormat1.cast(JsArray(Seq(JsString("a"), JsString("c")).toVector))
+      }
+    }
+
+    "ConditionalFieldValueChoiceFormat should declare valid if any of the option declares valid" in {
+      conditionalChoiceFormat.cast(JsNumber(1.1)) mustBe 1.1D
+      conditionalChoiceFormat.cast(JsString("a")) mustBe "a"
+    }
+
+    "ConditionalFieldValueChoiceFormat should throw exception invalid if none of the option declares valid" in {
+      intercept[IllegalArgumentException] {
+        conditionalChoiceFormat.cast(JsString("c"))
       }
     }
 

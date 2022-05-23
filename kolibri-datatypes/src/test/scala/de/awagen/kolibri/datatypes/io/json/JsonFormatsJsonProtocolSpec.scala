@@ -18,6 +18,7 @@
 package de.awagen.kolibri.datatypes.io.json
 
 import de.awagen.kolibri.datatypes.io.json.JsonFormatsJsonProtocol.FormatTypes._
+import de.awagen.kolibri.datatypes.io.json.JsonFormatsJsonProtocol.JsonKeys.{CONDITION_FIELD_ID_KEY, CONDITION_FIELD_VALUES_TO_FORMAT_KEY}
 import de.awagen.kolibri.datatypes.io.json.JsonFormatsJsonProtocol._
 import de.awagen.kolibri.datatypes.testclasses.UnitTestSpec
 import de.awagen.kolibri.datatypes.types.JsonFormats._
@@ -204,6 +205,18 @@ class JsonFormatsJsonProtocolSpec extends UnitTestSpec {
          |}
          |""".stripMargin.parseJson
 
+    val conditionalChoiceFormatJsonString: JsValue =
+      s"""
+         |{
+         |"type": "$CONDITIONAL_CHOICE_TYPE",
+         |"$CONDITION_FIELD_ID_KEY": "field1",
+         |"$CONDITION_FIELD_VALUES_TO_FORMAT_KEY": {
+         |  "value1": $intChoiceFormatJsonString,
+         |  "value2": $minMaxFloatFormatJsonString
+         |}
+         |}
+         |""".stripMargin.parseJson
+
     val nestedSample = JsonAndObj(nestedFormatJsonString, NestedFormat(Seq(
       FieldType(StringConstantFormat("a"), intChoiceSample.obj.asInstanceOf[Format[_]], required = true),
       FieldType(StringConstantFormat("b"), seqIntChoiceSample.obj.asInstanceOf[Format[_]], required = true)
@@ -212,6 +225,13 @@ class JsonFormatsJsonProtocolSpec extends UnitTestSpec {
     val eitherOfSample = JsonAndObj(eitherOfFormatJsonString, EitherOfFormat(Seq(
       intChoiceSample.obj.asInstanceOf[Format[_]],
       minMaxFloatSample.obj.asInstanceOf[Format[_]])
+    ))
+
+    val conditionalChoiceSample = JsonAndObj(conditionalChoiceFormatJsonString, ConditionalFieldValueChoiceFormat(
+      "field1",
+      Map(
+        "value1" -> intChoiceSample.obj.asInstanceOf[Format[_]],
+        "value2" -> minMaxFloatSample.obj.asInstanceOf[Format[_]])
     ))
 
     val sampleCollection1: Seq[JsonAndObj] = Seq(
@@ -226,7 +246,8 @@ class JsonFormatsJsonProtocolSpec extends UnitTestSpec {
       seqIntChoiceSample,
       nestedSample,
       stringConstantSample,
-      eitherOfSample
+      eitherOfSample,
+      conditionalChoiceSample
     )
 
   }

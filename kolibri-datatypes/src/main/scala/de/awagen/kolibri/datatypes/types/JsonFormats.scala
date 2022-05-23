@@ -19,7 +19,7 @@ package de.awagen.kolibri.datatypes.types
 
 import de.awagen.kolibri.datatypes.io.json.AnyJsonProtocol.AnyJsonFormat
 import de.awagen.kolibri.datatypes.types.JsonFormats.Validations.FunctionConversions._
-import de.awagen.kolibri.datatypes.types.JsonFormats.Validations.{jsObjectFulfillsKeyAndValueFormat, logger, matchesJsObject, matchesOneOfChoices, matchesRegex, seqMatchesOneOfChoices, seqMatchesRegex, seqWithinMinMax, withinMinMax}
+import de.awagen.kolibri.datatypes.types.JsonFormats.Validations.{canBeCastAndIsValidFormat, jsObjectFulfillsKeyAndValueFormat, matchesJsObject, matchesOneOfChoices, matchesRegex, seqMatchesOneOfChoices, seqMatchesRegex, seqWithinMinMax, withinMinMax}
 import org.slf4j.{Logger, LoggerFactory}
 import spray.json.DefaultJsonProtocol.{BooleanJsonFormat, DoubleJsonFormat, FloatJsonFormat, IntJsonFormat, RootJsObjectFormat, StringJsonFormat, immSeqFormat}
 import spray.json.{JsObject, JsValue, JsonReader}
@@ -71,7 +71,18 @@ object JsonFormats {
       jsObject.fields.keys.find(x => field.nameFormat.isValid(x))
     }
 
-    def canBeCastToCorrectType(jsValue: JsValue, format: Format[_]): Boolean = {
+    def canBeCastAndIsValidFormat(format: Format[_], element: JsValue): Boolean = {
+      try {
+        val castValue = format.cast(element)
+        format.isValid(castValue)
+      }
+      catch {
+        case _: Exception =>
+          false
+      }
+    }
+
+    def canBeCast(jsValue: JsValue, format: Format[_]): Boolean = {
       try {
         format.cast(jsValue)
         true
@@ -85,7 +96,7 @@ object JsonFormats {
 
     def jsObjectContainsKeyWithValidValue(field: FieldType, jsObject: JsObject): Boolean = {
       val found = getJsObjKeyForFormat(field, jsObject)
-      found.exists(foundField => canBeCastToCorrectType(jsObject.fields(foundField), field.format))
+      found.exists(foundField => canBeCast(jsObject.fields(foundField), field.format))
     }
 
     def matchesJsObject(fields: Seq[FieldType]): JsObject => Boolean = jsObj => {
@@ -94,7 +105,7 @@ object JsonFormats {
         try {
           if (!field.required) {
             if (matchingJsObjKey.nonEmpty){
-              canBeCastToCorrectType(jsObj.fields(matchingJsObjKey.get), field.format)
+              canBeCast(jsObj.fields(matchingJsObjKey.get), field.format)
             }
             else true
           }
@@ -113,7 +124,7 @@ object JsonFormats {
     def jsObjectFulfillsKeyAndValueFormat(keyFormat: Format[String], valueFormat: Format[_], jsObj: JsObject): Boolean = {
       val failedKeyValidations: Iterable[String] = jsObj.fields.keys.filter(key => !keyFormat.isValid(key))
       val failedValueValidations: Iterable[JsValue] = jsObj.fields.values.filter(value => {
-        !canBeCastToCorrectType(value, valueFormat)
+        !canBeCast(value, valueFormat)
       })
       failedKeyValidations.foreach(x => {
         logger.warn(s"wrong format for key '$x' ")
@@ -123,6 +134,13 @@ object JsonFormats {
       })
       failedValueValidations.isEmpty && failedValueValidations.isEmpty
     }
+  }
+
+  def castIfMatchingFormatExistsElseThrowException(formats: Seq[Format[_]], value: JsValue): Any = {
+    val format: Option[Format[_]] = formats.find(x => canBeCastAndIsValidFormat(x, value))
+    val castValueOpt: Option[Any] = format.map(x => x.cast(value))
+    if (castValueOpt.isEmpty) throw new IllegalArgumentException(s"value '$value' can not be validated by any available format $formats")
+    castValueOpt.get
   }
 
   /**
@@ -224,23 +242,20 @@ object JsonFormats {
    */
   case class EitherOfFormat(formats: Seq[Format[_]]) extends Format[Any](x => formats.exists(format => format.isValid(x))) {
 
-    def isValidFormat(format: Format[_], element: JsValue): Boolean = {
-      try {
-        val castValue = format.cast(element)
-        format.isValid(castValue)
-      }
-      catch {
-        case _: Exception =>
-          false
-      }
-    }
+    override def cast(value: JsValue): Any = castIfMatchingFormatExistsElseThrowException(formats, value)
 
-    override def cast(value: JsValue): Any = {
-      val format: Option[Format[_]] = formats.find(x => isValidFormat(x, value))
-      val castValueOpt: Option[Any] = format.map(x => x.cast(value))
-      if (castValueOpt.isEmpty) throw new IllegalArgumentException(s"value '$value' can not be validated by any available format $formats")
-      castValueOpt.get
-    }
+  }
+
+  /**
+   * NOTE: in the validation and cast this format only checks if any of the provided Formats would
+   * be able to cast the value. It does not specifically do this for the current conditionFieldId and
+   * respective conditionFieldValue
+   * @param conditionFieldId - key of the value to be used as conditionalFieldValue
+   * @param conditionFieldValuesToFormat - mapping of values belonging to field defined by conditionalFieldId to Format
+   */
+  case class ConditionalFieldValueChoiceFormat(conditionFieldId: String, conditionFieldValuesToFormat: Map[String, Format[_]]) extends Format[Any](x => conditionFieldValuesToFormat.values.exists(format => format.isValid(x))) {
+
+    override def cast(value: JsValue): Any = castIfMatchingFormatExistsElseThrowException(conditionFieldValuesToFormat.values.toSeq, value)
 
   }
 
