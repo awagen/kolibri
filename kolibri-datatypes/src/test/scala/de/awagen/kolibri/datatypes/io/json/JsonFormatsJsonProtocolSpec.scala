@@ -193,10 +193,26 @@ class JsonFormatsJsonProtocolSpec extends UnitTestSpec {
          |}
          |""".stripMargin.parseJson
 
+    val eitherOfFormatJsonString: JsValue =
+      s"""
+         |{
+         |"type": "$EITHER_OF_TYPE",
+         |"formats": [
+         |  $intChoiceFormatJsonString,
+         |  $minMaxFloatFormatJsonString
+         |]
+         |}
+         |""".stripMargin.parseJson
+
     val nestedSample = JsonAndObj(nestedFormatJsonString, NestedFormat(Seq(
       FieldType(StringConstantFormat("a"), intChoiceSample.obj.asInstanceOf[Format[_]], required = true),
       FieldType(StringConstantFormat("b"), seqIntChoiceSample.obj.asInstanceOf[Format[_]], required = true)
     )))
+
+    val eitherOfSample = JsonAndObj(eitherOfFormatJsonString, EitherOfFormat(Seq(
+      intChoiceSample.obj.asInstanceOf[Format[_]],
+      minMaxFloatSample.obj.asInstanceOf[Format[_]])
+    ))
 
     val sampleCollection1: Seq[JsonAndObj] = Seq(
       minMaxFloatSample,
@@ -209,7 +225,8 @@ class JsonFormatsJsonProtocolSpec extends UnitTestSpec {
       stringChoiceSample,
       seqIntChoiceSample,
       nestedSample,
-      stringConstantSample
+      stringConstantSample,
+      eitherOfSample
     )
 
   }

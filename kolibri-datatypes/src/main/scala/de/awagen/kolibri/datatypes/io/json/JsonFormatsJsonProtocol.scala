@@ -41,6 +41,7 @@ object JsonFormatsJsonProtocol {
     val NAME_FORMAT_KEY = "nameFormat"
     val REQUIRED_KEY = "required"
     val FORMAT_KEY = "format"
+    val FORMATS_KEY = "formats"
   }
 
   object FormatTypes {
@@ -60,6 +61,7 @@ object JsonFormatsJsonProtocol {
     val SEQ_MIN_MAX_INT_TYPE = "SEQ_MIN_MAX_INT"
     val NESTED_TYPE = "NESTED"
     val MAP_TYPE = "MAP"
+    val EITHER_OF_TYPE = "EITHER_OF"
     val MIN_MAX_INT_TYPE = "MIN_MAX_INT"
     val MIN_MAX_FLOAT_TYPE = "MIN_MAX_FLOAT"
     val MIN_MAX_DOUBLE_TYPE = "MIN_MAX_DOUBLE"
@@ -139,9 +141,12 @@ object JsonFormatsJsonProtocol {
           val types = fields(FIELDS_KEY).convertTo[Seq[FieldType]]
           NestedFormat(types)
         case FormatTypes.MAP_TYPE =>
-          val keyFormat = fields("keyFormat").convertTo[Format[String]]
-          val valueFormat = fields("valueFormat").convertTo[Format[_]]
+          val keyFormat = fields(KEY_FORMAT_KEY).convertTo[Format[String]]
+          val valueFormat = fields(VALUE_FORMAT_KEY).convertTo[Format[_]]
           MapFormat(keyFormat, valueFormat)
+        case FormatTypes.EITHER_OF_TYPE =>
+          val formats = fields(FORMATS_KEY).convertTo[Seq[Format[_]]]
+          EitherOfFormat(formats)
       }
 
     }
@@ -219,6 +224,10 @@ object JsonFormatsJsonProtocol {
         TYPE_KEY -> JsString(MAP_TYPE),
         KEY_FORMAT_KEY -> write(keyFormat),
         VALUE_FORMAT_KEY -> write(valueFormat)
+      ))
+      case EitherOfFormat(formats) => new JsObject(Map(
+        TYPE_KEY -> JsString(EITHER_OF_TYPE),
+        FORMATS_KEY -> JsArray(formats.map(format => write(format)).toVector)
       ))
       case _ => throw new IllegalArgumentException(s"no json conversion defined for object '$obj'")
     }
