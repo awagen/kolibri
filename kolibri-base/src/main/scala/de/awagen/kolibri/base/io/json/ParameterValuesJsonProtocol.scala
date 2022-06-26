@@ -36,12 +36,12 @@ object ParameterValuesJsonProtocol extends DefaultJsonProtocol {
     def valuesFromLinesJson(valuesType: ValueType.Value, paramIdentifier: String, filePath: String): String = {
       s"""
          |{
-         |"type": "FROM_ORDERED_VALUES_TYPE",
-         |"values_type": "${valuesType.toString}",
-         |"values": {
-         |  "type": "FROM_FILES_LINES_TYPE",
-         |  "valueName": "$paramIdentifier",
-         |  "file": "$filePath"
+         |"$TYPE_KEY": "$FROM_ORDERED_VALUES_TYPE",
+         |"$VALUES_TYPE_KEY": "${valuesType.toString}",
+         |"$VALUES_KEY": {
+         |  "$TYPE_KEY": "$FROM_FILES_LINES_TYPE",
+         |  "$NAME_KEY": "$paramIdentifier",
+         |  "$FILE_KEY": "$filePath"
          |}
          |}
          |""".stripMargin
@@ -50,23 +50,23 @@ object ParameterValuesJsonProtocol extends DefaultJsonProtocol {
     def valuesFromCsvMapping(valuesType: ValueType.Value, paramIdentifier: String, filePath: String,
                              delimiter: String): String = {
       s"""{
-         |"type": "CSV_MAPPING_TYPE",
-         |"name": "$paramIdentifier",
-         |"values_type": "${valuesType.toString}",
-         |"values": "$filePath",
-         |"column_delimiter": "$delimiter",
-         |"key_column_index": 0,
-         |"value_column_index": 1
+         |"$TYPE_KEY": "$CSV_MAPPINGS_TYPE",
+         |"$NAME_KEY": "$paramIdentifier",
+         |"$VALUES_TYPE_KEY": "${valuesType.toString}",
+         |"$VALUES_KEY": "$filePath",
+         |"$COLUMN_DELIMITER_KEY": "$delimiter",
+         |"$KEY_COLUMN_INDEX_KEY": 0,
+         |"$VALUE_COLUMN_INDEX_KEY": 1
          |}
          |""".stripMargin
     }
 
     def valuesFromJsonMapping(valuesType: ValueType.Value, paramIdentifier: String, filePath: String): String = {
       s"""{
-         |"type": "JSON_ARRAY_MAPPINGS_TYPE",
-         |"name": "$paramIdentifier",
-         |"values_type": "${valuesType.toString}",
-         |"values": "$filePath"
+         |"$TYPE_KEY": "$JSON_ARRAY_MAPPINGS_TYPE",
+         |"$NAME_KEY": "$paramIdentifier",
+         |"$VALUES_TYPE_KEY": "${valuesType.toString}",
+         |"$VALUES_KEY": "$filePath"
          |}
          |""".stripMargin
     }
@@ -93,6 +93,7 @@ object ParameterValuesJsonProtocol extends DefaultJsonProtocol {
   val JSON_ARRAY_MAPPINGS_TYPE = "JSON_ARRAY_MAPPINGS_TYPE"
   val CSV_MAPPINGS_TYPE = "CSV_MAPPING_TYPE"
   val FILE_PREFIX_TO_FILE_LINES_MAPPING_TYPE = "FILE_PREFIX_TO_FILE_LINES_TYPE"
+
 
   /**
    * Reusing below formats for the general trait ValuesSeqGenProvider

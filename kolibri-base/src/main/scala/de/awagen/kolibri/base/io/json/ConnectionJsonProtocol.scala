@@ -24,13 +24,18 @@ import spray.json.{DefaultJsonProtocol, RootJsonFormat}
 
 object ConnectionJsonProtocol extends DefaultJsonProtocol {
 
+  val HOST_FIELD = "host"
+  val PORT_FIELD = "port"
+  val USE_HTTPS_FIELD = "useHttps"
+  val CREDENTIALS_PROVIDER_FIELD = "credentialsProvider"
+
   implicit val connectionFormat: RootJsonFormat[Connection] = jsonFormat(
     (host: String, port: Int, useHttps: Boolean, credentialsProvider: Option[CredentialsProvider]) => Connection
       .apply(host, port, useHttps, credentialsProvider),
-    "host",
-    "port",
-    "useHttps",
-    "credentialsProvider"
+    HOST_FIELD,
+    PORT_FIELD,
+    USE_HTTPS_FIELD,
+    CREDENTIALS_PROVIDER_FIELD
   )
 
 }

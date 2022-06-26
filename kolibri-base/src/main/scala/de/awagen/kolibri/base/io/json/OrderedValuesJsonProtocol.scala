@@ -32,7 +32,6 @@ object OrderedValuesJsonProtocol extends DefaultJsonProtocol {
   val FROM_FILENAME_KEYS_TYPE = "FROM_FILENAME_KEYS_TYPE"
   val DIRECTORY_KEY = "directory"
   val FILES_SUFFIX_KEY = "filesSuffix"
-  val VALUE_NAME = "valueName"
   val FROM_CSV_FILE_TYPE = "FROM_CSV_FILE_TYPE"
   val FILE_KEY = "file"
   val NAME_KEY = "name"
@@ -54,11 +53,11 @@ object OrderedValuesJsonProtocol extends DefaultJsonProtocol {
           // reading values from filename prefix
           val directory: String = fields(DIRECTORY_KEY).convertTo[String]
           val filesSuffix: String = fields(FILES_SUFFIX_KEY).convertTo[String]
-          val valueName = fields(VALUE_NAME).convertTo[String]
+          val valueName = fields(NAME_KEY).convertTo[String]
           folderToFilenamesOrderedValues(directory, filesSuffix, valueName)
         case FROM_FILES_LINES_TYPE =>
           val file: String = fields(FILE_KEY).convertTo[String]
-          val valueName = fields(VALUE_NAME).convertTo[String]
+          val valueName = fields(NAME_KEY).convertTo[String]
           loadLinesFromFile(file, valueName)
         case FROM_VALUES_TYPE =>
           val name = fields(NAME_KEY).convertTo[String]
@@ -103,12 +102,12 @@ object OrderedValuesJsonProtocol extends DefaultJsonProtocol {
           val columnSeparator: String = fields(COLUMN_SEPARATOR_KEY).convertTo[String]
           val keyColumn: Int = fields(KEY_COLUMN_KEY).convertTo[Int]
           val valueColumn: Int = fields(VALUE_COLUMN_KEY).convertTo[Int]
-          val valueName = fields(VALUE_NAME).convertTo[String]
+          val valueName = fields(NAME_KEY).convertTo[String]
           mappingsFromCsvFile(file, columnSeparator, keyColumn, valueColumn, valueName)
         case FROM_JSON_FILE_MAPPING_TYPE =>
           // reading mappings from json file
           val file: String = fields(FILE_KEY).convertTo[String]
-          val valueName = fields(VALUE_NAME).convertTo[String]
+          val valueName = fields(NAME_KEY).convertTo[String]
           fromJsonFileMappingToOrderedValues(file, valueName)
       }
     }
@@ -123,7 +122,7 @@ object OrderedValuesJsonProtocol extends DefaultJsonProtocol {
           val file: String = fields(FILE_KEY).convertTo[String]
           val columnSeparator: String = fields(COLUMN_SEPARATOR_KEY).convertTo[String]
           val keyName: String = fields(KEY_NAME_KEY).convertTo[String]
-          val valueName: String = fields(VALUE_NAME).convertTo[String]
+          val valueName: String = fields(NAME_KEY).convertTo[String]
           fromCsvFileByColumnNames(file, columnSeparator, keyName, valueName)
       }
     }

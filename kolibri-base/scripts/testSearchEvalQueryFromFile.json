@@ -29,7 +29,7 @@
       "values_type": "URL_PARAMETER",
       "values": {
         "type": "FROM_FILES_LINES_TYPE",
-        "valueName": "q",
+        "name": "q",
         "file": "test-paramfiles/test_queries.txt"
       }
     },
@@ -113,10 +113,7 @@
         ],
         "handling": "AS_ZEROS"
       }
-    },
-    "excludeParams": [
-      "q"
-    ]
+    }
   },
   "singleMapCalculations": [
     {

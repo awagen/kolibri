@@ -39,6 +39,25 @@ import de.awagen.kolibri.base.io.json.ParameterValuesJsonProtocol.ValueSeqGenPro
 
 object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSupport {
 
+  val JOB_NAME_FIELD = "jobName"
+  val REQUEST_TASKS_FIELD = "requestTasks"
+  val FIXED_PARAMS_FIELD = "fixedParams"
+  val CONTEXT_PATH_FIELD = "contextPath"
+  val CONNECTIONS_FIELD = "connections"
+  val REQUEST_PARAMETER_PERMUTATE_SEQ_FIELD = "requestParameterPermutateSeq"
+  val BATCH_BY_INDEX_FIELD = "batchByIndex"
+  val PARSING_CONFIG_FIELD = "parsingConfig"
+  val EXCLUDE_PARAMS_FROM_METRIC_ROW_FIELD = "excludeParamsFromMetricRow"
+  val REQUEST_TEMPLATE_STORAGE_KEY_FIELD = "requestTemplateStorageKey"
+  val MAP_FUTURE_METRIC_ROW_CALCULATION_FIELD = "mapFutureMetricRowCalculation"
+  val SINGLE_MAP_CALCULATIONS_FIELD = "singleMapCalculations"
+  val TAGGING_CONFIGURATION_FIELD = "taggingConfiguration"
+  val WRAP_UP_FUNCTION_FIELD = "wrapUpFunction"
+  val ALLOWED_TIME_PER_ELEMENT_IN_MILLIS_FIELD = "allowedTimePerElementInMillis"
+  val ALLOWED_TIME_PER_BATCH_IN_SECONDS_FIELD = "allowedTimePerBatchInSeconds"
+  val ALLOWED_TIME_FOR_JOB_IN_SECONDS_FIELD = "allowedTimeForJobInSeconds"
+  val EXPECT_RESULTS_FROM_BATCH_CALCULATIONS_FIELD = "expectResultsFromBatchCalculations"
+
   implicit val queryAndParamProviderFormat: RootJsonFormat[SearchEvaluation] = jsonFormat(
     (
       jobName: String,
@@ -80,24 +99,24 @@ object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSu
         allowedTimeForJobInSeconds,
         expectResultsFromBatchCalculations
       ),
-    "jobName",
-    "requestTasks",
-    "fixedParams",
-    "contextPath",
-    "connections",
-    "requestParameterPermutateSeq",
-    "batchByIndex",
-    "parsingConfig",
-    "excludeParamsFromMetricRow",
-    "requestTemplateStorageKey",
-    "mapFutureMetricRowCalculation",
-    "singleMapCalculations",
-    "taggingConfiguration",
-    "wrapUpFunction",
-    "allowedTimePerElementInMillis",
-    "allowedTimePerBatchInSeconds",
-    "allowedTimeForJobInSeconds",
-    "expectResultsFromBatchCalculations"
+    JOB_NAME_FIELD,
+    REQUEST_TASKS_FIELD,
+    FIXED_PARAMS_FIELD,
+    CONTEXT_PATH_FIELD,
+    CONNECTIONS_FIELD,
+    REQUEST_PARAMETER_PERMUTATE_SEQ_FIELD,
+    BATCH_BY_INDEX_FIELD,
+    PARSING_CONFIG_FIELD,
+    EXCLUDE_PARAMS_FROM_METRIC_ROW_FIELD,
+    REQUEST_TEMPLATE_STORAGE_KEY_FIELD,
+    MAP_FUTURE_METRIC_ROW_CALCULATION_FIELD,
+    SINGLE_MAP_CALCULATIONS_FIELD,
+    TAGGING_CONFIGURATION_FIELD,
+    WRAP_UP_FUNCTION_FIELD,
+    ALLOWED_TIME_PER_ELEMENT_IN_MILLIS_FIELD,
+    ALLOWED_TIME_PER_BATCH_IN_SECONDS_FIELD,
+    ALLOWED_TIME_FOR_JOB_IN_SECONDS_FIELD,
+    EXPECT_RESULTS_FROM_BATCH_CALCULATIONS_FIELD
   )
 
 }

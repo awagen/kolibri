@@ -31,7 +31,7 @@
           "type": "FROM_FILENAME_KEYS_TYPE",
           "directory": "test-paramfiles/queries_for_id",
           "filesSuffix": ".txt",
-          "valueName": "id"
+          "name": "id"
         },
         "values_type": "URL_PARAMETER"
       },

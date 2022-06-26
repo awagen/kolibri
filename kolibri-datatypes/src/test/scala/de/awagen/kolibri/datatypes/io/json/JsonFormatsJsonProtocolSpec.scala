@@ -179,7 +179,7 @@ class JsonFormatsJsonProtocolSpec extends UnitTestSpec {
          |    "type": "STRING_CONSTANT",
          |    "value": "a"
          |  },
-         |  "format": $intChoiceFormatJsonString,
+         |  "valueFormat": $intChoiceFormatJsonString,
          |  "required": true
          | },
          | {
@@ -187,7 +187,7 @@ class JsonFormatsJsonProtocolSpec extends UnitTestSpec {
          |    "type": "STRING_CONSTANT",
          |    "value": "b"
          |  },
-         |  "format": $seqIntChoiceFormatJsonString,
+         |  "valueFormat": $seqIntChoiceFormatJsonString,
          |  "required": true
          | }
          |]
@@ -217,7 +217,7 @@ class JsonFormatsJsonProtocolSpec extends UnitTestSpec {
          |}
          |""".stripMargin.parseJson
 
-    val nestedSample = JsonAndObj(nestedFormatJsonString, NestedFormat(Seq(
+    val nestedSample = JsonAndObj(nestedFormatJsonString, NestedFieldSeqFormat(Seq(
       FieldType(StringConstantFormat("a"), intChoiceSample.obj.asInstanceOf[Format[_]], required = true),
       FieldType(StringConstantFormat("b"), seqIntChoiceSample.obj.asInstanceOf[Format[_]], required = true)
     )))

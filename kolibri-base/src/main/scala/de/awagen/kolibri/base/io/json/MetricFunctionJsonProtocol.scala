@@ -23,20 +23,30 @@ import spray.json.{DefaultJsonProtocol, JsValue, JsonFormat, enrichAny}
 
 object MetricFunctionJsonProtocol extends DefaultJsonProtocol {
 
+  val TYPE_VALUE_PRECISION = "PRECISION"
+  val TYPE_VALUE_DCG = "DCG"
+  val TYPE_VALUE_NDCG = "NDCG"
+  val TYPE_VALUE_ERR = "ERR"
+  val K_KEY = "k"
+  val TYPE_KEY = "type"
+  val THRESHOLD_KEY = "threshold"
+  val MAX_GRADE_KEY = "maxGrade"
+
+
   implicit object MetricFunctionFormat extends JsonFormat[Function[Seq[Double], CalculationResult[Double]]] {
     override def read(json: JsValue): Function[Seq[Double], CalculationResult[Double]] = json match {
       case spray.json.JsObject(fields) =>
-        val k: Int = fields("k").convertTo[Int]
-        fields("type").convertTo[String] match {
-          case "DCG" =>
+        val k: Int = fields(K_KEY).convertTo[Int]
+        fields(TYPE_KEY).convertTo[String] match {
+          case TYPE_VALUE_DCG =>
             IRMetricFunctions.dcgAtK(k)
-          case "NDCG" =>
+          case TYPE_VALUE_NDCG =>
             IRMetricFunctions.ndcgAtK(k)
-          case "PRECISION" =>
-            val threshold = fields("threshold").convertTo[Double]
+          case TYPE_VALUE_PRECISION =>
+            val threshold = fields(THRESHOLD_KEY).convertTo[Double]
             IRMetricFunctions.precisionAtK(k, threshold)
-          case "ERR" =>
-            val maxGrade = fields.get("maxGrade").map(x => x.convertTo[Double]).getOrElse(3.0)
+          case TYPE_VALUE_ERR =>
+            val maxGrade = fields.get(MAX_GRADE_KEY).map(x => x.convertTo[Double]).getOrElse(3.0)
             IRMetricFunctions.errAtK(k, maxGrade)
         }
     }

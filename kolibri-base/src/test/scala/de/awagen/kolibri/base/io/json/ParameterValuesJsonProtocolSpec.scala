@@ -34,7 +34,7 @@ class ParameterValuesJsonProtocolSpec extends UnitTestSpec {
         |"values_type": "URL_PARAMETER",
         |"values": {
         |  "type": "FROM_FILES_LINES_TYPE",
-        |  "valueName": "q",
+        |  "name": "q",
         |  "file": "data/queryterms.txt"
         |}
         |}
@@ -148,7 +148,7 @@ class ParameterValuesJsonProtocolSpec extends UnitTestSpec {
          |          "type": "FROM_FILENAME_KEYS_TYPE",
          |          "directory": "data/queries_for_id",
          |          "filesSuffix": ".txt",
-         |          "valueName": "id"
+         |          "name": "id"
          |        },
          |        "values_type": "URL_PARAMETER"
          |      },

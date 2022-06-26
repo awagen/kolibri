@@ -24,33 +24,35 @@ import de.awagen.kolibri.datatypes.utils.MathUtils
 import spray.json.{DeserializationException, JsArray, JsBoolean, JsNumber, JsObject, JsString}
 
 object Formats {
-  val regexFormat1: Format[_] = RegexFormat("^itWas$".r)
-  val regexFormat2: Format[_] = RegexFormat("^\\w+\\s+$".r)
-  val seqRegexFormat1: Format[_] = SeqRegexFormat("^\\w+\\s+$".r)
-  val choiceFormat1: Format[_] = StringChoiceFormat(Seq("a", "b"))
-  val seqChoiceFormat1: Format[_] = StringSeqChoiceFormat(Seq("a", "b"))
-  val minMaxFormat: Format[_] = DoubleMinMaxFormat(1.0, 2.0)
-  val seqMinMaxFormat: Format[_] = DoubleSeqMinMaxFormat(1.0, 2.0)
-  val keyFormat1: Format[_] = RegexFormat("^k\\w+".r)
-  val stringConstantFormat1: Format[_] = StringConstantFormat("constValue")
+  val regexFormat1: BaseFormat[_] = RegexFormat("^itWas$".r)
+  val regexFormat2: BaseFormat[_] = RegexFormat("^\\w+\\s+$".r)
+  val seqRegexFormat1: BaseFormat[_] = SeqRegexFormat("^\\w+\\s+$".r)
+  val choiceFormat1: BaseFormat[_] = StringChoiceFormat(Seq("a", "b"))
+  val seqChoiceFormat1: BaseFormat[_] = StringSeqChoiceFormat(Seq("a", "b"))
+  val minMaxFormat: BaseFormat[_] = DoubleMinMaxFormat(1.0, 2.0)
+  val seqMinMaxFormat: BaseFormat[_] = DoubleSeqMinMaxFormat(1.0, 2.0)
+  val keyFormat1: BaseFormat[_] = RegexFormat("^k\\w+".r)
+  val stringConstantFormat1: BaseFormat[_] = StringConstantFormat("constValue")
 
-  val conditionalChoiceFormat: Format[_] = ConditionalFieldValueChoiceFormat(
+  val conditionalChoiceFormat: BaseFormat[_] = ConditionalFieldValueChoiceFormat(
     "field1",
     Map("value1" -> minMaxFormat, "value2" -> choiceFormat1)
   )
 
-  val eitherOfFormat1: Format[_] = EitherOfFormat(Seq(
+  val eitherOfFormat1: BaseFormat[_] = EitherOfFormat(Seq(
     keyFormat1,
     stringConstantFormat1,
     seqChoiceFormat1
   ))
 
-  val nestedFormat1: Format[_] = NestedFormat(Seq(
+  val nestedFormat1: BaseFormat[_] = NestedFieldSeqFormat(Seq(
     Fields.regexFormat1Field,
     Fields.regexFormat2Field,
     Fields.choiceFormat1Field,
     Fields.seqChoiceFormat1Field
   ))
+
+  val emptyNestedFormat: BaseFormat[_] = NestedFieldSeqFormat(Seq.empty)
 
   val validNestedFormat1Obj = new JsObject(Map(
     "regex1" -> JsString("itWas"),
@@ -58,6 +60,13 @@ object Formats {
     "choice1" -> JsString("a"),
     "seqChoice1" -> JsArray(JsString("a"), JsString("b")),
   ))
+
+  val validNestedFormat1ResultMap = Map(
+    "regex1" -> "itWas",
+    "regex2" -> "aaa ",
+    "choice1" -> "a",
+    "seqChoice1" -> Seq("a", "b")
+  )
 
   val invalidRegex2NestedFormat1Obj = new JsObject(Map(
     "regex1" -> JsString("itWas"),
@@ -151,13 +160,17 @@ class JsonFormatsSpec extends UnitTestSpec {
     }
 
     "NestedFormat should correctly parse single attributes" in {
-      nestedFormat1.cast(validNestedFormat1Obj) mustBe validNestedFormat1Obj
+      nestedFormat1.cast(validNestedFormat1Obj) mustBe validNestedFormat1ResultMap
     }
 
     "NestedFormat should detect non-matching fields" in {
       intercept[IllegalArgumentException] {
         nestedFormat1.cast(invalidRegex2NestedFormat1Obj)
       }
+    }
+
+    "NestedFormat without fields shall always accept" in {
+      emptyNestedFormat.cast(invalidRegex2NestedFormat1Obj)
     }
 
     "EitherOfFormat should declare valid if either format applies" in {

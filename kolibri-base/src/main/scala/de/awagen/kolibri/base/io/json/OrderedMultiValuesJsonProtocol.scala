@@ -32,7 +32,7 @@ object OrderedMultiValuesJsonProtocol extends DefaultJsonProtocol {
   val FROM_CSV_WITH_KEY_AND_VALUE_NAMES_FROM_HEADERS_TYPE = "FROM_CSV_WITH_HEADER_NAMES_TYPE"
   val FROM_JSON_FILE_MAPPING_TYPE = "FROM_JSON_FILE_MAPPING_TYPE"
   val TYPE_KEY = "type"
-  val VALUE_NAME = "valueName"
+  val NAME_KEY = "name"
   val FILE_KEY = "file"
   val COLUMN_SEPARATOR_KEY = "columnSeparator"
   val KEY_NAME_KEY = "keyName"
@@ -68,7 +68,7 @@ object OrderedMultiValuesJsonProtocol extends DefaultJsonProtocol {
               val file: String = fields(FILE_KEY).convertTo[String]
               val columnSeparator: String = fields(COLUMN_SEPARATOR_KEY).convertTo[String]
               val keyName: String = fields(KEY_NAME_KEY).convertTo[String]
-              val valueName: String = fields(VALUE_NAME).convertTo[String]
+              val valueName: String = fields(NAME_KEY).convertTo[String]
               val values = fromCsvFileByColumnNames(file, columnSeparator, keyName, valueName)
               GridOrderedMultiValues(Seq(values))
           }

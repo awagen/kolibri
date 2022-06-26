@@ -40,13 +40,20 @@ object JsonFormatsJsonProtocol {
     val FIELDS_KEY = "fields"
     val NAME_FORMAT_KEY = "nameFormat"
     val REQUIRED_KEY = "required"
-    val FORMAT_KEY = "format"
     val FORMATS_KEY = "formats"
     val CONDITION_FIELD_ID_KEY = "conditionFieldId"
     val CONDITION_FIELD_VALUES_TO_FORMAT_KEY = "conditionFieldValuesToFormat"
+    val PER_ELEMENT_FORMAT_KEY = "perElementFormat"
   }
 
   object FormatTypes {
+    val INT_TYPE = "INT"
+    val STRING_TYPE = "STRING"
+    val DOUBLE_TYPE = "DOUBLE"
+    val FLOAT_TYPE = "FLOAT"
+    val BOOLEAN_TYPE = "BOOLEAN"
+    val INT_SEQ_TYPE = "INT_SEQ"
+    val STRING_SEQ_TYPE = "STRING_SEQ"
     val REGEX_TYPE = "REGEX"
     val STRING_CONSTANT_TYPE = "STRING_CONSTANT"
     val SEQ_REGEX_TYPE = "SEQ_REGEX"
@@ -65,6 +72,7 @@ object JsonFormatsJsonProtocol {
     val MAP_TYPE = "MAP"
     val EITHER_OF_TYPE = "EITHER_OF"
     val CONDITIONAL_CHOICE_TYPE = "CONDITIONAL_CHOICE"
+    val GENERIC_SEQ_FORMAT_TYPE = "GENERIC_SEQ_FORMAT"
     val MIN_MAX_INT_TYPE = "MIN_MAX_INT"
     val MIN_MAX_FLOAT_TYPE = "MIN_MAX_FLOAT"
     val MIN_MAX_DOUBLE_TYPE = "MIN_MAX_DOUBLE"
@@ -84,7 +92,7 @@ object JsonFormatsJsonProtocol {
     override def read(json: JsValue): Format[String] = json match {
       case JsObject(fields) if fields.contains(TYPE_KEY) => fields(TYPE_KEY).convertTo[String] match {
         case t if FormatClassifications.allStringTypes.contains(t) =>
-          JsonFormatsFormat.read(json).asInstanceOf[Format[String]]
+          JsonFormatsFormat.read(json).asInstanceOf[BaseFormat[String]]
       }
     }
 
@@ -96,6 +104,13 @@ object JsonFormatsJsonProtocol {
 
     override def read(json: JsValue): Format[_] = json match {
       case JsObject(fields) if fields.contains(TYPE_KEY) => fields(TYPE_KEY).convertTo[String] match {
+        case FormatTypes.INT_TYPE => IntFormat
+        case FormatTypes.STRING_TYPE => StringFormat
+        case FormatTypes.DOUBLE_TYPE => DoubleFormat
+        case FormatTypes.FLOAT_TYPE => FloatFormat
+        case FormatTypes.BOOLEAN_TYPE => BooleanFormat
+        case FormatTypes.INT_SEQ_TYPE => IntSeqFormat
+        case FormatTypes.STRING_SEQ_TYPE => StringSeqFormat
         case FormatTypes.STRING_CONSTANT_TYPE =>
           val value = fields(VALUE_KEY).convertTo[String]
           StringConstantFormat(value)
@@ -143,7 +158,7 @@ object JsonFormatsJsonProtocol {
           StringSeqChoiceFormat(choices)
         case FormatTypes.NESTED_TYPE =>
           val types = fields(FIELDS_KEY).convertTo[Seq[FieldType]]
-          NestedFormat(types)
+          NestedFieldSeqFormat(types)
         case FormatTypes.MAP_TYPE =>
           val keyFormat = fields(KEY_FORMAT_KEY).convertTo[Format[String]]
           val valueFormat = fields(VALUE_FORMAT_KEY).convertTo[Format[_]]
@@ -155,11 +170,36 @@ object JsonFormatsJsonProtocol {
           val conditionFieldId = fields(CONDITION_FIELD_ID_KEY).convertTo[String]
           val conditionFieldValuesToFormat = fields(CONDITION_FIELD_VALUES_TO_FORMAT_KEY).convertTo[Map[String, Format[_]]]
           ConditionalFieldValueChoiceFormat(conditionFieldId, conditionFieldValuesToFormat)
+        case FormatTypes.GENERIC_SEQ_FORMAT_TYPE =>
+          val format = fields(PER_ELEMENT_FORMAT_KEY).convertTo[Format[_]]
+          GenericSeqFormat(format)
+
       }
 
     }
 
     override def write(obj: Format[_]): JsValue = obj match {
+      case IntFormat => new JsObject(Map(
+        TYPE_KEY -> JsString(INT_TYPE)
+      ))
+      case StringFormat => new JsObject(Map(
+        TYPE_KEY -> JsString(STRING_TYPE)
+      ))
+      case DoubleFormat => new JsObject(Map(
+        TYPE_KEY -> JsString(DOUBLE_TYPE)
+      ))
+      case FloatFormat => new JsObject(Map(
+        TYPE_KEY -> JsString(FLOAT_TYPE)
+      ))
+      case BooleanFormat => new JsObject(Map(
+        TYPE_KEY -> JsString(BOOLEAN_TYPE)
+      ))
+      case IntSeqFormat => new JsObject(Map(
+        TYPE_KEY -> JsString(INT_SEQ_TYPE)
+      ))
+      case StringSeqFormat => new JsObject(Map(
+        TYPE_KEY -> JsString(STRING_SEQ_TYPE),
+      ))
       case RegexFormat(regex) => new JsObject(Map(
         TYPE_KEY -> JsString(REGEX_TYPE),
         REGEX_KEY -> JsString(regex.toString()),
@@ -218,13 +258,13 @@ object JsonFormatsJsonProtocol {
         MIN_KEY -> JsNumber(min),
         MAX_KEY -> JsNumber(max)
       ))
-      case NestedFormat(fields) => new JsObject(Map(
+      case NestedFieldSeqFormat(fields) => new JsObject(Map(
         TYPE_KEY -> JsString(NESTED_TYPE),
         FIELDS_KEY -> new JsArray(fields.map(x => {
           new JsObject(Map(
             NAME_FORMAT_KEY -> write(x.nameFormat),
             REQUIRED_KEY -> JsBoolean(x.required),
-            FORMAT_KEY -> write(x.format)
+            VALUE_FORMAT_KEY -> write(x.valueFormat)
           ))
         }).toVector)
       ))
@@ -241,6 +281,10 @@ object JsonFormatsJsonProtocol {
         TYPE_KEY -> JsString(CONDITIONAL_CHOICE_TYPE),
         CONDITION_FIELD_ID_KEY -> JsString(conditionFieldId),
         CONDITION_FIELD_VALUES_TO_FORMAT_KEY -> JsObject(conditionFieldValuesToFormat.view.map(x => (x._1, write(x._2))).toSeq:_*)
+      ))
+      case GenericSeqFormat(format) => new JsObject(Map(
+        TYPE_KEY -> JsString(GENERIC_SEQ_FORMAT_TYPE),
+        PER_ELEMENT_FORMAT_KEY -> write(format),
       ))
 
       case _ => throw new IllegalArgumentException(s"no json conversion defined for object '$obj'")

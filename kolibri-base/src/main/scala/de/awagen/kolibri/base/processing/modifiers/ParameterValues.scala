@@ -51,6 +51,7 @@ object ParameterValues {
   }
 
   object ValueType extends Enumeration {
+    type ValueType = Value
     val URL_PARAMETER, HEADER, BODY = Value
   }
 
