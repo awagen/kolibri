@@ -39,6 +39,28 @@ object Formats {
     Map("value1" -> minMaxFormat, "value2" -> choiceFormat1)
   )
 
+  val conditionalChoiceFormat1: BaseFormat[_] = ConditionalFieldValueChoiceFormat(
+    "choice1",
+    Map("a" -> minMaxFormat, "b" -> choiceFormat1)
+  )
+
+  val validConditionalChoiceFormat1Obj_a = new JsObject(Map(
+    "choice1" -> JsString("a"),
+    "conditional1" -> JsNumber(1.2)
+  ))
+  val invalidConditionalChoiceFormat1Obj_a = new JsObject(Map(
+    "choice1" -> JsString("a"),
+    "conditional1" -> JsString("a")
+  ))
+  val validConditionalChoiceFormat1Obj_b = new JsObject(Map(
+    "choice1" -> JsString("b"),
+    "conditional1" -> JsString("a")
+  ))
+  val invalidConditionalChoiceFormat1Obj_b = new JsObject(Map(
+    "choice1" -> JsString("b"),
+    "conditional1" -> JsNumber(1.2)
+  ))
+
   val eitherOfFormat1: BaseFormat[_] = EitherOfFormat(Seq(
     keyFormat1,
     stringConstantFormat1,
@@ -53,6 +75,11 @@ object Formats {
   ))
 
   val emptyNestedFormat: BaseFormat[_] = NestedFieldSeqFormat(Seq.empty)
+
+  val nestedFormat2: BaseFormat[_] = NestedFieldSeqFormat(Seq(
+    Fields.choiceFormat1Field,
+    Fields.conditionalChoiceFormat1Field
+  ))
 
   val validNestedFormat1Obj = new JsObject(Map(
     "regex1" -> JsString("itWas"),
@@ -85,6 +112,7 @@ object Fields {
   val seqChoiceFormat1Field: FieldType = FieldType(StringConstantFormat("seqChoice1"), seqChoiceFormat1, required = true)
   val minMaxFormatField: FieldType = FieldType(StringConstantFormat("minMax1"), minMaxFormat, required = true)
   val seqMinMaxFormatField: FieldType = FieldType(StringConstantFormat("seqMinMax1"), seqMinMaxFormat, required = true)
+  val conditionalChoiceFormat1Field: FieldType = FieldType(StringConstantFormat("conditional1"), conditionalChoiceFormat1, required = true)
 }
 
 class JsonFormatsSpec extends UnitTestSpec {
@@ -171,6 +199,23 @@ class JsonFormatsSpec extends UnitTestSpec {
 
     "NestedFormat without fields shall always accept" in {
       emptyNestedFormat.cast(invalidRegex2NestedFormat1Obj)
+    }
+
+    "NestedFormat should accept correct conditional fields" in {
+      nestedFormat2.cast(validConditionalChoiceFormat1Obj_a)
+      nestedFormat2.cast(validConditionalChoiceFormat1Obj_b)
+    }
+
+    "NestedFormat should reject wrong conditional fields - 1" in {
+      intercept[ClassCastException] {
+        nestedFormat2.cast(invalidConditionalChoiceFormat1Obj_a)
+      }
+    }
+
+    "NestedFormat should reject wrong conditional fields - 2" in {
+      intercept[IllegalArgumentException] {
+        nestedFormat2.cast(invalidConditionalChoiceFormat1Obj_b)
+      }
     }
 
     "EitherOfFormat should declare valid if either format applies" in {
