@@ -17,18 +17,18 @@
 
 package de.awagen.kolibri.datatypes.io.json
 
-import de.awagen.kolibri.datatypes.io.json.JsonFormatsJsonProtocol.FormatTypes._
-import de.awagen.kolibri.datatypes.io.json.JsonFormatsJsonProtocol.JsonKeys.{CONDITION_FIELD_ID_KEY, CONDITION_FIELD_VALUES_TO_FORMAT_KEY}
-import de.awagen.kolibri.datatypes.io.json.JsonFormatsJsonProtocol._
+import de.awagen.kolibri.datatypes.io.json.JsonStructDefsJsonProtocol.StructDefTypes._
+import de.awagen.kolibri.datatypes.io.json.JsonStructDefsJsonProtocol.JsonKeys.{CONDITION_FIELD_ID_KEY, CONDITION_FIELD_VALUES_TO_FORMAT_KEY}
+import de.awagen.kolibri.datatypes.io.json.JsonStructDefsJsonProtocol._
 import de.awagen.kolibri.datatypes.testclasses.UnitTestSpec
-import de.awagen.kolibri.datatypes.types.JsonFormats._
+import de.awagen.kolibri.datatypes.types.JsonStructDefs._
 import spray.json.{JsValue, _}
 
 import scala.util.matching.Regex
 
-class JsonFormatsJsonProtocolSpec extends UnitTestSpec {
+class JsonStructDefsJsonProtocolSpec extends UnitTestSpec {
 
-  object FormatSamples {
+  object StructDefSamples {
 
     case class JsonAndObj(json: JsValue, obj: Any)
 
@@ -41,7 +41,7 @@ class JsonFormatsJsonProtocolSpec extends UnitTestSpec {
          |}
          |""".stripMargin.parseJson
 
-    val minMaxIntSample = JsonAndObj(minMaxIntFormatJsonString, IntMinMaxFormat(4, 5))
+    val minMaxIntSample = JsonAndObj(minMaxIntFormatJsonString, IntMinMaxStructDef(4, 5))
 
     val minMaxFloatFormatJsonString: JsValue =
       s"""
@@ -52,7 +52,7 @@ class JsonFormatsJsonProtocolSpec extends UnitTestSpec {
         |}
         |""".stripMargin.parseJson
 
-    val minMaxFloatSample = JsonAndObj(minMaxFloatFormatJsonString, FloatMinMaxFormat(0.0f, 1.0f))
+    val minMaxFloatSample = JsonAndObj(minMaxFloatFormatJsonString, FloatMinMaxStructDef(0.0f, 1.0f))
 
     val minMaxDoubleFormatJsonString: JsValue =
       s"""
@@ -63,7 +63,7 @@ class JsonFormatsJsonProtocolSpec extends UnitTestSpec {
         |}
         |""".stripMargin.parseJson
 
-    val minMaxDoubleSample = JsonAndObj(minMaxDoubleFormatJsonString, DoubleMinMaxFormat(0.0f, 1.0f))
+    val minMaxDoubleSample = JsonAndObj(minMaxDoubleFormatJsonString, DoubleMinMaxStructDef(0.0f, 1.0f))
 
     val seqMinMaxIntFormatJsonString: JsValue =
       s"""
@@ -74,7 +74,7 @@ class JsonFormatsJsonProtocolSpec extends UnitTestSpec {
          |}
          |""".stripMargin.parseJson
 
-    val seqMinMaxIntSample = JsonAndObj(seqMinMaxIntFormatJsonString, IntSeqMinMaxFormat(5, 8))
+    val seqMinMaxIntSample = JsonAndObj(seqMinMaxIntFormatJsonString, IntSeqMinMaxStructDef(5, 8))
 
 
     val seqMinMaxDoubleFormatJsonString: JsValue =
@@ -86,7 +86,7 @@ class JsonFormatsJsonProtocolSpec extends UnitTestSpec {
         |}
         |""".stripMargin.parseJson
 
-    val seqMinMaxDoubleSample = JsonAndObj(seqMinMaxDoubleFormatJsonString, DoubleSeqMinMaxFormat(1.0f, 2.0f))
+    val seqMinMaxDoubleSample = JsonAndObj(seqMinMaxDoubleFormatJsonString, DoubleSeqMinMaxStructDef(1.0f, 2.0f))
 
     val seqMinMaxFloatFormatJsonString: JsValue =
       s"""
@@ -97,7 +97,7 @@ class JsonFormatsJsonProtocolSpec extends UnitTestSpec {
         |}
         |""".stripMargin.parseJson
 
-    val seqMinMaxFloatSample = JsonAndObj(seqMinMaxFloatFormatJsonString, FloatSeqMinMaxFormat(1.0f, 2.0f))
+    val seqMinMaxFloatSample = JsonAndObj(seqMinMaxFloatFormatJsonString, FloatSeqMinMaxStructDef(1.0f, 2.0f))
 
     val regexFormatJsonString: JsValue =
       """
@@ -107,7 +107,7 @@ class JsonFormatsJsonProtocolSpec extends UnitTestSpec {
         |}
         |""".stripMargin.parseJson
 
-    val regexSample = JsonAndObj(regexFormatJsonString, RegexFormat("\\s+\\S+".r))
+    val regexSample = JsonAndObj(regexFormatJsonString, RegexStructDef("\\s+\\S+".r))
 
     val stringConstantFormatJsonString: JsValue =
       """
@@ -117,7 +117,7 @@ class JsonFormatsJsonProtocolSpec extends UnitTestSpec {
         |}
         |""".stripMargin.parseJson
 
-    val stringConstantSample = JsonAndObj(stringConstantFormatJsonString, StringConstantFormat("constantValue"))
+    val stringConstantSample = JsonAndObj(stringConstantFormatJsonString, StringConstantStructDef("constantValue"))
 
     val seqRegexFormatJsonString: JsValue =
       """
@@ -127,7 +127,7 @@ class JsonFormatsJsonProtocolSpec extends UnitTestSpec {
         |}
         |""".stripMargin.parseJson
 
-    val seqRegexSample = JsonAndObj(seqRegexFormatJsonString, SeqRegexFormat(new Regex("\\s+\\S+")))
+    val seqRegexSample = JsonAndObj(seqRegexFormatJsonString, SeqRegexStructDef(new Regex("\\s+\\S+")))
 
     val intChoiceFormatJsonString: JsValue =
       s"""
@@ -137,7 +137,7 @@ class JsonFormatsJsonProtocolSpec extends UnitTestSpec {
         |}
         |""".stripMargin.parseJson
 
-    val intChoiceSample = JsonAndObj(intChoiceFormatJsonString, IntChoiceFormat(Seq(1,2)))
+    val intChoiceSample = JsonAndObj(intChoiceFormatJsonString, IntChoiceStructDef(Seq(1,2)))
 
     val seqIntChoiceFormatJsonString: JsValue =
       s"""
@@ -147,7 +147,7 @@ class JsonFormatsJsonProtocolSpec extends UnitTestSpec {
          |}
          |""".stripMargin.parseJson
 
-    val seqIntChoiceSample = JsonAndObj(seqIntChoiceFormatJsonString, IntSeqChoiceFormat(Seq(1,2)))
+    val seqIntChoiceSample = JsonAndObj(seqIntChoiceFormatJsonString, IntSeqChoiceStructDef(Seq(1,2)))
 
     val stringChoiceFormatJsonString: JsValue =
       s"""
@@ -157,7 +157,7 @@ class JsonFormatsJsonProtocolSpec extends UnitTestSpec {
          |}
          |""".stripMargin.parseJson
 
-    val stringChoiceSample = JsonAndObj(stringChoiceFormatJsonString, StringChoiceFormat(Seq("a", "b")))
+    val stringChoiceSample = JsonAndObj(stringChoiceFormatJsonString, StringChoiceStructDef(Seq("a", "b")))
 
     val seqStringChoiceFormatJsonString: JsValue =
       s"""
@@ -167,7 +167,7 @@ class JsonFormatsJsonProtocolSpec extends UnitTestSpec {
          |}
          |""".stripMargin.parseJson
 
-    val seqStringChoiceSample = JsonAndObj(seqStringChoiceFormatJsonString, StringSeqChoiceFormat(Seq("a", "b")))
+    val seqStringChoiceSample = JsonAndObj(seqStringChoiceFormatJsonString, StringSeqChoiceStructDef(Seq("a", "b")))
 
     val nestedFormatJsonString: JsValue =
       s"""
@@ -217,21 +217,21 @@ class JsonFormatsJsonProtocolSpec extends UnitTestSpec {
          |}
          |""".stripMargin.parseJson
 
-    val nestedSample = JsonAndObj(nestedFormatJsonString, NestedFieldSeqFormat(Seq(
-      FieldType(StringConstantFormat("a"), intChoiceSample.obj.asInstanceOf[Format[_]], required = true),
-      FieldType(StringConstantFormat("b"), seqIntChoiceSample.obj.asInstanceOf[Format[_]], required = true)
+    val nestedSample = JsonAndObj(nestedFormatJsonString, NestedFieldSeqStructDef(Seq(
+      FieldType(StringConstantStructDef("a"), intChoiceSample.obj.asInstanceOf[StructDef[_]], required = true),
+      FieldType(StringConstantStructDef("b"), seqIntChoiceSample.obj.asInstanceOf[StructDef[_]], required = true)
     )))
 
-    val eitherOfSample = JsonAndObj(eitherOfFormatJsonString, EitherOfFormat(Seq(
-      intChoiceSample.obj.asInstanceOf[Format[_]],
-      minMaxFloatSample.obj.asInstanceOf[Format[_]])
+    val eitherOfSample = JsonAndObj(eitherOfFormatJsonString, EitherOfStructDef(Seq(
+      intChoiceSample.obj.asInstanceOf[StructDef[_]],
+      minMaxFloatSample.obj.asInstanceOf[StructDef[_]])
     ))
 
-    val conditionalChoiceSample = JsonAndObj(conditionalChoiceFormatJsonString, ConditionalFieldValueChoiceFormat(
+    val conditionalChoiceSample = JsonAndObj(conditionalChoiceFormatJsonString, ConditionalFieldValueChoiceStructDef(
       "field1",
       Map(
-        "value1" -> intChoiceSample.obj.asInstanceOf[Format[_]],
-        "value2" -> minMaxFloatSample.obj.asInstanceOf[Format[_]])
+        "value1" -> intChoiceSample.obj.asInstanceOf[StructDef[_]],
+        "value2" -> minMaxFloatSample.obj.asInstanceOf[StructDef[_]])
     ))
 
     val sampleCollection1: Seq[JsonAndObj] = Seq(
@@ -255,23 +255,23 @@ class JsonFormatsJsonProtocolSpec extends UnitTestSpec {
   "JsonFormat" must {
 
     "correctly parse formats" in {
-      FormatSamples.sampleCollection1.foreach(sample => {
-        sample.json.convertTo[Format[_]] mustBe sample.obj
+      StructDefSamples.sampleCollection1.foreach(sample => {
+        sample.json.convertTo[StructDef[_]] mustBe sample.obj
       })
     }
 
     "correctly write formats" in {
-      FormatSamples.sampleCollection1.foreach(sample => {
-        sample.json mustBe JsonFormatsFormat.write(sample.obj.asInstanceOf[Format[_]])
+      StructDefSamples.sampleCollection1.foreach(sample => {
+        sample.json mustBe JsonStructDefsFormat.write(sample.obj.asInstanceOf[StructDef[_]])
       })
     }
 
     "correctly parse regex format" in {
-      FormatSamples.regexSample.json.convertTo[Format[_]].asInstanceOf[RegexFormat].regex.toString() mustBe "\\s+\\S+"
+      StructDefSamples.regexSample.json.convertTo[StructDef[_]].asInstanceOf[RegexStructDef].regex.toString() mustBe "\\s+\\S+"
     }
 
     "correctly parse seq regex format" in {
-      FormatSamples.seqRegexSample.json.convertTo[Format[_]].asInstanceOf[SeqRegexFormat].regex.toString() mustBe "\\s+\\S+"
+      StructDefSamples.seqRegexSample.json.convertTo[StructDef[_]].asInstanceOf[SeqRegexStructDef].regex.toString() mustBe "\\s+\\S+"
     }
 
   }

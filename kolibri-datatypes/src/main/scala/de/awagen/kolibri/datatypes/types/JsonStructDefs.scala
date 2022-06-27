@@ -18,8 +18,8 @@
 package de.awagen.kolibri.datatypes.types
 
 import de.awagen.kolibri.datatypes.io.json.AnyJsonProtocol.AnyJsonFormat
-import de.awagen.kolibri.datatypes.types.JsonFormats.Validations.FunctionConversions._
-import de.awagen.kolibri.datatypes.types.JsonFormats.Validations.{canBeCastAndIsValidFormat, jsObjectFulfillsKeyAndValueFormat, matchesOneOfChoices, matchesRegex, matchesValueMap, seqMatchesOneOfChoices, seqMatchesRegex, seqWithinMinMax, withinMinMax}
+import de.awagen.kolibri.datatypes.types.JsonStructDefs.Validations.FunctionConversions._
+import de.awagen.kolibri.datatypes.types.JsonStructDefs.Validations.{canBeCastAndIsValidFormat, jsObjectFulfillsKeyAndValueFormat, matchesOneOfChoices, matchesRegex, matchesValueMap, seqMatchesOneOfChoices, seqMatchesRegex, seqWithinMinMax, withinMinMax}
 import org.slf4j.{Logger, LoggerFactory}
 import spray.json.DefaultJsonProtocol.{BooleanJsonFormat, DoubleJsonFormat, FloatJsonFormat, IntJsonFormat, StringJsonFormat, immSeqFormat, mapFormat}
 import spray.json.{JsArray, JsObject, JsValue, JsonReader}
@@ -28,7 +28,7 @@ import scala.math.Ordering.Implicits.infixOrderingOps
 import scala.util.matching.Regex
 
 
-object JsonFormats {
+object JsonStructDefs {
 
   object Validations {
 
@@ -75,7 +75,7 @@ object JsonFormats {
       map.keys.find(x => field.nameFormat.isValid(x))
     }
 
-    def canBeCastAndIsValidFormat(format: Format[_], element: JsValue): Boolean = {
+    def canBeCastAndIsValidFormat(format: StructDef[_], element: JsValue): Boolean = {
       try {
         val castValue = format.cast(element)
         format.isValid(castValue)
@@ -86,7 +86,7 @@ object JsonFormats {
       }
     }
 
-    def jsValueCanBeCast(jsValue: JsValue, format: Format[_]): Boolean = {
+    def jsValueCanBeCast(jsValue: JsValue, format: StructDef[_]): Boolean = {
       try {
         format.cast(jsValue)
         true
@@ -125,7 +125,7 @@ object JsonFormats {
       })
     }
 
-    def jsObjectFulfillsKeyAndValueFormat(keyFormat: Format[String], valueFormat: Format[_], jsObj: JsObject): Boolean = {
+    def jsObjectFulfillsKeyAndValueFormat(keyFormat: StructDef[String], valueFormat: StructDef[_], jsObj: JsObject): Boolean = {
       val failedKeyValidations: Iterable[String] = jsObj.fields.keys.filter(key => !keyFormat.isValid(key))
       val failedValueValidations: Iterable[JsValue] = jsObj.fields.values.filter(value => {
         !jsValueCanBeCast(value, valueFormat)
@@ -140,8 +140,8 @@ object JsonFormats {
     }
   }
 
-  def castIfMatchingFormatExistsElseThrowException(formats: Seq[Format[_]], value: JsValue): Any = {
-    val format: Option[Format[_]] = formats.find(x => canBeCastAndIsValidFormat(x, value))
+  def castIfMatchingFormatExistsElseThrowException(formats: Seq[StructDef[_]], value: JsValue): Any = {
+    val format: Option[StructDef[_]] = formats.find(x => canBeCastAndIsValidFormat(x, value))
     val castValueOpt: Option[Any] = format.map(x => x.cast(value))
     if (castValueOpt.isEmpty) throw new IllegalArgumentException(s"value '$value' can not be validated by any available format $formats")
     castValueOpt.get
@@ -152,7 +152,7 @@ object JsonFormats {
    * Note that cast is intended to happen before and isValid is then executed on the cast value
    * to check validity
    */
-  trait Format[+T] {
+  trait StructDef[+T] {
 
     def isValid(el: Any): Boolean
 
@@ -166,7 +166,7 @@ object JsonFormats {
    * @param ev - implicit json reader for specified type T
    * @tparam T - type to cast to
    */
-  abstract class BaseFormat[+T](val isValidFunc: Any => Boolean = _ => true)(implicit ev: JsonReader[T]) extends Format[T] {
+  abstract class BaseStructDef[+T](val isValidFunc: Any => Boolean = _ => true)(implicit ev: JsonReader[T]) extends StructDef[T] {
 
     def isValid(el: Any): Boolean = isValidFunc.apply(el)
 
@@ -184,7 +184,7 @@ object JsonFormats {
    * Format type indicating that it contains information about multiple fields instead of a single one,
    * representing a nested structure (e.g a JsObject)
    */
-  trait NestedFormat[+T] extends Format[Map[String, T]] {
+  trait NestedStructDef[+T] extends StructDef[Map[String, T]] {
 
     def fields: Seq[FieldType]
 
@@ -201,11 +201,11 @@ object JsonFormats {
    * NestedFormat, since other formats mainly have single fields in scope, while here we need the
    * conditioned-on field as well
    */
-  trait ConditionalFormat[+T] extends Format[T] {
+  trait ConditionalStructDef[+T] extends StructDef[T] {
 
     def conditionFieldId: String
 
-    def conditionFieldValuesToFormat: Map[String, Format[T]]
+    def conditionFieldValuesToFormat: Map[String, StructDef[T]]
 
     def isValid(conditionValue: String, conditionedValue: Any): Boolean
 
@@ -217,9 +217,9 @@ object JsonFormats {
    * Format
    * @param regex
    */
-  case class RegexFormat(regex: Regex) extends BaseFormat[String](toAnyInput(matchesRegex(regex)))
+  case class RegexStructDef(regex: Regex) extends BaseStructDef[String](toAnyInput(matchesRegex(regex)))
 
-  case class SeqRegexFormat(regex: Regex) extends BaseFormat[Seq[String]](toAnyInput(seqMatchesRegex(regex)))
+  case class SeqRegexStructDef(regex: Regex) extends BaseStructDef[Seq[String]](toAnyInput(seqMatchesRegex(regex)))
 
   /**
    * Format only allowing values within predefined choices
@@ -228,9 +228,9 @@ object JsonFormats {
    * @param ev      - implicit json reader for specified type T
    * @tparam T - type to cast to
    */
-  class ChoiceFormat[T](choices: Seq[T])(implicit ev: JsonReader[T]) extends BaseFormat[T](matchesOneOfChoices(choices))
-  case class IntChoiceFormat(choices: Seq[Int]) extends ChoiceFormat[Int](choices)
-  case class StringChoiceFormat(choices: Seq[String]) extends ChoiceFormat[String](choices)
+  class ChoiceStructDef[T](choices: Seq[T])(implicit ev: JsonReader[T]) extends BaseStructDef[T](matchesOneOfChoices(choices))
+  case class IntChoiceStructDef(choices: Seq[Int]) extends ChoiceStructDef[Int](choices)
+  case class StringChoiceStructDef(choices: Seq[String]) extends ChoiceStructDef[String](choices)
 
   /**
    * format for sequence of values of type T, where each element must be contained within the passed choices
@@ -239,9 +239,9 @@ object JsonFormats {
    * @param ev      - implicit json reader for specified type T
    * @tparam T - type to cast to
    */
-  class SeqChoiceFormat[T](choices: Seq[T])(implicit ev: JsonReader[Seq[T]]) extends BaseFormat[Seq[T]](toAnyInput(seqMatchesOneOfChoices(choices)))
-  case class IntSeqChoiceFormat(choices: Seq[Int]) extends SeqChoiceFormat[Int](choices)
-  case class StringSeqChoiceFormat(choices: Seq[String]) extends SeqChoiceFormat[String](choices)
+  class SeqChoiceStructDef[T](choices: Seq[T])(implicit ev: JsonReader[Seq[T]]) extends BaseStructDef[Seq[T]](toAnyInput(seqMatchesOneOfChoices(choices)))
+  case class IntSeqChoiceStructDef(choices: Seq[Int]) extends SeqChoiceStructDef[Int](choices)
+  case class StringSeqChoiceStructDef(choices: Seq[String]) extends SeqChoiceStructDef[String](choices)
 
   /**
    * Format requiring value (must be numeric) to be within range defined by min and max value
@@ -252,10 +252,10 @@ object JsonFormats {
    * @param evR - implicit json reader for type T
    * @tparam T - type to cast to
    */
-  class MinMaxFormat[T](min: T, max: T)(implicit ev: Numeric[T], evR: JsonReader[T]) extends BaseFormat[T](toAnyInput(withinMinMax(min, max)))
-  case class IntMinMaxFormat(min: Int, max: Int) extends MinMaxFormat[Int](min, max)
-  case class FloatMinMaxFormat(min: Float, max: Float) extends MinMaxFormat[Float](min, max)
-  case class DoubleMinMaxFormat(min: Double, max: Double) extends MinMaxFormat[Double](min, max)
+  class MinMaxStructDef[T](min: T, max: T)(implicit ev: Numeric[T], evR: JsonReader[T]) extends BaseStructDef[T](toAnyInput(withinMinMax(min, max)))
+  case class IntMinMaxStructDef(min: Int, max: Int) extends MinMaxStructDef[Int](min, max)
+  case class FloatMinMaxStructDef(min: Float, max: Float) extends MinMaxStructDef[Float](min, max)
+  case class DoubleMinMaxStructDef(min: Double, max: Double) extends MinMaxStructDef[Double](min, max)
 
   /**
    * Format for sequence of numerical values where each needs to be within the defined min and max values
@@ -267,58 +267,58 @@ object JsonFormats {
    * @param evR - implicit reader for Seq[T]
    * @tparam T - type of the elements
    */
-  class SeqMinMaxFormat[T](min: T, max: T)(implicit ev: Numeric[T], evR: JsonReader[Seq[T]]) extends BaseFormat[Seq[T]](toAnyInput(seqWithinMinMax(min, max)))
-  case class IntSeqMinMaxFormat(min: Int, max: Int) extends SeqMinMaxFormat[Int](min, max)
-  case class FloatSeqMinMaxFormat(min: Float, max: Float) extends SeqMinMaxFormat[Float](min, max)
-  case class DoubleSeqMinMaxFormat(min: Double, max: Double) extends SeqMinMaxFormat[Double](min, max)
+  class SeqMinMaxStructDef[T](min: T, max: T)(implicit ev: Numeric[T], evR: JsonReader[Seq[T]]) extends BaseStructDef[Seq[T]](toAnyInput(seqWithinMinMax(min, max)))
+  case class IntSeqMinMaxStructDef(min: Int, max: Int) extends SeqMinMaxStructDef[Int](min, max)
+  case class FloatSeqMinMaxStructDef(min: Float, max: Float) extends SeqMinMaxStructDef[Float](min, max)
+  case class DoubleSeqMinMaxStructDef(min: Double, max: Double) extends SeqMinMaxStructDef[Double](min, max)
 
 
-  object IntFormat extends BaseFormat[Int](_ => true)
+  object IntStructDef extends BaseStructDef[Int](_ => true)
 
-  object StringFormat extends BaseFormat[String](_ => true)
+  object StringStructDef extends BaseStructDef[String](_ => true)
 
-  object DoubleFormat extends BaseFormat[Double](_ => true)
+  object DoubleStructDef extends BaseStructDef[Double](_ => true)
 
-  object FloatFormat extends BaseFormat[Float](_ => true)
+  object FloatStructDef extends BaseStructDef[Float](_ => true)
 
-  object BooleanFormat extends BaseFormat[Boolean](_ => true)
+  object BooleanStructDef extends BaseStructDef[Boolean](_ => true)
 
-  object IntSeqFormat extends BaseFormat[Seq[Int]](_ => true)
+  object IntSeqStructDef extends BaseStructDef[Seq[Int]](_ => true)
 
-  object StringSeqFormat extends BaseFormat[Seq[String]](_ => true)
+  object StringSeqStructDef extends BaseStructDef[Seq[String]](_ => true)
 
   /**
    * Format accepting elements that is validated by any of the formats
    * (uses the first one that works)
    */
-  case class EitherOfFormat(formats: Seq[Format[_]]) extends BaseFormat[Any](x => formats.exists(format => format.isValid(x))) {
+  case class EitherOfStructDef(formats: Seq[StructDef[_]]) extends BaseStructDef[Any](x => formats.exists(format => format.isValid(x))) {
 
     override def cast(value: JsValue): Any = castIfMatchingFormatExistsElseThrowException(formats, value)
 
   }
 
-  object DoubleSeqFormat extends BaseFormat[Seq[Double]](_ => true)
+  object DoubleSeqStructDef extends BaseStructDef[Seq[Double]](_ => true)
 
-  object FloatSeqFormat extends BaseFormat[Seq[Float]](_ => true)
+  object FloatSeqStructDef extends BaseStructDef[Seq[Float]](_ => true)
 
-  object BoolSeqFormat extends BaseFormat[Seq[Boolean]](_ => true)
+  object BoolSeqStructDef extends BaseStructDef[Seq[Boolean]](_ => true)
 
-  case class StringConstantFormat(value: String) extends BaseFormat[String](x => x.equals(value))
+  case class StringConstantStructDef(value: String) extends BaseStructDef[String](x => x.equals(value))
 
-  case class FieldType(nameFormat: Format[String], valueFormat: Format[_], required: Boolean)
+  case class FieldType(nameFormat: StructDef[String], valueFormat: StructDef[_], required: Boolean)
 
   /**
    * Suitable if a nested format shall be specified where specific key values are not specified
    * but are subjected to the same format check
    */
-  case class MapFormat(keyFormat: Format[String], valueFormat: Format[_]) extends BaseFormat[Map[String,_]](toAnyInput(x => jsObjectFulfillsKeyAndValueFormat(keyFormat, valueFormat, x)))
+  case class MapStructDef(keyFormat: StructDef[String], valueFormat: StructDef[_]) extends BaseStructDef[Map[String,_]](toAnyInput(x => jsObjectFulfillsKeyAndValueFormat(keyFormat, valueFormat, x)))
 
   /**
    * expect JsValue to be JsArray with JsValue elements where each one needs to adhere
    * to the passed format
    * @param perElementFormat - format that needs to hold for each element
    */
-  case class GenericSeqFormat(perElementFormat: Format[_]) extends BaseFormat[Seq[_]](_ => true) {
+  case class GenericSeqStructDef(perElementFormat: StructDef[_]) extends BaseStructDef[Seq[_]](_ => true) {
 
     override def isValid(el: Any): Boolean = {
       el.isInstanceOf[Seq[_]] && el.asInstanceOf[Seq[_]].forall(el => perElementFormat.isValid(el))
@@ -345,7 +345,7 @@ object JsonFormats {
    * @param conditionFieldId - key of the value to be used as conditionalFieldValue
    * @param conditionFieldValuesToFormat - mapping of values belonging to field defined by conditionalFieldId to Format
    */
-  case class ConditionalFieldValueChoiceFormat[+T](conditionFieldId: String, conditionFieldValuesToFormat: Map[String, Format[T]]) extends BaseFormat[Any](x => conditionFieldValuesToFormat.values.exists(format => format.isValid(x))) with ConditionalFormat[T] {
+  case class ConditionalFieldValueChoiceStructDef[+T](conditionFieldId: String, conditionFieldValuesToFormat: Map[String, StructDef[T]]) extends BaseStructDef[Any](x => conditionFieldValuesToFormat.values.exists(format => format.isValid(x))) with ConditionalStructDef[T] {
 
     override def cast(value: JsValue): T = castIfMatchingFormatExistsElseThrowException(conditionFieldValuesToFormat.values.toSeq, value).asInstanceOf[T]
 
@@ -367,15 +367,15 @@ object JsonFormats {
    * "conditionalFields", whose valid format depends on the value of another field (the field values
    * on which conditionalFields are conditioned are limited to String type for now)
    */
-  case class NestedFieldSeqFormat(fields: Seq[FieldType]) extends BaseFormat[Map[String,_]](toAnyInput(matchesValueMap(fields.filter(field => !field.valueFormat.isInstanceOf[ConditionalFormat[_]])))) with NestedFormat[Any] {
+  case class NestedFieldSeqStructDef(fields: Seq[FieldType]) extends BaseStructDef[Map[String,_]](toAnyInput(matchesValueMap(fields.filter(field => !field.valueFormat.isInstanceOf[ConditionalStructDef[_]])))) with NestedStructDef[Any] {
 
-    val conditionalFields: Seq[FieldType] = fields.filter(field => field.valueFormat.isInstanceOf[ConditionalFormat[_]])
-    val standaloneFields: Seq[FieldType] = fields.filter(field => !field.valueFormat.isInstanceOf[ConditionalFormat[_]])
+    val conditionalFields: Seq[FieldType] = fields.filter(field => field.valueFormat.isInstanceOf[ConditionalStructDef[_]])
+    val standaloneFields: Seq[FieldType] = fields.filter(field => !field.valueFormat.isInstanceOf[ConditionalStructDef[_]])
 
     def isValidForConditionals(el: Any): Boolean = {
       val allValues = el.asInstanceOf[Map[String, _]]
       conditionalFields.forall(conditionalField => {
-        val format: ConditionalFormat[_] = conditionalField.valueFormat.asInstanceOf[ConditionalFormat[_]]
+        val format: ConditionalStructDef[_] = conditionalField.valueFormat.asInstanceOf[ConditionalStructDef[_]]
         val currentValueOfConditionalField: Any = allValues.find(x => conditionalField.nameFormat.isValid(x._1)).get._2
         allValues.get(format.conditionFieldId).exists(conditionedFieldValue => format.isValid(conditionedFieldValue.asInstanceOf[String], currentValueOfConditionalField))
       })
