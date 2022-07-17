@@ -18,9 +18,10 @@
 package de.awagen.kolibri.datatypes.io.json
 
 import de.awagen.kolibri.datatypes.io.json.JsonStructDefsJsonProtocol.StructDefTypes._
-import de.awagen.kolibri.datatypes.io.json.JsonStructDefsJsonProtocol.JsonKeys.{CONDITION_FIELD_ID_KEY, CONDITION_FIELD_VALUES_TO_FORMAT_KEY}
+import de.awagen.kolibri.datatypes.io.json.JsonStructDefsJsonProtocol.JsonKeys.{CONDITIONAL_MAPPING_KEY, CONDITION_FIELD_ID_KEY}
 import de.awagen.kolibri.datatypes.io.json.JsonStructDefsJsonProtocol._
 import de.awagen.kolibri.datatypes.testclasses.UnitTestSpec
+import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
 import de.awagen.kolibri.datatypes.types.JsonStructDefs._
 import spray.json.{JsValue, _}
 
@@ -45,23 +46,23 @@ class JsonStructDefsJsonProtocolSpec extends UnitTestSpec {
 
     val minMaxFloatFormatJsonString: JsValue =
       s"""
-        |{
-        |"type": "$MIN_MAX_FLOAT_TYPE",
-        |"min": 0.0,
-        |"max": 1.0
-        |}
-        |""".stripMargin.parseJson
+         |{
+         |"type": "$MIN_MAX_FLOAT_TYPE",
+         |"min": 0.0,
+         |"max": 1.0
+         |}
+         |""".stripMargin.parseJson
 
     val minMaxFloatSample = JsonAndObj(minMaxFloatFormatJsonString, FloatMinMaxStructDef(0.0f, 1.0f))
 
     val minMaxDoubleFormatJsonString: JsValue =
       s"""
-        |{
-        |"type": "$MIN_MAX_DOUBLE_TYPE",
-        |"min": 0.0,
-        |"max": 1.0
-        |}
-        |""".stripMargin.parseJson
+         |{
+         |"type": "$MIN_MAX_DOUBLE_TYPE",
+         |"min": 0.0,
+         |"max": 1.0
+         |}
+         |""".stripMargin.parseJson
 
     val minMaxDoubleSample = JsonAndObj(minMaxDoubleFormatJsonString, DoubleMinMaxStructDef(0.0f, 1.0f))
 
@@ -79,23 +80,23 @@ class JsonStructDefsJsonProtocolSpec extends UnitTestSpec {
 
     val seqMinMaxDoubleFormatJsonString: JsValue =
       s"""
-        |{
-        |"type": "$SEQ_MIN_MAX_DOUBLE_TYPE",
-        |"min": 1.0,
-        |"max": 2.0
-        |}
-        |""".stripMargin.parseJson
+         |{
+         |"type": "$SEQ_MIN_MAX_DOUBLE_TYPE",
+         |"min": 1.0,
+         |"max": 2.0
+         |}
+         |""".stripMargin.parseJson
 
     val seqMinMaxDoubleSample = JsonAndObj(seqMinMaxDoubleFormatJsonString, DoubleSeqMinMaxStructDef(1.0f, 2.0f))
 
     val seqMinMaxFloatFormatJsonString: JsValue =
       s"""
-        |{
-        |"type": "$SEQ_MIN_MAX_FLOAT_TYPE",
-        |"min": 1.0,
-        |"max": 2.0
-        |}
-        |""".stripMargin.parseJson
+         |{
+         |"type": "$SEQ_MIN_MAX_FLOAT_TYPE",
+         |"min": 1.0,
+         |"max": 2.0
+         |}
+         |""".stripMargin.parseJson
 
     val seqMinMaxFloatSample = JsonAndObj(seqMinMaxFloatFormatJsonString, FloatSeqMinMaxStructDef(1.0f, 2.0f))
 
@@ -131,13 +132,13 @@ class JsonStructDefsJsonProtocolSpec extends UnitTestSpec {
 
     val intChoiceFormatJsonString: JsValue =
       s"""
-        |{
-        |"type": "$CHOICE_INT_TYPE",
-        |"choices": [1, 2]
-        |}
-        |""".stripMargin.parseJson
+         |{
+         |"type": "$CHOICE_INT_TYPE",
+         |"choices": [1, 2]
+         |}
+         |""".stripMargin.parseJson
 
-    val intChoiceSample = JsonAndObj(intChoiceFormatJsonString, IntChoiceStructDef(Seq(1,2)))
+    val intChoiceSample = JsonAndObj(intChoiceFormatJsonString, IntChoiceStructDef(Seq(1, 2)))
 
     val seqIntChoiceFormatJsonString: JsValue =
       s"""
@@ -147,7 +148,7 @@ class JsonStructDefsJsonProtocolSpec extends UnitTestSpec {
          |}
          |""".stripMargin.parseJson
 
-    val seqIntChoiceSample = JsonAndObj(seqIntChoiceFormatJsonString, IntSeqChoiceStructDef(Seq(1,2)))
+    val seqIntChoiceSample = JsonAndObj(seqIntChoiceFormatJsonString, IntSeqChoiceStructDef(Seq(1, 2)))
 
     val stringChoiceFormatJsonString: JsValue =
       s"""
@@ -190,7 +191,8 @@ class JsonStructDefsJsonProtocolSpec extends UnitTestSpec {
          |  "valueFormat": $seqIntChoiceFormatJsonString,
          |  "required": true
          | }
-         |]
+         |],
+         |"conditionalFieldsSeq": []
          |}
          |""".stripMargin.parseJson
 
@@ -205,33 +207,83 @@ class JsonStructDefsJsonProtocolSpec extends UnitTestSpec {
          |}
          |""".stripMargin.parseJson
 
-    val conditionalChoiceFormatJsonString: JsValue =
+    val intChoiceFieldDefJsonString = s"""{
+      "nameFormat": {
+        "type": "STRING_CONSTANT",
+        "value": "c"
+      },
+      "valueFormat": $intChoiceFormatJsonString,
+      "required": true
+    }"""
+    val minMaxFloatFieldDefJsonString = s"""{
+      "nameFormat": {
+        "type": "STRING_CONSTANT",
+        "value": "d"
+      },
+      "valueFormat": $minMaxFloatFormatJsonString,
+      "required": true
+    }"""
+    val conditionalFieldsJsonString: JsValue =
       s"""
          |{
-         |"type": "$CONDITIONAL_CHOICE_TYPE",
          |"$CONDITION_FIELD_ID_KEY": "field1",
-         |"$CONDITION_FIELD_VALUES_TO_FORMAT_KEY": {
-         |  "value1": $intChoiceFormatJsonString,
-         |  "value2": $minMaxFloatFormatJsonString
+         |"$CONDITIONAL_MAPPING_KEY": {
+         |  "a": [$intChoiceFieldDefJsonString],
+         |  "b": [$minMaxFloatFieldDefJsonString]
          |}
          |}
          |""".stripMargin.parseJson
 
-    val nestedSample = JsonAndObj(nestedFormatJsonString, NestedFieldSeqStructDef(Seq(
-      FieldType(StringConstantStructDef("a"), intChoiceSample.obj.asInstanceOf[StructDef[_]], required = true),
-      FieldType(StringConstantStructDef("b"), seqIntChoiceSample.obj.asInstanceOf[StructDef[_]], required = true)
-    )))
+    val nestedChoiceFormatJsonString: JsValue =
+      s"""
+         |{
+         |"type": "$NESTED_TYPE",
+         |"fields": [
+         | {
+         |  "nameFormat": {
+         |    "type": "STRING_CONSTANT",
+         |    "value": "a"
+         |  },
+         |  "valueFormat": $intChoiceFormatJsonString,
+         |  "required": true
+         | },
+         | {
+         |  "nameFormat": {
+         |    "type": "STRING_CONSTANT",
+         |    "value": "field1"
+         |  },
+         |  "valueFormat": $stringChoiceFormatJsonString,
+         |  "required": true
+         | }
+         |],
+         |"conditionalFieldsSeq": [
+         |  $conditionalFieldsJsonString
+         |]
+         |}
+         |""".stripMargin.parseJson
+
+    val nestedSample = JsonAndObj(nestedFormatJsonString, NestedFieldSeqStructDef(
+      Seq(
+        FieldDef(StringConstantStructDef("a"), intChoiceSample.obj.asInstanceOf[StructDef[_]], required = true),
+        FieldDef(StringConstantStructDef("b"), seqIntChoiceSample.obj.asInstanceOf[StructDef[_]], required = true)
+      ),
+      Seq.empty[ConditionalFields]
+    ))
 
     val eitherOfSample = JsonAndObj(eitherOfFormatJsonString, EitherOfStructDef(Seq(
       intChoiceSample.obj.asInstanceOf[StructDef[_]],
       minMaxFloatSample.obj.asInstanceOf[StructDef[_]])
     ))
 
-    val conditionalChoiceSample = JsonAndObj(conditionalChoiceFormatJsonString, ConditionalFieldValueChoiceStructDef(
-      "field1",
-      Map(
-        "value1" -> intChoiceSample.obj.asInstanceOf[StructDef[_]],
-        "value2" -> minMaxFloatSample.obj.asInstanceOf[StructDef[_]])
+    val conditionalNestedSample = JsonAndObj(nestedChoiceFormatJsonString, NestedFieldSeqStructDef(
+      Seq(
+        FieldDef(StringConstantStructDef("a"), intChoiceSample.obj.asInstanceOf[StructDef[_]], required = true),
+        FieldDef(StringConstantStructDef("field1"), stringChoiceSample.obj.asInstanceOf[StructDef[_]], required = true)
+      ),
+      Seq(ConditionalFields("field1", Map(
+        "a" -> Seq(FieldDef(StringConstantStructDef("c"), intChoiceSample.obj.asInstanceOf[StructDef[_]], required = true)),
+        "b" -> Seq(FieldDef(StringConstantStructDef("d"), minMaxFloatSample.obj.asInstanceOf[StructDef[_]], required = true)
+      ))))
     ))
 
     val sampleCollection1: Seq[JsonAndObj] = Seq(
@@ -247,7 +299,7 @@ class JsonStructDefsJsonProtocolSpec extends UnitTestSpec {
       nestedSample,
       stringConstantSample,
       eitherOfSample,
-      conditionalChoiceSample
+      conditionalNestedSample
     )
 
   }

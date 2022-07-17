@@ -18,8 +18,9 @@
 package de.awagen.kolibri.datatypes.types
 
 import de.awagen.kolibri.datatypes.testclasses.UnitTestSpec
-import de.awagen.kolibri.datatypes.types.StructDefs._
+import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
 import de.awagen.kolibri.datatypes.types.JsonStructDefs._
+import de.awagen.kolibri.datatypes.types.StructDefs._
 import de.awagen.kolibri.datatypes.utils.MathUtils
 import spray.json.{DeserializationException, JsArray, JsBoolean, JsNumber, JsObject, JsString}
 
@@ -34,29 +35,19 @@ object StructDefs {
   val keyStructDef1: BaseStructDef[_] = RegexStructDef("^k\\w+".r)
   val stringConstantStructDef1: BaseStructDef[_] = StringConstantStructDef("constValue")
 
-  val conditionalChoiceStructDef: BaseStructDef[_] = ConditionalFieldValueChoiceStructDef(
-    "field1",
-    Map("value1" -> minMaxStructDef, "value2" -> choiceStructDef1)
-  )
-
-  val conditionalChoiceStructDef1: BaseStructDef[_] = ConditionalFieldValueChoiceStructDef(
-    "choice1",
-    Map("a" -> minMaxStructDef, "b" -> choiceStructDef1)
-  )
-
-  val validConditionalChoiceStructDef1Obj_a = new JsObject(Map(
+  val validConditionalFieldValueStructDef1Obj_a = new JsObject(Map(
     "choice1" -> JsString("a"),
     "conditional1" -> JsNumber(1.2)
   ))
-  val invalidConditionalChoiceStructDef1Obj_a = new JsObject(Map(
+  val invalidConditionalFieldValueStructDef1Obj_a = new JsObject(Map(
     "choice1" -> JsString("a"),
     "conditional1" -> JsString("a")
   ))
-  val validConditionalChoiceStructDef1Obj_b = new JsObject(Map(
+  val validConditionalFieldValueStructDef1Obj_b = new JsObject(Map(
     "choice1" -> JsString("b"),
     "conditional1" -> JsString("a")
   ))
-  val invalidConditionalChoiceStructDef1Obj_b = new JsObject(Map(
+  val invalidConditionalFieldValueStructDef1Obj_b = new JsObject(Map(
     "choice1" -> JsString("b"),
     "conditional1" -> JsNumber(1.2)
   ))
@@ -67,19 +58,14 @@ object StructDefs {
     seqChoiceStructDef1
   ))
 
-  val nestedStructDef1: BaseStructDef[_] = NestedFieldSeqStructDef(Seq(
+  val nestedStructDef1: StructDef[_] = NestedFieldSeqStructDef(Seq(
     Fields.regexStructDef1Field,
     Fields.regexStructDef2Field,
     Fields.choiceStructDef1Field,
     Fields.seqChoiceStructDef1Field
-  ))
+  ), Seq.empty)
 
-  val emptyNestedStructDef: BaseStructDef[_] = NestedFieldSeqStructDef(Seq.empty)
-
-  val nestedStructDef2: BaseStructDef[_] = NestedFieldSeqStructDef(Seq(
-    Fields.choiceStructDef1Field,
-    Fields.conditionalChoiceStructDef1Field
-  ))
+  val emptyNestedStructDef: StructDef[_] = NestedFieldSeqStructDef(Seq.empty, Seq.empty)
 
   val validNestedStructDef1Obj = new JsObject(Map(
     "regex1" -> JsString("itWas"),
@@ -105,14 +91,13 @@ object StructDefs {
 }
 
 object Fields {
-  val regexStructDef1Field: FieldType = FieldType(StringConstantStructDef("regex1"), regexStructDef1, required = true)
-  val regexStructDef2Field: FieldType = FieldType(StringConstantStructDef("regex2"), regexStructDef2, required = true)
-  val seqRegexStructDef1Field: FieldType = FieldType(StringConstantStructDef("seqRegex1"), seqRegexStructDef1, required = true)
-  val choiceStructDef1Field: FieldType = FieldType(StringConstantStructDef("choice1"), choiceStructDef1, required = true)
-  val seqChoiceStructDef1Field: FieldType = FieldType(StringConstantStructDef("seqChoice1"), seqChoiceStructDef1, required = true)
-  val minMaxStructDefField: FieldType = FieldType(StringConstantStructDef("minMax1"), minMaxStructDef, required = true)
-  val seqMinMaxStructDefField: FieldType = FieldType(StringConstantStructDef("seqMinMax1"), seqMinMaxStructDef, required = true)
-  val conditionalChoiceStructDef1Field: FieldType = FieldType(StringConstantStructDef("conditional1"), conditionalChoiceStructDef1, required = true)
+  val regexStructDef1Field: FieldDef = FieldDef(StringConstantStructDef("regex1"), regexStructDef1, required = true)
+  val regexStructDef2Field: FieldDef = FieldDef(StringConstantStructDef("regex2"), regexStructDef2, required = true)
+  val seqRegexStructDef1Field: FieldDef = FieldDef(StringConstantStructDef("seqRegex1"), seqRegexStructDef1, required = true)
+  val choiceStructDef1Field: FieldDef = FieldDef(StringConstantStructDef("choice1"), choiceStructDef1, required = true)
+  val seqChoiceStructDef1Field: FieldDef = FieldDef(StringConstantStructDef("seqChoice1"), seqChoiceStructDef1, required = true)
+  val minMaxStructDefField: FieldDef = FieldDef(StringConstantStructDef("minMax1"), minMaxStructDef, required = true)
+  val seqMinMaxStructDefField: FieldDef = FieldDef(StringConstantStructDef("seqMinMax1"), seqMinMaxStructDef, required = true)
 }
 
 class JsonStructDefsSpec extends UnitTestSpec {
@@ -201,23 +186,6 @@ class JsonStructDefsSpec extends UnitTestSpec {
       emptyNestedStructDef.cast(invalidRegex2NestedStructDef1Obj)
     }
 
-    "NestedStructDef should accept correct conditional fields" in {
-      nestedStructDef2.cast(validConditionalChoiceStructDef1Obj_a)
-      nestedStructDef2.cast(validConditionalChoiceStructDef1Obj_b)
-    }
-
-    "NestedStructDef should reject wrong conditional fields - 1" in {
-      intercept[ClassCastException] {
-        nestedStructDef2.cast(invalidConditionalChoiceStructDef1Obj_a)
-      }
-    }
-
-    "NestedStructDef should reject wrong conditional fields - 2" in {
-      intercept[IllegalArgumentException] {
-        nestedStructDef2.cast(invalidConditionalChoiceStructDef1Obj_b)
-      }
-    }
-
     "EitherOfStructDef should declare valid if either format applies" in {
       eitherOfStructDef1.cast(JsString("constValue")) mustBe "constValue"
       eitherOfStructDef1.cast(JsString("k1")) mustBe "k1"
@@ -233,17 +201,6 @@ class JsonStructDefsSpec extends UnitTestSpec {
       }
       intercept[IllegalArgumentException] {
         eitherOfStructDef1.cast(JsArray(Seq(JsString("a"), JsString("c")).toVector))
-      }
-    }
-
-    "ConditionalFieldValueChoiceStructDef should declare valid if any of the option declares valid" in {
-      conditionalChoiceStructDef.cast(JsNumber(1.1)) mustBe 1.1D
-      conditionalChoiceStructDef.cast(JsString("a")) mustBe "a"
-    }
-
-    "ConditionalFieldValueChoiceStructDef should throw exception invalid if none of the option declares valid" in {
-      intercept[IllegalArgumentException] {
-        conditionalChoiceStructDef.cast(JsString("c"))
       }
     }
 

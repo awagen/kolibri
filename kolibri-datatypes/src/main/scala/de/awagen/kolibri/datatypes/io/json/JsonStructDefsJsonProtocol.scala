@@ -17,10 +17,11 @@
 
 package de.awagen.kolibri.datatypes.io.json
 
-import de.awagen.kolibri.datatypes.io.json.JsonStructDefsJsonProtocol.StructDefTypes._
 import de.awagen.kolibri.datatypes.io.json.JsonStructDefsJsonProtocol.JsonKeys._
+import de.awagen.kolibri.datatypes.io.json.JsonStructDefsJsonProtocol.StructDefTypes._
+import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
 import de.awagen.kolibri.datatypes.types.JsonStructDefs._
-import spray.json.DefaultJsonProtocol.{BooleanJsonFormat, DoubleJsonFormat, FloatJsonFormat, IntJsonFormat, StringJsonFormat, immSeqFormat, jsonFormat3, lazyFormat, mapFormat, rootFormat}
+import spray.json.DefaultJsonProtocol.{BooleanJsonFormat, DoubleJsonFormat, FloatJsonFormat, IntJsonFormat, StringJsonFormat, immSeqFormat, jsonFormat2, jsonFormat3, lazyFormat, mapFormat, rootFormat}
 import spray.json.{JsArray, JsBoolean, JsNumber, JsObject, JsString, JsValue, JsonFormat, RootJsonFormat}
 
 import scala.util.matching.Regex
@@ -38,11 +39,12 @@ object JsonStructDefsJsonProtocol {
     val MIN_KEY = "min"
     val MAX_KEY = "max"
     val FIELDS_KEY = "fields"
+    val CONDITIONAL_FIELDS_SEQ_KEY = "conditionalFieldsSeq"
     val NAME_FORMAT_KEY = "nameFormat"
     val REQUIRED_KEY = "required"
     val FORMATS_KEY = "formats"
     val CONDITION_FIELD_ID_KEY = "conditionFieldId"
-    val CONDITION_FIELD_VALUES_TO_FORMAT_KEY = "conditionFieldValuesToFormat"
+    val CONDITIONAL_MAPPING_KEY = "mapping"
     val PER_ELEMENT_FORMAT_KEY = "perElementFormat"
   }
 
@@ -85,8 +87,9 @@ object JsonStructDefsJsonProtocol {
 
   // needed to satisfy the demand for JsonFormat[Format[_]] in fieldTypeFormat
   implicit val lazyJsonStructDefsFormat: JsonFormat[StructDef[_]] = lazyFormat(JsonStructDefsFormat)
+  implicit val lazyJsonConditionalFieldsFormat: RootJsonFormat[ConditionalFields] = rootFormat(lazyFormat(jsonFormat2(ConditionalFields)))
   implicit val lazyJsonStringStructDefsFormat: JsonFormat[StructDef[String]] = lazyFormat(JsonStringStructDefFormat)
-  implicit val fieldTypeFormat: RootJsonFormat[FieldType] = rootFormat(lazyFormat(jsonFormat3(FieldType)))
+  implicit val fieldDefFormat: RootJsonFormat[FieldDef] = rootFormat(lazyFormat(jsonFormat3(FieldDef)))
 
   implicit object JsonStringStructDefFormat extends JsonFormat[StructDef[String]] {
     override def read(json: JsValue): StructDef[String] = json match {
@@ -157,8 +160,9 @@ object JsonStructDefsJsonProtocol {
           val choices = fields(CHOICES_KEY).convertTo[Seq[String]]
           StringSeqChoiceStructDef(choices)
         case StructDefTypes.NESTED_TYPE =>
-          val types = fields(FIELDS_KEY).convertTo[Seq[FieldType]]
-          NestedFieldSeqStructDef(types)
+          val types = fields(FIELDS_KEY).convertTo[Seq[FieldDef]]
+          val conditionalFieldsSeq = fields(CONDITIONAL_FIELDS_SEQ_KEY).convertTo[Seq[ConditionalFields]]
+          NestedFieldSeqStructDef(types, conditionalFieldsSeq)
         case StructDefTypes.MAP_TYPE =>
           val keyFormat = fields(KEY_FORMAT_KEY).convertTo[StructDef[String]]
           val valueFormat = fields(VALUE_FORMAT_KEY).convertTo[StructDef[_]]
@@ -166,10 +170,6 @@ object JsonStructDefsJsonProtocol {
         case StructDefTypes.EITHER_OF_TYPE =>
           val formats = fields(FORMATS_KEY).convertTo[Seq[StructDef[_]]]
           EitherOfStructDef(formats)
-        case StructDefTypes.CONDITIONAL_CHOICE_TYPE =>
-          val conditionFieldId = fields(CONDITION_FIELD_ID_KEY).convertTo[String]
-          val conditionFieldValuesToFormat = fields(CONDITION_FIELD_VALUES_TO_FORMAT_KEY).convertTo[Map[String, StructDef[_]]]
-          ConditionalFieldValueChoiceStructDef(conditionFieldId, conditionFieldValuesToFormat)
         case StructDefTypes.GENERIC_SEQ_FORMAT_TYPE =>
           val format = fields(PER_ELEMENT_FORMAT_KEY).convertTo[StructDef[_]]
           GenericSeqStructDef(format)
@@ -258,13 +258,27 @@ object JsonStructDefsJsonProtocol {
         MIN_KEY -> JsNumber(min),
         MAX_KEY -> JsNumber(max)
       ))
-      case NestedFieldSeqStructDef(fields) => new JsObject(Map(
+      case NestedFieldSeqStructDef(fields, conditionalFieldsSeq) => new JsObject(Map(
         TYPE_KEY -> JsString(NESTED_TYPE),
         FIELDS_KEY -> new JsArray(fields.map(x => {
           new JsObject(Map(
             NAME_FORMAT_KEY -> write(x.nameFormat),
             REQUIRED_KEY -> JsBoolean(x.required),
             VALUE_FORMAT_KEY -> write(x.valueFormat)
+          ))
+        }).toVector),
+        CONDITIONAL_FIELDS_SEQ_KEY -> new JsArray(conditionalFieldsSeq.map(x => {
+          new JsObject(Map(
+            CONDITION_FIELD_ID_KEY -> JsString(x.conditionFieldId),
+            CONDITIONAL_MAPPING_KEY -> new JsObject(x.mapping.map(entry => {
+              (entry._1, new JsArray(entry._2.map(fieldDef => {
+                new JsObject(Map(
+                  NAME_FORMAT_KEY -> write(fieldDef.nameFormat),
+                  REQUIRED_KEY -> JsBoolean(fieldDef.required),
+                  VALUE_FORMAT_KEY -> write(fieldDef.valueFormat)
+                ))
+              }).toVector))
+            }))
           ))
         }).toVector)
       ))
@@ -276,11 +290,6 @@ object JsonStructDefsJsonProtocol {
       case EitherOfStructDef(formats) => new JsObject(Map(
         TYPE_KEY -> JsString(EITHER_OF_TYPE),
         FORMATS_KEY -> JsArray(formats.map(format => write(format)).toVector)
-      ))
-      case ConditionalFieldValueChoiceStructDef(conditionFieldId, conditionFieldValuesToFormat) => new JsObject(Map(
-        TYPE_KEY -> JsString(CONDITIONAL_CHOICE_TYPE),
-        CONDITION_FIELD_ID_KEY -> JsString(conditionFieldId),
-        CONDITION_FIELD_VALUES_TO_FORMAT_KEY -> JsObject(conditionFieldValuesToFormat.view.map(x => (x._1, write(x._2))).toSeq:_*)
       ))
       case GenericSeqStructDef(format) => new JsObject(Map(
         TYPE_KEY -> JsString(GENERIC_SEQ_FORMAT_TYPE),

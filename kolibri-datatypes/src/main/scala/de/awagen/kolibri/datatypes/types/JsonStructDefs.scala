@@ -18,8 +18,10 @@
 package de.awagen.kolibri.datatypes.types
 
 import de.awagen.kolibri.datatypes.io.json.AnyJsonProtocol.AnyJsonFormat
+import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
+import de.awagen.kolibri.datatypes.types.JsonStructDefs.StructDef
 import de.awagen.kolibri.datatypes.types.JsonStructDefs.Validations.FunctionConversions._
-import de.awagen.kolibri.datatypes.types.JsonStructDefs.Validations.{canBeCastAndIsValidFormat, jsObjectFulfillsKeyAndValueFormat, matchesOneOfChoices, matchesRegex, matchesValueMap, seqMatchesOneOfChoices, seqMatchesRegex, seqWithinMinMax, withinMinMax}
+import de.awagen.kolibri.datatypes.types.JsonStructDefs.Validations.{canBeCastAndIsValidFormat, jsObjectFulfillsKeyAndValueFormat, logger, matchesOneOfChoices, matchesRegex, seqMatchesOneOfChoices, seqMatchesRegex, seqWithinMinMax, withinMinMax}
 import org.slf4j.{Logger, LoggerFactory}
 import spray.json.DefaultJsonProtocol.{BooleanJsonFormat, DoubleJsonFormat, FloatJsonFormat, IntJsonFormat, StringJsonFormat, immSeqFormat, mapFormat}
 import spray.json.{JsArray, JsObject, JsValue, JsonReader}
@@ -28,11 +30,25 @@ import scala.math.Ordering.Implicits.infixOrderingOps
 import scala.util.matching.Regex
 
 
+object FieldDefinitions {
+  /**
+   * Trait for definition of fields. Only value format mandatory since this covers single fields that come with
+   * nameFormat and multi-fields that contain multiple single field definitions that need to occur in a nested
+   * structure (e.g JsObject)
+   */
+  case class FieldDef(nameFormat: StructDef[String], valueFormat: StructDef[_], required: Boolean)
+}
+
+
 object JsonStructDefs {
 
   object Validations {
 
     val logger: Logger = LoggerFactory.getLogger(this.getClass)
+
+    trait ValidationResult
+
+    case class ValidationFail(fieldName: String, reason: String) extends ValidationResult
 
     object FunctionConversions {
 
@@ -54,7 +70,6 @@ object JsonStructDefs {
     }
 
 
-
     def matchesRegex(regex: Regex): String => Boolean = x => regex.matches(x)
 
     def seqMatchesRegex(regex: Regex): Seq[String] => Boolean = values => values.forall(matchesRegex(regex))
@@ -67,18 +82,18 @@ object JsonStructDefs {
 
     def seqWithinMinMax[T: Numeric](min: T, max: T): Seq[T] => Boolean = values => values.forall(withinMinMax(min, max))
 
-    def getJsObjKeyForFormat(field: FieldType, jsObject: JsObject): Option[String] = {
-      jsObject.fields.keys.find(x => field.nameFormat.isValid(x))
+    def getJsObjKeyForFormat(field: FieldDef, jsObject: JsObject): Option[String] = {
+      jsObject.fields.keys.find(x => field.nameFormat.castValueIsValid(x))
     }
 
-    def getMapKeyForFormat(field: FieldType, map: Map[String, _]): Option[String] = {
-      map.keys.find(x => field.nameFormat.isValid(x))
+    def getMapKeyForFormat(field: FieldDef, map: Map[String, _]): Option[String] = {
+      map.keys.find(x => field.nameFormat.castValueIsValid(x))
     }
 
     def canBeCastAndIsValidFormat(format: StructDef[_], element: JsValue): Boolean = {
       try {
         val castValue = format.cast(element)
-        format.isValid(castValue)
+        format.castValueIsValid(castValue)
       }
       catch {
         case _: Exception =>
@@ -98,18 +113,18 @@ object JsonStructDefs {
       }
     }
 
-    def mapContainsKeyWithValidValue(field: FieldType, map: Map[String, _]): Boolean = {
+    def mapContainsKeyWithValidValue(field: FieldDef, map: Map[String, _]): Boolean = {
       val found = getMapKeyForFormat(field, map)
-      found.exists(foundField => field.valueFormat.isValid(map(foundField)))
+      found.exists(foundField => field.valueFormat.castValueIsValid(map(foundField)))
     }
 
-    def matchesValueMap(fields: Seq[FieldType]): Map[String, _] => Boolean = map => {
+    def matchesValueMap(fields: Seq[FieldDef]): Map[String, _] => Boolean = map => {
       fields.forall(field => {
         val matchingKey: Option[String] = getMapKeyForFormat(field, map)
         try {
           if (!field.required) {
-            if (matchingKey.nonEmpty){
-              field.valueFormat.isValid(map(matchingKey.get))
+            if (matchingKey.nonEmpty) {
+              field.valueFormat.castValueIsValid(map(matchingKey.get))
             }
             else true
           }
@@ -126,7 +141,7 @@ object JsonStructDefs {
     }
 
     def jsObjectFulfillsKeyAndValueFormat(keyFormat: StructDef[String], valueFormat: StructDef[_], jsObj: JsObject): Boolean = {
-      val failedKeyValidations: Iterable[String] = jsObj.fields.keys.filter(key => !keyFormat.isValid(key))
+      val failedKeyValidations: Iterable[String] = jsObj.fields.keys.filter(key => !keyFormat.castValueIsValid(key))
       val failedValueValidations: Iterable[JsValue] = jsObj.fields.values.filter(value => {
         !jsValueCanBeCast(value, valueFormat)
       })
@@ -154,7 +169,7 @@ object JsonStructDefs {
    */
   trait StructDef[+T] {
 
-    def isValid(el: Any): Boolean
+    def castValueIsValid(el: Any): Boolean
 
     def cast(value: JsValue): T
 
@@ -168,11 +183,11 @@ object JsonStructDefs {
    */
   abstract class BaseStructDef[+T](val isValidFunc: Any => Boolean = _ => true)(implicit ev: JsonReader[T]) extends StructDef[T] {
 
-    def isValid(el: Any): Boolean = isValidFunc.apply(el)
+    def castValueIsValid(el: Any): Boolean = isValidFunc.apply(el)
 
     def cast(value: JsValue): T = {
       value.convertTo[T] match {
-        case e if !isValid(e) =>
+        case e if !castValueIsValid(e) =>
           throw new IllegalArgumentException(s"value '$e' is not valid")
         case e =>
           e
@@ -186,35 +201,13 @@ object JsonStructDefs {
    */
   trait NestedStructDef[+T] extends StructDef[Map[String, T]] {
 
-    def fields: Seq[FieldType]
-
-  }
-
-  /**
-   * Conditional format that changes applied format depending on the value of the field defined as condition.
-   * Note that this is limited to string keys right now, so main usage is some type selector that
-   * causes conditional format switch depending on its currently selected value.
-   * Mainly serves to avoid subsequent requests to backend, while all conditional info can be
-   * consistently submitted to frontend to apply first line of validations and suggestions of possible values
-   * there.
-   * Note that the right isValid methods have to be invoked, and main place of invoking will be within the
-   * NestedFormat, since other formats mainly have single fields in scope, while here we need the
-   * conditioned-on field as well
-   */
-  trait ConditionalStructDef[+T] extends StructDef[T] {
-
-    def conditionFieldId: String
-
-    def conditionFieldValuesToFormat: Map[String, StructDef[T]]
-
-    def isValid(conditionValue: String, conditionedValue: Any): Boolean
-
-    def cast(conditionValue: String, value: JsValue): T
+    def fields: Seq[FieldDef]
 
   }
 
   /**
    * Format
+   *
    * @param regex
    */
   case class RegexStructDef(regex: Regex) extends BaseStructDef[String](toAnyInput(matchesRegex(regex)))
@@ -229,7 +222,9 @@ object JsonStructDefs {
    * @tparam T - type to cast to
    */
   class ChoiceStructDef[T](choices: Seq[T])(implicit ev: JsonReader[T]) extends BaseStructDef[T](matchesOneOfChoices(choices))
+
   case class IntChoiceStructDef(choices: Seq[Int]) extends ChoiceStructDef[Int](choices)
+
   case class StringChoiceStructDef(choices: Seq[String]) extends ChoiceStructDef[String](choices)
 
   /**
@@ -240,7 +235,9 @@ object JsonStructDefs {
    * @tparam T - type to cast to
    */
   class SeqChoiceStructDef[T](choices: Seq[T])(implicit ev: JsonReader[Seq[T]]) extends BaseStructDef[Seq[T]](toAnyInput(seqMatchesOneOfChoices(choices)))
+
   case class IntSeqChoiceStructDef(choices: Seq[Int]) extends SeqChoiceStructDef[Int](choices)
+
   case class StringSeqChoiceStructDef(choices: Seq[String]) extends SeqChoiceStructDef[String](choices)
 
   /**
@@ -253,8 +250,11 @@ object JsonStructDefs {
    * @tparam T - type to cast to
    */
   class MinMaxStructDef[T](min: T, max: T)(implicit ev: Numeric[T], evR: JsonReader[T]) extends BaseStructDef[T](toAnyInput(withinMinMax(min, max)))
+
   case class IntMinMaxStructDef(min: Int, max: Int) extends MinMaxStructDef[Int](min, max)
+
   case class FloatMinMaxStructDef(min: Float, max: Float) extends MinMaxStructDef[Float](min, max)
+
   case class DoubleMinMaxStructDef(min: Double, max: Double) extends MinMaxStructDef[Double](min, max)
 
   /**
@@ -268,8 +268,11 @@ object JsonStructDefs {
    * @tparam T - type of the elements
    */
   class SeqMinMaxStructDef[T](min: T, max: T)(implicit ev: Numeric[T], evR: JsonReader[Seq[T]]) extends BaseStructDef[Seq[T]](toAnyInput(seqWithinMinMax(min, max)))
+
   case class IntSeqMinMaxStructDef(min: Int, max: Int) extends SeqMinMaxStructDef[Int](min, max)
+
   case class FloatSeqMinMaxStructDef(min: Float, max: Float) extends SeqMinMaxStructDef[Float](min, max)
+
   case class DoubleSeqMinMaxStructDef(min: Double, max: Double) extends SeqMinMaxStructDef[Double](min, max)
 
 
@@ -291,7 +294,7 @@ object JsonStructDefs {
    * Format accepting elements that is validated by any of the formats
    * (uses the first one that works)
    */
-  case class EitherOfStructDef(formats: Seq[StructDef[_]]) extends BaseStructDef[Any](x => formats.exists(format => format.isValid(x))) {
+  case class EitherOfStructDef(formats: Seq[StructDef[_]]) extends BaseStructDef[Any](x => formats.exists(format => format.castValueIsValid(x))) {
 
     override def cast(value: JsValue): Any = castIfMatchingFormatExistsElseThrowException(formats, value)
 
@@ -305,30 +308,29 @@ object JsonStructDefs {
 
   case class StringConstantStructDef(value: String) extends BaseStructDef[String](x => x.equals(value))
 
-  case class FieldType(nameFormat: StructDef[String], valueFormat: StructDef[_], required: Boolean)
-
   /**
    * Suitable if a nested format shall be specified where specific key values are not specified
    * but are subjected to the same format check
    */
-  case class MapStructDef(keyFormat: StructDef[String], valueFormat: StructDef[_]) extends BaseStructDef[Map[String,_]](toAnyInput(x => jsObjectFulfillsKeyAndValueFormat(keyFormat, valueFormat, x)))
+  case class MapStructDef(keyFormat: StructDef[String], valueFormat: StructDef[_]) extends BaseStructDef[Map[String, _]](toAnyInput(x => jsObjectFulfillsKeyAndValueFormat(keyFormat, valueFormat, x)))
 
   /**
    * expect JsValue to be JsArray with JsValue elements where each one needs to adhere
    * to the passed format
+   *
    * @param perElementFormat - format that needs to hold for each element
    */
   case class GenericSeqStructDef(perElementFormat: StructDef[_]) extends BaseStructDef[Seq[_]](_ => true) {
 
-    override def isValid(el: Any): Boolean = {
-      el.isInstanceOf[Seq[_]] && el.asInstanceOf[Seq[_]].forall(el => perElementFormat.isValid(el))
+    override def castValueIsValid(el: Any): Boolean = {
+      el.isInstanceOf[Seq[_]] && el.asInstanceOf[Seq[_]].forall(el => perElementFormat.castValueIsValid(el))
     }
 
     override def cast(value: JsValue): Seq[_] = {
       value match {
         case e: JsArray =>
           val castValueSeq = e.elements.map(x => perElementFormat.cast(x))
-          if (castValueSeq.forall(x => isValid(x))) castValueSeq
+          if (castValueSeq.forall(x => castValueIsValid(x))) castValueSeq
           else throw new IllegalArgumentException(s"not all elements in cast values '$castValueSeq' are valid for format '$perElementFormat'")
         case _ =>
           throw new IllegalArgumentException(s"value '$value' can not be cast to Sequence of elements valid for format '$perElementFormat'")
@@ -338,26 +340,12 @@ object JsonStructDefs {
 
   }
 
-  /**
-   * NOTE: in the validation and cast this format only checks if any of the provided Formats would
-   * be able to cast the value. It does not specifically do this for the current conditionFieldId and
-   * respective conditionFieldValue, thus the validation based on the actual value needs to happen within the NestedFormat.
-   * @param conditionFieldId - key of the value to be used as conditionalFieldValue
-   * @param conditionFieldValuesToFormat - mapping of values belonging to field defined by conditionalFieldId to Format
-   */
-  case class ConditionalFieldValueChoiceStructDef[+T](conditionFieldId: String, conditionFieldValuesToFormat: Map[String, StructDef[T]]) extends BaseStructDef[Any](x => conditionFieldValuesToFormat.values.exists(format => format.isValid(x))) with ConditionalStructDef[T] {
+  case class ConditionalFields(conditionFieldId: String, mapping: Map[String, Seq[FieldDef]]) {
 
-    override def cast(value: JsValue): T = castIfMatchingFormatExistsElseThrowException(conditionFieldValuesToFormat.values.toSeq, value).asInstanceOf[T]
-
-    override def isValid(conditionValue: String, conditionedValue: Any): Boolean = {
-      conditionFieldValuesToFormat.get(conditionValue).exists(format => format.isValid(conditionedValue))
+    def fieldsForConditionValue(conditionFieldValue: String): Seq[FieldDef] = {
+      mapping(conditionFieldValue)
     }
 
-    override def cast(conditionValue: String, value: JsValue): T = {
-      conditionFieldValuesToFormat.get(conditionValue)
-        .map(format => format.cast(value))
-        .get
-    }
   }
 
   /**
@@ -367,24 +355,78 @@ object JsonStructDefs {
    * "conditionalFields", whose valid format depends on the value of another field (the field values
    * on which conditionalFields are conditioned are limited to String type for now)
    */
-  case class NestedFieldSeqStructDef(fields: Seq[FieldType]) extends BaseStructDef[Map[String,_]](toAnyInput(matchesValueMap(fields.filter(field => !field.valueFormat.isInstanceOf[ConditionalStructDef[_]])))) with NestedStructDef[Any] {
+  case class NestedFieldSeqStructDef(fields: Seq[FieldDef], conditionalFieldsSeq: Seq[ConditionalFields]) extends NestedStructDef[Any] {
 
-    val conditionalFields: Seq[FieldType] = fields.filter(field => field.valueFormat.isInstanceOf[ConditionalStructDef[_]])
-    val standaloneFields: Seq[FieldType] = fields.filter(field => !field.valueFormat.isInstanceOf[ConditionalStructDef[_]])
-
-    def isValidForConditionals(el: Any): Boolean = {
-      val allValues = el.asInstanceOf[Map[String, _]]
-      conditionalFields.forall(conditionalField => {
-        val format: ConditionalStructDef[_] = conditionalField.valueFormat.asInstanceOf[ConditionalStructDef[_]]
-        val currentValueOfConditionalField: Any = allValues.find(x => conditionalField.nameFormat.isValid(x._1)).get._2
-        allValues.get(format.conditionFieldId).exists(conditionedFieldValue => format.isValid(conditionedFieldValue.asInstanceOf[String], currentValueOfConditionalField))
+    private[types] def retrieveConditionalFields(conditionValues: Map[String, _]): Either[String, Seq[FieldDef]] = {
+      val conditionalFieldOptSeq = conditionalFieldsSeq.map(conditionalFields => {
+        conditionValues
+          .get(conditionalFields.conditionFieldId)
+          .map(key => conditionalFields.fieldsForConditionValue(key.asInstanceOf[String]))
       })
+      val missingFields: Seq[ConditionalFields] = conditionalFieldOptSeq.indices.filter(index => conditionalFieldOptSeq(index).isEmpty).map(index => conditionalFieldsSeq(index))
+      if (missingFields.nonEmpty) {
+        val errorMsg = (Seq(s"current values: $conditionValues") ++
+          missingFields.map(x => s"current values do not match conditions - conditionField: ${x.conditionFieldId}, conditionValues: ${x.mapping.keys.mkString(" / ")}"))
+          .mkString("\n")
+        Left(errorMsg)
+      }
+      else {
+        val availableFieldDefs: Set[FieldDef] = conditionalFieldOptSeq.filter(x => x.nonEmpty).flatMap(x => x.get).toSet
+        Right(availableFieldDefs.toSeq)
+      }
     }
 
-    override def isValid(el: Any): Boolean = {
-      val eachStandaloneFieldIsValid = super.isValid(el)
-      val eachConditionalFieldIsValid = isValidForConditionals(el)
-      eachStandaloneFieldIsValid && eachConditionalFieldIsValid
+    private[types] def extractValuesForConditionFields(conditionFields: Seq[String], values: Map[String, JsValue]): Map[String, String] = {
+      conditionFields
+        .map(x => (x, values.get(x).map(y => y.convertTo[String])))
+        .filter(x => x._2.nonEmpty)
+        .map(x => (x._1, x._2.get))
+        .toMap
+    }
+
+    /**
+     * executing validation on all relevant fields (the normal fields and conditionals)
+     * @param el
+     * @return
+     */
+    override def castValueIsValid(el: Any): Boolean = {
+      val allValues = el.asInstanceOf[Map[String, _]]
+      // determine fields belonging to current conditional value states and add to fields to be checked
+      val conditionalValues: Either[String, Seq[FieldDef]] = retrieveConditionalFields(allValues)
+      if (conditionalValues.isLeft) {
+        logger.warn(conditionalValues.swap.getOrElse(""))
+        false
+      }
+      else {
+        // check all fields for occurrence
+        (conditionalValues.getOrElse(Seq.empty) ++ fields).forall(fieldDef => {
+          allValues.find(x => fieldDef.nameFormat.castValueIsValid(x._1))
+            .exists(field => fieldDef.valueFormat.castValueIsValid(field._2))
+        })
+      }
+    }
+
+    /**
+     * retrieve normal and conditional fields (depending on their condition values) and extract their values to Map
+     * @param value
+     * @return
+     */
+    override def cast(value: JsValue): Map[String, Any] = {
+      val allFields: Map[String, JsValue] = value.asJsObject.fields
+      val allConditionValues = extractValuesForConditionFields(conditionalFieldsSeq.map(x => x.conditionFieldId), allFields)
+      val conditionalFieldsOrError: Either[String, Seq[FieldDef]] = retrieveConditionalFields(allConditionValues)
+      if (conditionalFieldsOrError.isLeft) {
+        val errorMsg = conditionalFieldsOrError.swap.getOrElse("")
+        throw new IllegalArgumentException(errorMsg)
+      }
+      val conditionalFields = conditionalFieldsOrError.getOrElse(Seq.empty)
+
+      // retrieve unconditional single fields
+      (conditionalFields ++ fields).map(standaloneField => {
+        allFields.find(x => standaloneField.nameFormat.castValueIsValid(x._1))
+          .map(x => (x._1, standaloneField.valueFormat.cast(x._2)))
+          .get
+      }).toMap
     }
   }
 
