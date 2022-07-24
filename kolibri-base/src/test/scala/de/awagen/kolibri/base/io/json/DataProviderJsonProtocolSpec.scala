@@ -20,6 +20,7 @@ package de.awagen.kolibri.base.io.json
 import de.awagen.kolibri.base.domain.jobdefinitions.provider.data.DataProviders.OrderedMultiValuesProvider
 import de.awagen.kolibri.base.io.json.DataProviderJsonProtocol.orderedMultiValuesFormat
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
+import de.awagen.kolibri.datatypes.io.json.OrderedValuesJsonProtocol.DISTINCT_VALUES_TYPE
 import de.awagen.kolibri.datatypes.multivalues.{GridOrderedMultiValues, OrderedMultiValues}
 import de.awagen.kolibri.datatypes.values.DistinctValues
 import spray.json._
@@ -27,10 +28,10 @@ import spray.json._
 class DataProviderJsonProtocolSpec extends UnitTestSpec {
 
   val values: JsValue =
-    """
+    s"""
       |{
       |"data": {
-      | "type": "GRID_FROM_VALUES_SEQ_TYPE", "values":[{"name": "test", "values": [0.45, 0.32]}]
+      | "type": "GRID_FROM_VALUES_SEQ_TYPE", "values":[{"type": "$DISTINCT_VALUES_TYPE", "name": "test", "values": [0.45, 0.32]}]
       |}
       |}
       |""".stripMargin.parseJson

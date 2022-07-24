@@ -22,16 +22,17 @@ import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import spray.json.JsValue
 import spray.json._
 import IndexedGeneratorJsonProtocol._
+import de.awagen.kolibri.datatypes.io.json.OrderedValuesJsonProtocol.DISTINCT_VALUES_TYPE
 
 class IndexedGeneratorJsonProtocolSpec extends UnitTestSpec {
 
   val seqValueMapGeneratorFromMultiValues: JsValue =
-    """
+    s"""
       |{
       |"type": "BY_MULTIVALUES",
       |"values": [
-      |{"type": "GRID_FROM_VALUES_SEQ_TYPE", "values":[{"name": "test1", "values": [0.10, 0.11]}]},
-      |{"type": "GRID_FROM_VALUES_SEQ_TYPE", "values":[{"name": "test2", "values": [0.21, 0.22]}]}
+      |{"type": "GRID_FROM_VALUES_SEQ_TYPE", "values":[{"type": "$DISTINCT_VALUES_TYPE", "name": "test1", "values": [0.10, 0.11]}]},
+      |{"type": "GRID_FROM_VALUES_SEQ_TYPE", "values":[{"type": "$DISTINCT_VALUES_TYPE", "name": "test2", "values": [0.21, 0.22]}]}
       |]
       |}
       |""".stripMargin.parseJson
