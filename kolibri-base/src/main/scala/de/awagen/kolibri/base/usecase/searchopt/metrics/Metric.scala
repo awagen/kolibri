@@ -16,7 +16,24 @@
 
 package de.awagen.kolibri.base.usecase.searchopt.metrics
 
-import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.CalculationResult
+import de.awagen.kolibri.base.io.json.MetricFunctionJsonProtocol.MetricFunction
+import de.awagen.kolibri.base.io.json.MetricFunctionJsonProtocol
+import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
+import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
+import de.awagen.kolibri.datatypes.types.JsonStructDefs.{NestedFieldSeqStructDef, RegexStructDef, StringConstantStructDef}
 
+object Metric extends WithStructDef {
 
-case class Metric(name: String, function: Function[Seq[Double], CalculationResult[Double]])
+  val NAME_KEY = "name"
+  val FUNCTION_KEY = "function"
+
+  override def structDef: JsonStructDefs.StructDef[_] = NestedFieldSeqStructDef(
+    Seq(
+      FieldDef(StringConstantStructDef(NAME_KEY), RegexStructDef(".*".r), required = true),
+      FieldDef(StringConstantStructDef(FUNCTION_KEY), MetricFunctionJsonProtocol.structDef, required = true),
+    ),
+    Seq.empty
+  )
+}
+
+case class Metric(name: String, function: MetricFunction)

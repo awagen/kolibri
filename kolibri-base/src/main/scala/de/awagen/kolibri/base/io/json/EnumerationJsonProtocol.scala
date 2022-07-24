@@ -29,17 +29,27 @@ import de.awagen.kolibri.base.processing.execution.job.ActorRunnableSinkType.Act
 import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ValueType
 import de.awagen.kolibri.datatypes.io.json.EnumerationJsonProtocol.EnumerationProtocol
 import de.awagen.kolibri.datatypes.stores.MetricRow
+import de.awagen.kolibri.datatypes.types.JsonStructDefs.StringChoiceStructDef
+import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
 import spray.json.{DefaultJsonProtocol, DeserializationException, JsString, JsValue}
 
 
 object EnumerationJsonProtocol extends DefaultJsonProtocol {
 
-  implicit object valueTypeFormat extends EnumerationProtocol[ValueType.Value] {
+  implicit object valueTypeFormat extends EnumerationProtocol[ValueType.Value] with WithStructDef {
     override def read(json: JsValue): ValueType.Value = {
       json match {
         case JsString(txt) => ValueType.withName(txt.toUpperCase)
         case e => throw DeserializationException(s"Expected a value from ValueType.Value but got value $e")
       }
+    }
+
+    override def structDef: JsonStructDefs.StructDef[_] = {
+      StringChoiceStructDef(Seq(
+        ValueType.BODY.toString,
+        ValueType.HEADER.toString,
+        ValueType.URL_PARAMETER.toString,
+      ))
     }
   }
 

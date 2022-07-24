@@ -22,32 +22,87 @@ import de.awagen.kolibri.base.usecase.searchopt.parse.JsonSelectors.{JsValueSeqS
 import de.awagen.kolibri.base.usecase.searchopt.parse.TypedJsonSelectors.{TypedJsonSeqSelector, TypedJsonSingleValueSelector}
 import de.awagen.kolibri.datatypes.types.JsonTypeCast.JsonTypeCast
 import de.awagen.kolibri.datatypes.io.json.EnumerationJsonProtocol.namedTypesFormat
+import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
+import de.awagen.kolibri.datatypes.types.JsonStructDefs.{NestedFieldSeqStructDef, RegexStructDef, StringConstantStructDef}
+import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
 import spray.json.{DefaultJsonProtocol, JsValue, JsonFormat, enrichAny}
 
 
 object TypedJsonSelectorJsonProtocol extends DefaultJsonProtocol {
 
-  implicit object TypedJsonSeqSelectorFormat extends JsonFormat[TypedJsonSeqSelector] {
+  val CAST_TYPE_KEY = "castType"
+  val NAME_KEY = "name"
+  val SELECTOR_KEY = "selector"
+
+  implicit object TypedJsonSeqSelectorFormat extends JsonFormat[TypedJsonSeqSelector] with WithStructDef {
     override def read(json: JsValue): TypedJsonSeqSelector = json match {
-      case spray.json.JsObject(fields) if fields.contains("castType") =>
-        val name: String = fields("name").convertTo[String]
-        val selector: JsValueSeqSelector = fields("selector").convertTo[JsValueSeqSelector]
-        TypedJsonSeqSelector(name, selector, fields("castType").convertTo[JsonTypeCast])
+      case spray.json.JsObject(fields) if fields.contains(CAST_TYPE_KEY) =>
+        val name: String = fields(NAME_KEY).convertTo[String]
+        val selector: JsValueSeqSelector = fields(SELECTOR_KEY).convertTo[JsValueSeqSelector]
+        TypedJsonSeqSelector(name, selector, fields(CAST_TYPE_KEY).convertTo[JsonTypeCast])
     }
 
     override def write(obj: TypedJsonSeqSelector): JsValue = """{}""".toJson
+
+    override def structDef: JsonStructDefs.StructDef[_] = {
+      NestedFieldSeqStructDef(
+        Seq(
+          FieldDef(
+            StringConstantStructDef(CAST_TYPE_KEY),
+            de.awagen.kolibri.datatypes.io.json.EnumerationJsonProtocol.namedTypesFormat.structDef,
+            required = true
+          ),
+          FieldDef(
+            StringConstantStructDef(NAME_KEY),
+            // TODO: refine regex
+            RegexStructDef(".*".r),
+            required = true
+          ),
+          FieldDef(
+            StringConstantStructDef(SELECTOR_KEY),
+            JsonSelectorJsonProtocol.JsValueSeqSelectorFormat.structDef,
+            required = true
+          )
+        ),
+        Seq.empty
+      )
+    }
   }
 
-  implicit object TypedJsonSingleValueSelectorFormat extends JsonFormat[TypedJsonSingleValueSelector] {
+  implicit object TypedJsonSingleValueSelectorFormat extends JsonFormat[TypedJsonSingleValueSelector] with WithStructDef {
     override def read(json: JsValue): TypedJsonSingleValueSelector = json match {
-      case spray.json.JsObject(fields) if fields.contains("castType") =>
-        val name: String = fields("name").convertTo[String]
-        val selector: PlainSelector = fields("selector").convertTo[PlainSelector]
-        val typeCast: JsonTypeCast = fields("castType").convertTo[JsonTypeCast]
+      case spray.json.JsObject(fields) if fields.contains(CAST_TYPE_KEY) =>
+        val name: String = fields(NAME_KEY).convertTo[String]
+        val selector: PlainSelector = fields(SELECTOR_KEY).convertTo[PlainSelector]
+        val typeCast: JsonTypeCast = fields(CAST_TYPE_KEY).convertTo[JsonTypeCast]
         TypedJsonSingleValueSelector(name, selector, typeCast)
     }
 
     override def write(obj: TypedJsonSingleValueSelector): JsValue = """{}""".toJson
+
+    override def structDef: JsonStructDefs.StructDef[_] = {
+      NestedFieldSeqStructDef(
+        Seq(
+          FieldDef(
+            StringConstantStructDef(CAST_TYPE_KEY),
+            de.awagen.kolibri.datatypes.io.json.EnumerationJsonProtocol.namedTypesFormat.structDef,
+            required = true
+          ),
+          FieldDef(
+            StringConstantStructDef(NAME_KEY),
+            // TODO: refine regex
+            RegexStructDef(".*".r),
+            required = true
+          ),
+          FieldDef(
+            StringConstantStructDef(SELECTOR_KEY),
+            PlainSelectorFormat.structDef,
+            required = true
+          )
+        ),
+        Seq.empty
+      )
+    }
   }
 
 }

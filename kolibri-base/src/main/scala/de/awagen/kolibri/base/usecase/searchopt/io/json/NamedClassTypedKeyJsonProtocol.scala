@@ -17,22 +17,35 @@
 
 package de.awagen.kolibri.base.usecase.searchopt.io.json
 
-import de.awagen.kolibri.datatypes.types.NamedClassTyped
+import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
+import de.awagen.kolibri.datatypes.types.JsonStructDefs.{NestedFieldSeqStructDef, RegexStructDef, StringConstantStructDef, StringSeqChoiceStructDef}
+import de.awagen.kolibri.datatypes.types.{JsonStructDefs, NamedClassTyped, WithStructDef}
 import spray.json.{DefaultJsonProtocol, DeserializationException, JsValue, JsonFormat, enrichAny}
 
 object NamedClassTypedKeyJsonProtocol extends DefaultJsonProtocol {
 
-  implicit object NamedClassTypedKeyFormat extends JsonFormat[NamedClassTyped[_]] {
+  val NAME_KEY = "name"
+  val TYPE_KEY = "type"
+  val STRING_TYPE = "STRING"
+  val DOUBLE_TYPE = "DOUBLE"
+  val FLOAT_TYPE = "FLOAT"
+  val BOOLEAN_TYPE = "BOOLEAN"
+  val SEQ_STRING_TYPE = "SEQ[STRING]"
+  val SEQ_DOUBLE_TYPE = "SEQ[DOUBLE]"
+  val SEQ_FLOAT_TYPE = "SEQ[FLOAT]"
+  val SEQ_BOOLEAN_TYPE = "SEQ[BOOLEAN]"
+
+  implicit object NamedClassTypedKeyFormat extends JsonFormat[NamedClassTyped[_]] with WithStructDef {
     override def read(json: JsValue): NamedClassTyped[_] = json match {
-      case spray.json.JsObject(fields) if fields.contains("name") && fields.contains("type") => fields("type").convertTo[String] match {
-        case "STRING" => NamedClassTyped[String](fields("name").convertTo[String])
-        case "DOUBLE" => NamedClassTyped[Double](fields("name").convertTo[String])
-        case "FLOAT" => NamedClassTyped[Float](fields("name").convertTo[String])
-        case "BOOLEAN" => NamedClassTyped[Boolean](fields("name").convertTo[String])
-        case "SEQ[STRING]" => NamedClassTyped[Seq[String]](fields("name").convertTo[String])
-        case "SEQ[DOUBLE]" => NamedClassTyped[Seq[Double]](fields("name").convertTo[String])
-        case "SEQ[FLOAT]" => NamedClassTyped[Seq[Float]](fields("name").convertTo[String])
-        case "SEQ[BOOLEAN]" => NamedClassTyped[Seq[Boolean]](fields("name").convertTo[String])
+      case spray.json.JsObject(fields) if fields.contains(NAME_KEY) && fields.contains(TYPE_KEY) => fields(TYPE_KEY).convertTo[String] match {
+        case STRING_TYPE  => NamedClassTyped[String](fields(NAME_KEY).convertTo[String])
+        case DOUBLE_TYPE => NamedClassTyped[Double](fields(NAME_KEY).convertTo[String])
+        case FLOAT_TYPE => NamedClassTyped[Float](fields(NAME_KEY).convertTo[String])
+        case BOOLEAN_TYPE => NamedClassTyped[Boolean](fields(NAME_KEY).convertTo[String])
+        case SEQ_STRING_TYPE => NamedClassTyped[Seq[String]](fields(NAME_KEY).convertTo[String])
+        case SEQ_DOUBLE_TYPE => NamedClassTyped[Seq[Double]](fields(NAME_KEY).convertTo[String])
+        case SEQ_FLOAT_TYPE => NamedClassTyped[Seq[Float]](fields(NAME_KEY).convertTo[String])
+        case SEQ_BOOLEAN_TYPE => NamedClassTyped[Seq[Boolean]](fields(NAME_KEY).convertTo[String])
         case e => throw DeserializationException(s"Expected a defined type for ClassTyped, but got: $e")
       }
       case e => throw DeserializationException(s"Expected a value of type NamedClassType[T] but got value $e")
@@ -41,6 +54,29 @@ object NamedClassTypedKeyJsonProtocol extends DefaultJsonProtocol {
     override def write(obj: NamedClassTyped[_]): JsValue = {
       val typeIdent = obj.classType.toString.toUpperCase
       s"""{"name": "${obj.name}", "type": "$typeIdent"}""".toJson
+    }
+
+    override def structDef: JsonStructDefs.StructDef[_] = {
+      NestedFieldSeqStructDef(
+        Seq(
+          // TODO: refine regex
+          FieldDef(StringConstantStructDef(NAME_KEY), RegexStructDef(".*".r), required = true),
+          FieldDef(
+            StringConstantStructDef(TYPE_KEY),
+            StringSeqChoiceStructDef(Seq(
+              STRING_TYPE,
+              DOUBLE_TYPE,
+              FLOAT_TYPE,
+              BOOLEAN_TYPE,
+              SEQ_STRING_TYPE,
+              SEQ_DOUBLE_TYPE,
+              SEQ_FLOAT_TYPE,
+              SEQ_BOOLEAN_TYPE
+            )),
+            required = true)
+        ),
+        Seq.empty
+      )
     }
   }
 

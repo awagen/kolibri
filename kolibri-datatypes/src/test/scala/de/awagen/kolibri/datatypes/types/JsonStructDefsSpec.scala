@@ -1,18 +1,18 @@
 /**
- * Copyright 2022 Andreas Wagenmann
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+  * Copyright 2022 Andreas Wagenmann
+  *
+  * Licensed under the Apache License, Version 2.0 (the "License");
+  * you may not use this file except in compliance with the License.
+  * You may obtain a copy of the License at
+  *
+  * http://www.apache.org/licenses/LICENSE-2.0
+  *
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  */
 
 
 package de.awagen.kolibri.datatypes.types
@@ -58,12 +58,51 @@ object StructDefs {
     seqChoiceStructDef1
   ))
 
-  val nestedStructDef1: StructDef[_] = NestedFieldSeqStructDef(Seq(
-    Fields.regexStructDef1Field,
-    Fields.regexStructDef2Field,
-    Fields.choiceStructDef1Field,
-    Fields.seqChoiceStructDef1Field
-  ), Seq.empty)
+  val nestedStructDef1: StructDef[_] = NestedFieldSeqStructDef(
+    Seq(
+      Fields.regexStructDef1Field,
+      Fields.regexStructDef2Field,
+      Fields.choiceStructDef1Field,
+      Fields.seqChoiceStructDef1Field
+    ), Seq.empty)
+
+  val nestedChoiceStructDef: StructDef[_] = NestedFieldSeqStructDef(
+    Seq(
+      // field name choice1, options: ["a", "b"]
+      Fields.choiceStructDef1Field,
+    ),
+    Seq(
+      ConditionalFields(
+        "choice1",
+        Map(
+          // if "choice1"-field is "a", there must exist a field "seqChoice1"
+          // which should be a sequence ["a", "b"] options
+          "a" -> Seq(Fields.seqChoiceStructDef1Field),
+          // if "choice1"-field is "b", there must exist a field "regex1"
+          // which is string value adhering to following regex: "^itWas$"
+          "b" -> Seq(Fields.regexStructDef1Field)))
+    )
+  )
+
+  val validNestedChoiceStructDefObj1 = new JsObject(Map(
+    "choice1" -> JsString("a"),
+    "seqChoice1" -> JsArray(JsString("a"), JsString("b")),
+  ))
+
+  val invalidNestedChoiceStructDefObj1 = new JsObject(Map(
+    "choice1" -> JsString("b"),
+    "seqChoice1" -> JsArray(JsString("a"), JsString("b")),
+  ))
+
+  val validNestedChoiceStructDefObj2 = new JsObject(Map(
+    "choice1" -> JsString("b"),
+    "regex1" -> JsString("itWas")
+  ))
+
+  val invalidNestedChoiceStructDefObj2 = new JsObject(Map(
+    "choice1" -> JsString("a"),
+    "regex1" -> JsString("itWas")
+  ))
 
   val emptyNestedStructDef: StructDef[_] = NestedFieldSeqStructDef(Seq.empty, Seq.empty)
 
@@ -87,6 +126,16 @@ object StructDefs {
     "choice1" -> JsString("a"),
     "seqChoice1" -> JsArray(JsString("a"), JsString("b")),
   ))
+
+  val validNestedChoiceStructDef1ResultMap = Map(
+    "choice1" -> "a",
+    "seqChoice1" -> Seq("a", "b")
+  )
+
+  val validNestedChoiceStructDef2ResultMap = Map(
+    "choice1" -> "b",
+    "regex1" -> "itWas"
+  )
 
 }
 
@@ -184,6 +233,23 @@ class JsonStructDefsSpec extends UnitTestSpec {
 
     "NestedStructDef without fields shall always accept" in {
       emptyNestedStructDef.cast(invalidRegex2NestedStructDef1Obj)
+    }
+
+    "NestedStructDef with choice mappings should correctly parse conditional - 1" in {
+      nestedChoiceStructDef.cast(validNestedChoiceStructDefObj1).asInstanceOf[Map[String, Any]].toSet mustBe validNestedChoiceStructDef1ResultMap.toSet
+    }
+
+    "NestedStructDef with choice mappings should correctly parse conditional - 2" in {
+      nestedChoiceStructDef.cast(validNestedChoiceStructDefObj2).asInstanceOf[Map[String, Any]].toSet mustBe validNestedChoiceStructDef2ResultMap.toSet
+    }
+
+    "NestedStructDef with choice mappings should fail on incorrect conditional" in {
+      intercept[NoSuchElementException] {
+        nestedChoiceStructDef.cast(invalidNestedChoiceStructDefObj1)
+      }
+      intercept[NoSuchElementException] {
+        nestedChoiceStructDef.cast(invalidNestedChoiceStructDefObj2)
+      }
     }
 
     "EitherOfStructDef should declare valid if either format applies" in {

@@ -35,9 +35,13 @@ import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import spray.json.{DefaultJsonProtocol, RootJsonFormat}
 import de.awagen.kolibri.base.io.json.ParameterValuesJsonProtocol.ValueSeqGenProviderFormat
+import de.awagen.kolibri.base.usecase.searchopt.io.json.ParsingConfigJsonProtocol
+import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
+import de.awagen.kolibri.datatypes.types.JsonStructDefs.{BooleanStructDef, GenericSeqStructDef, IntMinMaxStructDef, MapStructDef, NestedFieldSeqStructDef, RegexStructDef, StringConstantStructDef, StringSeqStructDef, StringStructDef}
+import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
 
 
-object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSupport {
+object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSupport with WithStructDef {
 
   val JOB_NAME_FIELD = "jobName"
   val REQUEST_TASKS_FIELD = "requestTasks"
@@ -119,4 +123,101 @@ object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSu
     EXPECT_RESULTS_FROM_BATCH_CALCULATIONS_FIELD
   )
 
+  override def structDef: JsonStructDefs.StructDef[_] = {
+    NestedFieldSeqStructDef(
+      Seq(
+        FieldDef(
+          StringConstantStructDef(JOB_NAME_FIELD),
+          RegexStructDef(".+".r),
+          required = true
+        ),
+        FieldDef(
+          StringConstantStructDef(REQUEST_TASKS_FIELD),
+          IntMinMaxStructDef(0, 1000),
+          required = true
+        ),
+        FieldDef(
+          StringConstantStructDef(FIXED_PARAMS_FIELD),
+          MapStructDef(StringStructDef, StringSeqStructDef),
+          required = true
+        ),
+        FieldDef(
+          StringConstantStructDef(CONTEXT_PATH_FIELD),
+          StringStructDef,
+          required = true
+        ),
+        FieldDef(
+          StringConstantStructDef(CONNECTIONS_FIELD),
+          GenericSeqStructDef(ConnectionJsonProtocol.structDef),
+          required = true
+        ),
+        FieldDef(
+          StringConstantStructDef(REQUEST_PARAMETER_PERMUTATE_SEQ_FIELD),
+          GenericSeqStructDef(ParameterValuesJsonProtocol.ValueSeqGenProviderFormat.structDef),
+          required = true
+        ),
+        FieldDef(
+          StringConstantStructDef(BATCH_BY_INDEX_FIELD),
+          IntMinMaxStructDef(0, 1000),
+          required = true
+        ),
+        FieldDef(
+          StringConstantStructDef(PARSING_CONFIG_FIELD),
+          ParsingConfigJsonProtocol.structDef,
+          required = true
+        ),
+        FieldDef(
+          StringConstantStructDef(EXCLUDE_PARAMS_FROM_METRIC_ROW_FIELD),
+          StringSeqStructDef,
+          required = true
+        ),
+        FieldDef(
+          StringConstantStructDef(REQUEST_TEMPLATE_STORAGE_KEY_FIELD),
+          RegexStructDef(".+".r),
+          required = true
+        ),
+        FieldDef(
+          StringConstantStructDef(MAP_FUTURE_METRIC_ROW_CALCULATION_FIELD),
+          FromMapFutureCalculationSeqStringToMetricRowFormat.structDef,
+          required = true
+        ),
+        FieldDef(
+          StringConstantStructDef(SINGLE_MAP_CALCULATIONS_FIELD),
+          FromMapCalculationSeqBooleanToDoubleFormat.structDef,
+          required = true
+        ),
+        FieldDef(
+          StringConstantStructDef(TAGGING_CONFIGURATION_FIELD),
+          TaggingConfigurationJsonFormat.structDef,
+          required = false
+        ),
+        FieldDef(
+          StringConstantStructDef(WRAP_UP_FUNCTION_FIELD),
+          ExecutionJsonProtocol.ExecutionFormat.structDef,
+          required = false
+        ),
+        FieldDef(
+          StringConstantStructDef(ALLOWED_TIME_PER_ELEMENT_IN_MILLIS_FIELD),
+          IntMinMaxStructDef(0, Int.MaxValue),
+          required = true
+        ),
+        FieldDef(
+          StringConstantStructDef(ALLOWED_TIME_PER_BATCH_IN_SECONDS_FIELD),
+          IntMinMaxStructDef(0, Int.MaxValue),
+          required = true
+        ),
+        FieldDef(
+          StringConstantStructDef(ALLOWED_TIME_FOR_JOB_IN_SECONDS_FIELD),
+          IntMinMaxStructDef(0, Int.MaxValue),
+          required = true
+        ),
+        FieldDef(
+          StringConstantStructDef(EXPECT_RESULTS_FROM_BATCH_CALCULATIONS_FIELD),
+          BooleanStructDef,
+          required = true
+        )
+      ),
+      Seq.empty
+    )
+  }
 }

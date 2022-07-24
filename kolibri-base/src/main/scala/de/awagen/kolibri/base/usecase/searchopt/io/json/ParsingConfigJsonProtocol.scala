@@ -19,11 +19,28 @@ package de.awagen.kolibri.base.usecase.searchopt.io.json
 
 import de.awagen.kolibri.base.usecase.searchopt.io.json.JsonSelectorJsonProtocol.NamedAndTypedSelectorFormat
 import de.awagen.kolibri.base.usecase.searchopt.parse.ParsingConfig
+import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
+import de.awagen.kolibri.datatypes.types.JsonStructDefs.{NestedFieldSeqStructDef, StringConstantStructDef}
+import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
 import spray.json.{DefaultJsonProtocol, RootJsonFormat}
 
-object ParsingConfigJsonProtocol extends DefaultJsonProtocol {
+object ParsingConfigJsonProtocol extends DefaultJsonProtocol with WithStructDef {
+
+  val SELECTORS_KEY = "selectors"
 
   implicit val parsingConfigJsonFormat: RootJsonFormat[ParsingConfig] =
     jsonFormat1(ParsingConfig.apply)
 
+  override def structDef: JsonStructDefs.StructDef[_] = {
+    NestedFieldSeqStructDef(
+      Seq(
+        FieldDef(
+          StringConstantStructDef(SELECTORS_KEY),
+          NamedAndTypedSelectorFormat.structDef,
+          required = true
+        )
+      ),
+      Seq.empty
+    )
+  }
 }

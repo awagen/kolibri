@@ -17,19 +17,35 @@
 package de.awagen.kolibri.base.io.json
 
 import de.awagen.kolibri.base.domain.jobdefinitions.provider.{BaseCredentialsProvider, Credentials, CredentialsProvider}
+import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
+import de.awagen.kolibri.datatypes.types.JsonStructDefs.{NestedFieldSeqStructDef, RegexStructDef, StringConstantStructDef}
+import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
 import spray.json.{DefaultJsonProtocol, DeserializationException, JsString, JsValue, JsonFormat}
 
 object CredentialsProviderJsonProtocol extends DefaultJsonProtocol {
 
-  implicit object CredentialsProviderFormat extends JsonFormat[CredentialsProvider] {
+  implicit object CredentialsProviderFormat extends JsonFormat[CredentialsProvider] with WithStructDef {
+    val USERNAME_KEY = "username"
+    val PASSWORD_KEY = "password"
+
     override def read(json: JsValue): CredentialsProvider = json match {
-      case spray.json.JsObject(fields) if fields.contains("username") &&
-        fields.contains("password") =>
-        BaseCredentialsProvider(Credentials(fields("username").convertTo[String], fields("password").convertTo[String]))
+      case spray.json.JsObject(fields) if fields.contains(USERNAME_KEY) &&
+        fields.contains(PASSWORD_KEY) =>
+        BaseCredentialsProvider(Credentials(fields(USERNAME_KEY).convertTo[String], fields(PASSWORD_KEY).convertTo[String]))
       case e => throw DeserializationException(s"Expected a value from Credentials but got value $e")
     }
 
     override def write(obj: CredentialsProvider): JsValue = JsString(obj.toString)
+
+    override def structDef: JsonStructDefs.StructDef[_] = {
+      NestedFieldSeqStructDef(
+        Seq(
+          FieldDef(StringConstantStructDef(USERNAME_KEY), RegexStructDef(".+".r), required = true),
+          FieldDef(StringConstantStructDef(PASSWORD_KEY), RegexStructDef(".+".r), required = true),
+        ),
+        Seq()
+      )
+    }
   }
 
 }

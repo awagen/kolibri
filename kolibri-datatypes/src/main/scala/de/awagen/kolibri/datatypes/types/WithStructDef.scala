@@ -17,25 +17,10 @@
 
 package de.awagen.kolibri.datatypes.types
 
-object Types {
+import de.awagen.kolibri.datatypes.types.JsonStructDefs.StructDef
 
-  trait WithCount {
+trait WithStructDef {
 
-    def count: Int
-
-  }
-
-  trait WithWeight {
-
-    def weight: Double
-
-  }
-
-  trait With[T] {
-
-    def withInstance: T
-
-  }
-
+  def structDef: StructDef[_]
 
 }

@@ -16,30 +16,47 @@
 
 package de.awagen.kolibri.base.usecase.searchopt.io.json
 
-import de.awagen.kolibri.base.usecase.searchopt.metrics.JudgementValidation.JudgementValidation
-import de.awagen.kolibri.base.usecase.searchopt.metrics.MissingValueStrategy.MissingValueStrategy
+import de.awagen.kolibri.base.usecase.searchopt.metrics.JudgementValidation.{EXIST_JUDGEMENTS, EXIST_RESULTS, JUDGEMENTS_MISSING_AT_MOST_10PERCENT, JudgementValidation}
+import de.awagen.kolibri.base.usecase.searchopt.metrics.MissingValueStrategy.{AS_AVG_OF_NON_MISSING, AS_ZEROS, MissingValueStrategy}
 import de.awagen.kolibri.base.usecase.searchopt.metrics.{JudgementValidation, MissingValueStrategy}
 import de.awagen.kolibri.datatypes.io.json.EnumerationJsonProtocol.EnumerationProtocol
+import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
+import de.awagen.kolibri.datatypes.types.JsonStructDefs.StringChoiceStructDef
 import spray.json.{DefaultJsonProtocol, DeserializationException, JsString, JsValue}
 
 
 object EnumerationJsonProtocol extends DefaultJsonProtocol {
 
-  implicit object missingValueStrategyFormat extends EnumerationProtocol[MissingValueStrategy] {
+  implicit object missingValueStrategyFormat extends EnumerationProtocol[MissingValueStrategy] with WithStructDef {
     override def read(json: JsValue): MissingValueStrategy = {
       json match {
         case JsString(txt) => MissingValueStrategy.withName(txt).asInstanceOf[MissingValueStrategy]
         case e => throw DeserializationException(s"Expected a value from MissingValueStrategy but got value $e")
       }
     }
+
+    override def structDef: JsonStructDefs.StructDef[_] = {
+      StringChoiceStructDef(Seq(
+        AS_ZEROS.toString,
+        AS_AVG_OF_NON_MISSING.toString()
+      ))
+    }
   }
 
-  implicit object judgementValidationFormat extends EnumerationProtocol[JudgementValidation] {
+  implicit object judgementValidationFormat extends EnumerationProtocol[JudgementValidation] with WithStructDef {
     override def read(json: JsValue): JudgementValidation = {
       json match {
         case JsString(txt) => JudgementValidation.withName(txt).asInstanceOf[JudgementValidation]
         case e => throw DeserializationException(s"Expected a value from JudgementValidation but got value $e")
       }
+    }
+
+    override def structDef: JsonStructDefs.StructDef[_] = {
+      StringChoiceStructDef(Seq(
+        EXIST_RESULTS.toString,
+        EXIST_JUDGEMENTS.toString,
+        JUDGEMENTS_MISSING_AT_MOST_10PERCENT.toString
+      ))
     }
   }
 

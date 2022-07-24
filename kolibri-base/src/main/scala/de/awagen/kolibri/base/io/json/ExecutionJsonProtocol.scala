@@ -26,20 +26,48 @@ import de.awagen.kolibri.base.processing.execution.functions.Execution
 import de.awagen.kolibri.base.provider.WeightProviders.WeightProvider
 import spray.json.{DefaultJsonProtocol, JsValue, RootJsonFormat, enrichAny}
 import SupplierJsonProtocol._
+import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
+import de.awagen.kolibri.datatypes.types.JsonStructDefs.{ConditionalFields, GenericSeqStructDef, IntMinMaxStructDef, MapStructDef, NestedFieldSeqStructDef, RegexStructDef, StringConstantStructDef, StringSeqStructDef, StringStructDef}
+import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
 
 import scala.util.matching.Regex
 
 object ExecutionJsonProtocol extends DefaultJsonProtocol with SprayJsonSupport {
 
-  implicit object ExecutionFormat extends RootJsonFormat[Execution[Any]] {
+  val TYPE_KEY = "type"
+  val REGEX_KEY = "regex"
+  val FILES_KEY = "files"
+  val OUTPUT_FILENAME_KEY = "outputFilename"
+  val READ_SUBDIR_KEY = "readSubDir"
+  val WRITE_SUBDIR_KEY = "writeSubDir"
+  val WEIGHT_PROVIDER_KEY = "weightProvider"
+  val GROUP_SUPPLIER_KEY = "groupSupplier"
+  val DIRECTORY_KEY = "directory"
+  val CURRENT_PARAMS_KEY = "currentParams"
+  val COMPARE_PARAMS_KEY = "compareParams"
+  val METRIC_NAME_KEY = "metricName"
+  val QUERY_PARAM_NAME_KEY = "queryParamName"
+  val N_BEST_KEY = "n_best"
+  val N_WORST_KEY = "n_worst"
+  val AGGREGATE_FROM_DIR_BY_REGEX_TYPE = "AGGREGATE_FROM_DIR_BY_REGEX"
+  val AGGREGATE_FILES_TYPE = "AGGREGATE_FILES"
+  val AGGREGATE_GROUPS_TYPE = "AGGREGATE_GROUPS"
+  val ANALYZE_BEST_WORST_REGEX_TYPE = "ANALYZE_BEST_WORST_REGEX"
+  val ANALYZE_BEST_WORST_FILES_TYPE = "ANALYZE_BEST_WORST_FILES"
+  val ANALYZE_QUERY_METRIC_VARIANCE_TYPE = "ANALYZE_QUERY_METRIC_VARIANCE"
+  val DO_NOTHING_TYPE = "DO_NOTHING"
+
+  val MISSING_VALUE_VALUE = "MISSING_VALUE"
+
+  implicit object ExecutionFormat extends RootJsonFormat[Execution[Any]] with WithStructDef {
     override def read(json: JsValue): Execution[Any] = json match {
-      case spray.json.JsObject(fields) => fields("type").convertTo[String] match {
-        case "AGGREGATE_FROM_DIR_BY_REGEX" =>
-          val regex: Regex = fields("regex").convertTo[String].r
-          val outputFilename: String = fields("outputFilename").convertTo[String]
-          val readSubDir: String = fields("readSubDir").convertTo[String]
-          val writeSubDir: String = fields("writeSubDir").convertTo[String]
-          val weightProvider: WeightProvider[String] = fields("weightProvider").convertTo[WeightProvider[String]]
+      case spray.json.JsObject(fields) => fields(TYPE_KEY).convertTo[String] match {
+        case AGGREGATE_FROM_DIR_BY_REGEX_TYPE =>
+          val regex: Regex = fields(REGEX_KEY).convertTo[String].r
+          val outputFilename: String = fields(OUTPUT_FILENAME_KEY).convertTo[String]
+          val readSubDir: String = fields(READ_SUBDIR_KEY).convertTo[String]
+          val writeSubDir: String = fields(WRITE_SUBDIR_KEY).convertTo[String]
+          val weightProvider: WeightProvider[String] = fields(WEIGHT_PROVIDER_KEY).convertTo[WeightProvider[String]]
           AggregateFromDirectoryByRegexWeighted(
             readSubDir,
             writeSubDir,
@@ -47,22 +75,22 @@ object ExecutionJsonProtocol extends DefaultJsonProtocol with SprayJsonSupport {
             weightProvider,
             outputFilename
           )
-        case "AGGREGATE_FILES" =>
-          val files: Seq[String] = fields("files").convertTo[Seq[String]]
-          val outputFilename: String = fields("outputFilename").convertTo[String]
-          val writeSubDir: String = fields("writeSubDir").convertTo[String]
-          val weightProvider: WeightProvider[String] = fields("weightProvider").convertTo[WeightProvider[String]]
+        case AGGREGATE_FILES_TYPE =>
+          val files: Seq[String] = fields(FILES_KEY).convertTo[Seq[String]]
+          val outputFilename: String = fields(OUTPUT_FILENAME_KEY).convertTo[String]
+          val writeSubDir: String = fields(WRITE_SUBDIR_KEY).convertTo[String]
+          val weightProvider: WeightProvider[String] = fields(WEIGHT_PROVIDER_KEY).convertTo[WeightProvider[String]]
           AggregateFilesWeighted(
             writeSubDir,
             files,
             weightProvider,
             outputFilename
           )
-        case "AGGREGATE_GROUPS" =>
-          val groupNameToIdentifierMap: Map[String, Seq[String]] = fields("groupSupplier").convertTo[() => Map[String, Seq[String]]].apply()
-          val readSubDir: String = fields("readSubDir").convertTo[String]
-          val writeSubDir: String = fields("writeSubDir").convertTo[String]
-          val weightProvider: WeightProvider[String] = fields("weightProvider").convertTo[WeightProvider[String]]
+        case AGGREGATE_GROUPS_TYPE =>
+          val groupNameToIdentifierMap: Map[String, Seq[String]] = fields(GROUP_SUPPLIER_KEY).convertTo[() => Map[String, Seq[String]]].apply()
+          val readSubDir: String = fields(READ_SUBDIR_KEY).convertTo[String]
+          val writeSubDir: String = fields(WRITE_SUBDIR_KEY).convertTo[String]
+          val weightProvider: WeightProvider[String] = fields(WEIGHT_PROVIDER_KEY).convertTo[WeightProvider[String]]
           val executions: Seq[Execution[Any]] = groupNameToIdentifierMap.map(x => {
             AggregateFilesWeighted(
               writeSubDir,
@@ -72,15 +100,15 @@ object ExecutionJsonProtocol extends DefaultJsonProtocol with SprayJsonSupport {
             )
           }).toSeq
           MultiExecution(executions)
-        case "ANALYZE_BEST_WORST_REGEX" =>
-          val directory: String = fields("directory").convertTo[String]
-          val regex: Regex = fields("regex").convertTo[String].r
-          val currentParams: Map[String, Seq[String]] = fields("currentParams").convertTo[Map[String, Seq[String]]]
-          val compareParams: Seq[Map[String, Seq[String]]] = fields("compareParams").convertTo[Seq[Map[String, Seq[String]]]]
-          val metricName: String = fields("metricName").convertTo[String]
-          val queryParamName: String = fields("queryParamName").convertTo[String]
-          val n_best: Int = fields("n_best").convertTo[Int]
-          val n_worst: Int = fields("n_worst").convertTo[Int]
+        case ANALYZE_BEST_WORST_REGEX_TYPE =>
+          val directory: String = fields(DIRECTORY_KEY).convertTo[String]
+          val regex: Regex = fields(REGEX_KEY).convertTo[String].r
+          val currentParams: Map[String, Seq[String]] = fields(CURRENT_PARAMS_KEY).convertTo[Map[String, Seq[String]]]
+          val compareParams: Seq[Map[String, Seq[String]]] = fields(COMPARE_PARAMS_KEY).convertTo[Seq[Map[String, Seq[String]]]]
+          val metricName: String = fields(METRIC_NAME_KEY).convertTo[String]
+          val queryParamName: String = fields(QUERY_PARAM_NAME_KEY).convertTo[String]
+          val n_best: Int = fields(N_BEST_KEY).convertTo[Int]
+          val n_worst: Int = fields(N_WORST_KEY).convertTo[Int]
           GetImprovingAndLoosingFromDirPerRegex(
             directory,
             regex,
@@ -88,42 +116,234 @@ object ExecutionJsonProtocol extends DefaultJsonProtocol with SprayJsonSupport {
             compareParams,
             metricName,
             queryFromFilename = x => RegexUtils.findParamValueInString(param = queryParamName,
-              string = x, defaultValue = "MISSING_VALUE"),
+              string = x, defaultValue = MISSING_VALUE_VALUE),
             n_best,
             n_worst
           )
-        case "ANALYZE_BEST_WORST_FILES" =>
-          val files: Seq[String] = fields("files").convertTo[Seq[String]]
-          val currentParams: Map[String, Seq[String]] = fields("currentParams").convertTo[Map[String, Seq[String]]]
-          val compareParams: Seq[Map[String, Seq[String]]] = fields("compareParams").convertTo[Seq[Map[String, Seq[String]]]]
-          val metricName: String = fields("metricName").convertTo[String]
-          val queryParamName: String = fields("queryParamName").convertTo[String]
-          val n_best: Int = fields("n_best").convertTo[Int]
-          val n_worst: Int = fields("n_worst").convertTo[Int]
+        case ANALYZE_BEST_WORST_FILES_TYPE =>
+          val files: Seq[String] = fields(FILES_KEY).convertTo[Seq[String]]
+          val currentParams: Map[String, Seq[String]] = fields(CURRENT_PARAMS_KEY).convertTo[Map[String, Seq[String]]]
+          val compareParams: Seq[Map[String, Seq[String]]] = fields(COMPARE_PARAMS_KEY).convertTo[Seq[Map[String, Seq[String]]]]
+          val metricName: String = fields(METRIC_NAME_KEY).convertTo[String]
+          val queryParamName: String = fields(QUERY_PARAM_NAME_KEY).convertTo[String]
+          val n_best: Int = fields(N_BEST_KEY).convertTo[Int]
+          val n_worst: Int = fields(N_WORST_KEY).convertTo[Int]
           GetImprovingAndLoosing(
             files,
             currentParams,
             compareParams,
             metricName,
             queryFromFilename = x => RegexUtils.findParamValueInString(param = queryParamName,
-              string = x, defaultValue = "MISSING_VALUE"),
+              string = x, defaultValue = MISSING_VALUE_VALUE),
             n_best,
             n_worst
           )
-        case "ANALYZE_QUERY_METRIC_VARIANCE" =>
-          val directory: String = fields("directory").convertTo[String]
-          val regex: Regex = fields("regex").convertTo[String].r
-          val metricName: String = fields("metricName").convertTo[String]
-          val queryParamName: String = fields("queryParamName").convertTo[String]
+        case ANALYZE_QUERY_METRIC_VARIANCE_TYPE =>
+          val directory: String = fields(DIRECTORY_KEY).convertTo[String]
+          val regex: Regex = fields(REGEX_KEY).convertTo[String].r
+          val metricName: String = fields(METRIC_NAME_KEY).convertTo[String]
+          val queryParamName: String = fields(QUERY_PARAM_NAME_KEY).convertTo[String]
           val queryFromFileName: String => String = x => RegexUtils.findParamValueInString(param = queryParamName,
-            string = x, defaultValue = "MISSING_VALUE")
+            string = x, defaultValue = MISSING_VALUE_VALUE)
           GetValueVarianceFromDirPerRegex(directory, regex, metricName, queryFromFileName)
-        case "DO_NOTHING" => DoNothing()
+        case DO_NOTHING_TYPE => DoNothing()
       }
     }
 
     // TODO
     override def write(obj: Execution[Any]): JsValue = """{}""".toJson
+
+    override def structDef: JsonStructDefs.StructDef[_] = {
+      NestedFieldSeqStructDef(
+        Seq(),
+        Seq(
+          ConditionalFields(
+            TYPE_KEY,
+            Map(
+              AGGREGATE_FROM_DIR_BY_REGEX_TYPE -> Seq(
+                FieldDef(
+                  StringConstantStructDef(REGEX_KEY),
+                  StringStructDef,
+                  required = true
+                ),
+                FieldDef(
+                  StringConstantStructDef(OUTPUT_FILENAME_KEY),
+                  RegexStructDef(".+".r),
+                  required = true
+                ),
+                FieldDef(
+                  StringConstantStructDef(READ_SUBDIR_KEY),
+                  StringStructDef,
+                  required = true
+                ),
+                FieldDef(
+                  StringConstantStructDef(WRITE_SUBDIR_KEY),
+                  StringStructDef,
+                  required = true
+                ),
+                FieldDef(
+                  StringConstantStructDef(WEIGHT_PROVIDER_KEY),
+                  WeightProviderJsonProtocol.StringWeightProviderFormat.structDef,
+                  required = true
+                )
+              ),
+              AGGREGATE_FILES_TYPE -> Seq(
+                FieldDef(
+                  StringConstantStructDef(FILES_KEY),
+                  StringSeqStructDef,
+                  required = true
+                ),
+                FieldDef(
+                  StringConstantStructDef(OUTPUT_FILENAME_KEY),
+                  RegexStructDef(".+".r),
+                  required = true
+                ),
+                FieldDef(
+                  StringConstantStructDef(WRITE_SUBDIR_KEY),
+                  StringStructDef,
+                  required = true
+                ),
+                FieldDef(
+                  StringConstantStructDef(WEIGHT_PROVIDER_KEY),
+                  WeightProviderJsonProtocol.StringWeightProviderFormat.structDef,
+                  required = true
+                )
+              ),
+              AGGREGATE_GROUPS_TYPE -> Seq(
+                FieldDef(
+                  StringConstantStructDef(GROUP_SUPPLIER_KEY),
+                  SupplierJsonProtocol.StringSeqMappingFormat.structDef,
+                  required = true
+                ),
+                FieldDef(
+                  StringConstantStructDef(READ_SUBDIR_KEY),
+                  StringStructDef,
+                  required = true
+                ),
+                FieldDef(
+                  StringConstantStructDef(WRITE_SUBDIR_KEY),
+                  StringStructDef,
+                  required = true
+                ),
+                FieldDef(
+                  StringConstantStructDef(WEIGHT_PROVIDER_KEY),
+                  WeightProviderJsonProtocol.StringWeightProviderFormat.structDef,
+                  required = true
+                )
+              ),
+              ANALYZE_BEST_WORST_REGEX_TYPE -> Seq(
+                FieldDef(
+                  StringConstantStructDef(DIRECTORY_KEY),
+                  RegexStructDef(".+".r),
+                  required = true
+                ),
+                FieldDef(
+                  StringConstantStructDef(REGEX_KEY),
+                  RegexStructDef(".+".r),
+                  required = true
+                ),
+                FieldDef(
+                  StringConstantStructDef(CURRENT_PARAMS_KEY),
+                  MapStructDef(StringStructDef, StringSeqStructDef),
+                  required = true
+                ),
+                FieldDef(
+                  StringConstantStructDef(COMPARE_PARAMS_KEY),
+                  GenericSeqStructDef(MapStructDef(StringStructDef, StringSeqStructDef)),
+                  required = true
+                ),
+                FieldDef(
+                  StringConstantStructDef(METRIC_NAME_KEY),
+                  // TODO: might wanna restrict to actual available metrics
+                  // (take into account that metrics can also be custom though)
+                  RegexStructDef(".+".r),
+                  required = true
+                ),
+                FieldDef(
+                  StringConstantStructDef(QUERY_PARAM_NAME_KEY),
+                  RegexStructDef(".+".r),
+                  required = true
+                ),
+                FieldDef(
+                  StringConstantStructDef(N_BEST_KEY),
+                  IntMinMaxStructDef(0, 1000),
+                  required = true
+                ),
+                FieldDef(
+                  StringConstantStructDef(N_WORST_KEY),
+                  IntMinMaxStructDef(0, 1000),
+                  required = true
+                )
+              ),
+              ANALYZE_BEST_WORST_FILES_TYPE -> Seq(
+                FieldDef(
+                  StringConstantStructDef(FILES_KEY),
+                  StringSeqStructDef,
+                  required = true
+                ),
+                FieldDef(
+                  StringConstantStructDef(CURRENT_PARAMS_KEY),
+                  MapStructDef(StringStructDef, StringSeqStructDef),
+                  required = true
+                ),
+                FieldDef(
+                  StringConstantStructDef(COMPARE_PARAMS_KEY),
+                  GenericSeqStructDef(MapStructDef(StringStructDef, StringSeqStructDef)),
+                  required = true
+                ),
+                FieldDef(
+                  StringConstantStructDef(METRIC_NAME_KEY),
+                  // TODO: might wanna restrict to actual available metrics
+                  // (take into account that metrics can also be custom though)
+                  RegexStructDef(".+".r),
+                  required = true
+                ),
+                FieldDef(
+                  StringConstantStructDef(QUERY_PARAM_NAME_KEY),
+                  RegexStructDef(".+".r),
+                  required = true
+                ),
+                FieldDef(
+                  StringConstantStructDef(N_BEST_KEY),
+                  IntMinMaxStructDef(0, 1000),
+                  required = true
+                ),
+                FieldDef(
+                  StringConstantStructDef(N_WORST_KEY),
+                  IntMinMaxStructDef(0, 1000),
+                  required = true
+                )
+              ),
+              ANALYZE_QUERY_METRIC_VARIANCE_TYPE -> Seq(
+                FieldDef(
+                  StringConstantStructDef(DIRECTORY_KEY),
+                  RegexStructDef(".+".r),
+                  required = true
+                ),
+                FieldDef(
+                  StringConstantStructDef(REGEX_KEY),
+                  RegexStructDef(".+".r),
+                  required = true
+                ),
+                FieldDef(
+                  StringConstantStructDef(METRIC_NAME_KEY),
+                  // TODO: might wanna restrict to actual available metrics
+                  // (take into account that metrics can also be custom though)
+                  RegexStructDef(".+".r),
+                  required = true
+                ),
+                FieldDef(
+                  StringConstantStructDef(QUERY_PARAM_NAME_KEY),
+                  RegexStructDef(".+".r),
+                  required = true
+                )
+              ),
+              DO_NOTHING_TYPE -> Seq.empty
+            )
+          )
+        )
+      )
+    }
   }
 
 }

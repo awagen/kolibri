@@ -19,10 +19,13 @@ package de.awagen.kolibri.base.io.json
 import de.awagen.kolibri.base.domain.Connections.Connection
 import de.awagen.kolibri.base.domain.jobdefinitions.provider.CredentialsProvider
 import de.awagen.kolibri.base.io.json.CredentialsProviderJsonProtocol.CredentialsProviderFormat
+import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
+import de.awagen.kolibri.datatypes.types.JsonStructDefs.{BooleanStructDef, IntMinMaxStructDef, NestedFieldSeqStructDef, RegexStructDef, StringConstantStructDef}
+import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
 import spray.json.{DefaultJsonProtocol, RootJsonFormat}
 
 
-object ConnectionJsonProtocol extends DefaultJsonProtocol {
+object ConnectionJsonProtocol extends DefaultJsonProtocol with WithStructDef {
 
   val HOST_FIELD = "host"
   val PORT_FIELD = "port"
@@ -38,4 +41,14 @@ object ConnectionJsonProtocol extends DefaultJsonProtocol {
     CREDENTIALS_PROVIDER_FIELD
   )
 
+  override def structDef: JsonStructDefs.StructDef[_] = {
+    NestedFieldSeqStructDef(
+      Seq(
+        FieldDef(StringConstantStructDef(HOST_FIELD), RegexStructDef(".*".r), required = true),
+        FieldDef(StringConstantStructDef(PORT_FIELD), IntMinMaxStructDef(0, 10000), required = true),
+        FieldDef(StringConstantStructDef(USE_HTTPS_FIELD), BooleanStructDef, required = true),
+      ),
+      Seq()
+    )
+  }
 }

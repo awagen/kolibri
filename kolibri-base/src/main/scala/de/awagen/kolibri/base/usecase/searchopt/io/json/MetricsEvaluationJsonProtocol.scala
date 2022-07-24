@@ -20,10 +20,16 @@ import de.awagen.kolibri.base.usecase.searchopt.metrics.{MetricsCalculation, Met
 import de.awagen.kolibri.base.usecase.searchopt.provider.JudgementProviderFactory
 import JudgementProviderFactoryJsonProtocol.JudgementProviderFactoryDoubleFormat
 import MetricsCalculationJsonProtocol.metricsCalculationFormat
+import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
+import de.awagen.kolibri.datatypes.types.JsonStructDefs.{NestedFieldSeqStructDef, StringConstantStructDef}
+import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
 import spray.json.{DefaultJsonProtocol, RootJsonFormat}
 
 
-object MetricsEvaluationJsonProtocol extends DefaultJsonProtocol {
+object MetricsEvaluationJsonProtocol extends DefaultJsonProtocol with WithStructDef {
+
+  val JUDGEMENT_PROVIDER_FACTORY_KEY = "judgementProviderFactory"
+  val METRICS_CALCULATION_FACTORY_KEY = "metricsCalculation"
 
   implicit val metricsEvaluationFormat: RootJsonFormat[MetricsEvaluation] = jsonFormat(
     (judgementProviderFactory: JudgementProviderFactory[Double], metricsCalculation: MetricsCalculation) => MetricsEvaluation
@@ -32,4 +38,21 @@ object MetricsEvaluationJsonProtocol extends DefaultJsonProtocol {
     "metricsCalculation"
   )
 
+  override def structDef: JsonStructDefs.StructDef[_] = {
+    NestedFieldSeqStructDef(
+      Seq(
+        FieldDef(
+          StringConstantStructDef(JUDGEMENT_PROVIDER_FACTORY_KEY),
+          JudgementProviderFactoryJsonProtocol.structDef,
+          required = true
+        ),
+        FieldDef(
+          StringConstantStructDef(METRICS_CALCULATION_FACTORY_KEY),
+          MetricsCalculationJsonProtocol.structDef,
+          required = true
+        )
+      ),
+      Seq.empty
+    )
+  }
 }

@@ -17,7 +17,10 @@
 
 package de.awagen.kolibri.base.usecase.searchopt.io.json
 
-object CalculationName extends Enumeration {
+import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
+import de.awagen.kolibri.datatypes.types.JsonStructDefs.StringChoiceStructDef
+
+object CalculationName extends Enumeration with WithStructDef {
   type CalculationName = Val
 
   case class Val(name: String) extends super.Val
@@ -29,4 +32,17 @@ object CalculationName extends Enumeration {
   val FALSE_COUNT = Val("FALSE_COUNT")
   val BINARY_PRECISION_TRUE_AS_YES = Val("BINARY_PRECISION_TRUE_AS_YES")
   val BINARY_PRECISION_FALSE_AS_YES = Val("BINARY_PRECISION_FALSE_AS_YES")
+
+  override def structDef: JsonStructDefs.StructDef[_] =
+    StringChoiceStructDef(
+      Seq(
+        IDENTITY.name,
+        FIRST_TRUE.name,
+        FIRST_FALSE.name,
+        TRUE_COUNT.name,
+        FALSE_COUNT.name,
+        BINARY_PRECISION_TRUE_AS_YES.name,
+        BINARY_PRECISION_FALSE_AS_YES.name
+      )
+    )
 }

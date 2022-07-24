@@ -19,6 +19,9 @@ package de.awagen.kolibri.base.io.json
 
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import de.awagen.kolibri.base.provider.WeightProviders.{ConstantWeightProvider, FileBasedStringIdentifierWeightProvider, WeightProvider}
+import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
+import de.awagen.kolibri.datatypes.types.JsonStructDefs.{ConditionalFields, DoubleStructDef, IntMinMaxStructDef, NestedFieldSeqStructDef, RegexStructDef, StringChoiceStructDef, StringConstantStructDef, StringStructDef}
+import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
 import spray.json.{DefaultJsonProtocol, JsValue, RootJsonFormat, enrichAny}
 
 object WeightProviderJsonProtocol extends DefaultJsonProtocol with SprayJsonSupport {
@@ -36,7 +39,7 @@ object WeightProviderJsonProtocol extends DefaultJsonProtocol with SprayJsonSupp
   val PARAM_WEIGHT_COLUMN = "weightColumn"
   val PARAM_DEFAULT_VALUE = "defaultValue"
 
-  implicit object StringWeightProviderFormat extends RootJsonFormat[WeightProvider[String]] {
+  implicit object StringWeightProviderFormat extends RootJsonFormat[WeightProvider[String]] with WithStructDef {
     override def read(json: JsValue): WeightProvider[String] = json match {
       case spray.json.JsObject(fields) => fields(PARAM_TYPE).convertTo[String] match {
         case TYPE_CONSTANT =>
@@ -55,6 +58,72 @@ object WeightProviderJsonProtocol extends DefaultJsonProtocol with SprayJsonSupp
     }
 
     override def write(obj: WeightProvider[String]): JsValue = """{}""".toJson
+
+    override def structDef: JsonStructDefs.StructDef[_] = {
+      NestedFieldSeqStructDef(
+        Seq(
+          FieldDef(
+            StringConstantStructDef(PARAM_TYPE),
+            StringChoiceStructDef(Seq(
+              TYPE_CONSTANT,
+              TYPE_FROM_PER_QUERY_FILE
+            )),
+            required = true
+          )
+        ),
+        Seq(
+          ConditionalFields(
+            PARAM_TYPE,
+            Map(
+              TYPE_CONSTANT -> Seq(
+                FieldDef(
+                  StringConstantStructDef(PARAM_WEIGHT),
+                  DoubleStructDef,
+                  required = true
+                )
+              ),
+              TYPE_FROM_PER_QUERY_FILE -> Seq(
+                FieldDef(
+                  StringConstantStructDef(PARAM_FILEPATH),
+                  RegexStructDef(".+".r),
+                  required = true
+                ),
+                FieldDef(
+                  StringConstantStructDef(PARAM_REMOVE_PREFIX),
+                  StringStructDef,
+                  required = true
+                ),
+                FieldDef(
+                  StringConstantStructDef(PARAM_REMOVE_SUFFIX),
+                  StringStructDef,
+                  required = true
+                ),
+                FieldDef(
+                  StringConstantStructDef(PARAM_COLUMN_DELIMITER),
+                  RegexStructDef(".+".r),
+                  required = true
+                ),
+                FieldDef(
+                  StringConstantStructDef(PARAM_KEY_COLUMN),
+                  IntMinMaxStructDef(0, 1000),
+                  required = true
+                ),
+                FieldDef(
+                  StringConstantStructDef(PARAM_WEIGHT_COLUMN),
+                  IntMinMaxStructDef(0, 1000),
+                  required = true
+                ),
+                FieldDef(
+                  StringConstantStructDef(PARAM_DEFAULT_VALUE),
+                  DoubleStructDef,
+                  required = true
+                )
+              )
+            )
+          )
+        )
+      )
+    }
   }
 
 }

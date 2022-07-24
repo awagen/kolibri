@@ -16,14 +16,39 @@
 
 package de.awagen.kolibri.base.usecase.searchopt.io.json
 
-import spray.json.{DefaultJsonProtocol, RootJsonFormat}
-import EnumerationJsonProtocol._
+import de.awagen.kolibri.base.usecase.searchopt.io.json.EnumerationJsonProtocol._
 import de.awagen.kolibri.base.usecase.searchopt.metrics.JudgementHandlingStrategy
+import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
+import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
+import de.awagen.kolibri.datatypes.types.JsonStructDefs.{GenericSeqStructDef, NestedFieldSeqStructDef, StringConstantStructDef}
+import spray.json.{DefaultJsonProtocol, RootJsonFormat}
 
 
-object JudgementHandlingStrategyJsonProtocol extends DefaultJsonProtocol {
+object JudgementHandlingStrategyJsonProtocol extends DefaultJsonProtocol with WithStructDef {
+
+  val VALIDATIONS_KEY = "validations"
+  val HANDLING_KEY = "handling"
 
   implicit val judgementHandlingStrategyFormat: RootJsonFormat[JudgementHandlingStrategy] =
     jsonFormat2(JudgementHandlingStrategy.apply)
 
+  override def structDef: JsonStructDefs.StructDef[_] = {
+    NestedFieldSeqStructDef(
+      Seq(
+        FieldDef(
+          StringConstantStructDef(VALIDATIONS_KEY),
+          GenericSeqStructDef(
+            EnumerationJsonProtocol.judgementValidationFormat.structDef
+          ),
+          required = true
+        ),
+        FieldDef(
+          StringConstantStructDef(HANDLING_KEY),
+          EnumerationJsonProtocol.missingValueStrategyFormat.structDef,
+          required = true
+        )
+      ),
+      Seq.empty
+    )
+  }
 }

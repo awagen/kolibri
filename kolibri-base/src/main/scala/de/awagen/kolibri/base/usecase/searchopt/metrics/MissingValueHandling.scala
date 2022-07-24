@@ -23,6 +23,7 @@ object MissingValueStrategy extends Enumeration {
 
   val AS_ZEROS: MissingValueStrategy = Val(MissingValueFunctions.treatMissingAsConstant(0.0D))
   val AS_AVG_OF_NON_MISSING: MissingValueStrategy = Val(MissingValueFunctions.treatMissingAsAvgOfNonMissing)
+
 }
 
 object MissingValueFunctions {

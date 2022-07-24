@@ -1,18 +1,18 @@
 /**
- * Copyright 2021 Andreas Wagenmann
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+  * Copyright 2021 Andreas Wagenmann
+  *
+  * Licensed under the Apache License, Version 2.0 (the "License");
+  * you may not use this file except in compliance with the License.
+  * You may obtain a copy of the License at
+  *
+  * http://www.apache.org/licenses/LICENSE-2.0
+  *
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  */
 
 
 package de.awagen.kolibri.base.io.json
@@ -23,6 +23,9 @@ import de.awagen.kolibri.base.io.json.OrderedValuesJsonProtocol._
 import de.awagen.kolibri.base.io.reader.FileReaderUtils
 import de.awagen.kolibri.base.processing.modifiers.ParameterValues._
 import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator}
+import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
+import de.awagen.kolibri.datatypes.types.JsonStructDefs.{ConditionalFields, GenericSeqStructDef, IntMinMaxStructDef, IntSeqStructDef, IntStructDef, MapStructDef, NestedFieldSeqStructDef, StringChoiceStructDef, StringConstantStructDef, StringSeqStructDef, StringStructDef}
+import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
 import de.awagen.kolibri.datatypes.values.OrderedValues
 import org.slf4j.LoggerFactory
 import spray.json.{DefaultJsonProtocol, JsString, JsValue, JsonFormat, RootJsonFormat, enrichAny}
@@ -96,11 +99,11 @@ object ParameterValuesJsonProtocol extends DefaultJsonProtocol {
 
 
   /**
-   * Reusing below formats for the general trait ValuesSeqGenProvider
-   */
-  implicit object ValueSeqGenProviderFormat extends JsonFormat[ValueSeqGenProvider] {
+    * Reusing below formats for the general trait ValuesSeqGenProvider
+    */
+  implicit object ValueSeqGenProviderFormat extends JsonFormat[ValueSeqGenProvider] with WithStructDef {
     override def read(json: JsValue): ValueSeqGenProvider = {
-      try{
+      try {
         ParameterValuesFormat.read(json)
       }
       catch {
@@ -109,19 +112,23 @@ object ParameterValuesJsonProtocol extends DefaultJsonProtocol {
     }
 
     override def write(obj: ValueSeqGenProvider): JsValue = """{}""".toJson
+
+    override def structDef: JsonStructDefs.StructDef[_] = {
+      ParameterValuesFormat.structDef
+    }
   }
 
   /**
-   * Allows passing of arbitrary combinations of either single value generators
-   * (ParameterValues instances) or mappings (ParameterValueMappings instances),
-   * creates overall generator of value sequences
-   */
+    * Allows passing of arbitrary combinations of either single value generators
+    * (ParameterValues instances) or mappings (ParameterValueMappings instances),
+    * creates overall generator of value sequences
+    */
   implicit val parameterValuesGenSeqToValueSeqGeneratorFormat: RootJsonFormat[ParameterValuesGenSeqToValueSeqGenerator] = jsonFormat((values: Seq[ValueSeqGenProvider]) => ParameterValuesGenSeqToValueSeqGenerator.apply(values), "values")
 
   /**
-   * Format for creation of ParameterValues (Seq of values for single type and name)
-   */
-  implicit object ParameterValuesFormat extends JsonFormat[ParameterValues] {
+    * Format for creation of ParameterValues (Seq of values for single type and name)
+    */
+  implicit object ParameterValuesFormat extends JsonFormat[ParameterValues] with WithStructDef {
     override def read(json: JsValue): ParameterValues = json match {
       case spray.json.JsObject(fields) if fields.contains(TYPE_KEY) => fields(TYPE_KEY).convertTo[String] match {
         // for this case, can use any OrderedValues specification (see respective JsonProtocol implementation)
@@ -147,6 +154,56 @@ object ParameterValuesJsonProtocol extends DefaultJsonProtocol {
     }
 
     override def write(obj: ParameterValues): JsValue = """{}""".toJson
+
+    override def structDef: JsonStructDefs.StructDef[_] = {
+      NestedFieldSeqStructDef(
+        Seq(
+          FieldDef(
+            StringConstantStructDef(TYPE_KEY),
+            StringChoiceStructDef(Seq(
+              FROM_ORDERED_VALUES_TYPE,
+              PARAMETER_VALUES_TYPE_KEY
+            )),
+            required = true),
+        ),
+        Seq(
+          ConditionalFields(
+            TYPE_KEY,
+            Map(
+              FROM_ORDERED_VALUES_TYPE -> Seq(
+                FieldDef(
+                  StringConstantStructDef(VALUES_KEY),
+                  OrderedValuesStringFormat.structDef,
+                  required = true
+                ),
+                FieldDef(
+                  StringConstantStructDef(VALUES_TYPE_KEY),
+                  valueTypeFormat.structDef,
+                  required = true
+                )
+              ),
+              PARAMETER_VALUES_TYPE_KEY -> Seq(
+                FieldDef(
+                  StringConstantStructDef(VALUES_KEY),
+                  StringSeqStructDef,
+                  required = true
+                ),
+                FieldDef(
+                  StringConstantStructDef(NAME_KEY),
+                  StringStructDef,
+                  required = true
+                ),
+                FieldDef(
+                  StringConstantStructDef(VALUES_TYPE_KEY),
+                  valueTypeFormat.structDef,
+                  required = true
+                )
+              )
+            )
+          )
+        )
+      )
+    }
   }
 
   def jsValueStringConversion(jsValue: JsValue): String = jsValue match {
@@ -155,10 +212,10 @@ object ParameterValuesJsonProtocol extends DefaultJsonProtocol {
   }
 
   /**
-   * Format for mappings, defined by the values (Seq[String]) that hold for a given
-   * key
-   */
-  implicit object MappedParameterValuesFormat extends JsonFormat[MappedParameterValues] {
+    * Format for mappings, defined by the values (Seq[String]) that hold for a given
+    * key
+    */
+  implicit object MappedParameterValuesFormat extends JsonFormat[MappedParameterValues] with WithStructDef {
     override def read(json: JsValue): MappedParameterValues = json match {
       case spray.json.JsObject(fields) => fields(TYPE_KEY).convertTo[String] match {
         // this case assumes passing of the key values to valid values for the parameter
@@ -209,7 +266,7 @@ object ParameterValuesJsonProtocol extends DefaultJsonProtocol {
           val name = fields(NAME_KEY).convertTo[String]
           val valueType = fields(VALUES_TYPE_KEY).convertTo[ValueType.Value]
           val mapping = FileReaderUtils.extractFilePrefixToLineValuesMapping(directory, filesSuffix, "/")
-          .map(x => (x._1, ByFunctionNrLimitedIndexedGenerator.createFromSeq(x._2)))
+            .map(x => (x._1, ByFunctionNrLimitedIndexedGenerator.createFromSeq(x._2)))
           MappedParameterValues(name, valueType, mapping)
         // picking mappings from csv with a key column and a value column. If multiple distinct values are contained
         // for a key, they will be preserved as distinct values in the generator per key value
@@ -232,18 +289,119 @@ object ParameterValuesJsonProtocol extends DefaultJsonProtocol {
     }
 
     override def write(obj: MappedParameterValues): JsValue = """{}""".toJson
+
+    override def structDef: JsonStructDefs.StructDef[_] = {
+      NestedFieldSeqStructDef(
+        Seq(
+          FieldDef(
+            StringConstantStructDef(TYPE_KEY),
+            StringChoiceStructDef(Seq(
+              JSON_VALUES_MAPPING_TYPE,
+              JSON_VALUES_FILES_MAPPING_TYPE,
+              JSON_SINGLE_MAPPINGS_TYPE,
+              JSON_ARRAY_MAPPINGS_TYPE,
+              FILE_PREFIX_TO_FILE_LINES_MAPPING_TYPE,
+              CSV_MAPPINGS_TYPE
+            )),
+            required = true
+          ),
+          FieldDef(
+            StringConstantStructDef(NAME_KEY),
+            StringStructDef,
+            required = true
+          ),
+          FieldDef(
+            StringConstantStructDef(VALUES_TYPE_KEY),
+            valueTypeFormat.structDef,
+            required = true
+          )
+        ),
+        Seq(
+          ConditionalFields(TYPE_KEY, Map(
+            JSON_VALUES_MAPPING_TYPE -> Seq(
+              FieldDef(
+                StringConstantStructDef(VALUES_KEY),
+                MapStructDef(
+                  StringStructDef,
+                  StringSeqStructDef
+                ),
+                required = true
+              )
+            ),
+            JSON_VALUES_FILES_MAPPING_TYPE -> Seq(
+              FieldDef(
+                StringConstantStructDef(VALUES_KEY),
+                MapStructDef(
+                  StringStructDef,
+                  StringStructDef
+                ),
+                required = true
+              )
+            ),
+            JSON_SINGLE_MAPPINGS_TYPE -> Seq(
+              FieldDef(
+                StringConstantStructDef(VALUES_KEY),
+                StringStructDef,
+                required = true
+              )
+            ),
+            JSON_ARRAY_MAPPINGS_TYPE -> Seq(
+              FieldDef(
+                StringConstantStructDef(VALUES_KEY),
+                StringStructDef,
+                required = true
+              )
+            ),
+            FILE_PREFIX_TO_FILE_LINES_MAPPING_TYPE -> Seq(
+              FieldDef(
+                StringConstantStructDef(DIRECTORY_KEY),
+                StringStructDef,
+                required = true
+              ),
+              FieldDef(
+                StringConstantStructDef(FILES_SUFFIX_KEY),
+                StringStructDef,
+                required = true
+              )
+            ),
+            CSV_MAPPINGS_TYPE -> Seq(
+              FieldDef(
+                StringConstantStructDef(VALUES_KEY),
+                StringStructDef,
+                required = true
+              ),
+              FieldDef(
+                StringConstantStructDef(COLUMN_DELIMITER_KEY),
+                StringStructDef,
+                required = true
+              ),
+              FieldDef(
+                StringConstantStructDef(KEY_COLUMN_INDEX_KEY),
+                IntMinMaxStructDef(0, Int.MaxValue),
+                required = true
+              ),
+              FieldDef(
+                StringConstantStructDef(VALUE_COLUMN_INDEX_KEY),
+                IntMinMaxStructDef(0, Int.MaxValue),
+                required = true
+              )
+            )
+          ))
+        )
+      )
+    }
   }
 
   /**
-   * Uses a key generator and one or multiple MappedParameterValues passed as Seq,
-   * where the first in the Seq maps to the key generator and all others can either
-   * map to the key generator or any mapped value that occurs before itself in the Seq
-   *
-   * Here a use-case could be having distinct valid parameter values (such as queries) per
-   * userId, in which case userId would be used as key generator and queries would be
-   * represented by a mapping
-   */
-  implicit object ParameterValueMappingFormat extends JsonFormat[ParameterValueMapping] {
+    * Uses a key generator and one or multiple MappedParameterValues passed as Seq,
+    * where the first in the Seq maps to the key generator and all others can either
+    * map to the key generator or any mapped value that occurs before itself in the Seq
+    *
+    * Here a use-case could be having distinct valid parameter values (such as queries) per
+    * userId, in which case userId would be used as key generator and queries would be
+    * represented by a mapping
+    */
+  implicit object ParameterValueMappingFormat extends JsonFormat[ParameterValueMapping] with WithStructDef {
     override def read(json: JsValue): ParameterValueMapping = json match {
       case spray.json.JsObject(fields) => {
         val keyValues = fields(KEY_VALUES_KEY).convertTo[ParameterValues]
@@ -254,6 +412,25 @@ object ParameterValuesJsonProtocol extends DefaultJsonProtocol {
     }
 
     override def write(obj: ParameterValueMapping): JsValue = """{}""".toJson
+
+    override def structDef: JsonStructDefs.StructDef[_] = {
+      NestedFieldSeqStructDef(
+        Seq(
+          FieldDef(StringConstantStructDef(KEY_VALUES_KEY), ParameterValuesFormat.structDef, required = true),
+          FieldDef(
+            StringConstantStructDef(MAPPED_VALUES_KEY),
+            GenericSeqStructDef(MappedParameterValuesFormat.structDef),
+            required = true
+          ),
+          FieldDef(
+            StringConstantStructDef(KEY_MAPPING_ASSIGNMENTS_KEY),
+            GenericSeqStructDef(IntSeqStructDef),
+            required = true
+          )
+        ),
+        Seq.empty
+      )
+    }
   }
 
 }

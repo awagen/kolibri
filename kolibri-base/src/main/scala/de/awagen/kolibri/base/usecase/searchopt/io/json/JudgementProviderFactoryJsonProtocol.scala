@@ -18,16 +18,23 @@ package de.awagen.kolibri.base.usecase.searchopt.io.json
 
 import de.awagen.kolibri.base.resources.Resources.{Resource, ResourceType}
 import de.awagen.kolibri.base.usecase.searchopt.provider.{FileBasedJudgementProviderFactory, JudgementProviderFactory}
+import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
+import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
+import de.awagen.kolibri.datatypes.types.JsonStructDefs.{ConditionalFields, NestedFieldSeqStructDef, RegexStructDef, StringConstantStructDef}
 import spray.json.{DefaultJsonProtocol, DeserializationException, JsString, JsValue, JsonFormat}
 
 
-object JudgementProviderFactoryJsonProtocol extends DefaultJsonProtocol {
+object JudgementProviderFactoryJsonProtocol extends DefaultJsonProtocol with WithStructDef {
+
+  val TYPE_FILE_BASED_KEY = "FILE_BASED"
+  val TYPE_KEY = "type"
+  val FILENAME_KEY = "filename"
 
   implicit object JudgementProviderFactoryDoubleFormat extends JsonFormat[JudgementProviderFactory[Double]] {
     override def read(json: JsValue): JudgementProviderFactory[Double] = json match {
-      case spray.json.JsObject(fields) if fields.contains("type") => fields("type").convertTo[String] match {
-        case "FILE_BASED" =>
-          val provider = FileBasedJudgementProviderFactory(fields("filename").convertTo[String])
+      case spray.json.JsObject(fields) if fields.contains(TYPE_KEY) => fields(TYPE_KEY).convertTo[String] match {
+        case TYPE_FILE_BASED_KEY =>
+          val provider = FileBasedJudgementProviderFactory(fields(FILENAME_KEY).convertTo[String])
           provider.addResource(Resource(ResourceType.JUDGEMENTS_FILE, provider.filename))
           provider
         case e => throw DeserializationException(s"Expected a valid type for JudgementProviderFactory but got value $e")
@@ -38,4 +45,15 @@ object JudgementProviderFactoryJsonProtocol extends DefaultJsonProtocol {
     override def write(obj: JudgementProviderFactory[Double]): JsValue = JsString(obj.toString)
   }
 
+  override def structDef: JsonStructDefs.StructDef[_] =
+    NestedFieldSeqStructDef(
+      Seq.empty,
+      Seq(
+        ConditionalFields(TYPE_KEY, Map(
+          TYPE_FILE_BASED_KEY -> Seq(
+            FieldDef(StringConstantStructDef(FILENAME_KEY), RegexStructDef("\\w+".r), required = true)
+          )
+        ))
+      )
+    )
 }

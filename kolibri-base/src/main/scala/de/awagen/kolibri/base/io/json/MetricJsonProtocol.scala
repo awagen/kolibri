@@ -24,6 +24,6 @@ import spray.json.RootJsonFormat
 
 object MetricJsonProtocol {
 
-  implicit val metricFormat: RootJsonFormat[Metric] = jsonFormat2(Metric)
+  implicit val metricFormat: RootJsonFormat[Metric] = jsonFormat2(Metric.apply)
 
 }

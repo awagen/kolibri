@@ -37,6 +37,7 @@ object JudgementValidation extends Enumeration {
   val EXIST_RESULTS: JudgementValidation = Val(ComputeFailReason.NO_RESULTS, x => x.nonEmpty)
   val EXIST_JUDGEMENTS: JudgementValidation = Val(ComputeFailReason("NO_JUDGEMENTS"), x => x.count(y => y.nonEmpty) > 0)
   val JUDGEMENTS_MISSING_AT_MOST_10PERCENT: JudgementValidation = Val(ComputeFailReason("TOO_FEW_JUDGEMENTS"), atMostFractionMissingJudgements(0.1))
+
 }
 
 
@@ -47,8 +48,6 @@ object JudgementHandlingStrategy {
       EXIST_RESULTS,
       EXIST_JUDGEMENTS),
     MissingValueStrategy.AS_ZEROS)
-
-
 }
 
 case class JudgementHandlingStrategy(validations: Seq[JudgementValidation], handling: MissingValueStrategy) {
