@@ -32,7 +32,7 @@ object OrderedValuesJsonProtocol extends DefaultJsonProtocol {
   val STEP_SIZE_KEY = "stepSize"
   val TYPE_KEY = "type"
   val DISTINCT_VALUES_TYPE = "DISTINCT_VALUES"
-  val RANGE_VALUES_TYPE = "DISTINCT_VALUES"
+  val RANGE_VALUES_TYPE = "RANGE_VALUES"
 
   /**
     * Format for OrderedValues. Note that currently takes only numerical (Double/Float) and

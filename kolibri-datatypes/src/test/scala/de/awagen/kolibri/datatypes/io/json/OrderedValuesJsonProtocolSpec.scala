@@ -28,7 +28,7 @@ class OrderedValuesJsonProtocolSpec extends UnitTestSpec {
     "correctly be parsed to DistinctValues[Double]" in {
       //given
       import de.awagen.kolibri.datatypes.io.json.OrderedValuesJsonProtocol._
-      val json: JsValue = """{"name": "test", "values": [0.45, 0.32]}""".parseJson
+      val json: JsValue = s"""{"type": "$DISTINCT_VALUES_TYPE" ,"name": "test", "values": [0.45, 0.32]}""".parseJson
       //when, then
       json.convertTo[DistinctValues[Double]] mustBe DistinctValues[Double]("test", Seq(0.45, 0.32))
       json.convertTo[OrderedValues[Any]] mustBe DistinctValues[Double]("test", Seq(0.45, 0.32))
@@ -37,7 +37,7 @@ class OrderedValuesJsonProtocolSpec extends UnitTestSpec {
     "correctly be parsed to DistinctValues[String]" in {
       //given
       import de.awagen.kolibri.datatypes.io.json.OrderedValuesJsonProtocol._
-      val json: JsValue = """{"name": "test", "values": ["val1", "val2"]}""".parseJson
+      val json: JsValue = s"""{"type": "$DISTINCT_VALUES_TYPE", "name": "test", "values": ["val1", "val2"]}""".parseJson
       //when, then
       json.convertTo[DistinctValues[String]] mustBe DistinctValues[String]("test", Seq("val1", "val2"))
       json.convertTo[OrderedValues[Any]] mustBe DistinctValues[String]("test", Seq("val1", "val2"))
@@ -51,8 +51,8 @@ class OrderedValuesJsonProtocolSpec extends UnitTestSpec {
       //when, then
       val json1: JsValue = OrderedValuesAnyFormat.write(value1)
       val json2: JsValue = OrderedValuesAnyFormat.write(value2)
-      json1.toString() mustBe """{"name":"key1","values":["v1","v2"]}"""
-      json2.toString() mustBe """{"name":"key1","values":[0.2,0.45]}"""
+      json1.toString() mustBe s"""{"name":"key1","type":"$DISTINCT_VALUES_TYPE","values":["v1","v2"]}"""
+      json2.toString() mustBe s"""{"name":"key1","type":"$DISTINCT_VALUES_TYPE","values":[0.2,0.45]}"""
     }
   }
 
@@ -61,7 +61,7 @@ class OrderedValuesJsonProtocolSpec extends UnitTestSpec {
     "correctly be parsed to RangeValues[Double]" in {
       //given
       import de.awagen.kolibri.datatypes.io.json.OrderedValuesJsonProtocol._
-      val json: JsValue = """{"name": "test", "start": 0.45, "end": 0.9, "stepSize": 0.1}""".parseJson
+      val json: JsValue = s"""{"type":"$RANGE_VALUES_TYPE", "name": "test", "start": 0.45, "end": 0.9, "stepSize": 0.1}""".parseJson
       //when, then
       json.convertTo[RangeValues[Double]] mustBe RangeValues[Double]("test", 0.45, 0.9, 0.1)
       json.convertTo[OrderedValues[Any]] mustBe RangeValues[Double]("test", 0.45, 0.9, 0.1)
@@ -73,7 +73,7 @@ class OrderedValuesJsonProtocolSpec extends UnitTestSpec {
       val value1 = RangeValues[Double]("test", 0.45, 0.9, 0.1)
       //when, then
       val json1: JsValue = OrderedValuesAnyFormat.write(value1)
-      json1.toString() mustBe """{"end":0.9,"name":"test","start":0.45,"stepSize":0.1}"""
+      json1.toString() mustBe s"""{"end":0.9,"name":"test","start":0.45,"stepSize":0.1,"type":"$RANGE_VALUES_TYPE"}"""
     }
 
   }
