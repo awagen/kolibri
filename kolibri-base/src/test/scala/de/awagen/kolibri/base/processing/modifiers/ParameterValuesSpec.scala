@@ -18,15 +18,15 @@
 package de.awagen.kolibri.base.processing.modifiers
 
 import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ParameterValuesImplicits.ParameterValueSeqToRequestBuilderModifier
-import de.awagen.kolibri.base.processing.modifiers.ParameterValues.{MappedParameterValues, ParameterValue, ParameterValueMapping, ParameterValues, ValueSeqGenProvider, ValueType}
 import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ValueType.URL_PARAMETER
+import de.awagen.kolibri.base.processing.modifiers.ParameterValues.{MappedParameterValues, ParameterValue, ParameterValueMapping, ParameterValues, ValueSeqGenProvider, ValueType}
+import de.awagen.kolibri.base.processing.modifiers.ParameterValuesSpec._
 import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.BatchGenerators
 import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator, OneAfterAnotherIndexedGenerator}
 
-class ParameterValuesSpec extends UnitTestSpec {
-
+object ParameterValuesSpec {
   val parameterValues: ParameterValues = ParameterValues("p1", ValueType.URL_PARAMETER,
     ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq("v1", "v2", "v3", "v4")))
 
@@ -92,6 +92,9 @@ class ParameterValuesSpec extends UnitTestSpec {
     ))
   val mapping1 = new ParameterValueMapping(keyValues = distinctValues1, mappedValues = Seq(mappedValues1), mappingKeyValueAssignments = Seq((0, 1)))
 
+}
+
+class ParameterValuesSpec extends UnitTestSpec {
 
   "ParameterValues" must {
 
@@ -191,7 +194,6 @@ class ParameterValuesSpec extends UnitTestSpec {
         BatchGenerators.batchByGeneratorAtIndex(0).apply(mappedSeq).iterator.toSeq.map(x => x.data)
       ).iterator.toSeq.size mustBe 4
     }
-
   }
 
 }

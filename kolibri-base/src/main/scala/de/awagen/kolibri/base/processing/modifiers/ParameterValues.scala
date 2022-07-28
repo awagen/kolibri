@@ -51,7 +51,7 @@ object ParameterValues {
     }
   }
 
-  object ValueType extends Enumeration {
+  object ValueType extends Enumeration with KolibriSerializable {
     type ValueType = Value
     val URL_PARAMETER, HEADER, BODY = Value
   }
@@ -63,6 +63,7 @@ object ParameterValues {
      * while in case of a generator already providing Seq of ParameterValues the generator can just be reused as is.
      * Just serves to be able to put any kind of values (standalone and mapped values) in a collection of generators
      * and calculate the combined generators of Seq[ParameterValue]
+     *
      * @return
      */
     def toSeqGenerator: IndexedGenerator[Seq[ParameterValue]]
@@ -333,7 +334,8 @@ object ParameterValues {
     /**
      * explicitly define partitions such that partitioning strictly happens by the key values and not by
      * the mapped values.
-     *  @return
+     *
+     * @return
      */
     override def partitions: IndexedGenerator[IndexedGenerator[Seq[ParameterValue]]] = generatorsByValues
 

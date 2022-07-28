@@ -19,9 +19,10 @@ package de.awagen.kolibri.base.http.client.request
 
 import akka.http.scaladsl.model.{HttpEntity, HttpHeader, HttpMethod, HttpMethods, HttpProtocol, HttpProtocols, MessageEntity}
 import de.awagen.kolibri.base.utils.IterableUtils
+import de.awagen.kolibri.datatypes.io.KolibriSerializable
 
 
-class RequestTemplateBuilder {
+class RequestTemplateBuilder extends KolibriSerializable {
 
   private[request] var contextPath: String = ""
   private[request] var parameters: Map[String, Seq[String]] = Map.empty
