@@ -17,6 +17,14 @@ class ParameterValuesJsonProtocolSpec extends UnitTestSpec {
         |}
         |""".stripMargin
 
+    val parameterValuesFromOrderedValuesAsValueSeqGenProviderJson: String =
+      s"""
+         |{
+         |"type": "STANDALONE",
+         |"values": $parameterValuesFromOrderedValuesJson
+         |}
+         |""".stripMargin
+
     val parameterValuesPassedJson: String =
       """
         |{
@@ -132,12 +140,21 @@ class ParameterValuesJsonProtocolSpec extends UnitTestSpec {
   object ParameterValueMappingDefinitions {
     val jsonMapping: String =
       s"""
-        |{
-        |"key_values": ${ParameterValuesJsonDefinitions.parameterValuesFromOrderedValuesJson},
-        |"mapped_values": [${MappedParameterValuesDefinitions.jsonFullKeyValuesMappingJson}],
-        |"key_mapping_assignments": [[0,1]]
-        |}
-        |""".stripMargin
+         |{
+         |"key_values": ${ParameterValuesJsonDefinitions.parameterValuesFromOrderedValuesJson},
+         |"mapped_values": [${MappedParameterValuesDefinitions.jsonFullKeyValuesMappingJson}],
+         |"key_mapping_assignments": [[0,1]]
+         |}
+         |""".stripMargin
+
+    val jsonMappingAsValueSeqGenProvider: String = {
+      s"""
+         |{
+         |"type": "MAPPING",
+         |"values": $jsonMapping
+         |}
+         |""".stripMargin
+    }
 
     val jsonMultiMapping: String =
       s"""
@@ -226,7 +243,6 @@ class ParameterValuesJsonProtocolSpec extends UnitTestSpec {
     }
 
 
-
     "parse MappedParameterValues from json values mapping" in {
       // given, when
       val values = MappedParameterValuesDefinitions.jsonFullKeyValuesMappingJson.parseJson.convertTo[MappedParameterValues]
@@ -312,8 +328,8 @@ class ParameterValuesJsonProtocolSpec extends UnitTestSpec {
 
     "parse ValueSeqGenProvider" in {
       // given, when
-      val parameterValues = ParameterValuesJsonDefinitions.parameterValuesFromOrderedValuesJson.parseJson.convertTo[ValueSeqGenProvider]
-      val mapping = ParameterValueMappingDefinitions.jsonMapping.parseJson.convertTo[ValueSeqGenProvider]
+      val parameterValues = ParameterValuesJsonDefinitions.parameterValuesFromOrderedValuesAsValueSeqGenProviderJson.parseJson.convertTo[ValueSeqGenProvider]
+      val mapping = ParameterValueMappingDefinitions.jsonMappingAsValueSeqGenProvider.parseJson.convertTo[ValueSeqGenProvider]
       // then
       parameterValues.isInstanceOf[ParameterValues] mustBe true
       mapping.isInstanceOf[ParameterValueMapping] mustBe true

@@ -96,25 +96,36 @@ object ParameterValuesJsonProtocol extends DefaultJsonProtocol {
   val JSON_ARRAY_MAPPINGS_TYPE = "JSON_ARRAY_MAPPINGS_TYPE"
   val CSV_MAPPINGS_TYPE = "CSV_MAPPING_TYPE"
   val FILE_PREFIX_TO_FILE_LINES_MAPPING_TYPE = "FILE_PREFIX_TO_FILE_LINES_TYPE"
+  val STANDALONE_TYPE = "STANDALONE"
+  val MAPPING_TYPE = "MAPPING"
 
 
   /**
     * Reusing below formats for the general trait ValuesSeqGenProvider
     */
   implicit object ValueSeqGenProviderFormat extends JsonFormat[ValueSeqGenProvider] with WithStructDef {
-    override def read(json: JsValue): ValueSeqGenProvider = {
-      try {
-        ParameterValuesFormat.read(json)
-      }
-      catch {
-        case _: MatchError => ParameterValueMappingFormat.read(json)
+    override def read(json: JsValue): ValueSeqGenProvider = json match {
+      case spray.json.JsObject(fields) if fields.contains(TYPE_KEY) => fields(TYPE_KEY).convertTo[String] match {
+        case STANDALONE_TYPE => ParameterValuesFormat.read(fields(VALUES_KEY))
+        case MAPPING_TYPE => ParameterValueMappingFormat.read(fields(VALUES_KEY))
       }
     }
 
     override def write(obj: ValueSeqGenProvider): JsValue = """{}""".toJson
 
     override def structDef: JsonStructDefs.StructDef[_] = {
-      ParameterValuesFormat.structDef
+      NestedFieldSeqStructDef(
+        Seq(
+          FieldDef(StringConstantStructDef(TYPE_KEY), StringChoiceStructDef(Seq(STANDALONE_TYPE, MAPPING_TYPE)), required = true)
+        ),
+        Seq(
+          ConditionalFields(TYPE_KEY, Map(
+            STANDALONE_TYPE -> Seq(FieldDef(StringConstantStructDef(VALUES_KEY), ParameterValuesFormat.structDef, required = true)),
+            MAPPING_TYPE -> Seq(FieldDef(StringConstantStructDef(VALUES_KEY), ParameterValueMappingFormat.structDef, required = true))
+          ))
+        )
+      )
+
     }
   }
 
