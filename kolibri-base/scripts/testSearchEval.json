@@ -25,9 +25,11 @@
   ],
   "requestParameterPermutateSeq": [
     {
-      "type": "FROM_ORDERED_VALUES_TYPE",
-      "values_type": "URL_PARAMETER",
+      "type": "STANDALONE",
       "values": {
+        "type": "FROM_ORDERED_VALUES_TYPE",
+        "values_type": "URL_PARAMETER",
+        "values": {
           "type": "FROM_VALUES_TYPE",
           "name": "q",
           "values": [
@@ -52,29 +54,36 @@
             "q19",
             "q20"
           ]
+        }
       }
     },
     {
-      "type": "FROM_ORDERED_VALUES_TYPE",
-      "values_type": "URL_PARAMETER",
+      "type": "STANDALONE",
       "values": {
-        "type": "FROM_VALUES_TYPE",
-        "name": "a1",
-        "values": [
-          "0.45",
-          "0.32"
-        ]
+        "type": "FROM_ORDERED_VALUES_TYPE",
+        "values_type": "URL_PARAMETER",
+        "values": {
+          "type": "FROM_VALUES_TYPE",
+          "name": "a1",
+          "values": [
+            "0.45",
+            "0.32"
+          ]
+        }
       }
     },
     {
-      "type": "FROM_ORDERED_VALUES_TYPE",
-      "values_type": "URL_PARAMETER",
+      "type": "STANDALONE",
       "values": {
-        "type": "FROM_RANGE_TYPE",
-        "name": "o",
-        "start": 0.0,
-        "end": 2000.0,
-        "stepSize": 1.0
+        "type": "FROM_ORDERED_VALUES_TYPE",
+        "values_type": "URL_PARAMETER",
+        "values": {
+          "type": "FROM_RANGE_TYPE",
+          "name": "o",
+          "start": 0.0,
+          "end": 2000.0,
+          "stepSize": 1.0
+        }
       }
     }
   ],

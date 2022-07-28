@@ -25,47 +25,92 @@
   ],
   "requestParameterPermutateSeq": [
     {
-      "key_values": {
-        "type": "FROM_ORDERED_VALUES_TYPE",
-        "values": {"type": "FROM_VALUES_TYPE", "name": "q", "values": ["q0", "q1", "q2", "q3", "q4", "q5"]},
-        "values_type": "URL_PARAMETER"
-      },
-      "mapped_values": [{
-        "type": "JSON_VALUES_MAPPING_TYPE",
-        "name": "mappedParam1",
-        "values_type": "URL_PARAMETER",
-        "values": {
-          "q0": ["q0_val1", "q0_val2"],
-          "q1": ["q1_val1", "q1_val2"],
-          "q2": ["q2_val1", "q2_val2"],
-          "q3": ["q3_val1", "q3_val2"],
-          "q4": ["q4_val1", "q4_val2"],
-          "q5": ["q5_val1", "q5_val2"]
-        }
-      }],
-      "key_mapping_assignments": [[0,1]]
-    },
-    {
-      "type": "FROM_ORDERED_VALUES_TYPE",
-      "values_type": "URL_PARAMETER",
+      "type": "MAPPING",
       "values": {
-        "type": "FROM_VALUES_TYPE",
-        "name": "a1",
-        "values": [
-          "0.45",
-          "0.32"
+        "key_values": {
+          "type": "FROM_ORDERED_VALUES_TYPE",
+          "values": {
+            "type": "FROM_VALUES_TYPE",
+            "name": "q",
+            "values": [
+              "q0",
+              "q1",
+              "q2",
+              "q3",
+              "q4",
+              "q5"
+            ]
+          },
+          "values_type": "URL_PARAMETER"
+        },
+        "mapped_values": [
+          {
+            "type": "JSON_VALUES_MAPPING_TYPE",
+            "name": "mappedParam1",
+            "values_type": "URL_PARAMETER",
+            "values": {
+              "q0": [
+                "q0_val1",
+                "q0_val2"
+              ],
+              "q1": [
+                "q1_val1",
+                "q1_val2"
+              ],
+              "q2": [
+                "q2_val1",
+                "q2_val2"
+              ],
+              "q3": [
+                "q3_val1",
+                "q3_val2"
+              ],
+              "q4": [
+                "q4_val1",
+                "q4_val2"
+              ],
+              "q5": [
+                "q5_val1",
+                "q5_val2"
+              ]
+            }
+          }
+        ],
+        "key_mapping_assignments": [
+          [
+            0,
+            1
+          ]
         ]
       }
     },
     {
-      "type": "FROM_ORDERED_VALUES_TYPE",
-      "values_type": "URL_PARAMETER",
+      "type": "STANDALONE",
       "values": {
-        "type": "FROM_RANGE_TYPE",
-        "name": "o",
-        "start": 0.0,
-        "end": 2000.0,
-        "stepSize": 1.0
+        "type": "FROM_ORDERED_VALUES_TYPE",
+        "values_type": "URL_PARAMETER",
+        "values": {
+          "type": "FROM_VALUES_TYPE",
+          "name": "a1",
+          "values": [
+            "0.45",
+            "0.32"
+          ]
+        }
+      }
+    },
+    {
+      "type": "STANDALONE",
+      "values": {
+        "type": "FROM_ORDERED_VALUES_TYPE",
+        "values_type": "URL_PARAMETER",
+        "values": {
+          "type": "FROM_RANGE_TYPE",
+          "name": "o",
+          "start": 0.0,
+          "end": 2000.0,
+          "stepSize": 1.0
+        }
       }
     }
   ],

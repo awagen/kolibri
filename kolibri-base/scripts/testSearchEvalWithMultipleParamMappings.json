@@ -25,67 +25,85 @@
   ],
   "requestParameterPermutateSeq": [
     {
-      "key_values": {
-        "type": "FROM_ORDERED_VALUES_TYPE",
-        "values": {
-          "type": "FROM_FILENAME_KEYS_TYPE",
-          "directory": "test-paramfiles/queries_for_id",
-          "filesSuffix": ".txt",
-          "name": "id"
-        },
-        "values_type": "URL_PARAMETER"
-      },
-      "mapped_values": [
-        {
-          "type": "FILE_PREFIX_TO_FILE_LINES_TYPE",
-          "directory": "test-paramfiles/queries_for_id",
-          "files_suffix": ".txt",
-          "name": "q",
+      "type": "MAPPING",
+      "values": {
+        "key_values": {
+          "type": "FROM_ORDERED_VALUES_TYPE",
+          "values": {
+            "type": "FROM_FILENAME_KEYS_TYPE",
+            "directory": "test-paramfiles/queries_for_id",
+            "filesSuffix": ".txt",
+            "name": "id"
+          },
           "values_type": "URL_PARAMETER"
         },
-        {
-          "type": "CSV_MAPPING_TYPE",
-          "name": "section_id",
-          "values_type": "URL_PARAMETER",
-          "values": "test-paramfiles/section_for_id/section_for_id.csv",
-          "column_delimiter": ";",
-          "key_column_index": 0,
-          "value_column_index": 1
-        },
-        {
-          "type": "JSON_SINGLE_MAPPINGS_TYPE",
-          "name": "section_header",
-          "values_type": "HEADER",
-          "values": "test-paramfiles/section_headers/section_header_mapping.json"
-        }
-      ],
-      "key_mapping_assignments": [
-        [0, 1],
-        [0, 2],
-        [2, 3]
-      ]
-    },
-    {
-      "type": "FROM_ORDERED_VALUES_TYPE",
-      "values_type": "URL_PARAMETER",
-      "values": {
-        "type": "FROM_VALUES_TYPE",
-        "name": "a1",
-        "values": [
-          "0.45",
-          "0.32"
+        "mapped_values": [
+          {
+            "type": "FILE_PREFIX_TO_FILE_LINES_TYPE",
+            "directory": "test-paramfiles/queries_for_id",
+            "files_suffix": ".txt",
+            "name": "q",
+            "values_type": "URL_PARAMETER"
+          },
+          {
+            "type": "CSV_MAPPING_TYPE",
+            "name": "section_id",
+            "values_type": "URL_PARAMETER",
+            "values": "test-paramfiles/section_for_id/section_for_id.csv",
+            "column_delimiter": ";",
+            "key_column_index": 0,
+            "value_column_index": 1
+          },
+          {
+            "type": "JSON_SINGLE_MAPPINGS_TYPE",
+            "name": "section_header",
+            "values_type": "HEADER",
+            "values": "test-paramfiles/section_headers/section_header_mapping.json"
+          }
+        ],
+        "key_mapping_assignments": [
+          [
+            0,
+            1
+          ],
+          [
+            0,
+            2
+          ],
+          [
+            2,
+            3
+          ]
         ]
       }
     },
     {
-      "type": "FROM_ORDERED_VALUES_TYPE",
-      "values_type": "URL_PARAMETER",
+      "type": "STANDALONE",
       "values": {
-        "type": "FROM_RANGE_TYPE",
-        "name": "o",
-        "start": 0.0,
-        "end": 2000.0,
-        "stepSize": 1.0
+        "type": "FROM_ORDERED_VALUES_TYPE",
+        "values_type": "URL_PARAMETER",
+        "values": {
+          "type": "FROM_VALUES_TYPE",
+          "name": "a1",
+          "values": [
+            "0.45",
+            "0.32"
+          ]
+        }
+      }
+    },
+    {
+      "type": "STANDALONE",
+      "values": {
+        "type": "FROM_ORDERED_VALUES_TYPE",
+        "values_type": "URL_PARAMETER",
+        "values": {
+          "type": "FROM_RANGE_TYPE",
+          "name": "o",
+          "start": 0.0,
+          "end": 2000.0,
+          "stepSize": 1.0
+        }
       }
     }
   ],
