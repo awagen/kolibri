@@ -22,6 +22,7 @@ import akka.http.scaladsl.model.{ContentTypes, HttpEntity}
 import akka.util.ByteString
 import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.{CombinedModifier, RequestTemplateBuilderModifier}
 import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator, OneAfterAnotherIndexedGenerator, PartitionByGroupIndexedGenerator, PermutatingIndexedGenerator}
+import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.types.SerializableCallable
 
 import scala.collection.mutable.ArrayBuffer
@@ -55,7 +56,7 @@ object ParameterValues {
     val URL_PARAMETER, HEADER, BODY = Value
   }
 
-  sealed trait ValueSeqGenProvider {
+  sealed trait ValueSeqGenProvider extends KolibriSerializable {
 
     /**
      * In the case of a single parameter with distinct values this would just put each value in a separate Seq(element),
@@ -96,10 +97,10 @@ object ParameterValues {
 
   case class MappedParameterValues(name: String,
                                    valueType: ValueType.Value,
-                                   values: Map[String, IndexedGenerator[String]])
+                                   values: Map[String, IndexedGenerator[String]]) extends KolibriSerializable
 
 
-  case class ParameterValue(name: String, valueType: ValueType.Value, value: String)
+  case class ParameterValue(name: String, valueType: ValueType.Value, value: String) extends KolibriSerializable
 
 
   /**

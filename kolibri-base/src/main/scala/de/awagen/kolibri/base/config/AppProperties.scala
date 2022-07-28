@@ -86,6 +86,7 @@ object AppProperties {
 
     final val applicationName: String = baseConfig.getString("kolibri.actor-system")
 
+    val responseToStrictTimeoutInMs: FiniteDuration = FiniteDuration(baseConfig.getInt("kolibri.request.responseToStrictTimeoutInMs"), MILLISECONDS)
     val requestParallelism: Int = baseConfig.getInt("kolibri.request.parallelism")
     val useRequestTracking: Boolean = baseConfig.getBoolean("kolibri.request.useTracking")
     val useConnectionPoolFlow: Boolean = baseConfig.getBoolean("kolibri.request.useConnectionPoolFlow")

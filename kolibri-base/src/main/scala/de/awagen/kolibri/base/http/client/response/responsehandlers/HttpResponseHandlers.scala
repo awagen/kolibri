@@ -22,11 +22,11 @@ import akka.http.scaladsl.model.{HttpEntity, HttpResponse}
 import akka.stream.Materializer
 import akka.stream.scaladsl.Sink
 import akka.util.ByteString
+import de.awagen.kolibri.base.config.AppProperties.config.responseToStrictTimeoutInMs
 import de.awagen.kolibri.datatypes.io.BaseIO
 import org.slf4j.{Logger, LoggerFactory}
 import play.api.libs.json.JsValue
 
-import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 
 
@@ -55,7 +55,7 @@ object HttpResponseHandlers extends BaseIO {
                         isValidFunc: JsValue => Boolean,
                         parseFunc: JsValue => T)
                        (implicit actorSystem: ActorSystem, mat: Materializer, ec: ExecutionContext): Future[Either[Throwable, T]] = {
-    val strictEntity: Future[HttpEntity.Strict] = response.entity.toStrict(3.seconds)
+    val strictEntity: Future[HttpEntity.Strict] = response.entity.toStrict(responseToStrictTimeoutInMs)
     strictEntity flatMap { e =>
       e.dataBytes
         .runFold(ByteString.empty) { case (acc, b) => acc ++ b }
