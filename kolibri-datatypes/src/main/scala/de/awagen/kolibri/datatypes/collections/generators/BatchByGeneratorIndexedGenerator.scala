@@ -17,6 +17,7 @@
 package de.awagen.kolibri.datatypes.collections.generators
 
 import de.awagen.kolibri.datatypes.types.SerializableCallable
+import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 
 case class BatchByGeneratorIndexedGenerator[+T](generators: Seq[IndexedGenerator[T]], batchByIndex: Int) extends IndexedGenerator[IndexedGenerator[Seq[T]]] {
   assert(batchByIndex < generators.size, s"given index of generator to batch by ($batchByIndex) is not within indices of passed generators" +
@@ -37,12 +38,17 @@ case class BatchByGeneratorIndexedGenerator[+T](generators: Seq[IndexedGenerator
     // find the partition groups, e.g each generator corresponds to a grouping and the batch is defined by adding the
     // generator corresponding to the n-th batch (n-th generator in the Seq) to the generators to permutate over in the batch
     val partitionGroups: Seq[IndexedGenerator[T]] = generators(batchByIndex).partitions.getPart(start, end).iterator.toSeq
-    BatchByGeneratorIndexedGenerator(generators.indices.map({
+    val mapFunction: SerializableFunction1[Int, IndexedGenerator[T]] = new SerializableFunction1[Int, IndexedGenerator[T]] {
+      override def apply(v1: Int): IndexedGenerator[T] = v1 match {
+        case e if e == batchByIndex => PartitionByGroupIndexedGenerator(partitionGroups)
+        case e => generators(e)
+      }
+    }
+    BatchByGeneratorIndexedGenerator(generators.indices.map(
       // keep the groupings. Mapping to PartitionByGroupIndexedGenerator will only make a difference if the partition
       // generators are bigger than single element
-      case e if e == batchByIndex => PartitionByGroupIndexedGenerator(partitionGroups)
-      case e => generators(e)
-    }), batchByIndex)
+      mapFunction
+    ), batchByIndex)
   }
 
   /**
@@ -52,12 +58,15 @@ case class BatchByGeneratorIndexedGenerator[+T](generators: Seq[IndexedGenerator
    * @return
    */
   override def get(index: Int): Option[IndexedGenerator[Seq[T]]] = {
-    generators(batchByIndex).get(index).map(x => {
-      PermutatingIndexedGenerator(generators.indices.map({
-        case e if e == batchByIndex => ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq(x))
-        case e => generators(e)
-      }))
-    })
+    val mapFunction: SerializableFunction1[T, IndexedGenerator[Seq[T]]] = new SerializableFunction1[T, IndexedGenerator[Seq[T]]] {
+      override def apply(v1: T): IndexedGenerator[Seq[T]] = {
+        PermutatingIndexedGenerator(generators.indices.map({
+          case e if e == batchByIndex => ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq(v1))
+          case e => generators(e)
+        }))
+      }
+    }
+    generators(batchByIndex).get(index).map(mapFunction)
   }
 
   /**
@@ -72,10 +81,16 @@ case class BatchByGeneratorIndexedGenerator[+T](generators: Seq[IndexedGenerator
    * are still generated, and take partitionings into account.
    */
   override def mapGen[B](f: SerializableCallable.SerializableFunction1[IndexedGenerator[Seq[T]], B]): IndexedGenerator[B] = {
-    val g: IndexedGenerator[IndexedGenerator[Seq[T]]] = generators(batchByIndex).partitions.mapGen(x =>
-      PermutatingIndexedGenerator(
-        Seq(x) ++ generators.indices.filter(ind => ind != batchByIndex).map(n => generators(n)))
-    )
-    g.mapGen(u => f.apply(u))
+    val mapFunc: SerializableFunction1[IndexedGenerator[T], IndexedGenerator[Seq[T]]] = new SerializableFunction1[IndexedGenerator[T], IndexedGenerator[Seq[T]]] {
+      override def apply(v1: IndexedGenerator[T]): IndexedGenerator[Seq[T]] = {
+        PermutatingIndexedGenerator(
+          Seq(v1) ++ generators.indices.filter(ind => ind != batchByIndex).map(n => generators(n)))
+      }
+    }
+    val g: IndexedGenerator[IndexedGenerator[Seq[T]]] = generators(batchByIndex).partitions.mapGen(mapFunc)
+    val mapFunc1: SerializableFunction1[IndexedGenerator[Seq[T]], B] = new SerializableFunction1[IndexedGenerator[Seq[T]], B] {
+      override def apply(v1: IndexedGenerator[Seq[T]]): B = f.apply(v1)
+    }
+    g.mapGen(mapFunc1)
   }
 }
