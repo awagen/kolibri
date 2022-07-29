@@ -17,31 +17,28 @@
 
 package de.awagen.kolibri.base.serialization
 
+import akka.actor.typed.scaladsl.Behaviors
+import akka.actor.typed.{ActorRef, Behavior}
 import akka.serialization.{SerializationExtension, Serializers}
-import akka.testkit.TestKit
-import de.awagen.kolibri.base.actors.KolibriTestKitNoCluster
+import de.awagen.kolibri.base.actors.KolibriTypedTestKitNoCluster
 import de.awagen.kolibri.base.io.json.ParameterValuesJsonProtocol.ValueSeqGenProviderFormat
 import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ValueType.URL_PARAMETER
 import de.awagen.kolibri.base.processing.modifiers.ParameterValues.{MappedParameterValues, ParameterValueMapping, ValueSeqGenProvider}
 import de.awagen.kolibri.base.processing.modifiers.ParameterValuesSpec
 import de.awagen.kolibri.base.processing.modifiers.ParameterValuesSpec.{mappedValue1, mappedValue2}
 import de.awagen.kolibri.datatypes.collections.generators.ByFunctionNrLimitedIndexedGenerator
-import org.scalatest.BeforeAndAfterAll
-import org.scalatest.matchers.must.Matchers
-import org.scalatest.wordspec.AnyWordSpecLike
+import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import spray.json._
 
-class SerializationSpec extends KolibriTestKitNoCluster
-  with AnyWordSpecLike
-  with Matchers
-  with BeforeAndAfterAll {
+object ConfigOverwrites {
+  val configSettings = new java.util.HashMap[String, Any]()
+  configSettings.put("akka.actor.serialize-messages", "on")
+  configSettings.put("akka.actor.serialize-creators", "on")
+}
+
+class SerializationSpec extends KolibriTypedTestKitNoCluster(ConfigOverwrites.configSettings) {
 
   override val invokeBeforeAllAndAfterAllEvenIfNoTestsAreExpected = true
-
-  override protected def afterAll(): Unit = {
-    super.afterAll()
-    TestKit.shutdownActorSystem(system, verifySystemShutdown = true)
-  }
 
   def serializeAndBack(original: AnyRef): AnyRef = {
     // Get the Serialization Extension
@@ -105,6 +102,19 @@ class SerializationSpec extends KolibriTestKitNoCluster
 
   }
 
+  object Actors {
+    object MirrorActor {
+      case class Sent(obj: AnyRef, self: ActorRef[Received]) extends KolibriSerializable
+      case class Received(obj: AnyRef) extends KolibriSerializable
+
+      def apply(): Behavior[Sent] = Behaviors.receiveMessage {
+        case Sent(greeting, recipient) =>
+          recipient ! Received(greeting)
+          Behaviors.same
+      }
+    }
+  }
+
   "Serialization" must {
 
     "work properly on ParameterValueMappings" in {
@@ -137,6 +147,22 @@ class SerializationSpec extends KolibriTestKitNoCluster
       val parsed = Samples.mappingSample.parseJson.convertTo[ValueSeqGenProvider]
       // when, then
       serializeAndBack(parsed)
+    }
+
+    "serialization across actors" in {
+      // given
+      val parsed: ValueSeqGenProvider = Samples.mappingSample.parseJson.convertTo[ValueSeqGenProvider]
+      val castParsed = parsed.asInstanceOf[ParameterValueMapping]
+      val senderActor: ActorRef[Actors.MirrorActor.Sent] = testKit.spawn(Actors.MirrorActor(), "mirror")
+      val testProbe = testKit.createTestProbe[Actors.MirrorActor.Received]()
+      senderActor ! Actors.MirrorActor.Sent(parsed, testProbe.ref)
+      val msg: Actors.MirrorActor.Received =  testProbe.expectMessageType[Actors.MirrorActor.Received]
+      val value = msg.obj.asInstanceOf[ParameterValueMapping]
+      value.keyValues.name mustBe castParsed.keyValues.name
+      value.keyValues.values.size mustBe castParsed.keyValues.size
+      value.keyValues.valueType mustBe castParsed.keyValues.valueType
+      value.mappingKeyValueAssignments mustBe castParsed.mappingKeyValueAssignments
+      value.mappedValues.size mustBe castParsed.mappedValues.size
     }
 
   }
