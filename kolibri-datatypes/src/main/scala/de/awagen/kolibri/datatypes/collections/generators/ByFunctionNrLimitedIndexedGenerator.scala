@@ -21,11 +21,17 @@ import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFuncti
 
 object ByFunctionNrLimitedIndexedGenerator {
 
+  private[this] def serializableMappingFromElementSeq[T](elem: Seq[T]): SerializableFunction1[Int, Option[T]] = new SerializableFunction1[Int, Option[T]] {
+    override def apply(v1: Int): Option[T] = {
+      v1 match {
+        case e if e >= 0 && e < elem.size => Some(elem(e))
+        case _ => None
+      }
+    }
+  }
+
   def createFromSeq[T](elem: Seq[T]): ByFunctionNrLimitedIndexedGenerator[T] = {
-    ByFunctionNrLimitedIndexedGenerator(elem.size, {
-      case e if e >= 0 && e < elem.size => Some(elem(e))
-      case _ => None
-    })
+    ByFunctionNrLimitedIndexedGenerator(elem.size, serializableMappingFromElementSeq(elem))
   }
 
 }

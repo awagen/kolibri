@@ -20,9 +20,11 @@ package de.awagen.kolibri.base.serialization
 import akka.serialization.{SerializationExtension, Serializers}
 import akka.testkit.TestKit
 import de.awagen.kolibri.base.actors.KolibriTestKitNoCluster
-import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ParameterValueMapping
+import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ValueType.URL_PARAMETER
+import de.awagen.kolibri.base.processing.modifiers.ParameterValues.{MappedParameterValues, ParameterValueMapping}
 import de.awagen.kolibri.base.processing.modifiers.ParameterValuesSpec
 import de.awagen.kolibri.base.processing.modifiers.ParameterValuesSpec.{mappedValue1, mappedValue2}
+import de.awagen.kolibri.datatypes.collections.generators.ByFunctionNrLimitedIndexedGenerator
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
@@ -58,6 +60,23 @@ class SerializationSpec extends KolibriTestKitNoCluster
         mappingKeyValueAssignments = Seq((1, 2)))
       // when, then
       serializeAndBack(original)
+    }
+
+    "MappedParameterValues should be serializable" in {
+      // given
+      val mappings: Map[String, Seq[String]] = Map(
+        "a" -> Seq("a1", "a2")
+      )
+      val values = MappedParameterValues("testName", URL_PARAMETER, mappings.map(x => (x._1, ByFunctionNrLimitedIndexedGenerator.createFromSeq(x._2))))
+      // when, then
+      serializeAndBack(values)
+    }
+
+    "ByFunctionNrLimitedIndexedGenerator should be serializable" in {
+      // given
+      val generator = ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq("a", "b"))
+      // when, then
+      serializeAndBack(generator)
     }
 
   }
