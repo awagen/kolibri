@@ -18,6 +18,7 @@
 package de.awagen.kolibri.datatypes.collections.generators
 
 import de.awagen.kolibri.datatypes.types.SerializableCallable
+import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 
 /**
   * Generator that takes a sequence of generators and acts like a normal OneAfterAnotherIndexedGenerator, e.g
@@ -60,6 +61,11 @@ case class PartitionByGroupIndexedGenerator[T](groups: Seq[IndexedGenerator[T]])
     * @return : new generator providing the new type
     */
   override def mapGen[B](f: SerializableCallable.SerializableFunction1[T, B]): IndexedGenerator[B] = {
-    PartitionByGroupIndexedGenerator(groups.map(x => x.mapGen(f)))
+    val mapFunction: SerializableFunction1[IndexedGenerator[T], IndexedGenerator[B]] = new SerializableFunction1[IndexedGenerator[T], IndexedGenerator[B]] {
+      override def apply(v1: IndexedGenerator[T]): IndexedGenerator[B] = {
+        v1.mapGen(f)
+      }
+    }
+    PartitionByGroupIndexedGenerator(groups.map(mapFunction))
   }
 }
