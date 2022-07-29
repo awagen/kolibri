@@ -43,12 +43,21 @@ case class ByFunctionNrLimitedIndexedGenerator[+T](nrOfElements: Int,
     assert(startIndex >= 0)
     val end: Int = math.min(nrOfElements, endIndex)
     val newSize = end - startIndex
-    val genFunc: SerializableFunction1[Int, Option[T]] = x => this.get(x + startIndex)
+    val genFunc: SerializableFunction1[Int, Option[T]] = new SerializableFunction1[Int, Option[T]] {
+      override def apply(v1: Int): Option[T] = {
+        get(v1 + startIndex)
+      }
+    }
     ByFunctionNrLimitedIndexedGenerator(newSize, genFunc)
   }
 
   override def mapGen[B](f: SerializableFunction1[T, B]): IndexedGenerator[B] = {
-    new ByFunctionNrLimitedIndexedGenerator[B](nrOfElements, x => genFunc(x).map(f))
+    val func: SerializableFunction1[Int, Option[B]] = new SerializableFunction1[Int, Option[B]] {
+      override def apply(v1: Int): Option[B] = {
+        genFunc(v1).map(f)
+      }
+    }
+    new ByFunctionNrLimitedIndexedGenerator[B](nrOfElements, func)
   }
 
 
