@@ -32,25 +32,47 @@ object NthIsNthForEachIndexedGenerator {
   */
 case class NthIsNthForEachIndexedGenerator[+T](generators: Seq[IndexedGenerator[T]]) extends IndexedGenerator[Seq[T]] {
 
-  val allSameSize: Boolean = generators.exists(x => x.nrOfElements != generators.head.nrOfElements)
+  def filterFunc[B >: T]: SerializableFunction1[IndexedGenerator[B], Boolean] = new SerializableFunction1[IndexedGenerator[B], Boolean] {
+    override def apply(v1: IndexedGenerator[B]): Boolean = {
+      v1.nrOfElements != generators.head.nrOfElements
+    }
+  }
+  val allSameSize: Boolean = generators.exists(filterFunc)
   if (!allSameSize) {
     logger.warn("Using NthIsNthForEachIndexedGenerator with generators of different size")
   }
 
-  override val nrOfElements: Int = generators.map(x => x.nrOfElements).min
+  def sizeFunc[B >: T]: SerializableFunction1[IndexedGenerator[B], Int] = new SerializableFunction1[IndexedGenerator[B], Int] {
+    override def apply(v1: IndexedGenerator[B]): Int = v1.nrOfElements
+  }
+  override val nrOfElements: Int = generators.map(sizeFunc).min
 
   override def getPart(startIndex: Int, endIndex: Int): IndexedGenerator[Seq[T]] = {
     assert(startIndex >= 0 && startIndex < nrOfElements)
     val end: Int = math.min(nrOfElements, endIndex)
-    NthIsNthForEachIndexedGenerator(generators.map(x => x.getPart(startIndex, end)))
+    def getPartFunc[B >: T]: SerializableFunction1[IndexedGenerator[B], IndexedGenerator[B]] = new SerializableFunction1[IndexedGenerator[B], IndexedGenerator[B]] {
+      override def apply(v1: IndexedGenerator[B]): IndexedGenerator[B] = {
+        v1.getPart(startIndex, end)
+      }
+    }
+    NthIsNthForEachIndexedGenerator(generators.map(getPartFunc))
   }
 
-  override def get(index: Int): Option[Seq[T]] = index match {
-    case e if e < nrOfElements => Some(generators.map(x => x.get(index).get))
-    case _ => None
+  override def get(index: Int): Option[Seq[T]] = {
+    def getFunc[B >: T]: SerializableFunction1[IndexedGenerator[B], B] = new SerializableFunction1[IndexedGenerator[B], B] {
+      override def apply(v1: IndexedGenerator[B]): B = v1.get(index).get
+    }
+    index match {
+      case e if e < nrOfElements =>
+        Some(generators.map(getFunc))
+      case _ => None
+    }
   }
 
   override def mapGen[B](f: SerializableFunction1[Seq[T], B]): IndexedGenerator[B] = {
-    new ByFunctionNrLimitedIndexedGenerator[B](nrOfElements, x => get(x).map(f))
+    val getMapFunc: SerializableFunction1[Int, Option[B]] = new SerializableFunction1[Int, Option[B]] {
+      override def apply(v1: Int): Option[B] = get(v1).map(f)
+    }
+    new ByFunctionNrLimitedIndexedGenerator[B](nrOfElements, getMapFunc)
   }
 }

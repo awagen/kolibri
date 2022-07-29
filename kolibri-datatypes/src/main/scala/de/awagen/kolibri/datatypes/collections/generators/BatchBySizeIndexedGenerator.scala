@@ -17,6 +17,7 @@
 package de.awagen.kolibri.datatypes.collections.generators
 
 import de.awagen.kolibri.datatypes.types.SerializableCallable
+import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 
 
 /**
@@ -40,7 +41,12 @@ case class BatchBySizeIndexedGenerator[+T](generator: IndexedGenerator[Seq[T]], 
   override def getPart(startIndex: Int, endIndex: Int): IndexedGenerator[IndexedGenerator[Seq[T]]] = {
     val start = math.min(math.max(0, startIndex), nrOfElements - 1)
     val end = math.max(start, math.min(endIndex, nrOfElements))
-    ByFunctionNrLimitedIndexedGenerator(end - start, x => get(start + x))
+    val mapFunc: SerializableFunction1[Int, Option[IndexedGenerator[Seq[T]]]] = new SerializableFunction1[Int, Option[IndexedGenerator[Seq[T]]]] {
+      override def apply(v1: Int): Option[IndexedGenerator[Seq[T]]] = {
+        get(start + v1)
+      }
+    }
+    ByFunctionNrLimitedIndexedGenerator(end - start, mapFunc)
   }
 
   /**
@@ -63,6 +69,11 @@ case class BatchBySizeIndexedGenerator[+T](generator: IndexedGenerator[Seq[T]], 
     * @return : new generator providing the new type
     */
   override def mapGen[B](f: SerializableCallable.SerializableFunction1[IndexedGenerator[Seq[T]], B]): IndexedGenerator[B] = {
-    new ByFunctionNrLimitedIndexedGenerator[B](nrOfElements, x => get(x).map(f))
+    val mapFunc: SerializableFunction1[Int, Option[B]] = new SerializableFunction1[Int, Option[B]] {
+      override def apply(v1: Int): Option[B] = {
+        get(v1).map(f)
+      }
+    }
+    new ByFunctionNrLimitedIndexedGenerator[B](nrOfElements, mapFunc)
   }
 }

@@ -17,7 +17,7 @@
 package de.awagen.kolibri.datatypes.collections.generators
 
 import de.awagen.kolibri.datatypes.types.SerializableCallable
-import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction2
+import de.awagen.kolibri.datatypes.types.SerializableCallable.{SerializableFunction1, SerializableFunction2}
 import de.awagen.kolibri.datatypes.utils.PermutationUtils
 
 
@@ -49,7 +49,12 @@ case class MergingIndexedGenerator[A, B, C](generator1: IndexedGenerator[A],
   override def getPart(startIndex: Int, endIndex: Int): IndexedGenerator[C] = {
     assert(startIndex >= 0 && startIndex < nrOfElements)
     val end: Int = math.min(nrOfElements, endIndex)
-    ByFunctionNrLimitedIndexedGenerator(end - startIndex, x => get(startIndex + x))
+    val func: SerializableFunction1[Int, Option[C]] = new SerializableFunction1[Int, Option[C]] {
+      override def apply(v1: Int): Option[C] = {
+        get(startIndex + v1)
+      }
+    }
+    ByFunctionNrLimitedIndexedGenerator(end - startIndex, func)
   }
 
   /**
@@ -61,12 +66,15 @@ case class MergingIndexedGenerator[A, B, C](generator1: IndexedGenerator[A],
   override def get(index: Int): Option[C] = {
     val nthElementIndices: Option[Seq[Int]] = PermutationUtils.findNthElementForwardCalc(Seq(generator1.size, generator2.size),
       index)
-    nthElementIndices.flatMap(x => {
-      for {
-        el1 <- generator1.get(x.head)
-        el2 <- generator2.get(x(1))
-      } yield mergeFunc.apply(el1, el2)
-    })
+    val func: SerializableFunction1[Seq[Int], Option[C]] = new SerializableFunction1[Seq[Int], Option[C]] {
+      override def apply(v1: Seq[Int]): Option[C] = {
+        for {
+          el1 <- generator1.get(v1.head)
+          el2 <- generator2.get(v1(1))
+        } yield mergeFunc.apply(el1, el2)
+      }
+    }
+    nthElementIndices.flatMap(func)
   }
 
   /**
@@ -78,6 +86,9 @@ case class MergingIndexedGenerator[A, B, C](generator1: IndexedGenerator[A],
     * @return : new generator providing the new type
     */
   override def mapGen[D](f: SerializableCallable.SerializableFunction1[C, D]): IndexedGenerator[D] = {
-    new ByFunctionNrLimitedIndexedGenerator[D](nrOfElements, x => get(x).map(f))
+    val mapFunc: SerializableFunction1[Int, Option[D]] = new SerializableFunction1[Int, Option[D]] {
+      override def apply(v1: Int): Option[D] = get(v1).map(f)
+    }
+    new ByFunctionNrLimitedIndexedGenerator[D](nrOfElements, mapFunc)
   }
 }
