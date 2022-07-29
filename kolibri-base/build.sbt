@@ -125,6 +125,7 @@ val additionalDependencies = Seq(
   "com.typesafe.akka" %% "akka-http2-support" % akkaHttpVersion,
   "com.typesafe.akka" %% "akka-stream" % akkaVersion,
   "com.typesafe.akka" %% "akka-stream-testkit" % akkaVersion % "test,it",
+  "com.typesafe.akka" %% "akka-actor-testkit-typed" % akkaVersion % "test",
   "com.typesafe.akka" %% "akka-slf4j" % akkaVersion,
   "ch.qos.logback" % "logback-classic" % logbackVersion,
   "com.chuusai" %% "shapeless" % shapelessVersion,
@@ -174,10 +175,10 @@ publishMavenStyle := true
 
 scmInfo := Some(
   ScmInfo(
-    url("https://github.com/awagen/kolibri-base"),
-    "scm:git@github.com:awagen/kolibri-base.git"
+    url("https://github.com/awagen/kolibri/kolibri-base"),
+    "scm:git@github.com:awagen/kolibri.git"
   )
 )
 description := "kolibri-base provides the execution mechanism for the the kolibri project. Kolibri provides a clusterable job execution framework based on Akka."
-homepage := Some(url("https://github.com/awagen/kolibri-base"))
+homepage := Some(url("https://github.com/awagen/kolibri/kolibri-base"))
 // ---- end settings for publishing to mvn central
