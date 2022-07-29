@@ -52,17 +52,7 @@ trait IndexedGenerator[+T] extends KolibriSerializable {
     * @return
     */
   def partitions: IndexedGenerator[IndexedGenerator[T]] = {
-    val toSingleElementGen: SerializableFunction1[T, IndexedGenerator[T]] = new SerializableFunction1[T, IndexedGenerator[T]] {
-      override def apply(v1: T): IndexedGenerator[T] = {
-        ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq(v1))
-      }
-    }
-    val partitionFunc: SerializableFunction1[Int, Option[IndexedGenerator[T]]] = new SerializableFunction1[Int, Option[IndexedGenerator[T]]] {
-      override def apply(v1: Int): Option[IndexedGenerator[T]] = {
-        get(v1).map(toSingleElementGen)
-      }
-    }
-    ByFunctionNrLimitedIndexedGenerator(nrOfElements, partitionFunc)
+    ByFunctionNrLimitedIndexedGenerator(nrOfElements, x => get(x).map(el => ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq(el))))
   }
 
   /**

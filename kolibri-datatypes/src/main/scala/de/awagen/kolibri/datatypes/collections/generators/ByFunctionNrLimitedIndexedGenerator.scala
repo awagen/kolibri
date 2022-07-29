@@ -21,17 +21,11 @@ import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFuncti
 
 object ByFunctionNrLimitedIndexedGenerator {
 
-  private[this] def serializableMappingFromElementSeq[T](elem: Seq[T]): SerializableFunction1[Int, Option[T]] = new SerializableFunction1[Int, Option[T]] {
-    override def apply(v1: Int): Option[T] = {
-      v1 match {
-        case e if e >= 0 && e < elem.size => Some(elem(e))
-        case _ => None
-      }
-    }
-  }
-
   def createFromSeq[T](elem: Seq[T]): ByFunctionNrLimitedIndexedGenerator[T] = {
-    ByFunctionNrLimitedIndexedGenerator(elem.size, serializableMappingFromElementSeq(elem))
+    ByFunctionNrLimitedIndexedGenerator(elem.size, {
+      case e if e >= 0 && e < elem.size => Some(elem(e))
+      case _ => None
+    })
   }
 
 }
@@ -43,21 +37,12 @@ case class ByFunctionNrLimitedIndexedGenerator[+T](nrOfElements: Int,
     assert(startIndex >= 0)
     val end: Int = math.min(nrOfElements, endIndex)
     val newSize = end - startIndex
-    val genFunc: SerializableFunction1[Int, Option[T]] = new SerializableFunction1[Int, Option[T]] {
-      override def apply(v1: Int): Option[T] = {
-        get(v1 + startIndex)
-      }
-    }
+    val genFunc: SerializableFunction1[Int, Option[T]] = x => this.get(x + startIndex)
     ByFunctionNrLimitedIndexedGenerator(newSize, genFunc)
   }
 
   override def mapGen[B](f: SerializableFunction1[T, B]): IndexedGenerator[B] = {
-    val func: SerializableFunction1[Int, Option[B]] = new SerializableFunction1[Int, Option[B]] {
-      override def apply(v1: Int): Option[B] = {
-        genFunc(v1).map(f)
-      }
-    }
-    new ByFunctionNrLimitedIndexedGenerator[B](nrOfElements, func)
+    new ByFunctionNrLimitedIndexedGenerator[B](nrOfElements, x => genFunc(x).map(f))
   }
 
 

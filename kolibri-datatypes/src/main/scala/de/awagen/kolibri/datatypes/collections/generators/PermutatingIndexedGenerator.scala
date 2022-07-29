@@ -28,40 +28,23 @@ import de.awagen.kolibri.datatypes.utils.PermutationUtils
   */
 case class PermutatingIndexedGenerator[+T](generators: Seq[IndexedGenerator[T]]) extends IndexedGenerator[Seq[T]] {
 
-  private[generators] def sizeFunc[B >: T]: SerializableFunction1[IndexedGenerator[B], Int] = new SerializableFunction1[IndexedGenerator[B], Int] {
-    override def apply(v1: IndexedGenerator[B]): Int = v1.nrOfElements
-  }
-  val elementsPerParameter: Seq[Int] = generators.map(sizeFunc)
+  val elementsPerParameter: Seq[Int] = generators.map(x => x.nrOfElements)
   override val nrOfElements: Int = elementsPerParameter.product
 
   override def getPart(startIndex: Int, endIndex: Int): IndexedGenerator[Seq[T]] = {
-    val getFunc: SerializableFunction1[Int, Option[Seq[T]]] = new SerializableFunction1[Int, Option[Seq[T]]] {
-      override def apply(v1: Int): Option[Seq[T]] = get(startIndex + v1)
-    }
     assert(startIndex >= 0 && startIndex < nrOfElements)
     val end: Int = math.min(nrOfElements, endIndex)
-    ByFunctionNrLimitedIndexedGenerator(end - startIndex, getFunc)
+    ByFunctionNrLimitedIndexedGenerator(end - startIndex, x => get(startIndex + x))
   }
 
   override def get(index: Int): Option[Seq[T]] = {
     val indicesOpt: Option[Seq[Int]] = PermutationUtils.findNthElementForwardCalc(elementsPerParameter, index)
-    def mapFunc(seq: Seq[Int]): SerializableFunction1[Int, T] = new SerializableFunction1[Int, T] {
-      override def apply(v1: Int): T = {
-        generators(v1).get(seq(v1)).get
-      }
-    }
-    val mapFunc2 = new SerializableFunction1[Seq[Int], Seq[T]] {
-      override def apply(v1: Seq[Int]): Seq[T] = {
-        generators.indices.map(mapFunc(v1))
-      }
-    }
-    indicesOpt.map(mapFunc2)
+    indicesOpt.map(x => {
+      generators.indices.map(index => generators(index).get(x(index)).get)
+    })
   }
 
   override def mapGen[B](f: SerializableFunction1[Seq[T], B]): IndexedGenerator[B] = {
-    val getAndMapFunction = new SerializableFunction1[Int, Option[B]] {
-      override def apply(v1: Int): Option[B] = get(v1).map(f)
-    }
-    new ByFunctionNrLimitedIndexedGenerator[B](nrOfElements, getAndMapFunction)
+    new ByFunctionNrLimitedIndexedGenerator[B](nrOfElements, x => get(x).map(f))
   }
 }

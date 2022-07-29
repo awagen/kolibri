@@ -18,7 +18,6 @@
 package de.awagen.kolibri.datatypes.collections.generators
 
 import de.awagen.kolibri.datatypes.types.SerializableCallable
-import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 
 
 /**
@@ -29,21 +28,15 @@ import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFuncti
   * @tparam T - type of the single generators
   */
 case class OneAfterAnotherIndexedGenerator[+T](generators: Seq[IndexedGenerator[T]]) extends IndexedGenerator[T] {
-  def sizeFunc[B >: T]: SerializableFunction1[IndexedGenerator[B], Int] = new SerializableFunction1[IndexedGenerator[B], Int] {
-    override def apply(v1: IndexedGenerator[B]): Int = v1.size
-  }
-  override val nrOfElements: Int = generators.map(sizeFunc).sum
-  val generatorSizes: Seq[Int] = generators.map(sizeFunc)
-  val startEndIndicesMap: SerializableFunction1[Int, (Int, Int)] = new SerializableFunction1[Int, (Int, Int)] {
-    override def apply(v1: Int): (Int, Int) = {
-      if (v1 == 0) (0, generators.head.nrOfElements - 1)
-      else {
-        val elementsSoFar = generatorSizes.slice(0, v1).sum
-        (elementsSoFar, elementsSoFar + generatorSizes(v1) - 1)
-      }
+  override val nrOfElements: Int = generators.map(x => x.size).sum
+  val generatorSizes: Seq[Int] = generators.map(generator => generator.size)
+  val generatorStartEndIndices: Seq[(Int, Int)] = generatorSizes.indices.map(index => {
+    if (index == 0) (0, generators.head.nrOfElements - 1)
+    else {
+      val elementsSoFar = generatorSizes.slice(0, index).sum
+      (elementsSoFar, elementsSoFar + generatorSizes(index) - 1)
     }
-  }
-  val generatorStartEndIndices: Seq[(Int, Int)] = generatorSizes.indices.map(startEndIndicesMap)
+  })
 
 
   /**
@@ -55,20 +48,14 @@ case class OneAfterAnotherIndexedGenerator[+T](generators: Seq[IndexedGenerator[
   def getGeneratorIndexAndGeneratorIndex(elementIndex: Int): Option[(Int, Int)] = {
     if (elementIndex < 0 || elementIndex >= nrOfElements) None
     else {
-      val findFunc: SerializableFunction1[Int, Boolean] = new SerializableFunction1[Int, Boolean] {
-        override def apply(v1: Int): Boolean = {
-          val limits: (Int, Int) = generatorStartEndIndices(v1)
-          elementIndex >= limits._1 && elementIndex <= limits._2
-        }
-      }
-      val mapFunc: SerializableFunction1[Int, (Int, Int)] = new SerializableFunction1[Int, (Int, Int)] {
-        override def apply(v1: Int): (Int, Int) = {
-          val generatorElementIndex = elementIndex - generatorSizes.slice(0, v1).sum
-          (v1, generatorElementIndex)
-        }
-      }
-      val generatorIndex: Option[Int] = generatorStartEndIndices.indices.find(findFunc)
-      generatorIndex.map(mapFunc)
+      val generatorIndex: Option[Int] = generatorStartEndIndices.indices.find(x => {
+        val limits: (Int, Int) = generatorStartEndIndices(x)
+        elementIndex >= limits._1 && elementIndex <= limits._2
+      })
+      generatorIndex.map(genIndex => {
+        val generatorElementIndex = elementIndex - generatorSizes.slice(0, genIndex).sum
+        (genIndex, generatorElementIndex)
+      })
     }
   }
 
@@ -120,12 +107,9 @@ case class OneAfterAnotherIndexedGenerator[+T](generators: Seq[IndexedGenerator[
     */
   override def get(index: Int): Option[T] = {
     val generatorAndIndexTuple: Option[(Int, Int)] = getGeneratorIndexAndGeneratorIndex(index)
-    val mapFunc: SerializableFunction1[(Int, Int), Option[T]] = new SerializableFunction1[(Int, Int), Option[T]] {
-      override def apply(v1: (Int, Int)): Option[T] = {
-        generators(v1._1).get(v1._2)
-      }
-    }
-    generatorAndIndexTuple.flatMap(mapFunc)
+    generatorAndIndexTuple.flatMap(genAndIndexTuple => {
+      generators(genAndIndexTuple._1).get(genAndIndexTuple._2)
+    })
   }
 
   /**
@@ -137,12 +121,7 @@ case class OneAfterAnotherIndexedGenerator[+T](generators: Seq[IndexedGenerator[
     * @return : new generator providing the new type
     */
   override def mapGen[B](f: SerializableCallable.SerializableFunction1[T, B]): IndexedGenerator[B] = {
-    val mapGenFunc: SerializableFunction1[IndexedGenerator[T], IndexedGenerator[B]] = new SerializableFunction1[IndexedGenerator[T], IndexedGenerator[B]] {
-      override def apply(v1: IndexedGenerator[T]): IndexedGenerator[B] = {
-        v1.mapGen(f)
-      }
-    }
-    OneAfterAnotherIndexedGenerator[B](generators.map(mapGenFunc))
+    OneAfterAnotherIndexedGenerator[B](generators.map(generator => generator.mapGen(f)))
   }
 
 }
