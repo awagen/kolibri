@@ -234,7 +234,8 @@ object ParameterValuesJsonProtocol extends DefaultJsonProtocol {
           val name = fields(NAME_KEY).convertTo[String]
           val valueType = fields(VALUES_TYPE_KEY).convertTo[ValueType.Value]
           val mappings = fields(VALUES_KEY).convertTo[Map[String, Seq[String]]]
-          MappedParameterValues(name, valueType, mappings.map(x => (x._1, ByFunctionNrLimitedIndexedGenerator.createFromSeq(x._2))))
+          val mappingsObj: Map[String, IndexedGenerator[String]] = mappings.map(x => (x._1, ByFunctionNrLimitedIndexedGenerator.createFromSeq(x._2)))
+          MappedParameterValues(name, valueType, mappingsObj)
         // this case assumes a json for the values key, containing mapping
         // of key values to files containing the valid values for the key
         case JSON_VALUES_FILES_MAPPING_TYPE =>
