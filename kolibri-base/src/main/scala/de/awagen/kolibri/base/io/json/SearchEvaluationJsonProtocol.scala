@@ -22,23 +22,23 @@ import de.awagen.kolibri.base.domain.Connections.Connection
 import de.awagen.kolibri.base.http.client.request.RequestTemplate
 import de.awagen.kolibri.base.io.json.ConnectionJsonProtocol._
 import de.awagen.kolibri.base.io.json.ExecutionJsonProtocol._
+import de.awagen.kolibri.base.io.json.ParameterValuesJsonProtocol.ValueSeqGenConfigFormat
 import de.awagen.kolibri.base.io.json.TaggingConfigurationsJsonProtocol._
 import de.awagen.kolibri.base.processing.JobMessages.SearchEvaluation
 import de.awagen.kolibri.base.processing.execution.functions.Execution
-import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ValueSeqGenProvider
+import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ValueSeqGenConfig
 import de.awagen.kolibri.base.processing.tagging.TaggingConfigurations.BaseTaggingConfiguration
 import de.awagen.kolibri.base.usecase.searchopt.io.json.CalculationsJsonProtocol._
+import de.awagen.kolibri.base.usecase.searchopt.io.json.ParsingConfigJsonProtocol
 import de.awagen.kolibri.base.usecase.searchopt.io.json.ParsingConfigJsonProtocol._
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.{Calculation, CalculationResult, FutureCalculation}
 import de.awagen.kolibri.base.usecase.searchopt.parse.ParsingConfig
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.datatypes.stores.MetricRow
-import spray.json.{DefaultJsonProtocol, RootJsonFormat}
-import de.awagen.kolibri.base.io.json.ParameterValuesJsonProtocol.ValueSeqGenProviderFormat
-import de.awagen.kolibri.base.usecase.searchopt.io.json.ParsingConfigJsonProtocol
 import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
-import de.awagen.kolibri.datatypes.types.JsonStructDefs.{BooleanStructDef, GenericSeqStructDef, IntMinMaxStructDef, MapStructDef, NestedFieldSeqStructDef, RegexStructDef, StringConstantStructDef, StringSeqStructDef, StringStructDef}
+import de.awagen.kolibri.datatypes.types.JsonStructDefs._
 import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
+import spray.json.{DefaultJsonProtocol, RootJsonFormat}
 
 
 object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSupport with WithStructDef {
@@ -69,7 +69,7 @@ object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSu
       fixedParams: Map[String, Seq[String]],
       contextPath: String,
       connections: Seq[Connection],
-      requestParameterPermutateSeq: Seq[ValueSeqGenProvider],
+      requestParameterPermutateSeq: Seq[ValueSeqGenConfig],
       batchByIndex: Int,
       parsingConfig: ParsingConfig,
       excludeParamsFromMetricRow: Seq[String],
@@ -153,7 +153,7 @@ object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSu
         ),
         FieldDef(
           StringConstantStructDef(REQUEST_PARAMETER_PERMUTATE_SEQ_FIELD),
-          GenericSeqStructDef(ParameterValuesJsonProtocol.ValueSeqGenProviderFormat.structDef),
+          GenericSeqStructDef(ParameterValuesJsonProtocol.ValueSeqGenConfigFormat.structDef),
           required = true
         ),
         FieldDef(

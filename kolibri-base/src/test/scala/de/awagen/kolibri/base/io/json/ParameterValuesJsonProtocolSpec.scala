@@ -1,7 +1,24 @@
+/**
+ * Copyright 2021 Andreas Wagenmann
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package de.awagen.kolibri.base.io.json
 
-import de.awagen.kolibri.base.io.json.ParameterValuesJsonProtocol.{MappedParameterValuesFormat, ParameterValueMappingFormat, ParameterValuesFormat, ValueSeqGenProviderFormat}
-import de.awagen.kolibri.base.processing.modifiers.ParameterValues.{MappedParameterValues, ParameterValue, ParameterValueMapping, ParameterValues, ValueSeqGenProvider, ValueType}
+import de.awagen.kolibri.base.io.json.ParameterValuesJsonProtocol.{MappedParameterValuesFormat, ParameterValueMappingConfigFormat, ParameterValuesConfigFormat, ValueSeqGenConfigFormat}
+import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ValueSeqGenConfigImplicits.ValueSeqGenConfigImplicits
+import de.awagen.kolibri.base.processing.modifiers.ParameterValues._
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
 import spray.json._
 
@@ -206,7 +223,7 @@ class ParameterValuesJsonProtocolSpec extends UnitTestSpec {
 
     "parse ParameterValues from OrderedValues" in {
       // given, when
-      val values = ParameterValuesJsonDefinitions.parameterValuesFromOrderedValuesJson.parseJson.convertTo[ParameterValues]
+      val values = ParameterValuesJsonDefinitions.parameterValuesFromOrderedValuesJson.parseJson.convertTo[ParameterValuesConfig]
       // then
       values.name mustBe "param1"
       values.valueType mustBe ValueType.URL_PARAMETER
@@ -215,7 +232,7 @@ class ParameterValuesJsonProtocolSpec extends UnitTestSpec {
 
     "parse ParameterValues by passing values" in {
       // given, when
-      val values = ParameterValuesJsonDefinitions.parameterValuesPassedJson.parseJson.convertTo[ParameterValues]
+      val values = ParameterValuesJsonDefinitions.parameterValuesPassedJson.parseJson.convertTo[ParameterValuesConfig]
       // then
       values.name mustBe "param1"
       values.valueType mustBe ValueType.URL_PARAMETER
@@ -224,7 +241,7 @@ class ParameterValuesJsonProtocolSpec extends UnitTestSpec {
 
     "parse ParameterValues from file" in {
       // given, when
-      val values = ParameterValuesJsonDefinitions.parameterValuesFromOrderedValuesFromFileJson.parseJson.convertTo[ParameterValues]
+      val values = ParameterValuesJsonDefinitions.parameterValuesFromOrderedValuesFromFileJson.parseJson.convertTo[ParameterValuesConfig]
       // then
       values.name mustBe "q"
       values.valueType mustBe ValueType.URL_PARAMETER
@@ -233,7 +250,8 @@ class ParameterValuesJsonProtocolSpec extends UnitTestSpec {
 
     "parse ParameterValues from range" in {
       // given, when
-      val values = ParameterValuesJsonDefinitions.parameterValuesFromRangeJson.parseJson.convertTo[ParameterValues]
+      val valuesConfig = ParameterValuesJsonDefinitions.parameterValuesFromRangeJson.parseJson.convertTo[ParameterValuesConfig]
+      val values = valuesConfig.toProvider.asInstanceOf[ParameterValues]
       // then
       values.name mustBe "o"
       values.valueType mustBe ValueType.URL_PARAMETER
@@ -312,7 +330,8 @@ class ParameterValuesJsonProtocolSpec extends UnitTestSpec {
 
     "parse ParameterValueMapping" in {
       // given, when
-      val values = ParameterValueMappingDefinitions.jsonMapping.parseJson.convertTo[ParameterValueMapping]
+      val valuesConfig = ParameterValueMappingDefinitions.jsonMapping.parseJson.convertTo[ParameterValueMappingConfig]
+      val values = valuesConfig.toProvider.asInstanceOf[ParameterValueMapping]
       // then
       values.nrOfElements mustBe 4
       values.get(0).get mustBe Seq(ParameterValue("param1", ValueType.URL_PARAMETER, "key1"), ParameterValue("mappedParam1", ValueType.URL_PARAMETER, "key1_val1"))
@@ -323,13 +342,14 @@ class ParameterValuesJsonProtocolSpec extends UnitTestSpec {
 
     "parse ParameterValueMapping multiple mapping" in {
       // given, when, then
-      ParameterValueMappingDefinitions.jsonMultiMapping.parseJson.convertTo[ParameterValueMapping].nrOfElements mustBe 17
+      ParameterValueMappingDefinitions.jsonMultiMapping.parseJson.convertTo[ParameterValueMappingConfig]
+        .toProvider.asInstanceOf[ParameterValueMapping].nrOfElements mustBe 17
     }
 
     "parse ValueSeqGenProvider" in {
       // given, when
-      val parameterValues = ParameterValuesJsonDefinitions.parameterValuesFromOrderedValuesAsValueSeqGenProviderJson.parseJson.convertTo[ValueSeqGenProvider]
-      val mapping = ParameterValueMappingDefinitions.jsonMappingAsValueSeqGenProvider.parseJson.convertTo[ValueSeqGenProvider]
+      val parameterValues = ParameterValuesJsonDefinitions.parameterValuesFromOrderedValuesAsValueSeqGenProviderJson.parseJson.convertTo[ValueSeqGenConfig].toProvider
+      val mapping = ParameterValueMappingDefinitions.jsonMappingAsValueSeqGenProvider.parseJson.convertTo[ValueSeqGenConfig].toProvider
       // then
       parameterValues.isInstanceOf[ParameterValues] mustBe true
       mapping.isInstanceOf[ParameterValueMapping] mustBe true

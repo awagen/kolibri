@@ -27,12 +27,13 @@ import de.awagen.kolibri.base.config.AppProperties.config.kolibriDispatcherName
 import de.awagen.kolibri.base.http.client.request.{RequestTemplate, RequestTemplateBuilder}
 import de.awagen.kolibri.base.http.server.routes.StatusRoutes.corsHandler
 import de.awagen.kolibri.base.io.json.EnumerationJsonProtocol.dataFileTypeFormat
-import de.awagen.kolibri.base.io.json.ParameterValuesJsonProtocol.FormatOps
+import de.awagen.kolibri.base.io.json.ParameterValuesJsonProtocol.{FormatOps, ValueSeqGenConfigFormat}
 import de.awagen.kolibri.base.io.reader.FileReaderUtils.JsValueOps._
 import de.awagen.kolibri.base.io.reader.FileReaderUtils._
 import de.awagen.kolibri.base.io.reader.ReaderUtils.safeContentRead
 import de.awagen.kolibri.base.io.reader.{DataOverviewReader, FileReaderUtils, Reader}
 import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ParameterValuesImplicits.ParameterValueSeqToRequestBuilderModifier
+import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ValueSeqGenConfigImplicits.ValueSeqGenConfigImplicits
 import de.awagen.kolibri.base.processing.modifiers.ParameterValues._
 import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.{CombinedModifier, RequestTemplateBuilderModifier}
 import de.awagen.kolibri.datatypes.collections.generators.{IndexedGenerator, PermutatingIndexedGenerator}
@@ -313,14 +314,14 @@ object DataRoutes extends DefaultJsonProtocol {
    */
   def getIndexedGeneratorInfoForValueSeqGenProviderSeqBody(implicit system: ActorSystem): Route = {
     implicit val ec: ExecutionContextExecutor = system.dispatchers.lookup(kolibriDispatcherName)
-    import de.awagen.kolibri.base.io.json.ParameterValuesJsonProtocol.ValueSeqGenProviderFormat
+    import de.awagen.kolibri.base.io.json.ParameterValuesJsonProtocol.ValueSeqGenConfigFormat
     corsHandler(
       pathPrefix(GENERATOR_PATH_PREFIX) {
         path(INFO_PATH) {
           post {
             parameters(RETURN_N_SAMPLES_PARAM) { numSamples => {
               entity(as[String]) { generatorJson => {
-                val values = generatorJson.parseJson.convertTo[Seq[ValueSeqGenProvider]]
+                val values = generatorJson.parseJson.convertTo[Seq[ValueSeqGenConfig]].map(x => x.toProvider)
                 val modifierGenerators: Seq[IndexedGenerator[RequestTemplateBuilderModifier]] = values.map(x => x.toSeqGenerator).map(x => x.mapGen(y => y.toModifier))
                 val combinedGenerator: IndexedGenerator[Seq[Any]] = PermutatingIndexedGenerator(modifierGenerators)
                 val response = BaseFileDataSourceInfo(
@@ -340,7 +341,6 @@ object DataRoutes extends DefaultJsonProtocol {
 
   def getExampleQueriesForValueSeqGenProviderSequence(implicit system: ActorSystem): Route = {
     implicit val ec: ExecutionContextExecutor = system.dispatchers.lookup(kolibriDispatcherName)
-    import de.awagen.kolibri.base.io.json.ParameterValuesJsonProtocol.ValueSeqGenProviderFormat
     import scala.concurrent.duration._
 
     corsHandler(
@@ -349,8 +349,8 @@ object DataRoutes extends DefaultJsonProtocol {
           post {
             parameters(RETURN_N_SAMPLES_PARAM) { (numSamples) => {
               entity(as[String]) { generatorJson => {
-                val values = generatorJson.parseJson.convertTo[Seq[ValueSeqGenProvider]]
-                val modifierGenerators: Seq[IndexedGenerator[RequestTemplateBuilderModifier]] = values.map(x => x.toSeqGenerator).map(x => x.mapGen(y => y.toModifier))
+                val values = generatorJson.parseJson.convertTo[Seq[ValueSeqGenConfig]]
+                val modifierGenerators: Seq[IndexedGenerator[RequestTemplateBuilderModifier]] = values.map(x => x.toProvider.toSeqGenerator).map(x => x.mapGen(y => y.toModifier))
                 val sampleRequestTemplateBuilderSupplier: () => RequestTemplateBuilder = () => new RequestTemplateBuilder().withContextPath("test")
                 val permutatingModifierGenerator: IndexedGenerator[RequestTemplateBuilderModifier] = PermutatingIndexedGenerator(modifierGenerators)
                   .mapGen(x => CombinedModifier(x))

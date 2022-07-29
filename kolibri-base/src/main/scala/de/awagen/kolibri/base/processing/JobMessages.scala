@@ -27,7 +27,8 @@ import de.awagen.kolibri.base.http.client.request.{RequestTemplate, RequestTempl
 import de.awagen.kolibri.base.processing.JobMessages.{SearchEvaluation, TestPiCalculation}
 import de.awagen.kolibri.base.processing.execution.functions.Execution
 import de.awagen.kolibri.base.processing.modifiers.Modifier
-import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ValueSeqGenProvider
+import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ValueSeqGenConfig
+import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ValueSeqGenConfigImplicits.ValueSeqGenConfigImplicits
 import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
 import de.awagen.kolibri.base.processing.tagging.TaggingConfigurations.BaseTaggingConfiguration
 import de.awagen.kolibri.base.resources.Resources.WithResources
@@ -65,7 +66,7 @@ object JobMessages {
                               fixedParams: Map[String, Seq[String]],
                               contextPath: String,
                               connections: Seq[Connection],
-                              requestParameterPermutateSeq: Seq[ValueSeqGenProvider],
+                              requestParameterPermutateSeq: Seq[ValueSeqGenConfig],
                               batchByIndex: Int,
                               parsingConfig: ParsingConfig,
                               excludeParamsFromMetricRow: Seq[String],
@@ -82,7 +83,7 @@ object JobMessages {
     import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ParameterValuesImplicits._
 
     val requestTemplateModifiers: Seq[IndexedGenerator[Modifier[RequestTemplateBuilder]]] =
-      requestParameterPermutateSeq.map(x => x.toSeqGenerator).map(x => x.mapGen(y => y.toModifier))
+      requestParameterPermutateSeq.map(x => x.toProvider.toSeqGenerator).map(x => x.mapGen(y => y.toModifier))
     logger.debug(s"found modifier generators: ${requestTemplateModifiers.size}")
 
     // promote the resources needed in metric row calculations to the current job def
