@@ -381,7 +381,7 @@ class SerializationSpec extends KolibriTypedTestKitNoCluster(ConfigOverwrites.co
 
     "serialization of job message across actors" in {
       val parsed: SearchEvaluation = Samples.jobSample.parseJson.convertTo[SearchEvaluation]
-      val senderActor: ActorRef[Actors.MirrorActor.Sent] = testKit.spawn(Actors.MirrorActor(), "mirror")
+      val senderActor: ActorRef[Actors.MirrorActor.Sent] = testKit.spawn(Actors.MirrorActor(), "mirror1")
       val testProbe = testKit.createTestProbe[Actors.MirrorActor.Received]()
       senderActor ! Actors.MirrorActor.Sent(parsed, testProbe.ref)
       val msg: Actors.MirrorActor.Received =  testProbe.expectMessageType[Actors.MirrorActor.Received]
