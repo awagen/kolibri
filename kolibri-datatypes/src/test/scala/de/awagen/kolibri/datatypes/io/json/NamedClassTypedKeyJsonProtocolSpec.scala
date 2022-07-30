@@ -15,10 +15,10 @@
   */
 
 
-package de.awagen.kolibri.base.usecase.searchopt.io.json
+package de.awagen.kolibri.datatypes.io.json
 
-import de.awagen.kolibri.base.testclasses.UnitTestSpec
-import de.awagen.kolibri.base.usecase.searchopt.io.json.NamedClassTypedKeyJsonProtocol._
+import de.awagen.kolibri.datatypes.io.json.NamedClassTypedKeyJsonProtocol._
+import de.awagen.kolibri.datatypes.testclasses.UnitTestSpec
 import de.awagen.kolibri.datatypes.types.NamedClassTyped
 import spray.json._
 
@@ -40,7 +40,7 @@ class NamedClassTypedKeyJsonProtocolSpec extends UnitTestSpec {
   val seqBooleanValue: NamedClassTyped[Seq[Boolean]] = NamedClassTyped[Seq[Boolean]]("v7")
 
 
-  "NamedClassTypedKeyJsonProtocolSpec" must {
+  "NamedClassTypedKeyJsonProtocol" must {
 
     "correctly parse NamedClassTyped" in {
       stringKey.parseJson.convertTo[NamedClassTyped[_]] == stringValue mustBe true
