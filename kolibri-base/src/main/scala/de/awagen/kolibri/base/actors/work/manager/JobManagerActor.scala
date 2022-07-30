@@ -35,6 +35,7 @@ import de.awagen.kolibri.base.actors.work.worker.RunnableExecutionActor.BatchPro
 import de.awagen.kolibri.base.cluster.ClusterNode
 import de.awagen.kolibri.base.config.AppProperties._
 import de.awagen.kolibri.base.config.AppProperties.config.kolibriDispatcherName
+import de.awagen.kolibri.base.directives.ResourceType
 import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions.MapWithCount
 import de.awagen.kolibri.base.io.writer.Writers.Writer
 import de.awagen.kolibri.base.processing.JobMessages.{SearchEvaluation, TestPiCalculation}
@@ -43,7 +44,6 @@ import de.awagen.kolibri.base.processing.distribution.DistributionStates
 import de.awagen.kolibri.base.processing.execution.functions.Execution
 import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
 import de.awagen.kolibri.base.routing.Routers.createWorkerRoutingServiceForJob
-import de.awagen.kolibri.base.resources.Resources.ResourceType
 import de.awagen.kolibri.base.traits.Traits.WithBatchNr
 import de.awagen.kolibri.datatypes.collections.generators.ByFunctionNrLimitedIndexedGenerator
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
@@ -284,7 +284,7 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
     case searchJobMsg: SearchEvaluation =>
       // register needed resources in distributed data
       searchJobMsg.resources
-        .filter(x => x.resourceType == ResourceType.JUDGEMENTS_FILE)
+        .filter(x => x.resourceType == ResourceType.JUDGEMENTS)
         .foreach(resource => {
           ClusterNode.getSystemSetup.ddReplicator ! DDResourceStateUtils.ddJudgementJobMappingUpdateAdd(
             ClusterNode.getSystemSetup.ddSelfUniqueAddress,

@@ -20,6 +20,7 @@ package de.awagen.kolibri.base.processing
 import akka.actor.ActorSystem
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.ProcessActorRunnableJobCmd
+import de.awagen.kolibri.base.directives.WithResources
 import de.awagen.kolibri.base.domain.Connections.Connection
 import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions
 import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions.MapWithCount
@@ -31,7 +32,6 @@ import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ValueSeqGenCo
 import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ValueSeqGenConfigImplicits.ValueSeqGenConfigImplicits
 import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
 import de.awagen.kolibri.base.processing.tagging.TaggingConfigurations.BaseTaggingConfiguration
-import de.awagen.kolibri.base.resources.Resources.WithResources
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.SearchJobDefinitions
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.{Calculation, CalculationResult, FutureCalculation}
 import de.awagen.kolibri.base.usecase.searchopt.parse.ParsingConfig

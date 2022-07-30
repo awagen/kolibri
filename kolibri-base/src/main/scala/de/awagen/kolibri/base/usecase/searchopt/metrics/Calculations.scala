@@ -17,8 +17,8 @@
 
 package de.awagen.kolibri.base.usecase.searchopt.metrics
 
+import de.awagen.kolibri.base.directives.WithResources
 import de.awagen.kolibri.base.http.client.request.RequestTemplate
-import de.awagen.kolibri.base.resources.Resources.WithResources
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.CalculationResult
 import de.awagen.kolibri.base.usecase.searchopt.metrics.ComputeFailReason.missingKeyFailReason
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Functions.{countValues, findFirstValue, throwableToMetricRowResponse}
