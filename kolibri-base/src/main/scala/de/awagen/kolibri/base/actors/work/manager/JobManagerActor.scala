@@ -285,11 +285,11 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
       // register needed resources in distributed data
       searchJobMsg.resources
         .foreach(resource => {
-          ClusterNode.getSystemSetup.ddReplicator ! DDResourceStateUtils.ddResourceJobMappingUpdateAdd(
+          DDResourceStateUtils.ddResourceJobMappingUpdateAdd(
             ClusterNode.getSystemSetup.ddSelfUniqueAddress,
             resource,
             jobId
-          )
+          ).foreach(msg => ClusterNode.getSystemSetup.ddReplicator ! msg)
         })
       log.debug(s"received job to process: $searchJobMsg")
       wrapUpFunction = searchJobMsg.wrapUpFunction
