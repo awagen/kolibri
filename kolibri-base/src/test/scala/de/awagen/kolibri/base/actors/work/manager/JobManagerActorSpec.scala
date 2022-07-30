@@ -1,26 +1,23 @@
 /**
-  * Copyright 2021 Andreas Wagenmann
-  *
-  * Licensed under the Apache License, Version 2.0 (the "License");
-  * you may not use this file except in compliance with the License.
-  * You may obtain a copy of the License at
-  *
-  * http://www.apache.org/licenses/LICENSE-2.0
-  *
-  * Unless required by applicable law or agreed to in writing, software
-  * distributed under the License is distributed on an "AS IS" BASIS,
-  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  * See the License for the specific language governing permissions and
-  * limitations under the License.
-  */
+ * Copyright 2021 Andreas Wagenmann
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package de.awagen.kolibri.base.actors.work.manager
 
 import akka.actor.ActorRef
-import akka.cluster.Cluster
-import akka.management.cluster.bootstrap.ClusterBootstrap
-import akka.management.scaladsl.AkkaManagement
-import akka.testkit.{TestKit, TestProbe}
+import akka.testkit.TestProbe
 import de.awagen.kolibri.base.actors.KolibriTestKit
 import de.awagen.kolibri.base.actors.TestMessages.{TaggedInt, messagesToActorRefRunnableGenFunc}
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.FinishedJobEvent
@@ -33,32 +30,10 @@ import de.awagen.kolibri.datatypes.tagging.TagType.AGGREGATION
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSupplier
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
-import org.scalatest.BeforeAndAfterAll
-import org.scalatest.matchers.must.Matchers
-import org.scalatest.wordspec.AnyWordSpecLike
 
 import scala.concurrent.duration._
 
-class JobManagerActorSpec extends KolibriTestKit
-  with AnyWordSpecLike
-  with Matchers
-  with BeforeAndAfterAll {
-
-  override val invokeBeforeAllAndAfterAllEvenIfNoTestsAreExpected = true
-  var cluster: Cluster = _
-
-  override protected def beforeAll(): Unit = {
-    super.beforeAll()
-    // local node discovery for cluster forming
-    AkkaManagement(system).start()
-    ClusterBootstrap(system).start()
-    cluster = Cluster(system)
-  }
-
-  override protected def afterAll(): Unit = {
-    super.afterAll()
-    TestKit.shutdownActorSystem(system, verifySystemShutdown = true)
-  }
+class JobManagerActorSpec extends KolibriTestKit {
 
   "JobManagerActor" must {
 
@@ -68,13 +43,10 @@ class JobManagerActorSpec extends KolibriTestKit
           var map: MapWithCount[Tag, Double] = MapWithCount(Map.empty[Tag, Double], 0)
 
           override def add(sample: ProcessingMessage[Int]): Unit = {
-            sample match {
-              case _: AggregationStateWithData[Int] =>
-                val keys = sample.getTagsForType(AGGREGATION)
-                keys.foreach(x => {
-                  map = MapWithCount(map.map + (x -> (map.map.getOrElse(x, 0.0) + sample.data)), map.count + 1)
-                })
-            }
+            val keys = sample.getTagsForType(AGGREGATION)
+            keys.foreach(x => {
+              map = MapWithCount(map.map + (x -> (map.map.getOrElse(x, 0.0) + sample.data)), map.count + 1)
+            })
           }
 
           override def aggregation: MapWithCount[Tag, Double] = MapWithCount(Map(map.map.toSeq: _*), map.count)
@@ -114,7 +86,7 @@ class JobManagerActorSpec extends KolibriTestKit
       )
       // then
       testProbe.expectMsgPF(10 seconds) {
-        case e: FinishedJobEvent if e.jobId == "testId" && e.jobStatusInfo.resultSummary == expectedResult  => true
+        case e: FinishedJobEvent if e.jobId == "testId" && e.jobStatusInfo.resultSummary == expectedResult => true
         case _ => false
       }
     }
