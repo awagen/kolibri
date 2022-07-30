@@ -21,8 +21,7 @@ import akka.actor.{Actor, ActorLogging, Props}
 import akka.cluster.ddata.Replicator.{Subscribe, Update}
 import akka.cluster.ddata.typed.scaladsl.Replicator.WriteLocal
 import akka.cluster.ddata.{Key, ORMap, ORSet}
-import de.awagen.kolibri.base.actors.clusterinfo.DDResourceStateUtils.DD_JUDGEMENT_JOB_MAPPING_KEY
-import de.awagen.kolibri.base.actors.clusterinfo.LocalResourceManagerActor.{ExistingJudgementResourceMapping, GetExistingJudgementResourceMapping, RemoveValueFromAllMappings}
+import de.awagen.kolibri.base.actors.clusterinfo.LocalResourceManagerActor.{ExistingResourceIdToJobMapping, GetExistingResourceIdToJobMapping, RemoveValueFromAllMappings}
 import de.awagen.kolibri.base.cluster.ClusterNode
 import de.awagen.kolibri.base.usecase.searchopt.provider.FileBasedJudgementRepository
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
@@ -33,9 +32,9 @@ object LocalResourceManagerActor {
 
   trait LocalResourceManagerMsg extends KolibriSerializable
 
-  case object GetExistingJudgementResourceMapping extends LocalResourceManagerMsg
+  case object GetExistingResourceIdToJobMapping extends LocalResourceManagerMsg
 
-  case class ExistingJudgementResourceMapping(mapping: Map[String, Set[String]]) extends LocalResourceManagerMsg
+  case class ExistingResourceIdToJobMapping(mapping: Map[String, Set[String]]) extends LocalResourceManagerMsg
 
   case class RemoveValueFromAllMappings(ddResourceKey: Key[ORMap[String, ORSet[String]]], jobId: String) extends LocalResourceManagerMsg
 
@@ -44,42 +43,44 @@ object LocalResourceManagerActor {
 
 case class LocalResourceManagerActor() extends Actor with ActorLogging {
 
-  var judgementResourceToJobMapping: Map[String, Set[String]] = Map.empty
+  var resourceIdToJobMapping: Map[String, Set[String]] = Map.empty
 
-  // subscribe to receive replication messages for the mapping of used judgements resource to the jobs
-  ClusterNode.getSystemSetup.ddReplicator ! Subscribe(DDResourceStateUtils.DD_JUDGEMENT_JOB_MAPPING_KEY, self)
+  // subscribe to receive replication messages for the mapping of used resource types to the jobs
+  DDResourceStateUtils.DD_RESOURCETYPE_TO_KEY_MAPPING.values.foreach(value => {
+    ClusterNode.getSystemSetup.ddReplicator ! Subscribe(value, self)
+  })
 
-  def ddReceive: Receive = DistributedDataActorHelper.stateChangeReceive[ORMap[String, ORSet[String]]](
-    DD_JUDGEMENT_JOB_MAPPING_KEY,
-    "judgement resource to jobId mapping",
+  // set up partial function to handle all messages for the known keys
+  def ddReceive: Receive = DistributedDataActorHelper.multipleStateChangeReceive[ORMap[String, ORSet[String]]](
+    DDResourceStateUtils.DD_RESOURCETYPE_TO_KEY_MAPPING.values.map(value => (value, value.id)).toSeq,
     valueHandleFunc)
 
   val valueHandleFunc: ORMap[String, ORSet[String]] => Unit = map => {
     // pick the updated mapping
     val value: Map[String, Set[String]] = map.entries.map(x => (x._1, x._2.elements))
-    log.debug(s"current value: $judgementResourceToJobMapping, new value: $value")
+    log.debug(s"current value: $resourceIdToJobMapping, new value: $value")
     // check for each map root key whether Set is empty or missing now but existed before
     // and then make remove call for those keys to judgements provider
-    judgementResourceToJobMapping.keySet
-      .filter(key => judgementResourceToJobMapping(key).nonEmpty)
+    resourceIdToJobMapping.keySet
+      .filter(key => resourceIdToJobMapping(key).nonEmpty)
       .filter(key => value.getOrElse(key, Set.empty).isEmpty)
       .foreach(key => {
-        log.info(s"Calling key remove on judgement repository for key '$key'")
+        log.info(s"Calling key remove on resource id for key '$key'")
         FileBasedJudgementRepository.remove(key)
       })
     // update the current value of mappings
-    judgementResourceToJobMapping = value
+    resourceIdToJobMapping = value
   }
 
   override def receive: Receive = ddReceive.orElse[Any, Unit] {
-    case GetExistingJudgementResourceMapping =>
-      sender() ! ExistingJudgementResourceMapping(judgementResourceToJobMapping)
+    case GetExistingResourceIdToJobMapping =>
+      sender() ! ExistingResourceIdToJobMapping(resourceIdToJobMapping)
     case msg@RemoveValueFromAllMappings(resourceKey, jobId) =>
       // check in which mappings jobId occurs, and for each root key send remove update to
       // replicator
       log.info(s"received removal message: $msg")
-      log.debug(s"current state: $judgementResourceToJobMapping")
-      judgementResourceToJobMapping
+      log.debug(s"current state: $resourceIdToJobMapping")
+      resourceIdToJobMapping
         .filter(keyValue => keyValue._2.contains(jobId))
         .map(keyValue => {
           val newKeyValue = (keyValue._1, keyValue._2 - jobId)

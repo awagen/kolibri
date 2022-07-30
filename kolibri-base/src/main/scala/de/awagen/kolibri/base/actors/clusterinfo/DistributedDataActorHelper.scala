@@ -40,4 +40,16 @@ object DistributedDataActorHelper {
       log.warn(s"key '$key' not found")
   }
 
+  // resulting receive when combining multiple for different keys
+  def multipleStateChangeReceive[T <: ReplicatedData](filterKeysAndDescriptions: Seq[(Key[T], String)], valueHandleFunc: T => Unit): Receive = {
+    val receives: Seq[Receive] = filterKeysAndDescriptions.map(keyAndDesc => {
+      stateChangeReceive(keyAndDesc._1, keyAndDesc._2, valueHandleFunc)
+    })
+    var doNothingReceive: PartialFunction[Any, Unit] =  {
+      case _ => ()
+    }
+    if (receives.nonEmpty) doNothingReceive = receives.head
+    receives.slice(1, receives.size).foldLeft(doNothingReceive)((x, y) => x.andThen[Unit](y))
+  }
+
 }

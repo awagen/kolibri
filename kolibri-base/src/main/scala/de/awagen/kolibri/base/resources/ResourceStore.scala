@@ -75,6 +75,7 @@ class ResourceStore {
           resourceMap(directive.resourceType) = mutable.Map.empty[String, Any]
           resourceMap(directive.resourceType)(directive.resourceId) = value
         }
+        ResourceOK
       }
     }
     catch {

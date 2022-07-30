@@ -22,7 +22,6 @@ import akka.cluster.ddata.Replicator.UpdateSuccess
 import akka.util.Timeout
 import de.awagen.kolibri.base.actors.clusterinfo.BatchStateActor.WorkerStatusResponse
 import de.awagen.kolibri.base.actors.clusterinfo.DDResourceStateUtils
-import de.awagen.kolibri.base.actors.clusterinfo.DDResourceStateUtils.DD_JUDGEMENT_JOB_MAPPING_KEY
 import de.awagen.kolibri.base.actors.clusterinfo.LocalResourceManagerActor.RemoveValueFromAllMappings
 import de.awagen.kolibri.base.actors.resources.BatchFreeSlotResourceCheckingActor.AddToRunningBaselineCount
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor
@@ -35,7 +34,6 @@ import de.awagen.kolibri.base.actors.work.worker.RunnableExecutionActor.BatchPro
 import de.awagen.kolibri.base.cluster.ClusterNode
 import de.awagen.kolibri.base.config.AppProperties._
 import de.awagen.kolibri.base.config.AppProperties.config.kolibriDispatcherName
-import de.awagen.kolibri.base.directives.ResourceType
 import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions.MapWithCount
 import de.awagen.kolibri.base.io.writer.Writers.Writer
 import de.awagen.kolibri.base.processing.JobMessages.{SearchEvaluation, TestPiCalculation}
@@ -189,7 +187,9 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
     scheduleCancellables.foreach(x => x.cancel())
     jobStatusUpdateCancellable.cancel()
     // tell local resource manager that global resource data needs an update
-    ClusterNode.getSystemSetup.localResourceManagerActor ! RemoveValueFromAllMappings(DD_JUDGEMENT_JOB_MAPPING_KEY, jobId)
+    DDResourceStateUtils.DD_RESOURCETYPE_TO_KEY_MAPPING.values.foreach(value => {
+      ClusterNode.getSystemSetup.localResourceManagerActor ! RemoveValueFromAllMappings(value, jobId)
+    })
     super.postStop()
   }
 
@@ -284,11 +284,10 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
     case searchJobMsg: SearchEvaluation =>
       // register needed resources in distributed data
       searchJobMsg.resources
-        .filter(x => x.resourceType == ResourceType.JUDGEMENTS)
         .foreach(resource => {
-          ClusterNode.getSystemSetup.ddReplicator ! DDResourceStateUtils.ddJudgementJobMappingUpdateAdd(
+          ClusterNode.getSystemSetup.ddReplicator ! DDResourceStateUtils.ddResourceJobMappingUpdateAdd(
             ClusterNode.getSystemSetup.ddSelfUniqueAddress,
-            resource.identifier,
+            resource,
             jobId
           )
         })

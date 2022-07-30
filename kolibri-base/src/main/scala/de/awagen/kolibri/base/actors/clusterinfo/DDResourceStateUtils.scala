@@ -21,55 +21,98 @@ import akka.actor.ActorRef
 import akka.cluster.ddata.Replicator.Update
 import akka.cluster.ddata._
 import akka.cluster.ddata.typed.scaladsl.Replicator.WriteLocal
+import de.awagen.kolibri.base.directives.{Resource, ResourceType}
+import de.awagen.kolibri.base.directives.ResourceType.ResourceType
+import org.slf4j.{Logger, LoggerFactory}
 
 object DDResourceStateUtils {
+
+  private[this] val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
   // identifier and key for the central actor reference to retrieve the batch updates
   val DD_BATCH_INFO_ACTOR_REF_ID: String = "ddBatchInfoActor"
   val DD_BATCH_STATUS_ACTOR_REF_KEY: Key[ORSet[ActorRef]] = ORSetKey.create(DD_BATCH_INFO_ACTOR_REF_ID)
-  // identifier and key for mapping of judgement identifiers to jobs utilizing them
-  val DD_JUDGEMENT_RESOURCE_USAGE_JOB_MAPPING_ID: String = "ddJudgementJobMapping"
-  val DD_JUDGEMENT_JOB_MAPPING_KEY: Key[ORMap[String, ORSet[String]]] = ORMapKey.create[String, ORSet[String]](DD_JUDGEMENT_RESOURCE_USAGE_JOB_MAPPING_ID)
+
+  private[clusterinfo] def getJobMappingIdForResourceType(resourceType: ResourceType[_]): String = s"dd${resourceType.toString()}JobMapping"
+
+  // identifier and key for mapping of resource type identifiers to jobs utilizing them
+  val DD_RESOURCETYPE_TO_KEY_MAPPING: Map[ResourceType[_], Key[ORMap[String, ORSet[String]]]] = ResourceType.vals.map(value => {
+    (value, ORMapKey.create[String, ORSet[String]](getJobMappingIdForResourceType(value)))
+  }).toMap
 
 
   /**
-   * Initialize
+   * Initializes the keys for all resource types
    *
    * @return
    */
-  def ddJudgementMappingInit(): Update[ORMap[String, ORSet[String]]] = {
-    Update[ORMap[String, ORSet[String]]](DD_JUDGEMENT_JOB_MAPPING_KEY, ORMap.empty[String, ORSet[String]], WriteLocal)(identity)
+  def ddMappingInit(): Seq[Update[ORMap[String, ORSet[String]]]] = {
+    DD_RESOURCETYPE_TO_KEY_MAPPING.values.map(value => {
+      Update[ORMap[String, ORSet[String]]](value, ORMap.empty[String, ORSet[String]], WriteLocal)(identity)
+    }).toSeq
+  }
+
+  private[clusterinfo] def getIdentifierForResource(resource: Resource[_]): String = {
+    s"${resource.resourceType.toString()}-${resource.identifier}"
   }
 
   /**
-   * Adding jobId to the judgement mapping for the given judgementsResourceId key. The judgementsResourceId should
-   * usually refer to the key used in the repository
+   * Adding jobId to the resource type mapping for the given resource.
    *
-   * @param selfAddress          - self address of the node where this update is created
-   * @param judgementsResourceId - the resource if for the judgement data
-   * @param jobId                - the jobId to add to the set of job identifiers for the specified resource. Indicates which jobIds
-   *                             are currently running and using this resource. The information of those mappings can be used per node
-   *                             to clean up global resources (such as judgement repository) to avoid resources remaining in memory
-   *                             when not needed anymore, while still avoiding too frequent cleanup
+   * @param selfAddress - self address of the node where this update is created
+   * @param resource    - the resource for which to update the mapping
+   * @param jobId       - the jobId to add to the set of job identifiers for the specified resource. Indicates which jobIds
+   *                    are currently running and using this resource. The information of those mappings can be used per node
+   *                    to clean up global resources (such as judgement storage) to avoid resources remaining in memory
+   *                    when not needed anymore, while still avoiding too frequent cleanup
    * @return
    */
-  def ddJudgementJobMappingUpdateAdd(selfAddress: SelfUniqueAddress, judgementsResourceId: String, jobId: String): Update[ORMap[String, ORSet[String]]] = {
+  def ddResourceJobMappingUpdateAdd(selfAddress: SelfUniqueAddress, resource: Resource[_], jobId: String): Option[Update[ORMap[String, ORSet[String]]]] = {
+    val resourceIdentifier = getIdentifierForResource(resource)
     val addMap: ORMap[String, ORSet[String]] = ORMap.create()
-      .put(selfAddress, judgementsResourceId, ORSet.create()
+      .put(selfAddress, resourceIdentifier, ORSet.create()
         .add(selfAddress, jobId)
       )
-    Update[ORMap[String, ORSet[String]]](DD_JUDGEMENT_JOB_MAPPING_KEY, ORMap.empty[String, ORSet[String]], WriteLocal)(map => map.merge(addMap))
+    val result: Option[Update[ORMap[String, ORSet[String]]]] = DD_RESOURCETYPE_TO_KEY_MAPPING.get(resource.resourceType)
+      .map(key => {
+        Update[ORMap[String, ORSet[String]]](key, ORMap.empty[String, ORSet[String]], WriteLocal)(map => map.merge(addMap))
+      })
+    result match {
+      case Some(_) => result
+      case None =>
+        logger.warn(s"request to add job mapping for resource '$resource' failed, since no key found for resource type")
+        result
+    }
   }
 
-  def ddJudgementJobMappingUpdateRemove(judgementsResourceId: String, jobId: String)(implicit selfAddress: SelfUniqueAddress): Update[ORMap[String, ORSet[String]]] = {
-    Update[ORMap[String, ORSet[String]]](DD_JUDGEMENT_JOB_MAPPING_KEY, ORMap.empty[String, ORSet[String]], WriteLocal)(map => {
-      // if the option is empty, we dont need to do anything
-      // if contains value, update set with the passed jobId removed
-      map.get(judgementsResourceId)
-        .map(set => set.remove(jobId))
-        .map(updatedSet => map.updated(selfAddress, judgementsResourceId, map.get(judgementsResourceId).getOrElse(ORSet.empty))(_ => updatedSet))
-        .getOrElse(map)
-    })
+  /**
+   * Removing jobId from the resource type mapping for the given resource.
+   *
+   * @param resource    - the resource for which to update the mapping
+   * @param jobId       - jobId to remove from mapping
+   * @param selfAddress - self address of the node where this update is created
+   * @return
+   */
+  def ddResourceJobMappingUpdateRemove(resource: Resource[_], jobId: String)(implicit selfAddress: SelfUniqueAddress): Option[Update[ORMap[String, ORSet[String]]]] = {
+    val resourceIdentifier = getIdentifierForResource(resource)
+    val result: Option[Update[ORMap[String, ORSet[String]]]] = DD_RESOURCETYPE_TO_KEY_MAPPING.get(resource.resourceType)
+      .map(key => {
+        Update[ORMap[String, ORSet[String]]](key, ORMap.empty[String, ORSet[String]], WriteLocal)(map => {
+          // if the option is empty, we dont need to do anything
+          // if contains value, update set with the passed jobId removed
+          map.get(resourceIdentifier)
+            .map(set => set.remove(jobId))
+            .map(updatedSet => map.updated(selfAddress, resourceIdentifier, map.get(resourceIdentifier).getOrElse(ORSet.empty))(_ => updatedSet))
+            .getOrElse(map)
+        })
+      })
+    result match {
+      case Some(_) => result
+      case None =>
+        logger.warn(s"request to remove job mapping for resource '$resource' failed, since no key found for resource type")
+        result
+    }
+
   }
 
 }
