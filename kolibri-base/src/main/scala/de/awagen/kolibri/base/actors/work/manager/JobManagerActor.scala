@@ -22,7 +22,7 @@ import akka.cluster.ddata.Replicator.UpdateSuccess
 import akka.util.Timeout
 import de.awagen.kolibri.base.actors.clusterinfo.BatchStateActor.WorkerStatusResponse
 import de.awagen.kolibri.base.actors.clusterinfo.DDResourceStateUtils
-import de.awagen.kolibri.base.actors.clusterinfo.LocalResourceManagerActor.RemoveValueFromAllMappings
+import de.awagen.kolibri.base.actors.clusterinfo.ResourceToJobMappingClusterStateManagerActor.RemoveValueFromAllMappings
 import de.awagen.kolibri.base.actors.resources.BatchFreeSlotResourceCheckingActor.AddToRunningBaselineCount
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.{ActorRunnableJobGenerator, FinishedJobEvent}

@@ -28,7 +28,7 @@ import akka.management.cluster.bootstrap.ClusterBootstrap
 import akka.management.scaladsl.AkkaManagement
 import akka.stream.Materializer
 import de.awagen.kolibri.base.actors.clusterinfo.DDResourceStateUtils.DD_BATCH_STATUS_ACTOR_REF_KEY
-import de.awagen.kolibri.base.actors.clusterinfo.{BatchStateActor, LocalResourceManagerActor, LocalStateDistributorActor}
+import de.awagen.kolibri.base.actors.clusterinfo.{BatchStateActor, ResourceToJobMappingClusterStateManagerActor, LocalStateDistributorActor}
 import de.awagen.kolibri.base.actors.routing.RoutingActor
 import de.awagen.kolibri.base.config.AppProperties
 import de.awagen.kolibri.base.config.AppProperties.config
@@ -125,7 +125,7 @@ object ClusterNode extends App {
     // adding one localResourceManagerActor per node to cause per-node handling (e.g cases such as
     // clean up local resource when in whole cluster no job uses it anymore, such as within
     // FileBasedJudgementRepository)
-    val localResourceManagerActor: ActorRef = actorSystem.actorOf(Props[LocalResourceManagerActor])
+    val localResourceManagerActor: ActorRef = actorSystem.actorOf(Props[ResourceToJobMappingClusterStateManagerActor])
     val isHttpServerNode: Boolean = node_roles.contains(config.HTTP_SERVER_ROLE)
     logger.info(s"Node roles: $node_roles")
     logger.info(s"isHttpServerNode: $isHttpServerNode")

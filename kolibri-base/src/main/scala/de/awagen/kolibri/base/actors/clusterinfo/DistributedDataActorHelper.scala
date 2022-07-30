@@ -41,9 +41,9 @@ object DistributedDataActorHelper {
   }
 
   // resulting receive when combining multiple for different keys
-  def multipleStateChangeReceive[T <: ReplicatedData](filterKeysAndDescriptions: Seq[(Key[T], String)], valueHandleFunc: T => Unit): Receive = {
-    val receives: Seq[Receive] = filterKeysAndDescriptions.map(keyAndDesc => {
-      stateChangeReceive(keyAndDesc._1, keyAndDesc._2, valueHandleFunc)
+  def multipleStateChangeReceive[T <: ReplicatedData](filterKeysAndDescriptionsAndValueHandleFunc: Seq[(Key[T], String, T => Unit)]): Receive = {
+    val receives: Seq[Receive] = filterKeysAndDescriptionsAndValueHandleFunc.map(keyAndDescAndHandleFunc => {
+      stateChangeReceive(keyAndDescAndHandleFunc._1, keyAndDescAndHandleFunc._2, keyAndDescAndHandleFunc._3)
     })
     var doNothingReceive: PartialFunction[Any, Unit] =  {
       case _ => ()

@@ -73,8 +73,8 @@ class ResourceStore {
         val value: T = directive.getResource
         if (!resourceMap.keys.toSeq.contains(directive.resourceType)) {
           resourceMap(directive.resourceType) = mutable.Map.empty[String, Any]
-          resourceMap(directive.resourceType)(directive.resourceId) = value
         }
+        resourceMap(directive.resourceType)(directive.resourceId) = value
         ResourceOK
       }
     }
