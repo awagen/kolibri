@@ -35,6 +35,17 @@ object DDResourceStateUtils {
 
   private[clusterinfo] def getJobMappingIdForResourceType(resourceType: ResourceType[_]): String = s"dd${resourceType.toString()}JobMapping"
 
+  /**
+   * NOTE: some loaded resources (such as judgement loading into AtomicMapPromiseStore) use the path of the resource
+   * as identifiers, so to keep up the mechanism of being able to delete resources when no job is utilizing them anymore
+   * it is advised to keep the identifier below as is, e.g as the identifier of the resource
+   * @param resource
+   * @return
+   */
+  private[clusterinfo] def getIdentifierForResource(resource: Resource[_]): String = {
+    s"${resource.identifier}"
+  }
+
   // identifier and key for mapping of resource type identifiers to jobs utilizing them
   val DD_RESOURCETYPE_TO_KEY_MAPPING: Map[ResourceType[_], Key[ORMap[String, ORSet[String]]]] = ResourceType.vals.map(value => {
     (value, ORMapKey.create[String, ORSet[String]](getJobMappingIdForResourceType(value)))
@@ -50,10 +61,6 @@ object DDResourceStateUtils {
     DD_RESOURCETYPE_TO_KEY_MAPPING.values.map(value => {
       Update[ORMap[String, ORSet[String]]](value, ORMap.empty[String, ORSet[String]], WriteLocal)(identity)
     }).toSeq
-  }
-
-  private[clusterinfo] def getIdentifierForResource(resource: Resource[_]): String = {
-    s"${resource.resourceType.toString()}-${resource.identifier}"
   }
 
   /**
