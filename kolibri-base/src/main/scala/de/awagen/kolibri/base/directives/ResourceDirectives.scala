@@ -202,8 +202,8 @@ object ResourceDirectives {
     GetMappings(Resource(ResourceType.KEY_VALUES_MAPPINGS, file), LoadFunctions.jsonSingleMappingsFromFile(file))
   }
 
-  def getJsonValuesFilesMapping(keyToValueJsonMap: Map[String, String]): ResourceDirective[Map[String, IndexedGenerator[String]]] = {
-    GetMappings(Resource(ResourceType.KEY_VALUES_MAPPINGS, s"maphash-${keyToValueJsonMap.hashCode()}"), LoadFunctions.jsonValuesFilesMapping(keyToValueJsonMap))
+  def getMappingFromKeyFileMappings(keyToValueFileMap: Map[String, String]): ResourceDirective[Map[String, IndexedGenerator[String]]] = {
+    GetMappings(Resource(ResourceType.KEY_VALUES_MAPPINGS, s"maphash-${keyToValueFileMap.hashCode()}"), LoadFunctions.jsonValuesFilesMapping(keyToValueFileMap))
   }
 
 
