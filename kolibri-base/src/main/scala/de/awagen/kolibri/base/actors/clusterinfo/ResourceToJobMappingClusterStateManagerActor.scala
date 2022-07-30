@@ -47,6 +47,7 @@ object ResourceToJobMappingClusterStateManagerActor {
 /**
  * Actor keeps track of distributed state messages of resource-jobId mappings.
  * In case no job is assigned to a resource anymore, data can be removed to avoid piling up of extensive state in memory.
+ * This actor also takes care of this data removal.
  */
 case class ResourceToJobMappingClusterStateManagerActor() extends Actor with ActorLogging {
 
