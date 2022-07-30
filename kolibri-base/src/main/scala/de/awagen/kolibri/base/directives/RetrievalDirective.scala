@@ -17,7 +17,6 @@
 
 package de.awagen.kolibri.base.directives
 
-import de.awagen.kolibri.base.directives.ResourceType.ResourceType
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 
 
@@ -27,10 +26,9 @@ object RetrievalDirective {
    * Specifies how and which subset of data from ResourceDirective to load
    */
   trait RetrievalDirective[+T] extends KolibriSerializable {
-    def resourceId: String
-    def resourceType: ResourceType[T]
+    def resource: Resource[T]
   }
 
-  case class Retrieve[+T](resourceId: String, resourceType: ResourceType[T]) extends RetrievalDirective[T]
+  case class Retrieve[+T](resource: Resource[T]) extends RetrievalDirective[T]
 
 }

@@ -169,42 +169,41 @@ object LoadFunctions {
 object ResourceDirectives {
 
   trait ResourceDirective[+T] extends KolibriSerializable {
-    def resourceId: String
-    def resourceType: ResourceType[T]
+    def resource: Resource[T]
     def expirePolicy: ExpirePolicy
     def getResource: T
   }
 
-  case class GetJudgementsResourceDirective(resourceId: String, resourceType: ResourceType[Map[String, Double]], dataSupplier: SerializableSupplier[Map[String, Double]], expirePolicy: ExpirePolicy = ExpirePolicy.ON_JOB_END) extends ResourceDirective[Map[String, Double]] {
+  case class GetJudgementsResourceDirective(resource: Resource[Map[String, Double]], dataSupplier: SerializableSupplier[Map[String, Double]], expirePolicy: ExpirePolicy = ExpirePolicy.ON_JOB_END) extends ResourceDirective[Map[String, Double]] {
     override def getResource: Map[String, Double] = dataSupplier.apply()
   }
 
-  case class GetMappings(resourceId: String, resourceType: ResourceType[Map[String, IndexedGenerator[String]]], dataSupplier: SerializableSupplier[Map[String, IndexedGenerator[String]]], expirePolicy: ExpirePolicy = ExpirePolicy.ON_JOB_END) extends ResourceDirective[Map[String, IndexedGenerator[String]]] {
+  case class GetMappings(resource: Resource[Map[String, IndexedGenerator[String]]], dataSupplier: SerializableSupplier[Map[String, IndexedGenerator[String]]], expirePolicy: ExpirePolicy = ExpirePolicy.ON_JOB_END) extends ResourceDirective[Map[String, IndexedGenerator[String]]] {
     override def getResource: Map[String, IndexedGenerator[String]] = dataSupplier.apply()
   }
 
   def getGetJudgementsResourceDirectiveByFile(file: String): ResourceDirective[Map[String, Double]] = {
-    GetJudgementsResourceDirective(s"$file", ResourceType.JUDGEMENTS, LoadFunctions.judgementsFromFile(file))
+    GetJudgementsResourceDirective(Resource(ResourceType.JUDGEMENTS, file), LoadFunctions.judgementsFromFile(file))
   }
 
   def getMappingsFromFolderWithKeyFromFileNameAndValuesFromContent(folder: String, fileSuffix: String): ResourceDirective[Map[String, IndexedGenerator[String]]] = {
-    GetMappings(s"$folder", ResourceType.KEY_VALUES_MAPPINGS, LoadFunctions.mappingsFromFolderWithKeyFromFileNameAndValuesFromContent(folder, fileSuffix))
+    GetMappings(Resource(ResourceType.KEY_VALUES_MAPPINGS, folder), LoadFunctions.mappingsFromFolderWithKeyFromFileNameAndValuesFromContent(folder, fileSuffix))
   }
 
   def getMappingsFromCsvFile(file: String, columnDelimiter: String, keyColumnIndex: Int, valueColumnIndex: Int): ResourceDirective[Map[String, IndexedGenerator[String]]] = {
-    GetMappings(s"$file", ResourceType.KEY_VALUES_MAPPINGS, LoadFunctions.mappingsFromCsvFile(file, columnDelimiter, keyColumnIndex, valueColumnIndex))
+    GetMappings(Resource(ResourceType.KEY_VALUES_MAPPINGS, file), LoadFunctions.mappingsFromCsvFile(file, columnDelimiter, keyColumnIndex, valueColumnIndex))
   }
 
   def getJsonArrayMappingsFromFile(file: String): ResourceDirective[Map[String, IndexedGenerator[String]]] = {
-    GetMappings(s"$file", ResourceType.KEY_VALUES_MAPPINGS, LoadFunctions.jsonArrayMappingsFromFile(file))
+    GetMappings(Resource(ResourceType.KEY_VALUES_MAPPINGS, file), LoadFunctions.jsonArrayMappingsFromFile(file))
   }
 
   def getJsonSingleMappingsFromFile(file: String): ResourceDirective[Map[String, IndexedGenerator[String]]] = {
-    GetMappings(s"$file", ResourceType.KEY_VALUES_MAPPINGS, LoadFunctions.jsonSingleMappingsFromFile(file))
+    GetMappings(Resource(ResourceType.KEY_VALUES_MAPPINGS, file), LoadFunctions.jsonSingleMappingsFromFile(file))
   }
 
   def getJsonValuesFilesMapping(keyToValueJsonMap: Map[String, String]): ResourceDirective[Map[String, IndexedGenerator[String]]] = {
-    GetMappings(s"maphash-${keyToValueJsonMap.hashCode()}", ResourceType.KEY_VALUES_MAPPINGS, LoadFunctions.jsonValuesFilesMapping(keyToValueJsonMap))
+    GetMappings(Resource(ResourceType.KEY_VALUES_MAPPINGS, s"maphash-${keyToValueJsonMap.hashCode()}"), LoadFunctions.jsonValuesFilesMapping(keyToValueJsonMap))
   }
 
 

@@ -19,7 +19,6 @@ package de.awagen.kolibri.base.resources
 
 import de.awagen.kolibri.base.directives.Resource
 import de.awagen.kolibri.base.directives.ResourceDirectives.ResourceDirective
-import de.awagen.kolibri.base.directives.ResourceType.ResourceType
 import de.awagen.kolibri.base.directives.RetrievalDirective.RetrievalDirective
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import org.slf4j.{Logger, LoggerFactory}
@@ -52,41 +51,38 @@ case class RetrievalError[+T](directive: RetrievalDirective[T], cause: Retrieval
 class ResourceStore {
 
   private[this] val logger: Logger = LoggerFactory.getLogger(this.getClass)
-  private[this] val resourceMap: mutable.Map[ResourceType[_], mutable.Map[String, Any]] =
-    mutable.Map.empty[ResourceType[_], mutable.Map[String, Any]]
+  private[this] val resourceMap: mutable.Map[Resource[_], Any] =
+    mutable.Map.empty[Resource[_], Any]
 
   def resourceExists(resource: Resource[_]): Boolean = {
-    resourceMap.get(resource.resourceType).flatMap(idMap => idMap.get(resource.identifier)).nonEmpty
+    resourceMap.contains(resource)
   }
 
-  def removeResource(resource: Resource[_]): Unit = {
-    resourceMap.get(resource.resourceType).foreach(idMap => idMap.remove(resource.identifier))
+  def removeResource(resource: Resource[_]): Option[_] = {
+    resourceMap.remove(resource)
   }
 
   def handleResourceDirective[T](directive: ResourceDirective[T]): ResourceState = {
     try {
-      if (resourceExists(Resource(directive.resourceType, directive.resourceId))) {
+      if (resourceExists(directive.resource)) {
         logger.warn(s"resource loading for directive '$directive' requested but already exists, ignoring")
         ResourceAlreadyExists
       }
       else {
         val value: T = directive.getResource
-        if (!resourceMap.keys.toSeq.contains(directive.resourceType)) {
-          resourceMap(directive.resourceType) = mutable.Map.empty[String, Any]
-        }
-        resourceMap(directive.resourceType)(directive.resourceId) = value
+        resourceMap(directive.resource) = value
         ResourceOK
       }
     }
     catch {
       case e: Exception =>
-        logger.warn(s"was unable to handle resource directive: ${directive}", e)
+        logger.warn(s"was unable to handle resource directive: $directive", e)
         ResourceFailedByException(e)
     }
   }
 
   def handleRetrievalDirective[T](directive: RetrievalDirective[T]): Either[RetrievalError[T], T] = {
-    val retrievedOpt: Option[Any] = resourceMap.get(directive.resourceType).flatMap(idMap => idMap.get(directive.resourceId))
+    val retrievedOpt: Option[Any] = resourceMap.get(directive.resource)
     retrievedOpt match {
       case None => Left(RetrievalError[T](directive, ResourceNotFound))
       case Some(e) =>
