@@ -25,6 +25,7 @@ import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifie
 import de.awagen.kolibri.datatypes.collections.generators._
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.types.SerializableCallable
+import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSupplier
 
 import scala.collection.mutable.ArrayBuffer
 
@@ -80,9 +81,9 @@ object ParameterValues {
    */
   case class ParameterValues(name: String,
                              valueType: ValueType.Value,
-                             values: IndexedGenerator[String]) extends IndexedGenerator[ParameterValue] with ValueSeqGenProvider {
-    private[this] val parameterValueGenerator = values.mapGen(x => ParameterValue(name, valueType, x))
-    override val nrOfElements: Int = values.nrOfElements
+                             values: SerializableSupplier[IndexedGenerator[String]]) extends IndexedGenerator[ParameterValue] with ValueSeqGenProvider {
+    private[this] lazy val parameterValueGenerator = values.apply().mapGen(x => ParameterValue(name, valueType, x))
+    override lazy val nrOfElements: Int = parameterValueGenerator.nrOfElements
 
     override def getPart(startIndex: Int, endIndex: Int): IndexedGenerator[ParameterValue] = {
       parameterValueGenerator.getPart(startIndex, endIndex)
@@ -99,7 +100,7 @@ object ParameterValues {
 
   case class MappedParameterValues(name: String,
                                    valueType: ValueType.Value,
-                                   values: Map[String, IndexedGenerator[String]]) extends KolibriSerializable
+                                   values: SerializableSupplier[Map[String, IndexedGenerator[String]]]) extends KolibriSerializable
 
 
   case class ParameterValue(name: String, valueType: ValueType.Value, value: String) extends KolibriSerializable
@@ -126,23 +127,31 @@ object ParameterValues {
 
   object ParameterValueMapping {
 
+    def dataToSerializableSupplier[T](data: T): SerializableSupplier[T] = new SerializableSupplier[T] {
+      override def apply(): T = data
+    }
+
     private[modifiers] def removeTopLevelKeysWithMissingMappings(pVals: ParameterValues,
                                                                  mappedValues: Seq[MappedParameterValues],
                                                                  mappingKeyValueAssignments: Seq[(Int, Int)]): ParameterValues = {
       // extract those indices we need to check (only those mapped to index 0)
+      val parameterValues = pVals.values.apply()
       val checkMappedValueIndices = ArrayBuffer(mappedValues.indices: _*)
       mappingKeyValueAssignments.filter(x => x._1 != 0).map(x => x._2).foreach(index => checkMappedValueIndices.remove(index - 1))
       var removeValues = Seq.empty[String]
-      pVals.values.iterator.foreach(value => {
+      parameterValues.iterator.foreach(value => {
         // check for value whether has matches in each mappedValue
-        val missesMatch = checkMappedValueIndices.toSeq.exists(x => !mappedValues(x).values.contains(value))
+        val missesMatch = checkMappedValueIndices.toSeq.exists(x => !mappedValues(x).values.apply().contains(value))
         if (missesMatch) removeValues = removeValues :+ value
       })
-      var newParameterValues = pVals.values.iterator.toSeq
+      var newParameterValues = parameterValues.iterator.toSeq
       removeValues.foreach(value => {
         newParameterValues = newParameterValues.filter(x => x != value)
       })
-      ParameterValues(pVals.name, pVals.valueType, ByFunctionNrLimitedIndexedGenerator.createFromSeq(newParameterValues))
+      ParameterValues(
+        pVals.name,
+        pVals.valueType,
+        dataToSerializableSupplier(ByFunctionNrLimitedIndexedGenerator.createFromSeq(newParameterValues)))
     }
 
     private[modifiers] def getFromToMappingIndices(mappedValues: Seq[MappedParameterValues],
@@ -162,7 +171,7 @@ object ParameterValues {
      * @return
      */
     private[modifiers] def generateMappedValueFromParameterValue(parameterValue: ParameterValue, mappedValues: MappedParameterValues): Option[IndexedGenerator[ParameterValue]] = {
-      mappedValues.values.get(parameterValue.value)
+      mappedValues.values.apply().get(parameterValue.value)
         .map(gen => gen.mapGen(v => ParameterValue(mappedValues.name, mappedValues.valueType, v)))
     }
 
@@ -238,7 +247,7 @@ object ParameterValues {
     private[modifiers] def mergeValueGeneratorWithMapped(keyGenerator: IndexedGenerator[Seq[ParameterValue]], mappedValue: MappedParameterValues, keyIndex: Int): IndexedGenerator[Seq[ParameterValue]] = {
       val allPermutationsSeq: Seq[IndexedGenerator[Seq[ParameterValue]]] = keyGenerator.iterator.map(valueSeq => {
         val key: ParameterValue = valueSeq(keyIndex)
-        val valuesForKeyOpt: Option[IndexedGenerator[ParameterValue]] = mappedValue.values.get(key.value)
+        val valuesForKeyOpt: Option[IndexedGenerator[ParameterValue]] = mappedValue.values.apply().get(key.value)
           .map(x =>
             x.mapGen(y =>
               ParameterValue(mappedValue.name, mappedValue.valueType, y)

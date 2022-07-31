@@ -17,18 +17,24 @@
 
 package de.awagen.kolibri.base.io.json
 
-import de.awagen.kolibri.base.directives.ResourceDirectives
-import de.awagen.kolibri.base.directives.ResourceDirectives._
+import de.awagen.kolibri.base.directives.Resource
+import de.awagen.kolibri.base.directives.ResourceDirectives.{ResourceDirective, getDirective}
+import de.awagen.kolibri.base.io.json.ResourceJsonProtocol.StructDefs.{RESOURCE_MAP_STRING_DOUBLE_STRUCT_DEF, RESOURCE_MAP_STRING_STRING_VALUES_STRUCT_DEF, RESOURCE_STRING_VALUES_STRUCT_DEF}
+import de.awagen.kolibri.base.io.json.ResourceJsonProtocol.{resourceMapStringDoubleFormat, resourceMapStringStringValuesFormat, resourceStringValuesFormat}
+import de.awagen.kolibri.base.io.json.SupplierJsonProtocol.{GeneratorStringFormat, MapStringDoubleFormat, MapStringToGeneratorStringFormat}
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
 import de.awagen.kolibri.datatypes.types.JsonStructDefs._
+import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSupplier
 import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
-import spray.json.DefaultJsonProtocol.{IntJsonFormat, StringJsonFormat, mapFormat}
+import spray.json.DefaultJsonProtocol.StringJsonFormat
 import spray.json.{JsValue, JsonFormat, enrichAny}
 
 object ResourceDirectiveJsonProtocol {
 
   val TYPE_KEY = "type"
+  val RESOURCE_KEY = "resource"
+  val SUPPLIER_KEY = "supplier"
   val VALUES_KEY = "values"
   val FILE_KEY = "file"
   val FOLDER_KEY = "folder"
@@ -45,7 +51,7 @@ object ResourceDirectiveJsonProtocol {
 
     override def read(json: JsValue): ResourceDirective[_] = json match {
       case spray.json.JsObject(fields) if fields.contains(TYPE_KEY) => fields(TYPE_KEY).convertTo[String] match {
-        //case GENERATOR_STRING_TYPE => // TODO
+        case GENERATOR_STRING_TYPE => GeneratorStringResourceDirectiveFormat.read(fields(VALUES_KEY))
         case MAP_STRING_DOUBLE_TYPE => MapStringDoubleResourceDirectiveFormat.read(fields(VALUES_KEY))
         case MAP_STRING_GENERATOR_STRING_TYPE => MapStringGeneratorStringResourceDirectiveFormat.read(fields(VALUES_KEY))
       }
@@ -58,6 +64,7 @@ object ResourceDirectiveJsonProtocol {
         FieldDef(
           StringConstantStructDef(TYPE_KEY),
           StringChoiceStructDef(Seq(
+            GENERATOR_STRING_TYPE,
             MAP_STRING_DOUBLE_TYPE,
             MAP_STRING_GENERATOR_STRING_TYPE
           )),
@@ -65,6 +72,7 @@ object ResourceDirectiveJsonProtocol {
       ),
       Seq(
         ConditionalFields(TYPE_KEY, Map(
+          GENERATOR_STRING_TYPE -> Seq(FieldDef(StringConstantStructDef(VALUES_KEY), GeneratorStringResourceDirectiveFormat.structDef, required = true)),
           MAP_STRING_DOUBLE_TYPE -> Seq(FieldDef(StringConstantStructDef(VALUES_KEY), MapStringDoubleResourceDirectiveFormat.structDef, required = true)),
           MAP_STRING_GENERATOR_STRING_TYPE -> Seq(FieldDef(StringConstantStructDef(VALUES_KEY), MapStringGeneratorStringResourceDirectiveFormat.structDef, required = true))
         ))
@@ -73,29 +81,25 @@ object ResourceDirectiveJsonProtocol {
   }
 
   implicit object MapStringDoubleResourceDirectiveFormat extends JsonFormat[ResourceDirective[Map[String, Double]]] with WithStructDef {
-    val JUDGEMENTS_FROM_FILE_TYPE = "JUDGEMENTS_FROM_FILE"
-
     override def read(json: JsValue): ResourceDirective[Map[String, Double]] = json match {
-      case spray.json.JsObject(fields) if fields.contains(TYPE_KEY) => fields(TYPE_KEY).convertTo[String] match {
-        case JUDGEMENTS_FROM_FILE_TYPE =>
-          val file: String = fields(FILE_KEY).convertTo[String]
-          ResourceDirectives.getGetJudgementsResourceDirectiveByFile(file)
-      }
+      case spray.json.JsObject(fields) =>
+        val resource = fields(RESOURCE_KEY).convertTo[Resource[Map[String, Double]]]
+        val supplier = fields(SUPPLIER_KEY).convertTo[SerializableSupplier[Map[String, Double]]]
+        getDirective(supplier, resource)
     }
 
-    // TODO
     override def write(obj: ResourceDirective[Map[String, Double]]): JsValue = """{}""".toJson
 
     override def structDef: JsonStructDefs.StructDef[_] = NestedFieldSeqStructDef(
       Seq(
         FieldDef(
-          StringConstantStructDef(TYPE_KEY),
-          StringChoiceStructDef(Seq(JUDGEMENTS_FROM_FILE_TYPE)),
+          StringConstantStructDef(RESOURCE_KEY),
+          RESOURCE_MAP_STRING_DOUBLE_STRUCT_DEF,
           required = true
         ),
         FieldDef(
-          StringConstantStructDef(FILE_KEY),
-          RegexStructDef("[a-zA-Z]\\w*".r),
+          StringConstantStructDef(SUPPLIER_KEY),
+          SupplierJsonProtocol.MapStringDoubleFormat.structDef,
           required = true
         )
       ),
@@ -104,115 +108,58 @@ object ResourceDirectiveJsonProtocol {
   }
 
   implicit object MapStringGeneratorStringResourceDirectiveFormat extends JsonFormat[ResourceDirective[Map[String, IndexedGenerator[String]]]] with WithStructDef {
-    val MAPPING_FROM_FOLDER_WITH_KEY_FROM_FILE_NAME_AND_VALUES_FROM_CONTENT_TYPE = "MAPPING_FROM_FOLDER_WITH_KEY_FROM_FILE_NAME_AND_VALUES_FROM_CONTENT"
-    val MAPPING_FROM_CSV_FILE_TYPE = "MAPPING_FROM_CSV_FILE"
-    val MAPPINGS_FROM_ARRAY_VALUE_JSON_TYPE = "MAPPINGS_FROM_ARRAY_VALUE_JSON"
-    val MAPPINGS_FROM_SINGLE_VALUE_JSON_TYPE = "MAPPINGS_FROM_SINGLE_VALUE_JSON"
-    val MAPPINGS_FROM_KEY_FILE_MAPPING_TYPE = "MAPPINGS_FROM_KEY_FILE_MAPPING"
 
     override def read(json: JsValue): ResourceDirective[Map[String, IndexedGenerator[String]]] = json match {
-      case spray.json.JsObject(fields) if fields.contains(TYPE_KEY) => fields(TYPE_KEY).convertTo[String] match {
-        case MAPPING_FROM_FOLDER_WITH_KEY_FROM_FILE_NAME_AND_VALUES_FROM_CONTENT_TYPE =>
-          val folder: String = fields(FOLDER_KEY).convertTo[String]
-          val fileSuffix: String = fields(FILE_SUFFIX_KEY).convertTo[String]
-          getMappingsFromFolderWithKeyFromFileNameAndValuesFromContent(folder, fileSuffix)
-        case MAPPING_FROM_CSV_FILE_TYPE =>
-          val file: String = fields(FILE_KEY).convertTo[String]
-          val columnDelimiter: String = fields(COLUMN_DELIMITER_KEY).convertTo[String]
-          val keyColumnIndex: Int = fields(KEY_COLUMN_INDEX_KEY).convertTo[Int]
-          val valueColumnIndex: Int = fields(VALUE_COLUMN_INDEX_KEY).convertTo[Int]
-          getMappingsFromCsvFile(file, columnDelimiter, keyColumnIndex, valueColumnIndex)
-        case MAPPINGS_FROM_ARRAY_VALUE_JSON_TYPE =>
-          val file: String = fields(FILE_KEY).convertTo[String]
-          getJsonArrayMappingsFromFile(file)
-        case MAPPINGS_FROM_SINGLE_VALUE_JSON_TYPE =>
-          val file: String = fields(FILE_KEY).convertTo[String]
-          getJsonSingleMappingsFromFile(file)
-        case MAPPINGS_FROM_KEY_FILE_MAPPING_TYPE =>
-          val keyToValueMap: Map[String, String] = fields(KEY_TO_VALUE_FILE_MAP_KEY).convertTo[Map[String, String]]
-          getMappingFromKeyFileMappings(keyToValueMap)
-      }
+      case spray.json.JsObject(fields) =>
+        val resource = fields(RESOURCE_KEY).convertTo[Resource[Map[String, IndexedGenerator[String]]]]
+        val supplier = fields(SUPPLIER_KEY).convertTo[SerializableSupplier[Map[String, IndexedGenerator[String]]]]
+        getDirective(supplier, resource)
     }
 
-    // TODO
     override def write(obj: ResourceDirective[Map[String, IndexedGenerator[String]]]): JsValue = """{}""".toJson
 
     override def structDef: JsonStructDefs.StructDef[_] = NestedFieldSeqStructDef(
       Seq(
         FieldDef(
-          StringConstantStructDef(TYPE_KEY),
-          StringChoiceStructDef(Seq(
-            MAPPING_FROM_FOLDER_WITH_KEY_FROM_FILE_NAME_AND_VALUES_FROM_CONTENT_TYPE,
-            MAPPING_FROM_CSV_FILE_TYPE,
-            MAPPINGS_FROM_ARRAY_VALUE_JSON_TYPE,
-            MAPPINGS_FROM_SINGLE_VALUE_JSON_TYPE,
-            MAPPINGS_FROM_KEY_FILE_MAPPING_TYPE
-          )),
+          StringConstantStructDef(RESOURCE_KEY),
+          RESOURCE_MAP_STRING_STRING_VALUES_STRUCT_DEF,
           required = true
         ),
-      ),
-      Seq(
-        ConditionalFields(
-          TYPE_KEY,
-          Map(
-            MAPPING_FROM_FOLDER_WITH_KEY_FROM_FILE_NAME_AND_VALUES_FROM_CONTENT_TYPE -> Seq(
-              FieldDef(
-                StringConstantStructDef(FOLDER_KEY),
-                RegexStructDef("[a-zA-Z]\\w*".r),
-                required = true
-              ),
-              FieldDef(
-                StringConstantStructDef(FILE_SUFFIX_KEY),
-                RegexStructDef(".*".r),
-                required = true
-              )
-            ),
-            MAPPING_FROM_CSV_FILE_TYPE -> Seq(
-              FieldDef(
-                StringConstantStructDef(FILE_KEY),
-                RegexStructDef("[a-zA-Z]\\w*".r),
-                required = true
-              ),
-              FieldDef(
-                StringConstantStructDef(COLUMN_DELIMITER_KEY),
-                RegexStructDef(".+".r),
-                required = true
-              ),
-              FieldDef(
-                StringConstantStructDef(KEY_COLUMN_INDEX_KEY),
-                IntMinMaxStructDef(0, 1000),
-                required = true
-              ),
-              FieldDef(
-                StringConstantStructDef(VALUE_COLUMN_INDEX_KEY),
-                IntMinMaxStructDef(0, 1000),
-                required = true
-              )
-            ),
-            MAPPINGS_FROM_ARRAY_VALUE_JSON_TYPE -> Seq(
-              FieldDef(
-                StringConstantStructDef(FILE_KEY),
-                RegexStructDef("[a-zA-Z]\\w*".r),
-                required = true
-              )
-            ),
-            MAPPINGS_FROM_SINGLE_VALUE_JSON_TYPE -> Seq(
-              FieldDef(
-                StringConstantStructDef(FILE_KEY),
-                RegexStructDef("[a-zA-Z]\\w*".r),
-                required = true
-              )
-            ),
-            MAPPINGS_FROM_KEY_FILE_MAPPING_TYPE -> Seq(
-              FieldDef(
-                StringConstantStructDef(KEY_TO_VALUE_FILE_MAP_KEY),
-                MapStructDef(StringStructDef, StringStructDef),
-                required = true
-              )
-            )
-          )
+        FieldDef(
+          StringConstantStructDef(SUPPLIER_KEY),
+          SupplierJsonProtocol.MapStringToGeneratorStringFormat.structDef,
+          required = true
         )
-      )
+      ),
+      Seq.empty
+    )
+  }
+
+  implicit object GeneratorStringResourceDirectiveFormat extends JsonFormat[ResourceDirective[IndexedGenerator[String]]] with WithStructDef {
+
+    override def read(json: JsValue): ResourceDirective[IndexedGenerator[String]] = json match {
+      case spray.json.JsObject(fields) =>
+        val resource = fields(RESOURCE_KEY).convertTo[Resource[IndexedGenerator[String]]]
+        val supplier = fields(SUPPLIER_KEY).convertTo[SerializableSupplier[IndexedGenerator[String]]]
+        getDirective(supplier, resource)
+    }
+
+    override def write(obj: ResourceDirective[IndexedGenerator[String]]): JsValue = """{}""".toJson
+
+    override def structDef: JsonStructDefs.StructDef[_] = NestedFieldSeqStructDef(
+      Seq(
+        FieldDef(
+          StringConstantStructDef(RESOURCE_KEY),
+          RESOURCE_STRING_VALUES_STRUCT_DEF,
+          required = true
+        ),
+        FieldDef(
+          StringConstantStructDef(SUPPLIER_KEY),
+          SupplierJsonProtocol.GeneratorStringFormat.structDef,
+          required = true
+        )
+      ),
+      Seq.empty
     )
   }
 

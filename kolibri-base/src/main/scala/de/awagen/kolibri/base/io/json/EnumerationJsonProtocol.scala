@@ -1,24 +1,24 @@
 /**
-  * Copyright 2021 Andreas Wagenmann
-  *
-  * Licensed under the Apache License, Version 2.0 (the "License");
-  * you may not use this file except in compliance with the License.
-  * You may obtain a copy of the License at
-  *
-  * http://www.apache.org/licenses/LICENSE-2.0
-  *
-  * Unless required by applicable law or agreed to in writing, software
-  * distributed under the License is distributed on an "AS IS" BASIS,
-  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  * See the License for the specific language governing permissions and
-  * limitations under the License.
-  */
+ * Copyright 2021 Andreas Wagenmann
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package de.awagen.kolibri.base.io.json
 
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.ProcessingResult
 import de.awagen.kolibri.base.directives.ResourceType
-import de.awagen.kolibri.base.directives.ResourceType.{JUDGEMENTS, KEY_VALUES_MAPPINGS, ResourceType, VALUES}
+import de.awagen.kolibri.base.directives.ResourceType.{GeneratorStringResourceType, MapStringDoubleResourceType, MapStringGeneratorStringResourceType, ResourceType}
 import de.awagen.kolibri.base.domain.TaskDataKeys
 import de.awagen.kolibri.base.domain.jobdefinitions.ProcessingActorProps.ProcessingActorProps
 import de.awagen.kolibri.base.domain.jobdefinitions.RunnableExpectationGenerators.ExpectationGenerators
@@ -35,6 +35,8 @@ import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.types.JsonStructDefs.StringChoiceStructDef
 import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
 import spray.json.{DefaultJsonProtocol, DeserializationException, JsString, JsValue}
+
+import scala.reflect.runtime.universe.typeOf
 
 
 object EnumerationJsonProtocol extends DefaultJsonProtocol {
@@ -160,45 +162,42 @@ object EnumerationJsonProtocol extends DefaultJsonProtocol {
   implicit object resourceTypeMapStringDoubleFormat extends EnumerationProtocol[ResourceType[Map[String, Double]]] with WithStructDef {
     override def read(json: JsValue): ResourceType[Map[String, Double]] = {
       json match {
-        case JsString(txt) => txt match {
-          case "JUDGEMENTS" => JUDGEMENTS
-        }
+        case JsString(txt) if ResourceType.withName(txt).isInstanceOf[MapStringDoubleResourceType] =>
+          ResourceType.withName(txt).asInstanceOf[ResourceType[Map[String, Double]]]
         case e => throw DeserializationException(s"Expected a value from ResourceType[Map[String, Double]] but got value $e")
       }
     }
 
     override def structDef: JsonStructDefs.StructDef[_] = {
-      StringChoiceStructDef(Seq("JUDGEMENTS"))
+      StringChoiceStructDef(ResourceType.vals.filter(x => x.classTyped.classType =:= typeOf[ResourceType[Map[String, Double]]]).map(x => x.toString()))
     }
   }
 
   implicit object resourceTypeMapStringGeneratorStringFormat extends EnumerationProtocol[ResourceType[Map[String, IndexedGenerator[String]]]] with WithStructDef {
     override def read(json: JsValue): ResourceType[Map[String, IndexedGenerator[String]]] = {
       json match {
-        case JsString(txt) => txt match {
-          case "KEY_VALUES_MAPPINGS" => KEY_VALUES_MAPPINGS
-        }
+        case JsString(txt) if ResourceType.withName(txt).isInstanceOf[MapStringGeneratorStringResourceType] =>
+          ResourceType.withName(txt).asInstanceOf[ResourceType[Map[String, IndexedGenerator[String]]]]
         case e => throw DeserializationException(s"Expected a value from ResourceType[Map[String, IndexedGenerator[String]]] but got value $e")
       }
     }
 
     override def structDef: JsonStructDefs.StructDef[_] = {
-      StringChoiceStructDef(Seq("KEY_VALUES_MAPPINGS"))
+      StringChoiceStructDef(ResourceType.vals.filter(x => x.classTyped.classType =:= typeOf[ResourceType[Map[String, IndexedGenerator[String]]]]).map(x => x.toString()))
     }
   }
 
   implicit object resourceTypeGeneratorStringFormat extends EnumerationProtocol[ResourceType[IndexedGenerator[String]]] with WithStructDef {
     override def read(json: JsValue): ResourceType[IndexedGenerator[String]] = {
       json match {
-        case JsString(txt) => txt match {
-          case "VALUES" => VALUES
-        }
+        case JsString(txt) if ResourceType.withName(txt).isInstanceOf[GeneratorStringResourceType] =>
+          ResourceType.withName(txt).asInstanceOf[ResourceType[IndexedGenerator[String]]]
         case e => throw DeserializationException(s"Expected a value from ResourceType[IndexedGenerator[String]] but got value $e")
       }
     }
 
     override def structDef: JsonStructDefs.StructDef[_] = {
-      StringChoiceStructDef(Seq("VALUES"))
+      StringChoiceStructDef(ResourceType.vals.filter(x => x.classTyped.classType =:= typeOf[ResourceType[IndexedGenerator[String]]]).map(x => x.toString()))
     }
   }
 

@@ -17,18 +17,12 @@
 
 package de.awagen.kolibri.base.directives
 
-import de.awagen.kolibri.base.config.AppConfig
-import de.awagen.kolibri.base.config.AppConfig.filepathToJudgementProvider
 import de.awagen.kolibri.base.directives.ExpirePolicy.ExpirePolicy
 import de.awagen.kolibri.base.directives.ResourceType.ResourceType
-import de.awagen.kolibri.base.io.json.ParameterValuesJsonProtocol.jsValueStringConversion
-import de.awagen.kolibri.base.io.reader.FileReaderUtils
-import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator}
+import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.types.ClassTyped
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSupplier
-import spray.json.DefaultJsonProtocol.{JsValueFormat, immSeqFormat}
-import spray.json.JsValue
 
 import scala.collection.mutable
 
@@ -36,13 +30,17 @@ import scala.collection.mutable
 object ResourceType extends Enumeration {
   type ResourceType[+T] = Val[T]
 
+  type MapStringDoubleResourceType = Val[Map[String, Double]]
+  type MapStringGeneratorStringResourceType = Val[Map[String, IndexedGenerator[String]]]
+  type GeneratorStringResourceType = Val[IndexedGenerator[String]]
+
   case class Val[+T](classTyped: ClassTyped[T]) extends super.Val
 
-  val JUDGEMENTS: Val[Map[String, Double]] = Val(ClassTyped[Map[String, Double]])
-  val KEY_VALUES_MAPPINGS: Val[Map[String, IndexedGenerator[String]]] = Val(ClassTyped[Map[String, IndexedGenerator[String]]])
-  val VALUES: Val[IndexedGenerator[String]] = Val(ClassTyped[IndexedGenerator[String]])
+  val MAP_STRING_TO_DOUBLE_VALUE: MapStringDoubleResourceType = Val(ClassTyped[Map[String, Double]])
+  val MAP_STRING_TO_STRING_VALUES: MapStringGeneratorStringResourceType = Val(ClassTyped[Map[String, IndexedGenerator[String]]])
+  val STRING_VALUES: GeneratorStringResourceType = Val(ClassTyped[IndexedGenerator[String]])
 
-  def vals: Seq[Val[_]] = Seq(JUDGEMENTS, KEY_VALUES_MAPPINGS, VALUES)
+  def vals: Seq[Val[_]] = Seq(MAP_STRING_TO_DOUBLE_VALUE, MAP_STRING_TO_STRING_VALUES, STRING_VALUES)
 }
 
 object ExpirePolicy extends Enumeration {
@@ -68,144 +66,24 @@ trait WithResources extends KolibriSerializable {
 
 
 /**
- * Functions for data loading
- */
-object LoadFunctions {
-
-  /**
-   * Supplier for loading of judgements from file
-   * @param file - file path (relative to base path) to file containing the judgements (format depends on config setting)
-   * @return
-   */
-  def judgementsFromFile(file: String): SerializableSupplier[Map[String, Double]] = new SerializableSupplier[Map[String, Double]] {
-    override def apply(): Map[String, Double] = filepathToJudgementProvider(file).allJudgements
-  }
-
-  /**
-   * Supplier that looks in folder, filters for files with passed suffix, removes suffix and takes
-   * the remaining value of the files as keys, and the respective file content per key
-   * is parsed to retrieve values (one value per line)
-   * @param folder - folder to for files
-   * @param fileSuffix - suffix to filter files by and to remove to retrieve the key value (remaining file name)
-   * @return
-   */
-  def mappingsFromFolderWithKeyFromFileNameAndValuesFromContent(folder: String, fileSuffix: String): SerializableSupplier[Map[String, IndexedGenerator[String]]] = new SerializableSupplier[Map[String, IndexedGenerator[String]]] {
-    override def apply(): Map[String, IndexedGenerator[String]] = {
-      FileReaderUtils.extractFilePrefixToLineValuesMapping(folder, fileSuffix, "/")
-        .map(x => (x._1, ByFunctionNrLimitedIndexedGenerator.createFromSeq(x._2)))
-    }
-  }
-
-  /**
-   * Supplier deriving mappings from csv file. If a key appears in several rows, each value
-   * is collected.
-   * @param file - csv file path (relative to base folder)
-   * @param columnDelimiter - delimiter to split columns
-   * @param keyColumnIndex - index of the key column (0-based)
-   * @param valueColumnIndex - index of the value column (0-based)
-   * @return
-   */
-  def mappingsFromCsvFile(file: String, columnDelimiter: String, keyColumnIndex: Int, valueColumnIndex: Int): SerializableSupplier[Map[String, IndexedGenerator[String]]] = new SerializableSupplier[Map[String, IndexedGenerator[String]]] {
-    override def apply(): Map[String, IndexedGenerator[String]] = {
-      val fileReader = AppConfig.persistenceModule.persistenceDIModule.reader
-      val keyValuesMapping = FileReaderUtils.multiMappingFromCSVFile[String](
-        source = fileReader.getSource(file),
-        columnDelimiter = columnDelimiter,
-        filterLessColumnsThan =  math.max(keyColumnIndex, valueColumnIndex) + 1,
-        valsToKey = x => x(keyColumnIndex),
-        columnsToValue = x => x(valueColumnIndex)
-      )
-      keyValuesMapping.map(x => (x._1, ByFunctionNrLimitedIndexedGenerator.createFromSeq(x._2.toSeq)))
-    }
-  }
-
-  /**
-   * Supplier reading key-value mappings from json file, assuming the values are in
-   * array format
-   * @param file - file path to file containing json where value for each key is array
-   * @return
-   */
-  def jsonArrayMappingsFromFile(file: String): SerializableSupplier[Map[String, IndexedGenerator[String]]] = new SerializableSupplier[Map[String, IndexedGenerator[String]]] {
-    override def apply(): Map[String, IndexedGenerator[String]] = {
-      val fileReader = AppConfig.persistenceModule.persistenceDIModule.reader
-      FileReaderUtils.readJsonMapping(file, fileReader, x => x.convertTo[Seq[JsValue]].map(x => jsValueStringConversion(x)))
-        .map(x => (x._1, ByFunctionNrLimitedIndexedGenerator.createFromSeq(x._2)))
-    }
-  }
-
-  /**
-   * Supplier reading key-value mappings from json file, assuming the values are single values
-   * @param file- file path to file containing json where value for each key is single value
-   * @return
-   */
-  def jsonSingleMappingsFromFile(file: String): SerializableSupplier[Map[String, IndexedGenerator[String]]] = new SerializableSupplier[Map[String, IndexedGenerator[String]]] {
-    override def apply(): Map[String, IndexedGenerator[String]] = {
-      val fileReader = AppConfig.persistenceModule.persistenceDIModule.reader
-      FileReaderUtils.readJsonMapping(file, fileReader, x => jsValueStringConversion(x))
-        .map(x => (x._1, Seq(x._2)))
-        .map(x => (x._1, ByFunctionNrLimitedIndexedGenerator.createFromSeq(x._2)))
-    }
-  }
-
-  /**
-   * Given a mapping of keys to filename, create key-value mapping by reading the file for each key,
-   * assuming one value per line
-   * @param keyToValueJsonMap - mapping of keys to paths to file containing the values for the key (one value per line)
-   * @return
-   */
-  def jsonValuesFilesMapping(keyToValueJsonMap: Map[String, String]): SerializableSupplier[Map[String, IndexedGenerator[String]]] = new SerializableSupplier[Map[String, IndexedGenerator[String]]] {
-    override def apply(): Map[String, IndexedGenerator[String]] = {
-      keyToValueJsonMap.map(x => {
-        (x._1, ByFunctionNrLimitedIndexedGenerator.createFromSeq(FileReaderUtils.loadLinesFromFile(x._2, AppConfig.persistenceModule.persistenceDIModule.reader)))
-      })
-    }
-  }
-
-}
-
-
-/**
  * Resource load instructions
  */
 object ResourceDirectives {
 
   trait ResourceDirective[+T] extends KolibriSerializable {
     def resource: Resource[T]
+
     def expirePolicy: ExpirePolicy
+
     def getResource: T
   }
 
-  case class GetJudgementsResourceDirective(resource: Resource[Map[String, Double]], dataSupplier: SerializableSupplier[Map[String, Double]], expirePolicy: ExpirePolicy = ExpirePolicy.ON_JOB_END) extends ResourceDirective[Map[String, Double]] {
-    override def getResource: Map[String, Double] = dataSupplier.apply()
+  case class GenericResourceDirective[+T](resource: Resource[T], supplier: SerializableSupplier[T], expirePolicy: ExpirePolicy = ExpirePolicy.ON_JOB_END) extends ResourceDirective[T] {
+    override def getResource: T = supplier.apply()
   }
 
-  case class GetMappings(resource: Resource[Map[String, IndexedGenerator[String]]], dataSupplier: SerializableSupplier[Map[String, IndexedGenerator[String]]], expirePolicy: ExpirePolicy = ExpirePolicy.ON_JOB_END) extends ResourceDirective[Map[String, IndexedGenerator[String]]] {
-    override def getResource: Map[String, IndexedGenerator[String]] = dataSupplier.apply()
+  def getDirective[T](supplier: SerializableSupplier[T], resource: Resource[T]): ResourceDirective[T] = {
+    GenericResourceDirective(resource, supplier)
   }
-
-  def getGetJudgementsResourceDirectiveByFile(file: String): ResourceDirective[Map[String, Double]] = {
-    GetJudgementsResourceDirective(Resource(ResourceType.JUDGEMENTS, file), LoadFunctions.judgementsFromFile(file))
-  }
-
-  def getMappingsFromFolderWithKeyFromFileNameAndValuesFromContent(folder: String, fileSuffix: String): ResourceDirective[Map[String, IndexedGenerator[String]]] = {
-    GetMappings(Resource(ResourceType.KEY_VALUES_MAPPINGS, folder), LoadFunctions.mappingsFromFolderWithKeyFromFileNameAndValuesFromContent(folder, fileSuffix))
-  }
-
-  def getMappingsFromCsvFile(file: String, columnDelimiter: String, keyColumnIndex: Int, valueColumnIndex: Int): ResourceDirective[Map[String, IndexedGenerator[String]]] = {
-    GetMappings(Resource(ResourceType.KEY_VALUES_MAPPINGS, file), LoadFunctions.mappingsFromCsvFile(file, columnDelimiter, keyColumnIndex, valueColumnIndex))
-  }
-
-  def getJsonArrayMappingsFromFile(file: String): ResourceDirective[Map[String, IndexedGenerator[String]]] = {
-    GetMappings(Resource(ResourceType.KEY_VALUES_MAPPINGS, file), LoadFunctions.jsonArrayMappingsFromFile(file))
-  }
-
-  def getJsonSingleMappingsFromFile(file: String): ResourceDirective[Map[String, IndexedGenerator[String]]] = {
-    GetMappings(Resource(ResourceType.KEY_VALUES_MAPPINGS, file), LoadFunctions.jsonSingleMappingsFromFile(file))
-  }
-
-  def getMappingFromKeyFileMappings(keyToValueFileMap: Map[String, String]): ResourceDirective[Map[String, IndexedGenerator[String]]] = {
-    GetMappings(Resource(ResourceType.KEY_VALUES_MAPPINGS, s"maphash-${keyToValueFileMap.hashCode()}"), LoadFunctions.jsonValuesFilesMapping(keyToValueFileMap))
-  }
-
 
 }

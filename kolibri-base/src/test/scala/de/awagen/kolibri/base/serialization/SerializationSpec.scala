@@ -28,8 +28,9 @@ import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ValueType.URL
 import de.awagen.kolibri.base.processing.modifiers.ParameterValues.{MappedParameterValues, ParameterValueMapping, ValueSeqGenProvider}
 import de.awagen.kolibri.base.processing.modifiers.ParameterValuesSpec
 import de.awagen.kolibri.base.processing.modifiers.ParameterValuesSpec.{mappedValue1, mappedValue2}
-import de.awagen.kolibri.datatypes.collections.generators.ByFunctionNrLimitedIndexedGenerator
+import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator}
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
+import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSupplier
 import spray.json._
 
 object ConfigOverwrites {
@@ -57,50 +58,57 @@ class SerializationSpec extends KolibriTypedTestKitNoCluster(ConfigOverwrites.co
 
     val mappingSample: String =
       """
-         |{
-         |      "type": "MAPPING",
-         |      "values": {
-         |        "key_values": {
-         |          "type": "FROM_ORDERED_VALUES_TYPE",
-         |          "values": {
-         |            "type": "FROM_FILENAME_KEYS_TYPE",
-         |            "directory": "data/fileMappingSingleValueTest",
-         |            "filesSuffix": ".txt",
-         |            "name": "keyId"
-         |          },
-         |          "values_type": "URL_PARAMETER"
-         |        },
-         |        "mapped_values": [
-         |          {
-         |            "type": "CSV_MAPPING_TYPE",
-         |            "name": "mapped_id",
-         |            "values_type": "URL_PARAMETER",
-         |            "values": "data/csvMappedParameterTest/mapping1.csv",
-         |            "column_delimiter": ",",
-         |            "key_column_index": 0,
-         |            "value_column_index": 1
-         |          },
-         |          {
-         |            "type": "FILE_PREFIX_TO_FILE_LINES_TYPE",
-         |            "directory": "data/fileMappingSingleValueTest",
-         |            "files_suffix": ".txt",
-         |            "name": "value",
-         |            "values_type": "URL_PARAMETER"
-         |          }
-         |        ],
-         |        "key_mapping_assignments": [
-         |          [
-         |            0,
-         |            1
-         |          ],
-         |          [
-         |            0,
-         |            2
-         |          ]
-         |        ]
-         |      }
-         |    }
-         |""".stripMargin
+        |{
+        |      "type": "MAPPING",
+        |      "values": {
+        |        "key_values": {
+        |          "name": "keyId",
+        |          "values_type": "URL_PARAMETER",
+        |          "values": {
+        |            "type": "FROM_ORDERED_VALUES_TYPE",
+        |            "values": {
+        |              "type": "FROM_FILENAME_KEYS_TYPE",
+        |              "directory": "data/fileMappingSingleValueTest",
+        |              "filesSuffix": ".txt",
+        |              "name": "keyId"
+        |            }
+        |          }
+        |        },
+        |        "mapped_values": [
+        |          {
+        |            "name": "mapped_id",
+        |            "values_type": "URL_PARAMETER",
+        |            "values": {
+        |              "type": "CSV_MAPPING_TYPE",
+        |              "values": "data/csvMappedParameterTest/mapping1.csv",
+        |              "column_delimiter": ",",
+        |              "key_column_index": 0,
+        |              "value_column_index": 1
+        |            }
+        |          },
+        |          {
+        |            "name": "value",
+        |            "values_type": "URL_PARAMETER",
+        |            "values": {
+        |              "type": "FILE_PREFIX_TO_FILE_LINES_TYPE",
+        |              "directory": "data/fileMappingSingleValueTest",
+        |              "files_suffix": ".txt"
+        |            }
+        |          }
+        |        ],
+        |        "key_mapping_assignments": [
+        |          [
+        |            0,
+        |            1
+        |          ],
+        |          [
+        |            0,
+        |            2
+        |          ]
+        |        ]
+        |      }
+        |    }
+        |""".stripMargin
 
     val jobSample: String =
       """
@@ -129,41 +137,54 @@ class SerializationSpec extends KolibriTypedTestKitNoCluster(ConfigOverwrites.co
         |    {
         |      "type": "MAP_STRING_DOUBLE",
         |      "values": {
-        |        "type": "JUDGEMENTS_FROM_FILE",
-        |        "file": "test-judgements/test_judgements.txt"
-        |      }
+        |        "resource": {
+        |          "resourceType": "MAP_STRING_TO_DOUBLE_VALUE",
+        |          "identifier": "ident1"
+        |        },
+        |        "supplier": {
+        |          "type": "JUDGEMENTS_FROM_FILE",
+        |          "file": "test-judgements/test_judgements.txt"
+        |        }
+        |     }
         |    }
         |  ],
         |  "requestParameterPermutateSeq": [
-{
+              {
         |      "type": "MAPPING",
-        |      "values": {
+        |            "values": {
         |        "key_values": {
-        |          "type": "FROM_ORDERED_VALUES_TYPE",
+        |          "name": "keyId",
+        |          "values_type": "URL_PARAMETER",
         |          "values": {
-        |            "type": "FROM_FILENAME_KEYS_TYPE",
-        |            "directory": "data/fileMappingSingleValueTest",
-        |            "filesSuffix": ".txt",
-        |            "name": "keyId"
-        |          },
-        |          "values_type": "URL_PARAMETER"
+        |            "type": "FROM_ORDERED_VALUES_TYPE",
+        |            "values": {
+        |              "type": "FROM_FILENAME_KEYS_TYPE",
+        |              "directory": "data/fileMappingSingleValueTest",
+        |              "filesSuffix": ".txt",
+        |              "name": "keyId"
+        |            }
+        |          }
         |        },
         |        "mapped_values": [
         |          {
-        |            "type": "CSV_MAPPING_TYPE",
         |            "name": "mapped_id",
         |            "values_type": "URL_PARAMETER",
-        |            "values": "data/csvMappedParameterTest/mapping1.csv",
-        |            "column_delimiter": ",",
-        |            "key_column_index": 0,
-        |            "value_column_index": 1
+        |            "values": {
+        |              "type": "CSV_MAPPING_TYPE",
+        |              "values": "data/csvMappedParameterTest/mapping1.csv",
+        |              "column_delimiter": ",",
+        |              "key_column_index": 0,
+        |              "value_column_index": 1
+        |            }
         |          },
         |          {
-        |            "type": "FILE_PREFIX_TO_FILE_LINES_TYPE",
-        |            "directory": "data/fileMappingSingleValueTest",
-        |            "files_suffix": ".txt",
         |            "name": "value",
-        |            "values_type": "URL_PARAMETER"
+        |            "values_type": "URL_PARAMETER",
+        |            "values": {
+        |              "type": "FILE_PREFIX_TO_FILE_LINES_TYPE",
+        |              "directory": "data/fileMappingSingleValueTest",
+        |              "files_suffix": ".txt"
+        |            }
         |          }
         |        ],
         |        "key_mapping_assignments": [
@@ -181,56 +202,17 @@ class SerializationSpec extends KolibriTypedTestKitNoCluster(ConfigOverwrites.co
         |    {
         |      "type": "STANDALONE",
         |      "values": {
-        |        "type": "FROM_ORDERED_VALUES_TYPE",
+        |        "name": "seomValuesParam1",
         |        "values_type": "URL_PARAMETER",
         |        "values": {
-        |          "type": "FROM_VALUES_TYPE",
-        |          "name": "seomValuesParam1",
-        |          "values": [
-        |            "subCommodityCode:0.2"
-        |          ]
-        |        }
-        |      }
-        |    },
-        |    {
-        |      "type": "STANDALONE",
-        |      "values": {
-        |        "type": "FROM_ORDERED_VALUES_TYPE",
-        |        "values_type": "URL_PARAMETER",
-        |        "values": {
-        |          "type": "FROM_VALUES_TYPE",
-        |          "name": "someValuesParam2",
-        |          "values": [
-        |            "3.0"
-        |          ]
-        |        }
-        |      }
-        |    },
-        |    {
-        |      "type": "STANDALONE",
-        |      "values": {
-        |        "type": "FROM_ORDERED_VALUES_TYPE",
-        |        "values_type": "URL_PARAMETER",
-        |        "values": {
-        |          "type": "FROM_VALUES_TYPE",
-        |          "name": "someRangeParam1",
-        |          "values": [
-        |            "0.0",
-        |            "2.0",
-        |            "4.0"
-        |          ]
-        |        }
-        |      }
-        |    },
-        |    {
-        |      "type": "STANDALONE",
-        |      "values": {
-        |        "type": "FROM_ORDERED_VALUES_TYPE",
-        |        "values_type": "HEADER",
-        |        "values": {
-        |          "type": "FROM_VALUES_TYPE",
-        |          "name": "header-name",
-        |          "values": ["header-value"]
+        |          "type": "FROM_ORDERED_VALUES_TYPE",
+        |          "values": {
+        |            "type": "FROM_VALUES_TYPE",
+        |            "name": "seomValuesParam1",
+        |            "values": [
+        |              "subCommodityCode:0.2"
+        |            ]
+        |          }
         |        }
         |      }
         |    }
@@ -327,6 +309,7 @@ class SerializationSpec extends KolibriTypedTestKitNoCluster(ConfigOverwrites.co
   object Actors {
     object MirrorActor {
       case class Sent(obj: AnyRef, self: ActorRef[Received]) extends KolibriSerializable
+
       case class Received(obj: AnyRef) extends KolibriSerializable
 
       def apply(): Behavior[Sent] = Behaviors.receiveMessage {
@@ -352,7 +335,14 @@ class SerializationSpec extends KolibriTypedTestKitNoCluster(ConfigOverwrites.co
       val mappings: Map[String, Seq[String]] = Map(
         "a" -> Seq("a1", "a2")
       )
-      val values = MappedParameterValues("testName", URL_PARAMETER, mappings.map(x => (x._1, ByFunctionNrLimitedIndexedGenerator.createFromSeq(x._2))))
+      val values = MappedParameterValues(
+        "testName",
+        URL_PARAMETER,
+        new SerializableSupplier[Map[String, IndexedGenerator[String]]] {
+          override def apply(): Map[String, IndexedGenerator[String]] = {
+            mappings.map(x => (x._1, ByFunctionNrLimitedIndexedGenerator.createFromSeq(x._2)))
+          }
+        })
       // when, then
       serializeAndBack(values)
     }
@@ -378,10 +368,10 @@ class SerializationSpec extends KolibriTypedTestKitNoCluster(ConfigOverwrites.co
       val senderActor: ActorRef[Actors.MirrorActor.Sent] = testKit.spawn(Actors.MirrorActor(), "mirror")
       val testProbe = testKit.createTestProbe[Actors.MirrorActor.Received]()
       senderActor ! Actors.MirrorActor.Sent(parsed, testProbe.ref)
-      val msg: Actors.MirrorActor.Received =  testProbe.expectMessageType[Actors.MirrorActor.Received]
+      val msg: Actors.MirrorActor.Received = testProbe.expectMessageType[Actors.MirrorActor.Received]
       val value = msg.obj.asInstanceOf[ParameterValueMapping]
       value.keyValues.name mustBe castParsed.keyValues.name
-      value.keyValues.values.size mustBe castParsed.keyValues.size
+      value.keyValues.values.apply().size mustBe castParsed.keyValues.size
       value.keyValues.valueType mustBe castParsed.keyValues.valueType
       value.mappingKeyValueAssignments mustBe castParsed.mappingKeyValueAssignments
       value.mappedValues.size mustBe castParsed.mappedValues.size
@@ -392,7 +382,7 @@ class SerializationSpec extends KolibriTypedTestKitNoCluster(ConfigOverwrites.co
       val senderActor: ActorRef[Actors.MirrorActor.Sent] = testKit.spawn(Actors.MirrorActor(), "mirror1")
       val testProbe = testKit.createTestProbe[Actors.MirrorActor.Received]()
       senderActor ! Actors.MirrorActor.Sent(parsed, testProbe.ref)
-      val msg: Actors.MirrorActor.Received =  testProbe.expectMessageType[Actors.MirrorActor.Received]
+      val msg: Actors.MirrorActor.Received = testProbe.expectMessageType[Actors.MirrorActor.Received]
       val value = msg.obj.asInstanceOf[SearchEvaluation]
       value.jobName mustBe parsed.jobName
     }

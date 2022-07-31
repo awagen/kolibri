@@ -20,7 +20,7 @@ package de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts
 import de.awagen.kolibri.base.domain.jobdefinitions.Batch
 import de.awagen.kolibri.base.http.client.request.RequestTemplateBuilder
 import de.awagen.kolibri.base.processing.modifiers.Modifier
-import de.awagen.kolibri.base.processing.modifiers.ParameterValues.{MappedParameterValues, ParameterValueMapping, ParameterValues, ValueSeqGenProvider, ValueType}
+import de.awagen.kolibri.base.processing.modifiers.ParameterValues.{MappedParameterValues, ParameterValueMapping, ParameterValues, ValueType}
 import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.{CombinedModifier, RequestParameterModifier}
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
 import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator}
@@ -40,21 +40,21 @@ class BatchGeneratorsSpec extends UnitTestSpec {
     val distinctValues1: ParameterValues = ParameterValues(
       "q",
       ValueType.URL_PARAMETER,
-      ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq("key1", "key2", "key3"))
+      () => ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq("key1", "key2", "key3"))
     )
 
     val distinctValues2: ParameterValues = ParameterValues(
       "oo",
       ValueType.URL_PARAMETER,
-      ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq("val1", "val2", "val3"))
+      () => ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq("val1", "val2", "val3"))
     )
 
     val mappedValues1: MappedParameterValues = MappedParameterValues("mappedParam1", ValueType.URL_PARAMETER,
-      Map(
+      () => Map(
         "key1" -> ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq("key1_val1", "key1_val2")),
         "key2" -> ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq("key2_val1", "key2_val2"))
       ))
-    val mapping1 = new ParameterValueMapping(keyValues = distinctValues1, mappedValues = Seq(mappedValues1), mappingKeyValueAssignments = Seq((0,1)))
+    val mapping1 = new ParameterValueMapping(keyValues = distinctValues1, mappedValues = Seq(mappedValues1), mappingKeyValueAssignments = Seq((0, 1)))
 
 
   }
@@ -100,8 +100,7 @@ class BatchGeneratorsSpec extends UnitTestSpec {
     }
 
     "correctly apply batchByGeneratorAtIndex for mapping generator" in {
-      import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ParameterValuesImplicits.ParameterValueSeqToRequestBuilderModifier
-      import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ParameterValuesImplicits.ParameterValueToRequestBuilderModifier
+      import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ParameterValuesImplicits.{ParameterValueSeqToRequestBuilderModifier, ParameterValueToRequestBuilderModifier}
       // given
       val batchByFirst = BatchGenerators.batchByGeneratorAtIndex(0)
       val batchBySecond = BatchGenerators.batchByGeneratorAtIndex(1)

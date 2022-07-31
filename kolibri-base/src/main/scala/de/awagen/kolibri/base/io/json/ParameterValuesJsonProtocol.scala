@@ -17,34 +17,33 @@
 
 package de.awagen.kolibri.base.io.json
 
-import de.awagen.kolibri.base.config.AppConfig
 import de.awagen.kolibri.base.io.json.EnumerationJsonProtocol._
 import de.awagen.kolibri.base.io.json.OrderedValuesJsonProtocol._
-import de.awagen.kolibri.base.io.reader.FileReaderUtils
+import de.awagen.kolibri.base.io.json.SupplierJsonProtocol.{COLUMN_DELIMITER_KEY, CSV_MAPPINGS_TYPE, FROM_ORDERED_VALUES_TYPE, GeneratorStringFormat, JSON_ARRAY_MAPPINGS_TYPE, KEY_COLUMN_INDEX_KEY, MapStringToGeneratorStringFormat, VALUE_COLUMN_INDEX_KEY}
 import de.awagen.kolibri.base.processing.modifiers.ParameterValues._
-import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator}
+import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
 import de.awagen.kolibri.datatypes.types.JsonStructDefs._
+import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSupplier
 import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
-import de.awagen.kolibri.datatypes.values.OrderedValues
-import org.slf4j.LoggerFactory
-import spray.json.{DefaultJsonProtocol, JsString, JsValue, JsonFormat, RootJsonFormat, enrichAny}
+import spray.json.{DefaultJsonProtocol, JsValue, JsonFormat, RootJsonFormat, enrichAny}
 
 object ParameterValuesJsonProtocol extends DefaultJsonProtocol {
-
-  private[this] val logger = LoggerFactory.getLogger(this.getClass)
 
   object FormatOps {
 
     def valuesFromLinesJson(valuesType: ValueType.Value, paramIdentifier: String, filePath: String): String = {
       s"""
          |{
-         |"$TYPE_KEY": "$FROM_ORDERED_VALUES_TYPE",
+         |"$NAME_KEY": "$paramIdentifier",
          |"$VALUES_TYPE_KEY": "${valuesType.toString}",
          |"$VALUES_KEY": {
-         |  "$TYPE_KEY": "$FROM_FILES_LINES_TYPE",
-         |  "$NAME_KEY": "$paramIdentifier",
-         |  "$FILE_KEY": "$filePath"
+         |  "$TYPE_KEY": "$FROM_ORDERED_VALUES_TYPE",
+         |  "$VALUES_KEY": {
+         |    "$TYPE_KEY": "$FROM_FILES_LINES_TYPE",
+         |    "$NAME_KEY": "$paramIdentifier",
+         |    "$FILE_KEY": "$filePath"
+         |  }
          |}
          |}
          |""".stripMargin
@@ -53,23 +52,27 @@ object ParameterValuesJsonProtocol extends DefaultJsonProtocol {
     def valuesFromCsvMapping(valuesType: ValueType.Value, paramIdentifier: String, filePath: String,
                              delimiter: String): String = {
       s"""{
-         |"$TYPE_KEY": "$CSV_MAPPINGS_TYPE",
          |"$NAME_KEY": "$paramIdentifier",
          |"$VALUES_TYPE_KEY": "${valuesType.toString}",
-         |"$VALUES_KEY": "$filePath",
-         |"$COLUMN_DELIMITER_KEY": "$delimiter",
-         |"$KEY_COLUMN_INDEX_KEY": 0,
-         |"$VALUE_COLUMN_INDEX_KEY": 1
+         |"$VALUES_KEY": {
+         |  "$TYPE_KEY": "$CSV_MAPPINGS_TYPE",
+         |  "$VALUES_KEY": "$filePath",
+         |  "$COLUMN_DELIMITER_KEY": "$delimiter",
+         |  "$KEY_COLUMN_INDEX_KEY": 0,
+         |  "$VALUE_COLUMN_INDEX_KEY": 1
+         |}
          |}
          |""".stripMargin
     }
 
     def valuesFromJsonMapping(valuesType: ValueType.Value, paramIdentifier: String, filePath: String): String = {
       s"""{
-         |"$TYPE_KEY": "$JSON_ARRAY_MAPPINGS_TYPE",
          |"$NAME_KEY": "$paramIdentifier",
          |"$VALUES_TYPE_KEY": "${valuesType.toString}",
-         |"$VALUES_KEY": "$filePath"
+         |"$VALUES_KEY": {
+         |  "$TYPE_KEY": "$JSON_ARRAY_MAPPINGS_TYPE"
+         |  "$VALUES_KEY": "$filePath"
+         |}
          |}
          |""".stripMargin
     }
@@ -82,20 +85,7 @@ object ParameterValuesJsonProtocol extends DefaultJsonProtocol {
   val MAPPED_VALUES_KEY = "mapped_values"
   val KEY_MAPPING_ASSIGNMENTS_KEY = "key_mapping_assignments"
   val NAME_KEY = "name"
-  val VALUES_KEY = "values"
-  val COLUMN_DELIMITER_KEY = "column_delimiter"
-  val KEY_COLUMN_INDEX_KEY = "key_column_index"
-  val VALUE_COLUMN_INDEX_KEY = "value_column_index"
-  val DIRECTORY_KEY = "directory"
-  val FILES_SUFFIX_KEY = "files_suffix"
-  val PARAMETER_VALUES_TYPE_KEY = "PARAMETER_VALUES_TYPE"
-  val FROM_ORDERED_VALUES_TYPE = "FROM_ORDERED_VALUES_TYPE"
-  val JSON_VALUES_MAPPING_TYPE = "JSON_VALUES_MAPPING_TYPE"
-  val JSON_VALUES_FILES_MAPPING_TYPE = "JSON_VALUES_FILES_MAPPING_TYPE"
-  val JSON_SINGLE_MAPPINGS_TYPE = "JSON_SINGLE_MAPPINGS_TYPE"
-  val JSON_ARRAY_MAPPINGS_TYPE = "JSON_ARRAY_MAPPINGS_TYPE"
-  val CSV_MAPPINGS_TYPE = "CSV_MAPPING_TYPE"
-  val FILE_PREFIX_TO_FILE_LINES_MAPPING_TYPE = "FILE_PREFIX_TO_FILE_LINES_TYPE"
+
   val STANDALONE_TYPE = "STANDALONE"
   val MAPPING_TYPE = "MAPPING"
 
@@ -160,26 +150,16 @@ object ParameterValuesJsonProtocol extends DefaultJsonProtocol {
    * Format for creation of ParameterValues (Seq of values for single type and name)
    */
   implicit object ParameterValuesConfigFormat extends JsonFormat[ParameterValues] with WithStructDef {
-    override def read(json: JsValue): ParameterValues = json match {
-      case spray.json.JsObject(fields) if fields.contains(TYPE_KEY) => fields(TYPE_KEY).convertTo[String] match {
-        // for this case, can use any OrderedValues specification (see respective JsonProtocol implementation)
-        case FROM_ORDERED_VALUES_TYPE =>
-          val values = fields(VALUES_KEY).convertTo[OrderedValues[String]]
-          val parameterValuesType = fields(VALUES_TYPE_KEY).convertTo[ValueType.Value]
-          ParameterValues(
-            values.name,
-            parameterValuesType,
-            ByFunctionNrLimitedIndexedGenerator.createFromSeq(values.getAll)
-          )
-        // define values by plain value passing. Needs list of values, name and type of parameter
-        case PARAMETER_VALUES_TYPE_KEY =>
-          val values = fields(VALUES_KEY).convertTo[Seq[String]]
+    override def read(json: JsValue): ParameterValues = {
+      json match {
+        case spray.json.JsObject(fields) =>
           val name = fields(NAME_KEY).convertTo[String]
           val parameterValuesType = fields(VALUES_TYPE_KEY).convertTo[ValueType.Value]
+          val valueSupplier: SerializableSupplier[IndexedGenerator[String]] = GeneratorStringFormat.read(fields(VALUES_KEY))
           ParameterValues(
             name,
             parameterValuesType,
-            ByFunctionNrLimitedIndexedGenerator.createFromSeq(values)
+            valueSupplier
           )
       }
     }
@@ -190,56 +170,24 @@ object ParameterValuesJsonProtocol extends DefaultJsonProtocol {
       NestedFieldSeqStructDef(
         Seq(
           FieldDef(
-            StringConstantStructDef(TYPE_KEY),
-            StringChoiceStructDef(Seq(
-              FROM_ORDERED_VALUES_TYPE,
-              PARAMETER_VALUES_TYPE_KEY
-            )),
-            required = true),
-        ),
-        Seq(
-          ConditionalFields(
-            TYPE_KEY,
-            Map(
-              FROM_ORDERED_VALUES_TYPE -> Seq(
-                FieldDef(
-                  StringConstantStructDef(VALUES_KEY),
-                  OrderedValuesStringFormat.structDef,
-                  required = true
-                ),
-                FieldDef(
-                  StringConstantStructDef(VALUES_TYPE_KEY),
-                  valueTypeFormat.structDef,
-                  required = true
-                )
-              ),
-              PARAMETER_VALUES_TYPE_KEY -> Seq(
-                FieldDef(
-                  StringConstantStructDef(VALUES_KEY),
-                  StringSeqStructDef,
-                  required = true
-                ),
-                FieldDef(
-                  StringConstantStructDef(NAME_KEY),
-                  StringStructDef,
-                  required = true
-                ),
-                FieldDef(
-                  StringConstantStructDef(VALUES_TYPE_KEY),
-                  valueTypeFormat.structDef,
-                  required = true
-                )
-              )
-            )
+            StringConstantStructDef(NAME_KEY),
+            StringStructDef,
+            required = true
+          ),
+          FieldDef(
+            StringConstantStructDef(VALUES_TYPE_KEY),
+            valueTypeFormat.structDef,
+            required = true
+          ),
+          FieldDef(
+            StringConstantStructDef(VALUES_KEY),
+            GeneratorStringFormat.structDef,
+            required = true
           )
-        )
+        ),
+        Seq.empty
       )
     }
-  }
-
-  def jsValueStringConversion(jsValue: JsValue): String = jsValue match {
-    case e: JsString => e.convertTo[String]
-    case e => e.toString()
   }
 
   /**
@@ -248,76 +196,12 @@ object ParameterValuesJsonProtocol extends DefaultJsonProtocol {
    */
   implicit object MappedParameterValuesFormat extends JsonFormat[MappedParameterValues] with WithStructDef {
     override def read(json: JsValue): MappedParameterValues = json match {
-      case spray.json.JsObject(fields) => fields(TYPE_KEY).convertTo[String] match {
-        // this case assumes passing of the key values to valid values for the parameter
-        case JSON_VALUES_MAPPING_TYPE =>
-          val name = fields(NAME_KEY).convertTo[String]
-          val valueType = fields(VALUES_TYPE_KEY).convertTo[ValueType.Value]
-          val mappings = fields(VALUES_KEY).convertTo[Map[String, Seq[String]]]
-          val mappingsObj: Map[String, IndexedGenerator[String]] = mappings.map(x => (x._1, ByFunctionNrLimitedIndexedGenerator.createFromSeq(x._2)))
-          MappedParameterValues(name, valueType, mappingsObj)
-        // this case assumes a json for the values key, containing mapping
-        // of key values to files containing the valid values for the key
-        case JSON_VALUES_FILES_MAPPING_TYPE =>
-          val name = fields(NAME_KEY).convertTo[String]
-          val valueType = fields(VALUES_TYPE_KEY).convertTo[ValueType.Value]
-          val fileMappings = fields(VALUES_KEY).convertTo[Map[String, String]]
-          val keyToValuesMap: Map[String, IndexedGenerator[String]] = fileMappings.map(x => {
-            (x._1, ByFunctionNrLimitedIndexedGenerator.createFromSeq(FileReaderUtils.loadLinesFromFile(x._2, AppConfig.persistenceModule.persistenceDIModule.reader)))
-          })
-          MappedParameterValues(name, valueType, keyToValuesMap)
-        // assumes a json with full key value mappings under the values key
-        case JSON_SINGLE_MAPPINGS_TYPE =>
-          val fileReader = AppConfig.persistenceModule.persistenceDIModule.reader
-          val name = fields(NAME_KEY).convertTo[String]
-          val valueType = fields(VALUES_TYPE_KEY).convertTo[ValueType.Value]
-          val mappingsJsonFile = fields(VALUES_KEY).convertTo[String]
-          val jsonMapping: Map[String, ByFunctionNrLimitedIndexedGenerator[String]] = FileReaderUtils.readJsonMapping(mappingsJsonFile, fileReader, x => jsValueStringConversion(x))
-            .map(x => (x._1, Seq(x._2)))
-            .map(x => (x._1, ByFunctionNrLimitedIndexedGenerator.createFromSeq(x._2)))
-          MappedParameterValues(name, valueType, jsonMapping)
-        case JSON_ARRAY_MAPPINGS_TYPE =>
-          try {
-            val fileReader = AppConfig.persistenceModule.persistenceDIModule.reader
-            val name = fields(NAME_KEY).convertTo[String]
-            val valueType = fields(VALUES_TYPE_KEY).convertTo[ValueType.Value]
-            val mappingsJsonFile = fields(VALUES_KEY).convertTo[String]
-            val jsonMapping = FileReaderUtils.readJsonMapping(mappingsJsonFile, fileReader, x => x.convertTo[Seq[JsValue]].map(x => jsValueStringConversion(x)))
-              .map(x => (x._1, ByFunctionNrLimitedIndexedGenerator.createFromSeq(x._2)))
-            MappedParameterValues(name, valueType, jsonMapping)
-          }
-          catch {
-            case e: Throwable => logger.error("failed reading json file of format 'JSON_ARRAY_MAPPINGS_TYPE'", e)
-              throw e
-          }
-        // reading file prefixes in folder, and creating mapping for each where prefix is key and values are the values
-        // given in the file, one value per line
-        case FILE_PREFIX_TO_FILE_LINES_MAPPING_TYPE =>
-          val directory = fields(DIRECTORY_KEY).convertTo[String]
-          val filesSuffix: String = fields(FILES_SUFFIX_KEY).convertTo[String]
-          val name = fields(NAME_KEY).convertTo[String]
-          val valueType = fields(VALUES_TYPE_KEY).convertTo[ValueType.Value]
-          val mapping = FileReaderUtils.extractFilePrefixToLineValuesMapping(directory, filesSuffix, "/")
-            .map(x => (x._1, ByFunctionNrLimitedIndexedGenerator.createFromSeq(x._2)))
-          MappedParameterValues(name, valueType, mapping)
-        // picking mappings from csv with a key column and a value column. If multiple distinct values are contained
-        // for a key, they will be preserved as distinct values in the generator per key value
-        case CSV_MAPPINGS_TYPE =>
-          val fileReader = AppConfig.persistenceModule.persistenceDIModule.reader
-          val name = fields(NAME_KEY).convertTo[String]
-          val valueType = fields(VALUES_TYPE_KEY).convertTo[ValueType.Value]
-          val mappingsCsvFile = fields(VALUES_KEY).convertTo[String]
-          val columnDelimiter = fields(COLUMN_DELIMITER_KEY).convertTo[String]
-          val keyColumnIndex = fields(KEY_COLUMN_INDEX_KEY).convertTo[Int]
-          val valueColumnIndex = fields(VALUE_COLUMN_INDEX_KEY).convertTo[Int]
-          val keyValuesMapping = FileReaderUtils.multiMappingFromCSVFile[String](
-            source = fileReader.getSource(mappingsCsvFile),
-            columnDelimiter = columnDelimiter,
-            filterLessColumnsThan = math.max(keyColumnIndex, valueColumnIndex) + 1,
-            valsToKey = x => x(keyColumnIndex),
-            columnsToValue = x => x(valueColumnIndex))
-          MappedParameterValues(name, valueType, keyValuesMapping.map(x => (x._1, ByFunctionNrLimitedIndexedGenerator.createFromSeq(x._2.toSeq))))
-      }
+      case spray.json.JsObject(fields) =>
+        val name = fields(NAME_KEY).convertTo[String]
+        val valueType = fields(VALUES_TYPE_KEY).convertTo[ValueType.Value]
+        val values = fields(VALUES_KEY)
+        val mappings = MapStringToGeneratorStringFormat.read(values)
+        MappedParameterValues(name, valueType, mappings)
     }
 
     override def write(obj: MappedParameterValues): JsValue = """{}""".toJson
@@ -325,18 +209,6 @@ object ParameterValuesJsonProtocol extends DefaultJsonProtocol {
     override def structDef: JsonStructDefs.StructDef[_] = {
       NestedFieldSeqStructDef(
         Seq(
-          FieldDef(
-            StringConstantStructDef(TYPE_KEY),
-            StringChoiceStructDef(Seq(
-              JSON_VALUES_MAPPING_TYPE,
-              JSON_VALUES_FILES_MAPPING_TYPE,
-              JSON_SINGLE_MAPPINGS_TYPE,
-              JSON_ARRAY_MAPPINGS_TYPE,
-              FILE_PREFIX_TO_FILE_LINES_MAPPING_TYPE,
-              CSV_MAPPINGS_TYPE
-            )),
-            required = true
-          ),
           FieldDef(
             StringConstantStructDef(NAME_KEY),
             StringStructDef,
@@ -346,80 +218,14 @@ object ParameterValuesJsonProtocol extends DefaultJsonProtocol {
             StringConstantStructDef(VALUES_TYPE_KEY),
             valueTypeFormat.structDef,
             required = true
+          ),
+          FieldDef(
+            StringConstantStructDef(VALUES_KEY),
+            MapStringToGeneratorStringFormat.structDef,
+            required = true
           )
         ),
-        Seq(
-          ConditionalFields(TYPE_KEY, Map(
-            JSON_VALUES_MAPPING_TYPE -> Seq(
-              FieldDef(
-                StringConstantStructDef(VALUES_KEY),
-                MapStructDef(
-                  StringStructDef,
-                  StringSeqStructDef
-                ),
-                required = true
-              )
-            ),
-            JSON_VALUES_FILES_MAPPING_TYPE -> Seq(
-              FieldDef(
-                StringConstantStructDef(VALUES_KEY),
-                MapStructDef(
-                  StringStructDef,
-                  StringStructDef
-                ),
-                required = true
-              )
-            ),
-            JSON_SINGLE_MAPPINGS_TYPE -> Seq(
-              FieldDef(
-                StringConstantStructDef(VALUES_KEY),
-                StringStructDef,
-                required = true
-              )
-            ),
-            JSON_ARRAY_MAPPINGS_TYPE -> Seq(
-              FieldDef(
-                StringConstantStructDef(VALUES_KEY),
-                StringStructDef,
-                required = true
-              )
-            ),
-            FILE_PREFIX_TO_FILE_LINES_MAPPING_TYPE -> Seq(
-              FieldDef(
-                StringConstantStructDef(DIRECTORY_KEY),
-                StringStructDef,
-                required = true
-              ),
-              FieldDef(
-                StringConstantStructDef(FILES_SUFFIX_KEY),
-                StringStructDef,
-                required = true
-              )
-            ),
-            CSV_MAPPINGS_TYPE -> Seq(
-              FieldDef(
-                StringConstantStructDef(VALUES_KEY),
-                StringStructDef,
-                required = true
-              ),
-              FieldDef(
-                StringConstantStructDef(COLUMN_DELIMITER_KEY),
-                StringStructDef,
-                required = true
-              ),
-              FieldDef(
-                StringConstantStructDef(KEY_COLUMN_INDEX_KEY),
-                IntMinMaxStructDef(0, Int.MaxValue),
-                required = true
-              ),
-              FieldDef(
-                StringConstantStructDef(VALUE_COLUMN_INDEX_KEY),
-                IntMinMaxStructDef(0, Int.MaxValue),
-                required = true
-              )
-            )
-          ))
-        )
+        Seq.empty
       )
     }
   }

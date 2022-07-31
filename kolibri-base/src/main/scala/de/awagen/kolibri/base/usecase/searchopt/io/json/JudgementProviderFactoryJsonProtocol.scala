@@ -35,7 +35,7 @@ object JudgementProviderFactoryJsonProtocol extends DefaultJsonProtocol with Wit
       case spray.json.JsObject(fields) if fields.contains(TYPE_KEY) => fields(TYPE_KEY).convertTo[String] match {
         case TYPE_FILE_BASED_KEY =>
           val provider = FileBasedJudgementProviderFactory(fields(FILENAME_KEY).convertTo[String])
-          provider.addResource(Resource(ResourceType.JUDGEMENTS, provider.filename))
+          provider.addResource(Resource(ResourceType.MAP_STRING_TO_DOUBLE_VALUE, provider.filename))
           provider
         case e => throw DeserializationException(s"Expected a valid type for JudgementProviderFactory but got value $e")
       }

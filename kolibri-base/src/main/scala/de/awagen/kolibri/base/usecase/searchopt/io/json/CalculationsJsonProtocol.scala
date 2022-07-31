@@ -69,7 +69,7 @@ object CalculationsJsonProtocol extends DefaultJsonProtocol {
               excludeParamsFromMetricRow
             )
             val result = FromMapFutureCalculation(name, metricsCalculation.metrics.map(x => x.name).toSet, calculation)
-            judgementProviderFactory.resources.filter(resource => resource.resourceType == ResourceType.JUDGEMENTS)
+            judgementProviderFactory.resources.filter(resource => resource.resourceType == ResourceType.MAP_STRING_TO_DOUBLE_VALUE)
               .foreach(resource => result.addResource(resource))
             result
         }

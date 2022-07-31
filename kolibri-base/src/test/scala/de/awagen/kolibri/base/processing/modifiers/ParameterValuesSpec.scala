@@ -28,12 +28,12 @@ import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIn
 
 object ParameterValuesSpec {
   val parameterValues: ParameterValues = ParameterValues("p1", ValueType.URL_PARAMETER,
-    ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq("v1", "v2", "v3", "v4")))
+    () => ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq("v1", "v2", "v3", "v4")))
 
   val mappedValue1: MappedParameterValues = MappedParameterValues(
     name = "mp1",
     valueType = ValueType.URL_PARAMETER,
-    values = Map(
+    values = () => Map(
       "v1" -> ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq("mv1_1", "mv1_2", "mv1_3")),
       "v2" -> ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq("mv2_1")),
       "v4" -> ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq("mv4_1"))
@@ -43,7 +43,7 @@ object ParameterValuesSpec {
   val mappedValue2: MappedParameterValues = MappedParameterValues(
     name = "mp2",
     valueType = ValueType.URL_PARAMETER,
-    values = Map(
+    values = () => Map(
       "mv1_1" -> ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq("mv11_1")),
       "mv1_2" -> ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq("mv12_1")),
       "mv2_1" -> ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq("mv22_1"))
@@ -52,24 +52,24 @@ object ParameterValuesSpec {
 
   // key values from v1 to v999
   val range1000keyValues: ParameterValues = ParameterValues("p1", ValueType.URL_PARAMETER,
-    ByFunctionNrLimitedIndexedGenerator.createFromSeq(Range(0, 1000).map(x => s"v$x")))
+    () => ByFunctionNrLimitedIndexedGenerator.createFromSeq(Range(0, 1000).map(x => s"v$x")))
   // mappings for key values v1 to v999 for parameter mp1 to values mv1_1 to mv1_999 (1:1 mapping)
   val range1000MappedValues1: MappedParameterValues = MappedParameterValues(
     name = "mp1",
     valueType = ValueType.URL_PARAMETER,
-    values = Range(0, 1000).map(x => (s"v$x", ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq(s"mv1_$x")))).toMap
+    values = () => Range(0, 1000).map(x => (s"v$x", ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq(s"mv1_$x")))).toMap
   )
   // mappings for key values mp1 to mp2 to values mv2_1 to mv2_499)
   val range1000OnlyFirst500MappedValues2: MappedParameterValues = MappedParameterValues(
     name = "mp2",
     valueType = ValueType.URL_PARAMETER,
-    values = Range(0, 500).map(x => (s"mv1_$x", ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq(s"mv2_$x")))).toMap
+    values = () => Range(0, 500).map(x => (s"mv1_$x", ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq(s"mv2_$x")))).toMap
   )
 
   val range1000MappedValuesOnlyFirst500MultipleMappedValues2: MappedParameterValues = MappedParameterValues(
     name = "mp2",
     valueType = ValueType.URL_PARAMETER,
-    values = Range(0, 500).map(x => (s"mv1_$x", ByFunctionNrLimitedIndexedGenerator.createFromSeq(
+    values = () => Range(0, 500).map(x => (s"mv1_$x", ByFunctionNrLimitedIndexedGenerator.createFromSeq(
       Range(0, 100).map(y => s"mv2${x}_$y")
     ))
     ).toMap
@@ -78,15 +78,15 @@ object ParameterValuesSpec {
   val distinctValues1: ParameterValues = ParameterValues(
     "q",
     ValueType.URL_PARAMETER,
-    ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq("key1", "key2", "key3"))
+    () => ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq("key1", "key2", "key3"))
   )
   val distinctValues2: ParameterValues = ParameterValues(
     "oo",
     ValueType.URL_PARAMETER,
-    ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq("val1", "val2"))
+    () => ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq("val1", "val2"))
   )
   val mappedValues1: MappedParameterValues = MappedParameterValues("mappedParam1", ValueType.URL_PARAMETER,
-    Map(
+    () => Map(
       "key1" -> ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq("key1_val1", "key1_val2")),
       "key2" -> ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq("key2_val1", "key2_val2"))
     ))
