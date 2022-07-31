@@ -36,12 +36,13 @@ import scala.collection.mutable
 object ResourceType extends Enumeration {
   type ResourceType[+T] = Val[T]
 
-  protected case class Val[+T](classTyped: ClassTyped[T]) extends super.Val
+  case class Val[+T](classTyped: ClassTyped[T]) extends super.Val
 
   val JUDGEMENTS: Val[Map[String, Double]] = Val(ClassTyped[Map[String, Double]])
   val KEY_VALUES_MAPPINGS: Val[Map[String, IndexedGenerator[String]]] = Val(ClassTyped[Map[String, IndexedGenerator[String]]])
+  val VALUES: Val[IndexedGenerator[String]] = Val(ClassTyped[IndexedGenerator[String]])
 
-  def vals: Seq[Val[_]] = Seq(JUDGEMENTS, KEY_VALUES_MAPPINGS)
+  def vals: Seq[Val[_]] = Seq(JUDGEMENTS, KEY_VALUES_MAPPINGS, VALUES)
 }
 
 object ExpirePolicy extends Enumeration {

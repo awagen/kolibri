@@ -1,24 +1,25 @@
 /**
-  * Copyright 2021 Andreas Wagenmann
-  *
-  * Licensed under the Apache License, Version 2.0 (the "License");
-  * you may not use this file except in compliance with the License.
-  * You may obtain a copy of the License at
-  *
-  * http://www.apache.org/licenses/LICENSE-2.0
-  *
-  * Unless required by applicable law or agreed to in writing, software
-  * distributed under the License is distributed on an "AS IS" BASIS,
-  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  * See the License for the specific language governing permissions and
-  * limitations under the License.
-  */
+ * Copyright 2021 Andreas Wagenmann
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package de.awagen.kolibri.base.actors.work.manager
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Cancellable, Props, Terminated}
 import akka.pattern.ask
 import akka.util.Timeout
+import de.awagen.kolibri.base.actors.clusterinfo.ResourceToJobMappingClusterStateManagerActor.{ProcessResourceDirectives, ProcessedResourceDirectives}
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor
 import de.awagen.kolibri.base.actors.work.manager.JobManagerActor.{ACK, WorkerKilled}
 import de.awagen.kolibri.base.actors.work.manager.WorkManagerActor.ExecutionType.{RUNNABLE, TASK, TASK_EXECUTION}
@@ -29,6 +30,7 @@ import de.awagen.kolibri.base.actors.work.worker.RunnableExecutionActor.{BatchPr
 import de.awagen.kolibri.base.actors.work.worker.TaskExecutionWorkerActor.ProcessTaskExecution
 import de.awagen.kolibri.base.actors.work.worker.TaskWorkerActor.ProcessTasks
 import de.awagen.kolibri.base.actors.work.worker.{RunnableExecutionActor, TaskExecutionWorkerActor, TaskWorkerActor}
+import de.awagen.kolibri.base.cluster.ClusterNode
 import de.awagen.kolibri.base.config.AppProperties.config
 import de.awagen.kolibri.base.config.AppProperties.config.kolibriDispatcherName
 import de.awagen.kolibri.base.io.writer.Writers
@@ -38,6 +40,7 @@ import de.awagen.kolibri.base.processing.execution.TaskExecution
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnable
 import de.awagen.kolibri.base.processing.execution.task.Task
 import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
+import de.awagen.kolibri.base.resources.{ResourceAlreadyExists, ResourceOK}
 import de.awagen.kolibri.base.traits.Traits.WithBatchNr
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
@@ -50,8 +53,8 @@ import de.awagen.kolibri.datatypes.types.ClassTyped
 
 import java.util.concurrent.TimeUnit
 import scala.collection.mutable
-import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
 
@@ -73,6 +76,7 @@ object WorkManagerActor {
 
   case class JobBatchMsg[T](jobName: String, batchNr: Int, msg: T) extends WorkManagerMsg with WithBatchNr
 
+  case class CheckedResourceDirectivesAndReadyForProcessing(jobDef: JobBatchMsg[SearchEvaluation])
 }
 
 
@@ -129,25 +133,25 @@ class WorkManagerActor() extends Actor with ActorLogging with KolibriSerializabl
   }
 
   /**
-    * TaskWorkerActor and TaskExecutionWorkerActor both are sending results to the actor set as sender
-    * (or this WorkManagerActor here in case the sender of the request here is not set as sender within
-    * the tell-call). For ActorRunnable, there are several options. In case the Runnable is such that
-    * it sends some message to an Actor for processing, the JobActorConfig passed needs to have
-    * an ActorRef set for the RUNNABLE_SENDER key. Otherwise any response would be sent not to
-    * RunnableExecutionActor processing it but to the Actor created to execute the graph
-    * (implemented within Akka internals). The RunnableExecutionActor itself sends all messages it
-    * receives after starting the processing to the sender set (that is, if RunnableExecutionActor
-    * itself is set as RUNNABLE_SENDER and another actor as the sender of the message that started processing
-    * in RunnableExecutionActor, the RunnableExecutionActor will also send those messages to the
-    * given sender).
-    * If an ActorRef is also set for the ACTOR_SINK key (JobActorConfig), the elements after transformation
-    * (transformer.apply(x)) are also sent to this actor (otherwise ignored).
-    * Do not set any ACTOR_SINK actorRef if those elements are not needed. Most of the time wed need some
-    * other actor to do some calculation after transformer.apply was called and only need to be informed
-    * about the result, which works the way descibed above (setting RUNNABLE_SENDER and sender).
-    *
-    * @return
-    */
+   * TaskWorkerActor and TaskExecutionWorkerActor both are sending results to the actor set as sender
+   * (or this WorkManagerActor here in case the sender of the request here is not set as sender within
+   * the tell-call). For ActorRunnable, there are several options. In case the Runnable is such that
+   * it sends some message to an Actor for processing, the JobActorConfig passed needs to have
+   * an ActorRef set for the RUNNABLE_SENDER key. Otherwise any response would be sent not to
+   * RunnableExecutionActor processing it but to the Actor created to execute the graph
+   * (implemented within Akka internals). The RunnableExecutionActor itself sends all messages it
+   * receives after starting the processing to the sender set (that is, if RunnableExecutionActor
+   * itself is set as RUNNABLE_SENDER and another actor as the sender of the message that started processing
+   * in RunnableExecutionActor, the RunnableExecutionActor will also send those messages to the
+   * given sender).
+   * If an ActorRef is also set for the ACTOR_SINK key (JobActorConfig), the elements after transformation
+   * (transformer.apply(x)) are also sent to this actor (otherwise ignored).
+   * Do not set any ACTOR_SINK actorRef if those elements are not needed. Most of the time wed need some
+   * other actor to do some calculation after transformer.apply was called and only need to be informed
+   * about the result, which works the way descibed above (setting RUNNABLE_SENDER and sender).
+   *
+   * @return
+   */
   override def receive: Receive = {
     case e: TasksWithTypedResult[_] =>
       val taskWorker: ActorRef = context.actorOf(TaskWorkerActor.props)
@@ -171,7 +175,31 @@ class WorkManagerActor() extends Actor with ActorLogging with KolibriSerializabl
         .map(x => distributeRunnable(x, None))
         .getOrElse(log.warning(s"job for message '$e' does not contain batch '${e.batchNr}', not executing anything for batch"))
     case e: JobBatchMsg[SearchEvaluation] if e.msg.isInstanceOf[SearchEvaluation] =>
+      val senderRef = sender()
       log.info("received SearchEvaluation msg")
+      if (runnableGeneratorForJob.isEmpty) {
+        runnableGeneratorForJob = Some(e.msg.toRunnable.processElements)
+      }
+      // make sure resource directives are processed before job is started
+      log.info("loading needed resources")
+      implicit val timeout: Timeout = Timeout(5 minutes)
+      val resultFuture: Future[Any] = ClusterNode.getSystemSetup.localResourceManagerActor ? ProcessResourceDirectives(e.msg.resourceDirectives, e.jobName)
+      resultFuture.onComplete({
+        case Success(value) =>
+          val processedDirectiveMsg = value.asInstanceOf[ProcessedResourceDirectives]
+          log.info(s"resource directive processing results: ${processedDirectiveMsg.states}")
+          val mustStopExecution: Boolean = processedDirectiveMsg.states.exists(state => !Seq(ResourceOK, ResourceAlreadyExists).contains(state))
+          if (mustStopExecution) {
+            log.warning(s"could not process all resource directives, stopping execution of job ${e.jobName}: ${processedDirectiveMsg.states}")
+          }
+          else {
+            self.tell(CheckedResourceDirectivesAndReadyForProcessing(e), senderRef)
+          }
+        case Failure(exception) =>
+          log.error(s"processing resource directives for job '${e.jobName}' and batch '${e.batchNr}' failed, stopping execution", exception)
+
+      })
+    case CheckedResourceDirectivesAndReadyForProcessing(e: JobBatchMsg[SearchEvaluation]) =>
       val runnableMsg: SupervisorActor.ProcessActorRunnableJobCmd[RequestTemplateBuilderModifier, MetricRow, MetricRow, MetricAggregation[Tag]] = e.msg.toRunnable
       val writerOpt: Option[Writers.Writer[MetricAggregation[Tag], Tag, _]] = Some(runnableMsg.writer)
       if (runnableGeneratorForJob.isEmpty) {
@@ -202,8 +230,8 @@ class WorkManagerActor() extends Actor with ActorLogging with KolibriSerializabl
   }
 
   /**
-    * retrieve the job processing states and store to send to the related job managers
-    */
+   * retrieve the job processing states and store to send to the related job managers
+   */
   def retrieveWorkerStates(): Unit = {
     implicit val ec: ExecutionContext = context.system.dispatchers.lookup(kolibriDispatcherName)
     workerKeyToActiveWorker.keys.foreach(key => {
@@ -226,8 +254,8 @@ class WorkManagerActor() extends Actor with ActorLogging with KolibriSerializabl
   }
 
   /**
-    * Send the so current job state to the related job managers
-    */
+   * Send the so current job state to the related job managers
+   */
   def sendWorkerStatesToJobManager(): Unit = {
     implicit val ec: ExecutionContext = context.system.dispatchers.lookup(kolibriDispatcherName)
     workerKeyToBatchState.foreach(x => {

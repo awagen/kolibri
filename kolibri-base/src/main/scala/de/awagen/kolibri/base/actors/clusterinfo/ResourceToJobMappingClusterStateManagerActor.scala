@@ -21,17 +21,21 @@ import akka.actor.{Actor, ActorLogging, Props}
 import akka.cluster.ddata.Replicator.{Subscribe, Update}
 import akka.cluster.ddata.typed.scaladsl.Replicator.WriteLocal
 import akka.cluster.ddata.{Key, ORMap, ORSet}
-import de.awagen.kolibri.base.actors.clusterinfo.ResourceToJobMappingClusterStateManagerActor.{ExistingResourceTypeToResourceIdToJobMapping, GetExistingResourceTypeToResourceIdToJobMapping, RemoveValueFromAllMappings}
+import de.awagen.kolibri.base.actors.clusterinfo.ResourceToJobMappingClusterStateManagerActor._
 import de.awagen.kolibri.base.cluster.ClusterNode
+import de.awagen.kolibri.base.directives.ResourceDirectives.ResourceDirective
 import de.awagen.kolibri.base.directives.ResourceType.ResourceType
+import de.awagen.kolibri.base.directives.RetrievalDirective.RetrievalDirective
 import de.awagen.kolibri.base.directives.{Resource, ResourceType}
-import de.awagen.kolibri.base.resources.{ResourceJobMappingTracker, ResourceStore}
+import de.awagen.kolibri.base.resources._
 import de.awagen.kolibri.base.usecase.searchopt.provider.FileBasedJudgementRepository
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 
+import scala.collection.mutable
+
 object ResourceToJobMappingClusterStateManagerActor {
 
-  def props: Props = Props[ResourceToJobMappingClusterStateManagerActor]
+  def props(name: String): Props = Props(ResourceToJobMappingClusterStateManagerActor(name))
 
   trait LocalResourceManagerMsg extends KolibriSerializable
 
@@ -41,19 +45,32 @@ object ResourceToJobMappingClusterStateManagerActor {
 
   case class RemoveValueFromAllMappings(ddResourceKey: Key[ORMap[String, ORSet[String]]], jobId: String) extends LocalResourceManagerMsg
 
+  case class ProcessResourceDirectives(directives: Seq[ResourceDirective[_]], jobId: String) extends LocalResourceManagerMsg
+
+  case class ProcessedResourceDirectives(directives: Seq[ResourceDirective[_]], states: Seq[ResourceState], jobId: String)
+
+  private[clusterinfo] val nameToResourceStoreMapping: mutable.Map[String, ResourceStore] = mutable.Map.empty
+
+  // public retrieval method
+  def getResourceByStoreName[T](storeName: String, directive: RetrievalDirective[T]): Either[RetrievalError[T], T] = {
+    nameToResourceStoreMapping.get(storeName).map(store => store.handleRetrievalDirective(directive))
+      .getOrElse(Left(RetrievalError(directive, ResourceNotFound)))
+  }
 
 }
+
 
 /**
  * Actor keeps track of distributed state messages of resource-jobId mappings.
  * In case no job is assigned to a resource anymore, data can be removed to avoid piling up of extensive state in memory.
  * This actor also takes care of this data removal.
  */
-case class ResourceToJobMappingClusterStateManagerActor() extends Actor with ActorLogging {
+case class ResourceToJobMappingClusterStateManagerActor(name: String) extends Actor with ActorLogging {
 
   var resourceIdToJobMapping: ResourceJobMappingTracker = new ResourceJobMappingTracker()
   resourceIdToJobMapping.init()
-  val resourceStore: ResourceStore = new ResourceStore()
+  nameToResourceStoreMapping(name) = new ResourceStore()
+  val resourceStore: ResourceStore = nameToResourceStoreMapping(name)
 
   // subscribe to receive replication messages for the mapping of used resource types to the jobs
   DDResourceStateUtils.DD_RESOURCETYPE_TO_KEY_MAPPING.values.foreach(value => {
@@ -91,6 +108,19 @@ case class ResourceToJobMappingClusterStateManagerActor() extends Actor with Act
   }
 
   override def receive: Receive = ddReceive.orElse[Any, Unit] {
+    case e: ProcessResourceDirectives =>
+      val senderRef = sender()
+      log.info(s"processing resource directives: ${e.directives}")
+      val handleStates: Seq[ResourceState] = e.directives.map(directive => {
+        val status: ResourceState = resourceStore.handleResourceDirective(directive)
+        if (status == ResourceOK) {
+          resourceIdToJobMapping.addTrackingForResourceAndJob(directive.resource, e.jobId)
+        }
+        status
+      })
+      log.info(s"processing resource directives done. Passed directives: '${e.directives}', result states: '${handleStates}''")
+      // sending back the the results for the requested resource directives
+      senderRef ! ProcessedResourceDirectives(e.directives, handleStates, e.jobId)
     case GetExistingResourceTypeToResourceIdToJobMapping =>
       sender() ! ExistingResourceTypeToResourceIdToJobMapping(resourceIdToJobMapping.getMappingsForAllResourceTypes)
     case msg@RemoveValueFromAllMappings(resourceKey, jobId) =>

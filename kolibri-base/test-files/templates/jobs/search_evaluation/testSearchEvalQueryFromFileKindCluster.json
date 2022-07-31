@@ -18,6 +18,15 @@
       "useHttps": false
     }
   ],
+  "resourceDirectives": [
+    {
+      "type": "MAP_STRING_DOUBLE",
+      "values": {
+        "type": "JUDGEMENTS_FROM_FILE",
+        "file": "test-judgements/test_judgements.txt"
+      }
+    }
+  ],
   "requestParameterPermutateSeq": [
     {
       "type": "STANDALONE",

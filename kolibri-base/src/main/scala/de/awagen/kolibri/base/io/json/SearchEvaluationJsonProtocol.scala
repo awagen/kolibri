@@ -1,32 +1,33 @@
 /**
-  * Copyright 2021 Andreas Wagenmann
-  *
-  * Licensed under the Apache License, Version 2.0 (the "License");
-  * you may not use this file except in compliance with the License.
-  * You may obtain a copy of the License at
-  *
-  * http://www.apache.org/licenses/LICENSE-2.0
-  *
-  * Unless required by applicable law or agreed to in writing, software
-  * distributed under the License is distributed on an "AS IS" BASIS,
-  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  * See the License for the specific language governing permissions and
-  * limitations under the License.
-  */
+ * Copyright 2021 Andreas Wagenmann
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 
 package de.awagen.kolibri.base.io.json
 
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
+import de.awagen.kolibri.base.directives.ResourceDirectives.ResourceDirective
 import de.awagen.kolibri.base.domain.Connections.Connection
 import de.awagen.kolibri.base.http.client.request.RequestTemplate
 import de.awagen.kolibri.base.io.json.ConnectionJsonProtocol._
 import de.awagen.kolibri.base.io.json.ExecutionJsonProtocol._
-import de.awagen.kolibri.base.io.json.ParameterValuesJsonProtocol.ValueSeqGenConfigFormat
+import de.awagen.kolibri.base.io.json.ResourceDirectiveJsonProtocol.GenericResourceDirectiveFormat
 import de.awagen.kolibri.base.io.json.TaggingConfigurationsJsonProtocol._
 import de.awagen.kolibri.base.processing.JobMessages.SearchEvaluation
 import de.awagen.kolibri.base.processing.execution.functions.Execution
-import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ValueSeqGenConfig
+import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ValueSeqGenProvider
 import de.awagen.kolibri.base.processing.tagging.TaggingConfigurations.BaseTaggingConfiguration
 import de.awagen.kolibri.base.usecase.searchopt.io.json.CalculationsJsonProtocol._
 import de.awagen.kolibri.base.usecase.searchopt.io.json.ParsingConfigJsonProtocol
@@ -39,6 +40,7 @@ import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
 import de.awagen.kolibri.datatypes.types.JsonStructDefs._
 import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
 import spray.json.{DefaultJsonProtocol, RootJsonFormat}
+import de.awagen.kolibri.base.io.json.ParameterValuesJsonProtocol.ValueSeqGenProviderFormat
 
 
 object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSupport with WithStructDef {
@@ -48,6 +50,7 @@ object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSu
   val FIXED_PARAMS_FIELD = "fixedParams"
   val CONTEXT_PATH_FIELD = "contextPath"
   val CONNECTIONS_FIELD = "connections"
+  val RESOURCE_DIRECTIVES_FIELD = "resourceDirectives"
   val REQUEST_PARAMETER_PERMUTATE_SEQ_FIELD = "requestParameterPermutateSeq"
   val BATCH_BY_INDEX_FIELD = "batchByIndex"
   val PARSING_CONFIG_FIELD = "parsingConfig"
@@ -69,7 +72,8 @@ object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSu
       fixedParams: Map[String, Seq[String]],
       contextPath: String,
       connections: Seq[Connection],
-      requestParameterPermutateSeq: Seq[ValueSeqGenConfig],
+      resourceDirectives: Seq[ResourceDirective[_]],
+      requestParameterPermutateSeq: Seq[ValueSeqGenProvider],
       batchByIndex: Int,
       parsingConfig: ParsingConfig,
       excludeParamsFromMetricRow: Seq[String],
@@ -89,6 +93,7 @@ object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSu
         fixedParams,
         contextPath,
         connections,
+        resourceDirectives,
         requestParameterPermutateSeq,
         batchByIndex,
         parsingConfig,
@@ -108,6 +113,7 @@ object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSu
     FIXED_PARAMS_FIELD,
     CONTEXT_PATH_FIELD,
     CONNECTIONS_FIELD,
+    RESOURCE_DIRECTIVES_FIELD,
     REQUEST_PARAMETER_PERMUTATE_SEQ_FIELD,
     BATCH_BY_INDEX_FIELD,
     PARSING_CONFIG_FIELD,
@@ -152,8 +158,13 @@ object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSu
           required = true
         ),
         FieldDef(
+          StringConstantStructDef(RESOURCE_DIRECTIVES_FIELD),
+          GenericSeqStructDef(GenericResourceDirectiveFormat.structDef),
+          required = true
+        ),
+        FieldDef(
           StringConstantStructDef(REQUEST_PARAMETER_PERMUTATE_SEQ_FIELD),
-          GenericSeqStructDef(ParameterValuesJsonProtocol.ValueSeqGenConfigFormat.structDef),
+          GenericSeqStructDef(ParameterValuesJsonProtocol.ValueSeqGenProviderFormat.structDef),
           required = true
         ),
         FieldDef(

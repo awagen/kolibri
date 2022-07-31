@@ -57,33 +57,6 @@ object ParameterValues {
     val URL_PARAMETER, HEADER, BODY = Value
   }
 
-  sealed trait ValueSeqGenConfig extends KolibriSerializable
-
-  case class ParameterValuesConfig(name: String,
-                             valueType: ValueType.Value,
-                             values: IndexedGenerator[String]) extends ValueSeqGenConfig
-
-  case class ParameterValueMappingConfig(keyValues: ParameterValues,
-                                   mappedValues: Seq[MappedParameterValues],
-                                   mappingKeyValueAssignments: Seq[(Int, Int)]) extends ValueSeqGenConfig
-
-  object ValueSeqGenConfigImplicits {
-
-    implicit class ValueSeqGenConfigImplicits(config: ValueSeqGenConfig) {
-
-      def toProvider: ValueSeqGenProvider = config match {
-        case ParameterValuesConfig(name, valueType, values) =>
-          ParameterValues(name, valueType, values)
-        case ParameterValueMappingConfig(keyValues, mappedValues, mappingKeyValueAssignments) =>
-          new ParameterValueMapping(keyValues, mappedValues, mappingKeyValueAssignments)
-      }
-
-    }
-
-  }
-
-
-
   sealed trait ValueSeqGenProvider extends KolibriSerializable {
 
     /**
@@ -293,8 +266,8 @@ object ParameterValues {
      * @return
      */
     private[modifiers] def getGeneratorsByValues(keyValues: ParameterValues,
-                                              mappedValues: Seq[MappedParameterValues],
-                                              mappingKeyValueAssignments: Seq[(Int, Int)]): IndexedGenerator[IndexedGenerator[Seq[ParameterValue]]] = {
+                                                 mappedValues: Seq[MappedParameterValues],
+                                                 mappingKeyValueAssignments: Seq[(Int, Int)]): IndexedGenerator[IndexedGenerator[Seq[ParameterValue]]] = {
       val cleanedKeyValues: ParameterValues = removeTopLevelKeysWithMissingMappings(keyValues, mappedValues, mappingKeyValueAssignments)
       cleanedKeyValues.mapGen(x => {
         if (mappingKeyValueAssignments.isEmpty) {

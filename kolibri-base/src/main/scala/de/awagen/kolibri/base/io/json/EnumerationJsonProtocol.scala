@@ -17,6 +17,8 @@
 package de.awagen.kolibri.base.io.json
 
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.ProcessingResult
+import de.awagen.kolibri.base.directives.ResourceType
+import de.awagen.kolibri.base.directives.ResourceType.{JUDGEMENTS, KEY_VALUES_MAPPINGS, ResourceType, VALUES}
 import de.awagen.kolibri.base.domain.TaskDataKeys
 import de.awagen.kolibri.base.domain.jobdefinitions.ProcessingActorProps.ProcessingActorProps
 import de.awagen.kolibri.base.domain.jobdefinitions.RunnableExpectationGenerators.ExpectationGenerators
@@ -27,6 +29,7 @@ import de.awagen.kolibri.base.http.server.routes.DataRoutes.DataFileType
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnableSinkType
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnableSinkType.ActorRunnableSinkType
 import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ValueType
+import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.io.json.EnumerationJsonProtocol.EnumerationProtocol
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.types.JsonStructDefs.StringChoiceStructDef
@@ -142,6 +145,60 @@ object EnumerationJsonProtocol extends DefaultJsonProtocol {
         case JsString(txt) => TaskDataKeys.withName(txt).asInstanceOf[TaskDataKeys.Val[MetricRow]]
         case e => throw DeserializationException(s"Expected a value from TaskDataKeys.Val[MetricRow] but got value $e")
       }
+    }
+  }
+
+  implicit object resourceTypeFormat extends EnumerationProtocol[ResourceType[_]] {
+    override def read(json: JsValue): ResourceType[_] = {
+      json match {
+        case JsString(txt) => ResourceType.withName(txt).asInstanceOf[ResourceType[_]]
+        case e => throw DeserializationException(s"Expected a value from ResourceType[_] but got value $e")
+      }
+    }
+  }
+
+  implicit object resourceTypeMapStringDoubleFormat extends EnumerationProtocol[ResourceType[Map[String, Double]]] with WithStructDef {
+    override def read(json: JsValue): ResourceType[Map[String, Double]] = {
+      json match {
+        case JsString(txt) => txt match {
+          case "JUDGEMENTS" => JUDGEMENTS
+        }
+        case e => throw DeserializationException(s"Expected a value from ResourceType[Map[String, Double]] but got value $e")
+      }
+    }
+
+    override def structDef: JsonStructDefs.StructDef[_] = {
+      StringChoiceStructDef(Seq("JUDGEMENTS"))
+    }
+  }
+
+  implicit object resourceTypeMapStringGeneratorStringFormat extends EnumerationProtocol[ResourceType[Map[String, IndexedGenerator[String]]]] with WithStructDef {
+    override def read(json: JsValue): ResourceType[Map[String, IndexedGenerator[String]]] = {
+      json match {
+        case JsString(txt) => txt match {
+          case "KEY_VALUES_MAPPINGS" => KEY_VALUES_MAPPINGS
+        }
+        case e => throw DeserializationException(s"Expected a value from ResourceType[Map[String, IndexedGenerator[String]]] but got value $e")
+      }
+    }
+
+    override def structDef: JsonStructDefs.StructDef[_] = {
+      StringChoiceStructDef(Seq("KEY_VALUES_MAPPINGS"))
+    }
+  }
+
+  implicit object resourceTypeGeneratorStringFormat extends EnumerationProtocol[ResourceType[IndexedGenerator[String]]] with WithStructDef {
+    override def read(json: JsValue): ResourceType[IndexedGenerator[String]] = {
+      json match {
+        case JsString(txt) => txt match {
+          case "VALUES" => VALUES
+        }
+        case e => throw DeserializationException(s"Expected a value from ResourceType[IndexedGenerator[String]] but got value $e")
+      }
+    }
+
+    override def structDef: JsonStructDefs.StructDef[_] = {
+      StringChoiceStructDef(Seq("VALUES"))
     }
   }
 

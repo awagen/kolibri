@@ -59,16 +59,18 @@ class ResourceStore {
   }
 
   def removeResource(resource: Resource[_]): Option[_] = {
+    logger.info(s"removing resource: '$resource'")
     resourceMap.remove(resource)
   }
 
   def handleResourceDirective[T](directive: ResourceDirective[T]): ResourceState = {
     try {
       if (resourceExists(directive.resource)) {
-        logger.warn(s"resource loading for directive '$directive' requested but already exists, ignoring")
+        logger.debug(s"resource loading for directive '$directive' requested but already exists, ignoring")
         ResourceAlreadyExists
       }
       else {
+        logger.info(s"adding data for resource: '${directive.resource}'")
         val value: T = directive.getResource
         resourceMap(directive.resource) = value
         ResourceOK

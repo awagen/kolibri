@@ -29,6 +29,7 @@ import spray.json.{JsValue, JsonFormat, enrichAny}
 object ResourceDirectiveJsonProtocol {
 
   val TYPE_KEY = "type"
+  val VALUES_KEY = "values"
   val FILE_KEY = "file"
   val FOLDER_KEY = "folder"
   val FILE_SUFFIX_KEY = "file_suffix"
@@ -36,6 +37,40 @@ object ResourceDirectiveJsonProtocol {
   val KEY_COLUMN_INDEX_KEY = "keyColumnIndex"
   val VALUE_COLUMN_INDEX_KEY = "valueColumnIndex"
   val KEY_TO_VALUE_FILE_MAP_KEY = "keyToValueFileMap"
+
+  implicit object GenericResourceDirectiveFormat extends JsonFormat[ResourceDirective[_]] with WithStructDef {
+    val GENERATOR_STRING_TYPE = "GENERATOR_STRING"
+    val MAP_STRING_DOUBLE_TYPE = "MAP_STRING_DOUBLE"
+    val MAP_STRING_GENERATOR_STRING_TYPE = "MAP_STRING_GENERATOR_STRING"
+
+    override def read(json: JsValue): ResourceDirective[_] = json match {
+      case spray.json.JsObject(fields) if fields.contains(TYPE_KEY) => fields(TYPE_KEY).convertTo[String] match {
+        //case GENERATOR_STRING_TYPE => // TODO
+        case MAP_STRING_DOUBLE_TYPE => MapStringDoubleResourceDirectiveFormat.read(fields(VALUES_KEY))
+        case MAP_STRING_GENERATOR_STRING_TYPE => MapStringGeneratorStringResourceDirectiveFormat.read(fields(VALUES_KEY))
+      }
+    }
+
+    override def write(obj: ResourceDirective[_]): JsValue = """{}""".toJson
+
+    override def structDef: StructDef[_] = NestedFieldSeqStructDef(
+      Seq(
+        FieldDef(
+          StringConstantStructDef(TYPE_KEY),
+          StringChoiceStructDef(Seq(
+            MAP_STRING_DOUBLE_TYPE,
+            MAP_STRING_GENERATOR_STRING_TYPE
+          )),
+          required = true)
+      ),
+      Seq(
+        ConditionalFields(TYPE_KEY, Map(
+          MAP_STRING_DOUBLE_TYPE -> Seq(FieldDef(StringConstantStructDef(VALUES_KEY), MapStringDoubleResourceDirectiveFormat.structDef, required = true)),
+          MAP_STRING_GENERATOR_STRING_TYPE -> Seq(FieldDef(StringConstantStructDef(VALUES_KEY), MapStringGeneratorStringResourceDirectiveFormat.structDef, required = true))
+        ))
+      )
+    )
+  }
 
   implicit object MapStringDoubleResourceDirectiveFormat extends JsonFormat[ResourceDirective[Map[String, Double]]] with WithStructDef {
     val JUDGEMENTS_FROM_FILE_TYPE = "JUDGEMENTS_FROM_FILE"

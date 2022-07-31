@@ -28,11 +28,12 @@ import akka.management.cluster.bootstrap.ClusterBootstrap
 import akka.management.scaladsl.AkkaManagement
 import akka.stream.Materializer
 import de.awagen.kolibri.base.actors.clusterinfo.DDResourceStateUtils.DD_BATCH_STATUS_ACTOR_REF_KEY
-import de.awagen.kolibri.base.actors.clusterinfo.{BatchStateActor, ResourceToJobMappingClusterStateManagerActor, LocalStateDistributorActor}
+import de.awagen.kolibri.base.actors.clusterinfo.{BatchStateActor, LocalStateDistributorActor, ResourceToJobMappingClusterStateManagerActor}
 import de.awagen.kolibri.base.actors.routing.RoutingActor
 import de.awagen.kolibri.base.config.AppProperties
 import de.awagen.kolibri.base.config.AppProperties.config
 import de.awagen.kolibri.base.config.AppProperties.config.{kolibriDispatcherName, node_roles, useRequestEventShardingAndEndpoints}
+import de.awagen.kolibri.base.directives.RetrievalDirective.RetrievalDirective
 import de.awagen.kolibri.base.http.server.HttpServer
 import de.awagen.kolibri.base.http.server.routes.AnalysisRoutes.{getImproovingAndLoosing, getPartialResultsOverview, getResultBaseFolders, getSingleResult, getSingleResultFiltered, getValueVarianceFromDir}
 import de.awagen.kolibri.base.http.server.routes.BaseRoutes
@@ -41,6 +42,7 @@ import de.awagen.kolibri.base.http.server.routes.DataRoutes._
 import de.awagen.kolibri.base.http.server.routes.MetricRoutes.{getAvailableIRMetrics, getIRMetricJsonsFromReducedJsons}
 import de.awagen.kolibri.base.http.server.routes.ResourceRoutes.{getJobTemplateByTypeAndIdentifier, getJobTemplateOverviewForType, getJobTemplateTypes, storeSearchEvaluationTemplate}
 import de.awagen.kolibri.base.http.server.routes.StatusRoutes.{finishedJobStates, getAllJobWorkerStates, getJobStatus, getJobWorkerStatus, getRunningJobIds, health, jobStates, nodeState}
+import de.awagen.kolibri.base.resources.RetrievalError
 import de.awagen.kolibri.base.usecase.statesharding.actors.EventAggregatingActor
 import de.awagen.kolibri.base.usecase.statesharding.routes.StateRoutes.{sendCombinedEvent, sendEntityEvent, sendKeyValueEvent}
 import kamon.Kamon
@@ -85,6 +87,10 @@ object ClusterNode extends App {
     }
   }
 
+  def getResource[T](directive: RetrievalDirective[T]): Either[RetrievalError[T], T] = {
+    ResourceToJobMappingClusterStateManagerActor.getResourceByStoreName[T](LOCAL_RESOURCES_ACTOR_NAME, directive)
+  }
+
   def startSystemSetup(route: Option[Route]): Unit = {
     synchronized {
       if (Objects.isNull(setup)) {
@@ -96,6 +102,8 @@ object ClusterNode extends App {
       }
     }
   }
+
+  val LOCAL_RESOURCES_ACTOR_NAME = "localResources"
 
   case class SystemSetup(route: Option[Route] = None) {
     // adds support for actors to a classic actor system and context
@@ -125,7 +133,7 @@ object ClusterNode extends App {
     // adding one localResourceManagerActor per node to cause per-node handling (e.g cases such as
     // clean up local resource when in whole cluster no job uses it anymore, such as within
     // FileBasedJudgementRepository)
-    val localResourceManagerActor: ActorRef = actorSystem.actorOf(Props[ResourceToJobMappingClusterStateManagerActor])
+    val localResourceManagerActor: ActorRef = actorSystem.actorOf(ResourceToJobMappingClusterStateManagerActor.props(LOCAL_RESOURCES_ACTOR_NAME))
     val isHttpServerNode: Boolean = node_roles.contains(config.HTTP_SERVER_ROLE)
     logger.info(s"Node roles: $node_roles")
     logger.info(s"isHttpServerNode: $isHttpServerNode")

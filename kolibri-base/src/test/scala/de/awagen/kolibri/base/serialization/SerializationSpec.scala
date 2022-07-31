@@ -21,12 +21,11 @@ import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
 import akka.serialization.{SerializationExtension, Serializers}
 import de.awagen.kolibri.base.actors.KolibriTypedTestKitNoCluster
-import de.awagen.kolibri.base.io.json.ParameterValuesJsonProtocol.ValueSeqGenConfigFormat
+import de.awagen.kolibri.base.io.json.ParameterValuesJsonProtocol.ValueSeqGenProviderFormat
 import de.awagen.kolibri.base.io.json.SearchEvaluationJsonProtocol.queryAndParamProviderFormat
 import de.awagen.kolibri.base.processing.JobMessages.SearchEvaluation
-import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ValueSeqGenConfigImplicits.ValueSeqGenConfigImplicits
 import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ValueType.URL_PARAMETER
-import de.awagen.kolibri.base.processing.modifiers.ParameterValues.{MappedParameterValues, ParameterValueMapping, ValueSeqGenConfig, ValueSeqGenProvider}
+import de.awagen.kolibri.base.processing.modifiers.ParameterValues.{MappedParameterValues, ParameterValueMapping, ValueSeqGenProvider}
 import de.awagen.kolibri.base.processing.modifiers.ParameterValuesSpec
 import de.awagen.kolibri.base.processing.modifiers.ParameterValuesSpec.{mappedValue1, mappedValue2}
 import de.awagen.kolibri.datatypes.collections.generators.ByFunctionNrLimitedIndexedGenerator
@@ -124,6 +123,15 @@ class SerializationSpec extends KolibriTypedTestKitNoCluster(ConfigOverwrites.co
         |      "host": "searchapi2",
         |      "port": 443,
         |      "useHttps": true
+        |    }
+        |  ],
+        |  "resourceDirectives": [
+        |    {
+        |      "type": "MAP_STRING_DOUBLE",
+        |      "values": {
+        |        "type": "JUDGEMENTS_FROM_FILE",
+        |        "file": "test-judgements/test_judgements.txt"
+        |      }
         |    }
         |  ],
         |  "requestParameterPermutateSeq": [
@@ -358,14 +366,14 @@ class SerializationSpec extends KolibriTypedTestKitNoCluster(ConfigOverwrites.co
 
     "parsed mapping sample must be serializable" in {
       // given
-      val parsed = Samples.mappingSample.parseJson.convertTo[ValueSeqGenConfig].toProvider
+      val parsed = Samples.mappingSample.parseJson.convertTo[ValueSeqGenProvider]
       // when, then
       serializeAndBack(parsed)
     }
 
     "serialization across actors" in {
       // given
-      val parsed: ValueSeqGenProvider = Samples.mappingSample.parseJson.convertTo[ValueSeqGenConfig].toProvider
+      val parsed: ValueSeqGenProvider = Samples.mappingSample.parseJson.convertTo[ValueSeqGenProvider]
       val castParsed = parsed.asInstanceOf[ParameterValueMapping]
       val senderActor: ActorRef[Actors.MirrorActor.Sent] = testKit.spawn(Actors.MirrorActor(), "mirror")
       val testProbe = testKit.createTestProbe[Actors.MirrorActor.Received]()
