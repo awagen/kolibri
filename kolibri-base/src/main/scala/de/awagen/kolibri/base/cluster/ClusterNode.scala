@@ -61,6 +61,8 @@ object ClusterNode extends App {
 
   private[this] val logger: Logger = LoggerFactory.getLogger(ClusterNode.getClass.toString)
 
+  val LOCAL_RESOURCES_ACTOR_NAME = "localResources"
+
   // This line initializes all Kamon components
   // needs to happen before start of actor system
   Kamon.init()
@@ -102,8 +104,6 @@ object ClusterNode extends App {
       }
     }
   }
-
-  val LOCAL_RESOURCES_ACTOR_NAME = "localResources"
 
   case class SystemSetup(route: Option[Route] = None) {
     // adds support for actors to a classic actor system and context

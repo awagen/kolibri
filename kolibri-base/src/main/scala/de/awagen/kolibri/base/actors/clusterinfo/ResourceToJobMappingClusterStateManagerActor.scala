@@ -30,10 +30,13 @@ import de.awagen.kolibri.base.directives.{Resource, ResourceType}
 import de.awagen.kolibri.base.resources._
 import de.awagen.kolibri.base.usecase.searchopt.provider.FileBasedJudgementRepository
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
+import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.mutable
 
 object ResourceToJobMappingClusterStateManagerActor {
+
+  private[this] val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
   def props(name: String): Props = Props(ResourceToJobMappingClusterStateManagerActor(name))
 
@@ -53,6 +56,8 @@ object ResourceToJobMappingClusterStateManagerActor {
 
   // public retrieval method
   def getResourceByStoreName[T](storeName: String, directive: RetrievalDirective[T]): Either[RetrievalError[T], T] = {
+    logger.info(s"requesting directive '$directive' for storeName '$storeName'")
+    logger.info(s"current state of stores: $nameToResourceStoreMapping'")
     nameToResourceStoreMapping.get(storeName).map(store => store.handleRetrievalDirective(directive))
       .getOrElse(Left(RetrievalError(directive, ResourceNotFound)))
   }
@@ -69,8 +74,8 @@ case class ResourceToJobMappingClusterStateManagerActor(name: String) extends Ac
 
   var resourceIdToJobMapping: ResourceJobMappingTracker = new ResourceJobMappingTracker()
   resourceIdToJobMapping.init()
-  nameToResourceStoreMapping(name) = new ResourceStore()
-  val resourceStore: ResourceStore = nameToResourceStoreMapping(name)
+  val resourceStore: ResourceStore = new ResourceStore()
+  nameToResourceStoreMapping(name) = resourceStore
 
   // subscribe to receive replication messages for the mapping of used resource types to the jobs
   DDResourceStateUtils.DD_RESOURCETYPE_TO_KEY_MAPPING.values.foreach(value => {
