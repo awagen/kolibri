@@ -135,7 +135,7 @@ class SerializationSpec extends KolibriTypedTestKitNoCluster(ConfigOverwrites.co
         |  ],
         |  "resourceDirectives": [
         |    {
-        |      "type": "MAP_STRING_DOUBLE",
+        |      "type": "MAP_STRING_TO_DOUBLE_VALUE",
         |      "values": {
         |        "resource": {
         |          "resourceType": "MAP_STRING_TO_DOUBLE_VALUE",

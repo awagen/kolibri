@@ -17,8 +17,9 @@
 
 package de.awagen.kolibri.base.io.json
 
-import de.awagen.kolibri.base.directives.Resource
+import de.awagen.kolibri.base.directives.{Resource, ResourceType}
 import de.awagen.kolibri.base.directives.ResourceDirectives.{ResourceDirective, getDirective}
+import de.awagen.kolibri.base.directives.ResourceType.{MAP_STRING_TO_DOUBLE_VALUE, MAP_STRING_TO_STRING_VALUES, STRING_VALUES}
 import de.awagen.kolibri.base.io.json.ResourceJsonProtocol.StructDefs.{RESOURCE_MAP_STRING_DOUBLE_STRUCT_DEF, RESOURCE_MAP_STRING_STRING_VALUES_STRUCT_DEF, RESOURCE_STRING_VALUES_STRUCT_DEF}
 import de.awagen.kolibri.base.io.json.ResourceJsonProtocol.{resourceMapStringDoubleFormat, resourceMapStringStringValuesFormat, resourceStringValuesFormat}
 import de.awagen.kolibri.base.io.json.SupplierJsonProtocol.{GeneratorStringFormat, MapStringDoubleFormat, MapStringToGeneratorStringFormat}
@@ -45,15 +46,12 @@ object ResourceDirectiveJsonProtocol {
   val KEY_TO_VALUE_FILE_MAP_KEY = "keyToValueFileMap"
 
   implicit object GenericResourceDirectiveFormat extends JsonFormat[ResourceDirective[_]] with WithStructDef {
-    val GENERATOR_STRING_TYPE = "GENERATOR_STRING"
-    val MAP_STRING_DOUBLE_TYPE = "MAP_STRING_DOUBLE"
-    val MAP_STRING_GENERATOR_STRING_TYPE = "MAP_STRING_GENERATOR_STRING"
 
     override def read(json: JsValue): ResourceDirective[_] = json match {
       case spray.json.JsObject(fields) if fields.contains(TYPE_KEY) => fields(TYPE_KEY).convertTo[String] match {
-        case GENERATOR_STRING_TYPE => GeneratorStringResourceDirectiveFormat.read(fields(VALUES_KEY))
-        case MAP_STRING_DOUBLE_TYPE => MapStringDoubleResourceDirectiveFormat.read(fields(VALUES_KEY))
-        case MAP_STRING_GENERATOR_STRING_TYPE => MapStringGeneratorStringResourceDirectiveFormat.read(fields(VALUES_KEY))
+        case "STRING_VALUES" => GeneratorStringResourceDirectiveFormat.read(fields(VALUES_KEY))
+        case "MAP_STRING_TO_DOUBLE_VALUE" => MapStringDoubleResourceDirectiveFormat.read(fields(VALUES_KEY))
+        case "MAP_STRING_TO_STRING_VALUES" => MapStringGeneratorStringResourceDirectiveFormat.read(fields(VALUES_KEY))
       }
     }
 
@@ -63,18 +61,16 @@ object ResourceDirectiveJsonProtocol {
       Seq(
         FieldDef(
           StringConstantStructDef(TYPE_KEY),
-          StringChoiceStructDef(Seq(
-            GENERATOR_STRING_TYPE,
-            MAP_STRING_DOUBLE_TYPE,
-            MAP_STRING_GENERATOR_STRING_TYPE
-          )),
+          StringChoiceStructDef(
+            ResourceType.vals.map(x => x.toString())
+          ),
           required = true)
       ),
       Seq(
         ConditionalFields(TYPE_KEY, Map(
-          GENERATOR_STRING_TYPE -> Seq(FieldDef(StringConstantStructDef(VALUES_KEY), GeneratorStringResourceDirectiveFormat.structDef, required = true)),
-          MAP_STRING_DOUBLE_TYPE -> Seq(FieldDef(StringConstantStructDef(VALUES_KEY), MapStringDoubleResourceDirectiveFormat.structDef, required = true)),
-          MAP_STRING_GENERATOR_STRING_TYPE -> Seq(FieldDef(StringConstantStructDef(VALUES_KEY), MapStringGeneratorStringResourceDirectiveFormat.structDef, required = true))
+          STRING_VALUES.toString() -> Seq(FieldDef(StringConstantStructDef(VALUES_KEY), GeneratorStringResourceDirectiveFormat.structDef, required = true)),
+          MAP_STRING_TO_DOUBLE_VALUE.toString() -> Seq(FieldDef(StringConstantStructDef(VALUES_KEY), MapStringDoubleResourceDirectiveFormat.structDef, required = true)),
+          MAP_STRING_TO_STRING_VALUES.toString() -> Seq(FieldDef(StringConstantStructDef(VALUES_KEY), MapStringGeneratorStringResourceDirectiveFormat.structDef, required = true))
         ))
       )
     )

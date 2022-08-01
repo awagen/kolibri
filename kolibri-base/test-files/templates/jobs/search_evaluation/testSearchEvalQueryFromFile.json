@@ -25,10 +25,16 @@
   ],
   "resourceDirectives": [
     {
-      "type": "MAP_STRING_DOUBLE",
+      "type": "MAP_STRING_TO_DOUBLE_VALUE",
       "values": {
-        "type": "JUDGEMENTS_FROM_FILE",
-        "file": "test-judgements/test_judgements.txt"
+        "resource": {
+          "resourceType": "MAP_STRING_TO_DOUBLE_VALUE",
+          "identifier": "ident1"
+        },
+        "supplier": {
+          "type": "JUDGEMENTS_FROM_FILE",
+          "file": "test-judgements/test_judgements.txt"
+        }
       }
     }
   ],
@@ -36,41 +42,50 @@
     {
       "type": "STANDALONE",
       "values": {
-        "type": "FROM_ORDERED_VALUES_TYPE",
+        "name": "q",
         "values_type": "URL_PARAMETER",
         "values": {
-          "type": "FROM_FILES_LINES_TYPE",
-          "name": "q",
-          "file": "test-paramfiles/test_queries.txt"
+          "type": "FROM_ORDERED_VALUES_TYPE",
+          "values": {
+            "type": "FROM_FILES_LINES_TYPE",
+            "name": "q",
+            "file": "test-paramfiles/test_queries.txt"
+          }
         }
       }
     },
     {
       "type": "STANDALONE",
       "values": {
-        "type": "FROM_ORDERED_VALUES_TYPE",
+        "name": "a1",
         "values_type": "URL_PARAMETER",
         "values": {
-          "type": "FROM_VALUES_TYPE",
-          "name": "a1",
-          "values": [
-            "0.45",
-            "0.32"
-          ]
+          "type": "FROM_ORDERED_VALUES_TYPE",
+          "values": {
+            "type": "FROM_VALUES_TYPE",
+            "name": "a1",
+            "values": [
+              "0.45",
+              "0.32"
+            ]
+          }
         }
       }
     },
     {
       "type": "STANDALONE",
       "values": {
-        "type": "FROM_ORDERED_VALUES_TYPE",
+        "name": "o",
         "values_type": "URL_PARAMETER",
         "values": {
-          "type": "FROM_RANGE_TYPE",
-          "name": "o",
-          "start": 0.0,
-          "end": 2000.0,
-          "stepSize": 1.0
+          "type": "FROM_ORDERED_VALUES_TYPE",
+          "values": {
+            "type": "FROM_RANGE_TYPE",
+            "name": "o",
+            "start": 0.0,
+            "end": 2000.0,
+            "stepSize": 1.0
+          }
         }
       }
     }
