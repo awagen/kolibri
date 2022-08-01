@@ -84,7 +84,7 @@ object JobMessages {
 
     import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ParameterValuesImplicits._
 
-    lazy val requestTemplateModifiers: Seq[IndexedGenerator[Modifier[RequestTemplateBuilder]]] =
+    def requestTemplateModifiers: Seq[IndexedGenerator[Modifier[RequestTemplateBuilder]]] =
       requestParameterPermutateSeq.map(x => x.toSeqGenerator).map(x => x.mapGen(y => y.toModifier))
 
     // promote the resources needed in metric row calculations to the current job def
