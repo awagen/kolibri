@@ -133,9 +133,11 @@ object SupplierJsonProtocol extends DefaultJsonProtocol {
     override def read(json: JsValue): SerializableSupplier[IndexedGenerator[String]] = json match {
       case spray.json.JsObject(fields) if fields.contains(TYPE_KEY) => fields(TYPE_KEY).convertTo[String] match {
         case FROM_ORDERED_VALUES_TYPE =>
-          val values = fields(VALUES_KEY).convertTo[OrderedValues[String]]
           val supplier = new SerializableSupplier[IndexedGenerator[String]] {
-            override def apply(): IndexedGenerator[String] = ByFunctionNrLimitedIndexedGenerator.createFromSeq(values.getAll)
+            override def apply(): IndexedGenerator[String] = {
+              val values = fields(VALUES_KEY).convertTo[OrderedValues[String]]
+              ByFunctionNrLimitedIndexedGenerator.createFromSeq(values.getAll)
+            }
           }
           CachedSupplier(supplier)
         case PARAMETER_VALUES_TYPE =>
@@ -214,6 +216,19 @@ object SupplierJsonProtocol extends DefaultJsonProtocol {
           val supplier = new SerializableSupplier[Map[String, Double]] {
             override def apply(): Map[String, Double] = {
               filepathToJudgementProvider(file).allJudgements
+            }
+          }
+          CachedSupplier(supplier)
+        case VALUES_FROM_NODE_STORAGE_TYPE =>
+          val identifier: String = fields(IDENTIFIER_KEY).convertTo[String]
+          val resource: Resource[Map[String, Double]] = Resource(ResourceType.MAP_STRING_TO_DOUBLE_VALUE, identifier)
+          val supplier = new SerializableSupplier[Map[String, Double]] {
+            override def apply(): Map[String, Double] = {
+              ClusterNode.getResource(Retrieve(resource)) match {
+                case Left(retrievalError) =>
+                  throw new RuntimeException(s"failed on execution of RetrievalDirective '${retrievalError.directive}', cause: '${retrievalError.cause}'")
+                case Right(value) => value
+              }
             }
           }
           CachedSupplier(supplier)
@@ -311,6 +326,19 @@ object SupplierJsonProtocol extends DefaultJsonProtocol {
           val supplier = new SerializableSupplier[Map[String, IndexedGenerator[String]]] {
             override def apply(): Map[String, IndexedGenerator[String]] = {
               keyValuesMapping.map(x => (x._1, ByFunctionNrLimitedIndexedGenerator.createFromSeq(x._2.toSeq)))
+            }
+          }
+          CachedSupplier(supplier)
+        case VALUES_FROM_NODE_STORAGE_TYPE =>
+          val identifier: String = fields(IDENTIFIER_KEY).convertTo[String]
+          val resource: Resource[Map[String, IndexedGenerator[String]]] = Resource(ResourceType.MAP_STRING_TO_STRING_VALUES, identifier)
+          val supplier = new SerializableSupplier[Map[String, IndexedGenerator[String]]] {
+            override def apply(): Map[String, IndexedGenerator[String]] = {
+              ClusterNode.getResource(Retrieve(resource)) match {
+                case Left(retrievalError) =>
+                  throw new RuntimeException(s"failed on execution of RetrievalDirective '${retrievalError.directive}', cause: '${retrievalError.cause}'")
+                case Right(value) => value
+              }
             }
           }
           CachedSupplier(supplier)

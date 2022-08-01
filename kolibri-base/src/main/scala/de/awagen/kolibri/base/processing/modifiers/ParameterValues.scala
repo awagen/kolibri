@@ -114,7 +114,7 @@ object ParameterValues {
     val seqGenerators: Seq[IndexedGenerator[Seq[ParameterValue]]] = values.map(x => x.toSeqGenerator)
     val generator: IndexedGenerator[Seq[ParameterValue]] = PermutatingIndexedGenerator(seqGenerators).mapGen(x => x.flatten)
 
-    override val nrOfElements: Int = seqGenerators.map(x => x.size).product
+    override lazy val nrOfElements: Int = seqGenerators.map(x => x.size).product
 
     override def getPart(startIndex: Int, endIndex: Int): IndexedGenerator[Seq[ParameterValue]] = generator.getPart(startIndex, endIndex)
 
@@ -343,13 +343,13 @@ object ParameterValues {
     // index2 is always smaller then 1 + mappedValues.length
     assert(!mappingKeyValueAssignments.exists(x => x._2 >= mappedValues.length + 1))
 
-    val generatorsByValues: IndexedGenerator[IndexedGenerator[Seq[ParameterValue]]] = getGeneratorsByValues(keyValues, mappedValues, mappingKeyValueAssignments)
+    lazy val generatorsByValues: IndexedGenerator[IndexedGenerator[Seq[ParameterValue]]] = getGeneratorsByValues(keyValues, mappedValues, mappingKeyValueAssignments)
 
     // to generate all combinations, we use generator that keeps the partitioning by key generator values
-    val allValuesGenerator: IndexedGenerator[Seq[ParameterValue]] = PartitionByGroupIndexedGenerator(
+    lazy val allValuesGenerator: IndexedGenerator[Seq[ParameterValue]] = PartitionByGroupIndexedGenerator(
       generatorsByValues.iterator.toSeq)
 
-    override val nrOfElements: Int = allValuesGenerator.nrOfElements
+    override lazy val nrOfElements: Int = allValuesGenerator.nrOfElements
 
     override def getPart(startIndex: Int, endIndex: Int): IndexedGenerator[Seq[ParameterValue]] = allValuesGenerator.getPart(startIndex, endIndex)
 

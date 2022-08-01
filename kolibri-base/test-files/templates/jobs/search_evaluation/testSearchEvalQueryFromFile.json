@@ -36,9 +36,72 @@
           "file": "test-judgements/test_judgements.txt"
         }
       }
+    },
+    {
+      "type": "MAP_STRING_TO_STRING_VALUES",
+      "values": {
+        "resource": {
+          "resourceType": "MAP_STRING_TO_STRING_VALUES",
+          "identifier": "prefixToFilesLines1"
+        },
+        "supplier": {
+          "type": "FILE_PREFIX_TO_FILE_LINES_TYPE",
+          "directory": "data/fileMappingSingleValueTest",
+          "files_suffix": ".txt"
+        }
+      }
     }
   ],
   "requestParameterPermutateSeq": [
+    {
+      "type": "MAPPING",
+      "values": {
+        "key_values": {
+          "name": "keyId",
+          "values_type": "URL_PARAMETER",
+          "values": {
+            "type": "FROM_ORDERED_VALUES_TYPE",
+            "values": {
+              "type": "FROM_FILENAME_KEYS_TYPE",
+              "directory": "data/fileMappingSingleValueTest",
+              "filesSuffix": ".txt",
+              "name": "keyId"
+            }
+          }
+        },
+        "mapped_values": [
+          {
+            "name": "mapped_id",
+            "values_type": "URL_PARAMETER",
+            "values": {
+              "type": "CSV_MAPPING_TYPE",
+              "values": "data/csvMappedParameterTest/mapping1.csv",
+              "column_delimiter": ",",
+              "key_column_index": 0,
+              "value_column_index": 1
+            }
+          },
+          {
+            "name": "value",
+            "values_type": "URL_PARAMETER",
+            "values": {
+              "type": "VALUES_FROM_NODE_STORAGE",
+              "identifier": "prefixToFilesLines1"
+            }
+          }
+        ],
+        "key_mapping_assignments": [
+          [
+            0,
+            1
+          ],
+          [
+            0,
+            2
+          ]
+        ]
+      }
+    },
     {
       "type": "STANDALONE",
       "values": {
