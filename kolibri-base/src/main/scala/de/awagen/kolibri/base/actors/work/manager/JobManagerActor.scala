@@ -295,7 +295,15 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
       implicit val timeout: Timeout = Timeout(10 minutes)
 
       val jobMsg: SupervisorActor.ProcessActorRunnableJobCmd[RequestTemplateBuilderModifier, MetricRow, MetricRow, MetricAggregation[Tag]] = searchJobMsg.toRunnable
-      val jobToProcess = ByFunctionNrLimitedIndexedGenerator(jobMsg.processElements.size, batchNr => Some(JobBatchMsg(jobMsg.jobId, batchNr, searchJobMsg)))
+      val jobToProcess = ByFunctionNrLimitedIndexedGenerator(
+        jobMsg.processElements.size,
+        batchNr => Some(
+          JobBatchMsg(
+            jobMsg.jobId,
+            batchNr,
+            searchJobMsg.copy(requestParameterPermutateSeq = searchJobMsg.requestParameterPermutateSeq.map(x => x.copy)))
+        )
+      )
       expectResultsFromBatchCalculations = searchJobMsg.expectResultsFromBatchCalculations
       log.info(s"expectResultsFromBatchCalculations: $expectResultsFromBatchCalculations")
 

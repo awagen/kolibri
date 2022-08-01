@@ -25,7 +25,7 @@ import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifie
 import de.awagen.kolibri.datatypes.collections.generators._
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.types.SerializableCallable
-import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSupplier
+import de.awagen.kolibri.datatypes.types.SerializableCallable.{CachedSupplier, SerializableSupplier}
 
 import scala.collection.mutable.ArrayBuffer
 
@@ -70,6 +70,8 @@ object ParameterValues {
      */
     def toSeqGenerator: IndexedGenerator[Seq[ParameterValue]]
 
+    def copy: ValueSeqGenProvider
+
   }
 
   /**
@@ -82,6 +84,17 @@ object ParameterValues {
   case class ParameterValues(name: String,
                              valueType: ValueType.Value,
                              values: SerializableSupplier[IndexedGenerator[String]]) extends IndexedGenerator[ParameterValue] with ValueSeqGenProvider {
+    override def copy: ParameterValues = ParameterValues(
+      name,
+      valueType,
+      // TODO: get rid of stripping the cached supplier to its base supplier to avoid state serialization in case
+      // a state-blank copy is needed.
+      values match {
+        case value: CachedSupplier[IndexedGenerator[String]] => CachedSupplier(value.supplier)
+        case _ => values
+      }
+    )
+
     private[this] lazy val parameterValueGenerator = values.apply().mapGen(x => ParameterValue(name, valueType, x))
     override lazy val nrOfElements: Int = parameterValueGenerator.nrOfElements
 
@@ -100,7 +113,20 @@ object ParameterValues {
 
   case class MappedParameterValues(name: String,
                                    valueType: ValueType.Value,
-                                   values: SerializableSupplier[Map[String, IndexedGenerator[String]]]) extends KolibriSerializable
+                                   values: SerializableSupplier[Map[String, IndexedGenerator[String]]]) extends KolibriSerializable {
+
+    def copy(): MappedParameterValues = MappedParameterValues(
+      name,
+      valueType,
+      // TODO: get rid of stripping the cached supplier to its base supplier to avoid state serialization in case
+      // a state-blank copy is needed.
+      values match {
+        case value: CachedSupplier[Map[String, IndexedGenerator[String]]] => CachedSupplier(value.supplier)
+        case _ => values
+      }
+    )
+
+  }
 
 
   case class ParameterValue(name: String, valueType: ValueType.Value, value: String) extends KolibriSerializable
@@ -334,6 +360,13 @@ object ParameterValues {
   class ParameterValueMapping(val keyValues: ParameterValues,
                               val mappedValues: Seq[MappedParameterValues],
                               val mappingKeyValueAssignments: Seq[(Int, Int)]) extends IndexedGenerator[Seq[ParameterValue]] with ValueSeqGenProvider {
+
+    override def copy: ParameterValueMapping = new ParameterValueMapping(
+      keyValues.copy,
+      mappedValues.map(x => x.copy()),
+      mappingKeyValueAssignments
+    )
+
     // a few assumptions such that we can just linearly from start to end generate our values
     // tuple index1 must always smaller than index2
     assert(!mappingKeyValueAssignments.exists(x => x._1 > x._2), s"Second index in mapping tuples must be bigger than first index, violated" +

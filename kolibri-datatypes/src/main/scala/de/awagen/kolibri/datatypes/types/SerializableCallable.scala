@@ -44,5 +44,7 @@ object SerializableCallable {
       }
       value
     }
+
+    def copy: CachedSupplier[T] = CachedSupplier(supplier)
   }
 }
