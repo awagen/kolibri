@@ -52,6 +52,8 @@ object ResourceToJobMappingClusterStateManagerActor {
 
   case class ProcessedResourceDirectives(directives: Seq[ResourceDirective[_]], states: Seq[ResourceState], jobId: String)
 
+  case class CheckedResourceDirectivesAndReadyForProcessing[+T](jobDef: T) extends LocalResourceManagerMsg
+
   private[clusterinfo] val nameToResourceStoreMapping: mutable.Map[String, ResourceStore] = mutable.Map.empty
 
   // public retrieval method

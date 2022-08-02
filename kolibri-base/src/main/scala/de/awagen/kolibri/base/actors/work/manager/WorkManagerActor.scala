@@ -19,7 +19,7 @@ package de.awagen.kolibri.base.actors.work.manager
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Cancellable, Props, Terminated}
 import akka.pattern.ask
 import akka.util.Timeout
-import de.awagen.kolibri.base.actors.clusterinfo.ResourceToJobMappingClusterStateManagerActor.{ProcessResourceDirectives, ProcessedResourceDirectives}
+import de.awagen.kolibri.base.actors.clusterinfo.ResourceToJobMappingClusterStateManagerActor.{CheckedResourceDirectivesAndReadyForProcessing, ProcessResourceDirectives, ProcessedResourceDirectives}
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor
 import de.awagen.kolibri.base.actors.work.manager.JobManagerActor.{ACK, WorkerKilled}
 import de.awagen.kolibri.base.actors.work.manager.WorkManagerActor.ExecutionType.{RUNNABLE, TASK, TASK_EXECUTION}
@@ -34,7 +34,7 @@ import de.awagen.kolibri.base.cluster.ClusterNode
 import de.awagen.kolibri.base.config.AppProperties.config
 import de.awagen.kolibri.base.config.AppProperties.config.kolibriDispatcherName
 import de.awagen.kolibri.base.io.writer.Writers
-import de.awagen.kolibri.base.processing.JobMessages.{SearchEvaluation, TestPiCalculation}
+import de.awagen.kolibri.base.processing.JobMessages.{SearchEvaluationDefinition, TestPiCalculationDefinition}
 import de.awagen.kolibri.base.processing.JobMessagesImplicits._
 import de.awagen.kolibri.base.processing.execution.TaskExecution
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnable
@@ -76,7 +76,6 @@ object WorkManagerActor {
 
   case class JobBatchMsg[T](jobName: String, batchNr: Int, msg: T) extends WorkManagerMsg with WithBatchNr
 
-  case class CheckedResourceDirectivesAndReadyForProcessing(jobDef: JobBatchMsg[SearchEvaluation])
 }
 
 
@@ -161,7 +160,7 @@ class WorkManagerActor() extends Actor with ActorLogging with KolibriSerializabl
       val taskExecutionWorker: ActorRef = context.actorOf(TaskExecutionWorkerActor.props)
       workerKeyToActiveWorker.put(workerKey(TASK_EXECUTION, e.partIdentifier.jobId, e.partIdentifier.batchNr), taskExecutionWorker)
       taskExecutionWorker.tell(ProcessTaskExecution(e.taskExecution, e.partIdentifier), sender())
-    case e: JobBatchMsg[TestPiCalculation] if e.msg.isInstanceOf[TestPiCalculation] =>
+    case e: JobBatchMsg[TestPiCalculationDefinition] if e.msg.isInstanceOf[TestPiCalculationDefinition] =>
       log.info("received TestPiCalculation msg")
       if (receivedBatchCount % 10 == 0) {
         log.info(s"received pi calc batch messages: $receivedBatchCount")
@@ -174,7 +173,7 @@ class WorkManagerActor() extends Actor with ActorLogging with KolibriSerializabl
       runnable
         .map(x => distributeRunnable(x, None))
         .getOrElse(log.warning(s"job for message '$e' does not contain batch '${e.batchNr}', not executing anything for batch"))
-    case e: JobBatchMsg[SearchEvaluation] if e.msg.isInstanceOf[SearchEvaluation] =>
+    case e: JobBatchMsg[SearchEvaluationDefinition] if e.msg.isInstanceOf[SearchEvaluationDefinition] =>
       val senderRef = sender()
       log.info("received SearchEvaluation msg")
       // make sure resource directives are processed before job is started
@@ -196,7 +195,7 @@ class WorkManagerActor() extends Actor with ActorLogging with KolibriSerializabl
           log.error(s"processing resource directives for job '${e.jobName}' and batch '${e.batchNr}' failed, stopping execution", exception)
 
       })
-    case CheckedResourceDirectivesAndReadyForProcessing(e: JobBatchMsg[SearchEvaluation]) =>
+    case CheckedResourceDirectivesAndReadyForProcessing(e: JobBatchMsg[SearchEvaluationDefinition]) =>
       val runnableMsg: SupervisorActor.ProcessActorRunnableJobCmd[RequestTemplateBuilderModifier, MetricRow, MetricRow, MetricAggregation[Tag]] = e.msg.toRunnable
       val writerOpt: Option[Writers.Writer[MetricAggregation[Tag], Tag, _]] = Some(runnableMsg.writer)
       if (runnableGeneratorForJob.isEmpty) {

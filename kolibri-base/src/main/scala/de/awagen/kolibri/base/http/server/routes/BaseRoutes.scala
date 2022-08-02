@@ -35,7 +35,7 @@ import de.awagen.kolibri.base.config.AppProperties.config.{analyzeTimeout, inter
 import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions
 import de.awagen.kolibri.base.http.server.routes.ResourceRoutes.TemplateTypeValidationAndExecutionInfo
 import de.awagen.kolibri.base.http.server.routes.StatusRoutes.corsHandler
-import de.awagen.kolibri.base.processing.JobMessages.{SearchEvaluation, TestPiCalculation}
+import de.awagen.kolibri.base.processing.JobMessages.{SearchEvaluationDefinition, TestPiCalculationDefinition}
 import de.awagen.kolibri.base.processing.execution.functions.Execution
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.SearchJobDefinitions
 import de.awagen.kolibri.base.usecase.searchopt.provider.JudgementProvider
@@ -167,7 +167,7 @@ object BaseRoutes {
       path("pi_calc_no_ser") {
         post {
           parameters("jobName", "requestTasks", "nrThrows", "batchSize", "resultDir") { (jobName, requestTasks, nrThrows, batchSize, resultDir) => {
-            val msg = TestPiCalculation(jobName, requestTasks.toInt, nrThrows.toInt, batchSize.toInt, resultDir)
+            val msg = TestPiCalculationDefinition(jobName, requestTasks.toInt, nrThrows.toInt, batchSize.toInt, resultDir)
             supervisorActor ! msg
             complete(StatusCodes.Accepted, "Processing Pi Calculation (without full ActorRunnable serialization) Example")
           }
@@ -199,7 +199,7 @@ object BaseRoutes {
     corsHandler(
       path("search_eval") {
         post {
-          entity(as[SearchEvaluation]) {
+          entity(as[SearchEvaluationDefinition]) {
             searchEvaluation =>
               supervisorActor ! SearchJobDefinitions.searchEvaluationToRunnableJobCmd(searchEvaluation)
               complete(StatusCodes.Accepted, "Starting search evaluation example")
@@ -214,7 +214,7 @@ object BaseRoutes {
     corsHandler(
       path("search_eval_no_ser") {
         post {
-          entity(as[SearchEvaluation]) {
+          entity(as[SearchEvaluationDefinition]) {
             searchEvaluation =>
               supervisorActor ! searchEvaluation
               complete(StatusCodes.Accepted, "Starting search evaluation example")

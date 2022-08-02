@@ -36,7 +36,7 @@ import de.awagen.kolibri.base.config.AppProperties._
 import de.awagen.kolibri.base.config.AppProperties.config.kolibriDispatcherName
 import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions.MapWithCount
 import de.awagen.kolibri.base.io.writer.Writers.Writer
-import de.awagen.kolibri.base.processing.JobMessages.{SearchEvaluation, TestPiCalculation}
+import de.awagen.kolibri.base.processing.JobMessages.{SearchEvaluationDefinition, TestPiCalculationDefinition}
 import de.awagen.kolibri.base.processing.JobMessagesImplicits._
 import de.awagen.kolibri.base.processing.distribution.DistributionStates
 import de.awagen.kolibri.base.processing.execution.functions.Execution
@@ -260,7 +260,7 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
   }
 
   def startState: Receive = {
-    case testJobMsg: TestPiCalculation =>
+    case testJobMsg: TestPiCalculationDefinition =>
       log.debug(s"received job to process: $testJobMsg")
       reportResultsTo = sender()
       expectResultsFromBatchCalculations = true
@@ -280,7 +280,7 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
       switchToProcessingStateAndSetScheduler()
       log.info(s"started processing of job '$jobId'")
       ()
-    case searchJobMsg: SearchEvaluation =>
+    case searchJobMsg: SearchEvaluationDefinition =>
       // register needed resources in distributed data
       searchJobMsg.resources
         .foreach(resource => {

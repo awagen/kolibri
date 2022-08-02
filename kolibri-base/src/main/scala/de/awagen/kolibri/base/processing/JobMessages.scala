@@ -20,19 +20,23 @@ package de.awagen.kolibri.base.processing
 import akka.actor.ActorSystem
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.ProcessActorRunnableJobCmd
+import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages
+import de.awagen.kolibri.base.config.AppConfig.persistenceModule
 import de.awagen.kolibri.base.directives.ResourceDirectives.ResourceDirective
 import de.awagen.kolibri.base.directives.WithResources
 import de.awagen.kolibri.base.domain.Connections.Connection
 import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions
 import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions.MapWithCount
 import de.awagen.kolibri.base.http.client.request.{RequestTemplate, RequestTemplateBuilder}
-import de.awagen.kolibri.base.processing.JobMessages.{SearchEvaluation, TestPiCalculation}
+import de.awagen.kolibri.base.io.writer.Writers.Writer
+import de.awagen.kolibri.base.processing.JobMessages.{SearchEvaluationDefinition, TestPiCalculationDefinition}
 import de.awagen.kolibri.base.processing.execution.functions.Execution
 import de.awagen.kolibri.base.processing.modifiers.Modifier
 import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ValueSeqGenDefinition
 import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
 import de.awagen.kolibri.base.processing.tagging.TaggingConfigurations.BaseTaggingConfiguration
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.SearchJobDefinitions
+import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.Aggregators.{fullJobToSingleTagAggregatorSupplier, singleBatchAggregatorSupplier}
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.{Calculation, CalculationResult, FutureCalculation}
 import de.awagen.kolibri.base.usecase.searchopt.parse.ParsingConfig
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
@@ -43,16 +47,19 @@ import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.types.Types.WithCount
 import de.awagen.kolibri.datatypes.values.AggregateValue
-import org.slf4j.{Logger, LoggerFactory}
+import de.awagen.kolibri.datatypes.values.aggregation.Aggregators
 
 import scala.concurrent.ExecutionContext
 import scala.language.implicitConversions
+import scala.util.Random
 
 object JobMessages {
 
-  private[this] val logger: Logger = LoggerFactory.getLogger(this.getClass)
-
-  trait JobMessage extends KolibriSerializable {
+  /**
+   * Trait for objects containing job definitions. They are not meant to contain extensive state and
+   * shall be fully serializable
+   */
+  trait JobDefinition extends KolibriSerializable {
 
     def jobName: String
 
@@ -60,27 +67,32 @@ object JobMessages {
 
   }
 
-  case class TestPiCalculation(jobName: String, requestTasks: Int, nrThrows: Int, batchSize: Int, resultDir: String) extends JobMessage
+  case class TestPiCalculationDefinition(jobName: String, requestTasks: Int, nrThrows: Int, batchSize: Int, resultDir: String) extends JobDefinition
 
-  case class SearchEvaluation(jobName: String,
-                              requestTasks: Int,
-                              fixedParams: Map[String, Seq[String]],
-                              contextPath: String,
-                              connections: Seq[Connection],
-                              resourceDirectives: Seq[ResourceDirective[_]],
-                              requestParameterPermutateSeq: Seq[ValueSeqGenDefinition[_]],
-                              batchByIndex: Int,
-                              parsingConfig: ParsingConfig,
-                              excludeParamsFromMetricRow: Seq[String],
-                              requestTemplateStorageKey: String,
-                              mapFutureMetricRowCalculation: FutureCalculation[WeaklyTypedMap[String], Set[String], MetricRow],
-                              singleMapCalculations: Seq[Calculation[WeaklyTypedMap[String], CalculationResult[Double]]],
-                              taggingConfiguration: Option[BaseTaggingConfiguration[RequestTemplate, (Either[Throwable, WeaklyTypedMap[String]], RequestTemplate), MetricRow]],
-                              wrapUpFunction: Option[Execution[Any]],
-                              allowedTimePerElementInMillis: Int = 1000,
-                              allowedTimePerBatchInSeconds: Int = 600,
-                              allowedTimeForJobInSeconds: Int = 7200,
-                              expectResultsFromBatchCalculations: Boolean = true) extends JobMessage with WithResources {
+  /**
+   * This class contains only specification, and parameter combinations are loadable from
+   * requestParameterPermutateSeq. Data that needs to be pre-loaded on a node before actual execution
+   * is given in resourceDirectives (per node data loading methods provided in ClusterNode)
+   */
+  case class SearchEvaluationDefinition(jobName: String,
+                                        requestTasks: Int,
+                                        fixedParams: Map[String, Seq[String]],
+                                        contextPath: String,
+                                        connections: Seq[Connection],
+                                        resourceDirectives: Seq[ResourceDirective[_]],
+                                        requestParameterPermutateSeq: Seq[ValueSeqGenDefinition[_]],
+                                        batchByIndex: Int,
+                                        parsingConfig: ParsingConfig,
+                                        excludeParamsFromMetricRow: Seq[String],
+                                        requestTemplateStorageKey: String,
+                                        mapFutureMetricRowCalculation: FutureCalculation[WeaklyTypedMap[String], Set[String], MetricRow],
+                                        singleMapCalculations: Seq[Calculation[WeaklyTypedMap[String], CalculationResult[Double]]],
+                                        taggingConfiguration: Option[BaseTaggingConfiguration[RequestTemplate, (Either[Throwable, WeaklyTypedMap[String]], RequestTemplate), MetricRow]],
+                                        wrapUpFunction: Option[Execution[Any]],
+                                        allowedTimePerElementInMillis: Int = 1000,
+                                        allowedTimePerBatchInSeconds: Int = 600,
+                                        allowedTimeForJobInSeconds: Int = 7200,
+                                        expectResultsFromBatchCalculations: Boolean = true) extends JobDefinition with WithResources {
 
     import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ParameterValuesImplicits._
 
@@ -101,7 +113,7 @@ object JobMessagesImplicits {
 
   }
 
-  implicit class TestPiCalcToRunnable(calc: TestPiCalculation) extends RunnableConvertible {
+  implicit class TestPiCalcToRunnable(calc: TestPiCalculationDefinition) extends RunnableConvertible {
 
     def toRunnable(implicit as: ActorSystem, ec: ExecutionContext): SupervisorActor.ProcessActorRunnableJobCmd[Int, Double, Double, MapWithCount[Tag, AggregateValue[Double]]] = {
       TestJobDefinitions.piEstimationJob(
@@ -112,11 +124,24 @@ object JobMessagesImplicits {
     }
   }
 
-  implicit class SearchEvaluationToRunnable(eval: SearchEvaluation) extends RunnableConvertible {
+  implicit class SearchEvaluationImplicits(eval: SearchEvaluationDefinition) extends RunnableConvertible {
+
+    import scala.concurrent._
 
     def toRunnable(implicit as: ActorSystem, ec: ExecutionContext): SupervisorActor.ProcessActorRunnableJobCmd[RequestTemplateBuilderModifier, MetricRow, MetricRow, MetricAggregation[Tag]] = {
       SearchJobDefinitions.searchEvaluationToRunnableJobCmd(eval)
     }
+
+    def getWriter: Writer[MetricAggregation[Tag], Tag, Any] = {
+      persistenceModule.persistenceDIModule.csvMetricAggregationWriter(subFolder = eval.jobName, x => {
+        val randomAdd: String = Random.alphanumeric.take(5).mkString
+        s"${x.toString()}-$randomAdd"
+      })
+    }
+
+    def getBatchAggregationSupplier: () => Aggregators.Aggregator[ProcessingMessages.ProcessingMessage[MetricRow], MetricAggregation[Tag]] = singleBatchAggregatorSupplier
+
+    def perJobAggregationSupplier: () => Aggregators.Aggregator[ProcessingMessages.ProcessingMessage[MetricRow], MetricAggregation[Tag]] = fullJobToSingleTagAggregatorSupplier
   }
 
 }

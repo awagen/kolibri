@@ -27,7 +27,7 @@ import de.awagen.kolibri.base.http.server.routes.StatusRoutes.corsHandler
 import de.awagen.kolibri.base.io.reader.ReaderUtils.safeContentRead
 import de.awagen.kolibri.base.io.reader.{DataOverviewReader, Reader}
 import de.awagen.kolibri.base.io.writer.Writers
-import de.awagen.kolibri.base.processing.JobMessages.SearchEvaluation
+import de.awagen.kolibri.base.processing.JobMessages.SearchEvaluationDefinition
 import org.slf4j.{Logger, LoggerFactory}
 import spray.json.DefaultJsonProtocol.{StringJsonFormat, immSeqFormat}
 import spray.json.{JsValue, JsonReader, enrichAny}
@@ -78,7 +78,7 @@ object ResourceRoutes {
       }
     }
 
-    val SEARCH_EVALUATION: Val[_] = Val[SearchEvaluation]("search_eval_no_ser")
+    val SEARCH_EVALUATION: Val[_] = Val[SearchEvaluationDefinition]("search_eval_no_ser")
 
   }
 

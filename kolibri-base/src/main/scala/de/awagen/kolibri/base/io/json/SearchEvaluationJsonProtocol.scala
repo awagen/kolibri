@@ -25,7 +25,7 @@ import de.awagen.kolibri.base.io.json.ConnectionJsonProtocol._
 import de.awagen.kolibri.base.io.json.ExecutionJsonProtocol._
 import de.awagen.kolibri.base.io.json.ResourceDirectiveJsonProtocol.GenericResourceDirectiveFormat
 import de.awagen.kolibri.base.io.json.TaggingConfigurationsJsonProtocol._
-import de.awagen.kolibri.base.processing.JobMessages.SearchEvaluation
+import de.awagen.kolibri.base.processing.JobMessages.SearchEvaluationDefinition
 import de.awagen.kolibri.base.processing.execution.functions.Execution
 import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ValueSeqGenDefinition
 import de.awagen.kolibri.base.processing.tagging.TaggingConfigurations.BaseTaggingConfiguration
@@ -65,7 +65,7 @@ object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSu
   val ALLOWED_TIME_FOR_JOB_IN_SECONDS_FIELD = "allowedTimeForJobInSeconds"
   val EXPECT_RESULTS_FROM_BATCH_CALCULATIONS_FIELD = "expectResultsFromBatchCalculations"
 
-  implicit val queryAndParamProviderFormat: RootJsonFormat[SearchEvaluation] = jsonFormat(
+  implicit val queryAndParamProviderFormat: RootJsonFormat[SearchEvaluationDefinition] = jsonFormat(
     (
       jobName: String,
       requestTasks: Int,
@@ -87,7 +87,7 @@ object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSu
       allowedTimeForJobInSeconds: Int,
       expectResultsFromBatchCalculations: Boolean
     ) =>
-      SearchEvaluation.apply(
+      SearchEvaluationDefinition.apply(
         jobName,
         requestTasks,
         fixedParams,

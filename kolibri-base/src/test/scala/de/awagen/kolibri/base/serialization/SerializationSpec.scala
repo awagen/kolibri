@@ -23,7 +23,7 @@ import akka.serialization.{SerializationExtension, Serializers}
 import de.awagen.kolibri.base.actors.KolibriTypedTestKitNoCluster
 import de.awagen.kolibri.base.io.json.ParameterValuesJsonProtocol.ValueSeqGenDefinitionFormat
 import de.awagen.kolibri.base.io.json.SearchEvaluationJsonProtocol.queryAndParamProviderFormat
-import de.awagen.kolibri.base.processing.JobMessages.SearchEvaluation
+import de.awagen.kolibri.base.processing.JobMessages.SearchEvaluationDefinition
 import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ValueType.URL_PARAMETER
 import de.awagen.kolibri.base.processing.modifiers.ParameterValues.{MappedParameterValues, ParameterValueMappingDefinition, ValueSeqGenDefinition}
 import de.awagen.kolibri.base.processing.modifiers.ParameterValuesDefinitionSpec
@@ -626,17 +626,17 @@ class SerializationSpec extends KolibriTypedTestKitNoCluster(ConfigOverwrites.co
     }
 
     "serialization of job message across actors" in {
-      val parsed: SearchEvaluation = Samples.jobSample.parseJson.convertTo[SearchEvaluation]
+      val parsed: SearchEvaluationDefinition = Samples.jobSample.parseJson.convertTo[SearchEvaluationDefinition]
       val senderActor: ActorRef[Actors.MirrorActor.Sent] = testKit.spawn(Actors.MirrorActor(), "mirror1")
       val testProbe = testKit.createTestProbe[Actors.MirrorActor.Received]()
       senderActor ! Actors.MirrorActor.Sent(parsed, testProbe.ref)
       val msg: Actors.MirrorActor.Received = testProbe.expectMessageType[Actors.MirrorActor.Received]
-      val value = msg.obj.asInstanceOf[SearchEvaluation]
+      val value = msg.obj.asInstanceOf[SearchEvaluationDefinition]
       value.jobName mustBe parsed.jobName
     }
 
     "serialize job message with file loads and node storage retrieval" in {
-      Samples.otherJobSample.parseJson.convertTo[SearchEvaluation]
+      Samples.otherJobSample.parseJson.convertTo[SearchEvaluationDefinition]
     }
 
   }

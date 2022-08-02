@@ -20,7 +20,7 @@ import akka.actor.SupervisorStrategy.Stop
 import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, ActorSystem, Cancellable, OneForOneStrategy, PoisonPill, Props, Terminated}
 import akka.pattern.ask
 import akka.util.Timeout
-import de.awagen.kolibri.base.actors.clusterinfo.ResourceToJobMappingClusterStateManagerActor.{ProcessResourceDirectives, ProcessedResourceDirectives}
+import de.awagen.kolibri.base.actors.clusterinfo.ResourceToJobMappingClusterStateManagerActor.{CheckedResourceDirectivesAndReadyForProcessing, ProcessResourceDirectives, ProcessedResourceDirectives}
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor._
 import de.awagen.kolibri.base.actors.work.manager.JobManagerActor
 import de.awagen.kolibri.base.actors.work.manager.JobManagerActor._
@@ -32,7 +32,8 @@ import de.awagen.kolibri.base.config.AppProperties._
 import de.awagen.kolibri.base.config.AppProperties.config.kolibriDispatcherName
 import de.awagen.kolibri.base.domain.jobdefinitions.Batch
 import de.awagen.kolibri.base.io.writer.Writers.Writer
-import de.awagen.kolibri.base.processing.JobMessages.{JobMessage, SearchEvaluation}
+import de.awagen.kolibri.base.processing.JobMessages.{JobDefinition, SearchEvaluationDefinition}
+import de.awagen.kolibri.base.processing.JobMessagesImplicits.SearchEvaluationImplicits
 import de.awagen.kolibri.base.processing.classifier.Mapper.FilteringMapper
 import de.awagen.kolibri.base.processing.execution.SimpleTaskExecution
 import de.awagen.kolibri.base.processing.execution.expectation._
@@ -53,8 +54,9 @@ import de.awagen.kolibri.datatypes.types.Types.WithCount
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 
 import scala.collection.mutable
-import scala.concurrent.duration.{DurationInt, FiniteDuration, MINUTES}
-import scala.concurrent.{Await, ExecutionContextExecutor, Future}
+import scala.concurrent.duration.{DurationInt, FiniteDuration, MINUTES, SECONDS}
+import scala.concurrent.{ExecutionContextExecutor, Future}
+import scala.util.{Failure, Success}
 
 
 object SupervisorActor {
@@ -90,14 +92,14 @@ object SupervisorActor {
       name = JobManagerActor.name(jobId))
   }
 
-  def runnableJobCmdToJobManager[M <: WithCount](jobId: String, cmd: ProcessActorRunnableJobCmd[_, _, _, M])(implicit context: ActorContext): ActorRef = {
+  def runnableJobCmdToJobManager[M <: WithCount](jobId: String, eval: SearchEvaluationDefinition)(implicit context: ActorContext): ActorRef = {
     createJobManagerActor(
       jobId,
-      cmd.perBatchAggregatorSupplier,
-      cmd.perJobAggregatorSupplier,
-      cmd.writer,
-      cmd.allowedTimeForJob,
-      cmd.allowedTimePerBatch)
+      eval.getBatchAggregationSupplier,
+      eval.perJobAggregationSupplier,
+      eval.getWriter,
+      FiniteDuration(eval.allowedTimeForJobInSeconds, SECONDS),
+      FiniteDuration(eval.allowedTimePerBatchInSeconds, SECONDS))
   }
 
   case class ActorSetup(executing: ActorRef, jobSender: ActorRef)
@@ -218,7 +220,15 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
         expectation.init
         jobIdToActorRefAndExpectation(jobId) = (ActorSetup(actor, jobSender), expectation)
       }
-    case e: JobMessage =>
+    case CheckedResourceDirectivesAndReadyForProcessing(e: SearchEvaluationDefinition) =>
+      val senderRef = sender()
+      val actor = runnableJobCmdToJobManager(e.jobName, e)
+      context.watch(actor)
+      actor ! e
+      val expectation = ExecutionExpectations.finishedJobExecutionExpectation(FiniteDuration(e.allowedTimeForJobInSeconds, SECONDS))
+      expectation.init
+      jobIdToActorRefAndExpectation(e.jobName) = (ActorSetup(actor, senderRef), expectation)
+    case e: JobDefinition =>
       import de.awagen.kolibri.base.processing.JobMessagesImplicits._
       val jobSender = sender()
       val jobId = e.jobName
@@ -227,37 +237,29 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
       }
       else {
         log.info("Creating and sending job to JobManager, jobId: {}", jobId)
-        val runnableJobCmdOpt: Option[ProcessActorRunnableJobCmd[_, _, _, _ <: WithCount]] = e match {
+        e match {
           case msg: TestPiCalcToRunnable =>
             Some(msg.toRunnable)
-          case msg: SearchEvaluation =>
+          case msg: SearchEvaluationDefinition =>
             // handle resource directive handling so that the modifier data can safely be generated from the SearchEvaluation object
-            // TODO: this is temporary and calls a blocking Await.result, replace this with a proper async mechanism (as in WorkManagerActor)
             val directives = msg.resourceDirectives
             implicit val timeout: Timeout = FiniteDuration(5, MINUTES)
             val resultFuture: Future[Any] = ClusterNode.getSystemSetup.localResourceManagerActor ? ProcessResourceDirectives(directives, e.jobName)
-            val resourceDirectiveProcessResult = Await.result(resultFuture, 5 minutes).asInstanceOf[ProcessedResourceDirectives]
-            log.info(s"resource directive processing results: ${resourceDirectiveProcessResult.states}")
-            val mustStopExecution: Boolean = resourceDirectiveProcessResult.states.exists(state => !Seq(ResourceOK, ResourceAlreadyExists).contains(state))
-            if (mustStopExecution) {
-              log.warning(s"could not process all resource directives, stopping execution of job ${e.jobName}: ${resourceDirectiveProcessResult.states}")
-              throw new RuntimeException("Resources could not be loaded - stopping execution")
-            }
-            else {
-              Some(msg.toRunnable)
-            }
-          case _ =>
-            log.warning("Passed JobMessage not defined in SupervisorActor job-handling, ignored msg for job {}", e.jobName)
-            None
+            resultFuture.onComplete({
+              case Success(value) =>
+                val processedDirectiveMsg = value.asInstanceOf[ProcessedResourceDirectives]
+                log.info(s"resource directive processing results: ${processedDirectiveMsg.states}")
+                val mustStopExecution: Boolean = processedDirectiveMsg.states.exists(state => !Seq(ResourceOK, ResourceAlreadyExists).contains(state))
+                if (mustStopExecution) {
+                  log.warning(s"could not process all resource directives, stopping execution of job ${e.jobName}: ${processedDirectiveMsg.states}")
+                }
+                else {
+                  self.tell(CheckedResourceDirectivesAndReadyForProcessing(e), jobSender)
+                }
+              case Failure(exception) =>
+                log.error(s"processing resource directives for job '${e.jobName}' failed, stopping execution", exception)
+            })
         }
-        runnableJobCmdOpt.foreach(runnableJobCmd => {
-          val actor = runnableJobCmdToJobManager(jobId, runnableJobCmd)
-          context.watch(actor)
-          actor ! e
-          val expectation = ExecutionExpectations.finishedJobExecutionExpectation(runnableJobCmd.allowedTimeForJob)
-          expectation.init
-          jobIdToActorRefAndExpectation(jobId) = (ActorSetup(actor, jobSender), expectation)
-        })
       }
     case job: ProcessActorRunnableTaskJobCmd[WithCount] =>
       val jobSender: ActorRef = sender()
