@@ -20,12 +20,12 @@ package de.awagen.kolibri.base.processing.modifiers
 import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity}
 import akka.util.ByteString
-import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ParameterValueMapping.getGeneratorsByValues
+import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ParameterValueMappingDefinition.getGeneratorsByValues
 import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.{CombinedModifier, RequestTemplateBuilderModifier}
 import de.awagen.kolibri.datatypes.collections.generators._
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.types.SerializableCallable
-import de.awagen.kolibri.datatypes.types.SerializableCallable.{CachedSupplier, SerializableSupplier}
+import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSupplier
 
 import scala.collection.mutable.ArrayBuffer
 
@@ -58,7 +58,13 @@ object ParameterValues {
     val URL_PARAMETER, HEADER, BODY = Value
   }
 
-  sealed trait ValueSeqGenProvider extends KolibriSerializable {
+  sealed trait ValueSeqGenDefinition[+T] extends KolibriSerializable {
+
+    def toState: ValueSeqGenState
+
+  }
+
+  sealed trait ValueSeqGenState extends KolibriSerializable {
 
     /**
      * In the case of a single parameter with distinct values this would just put each value in a separate Seq(element),
@@ -70,63 +76,49 @@ object ParameterValues {
      */
     def toSeqGenerator: IndexedGenerator[Seq[ParameterValue]]
 
-    def copy: ValueSeqGenProvider
+  }
 
+  /**
+   * State of parameter values. This carries state and is no good candidate for serialization / cross-node communication.
+   * For this the ParameterValuesDefinition should be used.
+   *
+   * @param generator
+   */
+  case class ParameterValuesState(generator: IndexedGenerator[ParameterValue]) extends IndexedGenerator[ParameterValue] with ValueSeqGenState {
+    override val nrOfElements: Int = generator.nrOfElements
+
+    override def getPart(startIndex: Int, endIndex: Int): IndexedGenerator[ParameterValue] = {
+      generator.getPart(startIndex, endIndex)
+    }
+
+    override def get(index: Int): Option[ParameterValue] = generator.get(index)
+
+    override def mapGen[B](f: SerializableCallable.SerializableFunction1[ParameterValue, B]): IndexedGenerator[B] = {
+      generator.mapGen(f)
+    }
+
+    def toSeqGenerator: IndexedGenerator[Seq[ParameterValue]] = this.mapGen(x => Seq(x))
   }
 
   /**
    * Define parameter values with name and given type and range of values.
+   * Not intended to carry any state itself but provide method to generate it
    *
    * @param name      - name of the parameter
    * @param valueType - value type
    * @param values    - single values the parameter can take
    */
-  case class ParameterValues(name: String,
-                             valueType: ValueType.Value,
-                             values: SerializableSupplier[IndexedGenerator[String]]) extends IndexedGenerator[ParameterValue] with ValueSeqGenProvider {
-    override def copy: ParameterValues = ParameterValues(
-      name,
-      valueType,
-      // TODO: get rid of stripping the cached supplier to its base supplier to avoid state serialization in case
-      // a state-blank copy is needed.
-      values match {
-        case value: CachedSupplier[IndexedGenerator[String]] => CachedSupplier(value.supplier)
-        case _ => values
-      }
-    )
+  case class ParameterValuesDefinition(name: String,
+                                       valueType: ValueType.Value,
+                                       values: SerializableSupplier[IndexedGenerator[String]]) extends ValueSeqGenDefinition[ParameterValue] {
 
-    private[this] lazy val parameterValueGenerator = values.apply().mapGen(x => ParameterValue(name, valueType, x))
-    override lazy val nrOfElements: Int = parameterValueGenerator.nrOfElements
+    def toState: ParameterValuesState = ParameterValuesState(values.apply().mapGen(x => ParameterValue(name, valueType, x)))
 
-    override def getPart(startIndex: Int, endIndex: Int): IndexedGenerator[ParameterValue] = {
-      parameterValueGenerator.getPart(startIndex, endIndex)
-    }
-
-    override def get(index: Int): Option[ParameterValue] = parameterValueGenerator.get(index)
-
-    override def mapGen[B](f: SerializableCallable.SerializableFunction1[ParameterValue, B]): IndexedGenerator[B] = {
-      parameterValueGenerator.mapGen(f)
-    }
-
-    override def toSeqGenerator: IndexedGenerator[Seq[ParameterValue]] = this.mapGen(x => Seq(x))
   }
 
   case class MappedParameterValues(name: String,
                                    valueType: ValueType.Value,
-                                   values: SerializableSupplier[Map[String, IndexedGenerator[String]]]) extends KolibriSerializable {
-
-    def copy(): MappedParameterValues = MappedParameterValues(
-      name,
-      valueType,
-      // TODO: get rid of stripping the cached supplier to its base supplier to avoid state serialization in case
-      // a state-blank copy is needed.
-      values match {
-        case value: CachedSupplier[Map[String, IndexedGenerator[String]]] => CachedSupplier(value.supplier)
-        case _ => values
-      }
-    )
-
-  }
+                                   values: SerializableSupplier[Map[String, IndexedGenerator[String]]]) extends KolibriSerializable
 
 
   case class ParameterValue(name: String, valueType: ValueType.Value, value: String) extends KolibriSerializable
@@ -136,7 +128,7 @@ object ParameterValues {
    *
    * @param values
    */
-  case class ParameterValuesGenSeqToValueSeqGenerator(values: Seq[ValueSeqGenProvider]) extends IndexedGenerator[Seq[ParameterValue]] {
+  case class ParameterValuesGenSeqToValueSeqGenerator(values: Seq[ValueSeqGenState]) extends IndexedGenerator[Seq[ParameterValue]] {
     val seqGenerators: Seq[IndexedGenerator[Seq[ParameterValue]]] = values.map(x => x.toSeqGenerator)
     val generator: IndexedGenerator[Seq[ParameterValue]] = PermutatingIndexedGenerator(seqGenerators).mapGen(x => x.flatten)
 
@@ -151,15 +143,15 @@ object ParameterValues {
     }
   }
 
-  object ParameterValueMapping {
+  object ParameterValueMappingDefinition {
 
     def dataToSerializableSupplier[T](data: T): SerializableSupplier[T] = new SerializableSupplier[T] {
       override def apply(): T = data
     }
 
-    private[modifiers] def removeTopLevelKeysWithMissingMappings(pVals: ParameterValues,
+    private[modifiers] def removeTopLevelKeysWithMissingMappings(pVals: ParameterValuesDefinition,
                                                                  mappedValues: Seq[MappedParameterValues],
-                                                                 mappingKeyValueAssignments: Seq[(Int, Int)]): ParameterValues = {
+                                                                 mappingKeyValueAssignments: Seq[(Int, Int)]): ParameterValuesDefinition = {
       // extract those indices we need to check (only those mapped to index 0)
       val parameterValues = pVals.values.apply()
       val checkMappedValueIndices = ArrayBuffer(mappedValues.indices: _*)
@@ -174,7 +166,7 @@ object ParameterValues {
       removeValues.foreach(value => {
         newParameterValues = newParameterValues.filter(x => x != value)
       })
-      ParameterValues(
+      ParameterValuesDefinition(
         pVals.name,
         pVals.valueType,
         dataToSerializableSupplier(ByFunctionNrLimitedIndexedGenerator.createFromSeq(newParameterValues)))
@@ -300,10 +292,10 @@ object ParameterValues {
      *
      * @return
      */
-    private[modifiers] def getGeneratorsByValues(keyValues: ParameterValues,
+    private[modifiers] def getGeneratorsByValues(keyValues: ParameterValuesDefinition,
                                                  mappedValues: Seq[MappedParameterValues],
                                                  mappingKeyValueAssignments: Seq[(Int, Int)]): IndexedGenerator[IndexedGenerator[Seq[ParameterValue]]] = {
-      val cleanedKeyValues: ParameterValues = removeTopLevelKeysWithMissingMappings(keyValues, mappedValues, mappingKeyValueAssignments)
+      val cleanedKeyValues: ParameterValuesState = ParameterValuesState(removeTopLevelKeysWithMissingMappings(keyValues, mappedValues, mappingKeyValueAssignments).toState)
       cleanedKeyValues.mapGen(x => {
         if (mappingKeyValueAssignments.isEmpty) {
           generateValuesFromKeyValue(x, mappedValues)
@@ -339,44 +331,7 @@ object ParameterValues {
 
   }
 
-  /**
-   * Describe a mapping of generated values to mappedValues. By optionally passing mappingKeyValueAssignments
-   * This allows mapping some value in the mappedValues seq be mapped to the mapped values of another element
-   * in mappedValues that is coming before. Here index 0 indicates the non-mapped values as key, while starting from
-   * index 1 the values from mappedValues can be referenced.
-   * Some assertions are made here regarding mappingKeyValueAssignments:
-   * 1) strictly 2nd index > 1st index (e.g key value must come before in the sequence of values)
-   * 2) start value can not be < 0
-   * 3) any defined index is smaller than 1 + mappedValues.length (+ 1 comes from having values generated by 'values'
-   * on index 0)
-   *
-   * @param keyValues                  - unmapped values
-   * @param mappedValues               - values mapped by another value
-   * @param mappingKeyValueAssignments - If empty, all mapped values will be mapped against the unmapped values.
-   *                                   With index 0 representing the unmapped values and other mapped values
-   *                                   are starting from index 1 in the sequence they are defined in in the passed Seq
-   *
-   */
-  class ParameterValueMapping(val keyValues: ParameterValues,
-                              val mappedValues: Seq[MappedParameterValues],
-                              val mappingKeyValueAssignments: Seq[(Int, Int)]) extends IndexedGenerator[Seq[ParameterValue]] with ValueSeqGenProvider {
-
-    override def copy: ParameterValueMapping = new ParameterValueMapping(
-      keyValues.copy,
-      mappedValues.map(x => x.copy()),
-      mappingKeyValueAssignments
-    )
-
-    // a few assumptions such that we can just linearly from start to end generate our values
-    // tuple index1 must always smaller than index2
-    assert(!mappingKeyValueAssignments.exists(x => x._1 > x._2), s"Second index in mapping tuples must be bigger than first index, violated" +
-      s"in $mappingKeyValueAssignments")
-    // tuple index1 must always be >= 0
-    assert(!mappingKeyValueAssignments.exists(x => x._1 < 0))
-    // index2 is always smaller then 1 + mappedValues.length
-    assert(!mappingKeyValueAssignments.exists(x => x._2 >= mappedValues.length + 1))
-
-    lazy val generatorsByValues: IndexedGenerator[IndexedGenerator[Seq[ParameterValue]]] = getGeneratorsByValues(keyValues, mappedValues, mappingKeyValueAssignments)
+  case class ParameterValueMappingState(generatorsByValues: IndexedGenerator[IndexedGenerator[Seq[ParameterValue]]]) extends IndexedGenerator[Seq[ParameterValue]] with ValueSeqGenState {
 
     // to generate all combinations, we use generator that keeps the partitioning by key generator values
     lazy val allValuesGenerator: IndexedGenerator[Seq[ParameterValue]] = PartitionByGroupIndexedGenerator(
@@ -400,6 +355,41 @@ object ParameterValues {
     override def partitions: IndexedGenerator[IndexedGenerator[Seq[ParameterValue]]] = generatorsByValues
 
     override def toSeqGenerator: IndexedGenerator[Seq[ParameterValue]] = this
+
+  }
+
+  /**
+   * Describe a mapping of generated values to mappedValues. By optionally passing mappingKeyValueAssignments
+   * This allows mapping some value in the mappedValues seq be mapped to the mapped values of another element
+   * in mappedValues that is coming before. Here index 0 indicates the non-mapped values as key, while starting from
+   * index 1 the values from mappedValues can be referenced.
+   * Some assertions are made here regarding mappingKeyValueAssignments:
+   * 1) strictly 2nd index > 1st index (e.g key value must come before in the sequence of values)
+   * 2) start value can not be < 0
+   * 3) any defined index is smaller than 1 + mappedValues.length (+ 1 comes from having values generated by 'values'
+   * on index 0)
+   *
+   * @param keyValues                  - unmapped values
+   * @param mappedValues               - values mapped by another value
+   * @param mappingKeyValueAssignments - If empty, all mapped values will be mapped against the unmapped values.
+   *                                   With index 0 representing the unmapped values and other mapped values
+   *                                   are starting from index 1 in the sequence they are defined in in the passed Seq
+   *
+   */
+  class ParameterValueMappingDefinition(val keyValues: ParameterValuesDefinition,
+                                        val mappedValues: Seq[MappedParameterValues],
+                                        val mappingKeyValueAssignments: Seq[(Int, Int)]) extends ValueSeqGenDefinition[Seq[ParameterValue]] {
+
+    // a few assumptions such that we can just linearly from start to end generate our values
+    // tuple index1 must always smaller than index2
+    assert(!mappingKeyValueAssignments.exists(x => x._1 > x._2), s"Second index in mapping tuples must be bigger than first index, violated" +
+      s"in $mappingKeyValueAssignments")
+    // tuple index1 must always be >= 0
+    assert(!mappingKeyValueAssignments.exists(x => x._1 < 0))
+    // index2 is always smaller then 1 + mappedValues.length
+    assert(!mappingKeyValueAssignments.exists(x => x._2 >= mappedValues.length + 1))
+
+    override def toState: ParameterValueMappingState = ParameterValueMappingState(getGeneratorsByValues(keyValues, mappedValues, mappingKeyValueAssignments))
   }
 
 }

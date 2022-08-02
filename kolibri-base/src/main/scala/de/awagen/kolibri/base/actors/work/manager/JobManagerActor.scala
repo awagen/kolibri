@@ -301,7 +301,7 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
           JobBatchMsg(
             jobMsg.jobId,
             batchNr,
-            searchJobMsg.copy(requestParameterPermutateSeq = searchJobMsg.requestParameterPermutateSeq.map(x => x.copy)))
+            searchJobMsg)
         )
       )
       expectResultsFromBatchCalculations = searchJobMsg.expectResultsFromBatchCalculations

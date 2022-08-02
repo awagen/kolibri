@@ -29,7 +29,7 @@ import de.awagen.kolibri.base.http.client.request.{RequestTemplate, RequestTempl
 import de.awagen.kolibri.base.processing.JobMessages.{SearchEvaluation, TestPiCalculation}
 import de.awagen.kolibri.base.processing.execution.functions.Execution
 import de.awagen.kolibri.base.processing.modifiers.Modifier
-import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ValueSeqGenProvider
+import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ValueSeqGenDefinition
 import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
 import de.awagen.kolibri.base.processing.tagging.TaggingConfigurations.BaseTaggingConfiguration
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.SearchJobDefinitions
@@ -68,7 +68,7 @@ object JobMessages {
                               contextPath: String,
                               connections: Seq[Connection],
                               resourceDirectives: Seq[ResourceDirective[_]],
-                              requestParameterPermutateSeq: Seq[ValueSeqGenProvider],
+                              requestParameterPermutateSeq: Seq[ValueSeqGenDefinition[_]],
                               batchByIndex: Int,
                               parsingConfig: ParsingConfig,
                               excludeParamsFromMetricRow: Seq[String],
@@ -85,7 +85,7 @@ object JobMessages {
     import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ParameterValuesImplicits._
 
     def requestTemplateModifiers: Seq[IndexedGenerator[Modifier[RequestTemplateBuilder]]] =
-      requestParameterPermutateSeq.map(x => x.toSeqGenerator).map(x => x.mapGen(y => y.toModifier))
+      requestParameterPermutateSeq.map(x => x.toState).map(x => x.toSeqGenerator).map(x => x.mapGen(y => y.toModifier))
 
     // promote the resources needed in metric row calculations to the current job def
     mapFutureMetricRowCalculation.resources.foreach(resource => this.addResource(resource))

@@ -27,7 +27,7 @@ import de.awagen.kolibri.base.io.reader.FileReaderUtils
 import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator}
 import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
 import de.awagen.kolibri.datatypes.types.JsonStructDefs._
-import de.awagen.kolibri.datatypes.types.SerializableCallable.{CachedSupplier, SerializableSupplier}
+import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSupplier
 import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
 import de.awagen.kolibri.datatypes.values.OrderedValues
 import org.slf4j.{Logger, LoggerFactory}
@@ -133,23 +133,21 @@ object SupplierJsonProtocol extends DefaultJsonProtocol {
     override def read(json: JsValue): SerializableSupplier[IndexedGenerator[String]] = json match {
       case spray.json.JsObject(fields) if fields.contains(TYPE_KEY) => fields(TYPE_KEY).convertTo[String] match {
         case FROM_ORDERED_VALUES_TYPE =>
-          val supplier = new SerializableSupplier[IndexedGenerator[String]] {
+          new SerializableSupplier[IndexedGenerator[String]] {
             override def apply(): IndexedGenerator[String] = {
               val values = fields(VALUES_KEY).convertTo[OrderedValues[String]]
               ByFunctionNrLimitedIndexedGenerator.createFromSeq(values.getAll)
             }
           }
-          CachedSupplier(supplier)
         case PARAMETER_VALUES_TYPE =>
           val values = fields(VALUES_KEY).convertTo[Seq[String]]
-          val supplier = new SerializableSupplier[IndexedGenerator[String]] {
+          new SerializableSupplier[IndexedGenerator[String]] {
             override def apply(): IndexedGenerator[String] = ByFunctionNrLimitedIndexedGenerator.createFromSeq(values)
           }
-          CachedSupplier(supplier)
         case VALUES_FROM_NODE_STORAGE_TYPE =>
           val identifier: String = fields(IDENTIFIER_KEY).convertTo[String]
           val resource: Resource[IndexedGenerator[String]] = Resource(ResourceType.STRING_VALUES, identifier)
-          val supplier = new SerializableSupplier[IndexedGenerator[String]] {
+          new SerializableSupplier[IndexedGenerator[String]] {
             override def apply(): IndexedGenerator[String] = {
               ClusterNode.getResource(Retrieve(resource)) match {
                 case Left(retrievalError) =>
@@ -158,7 +156,6 @@ object SupplierJsonProtocol extends DefaultJsonProtocol {
               }
             }
           }
-          CachedSupplier(supplier)
       }
     }
 
@@ -213,16 +210,15 @@ object SupplierJsonProtocol extends DefaultJsonProtocol {
       case spray.json.JsObject(fields) => fields(TYPE_KEY).convertTo[String] match {
         case JUDGEMENTS_FROM_FILE_TYPE =>
           val file: String = fields(FILE_KEY).convertTo[String]
-          val supplier = new SerializableSupplier[Map[String, Double]] {
+          new SerializableSupplier[Map[String, Double]] {
             override def apply(): Map[String, Double] = {
               filepathToJudgementProvider(file).allJudgements
             }
           }
-          CachedSupplier(supplier)
         case VALUES_FROM_NODE_STORAGE_TYPE =>
           val identifier: String = fields(IDENTIFIER_KEY).convertTo[String]
           val resource: Resource[Map[String, Double]] = Resource(ResourceType.MAP_STRING_TO_DOUBLE_VALUE, identifier)
-          val supplier = new SerializableSupplier[Map[String, Double]] {
+          new SerializableSupplier[Map[String, Double]] {
             override def apply(): Map[String, Double] = {
               ClusterNode.getResource(Retrieve(resource)) match {
                 case Left(retrievalError) =>
@@ -231,7 +227,6 @@ object SupplierJsonProtocol extends DefaultJsonProtocol {
               }
             }
           }
-          CachedSupplier(supplier)
       }
 
     }
@@ -250,28 +245,26 @@ object SupplierJsonProtocol extends DefaultJsonProtocol {
         // this case assumes passing of the key values to valid values for the parameter
         case JSON_VALUES_MAPPING_TYPE =>
           val mappings = fields(VALUES_KEY).convertTo[Map[String, Seq[String]]]
-          val supplier = new SerializableSupplier[Map[String, IndexedGenerator[String]]] {
+          new SerializableSupplier[Map[String, IndexedGenerator[String]]] {
             override def apply(): Map[String, IndexedGenerator[String]] = {
               mappings.map(x => (x._1, ByFunctionNrLimitedIndexedGenerator.createFromSeq(x._2)))
             }
           }
-          CachedSupplier(supplier)
         // this case assumes a json for the values key, containing mapping
         // of key values to files containing the valid values for the key
         case JSON_VALUES_FILES_MAPPING_TYPE =>
           val fileMappings = fields(VALUES_KEY).convertTo[Map[String, String]]
-          val supplier = new SerializableSupplier[Map[String, IndexedGenerator[String]]] {
+          new SerializableSupplier[Map[String, IndexedGenerator[String]]] {
             override def apply(): Map[String, IndexedGenerator[String]] = {
               fileMappings.map(x => {
                 (x._1, ByFunctionNrLimitedIndexedGenerator.createFromSeq(FileReaderUtils.loadLinesFromFile(x._2, AppConfig.persistenceModule.persistenceDIModule.reader)))
               })
             }
           }
-          CachedSupplier(supplier)
         // assumes a json with full key value mappings under the values key
         case JSON_SINGLE_MAPPINGS_TYPE =>
           val mappingsJsonFile = fields(VALUES_KEY).convertTo[String]
-          val supplier = new SerializableSupplier[Map[String, IndexedGenerator[String]]] {
+          new SerializableSupplier[Map[String, IndexedGenerator[String]]] {
             override def apply(): Map[String, IndexedGenerator[String]] = {
               val fileReader = AppConfig.persistenceModule.persistenceDIModule.reader
               FileReaderUtils.readJsonMapping(mappingsJsonFile, fileReader, x => jsValueStringConversion(x))
@@ -279,11 +272,10 @@ object SupplierJsonProtocol extends DefaultJsonProtocol {
                 .map(x => (x._1, ByFunctionNrLimitedIndexedGenerator.createFromSeq(x._2)))
             }
           }
-          CachedSupplier(supplier)
         case JSON_ARRAY_MAPPINGS_TYPE =>
           try {
             val mappingsJsonFile = fields(VALUES_KEY).convertTo[String]
-            val supplier = new SerializableSupplier[Map[String, IndexedGenerator[String]]] {
+            new SerializableSupplier[Map[String, IndexedGenerator[String]]] {
               val fileReader = AppConfig.persistenceModule.persistenceDIModule.reader
 
               override def apply(): Map[String, IndexedGenerator[String]] = {
@@ -291,7 +283,6 @@ object SupplierJsonProtocol extends DefaultJsonProtocol {
                   .map(x => (x._1, ByFunctionNrLimitedIndexedGenerator.createFromSeq(x._2)))
               }
             }
-            CachedSupplier(supplier)
           }
           catch {
             case e: Throwable => logger.error("failed reading json file of format 'JSON_ARRAY_MAPPINGS_TYPE'", e)
@@ -302,13 +293,12 @@ object SupplierJsonProtocol extends DefaultJsonProtocol {
         case FILE_PREFIX_TO_FILE_LINES_MAPPING_TYPE =>
           val directory = fields(DIRECTORY_KEY).convertTo[String]
           val filesSuffix: String = fields(FILES_SUFFIX_KEY).convertTo[String]
-          val supplier = new SerializableSupplier[Map[String, IndexedGenerator[String]]] {
+          new SerializableSupplier[Map[String, IndexedGenerator[String]]] {
             override def apply(): Map[String, IndexedGenerator[String]] = {
               FileReaderUtils.extractFilePrefixToLineValuesMapping(directory, filesSuffix, "/")
                 .map(x => (x._1, ByFunctionNrLimitedIndexedGenerator.createFromSeq(x._2)))
             }
           }
-          CachedSupplier(supplier)
         // picking mappings from csv with a key column and a value column. If multiple distinct values are contained
         // for a key, they will be preserved as distinct values in the generator per key value
         case CSV_MAPPINGS_TYPE =>
@@ -323,16 +313,15 @@ object SupplierJsonProtocol extends DefaultJsonProtocol {
             filterLessColumnsThan = math.max(keyColumnIndex, valueColumnIndex) + 1,
             valsToKey = x => x(keyColumnIndex),
             columnsToValue = x => x(valueColumnIndex))
-          val supplier = new SerializableSupplier[Map[String, IndexedGenerator[String]]] {
+          new SerializableSupplier[Map[String, IndexedGenerator[String]]] {
             override def apply(): Map[String, IndexedGenerator[String]] = {
               keyValuesMapping.map(x => (x._1, ByFunctionNrLimitedIndexedGenerator.createFromSeq(x._2.toSeq)))
             }
           }
-          CachedSupplier(supplier)
         case VALUES_FROM_NODE_STORAGE_TYPE =>
           val identifier: String = fields(IDENTIFIER_KEY).convertTo[String]
           val resource: Resource[Map[String, IndexedGenerator[String]]] = Resource(ResourceType.MAP_STRING_TO_STRING_VALUES, identifier)
-          val supplier = new SerializableSupplier[Map[String, IndexedGenerator[String]]] {
+          new SerializableSupplier[Map[String, IndexedGenerator[String]]] {
             override def apply(): Map[String, IndexedGenerator[String]] = {
               ClusterNode.getResource(Retrieve(resource)) match {
                 case Left(retrievalError) =>
@@ -341,7 +330,6 @@ object SupplierJsonProtocol extends DefaultJsonProtocol {
               }
             }
           }
-          CachedSupplier(supplier)
       }
     }
 

@@ -21,13 +21,13 @@ import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
 import akka.serialization.{SerializationExtension, Serializers}
 import de.awagen.kolibri.base.actors.KolibriTypedTestKitNoCluster
-import de.awagen.kolibri.base.io.json.ParameterValuesJsonProtocol.ValueSeqGenProviderFormat
+import de.awagen.kolibri.base.io.json.ParameterValuesJsonProtocol.ValueSeqGenDefinitionFormat
 import de.awagen.kolibri.base.io.json.SearchEvaluationJsonProtocol.queryAndParamProviderFormat
 import de.awagen.kolibri.base.processing.JobMessages.SearchEvaluation
 import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ValueType.URL_PARAMETER
-import de.awagen.kolibri.base.processing.modifiers.ParameterValues.{MappedParameterValues, ParameterValueMapping, ValueSeqGenProvider}
-import de.awagen.kolibri.base.processing.modifiers.ParameterValuesSpec
-import de.awagen.kolibri.base.processing.modifiers.ParameterValuesSpec.{mappedValue1, mappedValue2}
+import de.awagen.kolibri.base.processing.modifiers.ParameterValues.{MappedParameterValues, ParameterValueMappingDefinition, ValueSeqGenDefinition}
+import de.awagen.kolibri.base.processing.modifiers.ParameterValuesDefinitionSpec
+import de.awagen.kolibri.base.processing.modifiers.ParameterValuesDefinitionSpec.{mappedValue1, mappedValue2}
 import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator}
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSupplier
@@ -572,7 +572,7 @@ class SerializationSpec extends KolibriTypedTestKitNoCluster(ConfigOverwrites.co
 
     "work properly on ParameterValueMappings" in {
       // given
-      val original = new ParameterValueMapping(keyValues = ParameterValuesSpec.parameterValues, mappedValues = Seq(mappedValue1, mappedValue2),
+      val original = new ParameterValueMappingDefinition(keyValues = ParameterValuesDefinitionSpec.parameterValues, mappedValues = Seq(mappedValue1, mappedValue2),
         mappingKeyValueAssignments = Seq((1, 2)))
       // when, then
       serializeAndBack(original)
@@ -604,22 +604,22 @@ class SerializationSpec extends KolibriTypedTestKitNoCluster(ConfigOverwrites.co
 
     "parsed mapping sample must be serializable" in {
       // given
-      val parsed = Samples.mappingSample.parseJson.convertTo[ValueSeqGenProvider]
+      val parsed = Samples.mappingSample.parseJson.convertTo[ValueSeqGenDefinition[_]]
       // when, then
       serializeAndBack(parsed)
     }
 
     "serialization across actors" in {
       // given
-      val parsed: ValueSeqGenProvider = Samples.mappingSample.parseJson.convertTo[ValueSeqGenProvider]
-      val castParsed = parsed.asInstanceOf[ParameterValueMapping]
+      val parsed: ValueSeqGenDefinition[_] = Samples.mappingSample.parseJson.convertTo[ValueSeqGenDefinition[_]]
+      val castParsed = parsed.asInstanceOf[ParameterValueMappingDefinition]
       val senderActor: ActorRef[Actors.MirrorActor.Sent] = testKit.spawn(Actors.MirrorActor(), "mirror")
       val testProbe = testKit.createTestProbe[Actors.MirrorActor.Received]()
       senderActor ! Actors.MirrorActor.Sent(parsed, testProbe.ref)
       val msg: Actors.MirrorActor.Received = testProbe.expectMessageType[Actors.MirrorActor.Received]
-      val value = msg.obj.asInstanceOf[ParameterValueMapping]
+      val value = msg.obj.asInstanceOf[ParameterValueMappingDefinition]
       value.keyValues.name mustBe castParsed.keyValues.name
-      value.keyValues.values.apply().size mustBe castParsed.keyValues.size
+      value.keyValues.values.apply().size mustBe castParsed.keyValues.toState.size
       value.keyValues.valueType mustBe castParsed.keyValues.valueType
       value.mappingKeyValueAssignments mustBe castParsed.mappingKeyValueAssignments
       value.mappedValues.size mustBe castParsed.mappedValues.size

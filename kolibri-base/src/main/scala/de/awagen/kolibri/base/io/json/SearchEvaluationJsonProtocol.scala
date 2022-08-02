@@ -27,7 +27,7 @@ import de.awagen.kolibri.base.io.json.ResourceDirectiveJsonProtocol.GenericResou
 import de.awagen.kolibri.base.io.json.TaggingConfigurationsJsonProtocol._
 import de.awagen.kolibri.base.processing.JobMessages.SearchEvaluation
 import de.awagen.kolibri.base.processing.execution.functions.Execution
-import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ValueSeqGenProvider
+import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ValueSeqGenDefinition
 import de.awagen.kolibri.base.processing.tagging.TaggingConfigurations.BaseTaggingConfiguration
 import de.awagen.kolibri.base.usecase.searchopt.io.json.CalculationsJsonProtocol._
 import de.awagen.kolibri.base.usecase.searchopt.io.json.ParsingConfigJsonProtocol
@@ -40,7 +40,7 @@ import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
 import de.awagen.kolibri.datatypes.types.JsonStructDefs._
 import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
 import spray.json.{DefaultJsonProtocol, RootJsonFormat}
-import de.awagen.kolibri.base.io.json.ParameterValuesJsonProtocol.ValueSeqGenProviderFormat
+import de.awagen.kolibri.base.io.json.ParameterValuesJsonProtocol.ValueSeqGenDefinitionFormat
 
 
 object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSupport with WithStructDef {
@@ -73,7 +73,7 @@ object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSu
       contextPath: String,
       connections: Seq[Connection],
       resourceDirectives: Seq[ResourceDirective[_]],
-      requestParameterPermutateSeq: Seq[ValueSeqGenProvider],
+      requestParameterPermutateSeq: Seq[ValueSeqGenDefinition[_]],
       batchByIndex: Int,
       parsingConfig: ParsingConfig,
       excludeParamsFromMetricRow: Seq[String],
@@ -164,7 +164,7 @@ object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSu
         ),
         FieldDef(
           StringConstantStructDef(REQUEST_PARAMETER_PERMUTATE_SEQ_FIELD),
-          GenericSeqStructDef(ParameterValuesJsonProtocol.ValueSeqGenProviderFormat.structDef),
+          GenericSeqStructDef(ParameterValuesJsonProtocol.ValueSeqGenDefinitionFormat.structDef),
           required = true
         ),
         FieldDef(

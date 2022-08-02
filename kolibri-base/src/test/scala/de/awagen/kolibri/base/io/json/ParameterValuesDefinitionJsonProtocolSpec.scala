@@ -16,12 +16,12 @@
 
 package de.awagen.kolibri.base.io.json
 
-import de.awagen.kolibri.base.io.json.ParameterValuesJsonProtocol.{MappedParameterValuesFormat, ParameterValueMappingConfigFormat, ParameterValuesConfigFormat, ValueSeqGenProviderFormat}
+import de.awagen.kolibri.base.io.json.ParameterValuesJsonProtocol.{MappedParameterValuesFormat, ParameterValueMappingConfigFormat, ParameterValuesConfigFormat, ValueSeqGenDefinitionFormat}
 import de.awagen.kolibri.base.processing.modifiers.ParameterValues._
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
 import spray.json._
 
-class ParameterValuesJsonProtocolSpec extends UnitTestSpec {
+class ParameterValuesDefinitionJsonProtocolSpec extends UnitTestSpec {
 
   object ParameterValuesJsonDefinitions {
     val parameterValuesFromOrderedValuesJson: String =
@@ -256,42 +256,42 @@ class ParameterValuesJsonProtocolSpec extends UnitTestSpec {
 
   "ParameterValuesJsonProtocol" must {
 
-    "parse ParameterValues from OrderedValues" in {
+    "parse ParameterValuesDefinition from OrderedValues" in {
       // given, when
-      val values = ParameterValuesJsonDefinitions.parameterValuesFromOrderedValuesJson.parseJson.convertTo[ParameterValues]
+      val values = ParameterValuesJsonDefinitions.parameterValuesFromOrderedValuesJson.parseJson.convertTo[ParameterValuesDefinition]
       // then
       values.name mustBe "param1"
       values.valueType mustBe ValueType.URL_PARAMETER
       values.values.apply().iterator.toSeq mustBe Seq("key1", "key2", "key3")
     }
 
-    "parse ParameterValues by passing values" in {
+    "parse ParameterValuesDefinition by passing values" in {
       // given, when
-      val values = ParameterValuesJsonDefinitions.parameterValuesPassedJson.parseJson.convertTo[ParameterValues]
+      val values = ParameterValuesJsonDefinitions.parameterValuesPassedJson.parseJson.convertTo[ParameterValuesDefinition]
       // then
       values.name mustBe "param1"
       values.valueType mustBe ValueType.URL_PARAMETER
       values.values.apply().iterator.toSeq mustBe Seq("value1", "value2")
     }
 
-    "parse ParameterValues from file" in {
+    "parse ParameterValuesDefinition from file" in {
       // given, when
-      val values = ParameterValuesJsonDefinitions.parameterValuesFromOrderedValuesFromFileJson.parseJson.convertTo[ParameterValues]
+      val values = ParameterValuesJsonDefinitions.parameterValuesFromOrderedValuesFromFileJson.parseJson.convertTo[ParameterValuesDefinition]
       // then
       values.name mustBe "q"
       values.valueType mustBe ValueType.URL_PARAMETER
       values.values.apply().iterator.toSeq mustBe Seq("schuh", "spiegel", "uhr", "hose", "jeans", "tv")
     }
 
-    "parse ParameterValues from range" in {
+    "parse ParameterValuesDefinition from range" in {
       // given, when
-      val values = ParameterValuesJsonDefinitions.parameterValuesFromRangeJson.parseJson.convertTo[ParameterValues]
+      val values = ParameterValuesJsonDefinitions.parameterValuesFromRangeJson.parseJson.convertTo[ParameterValuesDefinition]
       // then
       values.name mustBe "o"
       values.valueType mustBe ValueType.URL_PARAMETER
       values.values.apply().size mustBe 2001
-      values.get(0).get.value.toDouble.toInt mustBe 0
-      values.get(2000).get.value.toDouble.toInt mustBe 2000
+      values.toState.get(0).get.value.toDouble.toInt mustBe 0
+      values.toState.get(2000).get.value.toDouble.toInt mustBe 2000
     }
 
 
@@ -363,29 +363,29 @@ class ParameterValuesJsonProtocolSpec extends UnitTestSpec {
       )
     }
 
-    "parse ParameterValueMapping" in {
+    "parse ParameterValueMappingDefinition" in {
       // given, when
-      val values = ParameterValueMappingDefinitions.jsonMapping.parseJson.convertTo[ParameterValueMapping]
+      val values = ParameterValueMappingDefinitions.jsonMapping.parseJson.convertTo[ParameterValueMappingDefinition]
       // then
-      values.nrOfElements mustBe 4
-      values.get(0).get mustBe Seq(ParameterValue("param1", ValueType.URL_PARAMETER, "key1"), ParameterValue("mappedParam1", ValueType.URL_PARAMETER, "key1_val1"))
-      values.get(1).get mustBe Seq(ParameterValue("param1", ValueType.URL_PARAMETER, "key1"), ParameterValue("mappedParam1", ValueType.URL_PARAMETER, "key1_val2"))
-      values.get(2).get mustBe Seq(ParameterValue("param1", ValueType.URL_PARAMETER, "key2"), ParameterValue("mappedParam1", ValueType.URL_PARAMETER, "key2_val1"))
-      values.get(3).get mustBe Seq(ParameterValue("param1", ValueType.URL_PARAMETER, "key2"), ParameterValue("mappedParam1", ValueType.URL_PARAMETER, "key2_val2"))
+      values.toState.nrOfElements mustBe 4
+      values.toState.get(0).get mustBe Seq(ParameterValue("param1", ValueType.URL_PARAMETER, "key1"), ParameterValue("mappedParam1", ValueType.URL_PARAMETER, "key1_val1"))
+      values.toState.get(1).get mustBe Seq(ParameterValue("param1", ValueType.URL_PARAMETER, "key1"), ParameterValue("mappedParam1", ValueType.URL_PARAMETER, "key1_val2"))
+      values.toState.get(2).get mustBe Seq(ParameterValue("param1", ValueType.URL_PARAMETER, "key2"), ParameterValue("mappedParam1", ValueType.URL_PARAMETER, "key2_val1"))
+      values.toState.get(3).get mustBe Seq(ParameterValue("param1", ValueType.URL_PARAMETER, "key2"), ParameterValue("mappedParam1", ValueType.URL_PARAMETER, "key2_val2"))
     }
 
-    "parse ParameterValueMapping multiple mapping" in {
+    "parse ParameterValueMappingDefinition multiple mapping" in {
       // given, when, then
-      ParameterValueMappingDefinitions.jsonMultiMapping.parseJson.convertTo[ParameterValueMapping].nrOfElements mustBe 17
+      ParameterValueMappingDefinitions.jsonMultiMapping.parseJson.convertTo[ParameterValueMappingDefinition].toState.nrOfElements mustBe 17
     }
 
-    "parse ValueSeqGenProvider" in {
+    "parse ValueSeqGenDefinition" in {
       // given, when
-      val parameterValues = ParameterValuesJsonDefinitions.parameterValuesFromOrderedValuesAsValueSeqGenProviderJson.parseJson.convertTo[ValueSeqGenProvider]
-      val mapping = ParameterValueMappingDefinitions.jsonMappingAsValueSeqGenProvider.parseJson.convertTo[ValueSeqGenProvider]
+      val parameterValues = ParameterValuesJsonDefinitions.parameterValuesFromOrderedValuesAsValueSeqGenProviderJson.parseJson.convertTo[ValueSeqGenDefinition[_]]
+      val mapping = ParameterValueMappingDefinitions.jsonMappingAsValueSeqGenProvider.parseJson.convertTo[ValueSeqGenDefinition[_]]
       // then
-      parameterValues.isInstanceOf[ParameterValues] mustBe true
-      mapping.isInstanceOf[ParameterValueMapping] mustBe true
+      parameterValues.isInstanceOf[ParameterValuesDefinition] mustBe true
+      mapping.isInstanceOf[ParameterValueMappingDefinition] mustBe true
     }
 
   }

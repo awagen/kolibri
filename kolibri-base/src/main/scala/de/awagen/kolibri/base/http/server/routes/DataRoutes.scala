@@ -27,7 +27,7 @@ import de.awagen.kolibri.base.config.AppProperties.config.kolibriDispatcherName
 import de.awagen.kolibri.base.http.client.request.{RequestTemplate, RequestTemplateBuilder}
 import de.awagen.kolibri.base.http.server.routes.StatusRoutes.corsHandler
 import de.awagen.kolibri.base.io.json.EnumerationJsonProtocol.dataFileTypeFormat
-import de.awagen.kolibri.base.io.json.ParameterValuesJsonProtocol.{FormatOps, ValueSeqGenProviderFormat}
+import de.awagen.kolibri.base.io.json.ParameterValuesJsonProtocol.{FormatOps, ValueSeqGenDefinitionFormat}
 import de.awagen.kolibri.base.io.reader.FileReaderUtils.JsValueOps._
 import de.awagen.kolibri.base.io.reader.FileReaderUtils._
 import de.awagen.kolibri.base.io.reader.ReaderUtils.safeContentRead
@@ -319,8 +319,8 @@ object DataRoutes extends DefaultJsonProtocol {
           post {
             parameters(RETURN_N_SAMPLES_PARAM) { numSamples => {
               entity(as[String]) { generatorJson => {
-                val values = generatorJson.parseJson.convertTo[Seq[ValueSeqGenProvider]]
-                val modifierGenerators: Seq[IndexedGenerator[RequestTemplateBuilderModifier]] = values.map(x => x.toSeqGenerator).map(x => x.mapGen(y => y.toModifier))
+                val values = generatorJson.parseJson.convertTo[Seq[ValueSeqGenDefinition[_]]]
+                val modifierGenerators: Seq[IndexedGenerator[RequestTemplateBuilderModifier]] = values.map(x => x.toState).map(x => x.toSeqGenerator).map(x => x.mapGen(y => y.toModifier))
                 val combinedGenerator: IndexedGenerator[Seq[Any]] = PermutatingIndexedGenerator(modifierGenerators)
                 val response = BaseFileDataSourceInfo(
                   combinedGenerator.size,
@@ -347,8 +347,8 @@ object DataRoutes extends DefaultJsonProtocol {
           post {
             parameters(RETURN_N_SAMPLES_PARAM) { (numSamples) => {
               entity(as[String]) { generatorJson => {
-                val values = generatorJson.parseJson.convertTo[Seq[ValueSeqGenProvider]]
-                val modifierGenerators: Seq[IndexedGenerator[RequestTemplateBuilderModifier]] = values.map(x => x.toSeqGenerator).map(x => x.mapGen(y => y.toModifier))
+                val values = generatorJson.parseJson.convertTo[Seq[ValueSeqGenDefinition[_]]]
+                val modifierGenerators: Seq[IndexedGenerator[RequestTemplateBuilderModifier]] = values.map(x => x.toState).map(x => x.toSeqGenerator).map(x => x.mapGen(y => y.toModifier))
                 val sampleRequestTemplateBuilderSupplier: () => RequestTemplateBuilder = () => new RequestTemplateBuilder().withContextPath("test")
                 val permutatingModifierGenerator: IndexedGenerator[RequestTemplateBuilderModifier] = PermutatingIndexedGenerator(modifierGenerators)
                   .mapGen(x => CombinedModifier(x))

@@ -19,8 +19,6 @@ package de.awagen.kolibri.datatypes.types
 
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 
-import java.util.Objects
-
 object SerializableCallable {
 
   @FunctionalInterface
@@ -35,16 +33,4 @@ object SerializableCallable {
   @FunctionalInterface
   trait SerializableConsumer[T] extends (T => ()) with KolibriSerializable
 
-  case class CachedSupplier[T](supplier: SerializableSupplier[T]) extends SerializableSupplier[T]{
-    private[this] var value: T = _
-
-    override def apply(): T = {
-      if (Objects.isNull(value)) {
-        value = supplier.apply()
-      }
-      value
-    }
-
-    def copy: CachedSupplier[T] = CachedSupplier(supplier)
-  }
 }

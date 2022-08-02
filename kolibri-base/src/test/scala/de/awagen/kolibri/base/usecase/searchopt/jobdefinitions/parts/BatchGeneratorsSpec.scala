@@ -20,7 +20,7 @@ package de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts
 import de.awagen.kolibri.base.domain.jobdefinitions.Batch
 import de.awagen.kolibri.base.http.client.request.RequestTemplateBuilder
 import de.awagen.kolibri.base.processing.modifiers.Modifier
-import de.awagen.kolibri.base.processing.modifiers.ParameterValues.{MappedParameterValues, ParameterValueMapping, ParameterValues, ValueType}
+import de.awagen.kolibri.base.processing.modifiers.ParameterValues.{MappedParameterValues, ParameterValueMappingDefinition, ParameterValuesDefinition, ValueType}
 import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.{CombinedModifier, RequestParameterModifier}
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
 import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator}
@@ -37,13 +37,13 @@ class BatchGeneratorsSpec extends UnitTestSpec {
   }
 
   object ParamValues {
-    val distinctValues1: ParameterValues = ParameterValues(
+    val distinctValues1: ParameterValuesDefinition = ParameterValuesDefinition(
       "q",
       ValueType.URL_PARAMETER,
       () => ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq("key1", "key2", "key3"))
     )
 
-    val distinctValues2: ParameterValues = ParameterValues(
+    val distinctValues2: ParameterValuesDefinition = ParameterValuesDefinition(
       "oo",
       ValueType.URL_PARAMETER,
       () => ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq("val1", "val2", "val3"))
@@ -54,7 +54,7 @@ class BatchGeneratorsSpec extends UnitTestSpec {
         "key1" -> ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq("key1_val1", "key1_val2")),
         "key2" -> ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq("key2_val1", "key2_val2"))
       ))
-    val mapping1 = new ParameterValueMapping(keyValues = distinctValues1, mappedValues = Seq(mappedValues1), mappingKeyValueAssignments = Seq((0, 1)))
+    val mapping1 = new ParameterValueMappingDefinition(keyValues = distinctValues1, mappedValues = Seq(mappedValues1), mappingKeyValueAssignments = Seq((0, 1)))
 
 
   }
@@ -105,7 +105,7 @@ class BatchGeneratorsSpec extends UnitTestSpec {
       val batchByFirst = BatchGenerators.batchByGeneratorAtIndex(0)
       val batchBySecond = BatchGenerators.batchByGeneratorAtIndex(1)
       val seq = Seq(ParamValues.mapping1, ParamValues.distinctValues2)
-        .map(x => x.toSeqGenerator).map(x => x.mapGen(y => y.toModifier))
+        .map(x => x.toState.toSeqGenerator).map(x => x.mapGen(y => y.toModifier))
       // when
       val batchesByFirst = batchByFirst.apply(seq)
       val batchesBySecond = batchBySecond.apply(seq)
@@ -116,31 +116,31 @@ class BatchGeneratorsSpec extends UnitTestSpec {
       // yet it will iterate over all other values still, keeping only key value fixed per batch
 
       // Batching by first (mapping) generator
-      batchesByFirst.get(0).get.data.iterator.toSeq mustBe ParamValues.distinctValues2.iterator.toSeq.flatMap(x => {
-        ParamValues.mapping1.allValuesGenerator.partitions.get(0).get.iterator.toSeq.map(y => {
+      batchesByFirst.get(0).get.data.iterator.toSeq mustBe ParamValues.distinctValues2.toState.iterator.toSeq.flatMap(x => {
+        ParamValues.mapping1.toState.allValuesGenerator.partitions.get(0).get.iterator.toSeq.map(y => {
           CombinedModifier(Seq(CombinedModifier(y.map(z => z.toModifier)), CombinedModifier(Seq(x.toModifier))))
         })
       })
 
-      batchesByFirst.get(1).get.data.iterator.toSeq mustBe ParamValues.distinctValues2.iterator.toSeq.flatMap(x => {
-        ParamValues.mapping1.allValuesGenerator.partitions.get(1).get.iterator.toSeq.map(y => {
+      batchesByFirst.get(1).get.data.iterator.toSeq mustBe ParamValues.distinctValues2.toState.iterator.toSeq.flatMap(x => {
+        ParamValues.mapping1.toState.allValuesGenerator.partitions.get(1).get.iterator.toSeq.map(y => {
           CombinedModifier(Seq(CombinedModifier(y.map(z => z.toModifier)), CombinedModifier(Seq(x.toModifier))))
         })
       })
       // Batching by second generator
-      batchesBySecond.get(0).get.data.iterator.toSeq mustBe ParamValues.mapping1.allValuesGenerator.iterator.toSeq.map(x => {
+      batchesBySecond.get(0).get.data.iterator.toSeq mustBe ParamValues.mapping1.toState.allValuesGenerator.iterator.toSeq.map(x => {
         CombinedModifier(
-          Seq(CombinedModifier(Seq(ParamValues.distinctValues2.get(0).get.toModifier)), x.toModifier)
+          Seq(CombinedModifier(Seq(ParamValues.distinctValues2.toState.get(0).get.toModifier)), x.toModifier)
         )
       })
-      batchesBySecond.get(1).get.data.iterator.toSeq mustBe ParamValues.mapping1.allValuesGenerator.iterator.toSeq.map(x => {
+      batchesBySecond.get(1).get.data.iterator.toSeq mustBe ParamValues.mapping1.toState.allValuesGenerator.iterator.toSeq.map(x => {
         CombinedModifier(
-          Seq(CombinedModifier(Seq(ParamValues.distinctValues2.get(1).get.toModifier)), x.toModifier)
+          Seq(CombinedModifier(Seq(ParamValues.distinctValues2.toState.get(1).get.toModifier)), x.toModifier)
         )
       })
-      batchesBySecond.get(2).get.data.iterator.toSeq mustBe ParamValues.mapping1.allValuesGenerator.iterator.toSeq.map(x => {
+      batchesBySecond.get(2).get.data.iterator.toSeq mustBe ParamValues.mapping1.toState.allValuesGenerator.iterator.toSeq.map(x => {
         CombinedModifier(
-          Seq(CombinedModifier(Seq(ParamValues.distinctValues2.get(2).get.toModifier)), x.toModifier)
+          Seq(CombinedModifier(Seq(ParamValues.distinctValues2.toState.get(2).get.toModifier)), x.toModifier)
         )
       })
     }

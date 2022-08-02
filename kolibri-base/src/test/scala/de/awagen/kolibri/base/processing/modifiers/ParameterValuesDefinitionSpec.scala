@@ -19,15 +19,15 @@ package de.awagen.kolibri.base.processing.modifiers
 
 import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ParameterValuesImplicits.ParameterValueSeqToRequestBuilderModifier
 import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ValueType.URL_PARAMETER
-import de.awagen.kolibri.base.processing.modifiers.ParameterValues.{MappedParameterValues, ParameterValue, ParameterValueMapping, ParameterValues, ValueSeqGenProvider, ValueType}
-import de.awagen.kolibri.base.processing.modifiers.ParameterValuesSpec._
+import de.awagen.kolibri.base.processing.modifiers.ParameterValues._
+import de.awagen.kolibri.base.processing.modifiers.ParameterValuesDefinitionSpec._
 import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.BatchGenerators
 import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator, OneAfterAnotherIndexedGenerator}
 
-object ParameterValuesSpec {
-  val parameterValues: ParameterValues = ParameterValues("p1", ValueType.URL_PARAMETER,
+object ParameterValuesDefinitionSpec {
+  val parameterValues: ParameterValuesDefinition = ParameterValuesDefinition("p1", ValueType.URL_PARAMETER,
     () => ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq("v1", "v2", "v3", "v4")))
 
   val mappedValue1: MappedParameterValues = MappedParameterValues(
@@ -51,7 +51,7 @@ object ParameterValuesSpec {
   )
 
   // key values from v1 to v999
-  val range1000keyValues: ParameterValues = ParameterValues("p1", ValueType.URL_PARAMETER,
+  val range1000keyValues: ParameterValuesDefinition = ParameterValuesDefinition("p1", ValueType.URL_PARAMETER,
     () => ByFunctionNrLimitedIndexedGenerator.createFromSeq(Range(0, 1000).map(x => s"v$x")))
   // mappings for key values v1 to v999 for parameter mp1 to values mv1_1 to mv1_999 (1:1 mapping)
   val range1000MappedValues1: MappedParameterValues = MappedParameterValues(
@@ -75,12 +75,12 @@ object ParameterValuesSpec {
     ).toMap
   )
 
-  val distinctValues1: ParameterValues = ParameterValues(
+  val distinctValues1: ParameterValuesDefinition = ParameterValuesDefinition(
     "q",
     ValueType.URL_PARAMETER,
     () => ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq("key1", "key2", "key3"))
   )
-  val distinctValues2: ParameterValues = ParameterValues(
+  val distinctValues2: ParameterValuesDefinition = ParameterValuesDefinition(
     "oo",
     ValueType.URL_PARAMETER,
     () => ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq("val1", "val2"))
@@ -90,16 +90,16 @@ object ParameterValuesSpec {
       "key1" -> ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq("key1_val1", "key1_val2")),
       "key2" -> ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq("key2_val1", "key2_val2"))
     ))
-  val mapping1 = new ParameterValueMapping(keyValues = distinctValues1, mappedValues = Seq(mappedValues1), mappingKeyValueAssignments = Seq((0, 1)))
+  val mapping1 = new ParameterValueMappingDefinition(keyValues = distinctValues1, mappedValues = Seq(mappedValues1), mappingKeyValueAssignments = Seq((0, 1)))
 
 }
 
-class ParameterValuesSpec extends UnitTestSpec {
+class ParameterValuesDefinitionSpec extends UnitTestSpec {
 
-  "ParameterValues" must {
+  "ParameterValuesDefinition" must {
 
     "correctly generate values" in {
-      parameterValues.iterator.toSeq mustBe Seq(
+      parameterValues.toState.iterator.toSeq mustBe Seq(
         ParameterValue("p1", ValueType.URL_PARAMETER, "v1"),
         ParameterValue("p1", ValueType.URL_PARAMETER, "v2"),
         ParameterValue("p1", ValueType.URL_PARAMETER, "v3"),
@@ -110,9 +110,9 @@ class ParameterValuesSpec extends UnitTestSpec {
   "ParameterValueMapping" must {
     "correctly represent mappings" in {
       // given
-      val mapping = new ParameterValueMapping(keyValues = parameterValues, mappedValues = Seq(mappedValue1, mappedValue2),
+      val mapping = new ParameterValueMappingDefinition(keyValues = parameterValues, mappedValues = Seq(mappedValue1, mappedValue2),
         mappingKeyValueAssignments = Seq((1, 2))
-      )
+      ).toState
       // when
       val allCombinations = mapping.iterator.toSeq
       // then
@@ -138,10 +138,10 @@ class ParameterValuesSpec extends UnitTestSpec {
 
     "correctly represent larger mappings and ignore incomplete" in {
       // given
-      val mapping = new ParameterValueMapping(keyValues = range1000keyValues, mappedValues = Seq(range1000MappedValues1,
+      val mapping = new ParameterValueMappingDefinition(keyValues = range1000keyValues, mappedValues = Seq(range1000MappedValues1,
         range1000OnlyFirst500MappedValues2),
         mappingKeyValueAssignments = Seq((1, 2))
-      )
+      ).toState
       // then
       mapping.nrOfElements mustBe 500
       Range(0, 500).foreach(index => {
@@ -155,10 +155,10 @@ class ParameterValuesSpec extends UnitTestSpec {
 
     "correctly explode mappings for multiple mapped values" in {
       // given
-      val mapping = new ParameterValueMapping(keyValues = range1000keyValues, mappedValues = Seq(range1000MappedValues1,
+      val mapping = new ParameterValueMappingDefinition(keyValues = range1000keyValues, mappedValues = Seq(range1000MappedValues1,
         range1000MappedValuesOnlyFirst500MultipleMappedValues2),
         mappingKeyValueAssignments = Seq((1, 2))
-      )
+      ).toState
       // then
       mapping.nrOfElements mustBe 500 * 100
       Range(0, 500).foreach(index => {
@@ -175,19 +175,19 @@ class ParameterValuesSpec extends UnitTestSpec {
 
     "correctly represent partitions" in {
       // given
-      val mapping = new ParameterValueMapping(keyValues = parameterValues, mappedValues = Seq(mappedValue1, mappedValue2),
+      val mapping = new ParameterValueMappingDefinition(keyValues = parameterValues, mappedValues = Seq(mappedValue1, mappedValue2),
         mappingKeyValueAssignments = Seq((1, 2))
       )
       // when, then
-      mapping.partitions.nrOfElements mustBe 3
+      mapping.toState.partitions.nrOfElements mustBe 3
     }
 
     "correctly partition values yet provide correct number of overall elements" in {
       // given
-      val seq: Seq[ValueSeqGenProvider] = Seq(mapping1)
+      val seq: Seq[ValueSeqGenState] = Seq(mapping1.toState)
       // when, then
-      mapping1.partitions.nrOfElements mustBe 2
-      mapping1.nrOfElements mustBe 4
+      mapping1.toState.partitions.nrOfElements mustBe 2
+      mapping1.toState.nrOfElements mustBe 4
       val mappedSeq: Seq[IndexedGenerator[RequestTemplateBuilderModifier]] = seq.map(x => x.toSeqGenerator)
         .map(x => x.mapGen(y => y.toModifier))
       OneAfterAnotherIndexedGenerator(
