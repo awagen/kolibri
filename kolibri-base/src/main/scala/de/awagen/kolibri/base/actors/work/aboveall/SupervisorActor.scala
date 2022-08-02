@@ -253,13 +253,7 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
         runnableJobCmdOpt.foreach(runnableJobCmd => {
           val actor = runnableJobCmdToJobManager(jobId, runnableJobCmd)
           context.watch(actor)
-          e match {
-            // if its a search evaluation, we send a copy of the original message without instantiated state to
-            // avoid large state serializations. JobManager will handle this message accordingly
-            case searchEvaluation: SearchEvaluation =>
-              actor ! searchEvaluation.copy()
-            case _ => actor ! _
-          }
+          actor ! e
           val expectation = ExecutionExpectations.finishedJobExecutionExpectation(runnableJobCmd.allowedTimeForJob)
           expectation.init
           jobIdToActorRefAndExpectation(jobId) = (ActorSetup(actor, jobSender), expectation)

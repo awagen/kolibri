@@ -177,9 +177,6 @@ class WorkManagerActor() extends Actor with ActorLogging with KolibriSerializabl
     case e: JobBatchMsg[SearchEvaluation] if e.msg.isInstanceOf[SearchEvaluation] =>
       val senderRef = sender()
       log.info("received SearchEvaluation msg")
-      if (runnableGeneratorForJob.isEmpty) {
-        runnableGeneratorForJob = Some(e.msg.toRunnable.processElements)
-      }
       // make sure resource directives are processed before job is started
       log.info("loading needed resources")
       implicit val timeout: Timeout = Timeout(5 minutes)
