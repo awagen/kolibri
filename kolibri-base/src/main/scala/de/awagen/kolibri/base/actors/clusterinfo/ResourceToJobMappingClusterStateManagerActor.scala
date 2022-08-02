@@ -56,8 +56,8 @@ object ResourceToJobMappingClusterStateManagerActor {
 
   // public retrieval method
   def getResourceByStoreName[T](storeName: String, directive: RetrievalDirective[T]): Either[RetrievalError[T], T] = {
-    logger.info(s"requesting directive '$directive' for storeName '$storeName'")
-    logger.info(s"current state of stores: $nameToResourceStoreMapping'")
+    logger.debug(s"requesting directive '$directive' for storeName '$storeName'")
+    logger.debug(s"current state of stores: $nameToResourceStoreMapping'")
     nameToResourceStoreMapping.get(storeName).map(store => store.handleRetrievalDirective(directive))
       .getOrElse(Left(RetrievalError(directive, ResourceNotFound)))
   }
