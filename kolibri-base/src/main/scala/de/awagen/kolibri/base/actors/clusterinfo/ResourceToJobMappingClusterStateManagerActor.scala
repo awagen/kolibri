@@ -102,14 +102,17 @@ case class ResourceToJobMappingClusterStateManagerActor(name: String) extends Ac
     resourceType match {
       case ResourceType.MAP_STRING_TO_DOUBLE_VALUE =>
         keysForResourceRemoval.foreach(key => {
-          log.info(s"Calling key remove on  resource '${Resource(resourceType, key)}'")
+          log.info(s"Calling key remove on file-based judgement repository '${Resource(resourceType, key)}'")
           // TODO: resourceStore should replace the direct call to FileBasedJudgementRepository below,
           // but temporarily we keep it till we moved the logic
-          resourceStore.removeResource(Resource(ResourceType.MAP_STRING_TO_DOUBLE_VALUE, key))
           FileBasedJudgementRepository.remove(key)
         })
       case _ => // do nothing
     }
+    keysForResourceRemoval.foreach(key => {
+      log.info(s"Calling key remove on resource '${Resource(resourceType, key)}'")
+      resourceStore.removeResource(Resource(resourceType, key))
+    })
   }
 
   override def receive: Receive = ddReceive.orElse[Any, Unit] {
