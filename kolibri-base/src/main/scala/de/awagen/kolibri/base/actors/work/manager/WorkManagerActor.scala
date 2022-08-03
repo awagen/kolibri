@@ -171,10 +171,14 @@ class WorkManagerActor() extends Actor with ActorLogging with KolibriSerializabl
       }
       val runnable: Option[ActorRunnable[_, _, _, _]] = runnableGeneratorForJob.flatMap(x => x.get(e.batchNr))
       runnable
-        .map(x => distributeRunnable(x, None))
+        .map(x => distributeRunnable(x, None, sendACK = true))
         .getOrElse(log.warning(s"job for message '$e' does not contain batch '${e.batchNr}', not executing anything for batch"))
     case e: JobBatchMsg[SearchEvaluationDefinition] if e.msg.isInstanceOf[SearchEvaluationDefinition] =>
       val senderRef = sender()
+      // we acknowledge before we load the per-node resources, as those might take longer
+      // NOTE: we might wanna have an instance before WorkManager on the respective node thru which all
+      // jobs are distributed, this way we could just check in initial per-node data loading once
+      senderRef ! ACK(e.jobName, e.batchNr, self)
       log.info("received SearchEvaluation msg")
       // make sure resource directives are processed before job is started
       log.info("loading needed resources")
@@ -207,7 +211,7 @@ class WorkManagerActor() extends Actor with ActorLogging with KolibriSerializabl
         .getOrElse(log.warning(s"job for message '$e' does not contain batch '${e.batchNr}', not executing anything for batch"))
     case runnable: ActorRunnable[_, _, _, _] =>
       log.info("received generic runnable msg")
-      distributeRunnable(runnable, None)
+      distributeRunnable(runnable, None, sendACK = true)
     case Terminated(actorRef: ActorRef) =>
       log.debug(s"received termination of actor: ${actorRef.path.toString}")
       val killedKeys: Seq[String] = workerKeyToActiveWorker.keys.filter(x => workerKeyToActiveWorker(x).equals(actorRef)).toSeq
@@ -262,7 +266,7 @@ class WorkManagerActor() extends Actor with ActorLogging with KolibriSerializabl
     })
   }
 
-  def distributeRunnable(runnable: ActorRunnable[_, _, _, _], writerOpt: Option[Writers.Writer[MetricAggregation[Tag], Tag, _]]): Unit = {
+  def distributeRunnable(runnable: ActorRunnable[_, _, _, _], writerOpt: Option[Writers.Writer[MetricAggregation[Tag], Tag, _]], sendACK: Boolean = false): Unit = {
     log.debug("received runnable for execution")
     val reportTo = sender()
     val runnableActor: ActorRef = context.actorOf(RunnableExecutionActor.props(runnable.maxExecutionDuration, writerOpt))
@@ -271,7 +275,7 @@ class WorkManagerActor() extends Actor with ActorLogging with KolibriSerializabl
     workerKeyToJobManager.put(jobKey, reportTo)
     workerKeyToActiveWorker.put(jobKey, runnableActor)
     runnableActor.tell(runnable, reportTo)
-    reportTo ! ACK(runnable.jobId, runnable.batchNr, self)
+    if (sendACK) reportTo ! ACK(runnable.jobId, runnable.batchNr, self)
   }
 
 
