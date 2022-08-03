@@ -200,9 +200,9 @@ class WorkManagerActor() extends Actor with ActorLogging with KolibriSerializabl
 
       })
     case CheckedResourceDirectivesAndReadyForProcessing(e: JobBatchMsg[SearchEvaluationDefinition]) =>
-      val runnableMsg: SupervisorActor.ProcessActorRunnableJobCmd[RequestTemplateBuilderModifier, MetricRow, MetricRow, MetricAggregation[Tag]] = e.msg.toRunnable
-      val writerOpt: Option[Writers.Writer[MetricAggregation[Tag], Tag, _]] = Some(runnableMsg.writer)
+      val writerOpt: Option[Writers.Writer[MetricAggregation[Tag], Tag, _]] = Some(e.msg.getWriter)
       if (runnableGeneratorForJob.isEmpty) {
+        val runnableMsg: SupervisorActor.ProcessActorRunnableJobCmd[RequestTemplateBuilderModifier, MetricRow, MetricRow, MetricAggregation[Tag]] = e.msg.toRunnable
         runnableGeneratorForJob = Some(runnableMsg.processElements)
       }
       val runnable: Option[ActorRunnable[_, _, _, _]] = runnableGeneratorForJob.flatMap(x => x.get(e.batchNr))

@@ -23,6 +23,7 @@ import akka.cluster.ddata.typed.scaladsl.Replicator.WriteLocal
 import akka.cluster.ddata.{Key, ORMap, ORSet}
 import de.awagen.kolibri.base.actors.clusterinfo.ResourceToJobMappingClusterStateManagerActor._
 import de.awagen.kolibri.base.cluster.ClusterNode
+import de.awagen.kolibri.base.config.AppProperties.config.kolibriDispatcherName
 import de.awagen.kolibri.base.directives.ResourceDirectives.ResourceDirective
 import de.awagen.kolibri.base.directives.ResourceType.ResourceType
 import de.awagen.kolibri.base.directives.RetrievalDirective.RetrievalDirective
@@ -33,12 +34,13 @@ import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.mutable
+import scala.concurrent.ExecutionContextExecutor
 
 object ResourceToJobMappingClusterStateManagerActor {
 
   private[this] val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
-  def props(name: String): Props = Props(ResourceToJobMappingClusterStateManagerActor(name))
+  def props(name: String): Props = Props(ResourceToJobMappingClusterStateManagerActor(name)).withDispatcher(kolibriDispatcherName)
 
   trait LocalResourceManagerMsg extends KolibriSerializable
 
@@ -73,6 +75,8 @@ object ResourceToJobMappingClusterStateManagerActor {
  * This actor also takes care of this data removal.
  */
 case class ResourceToJobMappingClusterStateManagerActor(name: String) extends Actor with ActorLogging {
+
+  implicit val ec: ExecutionContextExecutor = context.system.dispatchers.lookup(kolibriDispatcherName)
 
   var resourceIdToJobMapping: ResourceJobMappingTracker = new ResourceJobMappingTracker()
   resourceIdToJobMapping.init()
