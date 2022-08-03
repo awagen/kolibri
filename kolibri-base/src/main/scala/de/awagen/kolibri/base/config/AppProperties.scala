@@ -156,6 +156,7 @@ object AppProperties {
       key = "kolibri.internal.analyzeTimeoutInSeconds", SECONDS)
 
     val kolibriDispatcherName = "kolibri-dispatcher"
+    val kolibriBlockingDispatcherName = "kolibri-blocking-dispatcher"
 
     val useResultElementGrouping: Boolean = baseConfig.getBoolean("kolibri.execution.useResultElementGrouping")
     val resultElementGroupingCount: Int = baseConfig.getInt("kolibri.execution.resultElementGroupingCount")

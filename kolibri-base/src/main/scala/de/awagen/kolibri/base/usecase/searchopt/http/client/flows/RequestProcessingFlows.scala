@@ -1,18 +1,18 @@
 /**
-  * Copyright 2021 Andreas Wagenmann
-  *
-  * Licensed under the Apache License, Version 2.0 (the "License");
-  * you may not use this file except in compliance with the License.
-  * You may obtain a copy of the License at
-  *
-  * http://www.apache.org/licenses/LICENSE-2.0
-  *
-  * Unless required by applicable law or agreed to in writing, software
-  * distributed under the License is distributed on an "AS IS" BASIS,
-  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  * See the License for the specific language governing permissions and
-  * limitations under the License.
-  */
+ * Copyright 2021 Andreas Wagenmann
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 
 package de.awagen.kolibri.base.usecase.searchopt.http.client.flows
@@ -20,10 +20,11 @@ package de.awagen.kolibri.base.usecase.searchopt.http.client.flows
 import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse, Uri}
-import akka.stream._
+import akka.stream.{ActorAttributes, _}
 import akka.stream.scaladsl.{Balance, Flow, GraphDSL, Merge}
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{Corn, ProcessingMessage}
 import de.awagen.kolibri.base.config.AppConfig.httpModule
+import de.awagen.kolibri.base.config.AppProperties
 import de.awagen.kolibri.base.config.AppProperties.config
 import de.awagen.kolibri.base.config.AppProperties.config.useConnectionPoolFlow
 import de.awagen.kolibri.base.domain.Connections.Connection
@@ -42,18 +43,18 @@ object RequestProcessingFlows {
   private[this] val logger: Logger = LoggerFactory.getLogger(RequestProcessingFlows.getClass)
 
   /**
-    * Creates request execution and parsing flow based on single requests, just picking the protocol, host, port details
-    * from the passed connection.
-    * Note that opposed to connectionPoolFlow, this does not suffer from timeouts of response consumption, e.g response
-    * is directly consumed.
-    *
-    * @param connection  : Connection object providing connection details to use
-    * @param parsingFunc : Parsing function applied to the retrieved response to yield result
-    * @param as
-    * @param ec
-    * @tparam T
-    * @return
-    */
+   * Creates request execution and parsing flow based on single requests, just picking the protocol, host, port details
+   * from the passed connection.
+   * Note that opposed to connectionPoolFlow, this does not suffer from timeouts of response consumption, e.g response
+   * is directly consumed.
+   *
+   * @param connection  : Connection object providing connection details to use
+   * @param parsingFunc : Parsing function applied to the retrieved response to yield result
+   * @param as
+   * @param ec
+   * @tparam T
+   * @return
+   */
   def singleRequestFlow[T](requestFunc: HttpRequest => Future[HttpResponse],
                            connection: Connection,
                            parsingFunc: HttpResponse => Future[Either[Throwable, T]])(implicit as: ActorSystem,
@@ -76,7 +77,9 @@ object RequestProcessingFlows {
           }
           e
         }
-      ).withAttributes(ActorAttributes.supervisionStrategy(allResumeDecider))
+      ).withAttributes(
+        ActorAttributes.supervisionStrategy(allResumeDecider)
+          .and(ActorAttributes.dispatcher(AppProperties.config.kolibriBlockingDispatcherName)))
     flowResult.via(Flow.fromFunction(y => {
       // map to processing message of tuple
       Corn((y._1, y._2.data)).withTags(TagType.AGGREGATION, y._2.getTagsForType(AGGREGATION))
@@ -84,18 +87,18 @@ object RequestProcessingFlows {
   }
 
   /**
-    * Alternative to singleRequestFlow, using connectionPool flow. Be cautious when using this though since
-    * your processing flow should be composed to avoid HttpResponse's being available but timing out due to not being consumed
-    * in time. This can happen e.g when causing backpressure / buffering of ready responses.
-    *
-    * @param connectionToRequestFlowFunc - function to convert Connection to request flow
-    * @param connection                  - Connection object specifying connection details
-    * @param parsingFunc                 - response parsing function
-    * @param as                          - implicit ActorSystem
-    * @param ec                          - implicit ExecutionContext
-    * @tparam T - The type of the parsed response
-    * @return
-    */
+   * Alternative to singleRequestFlow, using connectionPool flow. Be cautious when using this though since
+   * your processing flow should be composed to avoid HttpResponse's being available but timing out due to not being consumed
+   * in time. This can happen e.g when causing backpressure / buffering of ready responses.
+   *
+   * @param connectionToRequestFlowFunc - function to convert Connection to request flow
+   * @param connection                  - Connection object specifying connection details
+   * @param parsingFunc                 - response parsing function
+   * @param as                          - implicit ActorSystem
+   * @param ec                          - implicit ExecutionContext
+   * @tparam T - The type of the parsed response
+   * @return
+   */
   def connectionPoolFlow[T](connectionToRequestFlowFunc: Connection => Flow[(HttpRequest, ProcessingMessage[RequestTemplate]), (Try[HttpResponse], ProcessingMessage[RequestTemplate]), _],
                             connection: Connection,
                             parsingFunc: HttpResponse => Future[Either[Throwable, T]])(implicit as: ActorSystem,
@@ -122,7 +125,12 @@ object RequestProcessingFlows {
             logger.error("Exception on flow request", e)
             (Left(e), x._2)
           })
-        ).withAttributes(ActorAttributes.supervisionStrategy(allResumeDecider))
+        )
+        .withAttributes(
+          ActorAttributes.supervisionStrategy(allResumeDecider)
+            .and(ActorAttributes.dispatcher(AppProperties.config.kolibriBlockingDispatcherName)
+            )
+        )
     }
 
     val flowResult: Flow[ProcessingMessage[RequestTemplate], (Either[Throwable, T], ProcessingMessage[RequestTemplate]), NotUsed] = Flow.fromFunction[ProcessingMessage[RequestTemplate], (HttpRequest, ProcessingMessage[RequestTemplate])](
@@ -143,16 +151,16 @@ object RequestProcessingFlows {
 
 
   /**
-    * Return Graph[FlowShape] with flow of processing single ProcessingMessage[RequestTemplate] elements
-    *
-    * @param connections          Seq[Connection]: providing connection information for distinct hosts to send requests to
-    * @param connectionToFlowFunc Connection => Flow[(HttpRequest, ProcessingMessage[RequestTemplate]), (Try[HttpResponse], ProcessingMessage[RequestTemplate]), _] - function from connection to processing flow
-    * @param as                   implicit ActorSystem
-    * @param mat                  implicit Materializer
-    * @param ec                   implicit ExecutionContext
-    * @tparam T type of the parsed result
-    * @return Graph[FlowShape] providing the streaming requesting and parsing logic
-    */
+   * Return Graph[FlowShape] with flow of processing single ProcessingMessage[RequestTemplate] elements
+   *
+   * @param connections          Seq[Connection]: providing connection information for distinct hosts to send requests to
+   * @param connectionToFlowFunc Connection => Flow[(HttpRequest, ProcessingMessage[RequestTemplate]), (Try[HttpResponse], ProcessingMessage[RequestTemplate]), _] - function from connection to processing flow
+   * @param as                   implicit ActorSystem
+   * @param mat                  implicit Materializer
+   * @param ec                   implicit ExecutionContext
+   * @tparam T type of the parsed result
+   * @return Graph[FlowShape] providing the streaming requesting and parsing logic
+   */
   def balancingRequestAndParsingFlow[T](connections: Seq[Connection],
                                         connectionToFlowFunc: Connection => Flow[ProcessingMessage[RequestTemplate], ProcessingMessage[(Either[Throwable, T], RequestTemplate)], NotUsed]
                                        )(implicit as: ActorSystem,
