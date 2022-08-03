@@ -19,10 +19,11 @@ package de.awagen.kolibri.base.actors.work.manager
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Cancellable, PoisonPill, Props}
 import akka.cluster.ddata.Replicator.UpdateSuccess
+import akka.pattern.ask
 import akka.util.Timeout
 import de.awagen.kolibri.base.actors.clusterinfo.BatchStateActor.WorkerStatusResponse
 import de.awagen.kolibri.base.actors.clusterinfo.DDResourceStateUtils
-import de.awagen.kolibri.base.actors.clusterinfo.ResourceToJobMappingClusterStateManagerActor.RemoveValueFromAllMappings
+import de.awagen.kolibri.base.actors.clusterinfo.ResourceToJobMappingClusterStateManagerActor.{CheckedResourceDirectivesAndReadyForProcessing, ProcessResourceDirectives, ProcessedResourceDirectives, RemoveValueFromAllMappings}
 import de.awagen.kolibri.base.actors.resources.BatchFreeSlotResourceCheckingActor.AddToRunningBaselineCount
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.{ActorRunnableJobGenerator, FinishedJobEvent}
@@ -41,6 +42,7 @@ import de.awagen.kolibri.base.processing.JobMessagesImplicits._
 import de.awagen.kolibri.base.processing.distribution.DistributionStates
 import de.awagen.kolibri.base.processing.execution.functions.Execution
 import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
+import de.awagen.kolibri.base.resources.{ResourceAlreadyExists, ResourceOK}
 import de.awagen.kolibri.base.routing.Routers.createWorkerRoutingServiceForJob
 import de.awagen.kolibri.base.traits.Traits.WithBatchNr
 import de.awagen.kolibri.datatypes.collections.generators.ByFunctionNrLimitedIndexedGenerator
@@ -55,8 +57,9 @@ import org.slf4j.{Logger, LoggerFactory}
 
 import java.text.SimpleDateFormat
 import java.time.{Instant, ZoneId, ZonedDateTime}
-import scala.concurrent.ExecutionContextExecutor
+import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.concurrent.duration._
+import scala.util.{Failure, Success}
 
 
 object JobManagerActor {
@@ -260,6 +263,8 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
   }
 
   def startState: Receive = {
+    case UpdateSuccess(key, _) =>
+      log.info(s"successful distributed data update for key: $key")
     case testJobMsg: TestPiCalculationDefinition =>
       log.debug(s"received job to process: $testJobMsg")
       reportResultsTo = sender()
@@ -281,8 +286,11 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
       log.info(s"started processing of job '$jobId'")
       ()
     case searchJobMsg: SearchEvaluationDefinition =>
-      // register needed resources in distributed data
-      searchJobMsg.resources
+      log.info(s"received job to process: $searchJobMsg")
+      val jobSender: ActorRef = sender()
+      reportResultsTo = jobSender
+      // register needed resources and for directives in distributed data
+      (searchJobMsg.resources ++ searchJobMsg.resourceDirectives.map(x => x.resource))
         .foreach(resource => {
           DDResourceStateUtils.ddResourceJobMappingUpdateAdd(
             ClusterNode.getSystemSetup.ddSelfUniqueAddress,
@@ -290,10 +298,27 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
             jobId
           ).foreach(msg => ClusterNode.getSystemSetup.ddReplicator ! msg)
         })
-      log.info(s"received job to process: $searchJobMsg")
+      // send request to initialize the per-node resource directives
+      val directives = searchJobMsg.resourceDirectives
+      implicit val timeout: Timeout = FiniteDuration(5, MINUTES)
+      val resultFuture: Future[Any] = ClusterNode.getSystemSetup.localResourceManagerActor ? ProcessResourceDirectives(directives, searchJobMsg.jobName)
+      resultFuture.onComplete({
+        case Success(value) =>
+          val processedDirectiveMsg = value.asInstanceOf[ProcessedResourceDirectives]
+          log.info(s"resource directive processing results: ${processedDirectiveMsg.states}")
+          val mustStopExecution: Boolean = processedDirectiveMsg.states.exists(state => !Seq(ResourceOK, ResourceAlreadyExists).contains(state))
+          if (mustStopExecution) {
+            log.warning(s"could not process all resource directives, stopping execution of job ${searchJobMsg.jobName}: ${processedDirectiveMsg.states}")
+          }
+          else {
+            self.tell(CheckedResourceDirectivesAndReadyForProcessing(searchJobMsg), jobSender)
+          }
+        case Failure(exception) =>
+          log.error(s"processing resource directives for job '${searchJobMsg.jobName}' failed, stopping execution", exception)
+      })
+    case CheckedResourceDirectivesAndReadyForProcessing(searchJobMsg: SearchEvaluationDefinition) =>
       wrapUpFunction = searchJobMsg.wrapUpFunction
       implicit val timeout: Timeout = Timeout(10 minutes)
-
       val jobMsg: SupervisorActor.ProcessActorRunnableJobCmd[RequestTemplateBuilderModifier, MetricRow, MetricRow, MetricAggregation[Tag]] = searchJobMsg.toRunnable
       val jobToProcess = ByFunctionNrLimitedIndexedGenerator(
         jobMsg.processElements.size,
@@ -306,9 +331,7 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
       )
       expectResultsFromBatchCalculations = searchJobMsg.expectResultsFromBatchCalculations
       log.info(s"expectResultsFromBatchCalculations: $expectResultsFromBatchCalculations")
-
       // TODO: this is same as handled in handleProcessJobCmd, unify
-      reportResultsTo = sender()
       jobProcessingState.initJobToProcess[T](
         jobId = jobId,
         jobTypeName = SEARCH_EVALUATION_JOB_NAME,

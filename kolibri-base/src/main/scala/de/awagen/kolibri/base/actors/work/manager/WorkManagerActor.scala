@@ -203,7 +203,7 @@ class WorkManagerActor() extends Actor with ActorLogging with KolibriSerializabl
       val runnableMsg: SupervisorActor.ProcessActorRunnableJobCmd[RequestTemplateBuilderModifier, MetricRow, MetricRow, MetricAggregation[Tag]] = e.msg.toRunnable
       val writerOpt: Option[Writers.Writer[MetricAggregation[Tag], Tag, _]] = Some(runnableMsg.writer)
       if (runnableGeneratorForJob.isEmpty) {
-        runnableGeneratorForJob = Some(e.msg.toRunnable.processElements)
+        runnableGeneratorForJob = Some(runnableMsg.processElements)
       }
       val runnable: Option[ActorRunnable[_, _, _, _]] = runnableGeneratorForJob.flatMap(x => x.get(e.batchNr))
       runnable
