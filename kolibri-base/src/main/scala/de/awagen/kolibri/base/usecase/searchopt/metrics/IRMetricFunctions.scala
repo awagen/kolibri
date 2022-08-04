@@ -1,18 +1,18 @@
 /**
-  * Copyright 2021 Andreas Wagenmann
-  *
-  * Licensed under the Apache License, Version 2.0 (the "License");
-  * you may not use this file except in compliance with the License.
-  * You may obtain a copy of the License at
-  *
-  * http://www.apache.org/licenses/LICENSE-2.0
-  *
-  * Unless required by applicable law or agreed to in writing, software
-  * distributed under the License is distributed on an "AS IS" BASIS,
-  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  * See the License for the specific language governing permissions and
-  * limitations under the License.
-  */
+ * Copyright 2021 Andreas Wagenmann
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package de.awagen.kolibri.base.usecase.searchopt.metrics
 
@@ -24,10 +24,10 @@ import scala.collection.immutable
 
 
 /**
-  * Given a sequence of "quality measures" in the range of [0,1],
-  * defines some information retrieval metrics on a subset of
-  * results
-  */
+ * Given a sequence of "quality measures" in the range of [0,1],
+ * defines some information retrieval metrics on a subset of
+ * results
+ */
 object IRMetricFunctions {
 
   val NO_JUDGEMENTS: ComputeFailReason = ComputeFailReason("NO_JUDGEMENTS")
@@ -71,6 +71,15 @@ object IRMetricFunctions {
     override def apply(seq: Seq[Double]): CalculationResult[Double] = {
       val allN = seq.slice(0, n)
       if (allN.nonEmpty) Right(allN.count(x => x >= threshold).toDouble / allN.size) else Left(Seq(NO_JUDGEMENTS))
+    }
+  }
+
+  def recallAtK(n: Int, threshold: Double): SerializableFunction1[Seq[Double], CalculationResult[Double]] = new SerializableFunction1[Seq[Double], CalculationResult[Double]] {
+    override def apply(seq: Seq[Double]): CalculationResult[Double] = {
+      val maxNumOverThreshold = math.min(seq.count(x => x >= threshold), n)
+      val allN = seq.slice(0, n)
+      val overThresholdInFirstN = allN.count(x => x >= threshold)
+      if (allN.nonEmpty) Right(overThresholdInFirstN.doubleValue / maxNumOverThreshold) else Left(Seq(NO_JUDGEMENTS))
     }
   }
 
