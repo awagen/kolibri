@@ -1,9 +1,16 @@
 <template>
-  <input id="int-input" class="form-input metric" type="number" step=1 :value="value" @input="updateValueEvent"
-         placeholder="Number Input">
-  <div id="k-msg-toast" class="toast toast-warning display-none">
+
+  <template v-if="valueType === 'INT'">
+    <input :id=VALUE_INPUT_ID class="form-input metric" type="number" step=1 :value="value" @input="updateValueEvent"
+           placeholder="Number Input">
+  </template>
+  <template v-if="valueType === 'FLOAT'">
+    <input :id=VALUE_INPUT_ID class="form-input metric" type="number" step=0.5 :value="value" @input="updateValueEvent"
+           placeholder="Number Input">
+  </template>
+  <div :id=TOAST_ID class="toast toast-warning display-none">
     <button type='button' class="btn btn-clear float-right" @click="hideModal"></button>
-    <span id="k-msg-toast-content"></span>
+    <span :id=TOAST_CONTENT_ID></span>
   </div>
 </template>
 
@@ -15,20 +22,26 @@ export default {
   props: {
     "min": Number,
     "max": Number,
-    "name": String
+    "name": String,
+    "valueType": String,
+    "elementId": String
   },
   components: {},
   methods: {
   },
   setup(props, context) {
     let minValue = (props.min != null) ? props.min : 0
-    let value = ref(0)
+    let value = ref(minValue)
+    let VALUE_INPUT_ID = 'k-' + props.elementId + "-" + 'number-input'
+    let TOAST_ID = 'k-' + props.elementId + '-msg-toast'
+    let TOAST_CONTENT_ID = 'k-' + props.elementId + '-msg-toast-content'
 
     function validate(val) {
       // nothing entered yet or clearing
       if (val === "") {
         return true
-      } else if (props.min !== undefined && val < props.min) {
+      }
+      else if (props.min !== undefined && val < props.min) {
         return false
       } else if (props.max !== undefined && val > props.max) {
         return false
@@ -52,27 +65,29 @@ export default {
         // upstream for the final result
         context.emit('valueChanged', {name: props.name, value: value.value})
       } else {
-        document.getElementById('int-input').value = value.value;
+        document.getElementById(VALUE_INPUT_ID).value = value.value;
         showModalMsg("size out of range")
         console.debug("value invalid, no update")
       }
     }
 
     function showModalMsg(msg) {
-      document.getElementById('k-msg-toast-content').textContent = msg;
-      document.getElementById('k-msg-toast').classList.remove("display-none");
+      document.getElementById(TOAST_CONTENT_ID).textContent = msg;
+      document.getElementById(TOAST_ID).classList.remove("display-none");
     }
 
     function hideModal() {
       console.debug("hiding")
-      document.getElementById('k-msg-toast').classList.add("display-none");
-      document.getElementById('k-msg-toast-content').textContent = "";
+      document.getElementById(TOAST_ID).classList.add("display-none");
+      document.getElementById(TOAST_CONTENT_ID).textContent = "";
     }
 
     return {
-      // value,
       updateValueEvent,
-      hideModal
+      hideModal,
+      VALUE_INPUT_ID,
+      TOAST_ID,
+      TOAST_CONTENT_ID
     }
   }
 
