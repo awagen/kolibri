@@ -58,18 +58,6 @@ class InputValidation {
             let max = parseInt(params["max"])
             this.validationFunction = (val) => {
                 console.info("validating value: " + val)
-                // nothing entered yet or clearing
-                // if (val === "") {
-                //     return new ValidationResult(true, "")
-                // }
-                // else if (min !== undefined && val < min) {
-                //     return new ValidationResult(false,
-                //         `value ${val} is outside boundary: min=${min} / max=${max}`)
-                // } else if (max !== undefined && val > max) {
-                //     return new ValidationResult(false,
-                //         `value ${val} is outside boundary: min=${min} / max=${max}`)
-                // }
-                // return new ValidationResult(true, "")
                 return getValidationByMinMax(min, max)(val)
             }
         }
@@ -80,9 +68,12 @@ class InputValidation {
                 console.info("validating value: " + val)
                 return getValidationByMinMax(min, max)(val)
             }
-
         }
         else if (type === InputType.STRING) {
+            let regexStr = params["regex"]
+            this.validationFunction = (val) => {
+                return getStringValidationByRegexFunction(regexStr)(val)
+            }
 
         }
         else if (type === InputType.BOOLEAN) {
