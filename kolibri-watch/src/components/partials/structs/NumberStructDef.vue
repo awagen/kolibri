@@ -55,9 +55,10 @@ export default {
 
     function updateValueEvent(valueEvent) {
       console.debug("updated event called with value: " + valueEvent.target.value)
+      let updateValue = valueEvent.target.value
       hideModal()
-      if (validate(valueEvent.target.value)) {
-        value.value = valueEvent.target.value
+      if (validate(updateValue)) {
+        value.value = updateValue
         // emitting value to communicate to parent name and value
         // of the property.
         // if we traverse this for each element, we can build up all
@@ -65,8 +66,8 @@ export default {
         // upstream for the final result
         context.emit('valueChanged', {name: props.name, value: value.value})
       } else {
+        showModalMsg(`value out of range (${props.min} - ${props.max}): ${updateValue}`)
         document.getElementById(VALUE_INPUT_ID).value = value.value;
-        showModalMsg("size out of range")
         console.debug("value invalid, no update")
       }
     }
