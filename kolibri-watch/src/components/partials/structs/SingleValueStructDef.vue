@@ -1,23 +1,18 @@
 <template>
-
-  <template v-if="valueType === InputType.INT">
-    <input :id=VALUE_INPUT_ID class="form-input metric" type="number" :step=step :value="value" @input="updateValueEvent"
+  <template v-if="(elementDef instanceof NumberInputDef)">
+    <input :id=VALUE_INPUT_ID class="form-input metric" type="number" :step=elementDef.step :value="value" @input="updateValueEvent"
            placeholder="Number Input">
   </template>
-  <template v-if="valueType === InputType.FLOAT">
-    <input :id=VALUE_INPUT_ID class="form-input metric" type="number" :step=step :value="value" @input="updateValueEvent"
-           placeholder="Number Input">
-  </template>
-  <template v-if="valueType === InputType.STRING">
+  <template v-if="(elementDef instanceof StringInputDef)">
   <input :id=VALUE_INPUT_ID class="form-input metric" type="text" :value="value" @input="updateValueEvent"
          placeholder="Text Input">
   </template>
-  <template v-if="valueType === InputType.BOOLEAN">
+  <template v-if="(elementDef instanceof BooleanInputDef)">
     <label class="form-radio form-inline">
-      <input type="radio" name="{{name}}" :value="true" checked="" @change="updateValueEvent"><i class="form-icon"></i> true
+      <input type="radio" name="{{elementDef.name}}" :value="true" checked="" @change="updateValueEvent"><i class="form-icon"></i> true
     </label>
     <label class="form-radio form-inline">
-      <input type="radio" name="{{name}}" :value="false" @change="updateValueEvent"><i class="form-icon"></i> false
+      <input type="radio" name="{{elementDef.name}}" :value="false" @change="updateValueEvent"><i class="form-icon"></i> false
     </label>
   </template>
   <div :id=TOAST_ID class="toast toast-warning display-none">
@@ -28,28 +23,24 @@
 
 <script>
 import {ref} from "vue";
-import {InputType, InputValidation} from "../../../utils/dataValidationFunctions.ts"
+import {InputDef, StringInputDef, BooleanInputDef, NumberInputDef, InputType} from "../../../utils/dataValidationFunctions.ts"
 
 export default {
 
   props: {
-    "name": String,
-    "elementId": String,
-    "step": Number,
-    "valueType": InputType,
-    "validationDef": Object
+    "elementDef": InputDef
   },
   components: {},
   methods: {
   },
   setup(props, context) {
-    let minValue = (props.min != null) ? props.min : 0
+    let minValue = (props.elementDef.validation.min != null) ? props.elementDef.validation.min : 0
     let value = ref(minValue)
-    let VALUE_INPUT_ID = 'k-' + props.elementId + "-" + 'number-input'
-    let TOAST_ID = 'k-' + props.elementId + '-msg-toast'
-    let TOAST_CONTENT_ID = 'k-' + props.elementId + '-msg-toast-content'
+    let VALUE_INPUT_ID = 'k-' + props.elementDef.elementId + "-" + 'number-input'
+    let TOAST_ID = 'k-' + props.elementDef.elementId + '-msg-toast'
+    let TOAST_CONTENT_ID = 'k-' + props.elementDef.elementId + '-msg-toast-content'
 
-    let validator = new InputValidation(props.validationDef)
+    let validator = props.elementDef.getInputValidation()
 
     function validate(val) {
       console.debug("validate of validator called: " + validator.toString())
@@ -72,7 +63,7 @@ export default {
         // if we traverse this for each element, we can build up all
         // substructures and communicate the changes downstream
         // upstream for the final result
-        context.emit('valueChanged', {name: props.name, value: value.value})
+        context.emit('valueChanged', {name: props.elementDef.name, value: value.value})
       } else {
         showModalMsg(validationResult.failReason)
         document.getElementById(VALUE_INPUT_ID).value = value.value;
@@ -97,7 +88,10 @@ export default {
       VALUE_INPUT_ID,
       TOAST_ID,
       TOAST_CONTENT_ID,
-      InputType
+      InputType,
+      NumberInputDef,
+      StringInputDef,
+      BooleanInputDef
     }
   }
 

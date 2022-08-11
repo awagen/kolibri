@@ -13,26 +13,29 @@
           <div id="1" class="col-9 col-sm-12">
             <SingleValueStructDef
                 @value-changed="valueChanged"
-                name="intExample"
-                :value-type=InputType.INT
-                element_id="int1"
-                :step="1"
-                :validation-def="{'type': InputType.INT, 'min': 0, 'max': 5}">
+                :element-def="new NumberInputDef(
+                    'intExample',
+                    'int1',
+                    1,
+                    0,
+                    5
+                )">
             </SingleValueStructDef>
           </div>
           <div class="k-form-separator"></div>
-          <!-- select the needed template based on above selection -->
           <div class="col-3 col-sm-12">
             <label class="form-label" for="2">floatExample</label>
           </div>
           <div id="2" class="col-9 col-sm-12">
             <SingleValueStructDef
                 @value-changed="valueChanged"
-                name="floatExample"
-                :value-type=InputType.FLOAT
-                element-id="float1"
-                :step="0.1"
-                :validation-def="{'type': InputType.FLOAT, 'min': 0.0, 'max': 0.6}">
+                :element-def="new NumberInputDef(
+                    'floatExample',
+                    'float1',
+                    0.1,
+                    0.0,
+                    0.5
+                )">
             </SingleValueStructDef>
           </div>
         </div>
@@ -43,23 +46,23 @@
           <div id="3" class="col-9 col-sm-12">
             <SingleValueStructDef
                 @value-changed="valueChanged"
-                name="stringExample"
-                :value-type=InputType.STRING
-                element-id="string1"
-                :validation-def="{'type': InputType.STRING, 'regex': '^a\\w*$', 'max': 0.6}">
+                :element-def="new StringInputDef(
+                    'stringExample',
+                    'string1',
+                    '^a\\w*$'
+                )">
             </SingleValueStructDef>
           </div>
-
           <div class="col-3 col-sm-12">
             <label class="form-label" for="4">isOn</label>
           </div>
           <div id="4" class="col-9 col-sm-12">
             <SingleValueStructDef
                 @value-changed="valueChanged"
-                name="isOn"
-                :value-type=InputType.BOOLEAN
-                element-id="boolean1"
-                :validation-def="{'type': ''}">
+                :element-def="new BooleanInputDef(
+                    'isOn',
+                    'boolean1'
+                )">
             </SingleValueStructDef>
           </div>
         </div>
@@ -72,7 +75,7 @@
 <script>
 
 import SingleValueStructDef from "../components/partials/structs/SingleValueStructDef.vue";
-import {InputType} from "../utils/dataValidationFunctions.ts"
+import {InputType, StringInputDef, BooleanInputDef, NumberInputDef} from "../utils/dataValidationFunctions.ts"
 
 export default {
 
@@ -88,7 +91,10 @@ export default {
   },
   setup(props) {
     return {
-      InputType
+      InputType,
+      NumberInputDef,
+      StringInputDef,
+      BooleanInputDef
     }
   }
 
