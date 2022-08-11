@@ -13,11 +13,11 @@
           <div id="1" class="col-9 col-sm-12">
             <NumberStructDef
                 @value-changed="valueChanged"
-                :min="0"
-                :max="10"
                 name="intExample"
-                value-type="INT"
-                element_id="int1">
+                :value-type=InputType.INT
+                element_id="int1"
+                :step="1"
+                :validation-def="{'type': InputType.INT, 'min': 0, 'max': 5}">
             </NumberStructDef>
           </div>
           <div class="k-form-separator"></div>
@@ -28,13 +28,29 @@
           <div id="2" class="col-9 col-sm-12">
             <NumberStructDef
                 @value-changed="valueChanged"
-                :min="0.1"
-                :max="0.9"
                 name="floatExample"
-                value-type="FLOAT"
-                element-id="float1"></NumberStructDef>
+                :value-type=InputType.FLOAT
+                element-id="float1"
+                :step="0.1"
+                :validation-def="{'type': InputType.FLOAT, 'min': 0.0, 'max': 0.6}">
+            </NumberStructDef>
           </div>
         </div>
+
+        <div class="form-group">
+          <div class="col-3 col-sm-12">
+            <label class="form-label" for="3">stringExample</label>
+          </div>
+          <div id="3" class="col-9 col-sm-12">
+            <StringStructDef
+                @value-changed="valueChanged"
+                name="floatExample"
+                element-id="string1"
+                regex="^a\w*$">
+            </StringStructDef>
+          </div>
+        </div>
+
       </form>
     </div>
   </div>
@@ -43,12 +59,14 @@
 <script>
 
 import NumberStructDef from "../components/partials/structs/NumberStructDef.vue";
+import StringStructDef from "../components/partials/structs/StringStructDef.vue";
+import {InputType} from "../utils/dataValidationFunctions.ts"
 
 export default {
 
   props: [
   ],
-  components: {NumberStructDef},
+  components: {NumberStructDef, StringStructDef},
   methods: {
 
     valueChanged(attributes) {
@@ -58,6 +76,7 @@ export default {
   },
   setup(props) {
     return {
+      InputType
     }
   }
 

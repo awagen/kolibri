@@ -1,11 +1,11 @@
 <template>
 
-  <template v-if="valueType === 'INT'">
-    <input :id=VALUE_INPUT_ID class="form-input metric" type="number" step=1 :value="value" @input="updateValueEvent"
+  <template v-if="valueType === InputType.INT">
+    <input :id=VALUE_INPUT_ID class="form-input metric" type="number" :step=step :value="value" @input="updateValueEvent"
            placeholder="Number Input">
   </template>
-  <template v-if="valueType === 'FLOAT'">
-    <input :id=VALUE_INPUT_ID class="form-input metric" type="number" step=0.5 :value="value" @input="updateValueEvent"
+  <template v-if="valueType === InputType.FLOAT">
+    <input :id=VALUE_INPUT_ID class="form-input metric" type="number" :step=step :value="value" @input="updateValueEvent"
            placeholder="Number Input">
   </template>
   <div :id=TOAST_ID class="toast toast-warning display-none">
@@ -16,15 +16,16 @@
 
 <script>
 import {ref} from "vue";
+import {InputType, InputValidation} from "../../../utils/dataValidationFunctions.ts"
 
 export default {
 
   props: {
-    "min": Number,
-    "max": Number,
     "name": String,
-    "valueType": String,
-    "elementId": String
+    "elementId": String,
+    "step": Number,
+    "valueType": InputType,
+    "validationDef": Object
   },
   components: {},
   methods: {
@@ -36,17 +37,11 @@ export default {
     let TOAST_ID = 'k-' + props.elementId + '-msg-toast'
     let TOAST_CONTENT_ID = 'k-' + props.elementId + '-msg-toast-content'
 
+    let validator = new InputValidation(props.validationDef)
+
     function validate(val) {
-      // nothing entered yet or clearing
-      if (val === "") {
-        return true
-      }
-      else if (props.min !== undefined && val < props.min) {
-        return false
-      } else if (props.max !== undefined && val > props.max) {
-        return false
-      }
-      return true
+      console.info("validate of validator called: " + validator.toString())
+      return validator.validate(val)
     }
 
     document.addEventListener('change', function handleClickOutsideBox(event) {
@@ -57,7 +52,8 @@ export default {
       console.debug("updated event called with value: " + valueEvent.target.value)
       let updateValue = valueEvent.target.value
       hideModal()
-      if (validate(updateValue)) {
+      let validationResult = validate(updateValue)
+      if (validationResult.isValid) {
         value.value = updateValue
         // emitting value to communicate to parent name and value
         // of the property.
@@ -66,7 +62,7 @@ export default {
         // upstream for the final result
         context.emit('valueChanged', {name: props.name, value: value.value})
       } else {
-        showModalMsg(`value out of range (${props.min} - ${props.max}): ${updateValue}`)
+        showModalMsg(validationResult.failReason)
         document.getElementById(VALUE_INPUT_ID).value = value.value;
         console.debug("value invalid, no update")
       }
@@ -88,7 +84,8 @@ export default {
       hideModal,
       VALUE_INPUT_ID,
       TOAST_ID,
-      TOAST_CONTENT_ID
+      TOAST_CONTENT_ID,
+      InputType
     }
   }
 
