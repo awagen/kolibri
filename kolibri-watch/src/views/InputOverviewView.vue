@@ -49,6 +49,19 @@
                 :validation-def="{'type': InputType.STRING, 'regex': '^a\\w*$', 'max': 0.6}">
             </SingleValueStructDef>
           </div>
+
+          <div class="col-3 col-sm-12">
+            <label class="form-label" for="4">isOn</label>
+          </div>
+          <div id="4" class="col-9 col-sm-12">
+            <SingleValueStructDef
+                @value-changed="valueChanged"
+                name="isOn"
+                :value-type=InputType.BOOLEAN
+                element-id="boolean1"
+                :validation-def="{'type': ''}">
+            </SingleValueStructDef>
+          </div>
         </div>
 
       </form>

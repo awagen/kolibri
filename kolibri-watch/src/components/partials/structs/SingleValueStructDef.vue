@@ -12,6 +12,14 @@
   <input :id=VALUE_INPUT_ID class="form-input metric" type="text" :value="value" @input="updateValueEvent"
          placeholder="Text Input">
   </template>
+  <template v-if="valueType === InputType.BOOLEAN">
+    <label class="form-radio form-inline">
+      <input type="radio" name="{{name}}" :value="true" checked="" @change="updateValueEvent"><i class="form-icon"></i> true
+    </label>
+    <label class="form-radio form-inline">
+      <input type="radio" name="{{name}}" :value="false" @change="updateValueEvent"><i class="form-icon"></i> false
+    </label>
+  </template>
   <div :id=TOAST_ID class="toast toast-warning display-none">
     <button type='button' class="btn btn-clear float-right" @click="hideModal"></button>
     <span :id=TOAST_CONTENT_ID></span>
@@ -44,7 +52,7 @@ export default {
     let validator = new InputValidation(props.validationDef)
 
     function validate(val) {
-      console.info("validate of validator called: " + validator.toString())
+      console.debug("validate of validator called: " + validator.toString())
       return validator.validate(val)
     }
 
