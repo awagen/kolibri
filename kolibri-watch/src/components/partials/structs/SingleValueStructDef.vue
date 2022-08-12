@@ -19,11 +19,26 @@
     <button type='button' class="btn btn-clear float-right" @click="hideModal"></button>
     <span :id=TOAST_CONTENT_ID></span>
   </div>
+  <template v-if="(elementDef instanceof ChoiceInputDef)">
+    <template v-for="element in elementDef.choices">
+      <label class="form-radio form-inline">
+        <input type="radio" name="{{elementDef.name}}" :value="element" checked="" @change="updateValueEvent"><i class="form-icon"></i> {{element}}
+      </label>
+    </template>
+  </template>
+  <template v-if="(elementDef instanceof FloatChoiceInputDef)">
+    <template v-for="element in elementDef.choices">
+      <label class="form-radio form-inline">
+        <input type="radio" name="{{elementDef.name}}" :value="element" checked="" @change="updateValueEvent"><i class="form-icon"></i> {{element}}
+      </label>
+    </template>
+  </template>
 </template>
 
 <script>
 import {ref} from "vue";
-import {InputDef, StringInputDef, BooleanInputDef, NumberInputDef, InputType} from "../../../utils/dataValidationFunctions.ts"
+import {InputDef, StringInputDef, BooleanInputDef, NumberInputDef, InputType,
+ChoiceInputDef, FloatChoiceInputDef} from "../../../utils/dataValidationFunctions.ts"
 
 export default {
 
@@ -95,7 +110,9 @@ export default {
       InputType,
       NumberInputDef,
       StringInputDef,
-      BooleanInputDef
+      BooleanInputDef,
+      ChoiceInputDef,
+      FloatChoiceInputDef
     }
   }
 

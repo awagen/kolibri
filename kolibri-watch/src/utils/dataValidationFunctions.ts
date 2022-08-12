@@ -31,6 +31,29 @@ function getValidationByMinMax(min,
     }
 }
 
+function getChoiceValidationFunction(choices: Array<any>): (any) => ValidationResult {
+    return function (val: any) {
+        if (choices.includes(val)) {
+            return new ValidationResult(true, "")
+        }
+        return new ValidationResult(false, `value '${val}' is not in valid choices: '${choices}'`)
+    }
+}
+
+function getFloatChoiceValidationFunction(choices: Array<number>, accuracy: Number = 0.0001): (any) => ValidationResult {
+    return function (val: any) {
+        let parsedValue: number = (typeof val === 'string') ? parseFloat(val) : val
+        if (typeof parsedValue !== 'number') {
+            return new ValidationResult(false, `value '${val}' is not a number`)
+        }
+        const item: any = choices.find((x) => (Math.abs(x - parsedValue) <= accuracy))
+        if (item === undefined) {
+            return new ValidationResult(false, `value '${val}' is not close enough within accurracy of '${accuracy}': '${choices}'`)
+        }
+        return new ValidationResult(true, "")
+    }
+}
+
 
 class ValidationResult {
 
@@ -45,10 +68,16 @@ class ValidationResult {
 }
 
 enum InputType {
+    ANY,
     INT,
     FLOAT,
     STRING,
-    BOOLEAN
+    BOOLEAN,
+    // choice for arbitrary values, judt need to be comparable by ===
+    CHOICE,
+    // choice for floating point, where right choice just needs to be sufficiently close to
+    // a valid choice value (how close is needed is defined by accuracy paramter)
+    FLOAT_CHOICE
 }
 
 class InputDef {
@@ -78,6 +107,36 @@ class InputDef {
 
     getInputValidation(): InputValidation {
         return new InputValidation(this.validation)
+    }
+}
+
+class ChoiceInputDef extends InputDef {
+    choices = []
+
+    constructor(name: string,
+                elementId: string,
+                choices: Array<any>) {
+        super(name, elementId, InputType.CHOICE, {
+            "type": InputType.CHOICE,
+            "choices": choices
+        })
+        this.choices = choices
+    }
+}
+
+class FloatChoiceInputDef extends InputDef {
+    choices = []
+
+    constructor(name: string,
+                elementId: string,
+                choices: Array<Number>,
+                accuracy: number = 0.0001) {
+        super(name, elementId, InputType.FLOAT_CHOICE, {
+            "type": InputType.FLOAT_CHOICE,
+            "choices": choices,
+            "accuracy": accuracy
+        })
+        this.choices = choices
     }
 }
 
@@ -170,7 +229,21 @@ class InputValidation {
             }
         } else if (type === InputType.BOOLEAN) {
             this.validationFunction = (val) => new ValidationResult(true, "")
-        } else {
+        }
+        else if (type === InputType.CHOICE) {
+            let choices: Array<any> = params["choices"]
+            this.validationFunction = (val) => {
+                return getChoiceValidationFunction(choices)(val)
+            }
+        }
+        else if (type === InputType.FLOAT_CHOICE) {
+            let choices: Array<number> = params["choices"]
+            let accuracy: number = params["accuracy"]
+            this.validationFunction = (val) => {
+                return getFloatChoiceValidationFunction(choices, accuracy)(val)
+            }
+        }
+        else {
             this.validationFunction = (val) => new ValidationResult(true, "")
         }
     }
@@ -195,5 +268,9 @@ export {
     InputDef,
     NumberInputDef,
     StringInputDef,
-    BooleanInputDef
+    BooleanInputDef,
+    getChoiceValidationFunction,
+    ChoiceInputDef,
+    getFloatChoiceValidationFunction,
+    FloatChoiceInputDef
 }

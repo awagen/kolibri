@@ -66,6 +66,36 @@
             </SingleValueStructDef>
           </div>
         </div>
+        <!-- next form group -->
+        <div class="form-group">
+          <div class="col-3 col-sm-12">
+            <label class="form-label" for="5">choiceExample</label>
+          </div>
+          <div id="5" class="col-9 col-sm-12">
+            <SingleValueStructDef
+                @value-changed="valueChanged"
+                :element-def="new ChoiceInputDef(
+                    'choiceExample',
+                    'choice1',
+                    ['s1', 's2']
+                )">
+            </SingleValueStructDef>
+          </div>
+          <div class="col-3 col-sm-12">
+            <label class="form-label" for="6">floatChoice1</label>
+          </div>
+          <div id="6" class="col-9 col-sm-12">
+            <SingleValueStructDef
+                @value-changed="valueChanged"
+                :element-def="new FloatChoiceInputDef(
+                    'floatChoiceExample',
+                    'floatChoice1',
+                    [0.021, 0.03],
+                    0.00001
+                )">
+            </SingleValueStructDef>
+          </div>
+        </div>
 
       </form>
     </div>
@@ -75,7 +105,8 @@
 <script>
 
 import SingleValueStructDef from "../components/partials/structs/SingleValueStructDef.vue";
-import {InputType, StringInputDef, BooleanInputDef, NumberInputDef} from "../utils/dataValidationFunctions.ts"
+import {InputType, StringInputDef, BooleanInputDef, NumberInputDef,
+ChoiceInputDef, FloatChoiceInputDef} from "../utils/dataValidationFunctions.ts"
 
 export default {
 
@@ -94,7 +125,9 @@ export default {
       InputType,
       NumberInputDef,
       StringInputDef,
-      BooleanInputDef
+      BooleanInputDef,
+      ChoiceInputDef,
+      FloatChoiceInputDef
     }
   }
 
