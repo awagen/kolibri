@@ -7,16 +7,23 @@ function getStringValidationByRegexFunction(regexStr: string): (any) => Validati
     }
 }
 
-// TODO: type check, e.g int or float?
-function getValidationByMinMax(min, max): (any) => ValidationResult {
+function getValidationByMinMax(min,
+                               max,
+                               expectedType: InputType = InputType.INT): (any) => ValidationResult {
     return function (val: any) {
         // nothing entered yet or clearing
         if (val === "") {
             return new ValidationResult(true, "")
-        } else if (min !== undefined && val < min) {
+        }
+        else if (expectedType === InputType.INT && !Number.isInteger(Number(val))) {
+            return new ValidationResult(false,
+                `value ${val} expected to be Integer, but is not`)
+        }
+        else if (min !== undefined && val < min) {
             return new ValidationResult(false,
                 `value ${val} is outside boundaries given by min=${min} / max=${max}`)
-        } else if (max !== undefined && val > max) {
+        }
+        else if (max !== undefined && val > max) {
             return new ValidationResult(false,
                 `value ${val} is outside boundaries given by min=${min} / max=${max}`)
         }
@@ -147,14 +154,14 @@ class InputValidation {
             let max = parseInt(params["max"])
             this.validationFunction = (val) => {
                 console.info("validating value: " + val)
-                return getValidationByMinMax(min, max)(val)
+                return getValidationByMinMax(min, max, type)(val)
             }
         } else if (type === InputType.FLOAT) {
             let min = parseFloat(params["min"])
             let max = parseFloat(params["max"])
             this.validationFunction = (val) => {
                 console.info("validating value: " + val)
-                return getValidationByMinMax(min, max)(val)
+                return getValidationByMinMax(min, max, type)(val)
             }
         } else if (type === InputType.STRING) {
             let regexStr = params["regex"]
