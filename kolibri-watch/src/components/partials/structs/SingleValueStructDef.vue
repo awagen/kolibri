@@ -47,27 +47,31 @@ export default {
       return validator.validate(val)
     }
 
-    document.addEventListener('change', function handleClickOutsideBox(event) {
-      hideModal()
+    document.addEventListener('change', function handle(event) {
+      if (event.target.id !== VALUE_INPUT_ID) {
+        console.info("change event on input id: " + event.target.id)
+        return
+      }
+      console.info(`new value after change event: ${event.target.value}`)
+      let validationResult = validate(event.target.value)
+      if (validationResult.isValid) {
+        hideModal()
+      }
     });
 
     function updateValueEvent(valueEvent) {
       console.debug("updated event called with value: " + valueEvent.target.value)
       let updateValue = valueEvent.target.value
-      hideModal()
       let validationResult = validate(updateValue)
       if (validationResult.isValid) {
+        hideModal()
         value.value = updateValue
-        // emitting value to communicate to parent name and value
-        // of the property.
-        // if we traverse this for each element, we can build up all
-        // substructures and communicate the changes downstream
-        // upstream for the final result
+        // emitting change event to make parent element react to update / update its structure
         context.emit('valueChanged', {name: props.elementDef.name, value: value.value})
-      } else {
+      }
+      else {
         showModalMsg(validationResult.failReason)
-        document.getElementById(VALUE_INPUT_ID).value = value.value;
-        console.debug("value invalid, no update")
+        console.debug("value invalid")
       }
     }
 

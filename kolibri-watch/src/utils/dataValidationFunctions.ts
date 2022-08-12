@@ -3,7 +3,7 @@ function getStringValidationByRegexFunction(regexStr: string): (any) => Validati
     return function (str: any) {
         let isValid = regex.test(str)
         return new ValidationResult(isValid, isValid ? "" :
-            `value '${str} does not match regex '${regexStr}'`)
+            `value '${str}' does not match regex '${regexStr}'`)
     }
 }
 
