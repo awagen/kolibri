@@ -1,38 +1,39 @@
 <template>
   <template v-if="(elementDef instanceof NumberInputDef)">
-    <input :id=VALUE_INPUT_ID class="form-input metric" type="number" :step=elementDef.step :value="value" @input="updateValueEvent"
+    <input :id=VALUE_INPUT_ID class="form-input metric" type="number" :step=elementDef.step @input="updateValueEvent"
            placeholder="Number Input">
   </template>
   <template v-if="(elementDef instanceof StringInputDef)">
-  <input :id=VALUE_INPUT_ID class="form-input metric" type="text" :value="value" @input="updateValueEvent"
+  <input :id=VALUE_INPUT_ID class="form-input metric" type="text" @input="updateValueEvent"
          placeholder="Text Input">
   </template>
   <template v-if="(elementDef instanceof BooleanInputDef)">
     <label class="form-radio form-inline">
-      <input type="radio" :name="elementDef.name" :value="true" checked="" @change="updateValueEvent"><i class="form-icon"></i> true
+      <input type="radio" :name="elementDef.name" :value="true" @change="updateValueEvent"><i class="form-icon"></i> true
     </label>
     <label class="form-radio form-inline">
       <input type="radio" :name="elementDef.name" :value="false" @change="updateValueEvent"><i class="form-icon"></i> false
     </label>
   </template>
-  <div :id=TOAST_ID class="toast toast-warning display-none">
-    <button type='button' class="btn btn-clear float-right" @click="hideModal"></button>
-    <span :id=TOAST_CONTENT_ID></span>
-  </div>
   <template v-if="(elementDef instanceof ChoiceInputDef)">
     <template v-for="element in elementDef.choices">
       <label class="form-radio form-inline">
-        <input type="radio" :name="elementDef.name" :value="element" checked="" @change="updateValueEvent"><i class="form-icon"></i> {{element}}
+        <input type="radio" :name="elementDef.name" :value="element" @change="updateValueEvent"><i class="form-icon"></i> {{element}}
       </label>
     </template>
   </template>
   <template v-if="(elementDef instanceof FloatChoiceInputDef)">
     <template v-for="element in elementDef.choices">
       <label class="form-radio form-inline">
-        <input type="radio" :name="elementDef.name" :value="element" checked="" @change="updateValueEvent"><i class="form-icon"></i> {{element}}
+        <input type="radio" :name="elementDef.name" :value="element" @change="updateValueEvent"><i class="form-icon"></i> {{element}}
       </label>
     </template>
   </template>
+  <!-- Toast element for warnings / validation messages -->
+  <div :id=TOAST_ID class="toast toast-warning display-none">
+    <button type='button' class="btn btn-clear float-right" @click="hideModal"></button>
+    <span :id=TOAST_CONTENT_ID></span>
+  </div>
 </template>
 
 <script>

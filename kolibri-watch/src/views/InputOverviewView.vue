@@ -1,10 +1,5 @@
 <template>
-  <div class="form-container-experiment-create columns">
-    <div class="form-horizontal col-12">
-      <form class="form-horizontal col-6 column">
-        <h3 class="k-title">
-          Input Overview
-        </h3>
+  <div class="row-container columns">
 
         <NestedFieldSeqStructDef
           :fields="[
@@ -44,9 +39,7 @@
           ]">
         </NestedFieldSeqStructDef>
 
-      </form>
     </div>
-  </div>
 </template>
 
 <script>
@@ -83,5 +76,13 @@ export default {
 </script>
 
 <style scoped>
+
+.form-container-experiment-create {
+  margin-top: 3em;
+}
+
+.row-container {
+  margin: 3em;
+}
 
 </style>
