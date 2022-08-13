@@ -130,6 +130,11 @@ export default {
   display: none;
 }
 
+.toast.toast-warning {
+  background: linear-gradient(#25333C, #545454);
+  border-style: none
+}
+
 </style>
 
 

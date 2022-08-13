@@ -228,7 +228,7 @@ class InputValidation {
                 return getStringValidationByRegexFunction(regexStr)(val)
             }
         } else if (type === InputType.BOOLEAN) {
-            this.validationFunction = (val) => new ValidationResult(true, "")
+            this.validationFunction = (_) => new ValidationResult(true, "")
         }
         else if (type === InputType.CHOICE) {
             let choices: Array<any> = params["choices"]
@@ -244,7 +244,7 @@ class InputValidation {
             }
         }
         else {
-            this.validationFunction = (val) => new ValidationResult(true, "")
+            this.validationFunction = (_) => new ValidationResult(true, "")
         }
     }
 

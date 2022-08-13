@@ -10,7 +10,7 @@
           <div class="col-3 col-sm-12">
             <label class="form-label" for="1">intExample</label>
           </div>
-          <div id="1" class="col-9 col-sm-12">
+          <div id="1" class="k-input col-9 col-sm-12">
             <SingleValueStructDef
                 @value-changed="valueChanged"
                 :element-def="new NumberInputDef(
@@ -26,7 +26,7 @@
           <div class="col-3 col-sm-12">
             <label class="form-label" for="2">floatExample</label>
           </div>
-          <div id="2" class="col-9 col-sm-12">
+          <div id="2" class="k-input col-9 col-sm-12">
             <SingleValueStructDef
                 @value-changed="valueChanged"
                 :element-def="new NumberInputDef(
@@ -43,7 +43,7 @@
           <div class="col-3 col-sm-12">
             <label class="form-label" for="3">stringExample</label>
           </div>
-          <div id="3" class="col-9 col-sm-12">
+          <div id="3" class="k-input col-9 col-sm-12">
             <SingleValueStructDef
                 @value-changed="valueChanged"
                 :element-def="new StringInputDef(
@@ -56,7 +56,7 @@
           <div class="col-3 col-sm-12">
             <label class="form-label" for="4">isOn</label>
           </div>
-          <div id="4" class="col-9 col-sm-12">
+          <div id="4" class="k-input col-9 col-sm-12">
             <SingleValueStructDef
                 @value-changed="valueChanged"
                 :element-def="new BooleanInputDef(
@@ -71,7 +71,7 @@
           <div class="col-3 col-sm-12">
             <label class="form-label" for="5">choiceExample</label>
           </div>
-          <div id="5" class="col-9 col-sm-12">
+          <div id="5" class="k-input col-9 col-sm-12">
             <SingleValueStructDef
                 @value-changed="valueChanged"
                 :element-def="new ChoiceInputDef(
@@ -84,7 +84,7 @@
           <div class="col-3 col-sm-12">
             <label class="form-label" for="6">floatChoice1</label>
           </div>
-          <div id="6" class="col-9 col-sm-12">
+          <div id="6" class="k-input col-9 col-sm-12">
             <SingleValueStructDef
                 @value-changed="valueChanged"
                 :element-def="new FloatChoiceInputDef(
@@ -136,4 +136,9 @@ export default {
 </script>
 
 <style scoped>
+
+.k-input {
+  text-align: left;
+}
+
 </style>
