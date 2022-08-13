@@ -115,11 +115,21 @@ const store = createStore({
                 // analysis states
                 analysisTopFlop: {},
                 analysisVariances: {}
+            },
+
+            jobInputDefState: {
+                searchEvalJobDefState: {},
+                searchEvalJobDefJsonString: ""
             }
         }
     },
 
     mutations: {
+        updateSearchEvalJobDefState(state, jobDefState) {
+            state.jobInputDefState.searchEvalJobDefState = jobDefState
+            state.jobInputDefState.searchEvalJobDefJsonString = objectToJsonStringAndSyntaxHighlight(jobDefState)
+        },
+
         recalculateSelectedDataJsonString(state) {
             let jsonObj = selectedDataToParameterValuesJson(state.dataState.selectedData)
             state.dataState.selectedDataJsonString = objectToJsonStringAndSyntaxHighlight(jsonObj)
