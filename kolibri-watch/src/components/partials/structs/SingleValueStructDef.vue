@@ -9,10 +9,10 @@
   </template>
   <template v-if="(elementDef instanceof BooleanInputDef)">
     <label class="form-radio form-inline">
-      <input type="radio" name="{{elementDef.name}}" :value="true" checked="" @change="updateValueEvent"><i class="form-icon"></i> true
+      <input type="radio" :name="elementDef.name" :value="true" checked="" @change="updateValueEvent"><i class="form-icon"></i> true
     </label>
     <label class="form-radio form-inline">
-      <input type="radio" name="{{elementDef.name}}" :value="false" @change="updateValueEvent"><i class="form-icon"></i> false
+      <input type="radio" :name="elementDef.name" :value="false" @change="updateValueEvent"><i class="form-icon"></i> false
     </label>
   </template>
   <div :id=TOAST_ID class="toast toast-warning display-none">
@@ -22,14 +22,14 @@
   <template v-if="(elementDef instanceof ChoiceInputDef)">
     <template v-for="element in elementDef.choices">
       <label class="form-radio form-inline">
-        <input type="radio" name="{{elementDef.name}}" :value="element" checked="" @change="updateValueEvent"><i class="form-icon"></i> {{element}}
+        <input type="radio" :name="elementDef.name" :value="element" checked="" @change="updateValueEvent"><i class="form-icon"></i> {{element}}
       </label>
     </template>
   </template>
   <template v-if="(elementDef instanceof FloatChoiceInputDef)">
     <template v-for="element in elementDef.choices">
       <label class="form-radio form-inline">
-        <input type="radio" name="{{elementDef.name}}" :value="element" checked="" @change="updateValueEvent"><i class="form-icon"></i> {{element}}
+        <input type="radio" :name="elementDef.name" :value="element" checked="" @change="updateValueEvent"><i class="form-icon"></i> {{element}}
       </label>
     </template>
   </template>

@@ -73,10 +73,10 @@ enum InputType {
     FLOAT,
     STRING,
     BOOLEAN,
-    // choice for arbitrary values, judt need to be comparable by ===
+    // choice for arbitrary values, just need to be comparable by ===
     CHOICE,
     // choice for floating point, where right choice just needs to be sufficiently close to
-    // a valid choice value (how close is needed is defined by accuracy paramter)
+    // a valid choice value (how close is needed is defined by accuracy parameter)
     FLOAT_CHOICE
 }
 
@@ -110,7 +110,9 @@ class InputDef {
     }
 }
 
-class ChoiceInputDef extends InputDef {
+class SingleValueInputDef extends InputDef {}
+
+class ChoiceInputDef extends SingleValueInputDef{
     choices = []
 
     constructor(name: string,
@@ -124,7 +126,7 @@ class ChoiceInputDef extends InputDef {
     }
 }
 
-class FloatChoiceInputDef extends InputDef {
+class FloatChoiceInputDef extends SingleValueInputDef{
     choices = []
 
     constructor(name: string,
@@ -140,7 +142,7 @@ class FloatChoiceInputDef extends InputDef {
     }
 }
 
-class BooleanInputDef extends InputDef {
+class BooleanInputDef extends SingleValueInputDef{
     constructor(name: string,
                 elementId: string) {
         super(name, elementId, InputType.BOOLEAN, {
@@ -149,7 +151,7 @@ class BooleanInputDef extends InputDef {
     }
 }
 
-class StringInputDef extends InputDef {
+class StringInputDef extends SingleValueInputDef{
     regex = ".*"
 
     constructor(name: string,
@@ -166,7 +168,7 @@ class StringInputDef extends InputDef {
 }
 
 
-class NumberInputDef extends InputDef {
+class NumberInputDef extends SingleValueInputDef{
     step = 1
     min = 0
     max = 1
@@ -272,5 +274,6 @@ export {
     getChoiceValidationFunction,
     ChoiceInputDef,
     getFloatChoiceValidationFunction,
-    FloatChoiceInputDef
+    FloatChoiceInputDef,
+    SingleValueInputDef
 }
