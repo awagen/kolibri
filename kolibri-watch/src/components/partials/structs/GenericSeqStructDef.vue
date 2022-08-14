@@ -5,10 +5,18 @@ elements where all have to adhere to the passed def -->
 
         <template v-for="(field, index) in addedInputDefs">
           <template v-if="(field instanceof SingleValueInputDef)">
-            <SingleValueStructDef
-                @value-changed="valueChanged"
-                :element-def="field">
-            </SingleValueStructDef>
+            <div class="k-value-and-delete">
+              <div class="k-single-value-input">
+                <SingleValueStructDef
+                    @value-changed="valueChanged"
+                    :element-def="field">
+                </SingleValueStructDef>
+              </div>
+              <div class="k-delete-button">
+                <a @click="deleteInputElement(index)" href="#" class="k-delete btn btn-clear"
+                   aria-label="Close" role="button"></a>
+              </div>
+            </div>
           </template>
           <div class="k-form-separator"></div>
         </template>
@@ -76,6 +84,14 @@ export default {
       addedInputDefs.value.push(generateIndexedInputDef())
     }
 
+    function deleteInputElement(index){
+      addedInputValues.value.splice(index, 1)
+      // TODO: we need to bind addedInputDefs to their actual values, cause on deleting an element
+      // the rerending will otherwise just move the values up
+      addedInputDefs.value.splice(index, 1)
+      context.emit("valueChanged", {"name": props.name, "value": addedInputValues.value})
+    }
+
     onMounted(() => {
       addedInputValues.value.push(undefined)
       addedInputDefs.value.push(generateIndexedInputDefForIndex(0))
@@ -87,7 +103,8 @@ export default {
       addedInputDefs,
       SingleValueInputDef,
       valueChanged,
-      addNextInputElement
+      addNextInputElement,
+      deleteInputElement
     }
   }
 
@@ -95,7 +112,7 @@ export default {
 
 </script>
 
-<style scoped>
+<style>
 
 button.k-add-button {
   background-color: transparent;
@@ -110,6 +127,21 @@ button.k-add-button:hover {
 .k-add-button-container {
   text-align: center;
   margin-top: 1em;
+}
+
+/** single element edit and delete button **/
+.k-single-value-input {
+  display: inline-block;
+  width: calc(100% - 3em);
+  height: 100%;
+  overflow: hidden;
+}
+
+.k-delete-button {
+  float: right;
+  display: inline-block;
+  width: 2em;
+  height: 100%;
 }
 
 </style>
