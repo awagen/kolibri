@@ -75,13 +75,24 @@ export default {
       }
     });
 
+    function parseRightType(val) {
+      if ([InputType.INT, InputType.FLOAT, InputType.FLOAT_CHOICE]
+          .includes(props.elementDef.valueType)) {
+        return parseFloat(val)
+      }
+      else if (props.elementDef.valueType === InputType.BOOLEAN) {
+        return (val === "true")
+      }
+      return val
+    }
+
     function updateValueEvent(valueEvent) {
       console.debug("updated event called with value: " + valueEvent.target.value)
       let updateValue = valueEvent.target.value
       let validationResult = validate(updateValue)
       if (validationResult.isValid) {
         hideModal()
-        value.value = updateValue
+        value.value = parseRightType(updateValue)
         // emitting change event to make parent element react to update / update its structure
         context.emit('valueChanged', {name: props.elementDef.name, value: value.value})
       }

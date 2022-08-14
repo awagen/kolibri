@@ -1,29 +1,46 @@
 <template>
 
   <template v-for="(field, index) in fields">
-    <template v-if="(field instanceof SingleValueInputDef)">
       <div class="form-group">
-        <div class="col-3 col-sm-12">
-          <label class="form-label" :for="field.elementId-index">{{field.name}}</label>
-        </div>
-        <div :id="field.elementId-index" class="k-input col-9 col-sm-12">
-          <SingleValueStructDef
-              @value-changed="valueChanged"
-              :element-def="field">
-          </SingleValueStructDef>
-        </div>
+
+        <template v-if="(field instanceof SingleValueInputDef)">
+          <div class="col-3 col-sm-12">
+            <label class="form-label" :for="field.elementId-index">{{field.name}}</label>
+          </div>
+          <!-- TODO: non-number-ids wont work, so at least wed need a hash here -->
+          <div :id="field.elementId-index" class="k-input col-9 col-sm-12">
+            <SingleValueStructDef
+                @value-changed="valueChanged"
+                :element-def="field">
+            </SingleValueStructDef>
+          </div>
+        </template>
+
+        <template v-if="(field instanceof SeqInputDef)">
+          <div class="col-3 col-sm-12">
+            <label class="form-label" :for="field.elementId-index">{{field.name}}</label>
+          </div>
+          <div :id="field.elementId-index" class="k-input col-9 col-sm-12">
+            <GenericSeqStructDef
+                @value-changed="valueChanged"
+                name="seqTest"
+                :input-def="field.inputDef">
+            </GenericSeqStructDef>
+          </div>
+        </template>
+
         <div class="k-form-separator"></div>
       </div>
-    </template>
   </template>
 
 </template>
 
 <script>
-import {SingleValueInputDef} from "../../../utils/dataValidationFunctions.ts";
+import {SingleValueInputDef, SeqInputDef} from "../../../utils/dataValidationFunctions.ts";
 import SingleValueStructDef from "./SingleValueStructDef.vue";
 import {ref} from "vue";
 import { useStore } from 'vuex';
+import GenericSeqStructDef from "./GenericSeqStructDef.vue";
 
 export default {
 
@@ -32,7 +49,7 @@ export default {
     // work also when using PropType
     fields: {type: Array, required: true}
   },
-  components: {SingleValueStructDef},
+  components: {GenericSeqStructDef, SingleValueStructDef},
   computed: {
   },
   methods: {
@@ -57,6 +74,7 @@ export default {
     return {
       SingleValueInputDef,
       valueChanged,
+      SeqInputDef
     }
   }
 
