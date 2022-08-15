@@ -117,15 +117,18 @@ class InputDef {
     elementId: string
     valueType: InputType
     validation: Object
+    defaultValue: any = undefined
 
     constructor(name: string,
                 elementId: string,
                 valueType: InputType,
-                validation: Object) {
+                validation: Object,
+                defaultValue: any = undefined) {
         this.name = name
         this.elementId = elementId
         this.valueType = valueType
         this.validation = validation
+        this.defaultValue = defaultValue
     }
 
     toObject(): Object {
@@ -133,7 +136,8 @@ class InputDef {
             "name": this.name,
             "elementId": this.elementId,
             "valueType": this.valueType,
-            "validation": this.validation
+            "validation": this.validation,
+            "defaultValue": this.defaultValue
         }
     }
 
@@ -141,21 +145,11 @@ class InputDef {
         return new InputValidation(this.validation)
     }
 
-    copy(name: string, elementId: string): InputDef {
-        return new InputDef(name, elementId, this.valueType, this.validation)
+    copy(name: string, elementId: string, defaultValue: any = undefined): InputDef {
+        return new InputDef(name, elementId, this.valueType, this.validation, defaultValue)
     }
 
 
-}
-
-class IndexedInputDef {
-    inputDef: InputDef = undefined
-    index: Number = undefined
-    constructor(inputDef: InputDef,
-                index: Number) {
-        this.inputDef = inputDef
-        this.index = index
-    }
 }
 
 /**
@@ -167,7 +161,8 @@ class SingleValueInputDef extends InputDef {
 /**
  * Class representing a sequence of single values
  */
-class SeqValueInputDef extends InputDef {}
+class SeqValueInputDef extends InputDef {
+}
 
 /**
  * Defining input definition for a sequence. The validation requires every element contained
@@ -175,18 +170,20 @@ class SeqValueInputDef extends InputDef {}
  */
 class SeqInputDef extends SeqValueInputDef {
     inputDef: InputDef = undefined
+
     constructor(name: string,
                 elementId: string,
-                inputDef: InputDef) {
+                inputDef: InputDef,
+                defaultValue: any = undefined) {
         super(name, elementId, InputType.SEQ, {
             "type": InputType.SEQ,
             "validation": inputDef.validation
-        })
+        }, defaultValue)
         this.inputDef = inputDef
     }
 
-    override copy(name: string, elementId: string): InputDef {
-        return new SeqInputDef(name, elementId, this.inputDef)
+    override copy(name: string, elementId: string, defaultValue: any = undefined): InputDef {
+        return new SeqInputDef(name, elementId, this.inputDef, defaultValue)
     }
 }
 
@@ -195,16 +192,17 @@ class AnyOfInputDef extends SingleValueInputDef {
 
     constructor(name: string,
                 elementId: string,
-                inputDefs: Array<InputDef>) {
+                inputDefs: Array<InputDef>,
+                defaultValue: any = undefined) {
         super(name, elementId, InputType.ANY_OF, {
             "type": InputType.ANY_OF,
             "validations": inputDefs.map((defs) => defs.validation)
-        })
+        }, defaultValue)
         this.inputDefs = inputDefs
     }
 
-    override copy(name: string, elementId: string): InputDef {
-        return new AnyOfInputDef(name, elementId, this.inputDefs)
+    override copy(name: string, elementId: string, defaultValue: any = undefined): InputDef {
+        return new AnyOfInputDef(name, elementId, this.inputDefs, defaultValue)
     }
 }
 
@@ -213,16 +211,17 @@ class ChoiceInputDef extends SingleValueInputDef {
 
     constructor(name: string,
                 elementId: string,
-                choices: Array<any>) {
+                choices: Array<any>,
+                defaultValue: any = undefined) {
         super(name, elementId, InputType.CHOICE, {
             "type": InputType.CHOICE,
             "choices": choices
-        })
+        }, defaultValue)
         this.choices = choices
     }
 
-    override copy(name: string, elementId: string): InputDef {
-        return new ChoiceInputDef(name, elementId, this.choices)
+    override copy(name: string, elementId: string, defaultValue: any = undefined): InputDef {
+        return new ChoiceInputDef(name, elementId, this.choices, defaultValue)
     }
 }
 
@@ -232,30 +231,32 @@ class FloatChoiceInputDef extends SingleValueInputDef {
     constructor(name: string,
                 elementId: string,
                 choices: Array<Number>,
-                accuracy: number = 0.0001) {
+                accuracy: number = 0.0001,
+                defaultValue: any = undefined) {
         super(name, elementId, InputType.FLOAT_CHOICE, {
             "type": InputType.FLOAT_CHOICE,
             "choices": choices,
             "accuracy": accuracy
-        })
+        }, defaultValue)
         this.choices = choices
     }
 
-    override copy(name: string, elementId: string): InputDef {
-        return new FloatChoiceInputDef(name, elementId, this.choices)
+    override copy(name: string, elementId: string, defaultValue: any = undefined): InputDef {
+        return new FloatChoiceInputDef(name, elementId, this.choices, this.validation["accuracy"], defaultValue)
     }
 }
 
 class BooleanInputDef extends SingleValueInputDef {
     constructor(name: string,
-                elementId: string) {
+                elementId: string,
+                defaultValue: any = undefined) {
         super(name, elementId, InputType.BOOLEAN, {
             "type": InputType.BOOLEAN
-        });
+        }, defaultValue);
     }
 
-    override copy(name: string, elementId: string): InputDef {
-        return new BooleanInputDef(name, elementId)
+    override copy(name: string, elementId: string, defaultValue: any = undefined): InputDef {
+        return new BooleanInputDef(name, elementId, defaultValue)
     }
 
 }
@@ -265,7 +266,8 @@ class StringInputDef extends SingleValueInputDef {
 
     constructor(name: string,
                 elementId: string,
-                regex: string) {
+                regex: string,
+                defaultValue: any = undefined) {
         super(name,
             elementId,
             InputType.STRING,
@@ -275,8 +277,8 @@ class StringInputDef extends SingleValueInputDef {
             });
     }
 
-    override copy(name: string, elementId: string): InputDef {
-        return new StringInputDef(name, elementId, this.regex)
+    override copy(name: string, elementId: string, defaultValue: any = undefined): InputDef {
+        return new StringInputDef(name, elementId, this.regex, defaultValue)
     }
 }
 
@@ -299,12 +301,13 @@ class NumberInputDef extends SingleValueInputDef {
                 elementId: string,
                 step: number = 1,
                 min: number = undefined,
-                max: number = undefined) {
+                max: number = undefined,
+                defaultValue: any = undefined) {
         super(name, elementId, NumberInputDef.getType([step, min, max]), {
             "type": NumberInputDef.getType([step, min, max]),
             "min": min,
             "max": max
-        })
+        }, defaultValue)
         this.step = step
         this.min = min
         this.max = max
@@ -315,8 +318,8 @@ class NumberInputDef extends SingleValueInputDef {
         return Object.assign(obj, {"step": this.step})
     }
 
-    override copy(name: string, elementId: string): InputDef {
-        return new NumberInputDef(name, elementId, this.step, this.min, this.max)
+    override copy(name: string, elementId: string, defaultValue: any = undefined): InputDef {
+        return new NumberInputDef(name, elementId, this.step, this.min, this.max, defaultValue)
     }
 
 }
@@ -366,14 +369,12 @@ class InputValidation {
             this.validationFunction = (val) => {
                 return getSeqValidationFromValidationDef(perElementValidation)(val)
             }
-        }
-        else if (type == InputType.ANY_OF) {
+        } else if (type == InputType.ANY_OF) {
             let validations: Array<Object> = params["validations"]
             this.validationFunction = (val) => {
                 return getMatchAnyValidation(validations)(val)
             }
-        }
-        else {
+        } else {
             this.validationFunction = (_) => new ValidationResult(true, "")
         }
     }
@@ -405,6 +406,5 @@ export {
     FloatChoiceInputDef,
     SingleValueInputDef,
     SeqInputDef,
-    SeqValueInputDef,
-    IndexedInputDef
+    SeqValueInputDef
 }

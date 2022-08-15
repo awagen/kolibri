@@ -32,7 +32,10 @@
 </template>
 
 <script>
-import {InputDef, SingleValueInputDef} from "../../../utils/dataValidationFunctions";
+import {
+  InputDef,
+  SingleValueInputDef
+} from "../../../utils/dataValidationFunctions";
 import SingleValueStructDef from "./SingleValueStructDef.vue";
 import {onBeforeUnmount, onMounted, ref} from "vue";
 
@@ -49,11 +52,12 @@ export default {
 
     let addedInputDefs = ref([])
     let addedInputValues = ref([])
-    let observer = undefined
 
     function generateIndexedInputDefForIndex(index) {
-      return props.inputDef.copy(`${props.inputDef.name}-index-${index}`,
-          `${props.inputDef.elementId}-index-${index}`)
+      let updatedCopy = props.inputDef.copy(`${props.inputDef.name}-index-${index}`,
+          `${props.inputDef.elementId}-index-${index}`, addedInputValues.value[index])
+      console.info(`adding updated element copy ${JSON.stringify(updatedCopy.toObject())}`)
+      return updatedCopy
     }
 
     function generateIndexedInputDef() {
@@ -73,7 +77,6 @@ export default {
       context.emit("valueChanged", {"name": props.name, "value": addedInputValues.value})
       console.info("value changed event: ")
       console.log({"name": props.name, "value": addedInputValues.value})
-      // console.info("child value changed: " + attributes.name + "/" + attributes.value)
     }
 
     /**
@@ -103,59 +106,9 @@ export default {
       context.emit("valueChanged", {"name": props.name, "value": addedInputValues.value})
     }
 
-    /**
-     * Syncing current state of values with the ordering in the input elements.
-     * Only needed on deletions of elements
-     */
-    function updateInputSequenceValues(){
-      // now iterate thru the input elements and set the values as given in addedInputValues
-      // TODO: for radio buttons needs setting the right checked
-      for (let [valueIndex, value] of addedInputValues.value.entries()) {
-        let inputSelector = `#container-${addedInputDefs.value[valueIndex].elementId} input`
-        console.debug("trying to find element by selector: " + inputSelector)
-        let htmlInputElement = document.querySelector(inputSelector)
-        if (htmlInputElement !== null && htmlInputElement !== undefined) {
-          console.debug(`found element for index '${valueIndex}', setting value to ${value}`)
-          console.debug(htmlInputElement)
-          htmlInputElement.value = value
-        }
-      }
-    }
-
     onMounted(() => {
       addedInputValues.value.push(undefined)
       addedInputDefs.value.push(generateIndexedInputDefForIndex(0))
-
-      // NOTE: this here would not be needed if the values were prefilled depending on the current value state
-      // e.g where value is set on rendering. TODO: get rid of this here and rewrite to set the input values
-      // initially to the current actual value instead of the current html input value
-      observer = new MutationObserver(mutations => {
-        let mutationsWithValueNodeRemoval = mutations.filter(mutation => {
-          let removedNodes = Array.from(mutation["removedNodes"])
-          let removedValueNodes = removedNodes.filter((node) => node.className === 'k-value-and-delete')
-          return removedValueNodes.length > 0
-        })
-        if (mutationsWithValueNodeRemoval !== undefined && mutationsWithValueNodeRemoval.length > 0) {
-          console.debug("seen removal of seq entries")
-          console.debug(mutationsWithValueNodeRemoval)
-          // execute value adjustment logic
-          updateInputSequenceValues()
-        }
-      });
-      observer.observe(
-          document.querySelector('.k-seq-container'),
-          {
-            attributes: true, childList: true, characterData: true, subtree: true
-          }
-      )
-
-
-    })
-
-    onBeforeUnmount(() => {
-      // Clean up
-      observer.disconnect();
-      observer = undefined
     })
 
     return {

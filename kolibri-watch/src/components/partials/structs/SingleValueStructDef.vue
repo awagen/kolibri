@@ -1,31 +1,64 @@
 <template>
   <template v-if="(elementDef instanceof NumberInputDef)">
-    <input :id=VALUE_INPUT_ID class="form-input metric" type="number" :step=elementDef.step @input="updateValueEvent"
+    <input :id=VALUE_INPUT_ID
+           class="form-input metric"
+           type="number"
+           :step=elementDef.step
+           :value="elementDef.defaultValue ? elementDef.defaultValue : null"
+           @input="updateValueEvent"
            placeholder="Number Input">
   </template>
   <template v-if="(elementDef instanceof StringInputDef)">
-  <input :id=VALUE_INPUT_ID class="form-input metric" type="text" @input="updateValueEvent"
-         placeholder="Text Input">
+    <input :id=VALUE_INPUT_ID
+           class="form-input metric"
+           type="text"
+           :value="elementDef.defaultValue ? elementDef.defaultValue : null"
+           @input="updateValueEvent"
+           placeholder="Text Input">
   </template>
   <template v-if="(elementDef instanceof BooleanInputDef)">
     <label class="form-radio form-inline">
-      <input type="radio" :name="elementDef.name" :value="true" @change="updateValueEvent"><i class="form-icon"></i> true
+      <input type="radio"
+             :name="elementDef.name"
+             :value="true"
+             :checked="(elementDef.defaultValue === true) ? '' : null"
+             @change="updateValueEvent">
+      <i class="form-icon"></i>
+      true
     </label>
     <label class="form-radio form-inline">
-      <input type="radio" :name="elementDef.name" :value="false" @change="updateValueEvent"><i class="form-icon"></i> false
+      <input type="radio"
+             :name="elementDef.name"
+             :value="false"
+             :checked="(elementDef.defaultValue === false) ? '' : null"
+             @change="updateValueEvent">
+      <i class="form-icon"></i>
+      false
     </label>
   </template>
   <template v-if="(elementDef instanceof ChoiceInputDef)">
     <template v-for="element in elementDef.choices">
       <label class="form-radio form-inline">
-        <input type="radio" :name="elementDef.name" :value="element" @change="updateValueEvent"><i class="form-icon"></i> {{element}}
+        <input type="radio"
+               :name="elementDef.name"
+               :value="element"
+               :checked="(elementDef.defaultValue === element) ? '' : null"
+               @change="updateValueEvent">
+        <i class="form-icon"></i>
+        {{ element }}
       </label>
     </template>
   </template>
   <template v-if="(elementDef instanceof FloatChoiceInputDef)">
     <template v-for="element in elementDef.choices">
       <label class="form-radio form-inline">
-        <input type="radio" :name="elementDef.name" :value="element" @change="updateValueEvent"><i class="form-icon"></i> {{element}}
+        <input type="radio"
+               :name="elementDef.name"
+               :value="element"
+               :checked="(elementDef.defaultValue === element) ? '' : null"
+               @change="updateValueEvent">
+        <i class="form-icon"></i>
+        {{ element }}
       </label>
     </template>
   </template>
@@ -38,17 +71,22 @@
 
 <script>
 import {ref} from "vue";
-import {InputDef, StringInputDef, BooleanInputDef, NumberInputDef, InputType,
-ChoiceInputDef, FloatChoiceInputDef} from "../../../utils/dataValidationFunctions.ts"
+import {
+  InputDef, StringInputDef, BooleanInputDef, NumberInputDef, InputType,
+  ChoiceInputDef, FloatChoiceInputDef
+} from "../../../utils/dataValidationFunctions.ts"
 
 export default {
 
   props: {
-    "elementDef": InputDef
+    elementDef: {
+      type: InputDef,
+      required: true
+    }
   },
   components: {},
-  methods: {
-  },
+  methods: {},
+
   setup(props, context) {
     let minValue = (props.elementDef.validation.min != null) ? props.elementDef.validation.min : 0
     let value = ref(minValue)
@@ -58,9 +96,18 @@ export default {
 
     let validator = props.elementDef.getInputValidation()
 
-    function validate(val) {
-      console.debug("validate of validator called: " + validator.toString())
-      return validator.validate(val)
+    function parseRightType(val) {
+      console.info(`parsing right type for ${JSON.stringify(props.elementDef.toObject())} and value ${val} and type ${typeof val}}`)
+      if (props.elementDef.valueType === InputType.INT) {
+        return parseInt(val)
+      }
+      else if ([InputType.FLOAT, InputType.FLOAT_CHOICE]
+          .includes(props.elementDef.valueType)) {
+        return parseFloat(val)
+      } else if (props.elementDef.valueType === InputType.BOOLEAN) {
+        return (val === null || val === undefined) ? val : (val === 'true' || val === true)
+      }
+      return val
     }
 
     document.addEventListener('change', function handle(event) {
@@ -69,34 +116,22 @@ export default {
         return
       }
       console.info(`new value after change event: ${event.target.value}`)
-      let validationResult = validate(event.target.value)
+      let validationResult = validator.validate(event.target.value)
       if (validationResult.isValid) {
         hideModal()
       }
     });
 
-    function parseRightType(val) {
-      if ([InputType.INT, InputType.FLOAT, InputType.FLOAT_CHOICE]
-          .includes(props.elementDef.valueType)) {
-        return parseFloat(val)
-      }
-      else if (props.elementDef.valueType === InputType.BOOLEAN) {
-        return (val === "true")
-      }
-      return val
-    }
-
     function updateValueEvent(valueEvent) {
       console.debug("updated event called with value: " + valueEvent.target.value)
       let updateValue = valueEvent.target.value
-      let validationResult = validate(updateValue)
+      let validationResult = validator.validate(updateValue)
       if (validationResult.isValid) {
         hideModal()
         value.value = parseRightType(updateValue)
         // emitting change event to make parent element react to update / update its structure
         context.emit('valueChanged', {name: props.elementDef.name, value: value.value})
-      }
-      else {
+      } else {
         showModalMsg(validationResult.failReason)
         console.debug("value invalid")
       }

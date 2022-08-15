@@ -52,6 +52,32 @@
                       0.0,
                       0.5
                   )
+                ),
+                new SeqInputDef(
+                    'seqExample2',
+                    'seq2',
+                    new ChoiceInputDef(
+                      'choiceSeqExample',
+                      'choiceSeq1',
+                      ['s1', 's2', 's3', 's4']
+                    )
+                ),
+                new SeqInputDef(
+                    'floatSeqExample1',
+                    'floatSeq1',
+                    new FloatChoiceInputDef(
+                      'floatChoiceSeqExample',
+                      'floatChoiceSeq1',
+                      [0.1, 0.2, 0.3, 0.4]
+                    )
+                ),
+                new SeqInputDef(
+                    'booleanSeqTest1',
+                    'booleanSeq1',
+                    new BooleanInputDef(
+                      'booleanSeqTest1',
+                      'booleanSeq1'
+                  )
                 )
             ]">
         </NestedFieldSeqStructDef>
