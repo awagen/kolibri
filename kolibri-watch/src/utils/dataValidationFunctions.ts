@@ -109,22 +109,22 @@ enum InputType {
     SEQ,
     // type where value is valid in case it matches any of a list
     // of given struct defs
-    ANY_OF
+    ANY_OF,
+    MAP,
+    KEY_VALUE,
+    NESTED_FIELDS
 }
 
 class InputDef {
-    name: string
     elementId: string
     valueType: InputType
     validation: Object
     defaultValue: any = undefined
 
-    constructor(name: string,
-                elementId: string,
+    constructor(elementId: string,
                 valueType: InputType,
                 validation: Object,
                 defaultValue: any = undefined) {
-        this.name = name
         this.elementId = elementId
         this.valueType = valueType
         this.validation = validation
@@ -133,7 +133,6 @@ class InputDef {
 
     toObject(): Object {
         return {
-            "name": this.name,
             "elementId": this.elementId,
             "valueType": this.valueType,
             "validation": this.validation,
@@ -145,8 +144,8 @@ class InputDef {
         return new InputValidation(this.validation)
     }
 
-    copy(name: string, elementId: string, defaultValue: any = undefined): InputDef {
-        return new InputDef(name, elementId, this.valueType, this.validation, defaultValue)
+    copy(elementId: string, defaultValue: any = undefined): InputDef {
+        return new InputDef(elementId, this.valueType, this.validation, defaultValue)
     }
 
 
@@ -165,75 +164,93 @@ class SeqValueInputDef extends InputDef {
 }
 
 /**
+ * Class representing a key value pair
+ */
+class KeyValuePairInputDef extends InputDef {
+
+}
+
+/**
+ * Class representing multiple key-value pairs
+ */
+class MapValuesInputDef extends InputDef {
+
+}
+
+/**
+ * Class representing needed fields and possibility to define conditional fields, depending on the set values
+ * for other fields
+ */
+class NestedFieldSequenceValuesInputDef extends InputDef {
+
+}
+
+/**
  * Defining input definition for a sequence. The validation requires every element contained
  * in the resulting array needs to match the passed InputDef
  */
 class SeqInputDef extends SeqValueInputDef {
     inputDef: InputDef = undefined
 
-    constructor(name: string,
-                elementId: string,
+    constructor(elementId: string,
                 inputDef: InputDef,
                 defaultValue: any = undefined) {
-        super(name, elementId, InputType.SEQ, {
+        super(elementId, InputType.SEQ, {
             "type": InputType.SEQ,
             "validation": inputDef.validation
         }, defaultValue)
         this.inputDef = inputDef
     }
 
-    override copy(name: string, elementId: string, defaultValue: any = undefined): InputDef {
-        return new SeqInputDef(name, elementId, this.inputDef, defaultValue)
+    override copy(elementId: string, defaultValue: any = undefined): InputDef {
+        return new SeqInputDef(elementId, this.inputDef, defaultValue)
     }
 }
 
 class AnyOfInputDef extends SingleValueInputDef {
     inputDefs: Array<InputDef> = undefined
 
-    constructor(name: string,
-                elementId: string,
+    constructor(elementId: string,
                 inputDefs: Array<InputDef>,
                 defaultValue: any = undefined) {
-        super(name, elementId, InputType.ANY_OF, {
+        super(elementId, InputType.ANY_OF, {
             "type": InputType.ANY_OF,
             "validations": inputDefs.map((defs) => defs.validation)
         }, defaultValue)
         this.inputDefs = inputDefs
     }
 
-    override copy(name: string, elementId: string, defaultValue: any = undefined): InputDef {
-        return new AnyOfInputDef(name, elementId, this.inputDefs, defaultValue)
+    override copy(elementId: string, defaultValue: any = undefined): InputDef {
+        return new AnyOfInputDef(elementId, this.inputDefs, defaultValue)
     }
 }
 
 class ChoiceInputDef extends SingleValueInputDef {
     choices = []
 
-    constructor(name: string,
-                elementId: string,
+    constructor(elementId: string,
                 choices: Array<any>,
                 defaultValue: any = undefined) {
-        super(name, elementId, InputType.CHOICE, {
+        super(elementId, InputType.CHOICE, {
             "type": InputType.CHOICE,
             "choices": choices
         }, defaultValue)
         this.choices = choices
     }
 
-    override copy(name: string, elementId: string, defaultValue: any = undefined): InputDef {
-        return new ChoiceInputDef(name, elementId, this.choices, defaultValue)
+    override copy(elementId: string, defaultValue: any = undefined): InputDef {
+        return new ChoiceInputDef(elementId, this.choices, defaultValue)
     }
 }
 
 class FloatChoiceInputDef extends SingleValueInputDef {
     choices = []
 
-    constructor(name: string,
-                elementId: string,
+    constructor(elementId: string,
                 choices: Array<Number>,
                 accuracy: number = 0.0001,
                 defaultValue: any = undefined) {
-        super(name, elementId, InputType.FLOAT_CHOICE, {
+        super(elementId, InputType.FLOAT_CHOICE, {
             "type": InputType.FLOAT_CHOICE,
             "choices": choices,
             "accuracy": accuracy
@@ -241,22 +258,21 @@ class FloatChoiceInputDef extends SingleValueInputDef {
         this.choices = choices
     }
 
-    override copy(name: string, elementId: string, defaultValue: any = undefined): InputDef {
-        return new FloatChoiceInputDef(name, elementId, this.choices, this.validation["accuracy"], defaultValue)
+    override copy(elementId: string, defaultValue: any = undefined): InputDef {
+        return new FloatChoiceInputDef(elementId, this.choices, this.validation["accuracy"], defaultValue)
     }
 }
 
 class BooleanInputDef extends SingleValueInputDef {
-    constructor(name: string,
-                elementId: string,
+    constructor(elementId: string,
                 defaultValue: any = undefined) {
-        super(name, elementId, InputType.BOOLEAN, {
+        super(elementId, InputType.BOOLEAN, {
             "type": InputType.BOOLEAN
         }, defaultValue);
     }
 
-    override copy(name: string, elementId: string, defaultValue: any = undefined): InputDef {
-        return new BooleanInputDef(name, elementId, defaultValue)
+    override copy(elementId: string, defaultValue: any = undefined): InputDef {
+        return new BooleanInputDef(elementId, defaultValue)
     }
 
 }
@@ -264,12 +280,10 @@ class BooleanInputDef extends SingleValueInputDef {
 class StringInputDef extends SingleValueInputDef {
     regex = ".*"
 
-    constructor(name: string,
-                elementId: string,
+    constructor(elementId: string,
                 regex: string,
                 defaultValue: any = undefined) {
-        super(name,
-            elementId,
+        super(elementId,
             InputType.STRING,
             {
                 "type": InputType.STRING,
@@ -277,8 +291,8 @@ class StringInputDef extends SingleValueInputDef {
             });
     }
 
-    override copy(name: string, elementId: string, defaultValue: any = undefined): InputDef {
-        return new StringInputDef(name, elementId, this.regex, defaultValue)
+    override copy(elementId: string, defaultValue: any = undefined): InputDef {
+        return new StringInputDef(elementId, this.regex, defaultValue)
     }
 }
 
@@ -297,13 +311,12 @@ class NumberInputDef extends SingleValueInputDef {
         return NumberInputDef.areIntegers(values) ? InputType.INT : InputType.FLOAT
     }
 
-    constructor(name: string,
-                elementId: string,
+    constructor(elementId: string,
                 step: number = 1,
                 min: number = undefined,
                 max: number = undefined,
                 defaultValue: any = undefined) {
-        super(name, elementId, NumberInputDef.getType([step, min, max]), {
+        super(elementId, NumberInputDef.getType([step, min, max]), {
             "type": NumberInputDef.getType([step, min, max]),
             "min": min,
             "max": max
@@ -318,12 +331,155 @@ class NumberInputDef extends SingleValueInputDef {
         return Object.assign(obj, {"step": this.step})
     }
 
-    override copy(name: string, elementId: string, defaultValue: any = undefined): InputDef {
-        return new NumberInputDef(name, elementId, this.step, this.min, this.max, defaultValue)
+    override copy(elementId: string, defaultValue: any = undefined): InputDef {
+        return new NumberInputDef(elementId, this.step, this.min, this.max, defaultValue)
     }
 
 }
 
+/**
+ * Input definition for key value type.
+ * Note that default value must be array of length two, giving a value for key and one for value
+ */
+class KeyValueInputDef extends KeyValuePairInputDef {
+    keyFormat: InputDef
+    valueFormat: InputDef
+
+    constructor(elementId: string,
+                keyFormat: InputDef,
+                valueFormat: InputDef,
+                defaultValue: any = undefined) {
+        super(elementId, InputType.KEY_VALUE, {
+            "type": InputType.KEY_VALUE,
+            "keyValidation": keyFormat.validation,
+            "valueValidation": valueFormat.validation
+        }, defaultValue);
+    }
+
+    override copy(elementId: string, defaultValue: any = undefined): InputDef {
+        return new KeyValueInputDef(elementId, this.keyFormat, this.valueFormat, defaultValue);
+    }
+}
+
+/**
+ * Allows zero or multiple key-value pairs where each key-value pair is subject to validation as defined
+ * in the KeyValueInputDef (note: one value here is an array of size 2, [key, value]).
+ *
+ * The distinction to NestedFieldSequenceInputDef lies in the fact that in the NestedFieldSequenceInputDef
+ * each entry of fields refers to a single key-value pair, while in the MapInputDef the key-value pairs can be arbitrarily
+ * many.
+ * In the NestedFieldSequenceInputDef also a field can be declared as optional and it provides the possibility of
+ * defining conditional fields.
+ */
+class MapInputDef extends MapValuesInputDef {
+    keyValueDef: KeyValueInputDef
+
+    constructor(elementId: string,
+                keyValueDef: KeyValueInputDef,
+                defaultValue: any = undefined) {
+        super(elementId, InputType.MAP, {
+            "type": InputType.MAP,
+            "keyValueValidation": keyValueDef.validation
+        }, defaultValue)
+        this.keyValueDef = keyValueDef
+    }
+
+    override copy(elementId: string, defaultValue: any = undefined): InputDef {
+        return new MapInputDef(elementId, this.keyValueDef, defaultValue);
+    }
+}
+
+/**
+ * Defines a sequence of key-value mappings (fields) where each field can be required or optional (required = false)
+ * Further, conditionalFields reference a field name and depending on the selected value for that field
+ * a list of field definitions specific to that value (or none, which means no additional fields are needed for that
+ * selected value of the conditionField. Note: the conditional fields are restricted to fields with string names and
+ * string values
+ */
+class NestedFieldSequenceInputDef extends NestedFieldSequenceValuesInputDef {
+    fields: Array<FieldDef>
+    conditionalFields: Array<ConditionalFields>
+
+    /**
+     * From currently set field values derives the needed conditional values and returns the full set of
+     * fields the need to be in a valid overall result object
+     * @param currentValue
+     */
+    getAllNeededFields(currentValue: Map<string, any>): Array<FieldDef> {
+        let conditionalFieldDefs: Array<FieldDef> = this.conditionalFields.flatMap(conditionalField => {
+            let condValue = currentValue.get(conditionalField.conditionField)
+            let conditionalFieldDefinitions: Array<FieldDef> = conditionalField.mapping.get(condValue)
+            if (conditionalFieldDefinitions == undefined) {
+                return []
+            }
+            return conditionalFieldDefinitions
+        })
+        return [...this.fields, ...conditionalFieldDefs];
+    }
+
+    constructor(
+        elementId: string,
+        fields: Array<FieldDef>,
+        conditionalFields: Array<ConditionalFields>,
+        defaultValue: any = undefined) {
+        super(elementId, InputType.NESTED_FIELDS, {
+            "type": InputType.NESTED_FIELDS,
+            "validationFunction": (val) => {
+                let fieldValueAndValueValidationPairs: Array<Array<any>> = this.getAllNeededFields(val).map(field => [val.get(field.name), new InputValidation(field.valueFormat.validation)])
+                let validationResults: Array<ValidationResult> = fieldValueAndValueValidationPairs.map(valueValidationPair => valueValidationPair[1].validationFunction.apply(valueValidationPair[0]))
+                let failedValidationResults: Array<ValidationResult> = validationResults.filter(result => !result.isValid)
+                if (failedValidationResults.length == 0) {
+                    return new ValidationResult(true, "")
+                }
+                return new ValidationResult(false, failedValidationResults.map(result => result.failReason).join(" / "))
+            }
+        }, defaultValue)
+        this.fields = fields
+        this.conditionalFields = conditionalFields
+    }
+}
+
+
+/**
+ * defines a field via name format (validates field name value), value format (validates field value) and flag whether
+ * the field is actually required or optional
+ */
+class FieldDef {
+    name: string
+    valueFormat: InputDef
+    required: Boolean
+
+    constructor(name: string,
+                valueFormat: InputDef,
+                required: Boolean) {
+        this.name = name
+        this.valueFormat = valueFormat
+        this.required = required
+    }
+}
+
+/**
+ * Provides conditional mappings, e.g fields required that change depending on another field's value.
+ * conditionField gives the field name of the field on whose values the other fields are conditioned on.
+ * mapping provides the mapping of field value for the conditionField to the list of field definitions needed
+ * for that specific value.
+ */
+class ConditionalFields {
+    conditionField: string = undefined
+    mapping: Map<string, Array<FieldDef>> = undefined
+
+    constructor(conditionField: string,
+                mapping: Map<string, Array<FieldDef>>) {
+        this.conditionField = conditionField
+        this.mapping = mapping
+    }
+}
+
+
+/**
+ * Specifies a validation of user input. Created by passing a dictionary with the right fields and values
+ * per validation type
+ */
 class InputValidation {
 
     validationFunction: (any) => ValidationResult = undefined
@@ -374,7 +530,40 @@ class InputValidation {
             this.validationFunction = (val) => {
                 return getMatchAnyValidation(validations)(val)
             }
-        } else {
+        } else if (type == InputType.KEY_VALUE) {
+            let keyValidation = new InputValidation(params["keyValidation"])
+            let valueValidation = new InputValidation(params["valueValidation"])
+            this.validationFunction = (val) => {
+                let keyResult: ValidationResult = keyValidation.validationFunction.apply(val[0])
+                let valueResult: ValidationResult = valueValidation.validationFunction.apply(val[1])
+                if (!keyResult.isValid || !valueResult.isValid) {
+                    return new ValidationResult(false,
+                        `key validation fail: ${keyResult.isValid ? "None" : keyResult.failReason}
+                        value validation fail: ${valueResult.isValid ? "None" : valueResult.failReason}
+                    `)
+                }
+                return new ValidationResult(true, "")
+            }
+        } else if (type == InputType.MAP) {
+            let singleMappingValidation = new InputValidation(params["keyValueValidation"])
+            this.validationFunction = (map) => {
+                let keyValueEntries = Object.entries(map)
+                let failedKeyValueValidations = keyValueEntries.map(kvPair => {
+                    return singleMappingValidation.validationFunction.apply(kvPair)
+                })
+                    .filter(result => !result.isValid)
+                if (failedKeyValueValidations.length > 0) {
+                    return new ValidationResult(false, failedKeyValueValidations.map(result => result.failReason).join(" / "))
+                } else {
+                    return new ValidationResult(true, "")
+                }
+            }
+        }
+        else if (type == InputType.NESTED_FIELDS) {
+            let validationFunction: (any) => ValidationResult = params["validationFunction"]
+            this.validationFunction = (map) => validationFunction.apply(map)
+        }
+        else {
             this.validationFunction = (_) => new ValidationResult(true, "")
         }
     }
