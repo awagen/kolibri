@@ -6,10 +6,13 @@
     <template v-for="(field, index) in addedInputDefs">
       <template v-if="(field instanceof SingleValueInputDef)">
         <div class="k-value-and-delete">
-          <div class="k-single-value-input" :id="'container-' + field.elementId">
+          <div class="k-single-value-input"
+               :id="'container-' + field.elementId">
             <SingleValueStructDef
                 @value-changed="valueChanged"
-                :element-def="field">
+                :element-def="field"
+                :name="name + '-' + index"
+                :position="index">
             </SingleValueStructDef>
           </div>
           <div class="k-delete-button">
@@ -37,7 +40,7 @@ import {
   SingleValueInputDef
 } from "../../../utils/dataValidationFunctions";
 import SingleValueStructDef from "./SingleValueStructDef.vue";
-import {onBeforeUnmount, onMounted, ref} from "vue";
+import {onMounted, ref} from "vue";
 
 export default {
 
@@ -46,6 +49,7 @@ export default {
     inputDef: InputDef
   },
 
+  emits: ['valueChanged'],
   components: {SingleValueStructDef},
   methods: {},
   setup(props, context) {
@@ -54,7 +58,7 @@ export default {
     let addedInputValues = ref([])
 
     function generateIndexedInputDefForIndex(index) {
-      let updatedCopy = props.inputDef.copy(`${props.inputDef.name}-index-${index}`,
+      let updatedCopy = props.inputDef.copy(
           `${props.inputDef.elementId}-index-${index}`, addedInputValues.value[index])
       console.info(`adding updated element copy ${JSON.stringify(updatedCopy.toObject())}`)
       return updatedCopy
@@ -68,8 +72,7 @@ export default {
     function valueChanged(attributes) {
       console.info("value changed event: ")
       console.log(attributes)
-      let split = attributes.name.split("-")
-      let changedIndex = split[split.length - 1]
+      let changedIndex = attributes.position
       console.info("changed index: " + changedIndex)
       if (addedInputValues.value.length > changedIndex) {
         addedInputValues.value[changedIndex] = attributes.value

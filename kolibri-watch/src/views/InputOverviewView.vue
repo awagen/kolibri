@@ -6,95 +6,105 @@
         Input Overview
       </h3>
 
-        <NestedFieldSeqStructDef
-            @value-changed="valueChanged"
-            :fields="[
-                new NumberInputDef('intExample',
+      <NestedFieldSeqStructDef
+          @value-changed="valueChanged"
+          :fields="[
+                new FieldDef(
+                    'intTest1',
+                new NumberInputDef(
                   'int1',
                   1,
                   0,
                   5
                 ),
-                new NumberInputDef(
-                      'floatExample',
-                      'float1',
-                      0.1,
-                      0.0,
-                      0.5
-                  ),
-                new StringInputDef(
-                      'stringExample',
-                      'string1',
-                      '^a\\w*$'
-                  ),
-                new BooleanInputDef(
-                      'isOn',
-                      'boolean1'
-                  ),
-                new ChoiceInputDef(
-                      'choiceExample',
-                      'choice1',
-                      ['s1', 's2']
-                  ),
-                new FloatChoiceInputDef(
-                      'floatChoiceExample',
-                      'floatChoice1',
-                      [0.021, 0.03],
-                      0.00001
-                  ),
-                new SeqInputDef(
-                    'seqExample',
-                    'seq1',
+                true),
+                new FieldDef(
+                    'floatTest1',
                     new NumberInputDef(
-                      'floatExample',
-                      'float1',
-                      0.1,
-                      0.0,
-                      0.5
-                  )
+                          'float1',
+                          0.1,
+                          0.0,
+                          0.5
+                    ),
+                  true
                 ),
-                new SeqInputDef(
-                    'seqExample2',
-                    'seq2',
-                    new ChoiceInputDef(
-                      'choiceSeqExample',
-                      'choiceSeq1',
-                      ['s1', 's2', 's3', 's4']
+                new FieldDef(
+                      'stringTest1',
+                      new StringInputDef(
+                            'string1',
+                            '^a\\w*$'
+                      ),
+              true
+                ),
+                new FieldDef(
+                  'booleanTest1',
+                  new BooleanInputDef(
+                        'boolean1'
+                    ),
+              true
+              ),
+              new FieldDef(
+                  'choiceTest1',
+                  new ChoiceInputDef(
+                        'choice1',
+                        ['s1', 's2']
+                    ),
+                true
+              ),
+              new FieldDef(
+                  'floatChoiceTest1',
+                  new FloatChoiceInputDef(
+                        'floatChoice1',
+                        [0.021, 0.03],
+                        0.00001
+                    ),
+                true
+                ),
+              new FieldDef(
+                  'seqTest1',
+                  new SeqInputDef(
+                      'seq1',
+                      new NumberInputDef(
+                        'float2',
+                        0.1,
+                        0.0,
+                        0.5
                     )
-                ),
+                  ),
+                true
+              ),
+              new FieldDef(
+                  'seqTest2',
+                  new SeqInputDef(
+                      'seq2',
+                      new ChoiceInputDef(
+                        'choiceSeq1',
+                        ['s1', 's2', 's3', 's4']
+                      )),
+                  true
+              ),
+              new FieldDef(
+                  'floatSeqTest1',
+                  new SeqInputDef(
+                      'floatSeq1',
+                      new FloatChoiceInputDef(
+                        'floatChoiceSeq1',
+                        [0.1, 0.2, 0.3, 0.4]
+                      )),
+                  true
+              ),
+              new FieldDef(
+                  'booleanSeqTest1',
                 new SeqInputDef(
-                    'floatSeqExample1',
-                    'floatSeq1',
-                    new FloatChoiceInputDef(
-                      'floatChoiceSeqExample',
-                      'floatChoiceSeq1',
-                      [0.1, 0.2, 0.3, 0.4]
-                    )
-                ),
-                new SeqInputDef(
-                    'booleanSeqTest1',
                     'booleanSeq1',
                     new BooleanInputDef(
-                      'booleanSeqTest1',
-                      'booleanSeq1'
+                      'booleanSeq11'
                   )
+                ),
+                true
                 )
             ]">
-        </NestedFieldSeqStructDef>
-
-        <!-- now some generic sequence that can take an arbitrary nr of elements of the passed type -->
-        <!--
-        <GenericSeqStructDef
-            @value-changed="valueChanged"
-            name="inputSequence"
-            :input-def="new NumberInputDef('intSeqExample',
-                  'intSeq1',
-                  1,
-                  0,
-                  5
-                )">
-        </GenericSeqStructDef>
-        -->
+      </NestedFieldSeqStructDef>
 
     </form>
 
@@ -110,20 +120,21 @@
 
     </form>
 
-    </div>
+  </div>
 </template>
 
 <script>
 
 import NestedFieldSeqStructDef from "../components/partials/structs/NestedFieldSeqStructDef.vue";
-import {InputType, StringInputDef, BooleanInputDef, NumberInputDef,
-ChoiceInputDef, FloatChoiceInputDef, SeqInputDef} from "../utils/dataValidationFunctions.ts"
+import {
+  InputType, StringInputDef, BooleanInputDef, NumberInputDef,
+  ChoiceInputDef, FloatChoiceInputDef, SeqInputDef, FieldDef
+} from "../utils/dataValidationFunctions.ts"
 import GenericSeqStructDef from "../components/partials/structs/GenericSeqStructDef.vue";
 
 export default {
 
-  props: [
-  ],
+  props: [],
   components: {GenericSeqStructDef, NestedFieldSeqStructDef},
   methods: {
 
@@ -140,7 +151,8 @@ export default {
       BooleanInputDef,
       ChoiceInputDef,
       FloatChoiceInputDef,
-      SeqInputDef
+      SeqInputDef,
+      FieldDef
     }
   }
 

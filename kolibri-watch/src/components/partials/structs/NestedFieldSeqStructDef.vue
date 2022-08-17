@@ -3,28 +3,28 @@
   <template v-for="(field, index) in fields">
       <div class="form-group">
 
-        <template v-if="(field instanceof SingleValueInputDef)">
+        <template v-if="(field.valueFormat instanceof SingleValueInputDef)">
           <div class="col-3 col-sm-12">
-            <label class="form-label" :for="field.elementId-index">{{field.name}}</label>
+            <label class="form-label" :for="index">{{field.name}}</label>
           </div>
-          <!-- TODO: non-number-ids wont work, so at least wed need a hash here -->
-          <div :id="field.elementId-index" class="k-input col-9 col-sm-12">
+          <div :id="index" class="k-input col-9 col-sm-12">
             <SingleValueStructDef
                 @value-changed="valueChanged"
-                :element-def="field">
+                :name="field.name"
+                :element-def="field.valueFormat">
             </SingleValueStructDef>
           </div>
         </template>
 
-        <template v-if="(field instanceof SeqInputDef)">
+        <template v-if="(field.valueFormat instanceof SeqInputDef)">
           <div class="col-3 col-sm-12">
-            <label class="form-label" :for="field.elementId-index">{{field.name}}</label>
+            <label class="form-label" :for="index">{{field.name}}</label>
           </div>
-          <div :id="field.elementId-index" class="k-input col-9 col-sm-12">
+          <div :id="index" class="k-input col-9 col-sm-12">
             <GenericSeqStructDef
                 @value-changed="valueChanged"
-                name="seqTest"
-                :input-def="field.inputDef">
+                :name="field.name"
+                :input-def="field.valueFormat.inputDef">
             </GenericSeqStructDef>
           </div>
         </template>
@@ -49,11 +49,11 @@ export default {
     // work also when using PropType
     fields: {type: Array, required: true}
   },
+  emits: ['valueChanged'],
   components: {GenericSeqStructDef, SingleValueStructDef},
   computed: {
   },
   methods: {
-
   },
   setup(props, context) {
     const store = useStore()
@@ -63,12 +63,9 @@ export default {
     })
 
     function valueChanged(attributes) {
-      // could rewrite to pass the refs from here and update in child, then
-      // wed only need single mapping created once and updates are automatic
+      console.debug(`Incoming value changed event: ${JSON.stringify(attributes)}`)
       fieldStates.value[attributes.name] = attributes.value
-      // displayedJsonHtml.value = fieldsToJsonSyntaxHighlightedHtml()
       store.commit("updateSearchEvalJobDefState", fieldStates.value)
-      console.info("child value changed: " + attributes.name + "/" + attributes.value)
     }
 
     return {

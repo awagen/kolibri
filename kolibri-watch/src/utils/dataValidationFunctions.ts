@@ -595,5 +595,11 @@ export {
     FloatChoiceInputDef,
     SingleValueInputDef,
     SeqInputDef,
-    SeqValueInputDef
+    SeqValueInputDef,
+    KeyValueInputDef,
+    MapInputDef,
+    NestedFieldSequenceInputDef,
+    NestedFieldSequenceValuesInputDef,
+    FieldDef,
+    ConditionalFields
 }

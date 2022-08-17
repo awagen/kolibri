@@ -1,25 +1,48 @@
 <template>
   <template v-if="(elementDef instanceof NumberInputDef)">
-    <input :id=VALUE_INPUT_ID
-           class="form-input metric"
-           type="number"
-           :step=elementDef.step
-           :value="elementDef.defaultValue ? elementDef.defaultValue : null"
-           @input="updateValueEvent"
-           placeholder="Number Input">
+    <!-- check if default value is filled, and if so, set value.
+    For some reason causes errors when check is baked directly
+    into the :value binding below (:value="!!elementDef.defaultValue ? element.defaultValue : null"
+    should do but causes input fields to be unusable)-->
+    <template v-if="!!elementDef.defaultValue">
+      <input :id=VALUE_INPUT_ID
+             class="form-input metric"
+             type="number"
+             :step=elementDef.step
+             :value="elementDef.defaultValue"
+             @input="updateValueEvent"
+             placeholder="Number Input">
+    </template>
+    <template v-else>
+      <input :id=VALUE_INPUT_ID
+             class="form-input metric"
+             type="number"
+             :step=elementDef.step
+             @input="updateValueEvent"
+             placeholder="Number Input">
+    </template>
   </template>
   <template v-if="(elementDef instanceof StringInputDef)">
-    <input :id=VALUE_INPUT_ID
-           class="form-input metric"
-           type="text"
-           :value="elementDef.defaultValue ? elementDef.defaultValue : null"
-           @input="updateValueEvent"
-           placeholder="Text Input">
+    <template v-if="!!elementDef.defaultValue">
+      <input :id=VALUE_INPUT_ID
+             class="form-input metric"
+             type="text"
+             :value="(!!elementDef.defaultValue) ? elementDef.defaultValue : null"
+             @input="updateValueEvent"
+             placeholder="Text Input">
+    </template>
+    <template v-else>
+      <input :id=VALUE_INPUT_ID
+             class="form-input metric"
+             type="text"
+             @input="updateValueEvent"
+             placeholder="Text Input">
+    </template>
   </template>
   <template v-if="(elementDef instanceof BooleanInputDef)">
     <label class="form-radio form-inline">
       <input type="radio"
-             :name="elementDef.name"
+             :name="name"
              :value="true"
              :checked="(elementDef.defaultValue === true) ? '' : null"
              @change="updateValueEvent">
@@ -28,7 +51,7 @@
     </label>
     <label class="form-radio form-inline">
       <input type="radio"
-             :name="elementDef.name"
+             :name="name"
              :value="false"
              :checked="(elementDef.defaultValue === false) ? '' : null"
              @change="updateValueEvent">
@@ -40,7 +63,7 @@
     <template v-for="element in elementDef.choices">
       <label class="form-radio form-inline">
         <input type="radio"
-               :name="elementDef.name"
+               :name="name"
                :value="element"
                :checked="(elementDef.defaultValue === element) ? '' : null"
                @change="updateValueEvent">
@@ -53,7 +76,7 @@
     <template v-for="element in elementDef.choices">
       <label class="form-radio form-inline">
         <input type="radio"
-               :name="elementDef.name"
+               :name="name"
                :value="element"
                :checked="(elementDef.defaultValue === element) ? '' : null"
                @change="updateValueEvent">
@@ -82,15 +105,24 @@ export default {
     elementDef: {
       type: InputDef,
       required: true
+    },
+    position: {
+      type: Number,
+      required: false
+    },
+    name: {
+      type: String,
+      required: true
     }
   },
+  emits: ['valueChanged'],
   components: {},
   methods: {},
 
   setup(props, context) {
-    let minValue = (props.elementDef.validation.min != null) ? props.elementDef.validation.min : 0
+    let minValue = (props.elementDef.validation.min !== undefined) ? props.elementDef.validation.min : 0
     let value = ref(minValue)
-    let VALUE_INPUT_ID = 'k-' + props.elementDef.elementId + "-" + 'number-input'
+    let VALUE_INPUT_ID = 'k-' + props.elementDef.elementId + "-" + 'input'
     let TOAST_ID = 'k-' + props.elementDef.elementId + '-msg-toast'
     let TOAST_CONTENT_ID = 'k-' + props.elementDef.elementId + '-msg-toast-content'
 
@@ -100,8 +132,7 @@ export default {
       console.info(`parsing right type for ${JSON.stringify(props.elementDef.toObject())} and value ${val} and type ${typeof val}}`)
       if (props.elementDef.valueType === InputType.INT) {
         return parseInt(val)
-      }
-      else if ([InputType.FLOAT, InputType.FLOAT_CHOICE]
+      } else if ([InputType.FLOAT, InputType.FLOAT_CHOICE]
           .includes(props.elementDef.valueType)) {
         return parseFloat(val)
       } else if (props.elementDef.valueType === InputType.BOOLEAN) {
@@ -112,10 +143,9 @@ export default {
 
     document.addEventListener('change', function handle(event) {
       if (event.target.id !== VALUE_INPUT_ID) {
-        console.info("change event on input id: " + event.target.id)
         return
       }
-      console.info(`new value after change event: ${event.target.value}`)
+      console.debug(`matching input id change event on input id '${event.target.id}, value '${event.target.value}'`)
       let validationResult = validator.validate(event.target.value)
       if (validationResult.isValid) {
         hideModal()
@@ -123,14 +153,16 @@ export default {
     });
 
     function updateValueEvent(valueEvent) {
-      console.debug("updated event called with value: " + valueEvent.target.value)
+      console.debug("updateValueEvent called with value:" + valueEvent.target.value)
       let updateValue = valueEvent.target.value
       let validationResult = validator.validate(updateValue)
+      console.debug(`validation result: ${validationResult}`)
       if (validationResult.isValid) {
+        console.debug("value is valid")
         hideModal()
         value.value = parseRightType(updateValue)
         // emitting change event to make parent element react to update / update its structure
-        context.emit('valueChanged', {name: props.elementDef.name, value: value.value})
+        context.emit('valueChanged', {name: props.name, value: value.value, position: props.position})
       } else {
         showModalMsg(validationResult.failReason)
         console.debug("value invalid")
