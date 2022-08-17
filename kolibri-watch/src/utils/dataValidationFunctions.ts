@@ -343,21 +343,42 @@ class NumberInputDef extends SingleValueInputDef {
  */
 class KeyValueInputDef extends KeyValuePairInputDef {
     keyFormat: InputDef
+    keyValue: string
     valueFormat: InputDef
+
+    private static getKeyValidation(format: InputDef, value: string) {
+        if (value !== undefined) {
+            return {
+                "type": InputType.STRING,
+                "regex": "^" + value + "$"
+
+            }
+        }
+        return format.validation
+    }
 
     constructor(elementId: string,
                 keyFormat: InputDef,
                 valueFormat: InputDef,
+                keyValue: string = undefined,
                 defaultValue: any = undefined) {
         super(elementId, InputType.KEY_VALUE, {
             "type": InputType.KEY_VALUE,
-            "keyValidation": keyFormat.validation,
+            "keyValidation": KeyValueInputDef.getKeyValidation(keyFormat, keyValue),
             "valueValidation": valueFormat.validation
-        }, defaultValue);
+        }, defaultValue)
+        this.keyValue = keyValue
+        this.keyFormat = keyFormat
+        this.valueFormat = valueFormat
     }
 
     override copy(elementId: string, defaultValue: any = undefined): InputDef {
-        return new KeyValueInputDef(elementId, this.keyFormat, this.valueFormat, defaultValue);
+        return new KeyValueInputDef(
+            elementId,
+            this.keyFormat,
+            this.valueFormat,
+            this.keyValue,
+            defaultValue);
     }
 }
 
@@ -558,12 +579,10 @@ class InputValidation {
                     return new ValidationResult(true, "")
                 }
             }
-        }
-        else if (type == InputType.NESTED_FIELDS) {
+        } else if (type == InputType.NESTED_FIELDS) {
             let validationFunction: (any) => ValidationResult = params["validationFunction"]
             this.validationFunction = (map) => validationFunction.apply(map)
-        }
-        else {
+        } else {
             this.validationFunction = (_) => new ValidationResult(true, "")
         }
     }
@@ -601,5 +620,6 @@ export {
     NestedFieldSequenceInputDef,
     NestedFieldSequenceValuesInputDef,
     FieldDef,
-    ConditionalFields
+    ConditionalFields,
+    KeyValuePairInputDef
 }

@@ -102,7 +102,20 @@
                   )
                 ),
                 true
-                )
+                ),
+              new FieldDef(
+                  'keyValueTest1',
+                new KeyValueInputDef(
+                    'keyValueTestID1',
+                    undefined,
+                    new StringInputDef(
+                            'stringValue1',
+                            '^a\\w*$'
+                      ),
+                    'key1'
+                ),
+                true
+                ),
             ]">
       </NestedFieldSeqStructDef>
 
@@ -128,14 +141,15 @@
 import NestedFieldSeqStructDef from "../components/partials/structs/NestedFieldSeqStructDef.vue";
 import {
   InputType, StringInputDef, BooleanInputDef, NumberInputDef,
-  ChoiceInputDef, FloatChoiceInputDef, SeqInputDef, FieldDef
+  ChoiceInputDef, FloatChoiceInputDef, SeqInputDef, FieldDef, KeyValueInputDef
 } from "../utils/dataValidationFunctions.ts"
 import GenericSeqStructDef from "../components/partials/structs/GenericSeqStructDef.vue";
+import KeyValueStructDef from "../components/partials/structs/KeyValueStructDef.vue";
 
 export default {
 
   props: [],
-  components: {GenericSeqStructDef, NestedFieldSeqStructDef},
+  components: {KeyValueStructDef, GenericSeqStructDef, NestedFieldSeqStructDef},
   methods: {
 
     valueChanged(attributes) {
@@ -152,7 +166,8 @@ export default {
       ChoiceInputDef,
       FloatChoiceInputDef,
       SeqInputDef,
-      FieldDef
+      FieldDef,
+      KeyValueInputDef
     }
   }
 

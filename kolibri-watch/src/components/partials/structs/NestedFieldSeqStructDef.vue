@@ -29,6 +29,18 @@
           </div>
         </template>
 
+        <template v-if="(field.valueFormat instanceof KeyValueInputDef)">
+            <KeyValueStructDef
+                @value-changed="valueChanged"
+                :name="field.name"
+                :position="0"
+                :key-input-def="field.valueFormat.keyFormat"
+                :value-input-def="field.valueFormat.valueFormat"
+                :key-value="field.valueFormat.keyValue"
+                >
+            </KeyValueStructDef>
+        </template>
+
         <div class="k-form-separator"></div>
       </div>
   </template>
@@ -36,11 +48,12 @@
 </template>
 
 <script>
-import {SingleValueInputDef, SeqInputDef} from "../../../utils/dataValidationFunctions.ts";
+import {SingleValueInputDef, SeqInputDef, KeyValuePairInputDef, KeyValueInputDef} from "../../../utils/dataValidationFunctions.ts";
 import SingleValueStructDef from "./SingleValueStructDef.vue";
 import {ref} from "vue";
 import { useStore } from 'vuex';
 import GenericSeqStructDef from "./GenericSeqStructDef.vue";
+import KeyValueStructDef from "./KeyValueStructDef.vue";
 
 export default {
 
@@ -50,7 +63,7 @@ export default {
     fields: {type: Array, required: true}
   },
   emits: ['valueChanged'],
-  components: {GenericSeqStructDef, SingleValueStructDef},
+  components: {GenericSeqStructDef, SingleValueStructDef, KeyValueStructDef},
   computed: {
   },
   methods: {
@@ -71,7 +84,9 @@ export default {
     return {
       SingleValueInputDef,
       valueChanged,
-      SeqInputDef
+      SeqInputDef,
+      KeyValuePairInputDef,
+      KeyValueInputDef
     }
   }
 
