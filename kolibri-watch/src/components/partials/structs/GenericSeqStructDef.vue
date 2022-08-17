@@ -16,7 +16,7 @@
             </SingleValueStructDef>
           </div>
           <div class="k-delete-button">
-            <a @click="deleteInputElement(index)" href="#" class="k-delete btn btn-clear"
+            <a @click.prevent="deleteInputElement(index)" href="#" class="k-delete btn btn-clear"
                aria-label="Close" role="button"></a>
           </div>
         </div>
@@ -25,7 +25,7 @@
     </template>
 
     <div class="k-add-button-container">
-      <button type="button" @click="addNextInputElement()" class="btn btn-action k-add-button s-circle">
+      <button type="button" @click.prevent="addNextInputElement()" class="btn btn-action k-add-button s-circle">
         <i class="icon icon-plus"></i>
       </button>
     </div>
