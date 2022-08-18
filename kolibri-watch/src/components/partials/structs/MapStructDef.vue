@@ -1,7 +1,5 @@
 <template>
 
-  <!-- TODO: element deletion doesnt yet work properly, yet adding and editing
-   does -->
   <div class="k-map-name col-3 col-sm-12">
     <span>{{name}}</span>
   </div>
@@ -67,29 +65,43 @@ export default {
     // contains the values corresponding to the input defs in addedKeyValueDefs
     let addedKeyValuePairs = ref([])
 
-    // TODO: taking default values into account on value setting on element deletion
-    // does not fully work yet
+    /**
+     * Generates a new element out of the given KeyValueInputDef, setting the properly indexed
+     * elementId and sets default value to the value in addedKeyValuePairs for that specific index
+     * to make sure we dont loose display of already added values in case we delete an element.
+     * This will be undefined if the value corresponds to a new index for which no value yet exists, in which
+     * case the undefined default value is ignored within the InputDef object itself
+     **/
     function generateIndexedInputDefForIndex(index) {
       return props.keyValueInputDef.copy(
           `${props.keyValueInputDef.elementId}-index-${index}`, addedKeyValuePairs.value[index])
     }
 
+    /**
+     * Checks how many field definitions were added already and adds the next.
+     **/
     function generateIndexedInputDef() {
       let newItemIndex = addedKeyValueDefs.value.length
       return generateIndexedInputDefForIndex(newItemIndex)
     }
 
+    /**
+     * Event on value change. Assumes the 'name' attribute to provide the key of the changed / added entry,
+     * 'position' the position in the current key / value sequence and 'value' to give the value of the key/value pair.
+     *
+     * After the set values are updated, events a state update for its parent to pick up.
+     **/
     function valueChanged(attributes) {
-      console.info("value changed event: ")
-      console.log(attributes)
+      console.debug("value changed event: ")
+      console.debug(attributes)
       let changedIndex = attributes.position
-      console.info("changed index: " + changedIndex)
+      console.debug("changed index: " + changedIndex)
       if (addedKeyValuePairs.value.length > changedIndex) {
         addedKeyValuePairs.value[changedIndex] = [attributes.name, attributes.value]
       }
       context.emit("valueChanged", {"name": props.name, "value": mapFromKeyValuePairs()})
-      console.info("value changed event: ")
-      console.log({"name": props.name, "value": mapFromKeyValuePairs()})
+      console.debug("value changed event: ")
+      console.debug({"name": props.name, "value": mapFromKeyValuePairs()})
     }
 
     /**
@@ -100,6 +112,10 @@ export default {
       addedKeyValueDefs.value.push(generateIndexedInputDef())
     }
 
+    /**
+     * From the currently set values generates an Object with the right map key and within it sequentially the
+     * key-value pairs created.
+     **/
     function mapFromKeyValuePairs() {
       let result = {}
       addedKeyValuePairs.value.forEach((keyValuePair) => {
@@ -118,15 +134,16 @@ export default {
      **/
     function deleteInputElement(index) {
       addedKeyValuePairs.value.splice(index, 1)
-      addedKeyValueDefs.value.splice(index, 1)
+      console.debug("setting addedKeyValuePairs: " + JSON.stringify({"data": addedKeyValuePairs.value}))
       // now adjust indices
       let newInputDefs = []
-      for (let [defIndex, _] of addedKeyValueDefs.value.entries()) {
+      for (let [defIndex, _] of addedKeyValuePairs.value.entries()) {
         newInputDefs.push(generateIndexedInputDefForIndex(defIndex))
       }
+      console.debug("setting addedKeyValueDefs: " + newInputDefs.map(x => JSON.stringify(x.toObject())))
       addedKeyValueDefs.value = newInputDefs
       // notify parent of change
-      context.emit("valueChanged", {"name": props.name, "value": mapFromKeyValuePairs})
+      context.emit("valueChanged", {"name": props.name, "value": mapFromKeyValuePairs()})
     }
 
     onMounted(() => {

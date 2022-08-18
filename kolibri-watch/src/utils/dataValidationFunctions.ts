@@ -202,6 +202,12 @@ class SeqInputDef extends SeqValueInputDef {
         this.inputDef = inputDef
     }
 
+    override toObject(): Object {
+        let obj = super.toObject()
+        obj["inputDef"] = this.inputDef.toObject()
+        return obj
+    }
+
     override copy(elementId: string, defaultValue: any = undefined): InputDef {
         return new SeqInputDef(elementId, this.inputDef, defaultValue)
     }
@@ -218,6 +224,12 @@ class AnyOfInputDef extends SingleValueInputDef {
             "validations": inputDefs.map((defs) => defs.validation)
         }, defaultValue)
         this.inputDefs = inputDefs
+    }
+
+    override toObject(): Object {
+        let obj = super.toObject()
+        obj["inputDefs"] = this.inputDefs.map((def) => def.toObject())
+        return obj
     }
 
     override copy(elementId: string, defaultValue: any = undefined): InputDef {
@@ -238,6 +250,12 @@ class ChoiceInputDef extends SingleValueInputDef {
         this.choices = choices
     }
 
+    override toObject(): Object {
+        let obj = super.toObject()
+        obj["choices"] = this.choices
+        return obj
+    }
+
     override copy(elementId: string, defaultValue: any = undefined): InputDef {
         return new ChoiceInputDef(elementId, this.choices, defaultValue)
     }
@@ -256,6 +274,12 @@ class FloatChoiceInputDef extends SingleValueInputDef {
             "accuracy": accuracy
         }, defaultValue)
         this.choices = choices
+    }
+
+    override toObject(): Object {
+        let obj = super.toObject()
+        obj["choices"] = this.choices
+        return obj
     }
 
     override copy(elementId: string, defaultValue: any = undefined): InputDef {
@@ -288,8 +312,14 @@ class StringInputDef extends SingleValueInputDef {
             {
                 "type": InputType.STRING,
                 "regex": regex
-            });
+            }, defaultValue);
         this.regex = regex
+    }
+
+    override toObject(): Object {
+        let obj = super.toObject()
+        obj["regex"] = this.regex
+        return obj
     }
 
     override copy(elementId: string, defaultValue: any = undefined): InputDef {
@@ -329,7 +359,7 @@ class NumberInputDef extends SingleValueInputDef {
 
     override toObject(): Object {
         const obj = super.toObject()
-        return Object.assign(obj, {"step": this.step})
+        return Object.assign(obj, {"step": this.step, "min": this.min, "max": this.max})
     }
 
     override copy(elementId: string, defaultValue: any = undefined): InputDef {
@@ -373,11 +403,19 @@ class KeyValueInputDef extends KeyValuePairInputDef {
         this.valueFormat = valueFormat
     }
 
+    override toObject(): Object {
+        let obj = super.toObject();
+        obj["keyFormat"] = (this.keyFormat !== undefined) ? this.keyFormat.toObject() : undefined
+        obj["valueFormat"] = (this.valueFormat !== undefined) ? this.valueFormat.toObject() : undefined
+        obj["keyValue"] = this.keyValue
+        return obj
+    }
+
     override copy(elementId: string, defaultValue: any = undefined): InputDef {
         return new KeyValueInputDef(
             elementId,
-            (defaultValue === undefined || !(defaultValue instanceof Array)) ? this.keyFormat : this.keyFormat.copy(this.keyFormat.elementId, defaultValue[0]),
-            (defaultValue === undefined  || !(defaultValue instanceof Array)) ? this.valueFormat : this.valueFormat.copy(this.valueFormat.elementId, defaultValue[1]),
+            (defaultValue === undefined) ? this.keyFormat : this.keyFormat.copy(this.keyFormat.elementId, defaultValue[0]),
+            (defaultValue === undefined) ? this.valueFormat : this.valueFormat.copy(this.valueFormat.elementId, defaultValue[1]),
             this.keyValue,
             defaultValue);
     }
@@ -404,6 +442,12 @@ class MapInputDef extends MapValuesInputDef {
             "keyValueValidation": keyValueDef.validation
         }, defaultValue)
         this.keyValueDef = keyValueDef
+    }
+
+    override toObject(): Object {
+        let obj = super.toObject();
+        obj["keyValueDef"] = this.keyValueDef.toObject()
+        return obj
     }
 
     override copy(elementId: string, defaultValue: any = undefined): InputDef {
@@ -439,6 +483,13 @@ class NestedFieldSequenceInputDef extends NestedFieldSequenceValuesInputDef {
         return [...this.fields, ...conditionalFieldDefs];
     }
 
+    override toObject(): Object {
+        let obj = super.toObject();
+        obj["fields"] = this.fields.map(field => field.toObject())
+        obj["conditionalFields"] = this.conditionalFields.map(field => field.toObject())
+        return obj
+    }
+
     constructor(
         elementId: string,
         fields: Array<FieldDef>,
@@ -471,6 +522,14 @@ class FieldDef {
     valueFormat: InputDef
     required: Boolean
 
+    toObject() {
+        return {
+            "name": this.name,
+            "valueFormat": this.valueFormat.toObject(),
+            "required": this.required
+        }
+    }
+
     constructor(name: string,
                 valueFormat: InputDef,
                 required: Boolean) {
@@ -489,6 +548,17 @@ class FieldDef {
 class ConditionalFields {
     conditionField: string = undefined
     mapping: Map<string, Array<FieldDef>> = undefined
+
+    toObject() {
+        let mappingObj = {}
+        this.mapping.forEach (function(value, key) {
+            mappingObj[key] = value.map(def => def.toObject())
+        })
+        return {
+            "conditionField": this.conditionField,
+            "mapping": mappingObj
+        }
+    }
 
     constructor(conditionField: string,
                 mapping: Map<string, Array<FieldDef>>) {
