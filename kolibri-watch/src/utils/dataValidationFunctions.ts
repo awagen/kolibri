@@ -289,6 +289,7 @@ class StringInputDef extends SingleValueInputDef {
                 "type": InputType.STRING,
                 "regex": regex
             });
+        this.regex = regex
     }
 
     override copy(elementId: string, defaultValue: any = undefined): InputDef {
@@ -375,8 +376,8 @@ class KeyValueInputDef extends KeyValuePairInputDef {
     override copy(elementId: string, defaultValue: any = undefined): InputDef {
         return new KeyValueInputDef(
             elementId,
-            this.keyFormat,
-            this.valueFormat,
+            (defaultValue === undefined || !(defaultValue instanceof Array)) ? this.keyFormat : this.keyFormat.copy(this.keyFormat.elementId, defaultValue[0]),
+            (defaultValue === undefined  || !(defaultValue instanceof Array)) ? this.valueFormat : this.valueFormat.copy(this.valueFormat.elementId, defaultValue[1]),
             this.keyValue,
             defaultValue);
     }

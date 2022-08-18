@@ -2,14 +2,14 @@
 
   <!-- adding key wrapper with col-3 and value wrapper with col-9 to ensure correct relative sizes
    when wrapping this in another container -->
-  <div class="col-3 col-sm-12">
+  <div class="col-3 col-sm-12 k-float-left">
     <!-- key input -->
     <!-- NOTE: the key might just be given and not changeable, in which case
      just create a key placeholder with the fixed value -->
     <template v-if="keyValue === undefined">
       <SingleValueStructDef
           @value-changed="keyValueChanged"
-          :name="name + '-key'"
+          :name="name + '-key-' + position"
           :position="position"
           :element-def="keyInputDef">
       </SingleValueStructDef>
@@ -21,12 +21,12 @@
 
   </div>
 
-  <div class="col-9 col-sm-12">
+  <div class="col-9 col-sm-12 k-float-right">
 
     <!-- value input -->
     <SingleValueStructDef
         @value-changed="valueChanged"
-        :name="name + '-value'"
+        :name="name + '-value-' + position"
         :position="position"
         :element-def="valueInputDef">
     </SingleValueStructDef>
@@ -83,7 +83,7 @@ export default {
      */
     function valueChanged(attributes) {
       valueValue.value = attributes.value
-      context.emit("valueChanged", {"name": keyValue.value, "value": valueValue.value})
+      context.emit("valueChanged", {"name": keyValue.value, "value": valueValue.value, "position": props.position})
     }
 
     /**
@@ -92,7 +92,7 @@ export default {
      */
     function keyValueChanged(attributes) {
       keyValue.value = attributes.value
-      context.emit("valueChanged", {"name": keyValue.value, "value": valueValue.value})
+      context.emit("valueChanged", {"name": keyValue.value, "value": valueValue.value, "position": props.position})
     }
 
     return {
@@ -107,9 +107,12 @@ export default {
 
 <style scoped>
 
-/* the text element showing the static string representing the key */
-.k-fixed-key {
+.k-float-right {
+  float: right;
+}
 
+.k-float-left {
+  float: left;
 }
 
 </style>

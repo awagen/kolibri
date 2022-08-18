@@ -122,9 +122,9 @@ export default {
   setup(props, context) {
     let minValue = (props.elementDef.validation.min !== undefined) ? props.elementDef.validation.min : 0
     let value = ref(minValue)
-    let VALUE_INPUT_ID = 'k-' + props.elementDef.elementId + "-" + 'input'
-    let TOAST_ID = 'k-' + props.elementDef.elementId + '-msg-toast'
-    let TOAST_CONTENT_ID = 'k-' + props.elementDef.elementId + '-msg-toast-content'
+    let VALUE_INPUT_ID = 'k-' + props.elementDef.elementId + "-" + 'input-' + props.position
+    let TOAST_ID = 'k-' + props.elementDef.elementId + '-msg-toast-' + props.position
+    let TOAST_CONTENT_ID = 'k-' + props.elementDef.elementId + '-msg-toast-content-' + props.position
 
     let validator = props.elementDef.getInputValidation()
 

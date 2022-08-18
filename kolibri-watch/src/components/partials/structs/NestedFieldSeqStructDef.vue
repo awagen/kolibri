@@ -29,6 +29,15 @@
           </div>
         </template>
 
+        <template v-if="(field.valueFormat instanceof MapInputDef)">
+          <MapStructDef
+              @value-changed="valueChanged"
+              :name="field.name"
+              :key-value-input-def="field.valueFormat.keyValueDef"
+          >
+          </MapStructDef>
+        </template>
+
         <template v-if="(field.valueFormat instanceof KeyValueInputDef)">
             <KeyValueStructDef
                 @value-changed="valueChanged"
@@ -48,12 +57,13 @@
 </template>
 
 <script>
-import {SingleValueInputDef, SeqInputDef, KeyValuePairInputDef, KeyValueInputDef} from "../../../utils/dataValidationFunctions.ts";
+import {SingleValueInputDef, SeqInputDef, KeyValuePairInputDef, KeyValueInputDef, MapInputDef} from "../../../utils/dataValidationFunctions.ts";
 import SingleValueStructDef from "./SingleValueStructDef.vue";
 import {ref} from "vue";
 import { useStore } from 'vuex';
 import GenericSeqStructDef from "./GenericSeqStructDef.vue";
 import KeyValueStructDef from "./KeyValueStructDef.vue";
+import MapStructDef from "./MapStructDef.vue";
 
 export default {
 
@@ -63,7 +73,7 @@ export default {
     fields: {type: Array, required: true}
   },
   emits: ['valueChanged'],
-  components: {GenericSeqStructDef, SingleValueStructDef, KeyValueStructDef},
+  components: {GenericSeqStructDef, SingleValueStructDef, KeyValueStructDef, MapStructDef},
   computed: {
   },
   methods: {
@@ -86,7 +96,8 @@ export default {
       valueChanged,
       SeqInputDef,
       KeyValuePairInputDef,
-      KeyValueInputDef
+      KeyValueInputDef,
+      MapInputDef
     }
   }
 
