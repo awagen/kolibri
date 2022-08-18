@@ -60,7 +60,7 @@ export default {
     function generateIndexedInputDefForIndex(index) {
       let updatedCopy = props.inputDef.copy(
           `${props.inputDef.elementId}-index-${index}`, addedInputValues.value[index])
-      console.info(`adding updated element copy ${JSON.stringify(updatedCopy.toObject())}`)
+      console.debug(`adding updated element copy ${JSON.stringify(updatedCopy.toObject())}`)
       return updatedCopy
     }
 
@@ -70,16 +70,16 @@ export default {
     }
 
     function valueChanged(attributes) {
-      console.info("value changed event: ")
-      console.log(attributes)
+      console.debug("value changed event: ")
+      console.debug(attributes)
       let changedIndex = attributes.position
-      console.info("changed index: " + changedIndex)
+      console.debug("changed index: " + changedIndex)
       if (addedInputValues.value.length > changedIndex) {
         addedInputValues.value[changedIndex] = attributes.value
       }
       context.emit("valueChanged", {"name": props.name, "value": addedInputValues.value})
-      console.info("value changed event: ")
-      console.log({"name": props.name, "value": addedInputValues.value})
+      console.debug("value changed event: ")
+      console.debug({"name": props.name, "value": addedInputValues.value})
     }
 
     /**

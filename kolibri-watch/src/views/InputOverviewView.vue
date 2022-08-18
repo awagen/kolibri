@@ -8,6 +8,25 @@
 
       <NestedFieldSeqStructDef
           @value-changed="valueChanged"
+          :conditional-fields="[
+              new ConditionalFields(
+                  'stringTest1',
+                  new Map(
+                      Object.entries({
+                            'a': [new FieldDef(
+                            'condIntTest1',
+                                  new NumberInputDef(
+                                    'condInt1',
+                                    1,
+                                    0,
+                                    2
+                                  ),
+                          true
+                          )]
+                      })
+                  )
+              )
+          ]"
           :fields="[
                 new FieldDef(
                     'intTest1',
@@ -104,19 +123,6 @@
                 true
                 ),
               new FieldDef(
-                  'keyValueTest1',
-                new KeyValueInputDef(
-                    'keyValueTestID1',
-                    undefined,
-                    new StringInputDef(
-                            'stringValue1',
-                            '^a\\w*$'
-                      ),
-                    'key1'
-                ),
-                true
-                ),
-              new FieldDef(
                   'mapTest1',
                 new MapInputDef(
                     'mapTestID1',
@@ -161,7 +167,7 @@
 import NestedFieldSeqStructDef from "../components/partials/structs/NestedFieldSeqStructDef.vue";
 import {
   InputType, StringInputDef, BooleanInputDef, NumberInputDef,
-  ChoiceInputDef, FloatChoiceInputDef, SeqInputDef, FieldDef, KeyValueInputDef,
+  ChoiceInputDef, FloatChoiceInputDef, SeqInputDef, FieldDef, ConditionalFields, KeyValueInputDef,
   MapInputDef
 } from "../utils/dataValidationFunctions.ts"
 import GenericSeqStructDef from "../components/partials/structs/GenericSeqStructDef.vue";
@@ -189,7 +195,8 @@ export default {
       SeqInputDef,
       FieldDef,
       KeyValueInputDef,
-      MapInputDef
+      MapInputDef,
+      ConditionalFields
     }
   }
 
