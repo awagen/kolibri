@@ -1,34 +1,34 @@
 /**
-  * Copyright 2021 Andreas Wagenmann
-  *
-  * Licensed under the Apache License, Version 2.0 (the "License");
-  * you may not use this file except in compliance with the License.
-  * You may obtain a copy of the License at
-  *
-  * http://www.apache.org/licenses/LICENSE-2.0
-  *
-  * Unless required by applicable law or agreed to in writing, software
-  * distributed under the License is distributed on an "AS IS" BASIS,
-  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  * See the License for the specific language governing permissions and
-  * limitations under the License.
-  */
+ * Copyright 2021 Andreas Wagenmann
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 
 package de.awagen.kolibri.base.io.json
 
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import de.awagen.kolibri.base.format.RegexUtils
+import de.awagen.kolibri.base.io.json.SupplierJsonProtocol._
 import de.awagen.kolibri.base.io.json.WeightProviderJsonProtocol._
 import de.awagen.kolibri.base.processing.execution.functions.AggregationFunctions.{AggregateFilesWeighted, AggregateFromDirectoryByRegexWeighted, DoNothing, MultiExecution}
 import de.awagen.kolibri.base.processing.execution.functions.AnalyzeFunctions.{GetImprovingAndLoosing, GetImprovingAndLoosingFromDirPerRegex, GetValueVarianceFromDirPerRegex}
 import de.awagen.kolibri.base.processing.execution.functions.Execution
 import de.awagen.kolibri.base.provider.WeightProviders.WeightProvider
-import spray.json.{DefaultJsonProtocol, JsValue, RootJsonFormat, enrichAny}
-import SupplierJsonProtocol._
 import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
-import de.awagen.kolibri.datatypes.types.JsonStructDefs.{ConditionalFields, GenericSeqStructDef, IntMinMaxStructDef, MapStructDef, NestedFieldSeqStructDef, RegexStructDef, StringConstantStructDef, StringSeqStructDef, StringStructDef}
+import de.awagen.kolibri.datatypes.types.JsonStructDefs._
 import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
+import spray.json.{DefaultJsonProtocol, JsValue, RootJsonFormat, enrichAny}
 
 import scala.util.matching.Regex
 
@@ -155,7 +155,22 @@ object ExecutionJsonProtocol extends DefaultJsonProtocol with SprayJsonSupport {
 
     override def structDef: JsonStructDefs.StructDef[_] = {
       NestedFieldSeqStructDef(
-        Seq(),
+        Seq(
+          FieldDef(
+            StringConstantStructDef(TYPE_KEY),
+            StringChoiceStructDef(
+              Seq(
+                AGGREGATE_FROM_DIR_BY_REGEX_TYPE,
+                AGGREGATE_FILES_TYPE,
+                AGGREGATE_GROUPS_TYPE,
+                ANALYZE_BEST_WORST_REGEX_TYPE,
+                ANALYZE_BEST_WORST_FILES_TYPE,
+                ANALYZE_QUERY_METRIC_VARIANCE_TYPE
+              )
+            ),
+            required = true
+          )
+        ),
         Seq(
           ConditionalFields(
             TYPE_KEY,
