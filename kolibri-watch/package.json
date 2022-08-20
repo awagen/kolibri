@@ -4,24 +4,29 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "serve": "vite preview"
+    "serve": "vite preview",
+    "test": "vitest",
+    "testrun": "vitest run",
+    "coverage": "vitest run --coverage"
   },
   "dependencies": {
     "axios": "^0.24.0",
     "d3": "^7.3.0",
     "d3-dsv": "^3.0.1",
     "es6-promise": "^4.2.8",
+    "follow-redirects": "^1.14.8",
     "lodash": "^4.17.21",
     "vite": "^2.7.12",
     "vue": "^3.0.4",
     "vue-router": "^4.0.12",
-    "vuex": "^4.0.2",
-    "follow-redirects": "^1.14.8"
+    "vuex": "^4.0.2"
   },
   "devDependencies": {
     "@types/d3": "^7.1.0",
     "@vitejs/plugin-vue": "^2.0.1",
+    "@vue/test-utils": "^2.0.2",
     "sass": "^1.48.0",
-    "sass-loader": "^12.4.0"
+    "sass-loader": "^12.4.0",
+    "vitest": "^0.22.1"
   }
 }

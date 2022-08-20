@@ -261,6 +261,10 @@ function objToInputDef(obj: Object, elementId: string, position: number): InputD
 
 }
 
+export {
+    objToFieldDef,
+    objToInputDef
+}
 
 
 
