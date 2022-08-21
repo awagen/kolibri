@@ -57,6 +57,23 @@ const NESTED_TYPE = "NESTED"
 // every value satisfies the value format
 const MAP_TYPE = "MAP"
 
+const ALL_STRINGS_REGEX = ".*"
+const KEY_REGEX = "regex"
+const KEY_MIN = "min"
+const KEY_MAX = "max"
+const KEY_VALUE = "value"
+const KEY_CHOICES = "choices"
+const KEY_KEY_FORMAT = "keyFormat"
+const KEY_NAME_FORMAT = "nameFormat"
+const KEY_VALUE_FORMAT = "valueFormat"
+const KEY_REQUIRED = "required"
+const KEY_CONDITION_FIELD_ID = "conditionFieldId"
+const KEY_MAPPING_ID = "mapping"
+const KEY_FIELDS = "fields"
+const KEY_CONDITIONAL_FIELDS_SEQ = "conditionalFieldsSeq"
+const KEY_PER_ELEMENT_FORMAT = "perElementFormat"
+const KEY_TYPE = "type"
+
 
 type DefConverter = (obj: Object, elementId: string, position: number) => InputDef
 
@@ -67,11 +84,11 @@ function adjustElementIdToPosition(elementId: string, position: number): string 
 
 // single level, plain inputs
 const stringDefConverter: DefConverter = (obj, elementId, position) => {
-    return new StringInputDef(adjustElementIdToPosition(elementId, position), ".*")
+    return new StringInputDef(adjustElementIdToPosition(elementId, position), ALL_STRINGS_REGEX)
 }
 
 const regexDefConverter: DefConverter = (obj, elementId, position) => {
-    return new StringInputDef(adjustElementIdToPosition(elementId, position), obj["regex"])
+    return new StringInputDef(adjustElementIdToPosition(elementId, position), obj[KEY_REGEX])
 }
 
 const intDefConverter: DefConverter = (obj, elementId, position) => {
@@ -83,8 +100,8 @@ const floatDefConverter: DefConverter = (obj, elementId, position) => {
 }
 
 const numberMinMaxDefConverter: DefConverter = (obj, elementId, position) => {
-    let min = obj["min"]
-    let max = obj["max"]
+    let min = obj[KEY_MIN]
+    let max = obj[KEY_MAX]
     let type = NumberInputDef.getType([min, max])
     let step = 1
     if (type === InputType.FLOAT) {
@@ -98,13 +115,13 @@ const booleanDefConverter: DefConverter = (obj, elementId, position) => {
 }
 
 const stringConstantDefConverter: DefConverter = (obj, elementId, position) => {
-    let constant = obj["value"]
+    let constant = obj[KEY_VALUE]
     let inputDef = new StringInputDef(elementId, "^" + constant + "$")
     return new SeqInputDef(adjustElementIdToPosition(elementId, position), inputDef)
 }
 
 const choiceDefConverter: DefConverter = (obj, elementId, position) => {
-    let choices = obj["choices"]
+    let choices = obj[KEY_CHOICES]
     let isBooleanType = choices.filter(choice => ![true, false].includes(choice)).length == 0
     let isStringType = choices.filter(choice => Number.isNaN(choice)).length > 0
     let isNumberType = choices.filter(choice => Number.isNaN(choice)).length == 0
@@ -127,7 +144,7 @@ const intSeqDefConverter: DefConverter = (obj, elementId, position) => {
 }
 
 const stringSeqDefConverter: DefConverter = (obj, elementId, position) => {
-    let inputDef = new StringInputDef(elementId, ".*")
+    let inputDef = new StringInputDef(elementId, ALL_STRINGS_REGEX)
     return new SeqInputDef(adjustElementIdToPosition(elementId, position), inputDef)
 }
 
@@ -148,17 +165,17 @@ const seqChoiceDefConverter: DefConverter = (obj, elementId, position) => {
 
 function objToFieldDef(obj: Object, elementId: string, position: number): FieldDef {
     return new FieldDef(
-        obj["nameFormat"]["value"],
-        objToInputDef(obj["valueFormat"], adjustElementIdToPosition(elementId, position), position),
-        obj["required"]
+        obj[KEY_NAME_FORMAT][KEY_VALUE],
+        objToInputDef(obj[KEY_VALUE_FORMAT], adjustElementIdToPosition(elementId, position), position),
+        obj[KEY_REQUIRED]
     )
 }
 
 function objToConditionalFields(obj: Object, elementId: string, position: number): ConditionalFields {
     // the conditionField name
-    let conditionalFieldId = obj["conditionFieldId"]
+    let conditionalFieldId = obj[KEY_CONDITION_FIELD_ID]
     // mapping string value to Array[FieldDef]
-    let mappingObj: Object = obj["mapping"]
+    let mappingObj: Object = obj[KEY_MAPPING_ID]
     let fieldArrayMapping: Object = {}
     for (const [conditionalFieldValue, fieldDefObjArr] of Object.entries(mappingObj)) {
         fieldArrayMapping[conditionalFieldValue] = fieldDefObjArr
@@ -170,9 +187,9 @@ function objToConditionalFields(obj: Object, elementId: string, position: number
 }
 
 const nestedDefConverter: DefConverter = (obj, elementId, position) => {
-    let fieldsObjArray = obj["fields"]
+    let fieldsObjArray = obj[KEY_FIELDS]
     let fieldsArray: Array<FieldDef> = fieldsObjArray.map(field => objToFieldDef(field, elementId, position + 1))
-    let conditionalFieldsObjArray = obj["conditionalFieldsSeq"]
+    let conditionalFieldsObjArray = obj[KEY_CONDITIONAL_FIELDS_SEQ]
     let conditionalFieldsArray: Array<ConditionalFields> = conditionalFieldsObjArray.map(cfield => {
         objToConditionalFields(cfield, elementId, position + 1)
     })
@@ -184,8 +201,8 @@ const nestedDefConverter: DefConverter = (obj, elementId, position) => {
 }
 
 const mapDefConverter: DefConverter = (obj, elementId, position) => {
-    let keyFormat = objToInputDef(obj["keyFormat"], adjustElementIdToPosition(elementId, position + 1), position + 1)
-    let valueFormat = objToInputDef(obj["valueFormat"], adjustElementIdToPosition(elementId, position + 1), position + 1)
+    let keyFormat = objToInputDef(obj[KEY_KEY_FORMAT], adjustElementIdToPosition(elementId, position + 1), position + 1)
+    let valueFormat = objToInputDef(obj[KEY_VALUE_FORMAT], adjustElementIdToPosition(elementId, position + 1), position + 1)
     let keyValueInputDef = new KeyValueInputDef(
         adjustElementIdToPosition(elementId, position),
         keyFormat,
@@ -195,7 +212,7 @@ const mapDefConverter: DefConverter = (obj, elementId, position) => {
 }
 
 const seqDefConverter: DefConverter = (obj, elementId, position) => {
-    let perElementFormat = objToInputDef(obj["perElementFormat"], adjustElementIdToPosition(elementId, position + 1), position + 1)
+    let perElementFormat = objToInputDef(obj[KEY_PER_ELEMENT_FORMAT], adjustElementIdToPosition(elementId, position + 1), position + 1)
     return new SeqInputDef(adjustElementIdToPosition(elementId, position), perElementFormat)
 }
 
@@ -208,7 +225,7 @@ const seqDefConverter: DefConverter = (obj, elementId, position) => {
  * @param position
  */
 function objToInputDef(obj: Object, elementId: string, position: number): InputDef {
-    switch (obj["type"]) {
+    switch (obj[KEY_TYPE]) {
         case STRING_TYPE:
             return stringDefConverter(obj, elementId, position)
         case REGEX_TYPE:
@@ -263,7 +280,49 @@ function objToInputDef(obj: Object, elementId: string, position: number): InputD
 
 export {
     objToFieldDef,
-    objToInputDef
+    objToInputDef,
+    objToConditionalFields,
+    STRING_TYPE,
+    REGEX_TYPE,
+    INT_TYPE,
+    FLOAT_TYPE,
+    DOUBLE_TYPE,
+    BOOLEAN_TYPE,
+    STRING_CONSTANT_TYPE,
+    MIN_MAX_DOUBLE_TYPE,
+    MIN_MAX_FLOAT_TYPE,
+    MIN_MAX_INT_TYPE,
+    CHOICE_INT_TYPE,
+    CHOICE_STRING_TYPE,
+    SEQ_MIN_MAX_DOUBLE_TYPE,
+    SEQ_MIN_MAX_FLOAT_TYPE,
+    SEQ_MIN_MAX_INT_TYPE,
+    SEQ_REGEX_TYPE,
+    STRING_SEQ_TYPE,
+    INT_SEQ_TYPE,
+    SEQ_CHOICE_INT_TYPE,
+    SEQ_CHOICE_STRING_TYPE,
+    GENERIC_SEQ_TYPE,
+    MAP_TYPE,
+    NESTED_TYPE,
+    DefConverter,
+    adjustElementIdToPosition,
+    stringDefConverter,
+    regexDefConverter,
+    intDefConverter,
+    floatDefConverter,
+    numberMinMaxDefConverter,
+    booleanDefConverter,
+    stringConstantDefConverter,
+    choiceDefConverter,
+    intSeqDefConverter,
+    stringSeqDefConverter,
+    regexSeqDefConverter,
+    seqMinMaxNumberDefConverter,
+    seqChoiceDefConverter,
+    nestedDefConverter,
+    mapDefConverter,
+    seqDefConverter
 }
 
 
