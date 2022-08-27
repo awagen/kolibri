@@ -29,6 +29,7 @@ import de.awagen.kolibri.base.actors.clusterinfo.ResourceToJobMappingClusterStat
 import de.awagen.kolibri.base.actors.clusterinfo.ResourceToJobMappingClusterStateManagerActor.{ProcessResourceDirectives, ProcessedResourceDirectives}
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{Corn, ProcessingMessage}
+import de.awagen.kolibri.base.cluster.ClusterNodeObj
 import de.awagen.kolibri.base.config.AppConfig.filepathToJudgementProvider
 import de.awagen.kolibri.base.directives.{Resource, ResourceDirectives, ResourceType}
 import de.awagen.kolibri.base.domain.Connections.Connection
@@ -71,7 +72,11 @@ class FlowsSpec extends KolibriTestKitNoCluster
   }
 
   override protected def beforeAll(): Unit = {
-    localResourceManagerActor = system.actorOf(ResourceToJobMappingClusterStateManagerActor.props("localResourceActor"))
+    // creating without subscribeToReplicationMessages to avoid errors due to ClusterNode App not started
+    // (we are using a test actor system here)
+    localResourceManagerActor = system.actorOf(ResourceToJobMappingClusterStateManagerActor.props(
+      ClusterNodeObj.LOCAL_RESOURCES_ACTOR_NAME,
+      subscribeToReplicationMessages = false))
   }
 
   def prepareJudgementResource(): Unit = {
@@ -173,7 +178,7 @@ class FlowsSpec extends KolibriTestKitNoCluster
       prepareJudgementResource()
       // define the calculations
       val calculation = getJudgementBasedMetricsCalculation(
-        "judgements1",
+        "test1",
         Seq(
           Metric(NDCG5_NAME, IRMetricFunctions.ndcgAtK(5)),
           Metric(NDCG10_NAME, IRMetricFunctions.ndcgAtK(10)),
@@ -213,7 +218,7 @@ class FlowsSpec extends KolibriTestKitNoCluster
       // prepare the judgement availability to sending resource directive
       prepareJudgementResource()
       val irCalculation = getJudgementBasedMetricsCalculation(
-        "judgements1",
+        "test1",
         Seq(
           Metric(NDCG5_NAME, IRMetricFunctions.ndcgAtK(5)),
           Metric(NDCG10_NAME, IRMetricFunctions.ndcgAtK(10)),

@@ -17,7 +17,7 @@
 
 package de.awagen.kolibri.base.usecase.searchopt.metrics
 
-import de.awagen.kolibri.base.cluster.ClusterNode
+import de.awagen.kolibri.base.cluster.ClusterNodeObj
 import de.awagen.kolibri.base.config.AppProperties.config.judgementQueryAndProductDelimiter
 import de.awagen.kolibri.base.directives.{Resource, RetrievalDirective, WithResources}
 import de.awagen.kolibri.base.http.client.request.RequestTemplate
@@ -154,7 +154,7 @@ object Calculations {
       val requestTemplate: RequestTemplate = tMap.get[RequestTemplate](requestTemplateKey).get
       val query: String = requestTemplate.getParameter(queryParamName).map(x => x.head).getOrElse("")
       val productOpt: Option[Seq[String]] = tMap.get[Seq[String]](productIdsKey)
-      val judgementsOrError: Either[RetrievalError[Map[String, Double]], Map[String, Double]] = ClusterNode.getResource(RetrievalDirective.Retrieve(judgementsResource))
+      val judgementsOrError: Either[RetrievalError[Map[String, Double]], Map[String, Double]] = ClusterNodeObj.getResource(RetrievalDirective.Retrieve(judgementsResource))
       judgementsOrError match {
         case Left(error) =>
           metricsCalculation.metrics.map(x => ResultRecord(x.name, Left(Seq(ComputeFailReason.apply(error.cause.toString)))))

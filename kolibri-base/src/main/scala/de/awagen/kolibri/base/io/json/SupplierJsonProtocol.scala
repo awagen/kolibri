@@ -17,7 +17,7 @@
 
 package de.awagen.kolibri.base.io.json
 
-import de.awagen.kolibri.base.cluster.ClusterNode
+import de.awagen.kolibri.base.cluster.ClusterNodeObj
 import de.awagen.kolibri.base.config.AppConfig
 import de.awagen.kolibri.base.config.AppConfig.filepathToJudgementProvider
 import de.awagen.kolibri.base.directives.RetrievalDirective.Retrieve
@@ -149,7 +149,7 @@ object SupplierJsonProtocol extends DefaultJsonProtocol {
           val resource: Resource[IndexedGenerator[String]] = Resource(ResourceType.STRING_VALUES, identifier)
           new SerializableSupplier[IndexedGenerator[String]] {
             override def apply(): IndexedGenerator[String] = {
-              ClusterNode.getResource(Retrieve(resource)) match {
+              ClusterNodeObj.getResource(Retrieve(resource)) match {
                 case Left(retrievalError) =>
                   throw new RuntimeException(s"failed on execution of RetrievalDirective '${retrievalError.directive}', cause: '${retrievalError.cause}'")
                 case Right(value) => value
@@ -220,7 +220,7 @@ object SupplierJsonProtocol extends DefaultJsonProtocol {
           val resource: Resource[Map[String, Double]] = Resource(ResourceType.MAP_STRING_TO_DOUBLE_VALUE, identifier)
           new SerializableSupplier[Map[String, Double]] {
             override def apply(): Map[String, Double] = {
-              ClusterNode.getResource(Retrieve(resource)) match {
+              ClusterNodeObj.getResource(Retrieve(resource)) match {
                 case Left(retrievalError) =>
                   throw new RuntimeException(s"failed on execution of RetrievalDirective '${retrievalError.directive}', cause: '${retrievalError.cause}'")
                 case Right(value) => value
@@ -323,7 +323,7 @@ object SupplierJsonProtocol extends DefaultJsonProtocol {
           val resource: Resource[Map[String, IndexedGenerator[String]]] = Resource(ResourceType.MAP_STRING_TO_STRING_VALUES, identifier)
           new SerializableSupplier[Map[String, IndexedGenerator[String]]] {
             override def apply(): Map[String, IndexedGenerator[String]] = {
-              ClusterNode.getResource(Retrieve(resource)) match {
+              ClusterNodeObj.getResource(Retrieve(resource)) match {
                 case Left(retrievalError) =>
                   throw new RuntimeException(s"failed on execution of RetrievalDirective '${retrievalError.directive}', cause: '${retrievalError.cause}'")
                 case Right(value) => value

@@ -30,6 +30,7 @@ import akka.stream.Materializer
 import de.awagen.kolibri.base.actors.clusterinfo.DDResourceStateUtils.DD_BATCH_STATUS_ACTOR_REF_KEY
 import de.awagen.kolibri.base.actors.clusterinfo.{BatchStateActor, LocalStateDistributorActor, ResourceToJobMappingClusterStateManagerActor}
 import de.awagen.kolibri.base.actors.routing.RoutingActor
+import de.awagen.kolibri.base.cluster.ClusterNodeObj.LOCAL_RESOURCES_ACTOR_NAME
 import de.awagen.kolibri.base.config.AppProperties
 import de.awagen.kolibri.base.config.AppProperties.config
 import de.awagen.kolibri.base.config.AppProperties.config.{kolibriDispatcherName, node_roles, useRequestEventShardingAndEndpoints}
@@ -53,6 +54,15 @@ import java.util.Objects
 import scala.concurrent.ExecutionContextExecutor
 import scala.util.{Failure, Success}
 
+object ClusterNodeObj {
+
+  val LOCAL_RESOURCES_ACTOR_NAME = "localResources"
+
+  def getResource[T](directive: RetrievalDirective[T]): Either[RetrievalError[T], T] = {
+    ResourceToJobMappingClusterStateManagerActor.getResourceByStoreName[T](LOCAL_RESOURCES_ACTOR_NAME, directive)
+  }
+
+}
 
 /**
  * App object to start a new cluster node
@@ -61,7 +71,7 @@ object ClusterNode extends App {
 
   private[this] val logger: Logger = LoggerFactory.getLogger(ClusterNode.getClass.toString)
 
-  val LOCAL_RESOURCES_ACTOR_NAME = "localResources"
+
 
   // This line initializes all Kamon components
   // needs to happen before start of actor system
@@ -87,10 +97,6 @@ object ClusterNode extends App {
       startSystemSetup(None)
       setup
     }
-  }
-
-  def getResource[T](directive: RetrievalDirective[T]): Either[RetrievalError[T], T] = {
-    ResourceToJobMappingClusterStateManagerActor.getResourceByStoreName[T](LOCAL_RESOURCES_ACTOR_NAME, directive)
   }
 
   def startSystemSetup(route: Option[Route]): Unit = {

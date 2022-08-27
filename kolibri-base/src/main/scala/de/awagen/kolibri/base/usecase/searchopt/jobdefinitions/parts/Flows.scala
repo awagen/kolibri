@@ -125,8 +125,8 @@ object Flows {
             })
           })
         // add all in MetricRow
-        val metricRow = MetricRow.emptyForParams(params = metricRowParams)
-        metricRow.addFullMetricsSampleAndIncreaseSampleCount(singleResults:_*)
+        var metricRow = MetricRow.emptyForParams(params = metricRowParams)
+        metricRow = metricRow.addFullMetricsSampleAndIncreaseSampleCount(singleResults:_*)
         val originalTags: Set[Tag] = processingMessage.getTagsForType(TagType.AGGREGATION)
         Corn(metricRow).withTags(TagType.AGGREGATION, originalTags)
     }

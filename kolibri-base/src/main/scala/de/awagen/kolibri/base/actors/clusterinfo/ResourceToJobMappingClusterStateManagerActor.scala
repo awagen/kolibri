@@ -40,7 +40,8 @@ object ResourceToJobMappingClusterStateManagerActor {
 
   private[this] val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
-  def props(name: String): Props = Props(ResourceToJobMappingClusterStateManagerActor(name)).withDispatcher(kolibriDispatcherName)
+  def props(name: String, subscribeToReplicationMessages: Boolean = true): Props =
+    Props(ResourceToJobMappingClusterStateManagerActor(name, subscribeToReplicationMessages)).withDispatcher(kolibriDispatcherName)
 
   trait LocalResourceManagerMsg extends KolibriSerializable
 
@@ -74,7 +75,8 @@ object ResourceToJobMappingClusterStateManagerActor {
  * In case no job is assigned to a resource anymore, data can be removed to avoid piling up of extensive state in memory.
  * This actor also takes care of this data removal.
  */
-case class ResourceToJobMappingClusterStateManagerActor(name: String) extends Actor with ActorLogging {
+case class ResourceToJobMappingClusterStateManagerActor(name: String,
+                                                        subscribeToReplicationMessages: Boolean = true) extends Actor with ActorLogging {
 
   implicit val ec: ExecutionContextExecutor = context.system.dispatchers.lookup(kolibriDispatcherName)
 
@@ -84,9 +86,11 @@ case class ResourceToJobMappingClusterStateManagerActor(name: String) extends Ac
   nameToResourceStoreMapping(name) = resourceStore
 
   // subscribe to receive replication messages for the mapping of used resource types to the jobs
-  DDResourceStateUtils.DD_RESOURCETYPE_TO_KEY_MAPPING.values.foreach(value => {
-    ClusterNode.getSystemSetup.ddReplicator ! Subscribe(value, self)
-  })
+  if (subscribeToReplicationMessages) {
+    DDResourceStateUtils.DD_RESOURCETYPE_TO_KEY_MAPPING.values.foreach(value => {
+      ClusterNode.getSystemSetup.ddReplicator ! Subscribe(value, self)
+    })
+  }
 
   // set up partial function to handle all messages for the known keys
   def ddReceive: Receive = DistributedDataActorHelper.multipleStateChangeReceive[ORMap[String, ORSet[String]]](
