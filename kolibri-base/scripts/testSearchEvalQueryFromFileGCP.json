@@ -23,6 +23,21 @@
       "useHttps": false
     }
   ],
+  "resourceDirectives": [
+    {
+      "type": "MAP_STRING_TO_DOUBLE_VALUE",
+      "values": {
+        "resource": {
+          "resourceType": "MAP_STRING_TO_DOUBLE_VALUE",
+          "identifier": "ident1"
+        },
+        "supplier": {
+          "type": "JUDGEMENTS_FROM_FILE",
+          "file": "/app/test-files/test-judgements/test_judgements.txt"
+        }
+      }
+    }
+  ],
   "requestParameterPermutateSeq": [
     {
       "type": "STANDALONE",
@@ -93,36 +108,34 @@
     }
   },
   "requestTemplateStorageKey": "requestTemplate",
-  "mapFutureMetricRowCalculation": {
-    "functionType": "IR_METRICS",
-    "name": "irMetrics",
-    "queryParamName": "q",
-    "requestTemplateKey": "requestTemplate",
-    "productIdsKey": "productIds",
-    "judgementProvider": {
-      "type": "FILE_BASED",
-      "filename": "test-judgements/test_judgements.txt"
-    },
-    "metricsCalculation": {
-      "metrics": [
-        {"name": "DCG_10", "function": {"type": "DCG", "k": 10}},
-        {"name": "NDCG_10", "function": {"type": "NDCG", "k": 10}},
-        {"name": "PRECISION_4", "function": {"type": "PRECISION", "k": 4, "threshold":  0.1}},
-        {"name": "ERR_10", "function": {"type": "ERR", "k": 10}}
-      ],
-      "judgementHandling": {
-        "validations": [
-          "EXIST_RESULTS",
-          "EXIST_JUDGEMENTS"
+  "calculations": [
+    {
+      "type": "IR_METRICS",
+      "queryParamName": "q",
+      "requestTemplateKey": "requestTemplate",
+      "productIdsKey": "productIds",
+      "judgementsResource": {
+        "resourceType": "MAP_STRING_TO_DOUBLE_VALUE",
+        "identifier": "ident1"
+      },
+      "metricsCalculation": {
+        "metrics": [
+          {"name": "DCG_10", "function": {"type": "DCG", "k": 10}},
+          {"name": "NDCG_10", "function": {"type": "NDCG", "k": 10}},
+          {"name": "PRECISION_k=4&t=0.1", "function": {"type": "PRECISION", "k": 4, "threshold":  0.1}},
+          {"name": "RECALL_k=4&t=0.1", "function": {"type": "RECALL", "k": 4, "threshold":  0.1}},
+          {"name": "ERR_10", "function": {"type": "ERR", "k": 10}}
         ],
-        "handling": "AS_ZEROS"
+        "judgementHandling": {
+          "validations": [
+            "EXIST_RESULTS",
+            "EXIST_JUDGEMENTS"
+          ],
+          "handling": "AS_ZEROS"
+        }
       }
-    },
-    "excludeParams": [
-      "q"
-    ]
-  },
-  "singleMapCalculations": [],
+    }
+  ],
   "allowedTimePerElementInMillis": 1000,
   "allowedTimePerBatchInSeconds": 6000,
   "allowedTimeForJobInSeconds": 720000,
