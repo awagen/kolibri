@@ -39,7 +39,7 @@ class CalculationsSpec extends UnitTestSpec {
 
     "correctly calculate metrics" in {
       // given
-      val calculation = getJudgementBasedMetricsCalculation("data/calculations_test_judgements.txt",
+      val calculation = getJudgementBasedMetricsFutureCalculation("data/calculations_test_judgements.txt",
         Seq(
           Metric(NDCG5_NAME, IRMetricFunctions.ndcgAtK(5)),
           Metric(NDCG10_NAME, IRMetricFunctions.ndcgAtK(10)),
@@ -56,8 +56,8 @@ class CalculationsSpec extends UnitTestSpec {
       val ndcg5Result: AggregateValue[Double] = calcResult.metrics(NDCG5_NAME).biValue.value2
       val ndcg10Result: AggregateValue[Double] = calcResult.metrics(NDCG10_NAME).biValue.value2
       val ndcg2Result: AggregateValue[Double] = calcResult.metrics(NDCG2_NAME).biValue.value2
-      val expectedNDCG2Result: CalculationResult[Double] = IRMetricFunctions.ndcgAtK(2).apply(Seq(0.10, 0.4, 0.3, 0.2, 0.0))
-      val expectedNDCG5Result: CalculationResult[Double] = IRMetricFunctions.ndcgAtK(5).apply(Seq(0.10, 0.4, 0.3, 0.2, 0.0))
+      val expectedNDCG2Result: ComputeResult[Double] = IRMetricFunctions.ndcgAtK(2).apply(Seq(0.10, 0.4, 0.3, 0.2, 0.0))
+      val expectedNDCG5Result: ComputeResult[Double] = IRMetricFunctions.ndcgAtK(5).apply(Seq(0.10, 0.4, 0.3, 0.2, 0.0))
       // then
       Seq(ndcg2Result.numSamples, ndcg5Result.numSamples, ndcg10Result.numSamples) mustBe Seq(1, 1, 1)
       MathUtils.equalWithPrecision[Double](ndcg2Result.value, expectedNDCG2Result.getOrElse(-1.0), 0.0001) mustBe true
@@ -70,11 +70,11 @@ class CalculationsSpec extends UnitTestSpec {
 
     "correctly calculate metrics" in {
       // given
-      val calculation = BaseBooleanCalculation("testCalc", x => Right(x.count(y => y)))
+      val calculation = BooleanSeqToDoubleCalculation(Set("testCalc"), x => Seq(ResultRecord("testCalc", Right(x.count(y => y)))))
       // when
-      val result: CalculationResult[Double] = calculation.apply(Seq(true, true, false, false))
+      val result: Seq[ResultRecord[Double]] = calculation.calculation.apply(Seq(true, true, false, false))
       // then
-      result.getOrElse(-1) mustBe 2
+      result.head.value.getOrElse(-1) mustBe 2
     }
 
   }
@@ -83,9 +83,10 @@ class CalculationsSpec extends UnitTestSpec {
 
     "correctly calculate metrics" in {
       // given
-      val calculation = FromMapCalculation[Seq[Int], Int]("testCalc", "key1", x => Right(x.sum))
+      val calculation: FromMapCalculation[Seq[Int], Int] = FromMapCalculation[Seq[Int], Int](Set("testCalc"), "key1", x => Right(x.sum))
       // when, then
-      calculation.apply(BaseWeaklyTypedMap(mutable.Map("key1" -> Seq(1, 2, 3)))).getOrElse(-1) mustBe 6
+      val result: Seq[ResultRecord[Int]] = calculation.calculation.apply(BaseWeaklyTypedMap(mutable.Map("key1" -> Seq(1, 2, 3))))
+      result.head.value.getOrElse(-1) mustBe 6
     }
 
   }

@@ -23,20 +23,20 @@ import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.stream.scaladsl.Flow
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{Corn, ProcessingMessage}
 import de.awagen.kolibri.base.config.AppConfig.httpModule
-import de.awagen.kolibri.base.config.AppProperties.config
 import de.awagen.kolibri.base.domain.Connections.{Connection, Host}
 import de.awagen.kolibri.base.http.client.request.{RequestTemplate, RequestTemplateBuilder}
 import de.awagen.kolibri.base.processing.modifiers.Modifier
 import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
 import de.awagen.kolibri.base.processing.tagging.TaggingConfigurations.TaggingConfiguration
-import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.{Calculation, CalculationResult, FutureCalculation}
-import de.awagen.kolibri.base.usecase.searchopt.metrics.Functions.{resultEitherToMetricRowResponse, throwableToMetricRowResponse}
+import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.{Calculation, ResultRecord}
+import de.awagen.kolibri.base.usecase.searchopt.metrics.Functions.{resultRecordToMetricValue, throwableToMetricRowResponse}
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.tagging.TagType
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
+import de.awagen.kolibri.datatypes.values.MetricValue
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 import scala.util.Try
 
 object Flows {
@@ -89,41 +89,46 @@ object Flows {
     else httpModule.httpDIModule.getHttpConnectionPoolFlow[ProcessingMessage[RequestTemplate]].apply(Host(v1.host, v1.port))
   }
 
+  /**
+   * Definition of the processing flow for parsed request in the form of a WeaklyTypedMap,
+   * including the calculations to execute on the parsed data
+   * @param processingMessage
+   * @param calculations
+   * @param requestTemplateStorageKey
+   * @param excludeParamsFromMetricRow
+   * @param ec
+   * @return
+   */
   def metricsCalc(processingMessage: ProcessingMessage[(Either[Throwable, WeaklyTypedMap[String]], RequestTemplate)],
-                  mapFutureMetricRowCalculation: FutureCalculation[WeaklyTypedMap[String], Set[String], MetricRow],
-                  singleMapCalculations: Seq[Calculation[WeaklyTypedMap[String], CalculationResult[Double]]],
+                  calculations: Seq[Calculation[WeaklyTypedMap[String], Double]],
                   requestTemplateStorageKey: String,
-                  excludeParamsFromMetricRow: Seq[String])(implicit ec: ExecutionContext): Future[ProcessingMessage[MetricRow]] = {
+                  excludeParamsFromMetricRow: Seq[String])(implicit ec: ExecutionContext): ProcessingMessage[MetricRow] = {
     val metricRowParams: Map[String, Seq[String]] = Map(processingMessage.data._2.parameters.toSeq.filter(x => !excludeParamsFromMetricRow.contains(x._1)): _*)
     processingMessage.data._1 match {
       case e@Left(_) =>
         // need to add paramNames here to set the fail reasons for each
-        val allParamNames: Set[String] = singleMapCalculations.map(x => x.name).toSet ++ mapFutureMetricRowCalculation.calculationResultIdentifier
+        val allParamNames: Set[String] = calculations.flatMap(x => x.names).toSet
         val metricRow = throwableToMetricRowResponse(e.value, allParamNames, metricRowParams)
         val result: ProcessingMessage[MetricRow] = Corn(metricRow)
         val originalTags: Set[Tag] = processingMessage.getTagsForType(TagType.AGGREGATION)
         result.addTags(TagType.AGGREGATION, originalTags)
-        Future.successful(result)
+        result
       case e@Right(_) =>
         // add query parameter
         e.value.put[RequestTemplate](requestTemplateStorageKey, processingMessage.data._2)
-        // apply calculations resulting in MetricRow
-        val rowResultFuture: Future[MetricRow] = mapFutureMetricRowCalculation.apply(e.value)
         // compute and add single results
-        val singleResults: Seq[MetricRow] = singleMapCalculations
-          .map(x => {
-            val value = x.apply(e.value)
-            resultEitherToMetricRowResponse(x.name, value, metricRowParams)
+        val singleResults: Seq[MetricValue[Double]] = calculations
+          .flatMap(x => {
+            val values: Seq[ResultRecord[Double]] = x.calculation.apply(e.value)
+            values.map(value => {
+              resultRecordToMetricValue(value)
+            })
           })
+        // add all in MetricRow
+        val metricRow = MetricRow.emptyForParams(params = metricRowParams)
+        metricRow.addFullMetricsSampleAndIncreaseSampleCount(singleResults:_*)
         val originalTags: Set[Tag] = processingMessage.getTagsForType(TagType.AGGREGATION)
-        val combinedResultFuture: Future[MetricRow] = rowResultFuture.map(resRow => {
-          var result: MetricRow = resRow
-          singleResults.foreach(single => {
-            result = result.addRecordAndIncreaseSampleCount(single)
-          })
-          result
-        })
-        combinedResultFuture.map(res => Corn(res).withTags(TagType.AGGREGATION, originalTags))
+        Corn(metricRow).withTags(TagType.AGGREGATION, originalTags)
     }
   }
 
@@ -138,7 +143,7 @@ object Flows {
     * @param taggingConfiguration          : configuration to tag the processed elements based on input, parsed value and final result
     * @param requestTemplateStorageKey     : the key under which to store the RequestTemplate in the value map
     * @param mapFutureMetricRowCalculation : definition of metric calculations
-    * @param singleMapCalculations         : additional value calculations
+    * @param calculations         : additional value calculations
     * @param as                            : implicit ActorSystem
     * @param ec                            : implicit ExecutionContext
     * @return
@@ -150,8 +155,7 @@ object Flows {
                          excludeParamsFromMetricRow: Seq[String],
                          taggingConfiguration: Option[TaggingConfiguration[RequestTemplate, (Either[Throwable, WeaklyTypedMap[String]], RequestTemplate), MetricRow]],
                          requestTemplateStorageKey: String,
-                         mapFutureMetricRowCalculation: FutureCalculation[WeaklyTypedMap[String], Set[String], MetricRow],
-                         singleMapCalculations: Seq[Calculation[WeaklyTypedMap[String], CalculationResult[Double]]])
+                         calculations: Seq[Calculation[WeaklyTypedMap[String], Double]])
                         (implicit as: ActorSystem, ec: ExecutionContext): Flow[RequestTemplateBuilderModifier, ProcessingMessage[MetricRow], NotUsed] = {
     val partialFlow: Flow[RequestTemplateBuilderModifier, ProcessingMessage[(Either[Throwable, WeaklyTypedMap[String]], RequestTemplate)], NotUsed] =
       modifiersToRequestTemplateMessageFlow(contextPath, fixedParams)
@@ -165,13 +169,12 @@ object Flows {
           taggingConfiguration.foreach(config => config.tagProcessed(el))
           el
         }))
-    partialFlow.mapAsyncUnordered[ProcessingMessage[MetricRow]](config.requestParallelism)(x => {
-      metricsCalc(processingMessage = x,
-        mapFutureMetricRowCalculation,
-        singleMapCalculations,
-        requestTemplateStorageKey = requestTemplateStorageKey,
-        excludeParamsFromMetricRow = excludeParamsFromMetricRow)
-    })
+        partialFlow.via(Flow.fromFunction(processingMsg => metricsCalc(
+          processingMessage = processingMsg,
+          calculations,
+          requestTemplateStorageKey = requestTemplateStorageKey,
+          excludeParamsFromMetricRow = excludeParamsFromMetricRow
+        )))
       // tagging
       .via(Flow.fromFunction(el => {
         taggingConfiguration.foreach(config => config.tagResult(el))

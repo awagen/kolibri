@@ -172,8 +172,7 @@ object SearchJobDefinitions {
       ),
       taggingConfiguration = eval.taggingConfiguration,
       requestTemplateStorageKey = eval.requestTemplateStorageKey,
-      mapFutureMetricRowCalculation = eval.mapFutureMetricRowCalculation,
-      singleMapCalculations = eval.singleMapCalculations,
+      calculations = eval.calculations,
     )
   }
 

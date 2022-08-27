@@ -17,14 +17,15 @@
 
 package de.awagen.kolibri.base.usecase.searchopt.io.json
 
-import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
 import de.awagen.kolibri.datatypes.types.JsonStructDefs.StringChoiceStructDef
+import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
 
 object CalculationName extends Enumeration with WithStructDef {
   type CalculationName = Val
 
   case class Val(name: String) extends super.Val
 
+  val IR_METRICS = Val("IR_METRICS")
   val IDENTITY = Val("IDENTITY")
   val FIRST_TRUE = Val("FIRST_TRUE")
   val FIRST_FALSE = Val("FIRST_FALSE")
@@ -36,6 +37,7 @@ object CalculationName extends Enumeration with WithStructDef {
   override def structDef: JsonStructDefs.StructDef[_] =
     StringChoiceStructDef(
       Seq(
+        IR_METRICS.name,
         IDENTITY.name,
         FIRST_TRUE.name,
         FIRST_FALSE.name,

@@ -37,7 +37,7 @@ import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifie
 import de.awagen.kolibri.base.processing.tagging.TaggingConfigurations.BaseTaggingConfiguration
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.SearchJobDefinitions
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.Aggregators.{fullJobToSingleTagAggregatorSupplier, singleBatchAggregatorSupplier}
-import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.{Calculation, CalculationResult, FutureCalculation}
+import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.Calculation
 import de.awagen.kolibri.base.usecase.searchopt.parse.ParsingConfig
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
@@ -85,8 +85,7 @@ object JobMessages {
                                         parsingConfig: ParsingConfig,
                                         excludeParamsFromMetricRow: Seq[String],
                                         requestTemplateStorageKey: String,
-                                        mapFutureMetricRowCalculation: FutureCalculation[WeaklyTypedMap[String], Set[String], MetricRow],
-                                        singleMapCalculations: Seq[Calculation[WeaklyTypedMap[String], CalculationResult[Double]]],
+                                        calculations: Seq[Calculation[WeaklyTypedMap[String], Double]],
                                         taggingConfiguration: Option[BaseTaggingConfiguration[RequestTemplate, (Either[Throwable, WeaklyTypedMap[String]], RequestTemplate), MetricRow]],
                                         wrapUpFunction: Option[Execution[Any]],
                                         allowedTimePerElementInMillis: Int = 1000,
@@ -99,8 +98,6 @@ object JobMessages {
     def requestTemplateModifiers: Seq[IndexedGenerator[Modifier[RequestTemplateBuilder]]] =
       requestParameterPermutateSeq.map(x => x.toState).map(x => x.toSeqGenerator).map(x => x.mapGen(y => y.toModifier))
 
-    // promote the resources needed in metric row calculations to the current job def
-    mapFutureMetricRowCalculation.resources.foreach(resource => this.addResource(resource))
   }
 }
 

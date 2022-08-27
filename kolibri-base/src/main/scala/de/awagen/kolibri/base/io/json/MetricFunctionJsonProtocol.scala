@@ -17,16 +17,17 @@
 
 package de.awagen.kolibri.base.io.json
 
-import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.CalculationResult
+import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.ComputeResult
 import de.awagen.kolibri.base.usecase.searchopt.metrics.IRMetricFunctions
 import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
 import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
 import de.awagen.kolibri.datatypes.types.JsonStructDefs.{ConditionalFields, DoubleMinMaxStructDef, IntMinMaxStructDef, NestedFieldSeqStructDef, StringChoiceStructDef, StringConstantStructDef}
+import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 import spray.json.{DefaultJsonProtocol, JsValue, JsonFormat, enrichAny}
 
 object MetricFunctionJsonProtocol extends DefaultJsonProtocol with WithStructDef {
 
-  type MetricFunction = Function[Seq[Double], CalculationResult[Double]]
+  type MetricFunction = SerializableFunction1[Seq[Double], ComputeResult[Double]]
 
   val TYPE_VALUE_PRECISION = "PRECISION"
   val TYPE_VALUE_RECALL = "RECALL"
@@ -40,7 +41,7 @@ object MetricFunctionJsonProtocol extends DefaultJsonProtocol with WithStructDef
 
 
   implicit object MetricFunctionFormat extends JsonFormat[MetricFunction] {
-    override def read(json: JsValue): Function[Seq[Double], CalculationResult[Double]] = json match {
+    override def read(json: JsValue): SerializableFunction1[Seq[Double], ComputeResult[Double]] = json match {
       case spray.json.JsObject(fields) =>
         val k: Int = fields(K_KEY).convertTo[Int]
         fields(TYPE_KEY).convertTo[String] match {
@@ -60,7 +61,7 @@ object MetricFunctionJsonProtocol extends DefaultJsonProtocol with WithStructDef
         }
     }
 
-    override def write(obj: Function[Seq[Double], CalculationResult[Double]]): JsValue = """{}""".toJson
+    override def write(obj: SerializableFunction1[Seq[Double], ComputeResult[Double]]): JsValue = """{}""".toJson
   }
 
   override def structDef: JsonStructDefs.StructDef[_] = {

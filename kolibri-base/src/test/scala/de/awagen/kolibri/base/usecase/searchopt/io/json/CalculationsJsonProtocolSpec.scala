@@ -18,8 +18,8 @@
 package de.awagen.kolibri.base.usecase.searchopt.io.json
 
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
-import de.awagen.kolibri.base.usecase.searchopt.io.json.CalculationsJsonProtocol.{FromMapCalculationSeqBooleanToDoubleFormat, FromMapFutureCalculationSeqStringToMetricRowFormat}
-import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.{Calculation, CalculationResult, FutureCalculation}
+import de.awagen.kolibri.base.usecase.searchopt.io.json.CalculationsJsonProtocol.{FromMapCalculationsDoubleFormat, FromMapFutureCalculationSeqStringToMetricRowFormat}
+import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.{Calculation, FutureCalculation}
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import spray.json._
@@ -73,8 +73,8 @@ class CalculationsJsonProtocolSpec extends UnitTestSpec {
   "FromMapCalculationSeqBooleanToDoubleFormat" must {
 
     "correctly parse FromMapCalculation[Seq[Boolean], Double]" in {
-      val calc = FROM_MAP_SEQ_BOOLEAN_TO_DOUBLE_CALCULATION.convertTo[Calculation[WeaklyTypedMap[String], CalculationResult[Double]]]
-      calc.name mustBe "firstTrue"
+      val calc = FROM_MAP_SEQ_BOOLEAN_TO_DOUBLE_CALCULATION.convertTo[Calculation[WeaklyTypedMap[String], Double]]
+      calc.names mustBe Set("firstTrue")
     }
 
   }

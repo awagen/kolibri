@@ -18,26 +18,36 @@
 package de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts
 
 import akka.NotUsed
+import akka.actor.ActorRef
 import akka.http.scaladsl.model.HttpRequest
+import akka.pattern.ask
 import akka.stream.scaladsl.{Flow, Sink, Source}
 import akka.testkit.TestKit
+import akka.util.Timeout
 import de.awagen.kolibri.base.actors.KolibriTestKitNoCluster
+import de.awagen.kolibri.base.actors.clusterinfo.ResourceToJobMappingClusterStateManagerActor
+import de.awagen.kolibri.base.actors.clusterinfo.ResourceToJobMappingClusterStateManagerActor.{ProcessResourceDirectives, ProcessedResourceDirectives}
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{Corn, ProcessingMessage}
+import de.awagen.kolibri.base.config.AppConfig.filepathToJudgementProvider
+import de.awagen.kolibri.base.directives.{Resource, ResourceDirectives, ResourceType}
 import de.awagen.kolibri.base.domain.Connections.Connection
 import de.awagen.kolibri.base.http.client.request.{RequestTemplate, RequestTemplateBuilder}
 import de.awagen.kolibri.base.processing.modifiers.Modifier
 import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.RequestParameterModifier
 import de.awagen.kolibri.base.processing.tagging.TaggingConfigurations.TaggingConfiguration
+import de.awagen.kolibri.base.resources.{ResourceAlreadyExists, ResourceOK}
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.Flows.{fullProcessingFlow, metricsCalc, processingMsgToRequestTuple}
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.FromMapCalculation
 import de.awagen.kolibri.base.usecase.searchopt.metrics.CalculationsTestHelper._
-import de.awagen.kolibri.base.usecase.searchopt.metrics.{Calculations, IRMetricFunctions, Metric}
+import de.awagen.kolibri.base.usecase.searchopt.metrics.{IRMetricFunctions, Metric}
 import de.awagen.kolibri.datatypes.mutable.stores.{BaseWeaklyTypedMap, WeaklyTypedMap}
 import de.awagen.kolibri.datatypes.stores.MetricRow
+import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSupplier
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
+import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.global
@@ -49,11 +59,40 @@ class FlowsSpec extends KolibriTestKitNoCluster
   with Matchers
   with BeforeAndAfterAll {
 
+  private[this] val logger: Logger = LoggerFactory.getLogger(this.getClass)
+
   override val invokeBeforeAllAndAfterAllEvenIfNoTestsAreExpected = true
+
+  var localResourceManagerActor: ActorRef = _
 
   override protected def afterAll(): Unit = {
     super.afterAll()
     TestKit.shutdownActorSystem(system)
+  }
+
+  override protected def beforeAll(): Unit = {
+    localResourceManagerActor = system.actorOf(ResourceToJobMappingClusterStateManagerActor.props("localResourceActor"))
+  }
+
+  def prepareJudgementResource(): Unit = {
+    val judgementSupplier = new SerializableSupplier[Map[String, Double]] {
+      override def apply(): Map[String, Double] = {
+        filepathToJudgementProvider("data/calculations_test_judgements.txt").allJudgements
+      }
+    }
+    val judgementResourceDirective: ResourceDirectives.ResourceDirective[Map[String, Double]] = ResourceDirectives.getDirective(
+      judgementSupplier,
+      Resource(ResourceType.MAP_STRING_TO_DOUBLE_VALUE, "test1")
+    )
+    implicit val timeout: Timeout = 5 seconds
+    val resourceAskMsg = ProcessResourceDirectives(Seq(judgementResourceDirective), "testJob1")
+    val resourceAsk: Future[Any] = localResourceManagerActor ? resourceAskMsg
+    val resourcePrepareResult: ProcessedResourceDirectives = Await.result(resourceAsk, timeout.duration).asInstanceOf[ProcessedResourceDirectives]
+    logger.info(s"resource directive processing results: ${resourcePrepareResult.states}")
+    val mustStopExecution: Boolean = resourcePrepareResult.states.exists(state => !Seq(ResourceOK, ResourceAlreadyExists).contains(state))
+    if (mustStopExecution) {
+      throw new RuntimeException("could not load judgement resource")
+    }
   }
 
   "Flows" must {
@@ -130,25 +169,28 @@ class FlowsSpec extends KolibriTestKitNoCluster
         "key1" -> Seq(5, 4)
       ))
       val processingMessage = Corn((Right(typedMap), requestTemplate))
-      val calculation: Calculations.JudgementBasedMetricsCalculation =
-        getJudgementBasedMetricsCalculation("data/calculations_test_judgements.txt",
-          Seq(
-            Metric(NDCG5_NAME, IRMetricFunctions.ndcgAtK(5)),
-            Metric(NDCG10_NAME, IRMetricFunctions.ndcgAtK(10)),
-            Metric(NDCG2_NAME, IRMetricFunctions.ndcgAtK(2))
-          )
-        )
-      // when
-      val calcFut: Future[ProcessingMessages.ProcessingMessage[MetricRow]] = metricsCalc(
-        processingMessage,
-        calculation,
+      // prepare the judgement availability to sending resource directive
+      prepareJudgementResource()
+      // define the calculations
+      val calculation = getJudgementBasedMetricsCalculation(
+        "judgements1",
         Seq(
-          FromMapCalculation[Seq[Int], Double]("metric1", "key1", x => Right(x.sum))
+          Metric(NDCG5_NAME, IRMetricFunctions.ndcgAtK(5)),
+          Metric(NDCG10_NAME, IRMetricFunctions.ndcgAtK(10)),
+          Metric(NDCG2_NAME, IRMetricFunctions.ndcgAtK(2))
+        )
+      )
+      // when
+      val calc: ProcessingMessages.ProcessingMessage[MetricRow] = metricsCalc(
+        processingMessage,
+        Seq(
+          calculation,
+          FromMapCalculation[Seq[Int], Double](Set("metric1"), "key1", x => Right(x.sum))
         ),
         REQUEST_TEMPLATE_KEY,
         Seq(QUERY_PARAM)
       )
-      val result: MetricRow = Await.result(calcFut, 2 seconds).data
+      val result: MetricRow = calc.data
       // then
       result.metrics.keySet mustBe Set("metric1", NDCG5_NAME, NDCG10_NAME, NDCG2_NAME)
       result.metrics("metric1").biValue.value2.value mustBe 9
@@ -168,16 +210,20 @@ class FlowsSpec extends KolibriTestKitNoCluster
       val excludeParamsFromMetricRow = Seq.empty
       val taggingConfiguration: Option[TaggingConfiguration[RequestTemplate, (Either[Throwable, WeaklyTypedMap[String]], RequestTemplate), MetricRow]] = None
       val requestTemplateStorageKey = REQUEST_TEMPLATE_KEY
-      val mapFutureMetricRowCalculation =
-        getJudgementBasedMetricsCalculation("data/calculations_test_judgements.txt",
-          Seq(
-            Metric(NDCG5_NAME, IRMetricFunctions.ndcgAtK(5)),
-            Metric(NDCG10_NAME, IRMetricFunctions.ndcgAtK(10)),
-            Metric(NDCG2_NAME, IRMetricFunctions.ndcgAtK(2))
-          )
+      // prepare the judgement availability to sending resource directive
+      prepareJudgementResource()
+      val irCalculation = getJudgementBasedMetricsCalculation(
+        "judgements1",
+        Seq(
+          Metric(NDCG5_NAME, IRMetricFunctions.ndcgAtK(5)),
+          Metric(NDCG10_NAME, IRMetricFunctions.ndcgAtK(10)),
+          Metric(NDCG2_NAME, IRMetricFunctions.ndcgAtK(2))
         )
-      val singleMapCalculations = Seq(
-        FromMapCalculation[Seq[Int], Double]("metric1", "key1", x => Right(x.sum))
+      )
+      // define calculations
+      val calculations = Seq(
+        irCalculation,
+        FromMapCalculation[Seq[Int], Double](Set("metric1"), "key1", x => Right(x.sum))
       )
       val requestAndParsingFlow: Flow[ProcessingMessage[RequestTemplate], ProcessingMessage[(Either[Throwable, WeaklyTypedMap[String]], RequestTemplate)], NotUsed] = Flow.fromFunction(x => {
         val map: WeaklyTypedMap[String] = BaseWeaklyTypedMap(
@@ -198,8 +244,7 @@ class FlowsSpec extends KolibriTestKitNoCluster
         excludeParamsFromMetricRow = excludeParamsFromMetricRow,
         taggingConfiguration = taggingConfiguration,
         requestTemplateStorageKey = requestTemplateStorageKey,
-        mapFutureMetricRowCalculation = mapFutureMetricRowCalculation,
-        singleMapCalculations = singleMapCalculations
+        calculations = calculations
       )
       // when
       val result: Seq[MetricRow] = Await.result(Source.apply(

@@ -16,10 +16,9 @@
 
 package de.awagen.kolibri.base.usecase.searchopt.metrics
 
-import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.CalculationResult
+import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.{ComputeResult, ResultRecord}
 import de.awagen.kolibri.base.usecase.searchopt.metrics.JudgementValidation.JudgementValidation
 import de.awagen.kolibri.base.usecase.searchopt.metrics.MetricsCalculation.calculationResultToMetricValue
-import de.awagen.kolibri.datatypes.reason.ComputeFailReason
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.values.{MetricValue, RunningValue}
 
@@ -28,7 +27,7 @@ import scala.collection.immutable
 
 object MetricsCalculation {
 
-  def calculationResultToMetricValue(name: String, calculationResult: CalculationResult[Double]): MetricValue[Double] = {
+  def calculationResultToMetricValue(name: String, calculationResult: ComputeResult[Double]): MetricValue[Double] = {
     calculationResult match {
       case Right(score) =>
         MetricValue.createAvgSuccessSample(name, score, 1.0)
@@ -45,28 +44,28 @@ case class MetricsCalculation(metrics: Seq[Metric], judgementHandling: Judgement
     judgementHandling.validateAndReturnFailed(judgements)
   }
 
-  def calculateAndReturnCalculationResult(metric: Metric, values: Seq[Option[Double]]): CalculationResult[Double] = {
+  def calculateAndReturnCalculationResult(metric: Metric, values: Seq[Option[Double]]): ResultRecord[Double] = {
     val failedValidations: Seq[JudgementValidation] = validateAndReturnFailedJudgements(values)
 
     if (failedValidations.nonEmpty) {
-      Left(failedValidations.map(x => x.reason))
+      ResultRecord(metric.name, Left(failedValidations.map(x => x.reason)))
     }
     else {
       val preparedValues: Seq[Double] = judgementHandling.extractValues(values)
-      metric.function.apply(preparedValues)
+      ResultRecord(metric.name, metric.function.apply(preparedValues))
     }
   }
 
   def calculateMetric(metric: Metric, values: Seq[Option[Double]]): MetricValue[Double] = {
-    val result: Either[Seq[ComputeFailReason], Double] = calculateAndReturnCalculationResult(metric, values)
-    calculationResultToMetricValue(metric.name, result)
+    val result: ResultRecord[Double] = calculateAndReturnCalculationResult(metric, values)
+    calculationResultToMetricValue(metric.name, result.value)
   }
 
-  def calculateAllAndReturnSingleComputationResults(values: Seq[Option[Double]]): Seq[CalculationResult[Double]] = {
+  def calculateAllAndReturnSingleResults(values: Seq[Option[Double]]): Seq[ResultRecord[Double]] = {
     metrics.map(x => calculateAndReturnCalculationResult(x, values))
   }
 
-  def calculateAll(params: immutable.Map[String, Seq[String]], values: Seq[Option[Double]]): MetricRow = {
+  def calculateAllAndAddAllToMetricRow(params: immutable.Map[String, Seq[String]], values: Seq[Option[Double]]): MetricRow = {
     val metricRow = MetricRow.emptyForParams(params = params)
     val allMetrics: Seq[MetricValue[Double]] = metrics.map(x => calculateMetric(x, values))
     metricRow.addFullMetricsSampleAndIncreaseSampleCount(allMetrics: _*)

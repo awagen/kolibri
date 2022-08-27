@@ -26,7 +26,7 @@ import spray.json.{DefaultJsonProtocol, RootJsonFormat}
 
 object MetricsCalculationJsonProtocol extends DefaultJsonProtocol with WithStructDef {
 
-  implicit val metricsCalculationFormat: RootJsonFormat[MetricsCalculation] = jsonFormat2(MetricsCalculation)
+  implicit val metricsCalculationFormat: RootJsonFormat[MetricsCalculation] = jsonFormat2(MetricsCalculation.apply)
 
   val METRICS_KEY = "metrics"
   val JUDGEMENT_HANDLING_KEY = "judgementHandling"

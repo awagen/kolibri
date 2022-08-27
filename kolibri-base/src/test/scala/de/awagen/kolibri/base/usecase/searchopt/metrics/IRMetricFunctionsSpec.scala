@@ -18,7 +18,7 @@
 package de.awagen.kolibri.base.usecase.searchopt.metrics
 
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
-import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.CalculationResult
+import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.ComputeResult
 import de.awagen.kolibri.base.usecase.searchopt.metrics.IRMetricFunctions.NO_JUDGEMENTS
 import de.awagen.kolibri.datatypes.utils.MathUtils
 
@@ -39,7 +39,7 @@ class IRMetricFunctionsSpec extends UnitTestSpec {
 
       "return None for no element" in {
         //given, when
-        val score: CalculationResult[Double] = IRMetricFunctions.dcgAtK(10).apply(Seq())
+        val score: ComputeResult[Double] = IRMetricFunctions.dcgAtK(10).apply(Seq())
         //then
         score mustBe Left(Seq(NO_JUDGEMENTS))
       }

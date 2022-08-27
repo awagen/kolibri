@@ -23,6 +23,7 @@ import de.awagen.kolibri.base.domain.Connections.Connection
 import de.awagen.kolibri.base.http.client.request.RequestTemplate
 import de.awagen.kolibri.base.io.json.ConnectionJsonProtocol._
 import de.awagen.kolibri.base.io.json.ExecutionJsonProtocol._
+import de.awagen.kolibri.base.io.json.ParameterValuesJsonProtocol.ValueSeqGenDefinitionFormat
 import de.awagen.kolibri.base.io.json.ResourceDirectiveJsonProtocol.GenericResourceDirectiveFormat
 import de.awagen.kolibri.base.io.json.TaggingConfigurationsJsonProtocol._
 import de.awagen.kolibri.base.processing.JobMessages.SearchEvaluationDefinition
@@ -32,7 +33,7 @@ import de.awagen.kolibri.base.processing.tagging.TaggingConfigurations.BaseTaggi
 import de.awagen.kolibri.base.usecase.searchopt.io.json.CalculationsJsonProtocol._
 import de.awagen.kolibri.base.usecase.searchopt.io.json.ParsingConfigJsonProtocol
 import de.awagen.kolibri.base.usecase.searchopt.io.json.ParsingConfigJsonProtocol._
-import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.{Calculation, CalculationResult, FutureCalculation}
+import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.Calculation
 import de.awagen.kolibri.base.usecase.searchopt.parse.ParsingConfig
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.datatypes.stores.MetricRow
@@ -40,7 +41,6 @@ import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
 import de.awagen.kolibri.datatypes.types.JsonStructDefs._
 import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
 import spray.json.{DefaultJsonProtocol, RootJsonFormat}
-import de.awagen.kolibri.base.io.json.ParameterValuesJsonProtocol.ValueSeqGenDefinitionFormat
 
 
 object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSupport with WithStructDef {
@@ -56,8 +56,7 @@ object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSu
   val PARSING_CONFIG_FIELD = "parsingConfig"
   val EXCLUDE_PARAMS_FROM_METRIC_ROW_FIELD = "excludeParamsFromMetricRow"
   val REQUEST_TEMPLATE_STORAGE_KEY_FIELD = "requestTemplateStorageKey"
-  val MAP_FUTURE_METRIC_ROW_CALCULATION_FIELD = "mapFutureMetricRowCalculation"
-  val SINGLE_MAP_CALCULATIONS_FIELD = "singleMapCalculations"
+  val CALCULATIONS_FIELD = "calculations"
   val TAGGING_CONFIGURATION_FIELD = "taggingConfiguration"
   val WRAP_UP_FUNCTION_FIELD = "wrapUpFunction"
   val ALLOWED_TIME_PER_ELEMENT_IN_MILLIS_FIELD = "allowedTimePerElementInMillis"
@@ -78,8 +77,7 @@ object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSu
       parsingConfig: ParsingConfig,
       excludeParamsFromMetricRow: Seq[String],
       requestTemplateStorageKey: String,
-      mapFutureMetricRowCalculation: FutureCalculation[WeaklyTypedMap[String], Set[String], MetricRow],
-      singleMapCalculations: Seq[Calculation[WeaklyTypedMap[String], CalculationResult[Double]]],
+      calculations: Seq[Calculation[WeaklyTypedMap[String], Double]],
       taggingConfiguration: Option[BaseTaggingConfiguration[RequestTemplate, (Either[Throwable, WeaklyTypedMap[String]], RequestTemplate), MetricRow]],
       wrapUpFunction: Option[Execution[Any]],
       allowedTimePerElementInMillis: Int,
@@ -99,8 +97,7 @@ object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSu
         parsingConfig,
         excludeParamsFromMetricRow,
         requestTemplateStorageKey,
-        mapFutureMetricRowCalculation,
-        singleMapCalculations,
+        calculations,
         taggingConfiguration,
         wrapUpFunction,
         allowedTimePerElementInMillis,
@@ -119,8 +116,7 @@ object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSu
     PARSING_CONFIG_FIELD,
     EXCLUDE_PARAMS_FROM_METRIC_ROW_FIELD,
     REQUEST_TEMPLATE_STORAGE_KEY_FIELD,
-    MAP_FUTURE_METRIC_ROW_CALCULATION_FIELD,
-    SINGLE_MAP_CALCULATIONS_FIELD,
+    CALCULATIONS_FIELD,
     TAGGING_CONFIGURATION_FIELD,
     WRAP_UP_FUNCTION_FIELD,
     ALLOWED_TIME_PER_ELEMENT_IN_MILLIS_FIELD,
@@ -188,13 +184,8 @@ object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSu
           required = true
         ),
         FieldDef(
-          StringConstantStructDef(MAP_FUTURE_METRIC_ROW_CALCULATION_FIELD),
-          FromMapFutureCalculationSeqStringToMetricRowFormat.structDef,
-          required = true
-        ),
-        FieldDef(
-          StringConstantStructDef(SINGLE_MAP_CALCULATIONS_FIELD),
-          FromMapCalculationSeqBooleanToDoubleFormat.structDef,
+          StringConstantStructDef(CALCULATIONS_FIELD),
+          FromMapCalculationsDoubleFormat.structDef,
           required = true
         ),
         FieldDef(

@@ -72,7 +72,7 @@ object Functions {
       if (judgementsOpt.isEmpty) Left(JudgementsMissing)
       else {
         val judgements: Seq[Option[Double]] = judgementsOpt.get
-        Right(metricsCalculation.calculateAll(params, judgements))
+        Right(metricsCalculation.calculateAllAndAddAllToMetricRow(params, judgements))
       }
   }
 
