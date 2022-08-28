@@ -233,7 +233,27 @@ object SupplierJsonProtocol extends DefaultJsonProtocol {
 
     override def write(obj: SerializableSupplier[Map[String, Double]]): JsValue = """{}""".toJson
 
-    override def structDef: StructDef[_] = ???
+    override def structDef: StructDef[_] = NestedFieldSeqStructDef(
+      Seq(
+        FieldDef(
+          StringConstantStructDef(TYPE_KEY),
+          StringChoiceStructDef(Seq(
+            JUDGEMENTS_FROM_FILE_TYPE,
+            VALUES_FROM_NODE_STORAGE_TYPE
+          )),
+          required = true)
+      ),
+      Seq(
+        ConditionalFields(TYPE_KEY, Map(
+          JUDGEMENTS_FROM_FILE_TYPE -> Seq(
+            FieldDef(StringConstantStructDef(FILE_KEY), RegexStructDef("\\w+".r), required = true)
+          ),
+          VALUES_FROM_NODE_STORAGE_TYPE -> Seq(
+            FieldDef(StringConstantStructDef(IDENTIFIER_KEY), RegexStructDef("\\w+".r), required = true)
+          )
+        ))
+      )
+    )
   }
 
   /**
