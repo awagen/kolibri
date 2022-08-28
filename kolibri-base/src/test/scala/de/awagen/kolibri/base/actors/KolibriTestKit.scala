@@ -25,6 +25,7 @@ import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.must.Matchers
+import scala.concurrent.duration._
 
 class KolibriTestKit
   extends TestKit(ActorSystem("testsystem", ConfigFactory.load("application-test.conf")))
@@ -47,7 +48,11 @@ class KolibriTestKit
 
   override protected def afterAll(): Unit = {
     super.afterAll()
-    TestKit.shutdownActorSystem(system, verifySystemShutdown = true)
+    TestKit.shutdownActorSystem(
+      system,
+      verifySystemShutdown = true,
+      duration = 20 seconds
+    )
   }
 
 }
