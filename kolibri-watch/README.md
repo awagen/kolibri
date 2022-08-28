@@ -50,3 +50,21 @@ store.commit("updateAnalysisVariance", {
     "metricName": "NDCG_10",
     "queryParamName": "q"})
 ```
+
+
+## Setting up vitest ui
+As test ui, the official vitest ui can be used (https://vitest.dev/guide/ui.html).
+Also see here for quick overview: https://www.the-koi.com/projects/taking-a-closer-look-at-the-vitest-ui/.
+
+## Debugging with vitest in webstorm / intellij
+To set breakpoints in webstorm/intellij and run tests, create a node.js 
+run configuration as described in the following link:
+https://vitest.dev/guide/debugging.html#intellij-idea.
+In short, this contains creating the run configuration with following 
+properties:
+- Working directory: [/path/to/your-project-root]
+- JavaScript file: ./node_modules/vitest/vitest.mjs
+- Application parameters: run --threads false
+
+You can then run this configuration in debug mode and breakpoints set in the 
+IDE will be taken into account.

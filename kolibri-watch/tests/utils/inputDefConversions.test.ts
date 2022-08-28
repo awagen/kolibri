@@ -4,7 +4,7 @@
 
 import {expect, test} from "vitest";
 import {objToInputDef} from "../../src/utils/inputDefConversions";
-import {InputDef} from "../../src/utils/dataValidationFunctions";
+import {InputDef, NestedFieldSequenceInputDef} from "../../src/utils/dataValidationFunctions";
 
 
 test("correctly parse string input def", () => {
@@ -26,4 +26,13 @@ test("correctly parse regex input def", () => {
     expect(convertedInputDef.getInputValidation().validate("a").isValid).false
     expect(convertedInputDef.getInputValidation().validate("ad").isValid).true
     expect(convertedInputDef.getInputValidation().validate("baa").isValid).false
+})
+
+test("correctly parse full job definition", () => {
+    // given
+    const json = require('../testdata/searchEvaluationJobStructDef.json')
+    // when
+    const convertedInputDef: InputDef = objToInputDef(json, "test", 0)
+    // then
+    expect(convertedInputDef instanceof NestedFieldSequenceInputDef).true
 })
