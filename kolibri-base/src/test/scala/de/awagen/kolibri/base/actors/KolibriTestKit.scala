@@ -17,6 +17,7 @@
 package de.awagen.kolibri.base.actors
 
 import akka.actor.ActorSystem
+import akka.actor.testkit.typed.scaladsl.LogCapturing
 import akka.cluster.Cluster
 import akka.management.cluster.bootstrap.ClusterBootstrap
 import akka.management.scaladsl.AkkaManagement
@@ -30,7 +31,8 @@ class KolibriTestKit
     with ImplicitSender
     with org.scalatest.wordspec.AnyWordSpecLike
     with Matchers
-    with BeforeAndAfterAll {
+    with BeforeAndAfterAll
+    with LogCapturing {
 
   override val invokeBeforeAllAndAfterAllEvenIfNoTestsAreExpected = true
   var cluster: Cluster = _

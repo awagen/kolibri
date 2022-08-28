@@ -391,6 +391,15 @@ The latter endpoint allows sorting by some given metric and filtering down to re
 cluster heartbeat failures if not enough resources are available within docker. Thus make sure to allow sufficient 
 resources (e.g >= 4gb ram) to avoid this. The mentioned heartbeat failures will lead to loss of inter-node connections.
 
+
+## Reduced test logging for cluster tests
+For this purpose the KolibriTestKit mixes in the LogCapturing trait
+and has an adjusted logback-test.xml (as described here:
+https://doc.akka.io/docs/akka/current/typed/testing-async.html#configuration).
+This avoids loggings flooding tests that pass, but get info 
+for tests that fail.
+
+
 ## License
 
 The kolibri-base code is licensed under APL 2.0.
