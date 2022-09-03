@@ -4,6 +4,7 @@
 
   <div class="k-seq-container">
     <template v-for="(field, index) in addedInputDefs">
+
       <template v-if="(field instanceof SingleValueInputDef)">
         <div class="k-value-and-delete">
           <div class="k-single-value-input"
@@ -21,6 +22,27 @@
           </div>
         </div>
       </template>
+
+      <template v-if="(field instanceof NestedFieldSequenceInputDef)">
+        <div class="k-value-and-delete">
+          <div class="k-single-value-input"
+               :id="'container-' + field.elementId">
+            <NestedFieldSeqStructDef
+                @value-changed="valueChanged"
+                :conditional-fields="field.conditionalFields"
+                :fields="field.fields"
+                :name="name"
+                :position="index"
+                :is-root="false">
+            </NestedFieldSeqStructDef>
+          </div>
+          <div class="k-delete-button">
+            <a @click.prevent="deleteInputElement(index)" href="#" class="k-delete btn btn-clear"
+               aria-label="Close" role="button"></a>
+          </div>
+        </div>
+      </template>
+
       <div class="k-form-separator"></div>
     </template>
 
@@ -37,10 +59,10 @@
 <script>
 import {
   InputDef,
-  SingleValueInputDef
-} from "../../../utils/dataValidationFunctions";
-import SingleValueStructDef from "./SingleValueStructDef.vue";
-import {onMounted, ref} from "vue";
+  SingleValueInputDef,
+  NestedFieldSequenceInputDef
+} from "@/utils/dataValidationFunctions";
+import {onMounted, ref, defineAsyncComponent} from "vue";
 
 export default {
 
@@ -50,7 +72,14 @@ export default {
   },
 
   emits: ['valueChanged'],
-  components: {SingleValueStructDef},
+  components: {
+    SingleValueStructDef: defineAsyncComponent(() =>
+        import('./SingleValueStructDef.vue')
+    ),
+    NestedFieldSeqStructDef: defineAsyncComponent(() =>
+        import('./NestedFieldSeqStructDef.vue')
+    )
+  },
   methods: {},
   setup(props, context) {
 
@@ -70,15 +99,15 @@ export default {
     }
 
     function valueChanged(attributes) {
-      console.debug("value changed event: ")
+      console.debug("generic struct def value changed event: ")
       console.debug(attributes)
       let changedIndex = attributes.position
-      console.debug("changed index: " + changedIndex)
+      console.debug("generic struct def changed index: " + changedIndex)
       if (addedInputValues.value.length > changedIndex) {
         addedInputValues.value[changedIndex] = attributes.value
       }
       context.emit("valueChanged", {"name": props.name, "value": addedInputValues.value})
-      console.debug("value changed event: ")
+      console.debug("generic struct def value changed event: ")
       console.debug({"name": props.name, "value": addedInputValues.value})
     }
 
@@ -117,6 +146,7 @@ export default {
     return {
       addedInputDefs,
       SingleValueInputDef,
+      NestedFieldSequenceInputDef,
       valueChanged,
       addNextInputElement,
       deleteInputElement

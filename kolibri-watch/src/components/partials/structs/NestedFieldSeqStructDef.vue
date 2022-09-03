@@ -11,7 +11,8 @@
           <SingleValueStructDef
               @value-changed="valueChanged"
               :name="field.name"
-              :element-def="field.valueFormat">
+              :element-def="field.valueFormat"
+              :position="index">
           </SingleValueStructDef>
         </div>
       </template>
@@ -24,7 +25,8 @@
           <GenericSeqStructDef
               @value-changed="valueChanged"
               :name="field.name"
-              :input-def="field.valueFormat.inputDef">
+              :input-def="field.valueFormat.inputDef"
+              :position="index">
           </GenericSeqStructDef>
         </div>
       </template>
@@ -36,6 +38,21 @@
             :key-value-input-def="field.valueFormat.keyValueDef"
         >
         </MapStructDef>
+      </template>
+
+      <template v-if="(field.valueFormat instanceof NestedFieldSequenceInputDef)">
+        <div class="col-3 col-sm-12">
+          <label class="form-label" :for="index">{{ field.name }}</label>
+        </div>
+        <div :id="index" class="k-input col-9 col-sm-12">
+          <NestedFieldSeqStructDef
+              @value-changed="valueChanged"
+              :conditional-fields="field.valueFormat.conditionalFields"
+              :fields="field.valueFormat.fields"
+              :name="field.name"
+              :is-root="false">
+          </NestedFieldSeqStructDef>
+        </div>
       </template>
 
       <div class="k-form-separator"></div>
@@ -50,8 +67,9 @@ import {
   SeqInputDef,
   KeyValuePairInputDef,
   KeyValueInputDef,
-  MapInputDef
-} from "../../../utils/dataValidationFunctions.ts";
+  MapInputDef,
+  NestedFieldSequenceInputDef
+} from "@/utils/dataValidationFunctions";
 import SingleValueStructDef from "./SingleValueStructDef.vue";
 import {ref} from "vue";
 import {useStore} from 'vuex';
@@ -62,17 +80,25 @@ import MapStructDef from "./MapStructDef.vue";
 export default {
 
   props: {
-    // NOTE: more specific typing of array type doesnt seem to
+    // NOTE: more specific typing of array type doesn't seem to
     // work also when using PropType. Elements here must be of type FieldDef, e.g carrying a name and
     // a InputDef for the input needed
     fields: {type: Array, required: true},
     // conditional fields. This means that the overall composition of FieldDef to display
     // depends on the settings in (permanent / unconditional) fields. Also, conditionFields defined in the conditionalFields need to refer to a field
-    // in fields, e.g a permanent fields. Right now we wont implement the dependencies between different conditional fields
-    conditionalFields: {type: Array, required: true}
+    // in fields, e.g a permanent fields. Right now we won't implement the dependencies between different conditional fields
+    conditionalFields: {type: Array, required: true},
+    name: {type: String, required: false},
+    isRoot: {type: Boolean, required: true, default: true},
+    position: {type: Number, required: false, default: 0}
   },
   emits: ['valueChanged'],
-  components: {GenericSeqStructDef, SingleValueStructDef, KeyValueStructDef, MapStructDef},
+  components: {
+    GenericSeqStructDef,
+    SingleValueStructDef,
+    KeyValueStructDef,
+    MapStructDef
+  },
   computed: {},
   methods: {},
   setup(props, context) {
@@ -130,7 +156,7 @@ export default {
     // the state keeping within the single components should take care of set values if state is altered,
     // otherwise we might need to set default values on the field's InputDefs (conditional or unconditional inputs)
     function valueChanged(attributes) {
-      console.debug(`Incoming value changed event: ${JSON.stringify(attributes)}`)
+      console.debug(`Nested struct def incoming value changed event: ${JSON.stringify(attributes)}`)
       let isUnconditionalField = true
       if (props.fields.map(field => field.name).includes(attributes.name)) {
         fieldStates.value[attributes.name] = attributes.value
@@ -143,19 +169,32 @@ export default {
         updateConditionalFields(attributes)
       }
 
-      console.debug("conditional fields: ")
+      console.debug("Nested struct def conditional fields: ")
       console.debug(selectedConditionalFields.value)
-      console.debug("conditional fields states: ")
+      console.debug("Nested struct def conditional fields states: ")
       console.debug(selectedConditionalFieldsStates.value)
 
+      // if its a root element,
       // update the global state of this object (merging the unconditional and the conditional fields)
-      store.commit("updateSearchEvalJobDefState", Object.assign({}, fieldStates.value, selectedConditionalFieldsStates.value))
+      // otherwise just emit the state update to the parent
+      let combinedValue = Object.assign({}, fieldStates.value, selectedConditionalFieldsStates.value)
+      if (props.isRoot) {
+        store.commit("updateSearchEvalJobDefState", combinedValue)
+      }
+      else {
+        context.emit('valueChanged', {
+          name: props.name,
+          value: combinedValue,
+          position: props.position
+        })
+      }
     }
 
     return {
       SingleValueInputDef,
       valueChanged,
       SeqInputDef,
+      NestedFieldSequenceInputDef,
       KeyValuePairInputDef,
       KeyValueInputDef,
       MapInputDef,

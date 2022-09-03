@@ -8,6 +8,7 @@
 
       <NestedFieldSeqStructDef
           @value-changed="valueChanged"
+          :is-root="true"
           :conditional-fields="[
               new ConditionalFields(
                   'stringTest1',

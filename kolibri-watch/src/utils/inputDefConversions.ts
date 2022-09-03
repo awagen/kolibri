@@ -123,8 +123,8 @@ const stringConstantDefConverter: DefConverter = (obj, elementId, position) => {
 const choiceDefConverter: DefConverter = (obj, elementId, position) => {
     let choices = obj[KEY_CHOICES]
     let isBooleanType = choices.filter(choice => ![true, false].includes(choice)).length == 0
-    let isStringType = choices.filter(choice => Number.isNaN(choice)).length > 0
-    let isNumberType = choices.filter(choice => Number.isNaN(choice)).length == 0
+    let isStringType = choices.filter(choice => isNaN(choice)).length > 0
+    let isNumberType = choices.filter(choice => isNaN(choice)).length == 0
     if (isBooleanType || isStringType) {
         return new ChoiceInputDef(elementId, choices)
     } else if (isNumberType) {
@@ -179,7 +179,10 @@ function objToConditionalFields(obj: Object, elementId: string, position: number
     let fieldArrayMapping: Object = {}
     for (const [conditionalFieldValue, fieldDefObjArr] of Object.entries(mappingObj)) {
         fieldArrayMapping[conditionalFieldValue] = fieldDefObjArr
-            .map(fieldDefObj => objToFieldDef(fieldDefObj, elementId, position))
+            .map(fieldDefObj => {
+                let name = fieldDefObj[KEY_NAME_FORMAT][KEY_VALUE]
+                return objToFieldDef(fieldDefObj, `${elementId}-${name}`, position)
+            })
     }
     return new ConditionalFields(conditionalFieldId,  new Map(Object.entries(fieldArrayMapping)))
 
@@ -188,10 +191,13 @@ function objToConditionalFields(obj: Object, elementId: string, position: number
 
 const nestedDefConverter: DefConverter = (obj, elementId, position) => {
     let fieldsObjArray = obj[KEY_FIELDS]
-    let fieldsArray: Array<FieldDef> = fieldsObjArray.map(field => objToFieldDef(field, elementId, position + 1))
+    let fieldsArray: Array<FieldDef> = fieldsObjArray.map(field => {
+        let name = field[KEY_NAME_FORMAT][KEY_VALUE]
+        return objToFieldDef(field, `${elementId}-${name}`, position + 1)
+    })
     let conditionalFieldsObjArray = obj[KEY_CONDITIONAL_FIELDS_SEQ]
     let conditionalFieldsArray: Array<ConditionalFields> = conditionalFieldsObjArray.map(cfield => {
-        objToConditionalFields(cfield, elementId, position + 1)
+        return objToConditionalFields(cfield, elementId, position + 1)
     })
     return new NestedFieldSequenceInputDef(
         adjustElementIdToPosition(elementId, position),
@@ -212,7 +218,11 @@ const mapDefConverter: DefConverter = (obj, elementId, position) => {
 }
 
 const seqDefConverter: DefConverter = (obj, elementId, position) => {
-    let perElementFormat = objToInputDef(obj[KEY_PER_ELEMENT_FORMAT], adjustElementIdToPosition(elementId, position + 1), position + 1)
+    let perElementFormat: InputDef = objToInputDef(obj[KEY_PER_ELEMENT_FORMAT], adjustElementIdToPosition(elementId, position + 1), position + 1)
+    console.debug("seqdef per-element format")
+    console.debug(perElementFormat)
+    console.debug("is nested")
+    console.debug(perElementFormat instanceof NestedFieldSequenceInputDef)
     return new SeqInputDef(adjustElementIdToPosition(elementId, position), perElementFormat)
 }
 

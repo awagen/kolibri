@@ -24,12 +24,23 @@
   <div class="col-9 col-sm-12 k-float-right">
 
     <!-- value input -->
-    <SingleValueStructDef
-        @value-changed="valueChanged"
-        :name="name + '-value-' + position"
-        :position="position"
-        :element-def="valueInputDef">
-    </SingleValueStructDef>
+    <template v-if="(valueInputDef instanceof SingleValueInputDef)">
+      <SingleValueStructDef
+          @value-changed="valueChanged"
+          :name="name + '-value-' + position"
+          :position="position"
+          :element-def="valueInputDef">
+      </SingleValueStructDef>
+    </template>
+    <!-- value input -->
+    <template v-if="(valueInputDef instanceof SeqInputDef)">
+      <GenericSeqStructDef
+          @value-changed="valueChanged"
+          :name="name + '-value-' + position"
+          :input-def="valueInputDef.inputDef"
+          :position="position">
+      </GenericSeqStructDef>
+    </template>
 
   </div>
 
@@ -38,7 +49,8 @@
 <script>
 import {ref} from "vue";
 import SingleValueStructDef from "./SingleValueStructDef.vue";
-import {InputDef, StringInputDef} from "../../../utils/dataValidationFunctions";
+import GenericSeqStructDef from "./GenericSeqStructDef.vue";
+import {InputDef, StringInputDef, SingleValueInputDef, SeqInputDef} from "../../../utils/dataValidationFunctions";
 
 export default {
 
@@ -69,7 +81,8 @@ export default {
   },
   emits: ['valueChanged'],
   components: {
-    SingleValueStructDef
+    SingleValueStructDef,
+    GenericSeqStructDef
   },
   methods: {},
   setup(props, context) {
@@ -97,7 +110,9 @@ export default {
 
     return {
       valueChanged,
-      keyValueChanged
+      keyValueChanged,
+      SingleValueInputDef,
+      SeqInputDef
     }
   }
 
