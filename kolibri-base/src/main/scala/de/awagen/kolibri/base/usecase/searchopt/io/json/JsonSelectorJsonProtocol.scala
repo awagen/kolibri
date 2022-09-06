@@ -244,8 +244,8 @@ object JsonSelectorJsonProtocol extends DefaultJsonProtocol with DefaultReads {
     override def structDef: JsonStructDefs.StructDef[_] = {
       NestedFieldSeqStructDef(
         Seq(
-          FieldDef(StringConstantStructDef(SELECTOR_KEY), RegexStructDef(".*".r), required = true),
-          FieldDef(StringConstantStructDef(NAME_KEY), RegexStructDef(".*".r), required = true),
+          FieldDef(StringConstantStructDef(SELECTOR_KEY), RegexStructDef(".+".r), required = true),
+          FieldDef(StringConstantStructDef(NAME_KEY), RegexStructDef(".+".r), required = true),
           FieldDef(
             StringConstantStructDef(CAST_TYPE_KEY),
             de.awagen.kolibri.datatypes.io.json.EnumerationJsonProtocol.namedTypesFormat.structDef,

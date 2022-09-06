@@ -44,7 +44,7 @@ object ConnectionJsonProtocol extends DefaultJsonProtocol with WithStructDef {
   override def structDef: JsonStructDefs.StructDef[_] = {
     NestedFieldSeqStructDef(
       Seq(
-        FieldDef(StringConstantStructDef(HOST_FIELD), RegexStructDef(".*".r), required = true),
+        FieldDef(StringConstantStructDef(HOST_FIELD), RegexStructDef("\\w+".r), required = true),
         FieldDef(StringConstantStructDef(PORT_FIELD), IntMinMaxStructDef(0, 10000), required = true),
         FieldDef(StringConstantStructDef(USE_HTTPS_FIELD), BooleanStructDef, required = true),
       ),

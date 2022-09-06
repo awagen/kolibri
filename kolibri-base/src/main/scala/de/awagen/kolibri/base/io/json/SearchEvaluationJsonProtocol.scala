@@ -185,7 +185,9 @@ object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSu
         ),
         FieldDef(
           StringConstantStructDef(CALCULATIONS_FIELD),
-          FromMapCalculationsDoubleFormat.structDef,
+          GenericSeqStructDef(
+            FromMapCalculationsDoubleFormat.structDef
+          ),
           required = true
         ),
         FieldDef(

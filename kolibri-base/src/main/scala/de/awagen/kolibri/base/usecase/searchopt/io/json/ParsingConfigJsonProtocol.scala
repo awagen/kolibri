@@ -20,7 +20,7 @@ package de.awagen.kolibri.base.usecase.searchopt.io.json
 import de.awagen.kolibri.base.usecase.searchopt.io.json.JsonSelectorJsonProtocol.NamedAndTypedSelectorFormat
 import de.awagen.kolibri.base.usecase.searchopt.parse.ParsingConfig
 import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
-import de.awagen.kolibri.datatypes.types.JsonStructDefs.{NestedFieldSeqStructDef, StringConstantStructDef}
+import de.awagen.kolibri.datatypes.types.JsonStructDefs.{GenericSeqStructDef, NestedFieldSeqStructDef, StringConstantStructDef}
 import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
 import spray.json.{DefaultJsonProtocol, RootJsonFormat}
 
@@ -36,7 +36,9 @@ object ParsingConfigJsonProtocol extends DefaultJsonProtocol with WithStructDef 
       Seq(
         FieldDef(
           StringConstantStructDef(SELECTORS_KEY),
-          NamedAndTypedSelectorFormat.structDef,
+          GenericSeqStructDef(
+            NamedAndTypedSelectorFormat.structDef
+          ),
           required = true
         )
       ),

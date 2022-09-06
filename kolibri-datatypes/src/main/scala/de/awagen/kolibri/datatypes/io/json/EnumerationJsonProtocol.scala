@@ -16,7 +16,7 @@
 
 package de.awagen.kolibri.datatypes.io.json
 
-import de.awagen.kolibri.datatypes.types.JsonStructDefs.StringSeqChoiceStructDef
+import de.awagen.kolibri.datatypes.types.JsonStructDefs.StringChoiceStructDef
 import de.awagen.kolibri.datatypes.types.JsonTypeCast.{BOOLEAN, DOUBLE, FLOAT, INT, JsonTypeCast, SEQ_BOOLEAN, SEQ_DOUBLE, SEQ_FLOAT, SEQ_INT, SEQ_STRING, STRING}
 import de.awagen.kolibri.datatypes.types.{JsonStructDefs, JsonTypeCast, WithStructDef}
 import spray.json.{DefaultJsonProtocol, DeserializationException, JsString, JsValue, JsonFormat}
@@ -38,7 +38,7 @@ object EnumerationJsonProtocol extends DefaultJsonProtocol {
     override def write(value: JsonTypeCast): JsValue = JsString(value.typeName)
 
     override def structDef: JsonStructDefs.StructDef[_] = {
-      StringSeqChoiceStructDef(Seq(
+      StringChoiceStructDef(Seq(
         STRING.typeName,
         INT.typeName,
         DOUBLE.typeName,
