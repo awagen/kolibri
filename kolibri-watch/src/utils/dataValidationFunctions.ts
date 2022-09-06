@@ -144,7 +144,7 @@ class InputDef {
         return new InputValidation(this.validation)
     }
 
-    copy(elementId: string, defaultValue: any = undefined): InputDef {
+    copy(elementId: string, defaultValue: any = this.defaultValue): InputDef {
         return new InputDef(elementId, this.valueType, this.validation, defaultValue)
     }
 
@@ -156,7 +156,7 @@ class InputDef {
  */
 class SingleValueInputDef extends InputDef {
 
-    override copy(elementId: string, defaultValue: any = undefined): SingleValueInputDef {
+    override copy(elementId: string, defaultValue: any = this.defaultValue): SingleValueInputDef {
         return super.copy(elementId, defaultValue)
     }
 }
@@ -166,7 +166,7 @@ class SingleValueInputDef extends InputDef {
  */
 class SeqValueInputDef extends InputDef {
 
-    override copy(elementId: string, defaultValue: any = undefined): SeqValueInputDef {
+    override copy(elementId: string, defaultValue: any = this.defaultValue): SeqValueInputDef {
         return super.copy(elementId, defaultValue)
     }
 }
@@ -176,7 +176,7 @@ class SeqValueInputDef extends InputDef {
  */
 class KeyValuePairInputDef extends InputDef {
 
-    override copy(elementId: string, defaultValue: any = undefined): KeyValuePairInputDef {
+    override copy(elementId: string, defaultValue: any = this.defaultValue): KeyValuePairInputDef {
         return super.copy(elementId, defaultValue)
     }
 
@@ -187,7 +187,7 @@ class KeyValuePairInputDef extends InputDef {
  */
 class MapValuesInputDef extends InputDef {
 
-    override copy(elementId: string, defaultValue: any = undefined): MapValuesInputDef {
+    override copy(elementId: string, defaultValue: any = this.defaultValue): MapValuesInputDef {
         return super.copy(elementId, defaultValue)
     }
 
@@ -199,7 +199,7 @@ class MapValuesInputDef extends InputDef {
  */
 class NestedFieldSequenceValuesInputDef extends InputDef {
 
-    override copy(elementId: string, defaultValue: any = undefined): NestedFieldSequenceValuesInputDef {
+    override copy(elementId: string, defaultValue: any = this.defaultValue): NestedFieldSequenceValuesInputDef {
         return super.copy(elementId, defaultValue)
     }
 
@@ -228,7 +228,7 @@ class SeqInputDef extends SeqValueInputDef {
         return obj
     }
 
-    override copy(elementId: string, defaultValue: any = undefined): SeqInputDef {
+    override copy(elementId: string, defaultValue: any = this.defaultValue): SeqInputDef {
         return new SeqInputDef(elementId, this.inputDef, defaultValue)
     }
 }
@@ -252,7 +252,7 @@ class AnyOfInputDef extends SingleValueInputDef {
         return obj
     }
 
-    override copy(elementId: string, defaultValue: any = undefined): AnyOfInputDef {
+    override copy(elementId: string, defaultValue: any = this.defaultValue): AnyOfInputDef {
         return new AnyOfInputDef(elementId, this.inputDefs, defaultValue)
     }
 }
@@ -276,7 +276,7 @@ class ChoiceInputDef extends SingleValueInputDef {
         return obj
     }
 
-    override copy(elementId: string, defaultValue: any = undefined): ChoiceInputDef {
+    override copy(elementId: string, defaultValue: any = this.defaultValue): ChoiceInputDef {
         return new ChoiceInputDef(elementId, this.choices, defaultValue)
     }
 }
@@ -302,7 +302,7 @@ class FloatChoiceInputDef extends SingleValueInputDef {
         return obj
     }
 
-    override copy(elementId: string, defaultValue: any = undefined): FloatChoiceInputDef {
+    override copy(elementId: string, defaultValue: any = this.defaultValue): FloatChoiceInputDef {
         return new FloatChoiceInputDef(elementId, this.choices, this.validation["accuracy"], defaultValue)
     }
 }
@@ -315,7 +315,7 @@ class BooleanInputDef extends SingleValueInputDef {
         }, defaultValue);
     }
 
-    override copy(elementId: string, defaultValue: any = undefined): BooleanInputDef {
+    override copy(elementId: string, defaultValue: any = this.defaultValue): BooleanInputDef {
         return new BooleanInputDef(elementId, defaultValue)
     }
 
@@ -342,7 +342,7 @@ class StringInputDef extends SingleValueInputDef {
         return obj
     }
 
-    override copy(elementId: string, defaultValue: any = undefined): StringInputDef {
+    override copy(elementId: string, defaultValue: any = this.defaultValue): StringInputDef {
         return new StringInputDef(elementId, this.regex, defaultValue)
     }
 }
@@ -382,7 +382,7 @@ class NumberInputDef extends SingleValueInputDef {
         return Object.assign(obj, {"step": this.step, "min": this.min, "max": this.max})
     }
 
-    override copy(elementId: string, defaultValue: any = undefined): NumberInputDef {
+    override copy(elementId: string, defaultValue: any = this.defaultValue): NumberInputDef {
         return new NumberInputDef(elementId, this.step, this.min, this.max, defaultValue)
     }
 

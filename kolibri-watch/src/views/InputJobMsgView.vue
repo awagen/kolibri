@@ -8,8 +8,8 @@
 
       <NestedFieldSeqStructDef
           @value-changed="valueChanged"
-          :conditional-fields="jobDef.conditionalFields"
-          :fields="jobDef.fields"
+          :conditional-fields="this.$store.state.jobInputDefState.searchEvalInputDef.conditionalFields"
+          :fields="this.$store.state.jobInputDefState.searchEvalInputDef.fields"
           :is-root="true"
       >
       </NestedFieldSeqStructDef>
@@ -34,9 +34,6 @@
 <script>
 
 import NestedFieldSeqStructDef from "../components/partials/structs/NestedFieldSeqStructDef.vue";
-import json from "../../tests/testdata/searchEvaluationJobStructDef.json"
-import {ref} from "vue";
-import {objToInputDef} from "@/utils/inputDefConversions";
 
 export default {
 
@@ -50,19 +47,7 @@ export default {
 
   },
   setup(props) {
-
-    console.info("json def")
-    console.log(json)
-    let jobDef = ref({})
-    jobDef.value = objToInputDef(
-        json,
-        "root",
-        0
-    )
-
-    return {
-      jobDef
-    }
+    return {}
   }
 
 }

@@ -6,13 +6,21 @@ import router from './router'
 import {
     retrieveJobs,
     retrieveNodeStatus,
-    retrieveServiceUpState, retrieveTemplateContentAndInfo,
-    retrieveTemplatesForType, retrieveTemplateTypes,
+    retrieveServiceUpState,
+    retrieveTemplateContentAndInfo,
+    retrieveTemplatesForType,
+    retrieveTemplateTypes,
     retrieveDataFileInfoAll,
-    retrieveExecutionIDs, retrieveSingleResultIDsForExecutionID,
-    retrieveSingleResultById, retrieveSingleResultByIdFiltered,
-    retrieveAnalysisTopFlop, retrieveAnalysisVariance,
-    retrieveRequestSamplesForData, retrieveAllAvailableIRMetrics, changeReducedToFullMetricsJsonList
+    retrieveExecutionIDs,
+    retrieveSingleResultIDsForExecutionID,
+    retrieveSingleResultById,
+    retrieveSingleResultByIdFiltered,
+    retrieveAnalysisTopFlop,
+    retrieveAnalysisVariance,
+    retrieveRequestSamplesForData,
+    retrieveAllAvailableIRMetrics,
+    changeReducedToFullMetricsJsonList,
+    retrieveSearchEvalJobDefStructAndEndpoint
 } from './utils/retrievalFunctions'
 
 // we could just reference style sheets relatively from assets folder, but we keep one central scss file instead
@@ -22,6 +30,7 @@ import {kolibriStateRefreshInterval} from "./utils/globalConstants";
 import {objectToJsonStringAndSyntaxHighlight, stringifyObj} from "./utils/formatFunctions";
 import {filteredResultsReduced, selectedDataToParameterValuesJson} from "./utils/dataFunctions";
 import {idForMetric} from "./utils/metricFunctions";
+import {objToInputDef} from "@/utils/inputDefConversions";
 
 // Create a new store instance.
 const store = createStore({
@@ -118,6 +127,8 @@ const store = createStore({
             },
 
             jobInputDefState: {
+                searchEvalInputDef: {},
+                searchEvalEndPoint: "",
                 searchEvalJobDefState: {},
                 searchEvalJobDefJsonString: ""
             }
@@ -125,6 +136,19 @@ const store = createStore({
     },
 
     mutations: {
+        retrieveSearchEvalJobDef(state) {
+            retrieveSearchEvalJobDefStructAndEndpoint().then(response => {
+                console.info("search evaluation job struct def:")
+                console.log(response["jobDef"])
+                state.jobInputDefState.searchEvalInputDef = objToInputDef(
+                    response["jobDef"],
+                    "root",
+                    0
+                )
+                state.jobInputDefState.searchEvalEndPoint = response["endpoint"]
+            })
+        },
+
         updateSearchEvalJobDefState(state, jobDefState) {
             state.jobInputDefState.searchEvalJobDefState = jobDefState
             state.jobInputDefState.searchEvalJobDefJsonString = objectToJsonStringAndSyntaxHighlight(jobDefState)
@@ -469,6 +493,8 @@ store.commit("updateAvailableDataFiles", 5)
 store.commit("updateAvailableResultExecutionIDs")
 // load list of available ir metrics
 store.commit("updateAvailableIRMetrics")
+// load job definition for search evaluation
+store.commit("retrieveSearchEvalJobDef")
 
 // regular scheduling
 window.setInterval(() => {

@@ -43,4 +43,8 @@ export const templateSaveUrl = `${kolibriBaseUrl}/${import.meta.env.VITE_KOLIBRI
 export const templateExecuteUrl = `${kolibriBaseUrl}/${import.meta.env.VITE_KOLIBRI_TEMPLATE_EXECUTE_PATH}`
 
 
+// retrieve structure of search evaluation job definition together with endpoint
+// where final definition can be thrown against to run the job
+export const kolibriSearchEvalJobDefinitionUrl = `${kolibriBaseUrl}/${import.meta.env.VITE_KOLIBRI_JOBDEF_SEARCHEVAL_PATH}`
+
 export const kolibriStateRefreshInterval = parseInt(import.meta.env.VITE_KOLIBRI_STATE_RETRIEVAL_REFRESH_INTERVAL_IN_MS)

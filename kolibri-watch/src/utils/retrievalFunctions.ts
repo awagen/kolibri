@@ -6,7 +6,7 @@ import {
     resultExecutionIdsOverviewUrl, resultExecutionIdsSingleResultsOverviewUrl,
     resultExecutionIdGetDataByIdUrl, resultExecutionIdGetFilteredDataByIdUrl,
     resultAnalysisTopFlowUrl, resultAnalysisVarianceUrl, parameterValuesSampleRequestUrl,
-    irMetricsAllUrl, irMetricsReducedToFullJsonListUrl
+    irMetricsAllUrl, irMetricsReducedToFullJsonListUrl, kolibriSearchEvalJobDefinitionUrl
 } from '../utils/globalConstants'
 
 
@@ -377,6 +377,16 @@ function retrieveTemplateContentAndInfo(typeName, templateName) {
         })
 }
 
+function retrieveSearchEvalJobDefStructAndEndpoint() {
+    return axios
+        .get(kolibriSearchEvalJobDefinitionUrl)
+        .then(response => {
+            return {"endpoint": response.data["endpoint"], "jobDef": response.data["jobDef"]}
+        }).catch(_ => {
+            return {}
+        })
+}
+
 export {
     retrieveJobs, retrieveServiceUpState, retrieveNodeStatus,
     retrieveTemplatesForType, retrieveTemplateTypes, saveTemplate, executeJob,
@@ -384,5 +394,6 @@ export {
     retrieveExecutionIDs, retrieveSingleResultIDsForExecutionID,
     retrieveSingleResultById, retrieveSingleResultByIdFiltered,
     retrieveAnalysisTopFlop, retrieveAnalysisVariance, retrieveRequestSamplesForData,
-    retrieveAllAvailableIRMetrics, changeReducedToFullMetricsJsonList
+    retrieveAllAvailableIRMetrics, changeReducedToFullMetricsJsonList,
+    retrieveSearchEvalJobDefStructAndEndpoint
 }
