@@ -121,7 +121,7 @@ export default {
 
     /**
      * Deletion of input element at given index.
-     * As current logic doesnt directly bind what is displayed in the html input but only updates values if they
+     * As current logic doesn't directly bind what is displayed in the html input but only updates values if they
      * pass validation where the index matches, on deletion of an input element we also have to make sure
      * we adjust all indices in addedInputDefs
      **/

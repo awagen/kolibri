@@ -41,8 +41,9 @@
   </template>
   <template v-if="(elementDef instanceof BooleanInputDef)">
     <label class="form-radio form-inline">
-      <input type="radio"
-             :name="name"
+      <input :id=VALUE_INPUT_ID
+             type="radio"
+             :name=VALUE_INPUT_ID
              :value="true"
              :checked="(elementDef.defaultValue === true) ? '' : null"
              @change="updateValueEvent">
@@ -50,8 +51,9 @@
       true
     </label>
     <label class="form-radio form-inline">
-      <input type="radio"
-             :name="name"
+      <input :id=VALUE_INPUT_ID
+             type="radio"
+             :name=VALUE_INPUT_ID
              :value="false"
              :checked="(elementDef.defaultValue === false) ? '' : null"
              @change="updateValueEvent">
@@ -62,8 +64,9 @@
   <template v-if="(elementDef instanceof ChoiceInputDef)">
     <template v-for="element in elementDef.choices">
       <label class="form-radio form-inline">
-        <input type="radio"
-               :name="name"
+        <input :id=VALUE_INPUT_ID
+               type="radio"
+               :name=VALUE_INPUT_ID
                :value="element"
                :checked="(elementDef.defaultValue === element) ? '' : null"
                @change="updateValueEvent">
@@ -75,8 +78,9 @@
   <template v-if="(elementDef instanceof FloatChoiceInputDef)">
     <template v-for="element in elementDef.choices">
       <label class="form-radio form-inline">
-        <input type="radio"
-               :name="name"
+        <input :id=VALUE_INPUT_ID
+               type="radio"
+               :name=VALUE_INPUT_ID
                :value="element"
                :checked="(elementDef.defaultValue === element) ? '' : null"
                @change="updateValueEvent">
@@ -122,9 +126,9 @@ export default {
   setup(props, context) {
     let minValue = (props.elementDef.validation.min !== undefined) ? props.elementDef.validation.min : 0
     let value = ref(minValue)
-    let VALUE_INPUT_ID = 'k-' + props.elementDef.elementId + "-" + 'input-' + props.position
-    let TOAST_ID = 'k-' + props.elementDef.elementId + '-msg-toast-' + props.position
-    let TOAST_CONTENT_ID = 'k-' + props.elementDef.elementId + '-msg-toast-content-' + props.position
+    let VALUE_INPUT_ID = 'k-' + props.elementDef.elementId + "-" + props.name + "-input-" + props.position
+    let TOAST_ID = 'k-' + props.elementDef.elementId + "-" + props.name + '-msg-toast-' + props.position
+    let TOAST_CONTENT_ID = 'k-' + props.elementDef.elementId + "-" + props.name + '-msg-toast-content-' + props.position
 
     let validator = props.elementDef.getInputValidation()
 
