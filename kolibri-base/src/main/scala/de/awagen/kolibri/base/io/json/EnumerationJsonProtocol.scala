@@ -18,7 +18,7 @@ package de.awagen.kolibri.base.io.json
 
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.ProcessingResult
 import de.awagen.kolibri.base.directives.ResourceType
-import de.awagen.kolibri.base.directives.ResourceType.{GeneratorStringResourceType, MapStringDoubleResourceType, MapStringGeneratorStringResourceType, ResourceType}
+import de.awagen.kolibri.base.directives.ResourceType.{GeneratorStringResourceType, MAP_STRING_TO_DOUBLE_VALUE, MAP_STRING_TO_STRING_VALUES, MapStringDoubleResourceType, MapStringGeneratorStringResourceType, ResourceType, STRING_VALUES}
 import de.awagen.kolibri.base.domain.TaskDataKeys
 import de.awagen.kolibri.base.domain.jobdefinitions.ProcessingActorProps.ProcessingActorProps
 import de.awagen.kolibri.base.domain.jobdefinitions.RunnableExpectationGenerators.ExpectationGenerators
@@ -35,8 +35,6 @@ import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.types.JsonStructDefs.StringChoiceStructDef
 import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
 import spray.json.{DefaultJsonProtocol, DeserializationException, JsString, JsValue}
-
-import scala.reflect.runtime.universe.typeOf
 
 
 object EnumerationJsonProtocol extends DefaultJsonProtocol {
@@ -169,7 +167,7 @@ object EnumerationJsonProtocol extends DefaultJsonProtocol {
     }
 
     override def structDef: JsonStructDefs.StructDef[_] = {
-      StringChoiceStructDef(ResourceType.vals.filter(x => x.classTyped.classType =:= typeOf[ResourceType[Map[String, Double]]]).map(x => x.toString()))
+      StringChoiceStructDef(Seq(MAP_STRING_TO_DOUBLE_VALUE.toString()))
     }
   }
 
@@ -183,7 +181,7 @@ object EnumerationJsonProtocol extends DefaultJsonProtocol {
     }
 
     override def structDef: JsonStructDefs.StructDef[_] = {
-      StringChoiceStructDef(ResourceType.vals.filter(x => x.classTyped.classType =:= typeOf[ResourceType[Map[String, IndexedGenerator[String]]]]).map(x => x.toString()))
+      StringChoiceStructDef(Seq(MAP_STRING_TO_STRING_VALUES.toString()))
     }
   }
 
@@ -197,7 +195,7 @@ object EnumerationJsonProtocol extends DefaultJsonProtocol {
     }
 
     override def structDef: JsonStructDefs.StructDef[_] = {
-      StringChoiceStructDef(ResourceType.vals.filter(x => x.classTyped.classType =:= typeOf[ResourceType[IndexedGenerator[String]]]).map(x => x.toString()))
+      StringChoiceStructDef(Seq(STRING_VALUES.toString()))
     }
   }
 
