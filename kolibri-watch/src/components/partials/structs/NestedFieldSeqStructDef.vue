@@ -117,12 +117,27 @@ export default {
       // and contain the current value of the conditionField as key in the mapping. If yes, add all FieldDef that
       // correspond to the current value if not already there.
       // NOTE: need to cherish default values update within the fields objects when a value is updated so
-      // that we retain the values if an element is not deleted (e.g when one or more elements are deleted)
+      // that we retain the values if an element is not deleted (e.g. when one or more elements are deleted)
 
       // determine which conditional fields are still needed
       console.debug(`all conditionalFields: ${props.conditionalFields.map(cField => JSON.stringify(cField.toObject()))}`)
       console.debug(props.conditionalFields)
 
+      // check if the changed field value actually influences any conditional fields
+      let existsConditionalField = props.conditionalFields
+          .find(condField => condField.conditionField === attributes.name)
+
+      // it's possible the changed value is not condition for conditional values, in which case we do not need
+      // to manage those and can return
+      if (existsConditionalField === undefined) {
+        return
+      }
+
+      // TODO: here actually check whether the conditional fields for the conditionField value
+      // suggest that any changes need to be made. If not, do not set the conditionalFields to empty, otherwise
+      // conditional fields will suddenly disappear (might already be avoided with the above existsConditionalField check.
+      // But check if there can be multiple conditionFields for which conditionalFields might be needed, in which case
+      // we need to strictly limit removal to those fields not needed anymore (e.g comparison before change to after change)
       let validConditionalFields = props.conditionalFields
           .filter(condField => condField.conditionField === attributes.name)
           .filter(condField => condField.mapping.get(attributes.value) !== undefined)
@@ -139,7 +154,7 @@ export default {
       console.info(`retainFieldNames: ${retainFieldNames}`)
       console.info(`addNewFieldNames: ${addNewFieldNames}`)
 
-      // delete those selected conditional fields that dont need to be retained
+      // delete those selected conditional fields that don't need to be retained
       selectedConditionalFields.value = selectedConditionalFields.value.filter(field => retainFieldNames.includes(field.name))
       // add those validConditionalFields that need to be added
       selectedConditionalFields.value = selectedConditionalFields.value.concat(addConditionalFields)
@@ -174,7 +189,7 @@ export default {
       console.debug("Nested struct def conditional fields states: ")
       console.debug(selectedConditionalFieldsStates.value)
 
-      // if its a root element,
+      // if it's a root element,
       // update the global state of this object (merging the unconditional and the conditional fields)
       // otherwise just emit the state update to the parent
       let combinedValue = Object.assign({}, fieldStates.value, selectedConditionalFieldsStates.value)

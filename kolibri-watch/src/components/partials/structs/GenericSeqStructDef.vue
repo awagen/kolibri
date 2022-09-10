@@ -23,6 +23,24 @@
         </div>
       </template>
 
+      <template v-if="(field instanceof SeqInputDef)">
+        <div class="k-value-and-delete">
+          <div class="k-single-value-input"
+               :id="'container-' + field.elementId">
+            <GenericSeqStructDef
+                @value-changed="valueChanged"
+                :name="name"
+                :input-def="field.inputDef"
+                :position="index">
+            </GenericSeqStructDef>
+          </div>
+          <div class="k-delete-button">
+            <a @click.prevent="deleteInputElement(index)" href="#" class="k-delete btn btn-clear"
+               aria-label="Close" role="button"></a>
+          </div>
+        </div>
+      </template>
+
       <template v-if="(field instanceof NestedFieldSequenceInputDef)">
         <div class="k-value-and-delete">
           <div class="k-single-value-input"
@@ -60,7 +78,8 @@
 import {
   InputDef,
   SingleValueInputDef,
-  NestedFieldSequenceInputDef
+  NestedFieldSequenceInputDef,
+  SeqInputDef
 } from "@/utils/dataValidationFunctions";
 import {onMounted, ref, defineAsyncComponent} from "vue";
 
@@ -68,7 +87,8 @@ export default {
 
   props: {
     name: String,
-    inputDef: InputDef
+    inputDef: InputDef,
+    position: Number
   },
 
   emits: ['valueChanged'],
@@ -106,7 +126,11 @@ export default {
       if (addedInputValues.value.length > changedIndex) {
         addedInputValues.value[changedIndex] = attributes.value
       }
-      context.emit("valueChanged", {"name": props.name, "value": addedInputValues.value})
+      context.emit("valueChanged", {
+        "name": props.name,
+        "value": addedInputValues.value,
+        "position": props.position
+      })
       console.debug("generic struct def value changed event: ")
       console.debug({"name": props.name, "value": addedInputValues.value})
     }
@@ -147,6 +171,7 @@ export default {
       addedInputDefs,
       SingleValueInputDef,
       NestedFieldSequenceInputDef,
+      SeqInputDef,
       valueChanged,
       addNextInputElement,
       deleteInputElement

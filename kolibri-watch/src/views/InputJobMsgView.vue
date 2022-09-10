@@ -1,7 +1,7 @@
 <template>
   <div class="row-container columns">
 
-    <form class="form-horizontal col-6 column">
+    <form class="form-horizontal col-8 column">
       <h3 class="k-title">
         JobDefinition
       </h3>
@@ -17,7 +17,7 @@
     </form>
 
     <!-- json overview container -->
-    <form class="form-horizontal col-6 column">
+    <form class="form-horizontal col-4 column">
       <h3 class="k-title">
         JSON
       </h3>
@@ -94,6 +94,10 @@ pre#template-content-display-1 {
 
 ::v-deep(.key) {
   color: #9c9c9c;
+}
+
+.k-json-container {
+  overflow: scroll;
 }
 
 </style>
