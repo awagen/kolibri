@@ -181,7 +181,8 @@ class JsonStructDefsJsonProtocolSpec extends UnitTestSpec {
          |    "value": "a"
          |  },
          |  "valueFormat": $intChoiceFormatJsonString,
-         |  "required": true
+         |  "required": true,
+         |  "description": ""
          | },
          | {
          |  "nameFormat": {
@@ -189,7 +190,8 @@ class JsonStructDefsJsonProtocolSpec extends UnitTestSpec {
          |    "value": "b"
          |  },
          |  "valueFormat": $seqIntChoiceFormatJsonString,
-         |  "required": true
+         |  "required": true,
+         |  "description": ""
          | }
          |],
          |"conditionalFieldsSeq": []
@@ -213,7 +215,8 @@ class JsonStructDefsJsonProtocolSpec extends UnitTestSpec {
         "value": "c"
       },
       "valueFormat": $intChoiceFormatJsonString,
-      "required": true
+      "required": true,
+      "description": ""
     }"""
     val minMaxFloatFieldDefJsonString = s"""{
       "nameFormat": {
@@ -221,7 +224,8 @@ class JsonStructDefsJsonProtocolSpec extends UnitTestSpec {
         "value": "d"
       },
       "valueFormat": $minMaxFloatFormatJsonString,
-      "required": true
+      "required": true,
+      "description": ""
     }"""
     val conditionalFieldsJsonString: JsValue =
       s"""
@@ -245,7 +249,8 @@ class JsonStructDefsJsonProtocolSpec extends UnitTestSpec {
          |    "value": "a"
          |  },
          |  "valueFormat": $intChoiceFormatJsonString,
-         |  "required": true
+         |  "required": true,
+         |  "description": ""
          | },
          | {
          |  "nameFormat": {
@@ -253,7 +258,8 @@ class JsonStructDefsJsonProtocolSpec extends UnitTestSpec {
          |    "value": "field1"
          |  },
          |  "valueFormat": $stringChoiceFormatJsonString,
-         |  "required": true
+         |  "required": true,
+         |  "description": ""
          | }
          |],
          |"conditionalFieldsSeq": [
