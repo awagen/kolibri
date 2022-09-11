@@ -127,89 +127,137 @@ object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSu
         FieldDef(
           StringConstantStructDef(JOB_NAME_FIELD),
           RegexStructDef(".+".r),
-          required = true
+          required = true,
+          description = "Name of the job, which is also used as folder name for the result output of the job."
         ),
         FieldDef(
           StringConstantStructDef(REQUEST_TASKS_FIELD),
           IntMinMaxStructDef(0, 1000),
-          required = true
+          required = true,
+          description = "Determines how many batches are executed at the same time. Note that the service settings of " +
+            "max-connections and max-open-requests are important here. That means: each flow (batch execution) uses at most " +
+            "max-connections requests, yet the number of batches running on a single node at the same time times max-connections shall not exceed " +
+            "the max-open-requests setting on any single node. The batches are distributed evenly across nodes, " +
+            "so we can roughly expect the max number of batches to run on a single node at a given time is " +
+            "around (overall number of batches) / (number nodes)"
         ),
         FieldDef(
           StringConstantStructDef(FIXED_PARAMS_FIELD),
           MapStructDef(StringStructDef, StringSeqStructDef),
-          required = true
+          required = true,
+          description = "List of url parameters, where each parameter can have multiple values."
         ),
         FieldDef(
           StringConstantStructDef(CONTEXT_PATH_FIELD),
           StringStructDef,
-          required = true
+          required = true,
+          description = "The context path when composing the request."
         ),
         FieldDef(
           StringConstantStructDef(CONNECTIONS_FIELD),
           GenericSeqStructDef(ConnectionJsonProtocol.structDef),
-          required = true
+          required = true,
+          description = "The connections to utilize for sending requests. Can be very useful in cases such as when " +
+            "multiple clusters of the requested system are available. In this case all of them can be requested and such " +
+            "throughput significantly increased. The requesting of the external service happens in a balanced way, " +
+            "e.g in case the different connections specified here have roughly the same latency, they should see roughly the " +
+            "same amount of traffic."
         ),
         FieldDef(
           StringConstantStructDef(RESOURCE_DIRECTIVES_FIELD),
           GenericSeqStructDef(GenericResourceDirectiveFormat.structDef),
-          required = true
+          required = true,
+          description = "Specifies which resources shall be loaded in the single node's global state (such as judgements for calculation of IR metrics). " +
+            "The resources can be referenced in the single calculation definitions."
         ),
         FieldDef(
           StringConstantStructDef(REQUEST_PARAMETERS_FIELD),
           GenericSeqStructDef(ParameterValuesJsonProtocol.ValueSeqGenDefinitionFormat.structDef),
-          required = true
+          required = true,
+          description = "Allows specification of combinations of url parameters, headers and bodies. " +
+            "Note that standalone values are permutated with every other values, while mappings allow the mapping " +
+            "of values of a key provider to other values that logically belong to that key. Can be used to restrict " +
+            "the number of permutations to those that are actually meaningful."
         ),
         FieldDef(
           StringConstantStructDef(BATCH_BY_INDEX_FIELD),
           IntMinMaxStructDef(0, 1000),
-          required = true
+          required = true,
+          description = "Specifies by which settings from the requestParameters the batches are created. " +
+            "The index refers to the specific order of parameters as specified in the requestParameters array. " +
+            "This means that each batch has a single value of that specific parameter assigned, while containing " +
+            "all further permutations. In case the index references a mapping, the batching happens " +
+            "referring to the values serving as keys. It makes sense here to batch by the same parameter " +
+            "on which the tagging is defined (if any), to avoid multiple files per tag."
         ),
         FieldDef(
           StringConstantStructDef(PARSING_CONFIG_FIELD),
           ParsingConfigJsonProtocol.structDef,
-          required = true
+          required = true,
+          description = "Allows the definition of values to be parsed from the responses. " +
+            "Here '\\' means a plain selector, while '\\\\' means a recursive selection, e.g in case " +
+            "of an array where each element contains a certain selector."
         ),
         FieldDef(
           StringConstantStructDef(EXCLUDE_PARAMS_COLUMNS_FIELD),
           StringSeqStructDef,
-          required = true
+          required = true,
+          description = "The results are aggregated based on non-metric fields in the result files. All fixed parameters " +
+            "as specified in the fixedParams setting are excluded by default, yet parameters that are added " +
+            "in the requestParameters setting will need to be excluded by entering the names of the parameters here, " +
+            "otherwise the aggregation might be too granular."
         ),
         FieldDef(
           StringConstantStructDef(CALCULATIONS_FIELD),
           GenericSeqStructDef(
             FromMapCalculationsDoubleFormat.structDef
           ),
-          required = true
+          required = true,
+          description = "Calculations to be executed. Here the fields extracted in the parsingConfig are referenced. " +
+            "Allows computation of common information retrieval (IR) metrics such as NDCG, ERR, Precision, Recall and " +
+            "further metrics (such as distributional)."
         ),
         FieldDef(
           StringConstantStructDef(TAGGING_CONFIGURATION_FIELD),
           TaggingConfigurationJsonFormat.structDef,
-          required = false
+          required = false,
+          description = "Defines the criteria for tagging. Tagging defines the granularity on which results are " +
+            "grouped. A common selection would be to just tag by the input parameter that corresponds to the query. "
         ),
         FieldDef(
           StringConstantStructDef(WRAP_UP_FUNCTION_FIELD),
           ExecutionJsonProtocol.ExecutionFormat.structDef,
-          required = false
+          required = false,
+          description = "Wrap up function that is executed after the job finishes. Can be used to " +
+            "aggregate all partial results into an overall result."
         ),
         FieldDef(
           StringConstantStructDef(ALLOWED_TIME_PER_ELEMENT_IN_MILLIS_FIELD),
           IntMinMaxStructDef(0, Int.MaxValue),
-          required = true
+          required = true,
+          description = "Defines how much a single element in a batch (e.g a single request) can take to " +
+            "be fully processed (e.g parsed, evaluated)"
         ),
         FieldDef(
           StringConstantStructDef(ALLOWED_TIME_PER_BATCH_IN_SECONDS_FIELD),
           IntMinMaxStructDef(0, Int.MaxValue),
-          required = true
+          required = true,
+          description = "Defines how much time is allowed for a single batch to finish."
         ),
         FieldDef(
           StringConstantStructDef(ALLOWED_TIME_FOR_JOB_IN_SECONDS_FIELD),
           IntMinMaxStructDef(0, Int.MaxValue),
-          required = true
+          required = true,
+          description = "Defines how much time is allowed for the overall job to finish."
         ),
         FieldDef(
           StringConstantStructDef(EXPECT_RESULTS_FROM_BATCH_CALCULATIONS_FIELD),
           BooleanStructDef,
-          required = true
+          required = true,
+          description = "Only set to true if results shall be sent back to the central instance for aggregation. " +
+            "The recommended way would be to leave this false such that per-tag results are written as results " +
+            "to keep granularity and avoid serialization issues by sending around large single results " +
+            "across the network."
         )
       ),
       Seq.empty

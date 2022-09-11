@@ -36,7 +36,10 @@ object FieldDefinitions {
    * nameFormat and multi-fields that contain multiple single field definitions that need to occur in a nested
    * structure (e.g JsObject)
    */
-  case class FieldDef(nameFormat: StructDef[String], valueFormat: StructDef[_], required: Boolean)
+  case class FieldDef(nameFormat: StructDef[String],
+                      valueFormat: StructDef[_],
+                      required: Boolean,
+                      description: String = "")
 }
 
 

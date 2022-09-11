@@ -21,7 +21,7 @@ import de.awagen.kolibri.datatypes.io.json.JsonStructDefsJsonProtocol.JsonKeys._
 import de.awagen.kolibri.datatypes.io.json.JsonStructDefsJsonProtocol.StructDefTypes._
 import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
 import de.awagen.kolibri.datatypes.types.JsonStructDefs._
-import spray.json.DefaultJsonProtocol.{BooleanJsonFormat, DoubleJsonFormat, FloatJsonFormat, IntJsonFormat, StringJsonFormat, immSeqFormat, jsonFormat2, jsonFormat3, lazyFormat, mapFormat, rootFormat}
+import spray.json.DefaultJsonProtocol.{BooleanJsonFormat, DoubleJsonFormat, FloatJsonFormat, IntJsonFormat, StringJsonFormat, immSeqFormat, jsonFormat2, jsonFormat4, lazyFormat, mapFormat, rootFormat}
 import spray.json.{JsArray, JsBoolean, JsNumber, JsObject, JsString, JsValue, JsonFormat, RootJsonFormat}
 
 import scala.util.matching.Regex
@@ -33,6 +33,7 @@ object JsonStructDefsJsonProtocol {
     val TYPE_KEY = "type"
     val KEY_FORMAT_KEY = "keyFormat"
     val VALUE_FORMAT_KEY = "valueFormat"
+    val DESCRIPTION_KEY = "description"
     val REGEX_KEY = "regex"
     val VALUE_KEY = "value"
     val CHOICES_KEY = "choices"
@@ -89,7 +90,7 @@ object JsonStructDefsJsonProtocol {
   implicit val lazyJsonStructDefsFormat: JsonFormat[StructDef[_]] = lazyFormat(JsonStructDefsFormat)
   implicit val lazyJsonConditionalFieldsFormat: RootJsonFormat[ConditionalFields] = rootFormat(lazyFormat(jsonFormat2(ConditionalFields)))
   implicit val lazyJsonStringStructDefsFormat: JsonFormat[StructDef[String]] = lazyFormat(JsonStringStructDefFormat)
-  implicit val fieldDefFormat: RootJsonFormat[FieldDef] = rootFormat(lazyFormat(jsonFormat3(FieldDef)))
+  implicit val fieldDefFormat: RootJsonFormat[FieldDef] = rootFormat(lazyFormat(jsonFormat4(FieldDef)))
 
   implicit object JsonStringStructDefFormat extends JsonFormat[StructDef[String]] {
     override def read(json: JsValue): StructDef[String] = json match {
@@ -264,7 +265,8 @@ object JsonStructDefsJsonProtocol {
           new JsObject(Map(
             NAME_FORMAT_KEY -> write(x.nameFormat),
             REQUIRED_KEY -> JsBoolean(x.required),
-            VALUE_FORMAT_KEY -> write(x.valueFormat)
+            VALUE_FORMAT_KEY -> write(x.valueFormat),
+            DESCRIPTION_KEY -> JsString(x.description)
           ))
         }).toVector),
         CONDITIONAL_FIELDS_SEQ_KEY -> new JsArray(conditionalFieldsSeq.map(x => {
@@ -275,7 +277,8 @@ object JsonStructDefsJsonProtocol {
                 new JsObject(Map(
                   NAME_FORMAT_KEY -> write(fieldDef.nameFormat),
                   REQUIRED_KEY -> JsBoolean(fieldDef.required),
-                  VALUE_FORMAT_KEY -> write(fieldDef.valueFormat)
+                  VALUE_FORMAT_KEY -> write(fieldDef.valueFormat),
+                  DESCRIPTION_KEY -> JsString(fieldDef.description)
                 ))
               }).toVector))
             }))
