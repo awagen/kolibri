@@ -22,19 +22,17 @@ import de.awagen.kolibri.base.config.AppProperties.config.judgementQueryAndProdu
 import de.awagen.kolibri.base.directives.{Resource, RetrievalDirective, WithResources}
 import de.awagen.kolibri.base.http.client.request.RequestTemplate
 import de.awagen.kolibri.base.resources.RetrievalError
+import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.ReservedStorageKeys._
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.{ComputeResult, ResultRecord}
 import de.awagen.kolibri.base.usecase.searchopt.metrics.ComputeFailReason.missingKeyFailReason
-import de.awagen.kolibri.base.usecase.searchopt.metrics.Functions.{countValues, findFirstValue, throwableToMetricRowResponse}
-import de.awagen.kolibri.base.usecase.searchopt.provider.JudgementProviderFactory
+import de.awagen.kolibri.base.usecase.searchopt.metrics.Functions.{countValues, findFirstValue}
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 import de.awagen.kolibri.datatypes.values.MetricValue
-import org.slf4j.{Logger, LoggerFactory}
 
-import scala.collection.immutable
 import scala.concurrent.{ExecutionContext, Future}
 
 
@@ -42,8 +40,6 @@ import scala.concurrent.{ExecutionContext, Future}
  * Holding distinct types of calculation definitions.
  */
 object Calculations {
-
-  private[this] val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
   type ComputeResult[+T] = Either[Seq[ComputeFailReason], T]
 
@@ -69,47 +65,7 @@ object Calculations {
     def apply(in: In)(implicit ec: ExecutionContext): Future[Out]
   }
 
-  case class JudgementBasedMetricsCalculation(name: String,
-                                              queryParamName: String,
-                                              requestTemplateKey: String,
-                                              productIdsKey: String,
-                                              judgementProviderFactory: JudgementProviderFactory[Double],
-                                              metricsCalculation: MetricsCalculation,
-                                              excludeParamsFromMetricRow: Seq[String]) extends FutureCalculation[WeaklyTypedMap[String], Set[String], MetricRow] {
-
-    override val calculationResultIdentifier: Set[String] = metricsCalculation.metrics.map(x => x.name).toSet
-
-    override def apply(msg: WeaklyTypedMap[String])(implicit ec: ExecutionContext): Future[MetricRow] = {
-      judgementProviderFactory.getJudgements.future
-        .map(y => {
-          val requestTemplate: RequestTemplate = msg.get[RequestTemplate](requestTemplateKey).get
-          val productIds: Seq[String] = msg.get[Seq[String]](productIdsKey).get
-          val query: String = requestTemplate.getParameter(queryParamName).map(x => x.head).getOrElse("")
-          val parameters: Map[String, Seq[String]] = requestTemplate.parameters
-          val judgements: Seq[Option[Double]] = y.retrieveJudgements(query, productIds)
-          logger.debug(s"retrieved judgements: $judgements")
-          val metricRow: MetricRow = metricsCalculation.calculateAllAndAddAllToMetricRow(immutable.Map(parameters.toSeq.filter(x => !excludeParamsFromMetricRow.contains(x._1)): _*), judgements)
-          logger.debug(s"calculated metrics: $metricRow")
-          metricRow
-        })
-        .recover(throwable => {
-          var params: Map[String, Seq[String]] = Map.empty
-          try {
-            params = Map(msg.get[RequestTemplate](requestTemplateKey).get.parameters.toSeq.filter(x => !excludeParamsFromMetricRow.contains(x._1)): _*)
-          }
-          catch {
-            case _: Throwable =>
-              logger.warn("failed retrieving parameters from sample")
-          }
-          logger.warn(s"failed retrieving judgements: $throwable")
-          throwableToMetricRowResponse(throwable, calculationResultIdentifier, params)
-        })
-    }
-
-  }
-
   case class BooleanSeqToDoubleCalculation(names: Set[String], calculation: SerializableFunction1[Seq[Boolean], Seq[ResultRecord[Double]]]) extends Calculation[Seq[Boolean], Double]
-
 
   /**
    * Calculation of single result, given a data key to retrieve input data from
@@ -137,21 +93,18 @@ object Calculations {
    * @param productIdsKey - the key value used to store the productIds in the WeaklyTypedMap[String]
    * @param queryParamName - name of the parameter used in requests as query parameter
    * @param judgementsResource - the resource identifier for the judgements map
-   * @param requestTemplateKey - the key under which the request template is stored in the WeaklyTypedMap[String] to be able to retrieve request
-   *                           information, such as parameters set and the like
    * @param metricsCalculation - definition of which metrics to calculate
    */
   case class JudgementsFromResourceIRMetricsCalculations(productIdsKey: String,
                                                          queryParamName: String,
                                                          judgementsResource: Resource[Map[String, Double]],
-                                                         requestTemplateKey: String,
                                                          metricsCalculation: MetricsCalculation) extends Calculation[WeaklyTypedMap[String], Double] {
     def calculationResultIdentifier: Set[String] = metricsCalculation.metrics.map(x => x.name).toSet
 
     override val names: Set[String] = metricsCalculation.metrics.map(metric => metric.name).toSet
 
     override val calculation: SerializableFunction1[WeaklyTypedMap[String], Seq[ResultRecord[Double]]] = tMap => {
-      val requestTemplate: RequestTemplate = tMap.get[RequestTemplate](requestTemplateKey).get
+      val requestTemplate: RequestTemplate = tMap.get[RequestTemplate](REQUEST_TEMPLATE_STORAGE_KEY.name).get
       val query: String = requestTemplate.getParameter(queryParamName).map(x => x.head).getOrElse("")
       val productOpt: Option[Seq[String]] = tMap.get[Seq[String]](productIdsKey)
       val judgementsOrError: Either[RetrievalError[Map[String, Double]], Map[String, Double]] = ClusterNodeObj.getResource(RetrievalDirective.Retrieve(judgementsResource))
@@ -182,20 +135,6 @@ object Calculations {
    */
   private[metrics] def createKey(searchTerm: String, productId: String): String = {
     s"$searchTerm$judgementQueryAndProductDelimiter$productId"
-  }
-
-  /**
-   * Calculation providing Future of the computation result, given a WeaklyTypedMap.
-   *
-   * @param name                        - name of the calculation
-   * @param calculationResultIdentifier - the value names that are generated by the computation. Only relevant if the return type U is some kind of map
-   * @param function                    - the computation function
-   * @tparam U - type of the result of the computation
-   */
-  case class FromMapFutureCalculation[U, V](name: String, calculationResultIdentifier: V, function: FutureCalculation[WeaklyTypedMap[String], V, U]) extends FutureCalculation[WeaklyTypedMap[String], V, U] {
-    override def apply(msg: WeaklyTypedMap[String])(implicit ec: ExecutionContext): Future[U] = {
-      function.apply(msg)
-    }
   }
 
   def booleanFindFirst(names: Set[String], findTrue: Boolean): Calculation[Seq[Boolean], Double] =

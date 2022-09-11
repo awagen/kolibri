@@ -33,7 +33,7 @@
       }
     }
   ],
-  "requestParameterPermutateSeq": [
+  "requestParameters": [
     {
       "type": "STANDALONE",
       "values": {
@@ -95,7 +95,7 @@
       }
     ]
   },
-  "excludeParamsFromMetricRow": [
+  "excludeParamColumns": [
     "q"
   ],
   "taggingConfiguration": {
@@ -116,7 +116,6 @@
     {
       "type": "IR_METRICS",
       "queryParamName": "q",
-      "requestTemplateKey": "requestTemplate",
       "productIdsKey": "productIds",
       "judgementsResource": {
         "resourceType": "MAP_STRING_TO_DOUBLE_VALUE",

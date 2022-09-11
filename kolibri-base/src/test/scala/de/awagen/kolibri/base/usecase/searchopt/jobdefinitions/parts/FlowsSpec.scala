@@ -192,7 +192,6 @@ class FlowsSpec extends KolibriTestKitNoCluster
           calculation,
           FromMapCalculation[Seq[Int], Double](Set("metric1"), "key1", x => Right(x.sum))
         ),
-        REQUEST_TEMPLATE_KEY,
         Seq(QUERY_PARAM)
       )
       val result: MetricRow = calc.data
@@ -248,7 +247,6 @@ class FlowsSpec extends KolibriTestKitNoCluster
         requestAndParsingFlow = requestAndParsingFlow,
         excludeParamsFromMetricRow = excludeParamsFromMetricRow,
         taggingConfiguration = taggingConfiguration,
-        requestTemplateStorageKey = requestTemplateStorageKey,
         calculations = calculations
       )
       // when

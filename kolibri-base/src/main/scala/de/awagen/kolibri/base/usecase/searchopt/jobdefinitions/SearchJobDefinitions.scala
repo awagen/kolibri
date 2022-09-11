@@ -171,7 +171,6 @@ object SearchJobDefinitions {
         )
       ),
       taggingConfiguration = eval.taggingConfiguration,
-      requestTemplateStorageKey = eval.requestTemplateStorageKey,
       calculations = eval.calculations,
     )
   }

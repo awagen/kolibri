@@ -51,11 +51,10 @@ object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSu
   val CONTEXT_PATH_FIELD = "contextPath"
   val CONNECTIONS_FIELD = "connections"
   val RESOURCE_DIRECTIVES_FIELD = "resourceDirectives"
-  val REQUEST_PARAMETER_PERMUTATE_SEQ_FIELD = "requestParameterPermutateSeq"
+  val REQUEST_PARAMETERS_FIELD = "requestParameters"
   val BATCH_BY_INDEX_FIELD = "batchByIndex"
   val PARSING_CONFIG_FIELD = "parsingConfig"
-  val EXCLUDE_PARAMS_FROM_METRIC_ROW_FIELD = "excludeParamsFromMetricRow"
-  val REQUEST_TEMPLATE_STORAGE_KEY_FIELD = "requestTemplateStorageKey"
+  val EXCLUDE_PARAMS_COLUMNS_FIELD = "excludeParamColumns"
   val CALCULATIONS_FIELD = "calculations"
   val TAGGING_CONFIGURATION_FIELD = "taggingConfiguration"
   val WRAP_UP_FUNCTION_FIELD = "wrapUpFunction"
@@ -72,11 +71,10 @@ object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSu
       contextPath: String,
       connections: Seq[Connection],
       resourceDirectives: Seq[ResourceDirective[_]],
-      requestParameterPermutateSeq: Seq[ValueSeqGenDefinition[_]],
+      requestParameters: Seq[ValueSeqGenDefinition[_]],
       batchByIndex: Int,
       parsingConfig: ParsingConfig,
-      excludeParamsFromMetricRow: Seq[String],
-      requestTemplateStorageKey: String,
+      excludeParamColumns: Seq[String],
       calculations: Seq[Calculation[WeaklyTypedMap[String], Double]],
       taggingConfiguration: Option[BaseTaggingConfiguration[RequestTemplate, (Either[Throwable, WeaklyTypedMap[String]], RequestTemplate), MetricRow]],
       wrapUpFunction: Option[Execution[Any]],
@@ -92,11 +90,10 @@ object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSu
         contextPath,
         connections,
         resourceDirectives,
-        requestParameterPermutateSeq,
+        requestParameters,
         batchByIndex,
         parsingConfig,
-        excludeParamsFromMetricRow,
-        requestTemplateStorageKey,
+        excludeParamColumns,
         calculations,
         taggingConfiguration,
         wrapUpFunction,
@@ -111,11 +108,10 @@ object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSu
     CONTEXT_PATH_FIELD,
     CONNECTIONS_FIELD,
     RESOURCE_DIRECTIVES_FIELD,
-    REQUEST_PARAMETER_PERMUTATE_SEQ_FIELD,
+    REQUEST_PARAMETERS_FIELD,
     BATCH_BY_INDEX_FIELD,
     PARSING_CONFIG_FIELD,
-    EXCLUDE_PARAMS_FROM_METRIC_ROW_FIELD,
-    REQUEST_TEMPLATE_STORAGE_KEY_FIELD,
+    EXCLUDE_PARAMS_COLUMNS_FIELD,
     CALCULATIONS_FIELD,
     TAGGING_CONFIGURATION_FIELD,
     WRAP_UP_FUNCTION_FIELD,
@@ -159,7 +155,7 @@ object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSu
           required = true
         ),
         FieldDef(
-          StringConstantStructDef(REQUEST_PARAMETER_PERMUTATE_SEQ_FIELD),
+          StringConstantStructDef(REQUEST_PARAMETERS_FIELD),
           GenericSeqStructDef(ParameterValuesJsonProtocol.ValueSeqGenDefinitionFormat.structDef),
           required = true
         ),
@@ -174,13 +170,8 @@ object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSu
           required = true
         ),
         FieldDef(
-          StringConstantStructDef(EXCLUDE_PARAMS_FROM_METRIC_ROW_FIELD),
+          StringConstantStructDef(EXCLUDE_PARAMS_COLUMNS_FIELD),
           StringSeqStructDef,
-          required = true
-        ),
-        FieldDef(
-          StringConstantStructDef(REQUEST_TEMPLATE_STORAGE_KEY_FIELD),
-          RegexStructDef(".+".r),
           required = true
         ),
         FieldDef(

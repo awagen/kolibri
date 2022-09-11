@@ -17,52 +17,125 @@
 
 package de.awagen.kolibri.base.usecase.searchopt.metrics
 
-import de.awagen.kolibri.base.testclasses.UnitTestSpec
+import akka.actor.ActorRef
+import akka.pattern.ask
+import akka.testkit.TestKit
+import akka.util.Timeout
+import de.awagen.kolibri.base.actors.KolibriTestKitNoCluster
+import de.awagen.kolibri.base.actors.clusterinfo.ResourceToJobMappingClusterStateManagerActor
+import de.awagen.kolibri.base.actors.clusterinfo.ResourceToJobMappingClusterStateManagerActor.{ProcessResourceDirectives, ProcessedResourceDirectives}
+import de.awagen.kolibri.base.cluster.ClusterNodeObj
+import de.awagen.kolibri.base.config.AppConfig.filepathToJudgementProvider
+import de.awagen.kolibri.base.directives.{Resource, ResourceDirectives, ResourceType}
+import de.awagen.kolibri.base.resources.{ResourceAlreadyExists, ResourceOK}
+import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.ReservedStorageKeys._
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations._
 import de.awagen.kolibri.base.usecase.searchopt.metrics.CalculationsTestHelper._
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Functions._
 import de.awagen.kolibri.datatypes.mutable.stores.{BaseWeaklyTypedMap, WeaklyTypedMap}
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason
 import de.awagen.kolibri.datatypes.stores.MetricRow
+import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSupplier
 import de.awagen.kolibri.datatypes.utils.MathUtils
-import de.awagen.kolibri.datatypes.values.AggregateValue
+import org.scalatest.BeforeAndAfterAll
+import org.scalatest.matchers.must.Matchers
+import org.scalatest.wordspec.AnyWordSpecLike
+import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.global
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
 
-class CalculationsSpec extends UnitTestSpec {
+
+class CalculationsSpec extends KolibriTestKitNoCluster
+  with AnyWordSpecLike
+  with Matchers
+  with BeforeAndAfterAll {
+
+  private[this] val logger: Logger = LoggerFactory.getLogger(this.getClass)
+
+  override val invokeBeforeAllAndAfterAllEvenIfNoTestsAreExpected = true
+
+  var localResourceManagerActor: ActorRef = _
+
+  override protected def afterAll(): Unit = {
+    super.afterAll()
+    TestKit.shutdownActorSystem(system)
+  }
+
+  override protected def beforeAll(): Unit = {
+    // creating without subscribeToReplicationMessages to avoid errors due to ClusterNode App not started
+    // (we are using a test actor system here)
+    localResourceManagerActor = system.actorOf(ResourceToJobMappingClusterStateManagerActor.props(
+      ClusterNodeObj.LOCAL_RESOURCES_ACTOR_NAME,
+      subscribeToReplicationMessages = false))
+  }
+
+
+  /**
+   * TODO: unify this with FlowSpec, where judgement resources are loaded the same way
+   */
+  def prepareJudgementResource(): Unit = {
+    val judgementSupplier = new SerializableSupplier[Map[String, Double]] {
+      override def apply(): Map[String, Double] = {
+        filepathToJudgementProvider("data/calculations_test_judgements.txt").allJudgements
+      }
+    }
+    val judgementResourceDirective: ResourceDirectives.ResourceDirective[Map[String, Double]] = ResourceDirectives.getDirective(
+      judgementSupplier,
+      Resource(ResourceType.MAP_STRING_TO_DOUBLE_VALUE, "judgements1")
+    )
+    implicit val timeout: Timeout = 5 seconds
+    val resourceAskMsg = ProcessResourceDirectives(Seq(judgementResourceDirective), "testJob1")
+    val resourceAsk: Future[Any] = localResourceManagerActor ? resourceAskMsg
+    val resourcePrepareResult: ProcessedResourceDirectives = Await.result(resourceAsk, timeout.duration).asInstanceOf[ProcessedResourceDirectives]
+    logger.info(s"resource directive processing results: ${resourcePrepareResult.states}")
+    val mustStopExecution: Boolean = resourcePrepareResult.states.exists(state => !Seq(ResourceOK, ResourceAlreadyExists).contains(state))
+    if (mustStopExecution) {
+      throw new RuntimeException("could not load judgement resource")
+    }
+  }
+
+
 
   "JudgementBasedMetricsCalculation" must {
     implicit val ec: ExecutionContext = global
 
     "correctly calculate metrics" in {
       // given
-      val calculation = getJudgementBasedMetricsFutureCalculation("data/calculations_test_judgements.txt",
-        Seq(
-          Metric(NDCG5_NAME, IRMetricFunctions.ndcgAtK(5)),
-          Metric(NDCG10_NAME, IRMetricFunctions.ndcgAtK(10)),
-          Metric(NDCG2_NAME, IRMetricFunctions.ndcgAtK(2))
+      prepareJudgementResource()
+      val calculation = JudgementsFromResourceIRMetricsCalculations(
+        PRODUCT_IDS_KEY,
+        "q",
+        Resource(ResourceType.MAP_STRING_TO_DOUBLE_VALUE, "judgements1"),
+        MetricsCalculation(
+          Seq(
+            Metric(NDCG5_NAME, IRMetricFunctions.ndcgAtK(5)),
+            Metric(NDCG10_NAME, IRMetricFunctions.ndcgAtK(10)),
+            Metric(NDCG2_NAME, IRMetricFunctions.ndcgAtK(2))
+          ),
+          JudgementHandlingStrategy.EXIST_RESULTS_AND_JUDGEMENTS_MISSING_AS_ZEROS
         )
+
       )
       val inputData: WeaklyTypedMap[String] = BaseWeaklyTypedMap(mutable.Map.empty)
-      inputData.put(REQUEST_TEMPLATE_KEY, requestTemplateForQuery("q0"))
+      inputData.put(REQUEST_TEMPLATE_STORAGE_KEY.name, requestTemplateForQuery("q0"))
       // p4 does not exist in the judgement list and as per above judgement handling strategy
       // is treated as 0.0
       inputData.put(PRODUCT_IDS_KEY, Seq("p0", "p3", "p2", "p1", "p4"))
       // when
-      val calcResult: MetricRow = Await.result(calculation.apply(inputData), 5 seconds)
-      val ndcg5Result: AggregateValue[Double] = calcResult.metrics(NDCG5_NAME).biValue.value2
-      val ndcg10Result: AggregateValue[Double] = calcResult.metrics(NDCG10_NAME).biValue.value2
-      val ndcg2Result: AggregateValue[Double] = calcResult.metrics(NDCG2_NAME).biValue.value2
+
+      val calcResult: Seq[ResultRecord[Double]] = calculation.calculation.apply(inputData)
+      val ndcg5Result: ComputeResult[Double] = calcResult.find(x => x.name == NDCG5_NAME).get.value
+      val ndcg10Result: ComputeResult[Double] = calcResult.find(x => x.name == NDCG10_NAME).get.value
+      val ndcg2Result: ComputeResult[Double] = calcResult.find(x => x.name == NDCG2_NAME).get.value
       val expectedNDCG2Result: ComputeResult[Double] = IRMetricFunctions.ndcgAtK(2).apply(Seq(0.10, 0.4, 0.3, 0.2, 0.0))
       val expectedNDCG5Result: ComputeResult[Double] = IRMetricFunctions.ndcgAtK(5).apply(Seq(0.10, 0.4, 0.3, 0.2, 0.0))
       // then
-      Seq(ndcg2Result.numSamples, ndcg5Result.numSamples, ndcg10Result.numSamples) mustBe Seq(1, 1, 1)
-      MathUtils.equalWithPrecision[Double](ndcg2Result.value, expectedNDCG2Result.getOrElse(-1.0), 0.0001) mustBe true
-      MathUtils.equalWithPrecision[Double](ndcg5Result.value, expectedNDCG5Result.getOrElse(-1.0), 0.0001) mustBe true
-      MathUtils.equalWithPrecision[Double](ndcg5Result.value, ndcg10Result.value, 0.0001) mustBe true
+      MathUtils.equalWithPrecision[Double](ndcg2Result.getOrElse[Double](-10), expectedNDCG2Result.getOrElse[Double](-1.0), 0.0001) mustBe true
+      MathUtils.equalWithPrecision[Double](ndcg5Result.getOrElse[Double](-10), expectedNDCG5Result.getOrElse[Double](-1.0), 0.0001) mustBe true
+      MathUtils.equalWithPrecision[Double](ndcg5Result.getOrElse[Double](-10), ndcg10Result.getOrElse[Double](-1), 0.0001) mustBe true
     }
   }
 
@@ -87,29 +160,6 @@ class CalculationsSpec extends UnitTestSpec {
       // when, then
       val result: Seq[ResultRecord[Int]] = calculation.calculation.apply(BaseWeaklyTypedMap(mutable.Map("key1" -> Seq(1, 2, 3))))
       result.head.value.getOrElse(-1) mustBe 6
-    }
-
-  }
-
-  "FromMapFutureCalculation" must {
-    implicit val ec: ExecutionContext = global
-
-    "correctly calculate metrics" in {
-      // given
-      val calculation: FutureCalculation[WeaklyTypedMap[String], String, Int] = new FutureCalculation[WeaklyTypedMap[String], String, Int] {
-        override val name: String = "testCalc"
-        override val calculationResultIdentifier: String = "key1Sum"
-
-        override def apply(in: WeaklyTypedMap[String])(implicit ec: ExecutionContext): Future[Int] = {
-          Future {
-            in.get[Seq[Int]]("key1").get.sum
-          }
-        }
-      }
-      val futureCalculation = FromMapFutureCalculation("testCalc", "key1Sum", calculation)
-      // when
-      val futureResult: Future[Int] = futureCalculation.apply(BaseWeaklyTypedMap(mutable.Map("key1" -> Seq(3, 2))))
-      Await.result(futureResult, 1 second) mustBe 5
     }
 
   }

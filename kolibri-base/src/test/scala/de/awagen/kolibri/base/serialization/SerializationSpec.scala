@@ -148,7 +148,7 @@ class SerializationSpec extends KolibriTypedTestKitNoCluster(ConfigOverwrites.co
         |     }
         |    }
         |  ],
-        |  "requestParameterPermutateSeq": [
+        |  "requestParameters": [
               {
         |      "type": "MAPPING",
         |            "values": {
@@ -232,7 +232,7 @@ class SerializationSpec extends KolibriTypedTestKitNoCluster(ConfigOverwrites.co
         |      }
         |    ]
         |  },
-        |  "excludeParamsFromMetricRow": [
+        |  "excludeParamColumns": [
         |      "query",
         |      "lang",
         |      "start",
@@ -256,7 +256,6 @@ class SerializationSpec extends KolibriTypedTestKitNoCluster(ConfigOverwrites.co
         |    {
         |      "type": "IR_METRICS",
         |      "queryParamName": "q",
-        |      "requestTemplateKey": "requestTemplate",
         |      "productIdsKey": "productIds",
         |      "judgementsResource": {
         |        "resourceType": "MAP_STRING_TO_DOUBLE_VALUE",
@@ -359,7 +358,7 @@ class SerializationSpec extends KolibriTypedTestKitNoCluster(ConfigOverwrites.co
         |      }
         |    }
         |  ],
-        |  "requestParameterPermutateSeq": [
+        |  "requestParameters": [
         |    {
         |      "type": "MAPPING",
         |      "values": {
@@ -475,7 +474,7 @@ class SerializationSpec extends KolibriTypedTestKitNoCluster(ConfigOverwrites.co
         |      }
         |    ]
         |  },
-        |  "excludeParamsFromMetricRow": [
+        |  "excludeParamColumns": [
         |    "q"
         |  ],
         |  "taggingConfiguration": {
@@ -496,7 +495,6 @@ class SerializationSpec extends KolibriTypedTestKitNoCluster(ConfigOverwrites.co
         |   {
         |      "type": "IR_METRICS",
         |      "queryParamName": "q",
-        |      "requestTemplateKey": "requestTemplate",
         |      "productIdsKey": "productIds",
         |      "judgementsResource": {
         |        "resourceType": "MAP_STRING_TO_DOUBLE_VALUE",

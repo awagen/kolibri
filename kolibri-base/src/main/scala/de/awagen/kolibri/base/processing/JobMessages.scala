@@ -71,7 +71,7 @@ object JobMessages {
 
   /**
    * This class contains only specification, and parameter combinations are loadable from
-   * requestParameterPermutateSeq. Data that needs to be pre-loaded on a node before actual execution
+   * requestParameters. Data that needs to be pre-loaded on a node before actual execution
    * is given in resourceDirectives (per node data loading methods provided in ClusterNode)
    */
   case class SearchEvaluationDefinition(jobName: String,
@@ -80,11 +80,10 @@ object JobMessages {
                                         contextPath: String,
                                         connections: Seq[Connection],
                                         resourceDirectives: Seq[ResourceDirective[_]],
-                                        requestParameterPermutateSeq: Seq[ValueSeqGenDefinition[_]],
+                                        requestParameters: Seq[ValueSeqGenDefinition[_]],
                                         batchByIndex: Int,
                                         parsingConfig: ParsingConfig,
-                                        excludeParamsFromMetricRow: Seq[String],
-                                        requestTemplateStorageKey: String,
+                                        excludeParamColumns: Seq[String],
                                         calculations: Seq[Calculation[WeaklyTypedMap[String], Double]],
                                         taggingConfiguration: Option[BaseTaggingConfiguration[RequestTemplate, (Either[Throwable, WeaklyTypedMap[String]], RequestTemplate), MetricRow]],
                                         wrapUpFunction: Option[Execution[Any]],
@@ -95,8 +94,10 @@ object JobMessages {
 
     import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ParameterValuesImplicits._
 
+    val excludeParamsFromMetricRow: Seq[String] = (fixedParams.keys.toSet ++ excludeParamColumns.toSet).toSeq
+
     def requestTemplateModifiers: Seq[IndexedGenerator[Modifier[RequestTemplateBuilder]]] =
-      requestParameterPermutateSeq.map(x => x.toState).map(x => x.toSeqGenerator).map(x => x.mapGen(y => y.toModifier))
+      requestParameters.map(x => x.toState).map(x => x.toSeqGenerator).map(x => x.mapGen(y => y.toModifier))
 
   }
 }

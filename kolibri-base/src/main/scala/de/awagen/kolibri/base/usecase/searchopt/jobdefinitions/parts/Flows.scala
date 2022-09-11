@@ -28,6 +28,7 @@ import de.awagen.kolibri.base.http.client.request.{RequestTemplate, RequestTempl
 import de.awagen.kolibri.base.processing.modifiers.Modifier
 import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
 import de.awagen.kolibri.base.processing.tagging.TaggingConfigurations.TaggingConfiguration
+import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.ReservedStorageKeys.REQUEST_TEMPLATE_STORAGE_KEY
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.{Calculation, ResultRecord}
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Functions.{resultRecordToMetricValue, throwableToMetricRowResponse}
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
@@ -94,14 +95,12 @@ object Flows {
    * including the calculations to execute on the parsed data
    * @param processingMessage
    * @param calculations
-   * @param requestTemplateStorageKey
    * @param excludeParamsFromMetricRow
    * @param ec
    * @return
    */
   def metricsCalc(processingMessage: ProcessingMessage[(Either[Throwable, WeaklyTypedMap[String]], RequestTemplate)],
                   calculations: Seq[Calculation[WeaklyTypedMap[String], Double]],
-                  requestTemplateStorageKey: String,
                   excludeParamsFromMetricRow: Seq[String])(implicit ec: ExecutionContext): ProcessingMessage[MetricRow] = {
     val metricRowParams: Map[String, Seq[String]] = Map(processingMessage.data._2.parameters.toSeq.filter(x => !excludeParamsFromMetricRow.contains(x._1)): _*)
     processingMessage.data._1 match {
@@ -115,7 +114,7 @@ object Flows {
         result
       case e@Right(_) =>
         // add query parameter
-        e.value.put[RequestTemplate](requestTemplateStorageKey, processingMessage.data._2)
+        e.value.put[RequestTemplate](REQUEST_TEMPLATE_STORAGE_KEY.name, processingMessage.data._2)
         // compute and add single results
         val singleResults: Seq[MetricValue[Double]] = calculations
           .flatMap(x => {
@@ -141,8 +140,6 @@ object Flows {
     * @param requestAndParsingFlow         : flow to execute request and parse relevant response parts into WeaklyTypedMap[String]
     * @param excludeParamsFromMetricRow    : the parameters to exclude from single metric entries (e.g useful for aggregations over distinct values, such as queries)
     * @param taggingConfiguration          : configuration to tag the processed elements based on input, parsed value and final result
-    * @param requestTemplateStorageKey     : the key under which to store the RequestTemplate in the value map
-    * @param mapFutureMetricRowCalculation : definition of metric calculations
     * @param calculations         : additional value calculations
     * @param as                            : implicit ActorSystem
     * @param ec                            : implicit ExecutionContext
@@ -154,7 +151,6 @@ object Flows {
                          requestAndParsingFlow: Flow[ProcessingMessage[RequestTemplate], ProcessingMessage[(Either[Throwable, WeaklyTypedMap[String]], RequestTemplate)], NotUsed],
                          excludeParamsFromMetricRow: Seq[String],
                          taggingConfiguration: Option[TaggingConfiguration[RequestTemplate, (Either[Throwable, WeaklyTypedMap[String]], RequestTemplate), MetricRow]],
-                         requestTemplateStorageKey: String,
                          calculations: Seq[Calculation[WeaklyTypedMap[String], Double]])
                         (implicit as: ActorSystem, ec: ExecutionContext): Flow[RequestTemplateBuilderModifier, ProcessingMessage[MetricRow], NotUsed] = {
     val partialFlow: Flow[RequestTemplateBuilderModifier, ProcessingMessage[(Either[Throwable, WeaklyTypedMap[String]], RequestTemplate)], NotUsed] =
@@ -172,7 +168,6 @@ object Flows {
         partialFlow.via(Flow.fromFunction(processingMsg => metricsCalc(
           processingMessage = processingMsg,
           calculations,
-          requestTemplateStorageKey = requestTemplateStorageKey,
           excludeParamsFromMetricRow = excludeParamsFromMetricRow
         )))
       // tagging

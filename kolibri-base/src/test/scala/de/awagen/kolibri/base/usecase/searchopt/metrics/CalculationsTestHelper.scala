@@ -19,8 +19,7 @@ package de.awagen.kolibri.base.usecase.searchopt.metrics
 
 import de.awagen.kolibri.base.directives.{Resource, ResourceType}
 import de.awagen.kolibri.base.http.client.request.RequestTemplate
-import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.{JudgementBasedMetricsCalculation, JudgementsFromResourceIRMetricsCalculations}
-import de.awagen.kolibri.base.usecase.searchopt.provider.FileBasedJudgementProviderFactory
+import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.JudgementsFromResourceIRMetricsCalculations
 
 object CalculationsTestHelper {
 
@@ -32,36 +31,17 @@ object CalculationsTestHelper {
   val NDCG5_NAME = "NDCG_5"
   val NDCG10_NAME = "NDCG_10"
 
-  def getJudgementBasedMetricsFutureCalculation(judgementFilePath: String,
-                                                metrics: Seq[Metric]): JudgementBasedMetricsCalculation = {
-    JudgementBasedMetricsCalculation(
-      CALCULATION_NAME,
-      QUERY_PARAM,
-      REQUEST_TEMPLATE_KEY,
-      PRODUCT_IDS_KEY,
-      FileBasedJudgementProviderFactory(judgementFilePath),
-      MetricsCalculation(
-        metrics,
-        JudgementHandlingStrategy.EXIST_RESULTS_AND_JUDGEMENTS_MISSING_AS_ZEROS
-      ),
-      excludeParamsFromMetricRow = Seq(QUERY_PARAM)
-    )
-  }
-
   def getJudgementBasedMetricsCalculation(judgementsResourceIdentifier: String,
                                           metrics: Seq[Metric]): JudgementsFromResourceIRMetricsCalculations = {
     JudgementsFromResourceIRMetricsCalculations(
       PRODUCT_IDS_KEY,
       QUERY_PARAM,
       Resource[Map[String, Double]](ResourceType.MAP_STRING_TO_DOUBLE_VALUE, judgementsResourceIdentifier),
-      REQUEST_TEMPLATE_KEY,
       MetricsCalculation(
         metrics,
         JudgementHandlingStrategy.EXIST_RESULTS_AND_JUDGEMENTS_MISSING_AS_ZEROS
       ))
   }
-
-
 
   def requestTemplateForQuery(query: String): RequestTemplate = {
     RequestTemplate("/", Map(QUERY_PARAM -> Seq(query)), Seq.empty)

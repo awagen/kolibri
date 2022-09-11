@@ -18,25 +18,22 @@
 package de.awagen.kolibri.base.usecase.searchopt.io.json
 
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
-import de.awagen.kolibri.base.usecase.searchopt.io.json.CalculationsJsonProtocol.{FromMapCalculationsDoubleFormat, FromMapFutureCalculationSeqStringToMetricRowFormat}
-import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.{Calculation, FutureCalculation}
+import de.awagen.kolibri.base.usecase.searchopt.io.json.CalculationsJsonProtocol.FromMapCalculationsDoubleFormat
+import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.Calculation
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
-import de.awagen.kolibri.datatypes.stores.MetricRow
 import spray.json._
 
 class CalculationsJsonProtocolSpec extends UnitTestSpec {
 
-  val IR_METRICS_FUTURE_CALCULATION: JsValue =
+  val IR_METRICS_CALCULATION: JsValue =
     """
       |{
-      |"functionType": "IR_METRICS",
-      |"name": "irMetrics",
+      |"type": "IR_METRICS",
       |"queryParamName": "q",
-      |"requestTemplateKey": "requestTemplate",
       |"productIdsKey": "productIds",
-      |"judgementProvider": {
-      | "type": "FILE_BASED",
-      | "filename": "data/testjudgements.txt"
+      |"judgementsResource": {
+      | "resourceType": "MAP_STRING_TO_DOUBLE_VALUE",
+      | "identifier": "ident1"
       |},
       |"metricsCalculation": {
       | "metrics": [
@@ -49,8 +46,7 @@ class CalculationsJsonProtocolSpec extends UnitTestSpec {
       |   "validations": ["EXIST_RESULTS", "EXIST_JUDGEMENTS"],
       |   "handling":  "AS_ZEROS"
       | }
-      |},
-      |"excludeParams": ["q"]
+      |}
       |}
       |""".stripMargin.parseJson
 
@@ -61,22 +57,20 @@ class CalculationsJsonProtocolSpec extends UnitTestSpec {
       |"type": "FIRST_TRUE"
       |}""".stripMargin.parseJson
 
-    "FromMapFutureCalculationSeqStringToMetricRowFormat" must {
 
-      "correctly parse FutureCalculation[WeaklyTypedMap[String], MetricRow]" in {
-        val calc: FutureCalculation[WeaklyTypedMap[String], Set[String], MetricRow] = IR_METRICS_FUTURE_CALCULATION.convertTo[FutureCalculation[WeaklyTypedMap[String], Set[String], MetricRow]]
-        calc.name mustBe "irMetrics"
-      }
 
+  "FromMapCalculationsDoubleFormat" must {
+    "correctly parse Calculation[WeaklyTypedMap[String], Double]" in {
+      val calc: Calculation[WeaklyTypedMap[String], Double] = IR_METRICS_CALCULATION.convertTo[Calculation[WeaklyTypedMap[String], Double]]
+      (Set("DCG_10", "NDCG_10", "PRECISION_4", "ERR") diff calc.names).isEmpty mustBe true
     }
+  }
 
   "FromMapCalculationSeqBooleanToDoubleFormat" must {
-
     "correctly parse FromMapCalculation[Seq[Boolean], Double]" in {
       val calc = FROM_MAP_SEQ_BOOLEAN_TO_DOUBLE_CALCULATION.convertTo[Calculation[WeaklyTypedMap[String], Double]]
       calc.names mustBe Set("firstTrue")
     }
-
   }
 
 }
