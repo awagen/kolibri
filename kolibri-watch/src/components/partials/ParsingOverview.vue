@@ -126,13 +126,14 @@ export default {
 }
 
 button.k-add-button {
-  background-color: transparent;
+  background-color: #588274;
   border-width: 0;
   color: white;
+  margin-left: 1em;
 }
 
 button.k-add-button:hover {
-  background-color: #588274;
+  background-color: #00ED00;
 }
 
 .accordion input:checked ~ .accordion-body, .accordion[open] .accordion-body {

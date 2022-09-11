@@ -167,18 +167,19 @@ export default {
 <style scoped>
 
 button.k-add-button {
-  background-color: transparent;
+  background-color: #588274;
   border-width: 0;
   color: white;
 }
 
 button.k-add-button:hover {
-  background-color: #588274;
+  background-color: #00ED00;
 }
 
 .k-add-button-container {
   text-align: center;
   margin-top: 1em;
+  margin-bottom: 1em;
 }
 
 .k-delete-button {

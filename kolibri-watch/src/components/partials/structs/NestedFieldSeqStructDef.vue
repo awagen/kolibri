@@ -1,7 +1,7 @@
 <template>
 
   <template v-for="(field, index) in [...fields, ...selectedConditionalFields]">
-    <div class="form-group">
+    <div class="form-group k-input-group">
 
       <template v-if="(field.valueFormat instanceof SingleValueInputDef)">
         <div class="col-3 col-sm-12">
@@ -234,6 +234,11 @@ export default {
 .k-field-name {
   word-wrap:break-word;
   padding-right: 1em;
+}
+
+.k-input-group {
+  background-color: #233038;
+  margin-bottom: 1em;
 }
 
 </style>

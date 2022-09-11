@@ -105,13 +105,14 @@ export default {
 }
 
 button.k-add-button {
-  background-color: transparent;
+  background-color: #588274;
   border-width: 0;
   color: white;
+  margin-left: 1em;
 }
 
 button.k-add-button:hover {
-  background-color: #588274;
+  background-color: #00ED00;
 }
 
 .icon-key {
@@ -121,7 +122,6 @@ button.k-add-button:hover {
   height: 20px;
   width: 20px;
   display: inline-block;
-  margin-left: 1em;
 }
 
 .form-group.key-index {
