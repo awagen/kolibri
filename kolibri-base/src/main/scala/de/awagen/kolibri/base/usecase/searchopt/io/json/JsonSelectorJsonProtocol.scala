@@ -18,7 +18,7 @@
 package de.awagen.kolibri.base.usecase.searchopt.io.json
 
 import de.awagen.kolibri.base.usecase.searchopt.parse.JsonSelectors
-import de.awagen.kolibri.base.usecase.searchopt.parse.JsonSelectors.JsonSelectorPathRegularExpressions.{recursiveAndPlainSelectorKeysToSelector, recursiveAndRecursiveSelectorKeysToSelector}
+import de.awagen.kolibri.base.usecase.searchopt.parse.JsonSelectors.JsonSelectorPathRegularExpressions.{anyValidSelectorRegex, recursiveAndPlainSelectorKeysToSelector, recursiveAndRecursiveSelectorKeysToSelector}
 import de.awagen.kolibri.base.usecase.searchopt.parse.JsonSelectors._
 import de.awagen.kolibri.base.usecase.searchopt.parse.TypedJsonSelectors.{NamedAndTypedSelector, TypedJsonSeqSelector, TypedJsonSingleValueSelector}
 import de.awagen.kolibri.datatypes.io.json.EnumerationJsonProtocol.namedTypesFormat
@@ -244,7 +244,7 @@ object JsonSelectorJsonProtocol extends DefaultJsonProtocol with DefaultReads {
     override def structDef: JsonStructDefs.StructDef[_] = {
       NestedFieldSeqStructDef(
         Seq(
-          FieldDef(StringConstantStructDef(SELECTOR_KEY), RegexStructDef(".+".r), required = true),
+          FieldDef(StringConstantStructDef(SELECTOR_KEY), RegexStructDef(anyValidSelectorRegex), required = true),
           FieldDef(StringConstantStructDef(NAME_KEY), RegexStructDef(".+".r), required = true),
           FieldDef(
             StringConstantStructDef(CAST_TYPE_KEY),

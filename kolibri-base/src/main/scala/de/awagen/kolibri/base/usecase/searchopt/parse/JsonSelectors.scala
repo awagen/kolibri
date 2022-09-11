@@ -64,6 +64,8 @@ object JsonSelectors {
      */
     val recursiveRecursivePathKeyGroupingRegex: Regex = """^((?:\s*\\\s+\w+)*\s*\\\\\s+\w+)((?:\s*\\\s+\w+)*\s*\\\\\s+\w+)$""".r
 
+    val anyValidSelectorRegex: Regex = s"""($plainPathKeyGroupingRegex)|($recursivePathKeyGroupingRegex)|($recursivePlainPathKeyGroupingRegex)|($recursiveRecursivePathKeyGroupingRegex)""".r
+
     def findPathType(path: String): Option[String] = path match {
       case e if plainPathKeyGroupingRegex.matches(e) => Some(PLAIN_SELECTOR_PLAIN_PATH_TYPE)
       case e if recursivePathKeyGroupingRegex.matches(e) =>
