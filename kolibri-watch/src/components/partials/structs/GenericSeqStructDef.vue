@@ -88,7 +88,8 @@ export default {
   props: {
     name: String,
     inputDef: InputDef,
-    position: Number
+    position: Number,
+    description: String
   },
 
   emits: ['valueChanged'],

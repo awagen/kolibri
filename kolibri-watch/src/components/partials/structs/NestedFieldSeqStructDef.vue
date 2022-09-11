@@ -5,20 +5,24 @@
 
       <template v-if="(field.valueFormat instanceof SingleValueInputDef)">
         <div class="col-3 col-sm-12">
+          <DescriptionPopover :description="field.description"/>
           <label class="form-label k-field-name" :for="field.valueFormat.elementId + '-' + field.name + '-' + position + '-' + index">{{ field.name }}</label>
         </div>
+
         <div :id="field.valueFormat.elementId + '-' + field.name + '-' + position + '-' + index" class="k-input col-9 col-sm-12">
           <SingleValueStructDef
               @value-changed="valueChanged"
               :name="field.name"
               :element-def="field.valueFormat"
-              :position="position * 100 + index">
+              :position="position * 100 + index"
+              :description="field.description">
           </SingleValueStructDef>
         </div>
       </template>
 
       <template v-if="(field.valueFormat instanceof SeqInputDef)">
         <div class="col-3 col-sm-12">
+          <DescriptionPopover :description="field.description"/>
           <label class="form-label k-field-name" :for="field.valueFormat.elementId + '-' + field.name + '-' + position + '-' + index">{{ field.name }}</label>
         </div>
         <div :id="field.valueFormat.elementId + '-' + field.name + '-' + position + '-' + index" class="k-input col-9 col-sm-12">
@@ -26,7 +30,8 @@
               @value-changed="valueChanged"
               :name="field.name"
               :input-def="field.valueFormat.inputDef"
-              :position="position * 100 + index">
+              :position="position * 100 + index"
+              :description="field.description">
           </GenericSeqStructDef>
         </div>
       </template>
@@ -36,12 +41,14 @@
             @value-changed="valueChanged"
             :name="field.name"
             :key-value-input-def="field.valueFormat.keyValueDef"
+            :description="field.description"
         >
         </MapStructDef>
       </template>
 
       <template v-if="(field.valueFormat instanceof NestedFieldSequenceInputDef)">
         <div class="col-3 col-sm-12">
+          <DescriptionPopover :description="field.description"/>
           <label class="form-label k-field-name" :for="field.valueFormat.elementId + '-' + field.name + '-' + position + '-' + index">{{ field.name }}</label>
         </div>
         <div :id="field.valueFormat.elementId + '-' + field.name  + '-' + position + '-' + index" class="k-input col-9 col-sm-12">
@@ -50,7 +57,8 @@
               :conditional-fields="field.valueFormat.conditionalFields"
               :fields="field.valueFormat.fields"
               :name="field.name"
-              :is-root="false">
+              :is-root="false"
+              :description="field.description">
           </NestedFieldSeqStructDef>
         </div>
       </template>
@@ -76,6 +84,7 @@ import {useStore} from 'vuex';
 import GenericSeqStructDef from "./GenericSeqStructDef.vue";
 import KeyValueStructDef from "./KeyValueStructDef.vue";
 import MapStructDef from "./MapStructDef.vue";
+import DescriptionPopover from "./elements/DescriptionPopover.vue";
 
 export default {
 
@@ -90,10 +99,12 @@ export default {
     conditionalFields: {type: Array, required: true},
     name: {type: String, required: false},
     isRoot: {type: Boolean, required: true, default: true},
-    position: {type: Number, required: false, default: 0}
+    position: {type: Number, required: false, default: 0},
+    description: {type: String, required: false}
   },
   emits: ['valueChanged'],
   components: {
+    DescriptionPopover,
     GenericSeqStructDef,
     SingleValueStructDef,
     KeyValueStructDef,
@@ -234,6 +245,7 @@ export default {
 .k-field-name {
   word-wrap:break-word;
   padding-right: 1em;
+  display: inline-block;
 }
 
 .k-input-group {

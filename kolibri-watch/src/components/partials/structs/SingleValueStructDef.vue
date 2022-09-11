@@ -117,6 +117,10 @@ export default {
     name: {
       type: String,
       required: true
+    },
+    description: {
+      type: String,
+      required: false
     }
   },
   emits: ['valueChanged'],

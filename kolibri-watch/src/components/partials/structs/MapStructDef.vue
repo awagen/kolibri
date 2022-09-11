@@ -1,6 +1,7 @@
 <template>
 
   <div class="k-map-name col-3 col-sm-12">
+    <DescriptionPopover :description="description"/>
     <span>{{name}}</span>
   </div>
 
@@ -42,6 +43,7 @@
 import {onMounted, ref} from "vue";
 import {KeyValueInputDef} from "../../../utils/dataValidationFunctions.ts";
 import KeyValueStructDef from "./KeyValueStructDef.vue";
+import DescriptionPopover from "./elements/DescriptionPopover.vue";
 
 export default {
 
@@ -53,9 +55,13 @@ export default {
     keyValueInputDef: {
       type: KeyValueInputDef,
       required: true
+    },
+    description: {
+      type: String,
+      required: false
     }
   },
-  components: {KeyValueStructDef},
+  components: {KeyValueStructDef, DescriptionPopover},
   emits: ["valueChanged"],
   methods: {},
   setup(props, context) {

@@ -67,6 +67,7 @@ const KEY_KEY_FORMAT = "keyFormat"
 const KEY_NAME_FORMAT = "nameFormat"
 const KEY_VALUE_FORMAT = "valueFormat"
 const KEY_REQUIRED = "required"
+const KEY_DESCRIPTION = "description"
 const KEY_CONDITION_FIELD_ID = "conditionFieldId"
 const KEY_MAPPING_ID = "mapping"
 const KEY_FIELDS = "fields"
@@ -167,7 +168,8 @@ function objToFieldDef(obj: Object, elementId: string, position: number): FieldD
     return new FieldDef(
         obj[KEY_NAME_FORMAT][KEY_VALUE],
         objToInputDef(obj[KEY_VALUE_FORMAT], adjustElementIdToPosition(elementId, position), position),
-        obj[KEY_REQUIRED]
+        obj[KEY_REQUIRED],
+        obj[KEY_DESCRIPTION]
     )
 }
 

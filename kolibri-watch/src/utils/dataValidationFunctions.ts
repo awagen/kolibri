@@ -550,25 +550,29 @@ class FieldDef {
     name: string
     valueFormat: InputDef
     required: Boolean
+    description: String
 
     toObject() {
         return {
             "name": this.name,
             "valueFormat": this.valueFormat.toObject(),
-            "required": this.required
+            "required": this.required,
+            "description": this.description
         }
     }
 
     constructor(name: string,
                 valueFormat: InputDef,
-                required: Boolean) {
+                required: Boolean,
+                description: String = undefined) {
         this.name = name
         this.valueFormat = valueFormat
         this.required = required
+        this.description = description
     }
 
     copy(name: string = this.name): FieldDef {
-        return new FieldDef(name, this.valueFormat, this.required)
+        return new FieldDef(name, this.valueFormat, this.required, this.description)
     }
 }
 
