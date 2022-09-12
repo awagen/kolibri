@@ -6,8 +6,20 @@ import AnalyzeView from "../views/AnalyzeView.vue";
 import ResultView from "../views/ResultView.vue";
 import NotFoundView from "../views/NotFoundView.vue";
 import DataComposeView from "../views/DataComposeView.vue";
+import InputOverviewView from "../views/InputOverviewView.vue";
+import InputJobMsgView from "../views/InputJobMsgView.vue";
 
 const routes = [
+    {
+        path: "/inputJobMsgView",
+        name: "InputJobMsgView",
+        component: InputJobMsgView
+    },
+    {
+        path: "/inputOverview",
+        name: "InputOverview",
+        component: InputOverviewView
+    },
     {
         path: "/jobCreation",
         name: "JobCreation",

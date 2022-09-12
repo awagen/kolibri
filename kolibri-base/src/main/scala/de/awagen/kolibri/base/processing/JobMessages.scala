@@ -100,6 +100,45 @@ object JobMessages {
       requestParameters.map(x => x.toState).map(x => x.toSeqGenerator).map(x => x.mapGen(y => y.toModifier))
 
   }
+
+  /**
+   * This job config represents a reduced set of options to simplify the needed configuration input.
+   * If full options are needed, refer to SearchEvaluationDefinition.
+   * It assumes some common settings, e.g predefined sets of metrics and the like.
+   * @param jobName - name of the job, also determining the name of the subfolder where results are stored.
+   * @param fixedParams - fixed parameters. They are by default excluded from the result file (e.g to avoid finer granularity of aggregations than wanted)
+   * @param contextPath - context path to be used for the composed URLs
+   * @param judgementFilePath - file path relative to the configured file system / bucket / basepath.
+   * @param requestParameters - the composition of actual parameters to compose the queries with. Define the permutations.
+   * @param excludeParamColumns - further parameter names to exclude from the result file
+   */
+  case class QueryBasedSearchEvaluationDefinition(jobName: String,
+                                                  fixedParams: Map[String, Seq[String]],
+                                                  contextPath: String,
+                                                  judgementFilePath: String,
+                                                  requestParameters: Seq[ValueSeqGenDefinition[_]],
+                                                  excludeParamColumns: Seq[String],
+                                                 ) extends JobDefinition with WithResources {
+    val requestTasks: Int = 4
+    val connections: Seq[Connection] = Seq.empty
+    // TODO: here we only need to load the judgement resource based on the passed judgementFilePath
+    val resourceDirectives: Seq[ResourceDirective[_]] = Seq.empty
+    // assuming queries are the parameters at index 0
+    val batchByIndex: Int = 0
+    // config for parsing of certain elements from each response (we might need custom ones, too, though)
+    // TODO: add productIds here to be able to compute and numFound and maybe 1-2 other useful ones based on config / env vars
+    val parsingConfig: ParsingConfig = null
+    // TODO: add the most common here, e.g NDCG@2, NDCG@4, NDCG@8, PRECISION@2, PRECISION@4, PRECISION@8, RECALL, ...
+    val calculations: Seq[Calculation[WeaklyTypedMap[String], Double]] = Seq.empty
+    // TODO: set tagging purely on query level, other taggers not needed for this default config
+    val taggingConfiguration: Option[BaseTaggingConfiguration[RequestTemplate, (Either[Throwable, WeaklyTypedMap[String]], RequestTemplate), MetricRow]] = None
+    // TODO: simply add aggregation of all partial results here
+    val wrapUpFunction: Option[Execution[Any]] = None
+    val allowedTimePerElementInMillis: Int = 1000
+    val allowedTimePerBatchInSeconds: Int = 600
+    val allowedTimeForJobInSeconds: Int = 7200
+    val expectResultsFromBatchCalculations: Boolean = false
+  }
 }
 
 

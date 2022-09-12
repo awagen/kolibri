@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Andreas Wagenmann
+ * Copyright 2022 Andreas Wagenmann
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,16 +32,26 @@ object JobDefRoutes extends DefaultJsonProtocol with CORSHandler {
   val JOBS_PREFIX = "jobs"
   val SEARCH_EVALUATION_PATH = "search_evaluation"
 
-  case class EndpointAndStructDef(endpoint: String, jobDef: StructDef[_])
+  case class EndpointDef(name: String,
+                         endpoint: String,
+                         payloadDef: StructDef[_],
+                         description: String = "")
 
-  implicit val endpointAndStructDefFormat: RootJsonFormat[EndpointAndStructDef] = jsonFormat2(EndpointAndStructDef)
+  implicit val endpointAndStructDefFormat: RootJsonFormat[EndpointDef] = jsonFormat4(EndpointDef)
 
   def getSearchEvaluationEndpointAndJobDef(implicit system: ActorSystem): Route = {
     val matcher: PathMatcher0 = ENDPOINTS_PATH_PREFIX / JOBS_PREFIX / SEARCH_EVALUATION_PATH
     corsHandler(
       path(matcher) {
         get {
-          val result = EndpointAndStructDef("search_eval_no_ser", SearchEvaluationJsonProtocol.structDef)
+          val result = EndpointDef(
+            "Search Evaluation (Full)",
+            "search_eval_no_ser",
+            SearchEvaluationJsonProtocol.structDef,
+            "Endpoint for search evaluation, providing the full range of configuration flexibility. " +
+              "Note that for specific use cases, one of the endpoint definitions with less flexibility / options " +
+              "might be more convenient."
+          )
           complete(StatusCodes.OK, result.toJson.toString())
         }
       }

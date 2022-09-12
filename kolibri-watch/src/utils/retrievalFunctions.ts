@@ -380,9 +380,7 @@ function retrieveTemplateContentAndInfo(typeName, templateName) {
 function retrieveSearchEvalJobDefStructAndEndpoint() {
     return axios
         .get(kolibriSearchEvalJobDefinitionUrl)
-        .then(response => {
-            return {"endpoint": response.data["endpoint"], "jobDef": response.data["jobDef"]}
-        }).catch(_ => {
+        .then(response => response.data).catch(_ => {
             return {}
         })
 }

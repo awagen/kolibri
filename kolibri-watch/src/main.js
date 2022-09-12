@@ -127,6 +127,12 @@ const store = createStore({
             },
 
             jobInputDefState: {
+                // new structure to load an arbitrary number of endpoints and selectively configure
+                jobNameToInputDef: {},
+                jobNameToEndpoint: {},
+                jobNameToDescription: {},
+
+                // current settings that just take details for the search evaluation use case
                 searchEvalInputDef: {},
                 searchEvalEndPoint: "",
                 searchEvalJobDefState: {},
@@ -138,14 +144,27 @@ const store = createStore({
     mutations: {
         retrieveSearchEvalJobDef(state) {
             retrieveSearchEvalJobDefStructAndEndpoint().then(response => {
+                console.info("job response: ")
+                console.log(response)
+                let requiredJobDefObj = response["payloadDef"]
                 console.info("search evaluation job struct def:")
-                console.log(response["jobDef"])
-                state.jobInputDefState.searchEvalInputDef = objToInputDef(
-                    response["jobDef"],
+                console.log(requiredJobDefObj)
+                let name = response["name"]
+                let description = response["description"]
+                let endpoint = response["endpoint"]
+                let inputDef = objToInputDef(
+                    requiredJobDefObj,
                     "root",
                     0
                 )
-                state.jobInputDefState.searchEvalEndPoint = response["endpoint"]
+                // filling in the new structure, e.g. mappings based on job names
+                state.jobInputDefState.jobNameToInputDef[name] = inputDef
+                state.jobInputDefState.jobNameToEndpoint[name] = endpoint
+                state.jobInputDefState.jobNameToDescription[name] = description
+
+                // filling in current structure
+                state.jobInputDefState.searchEvalInputDef = inputDef
+                state.jobInputDefState.searchEvalEndPoint = endpoint
             })
         },
 
