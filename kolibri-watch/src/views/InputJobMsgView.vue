@@ -67,20 +67,20 @@ export default {
   components: {NestedFieldSeqStructDef},
   methods: {},
   computed: {
-    availableJobNames() {
-      return Object.keys(this.$store.state.jobInputDefState.jobNameToInputDef)
-    },
-
     selectedJobName(){
       return this.$store.state.jobInputDefState.selectedJobName
     },
 
     selectedJobEndpoint(){
-      return this.$store.state.jobInputDefState.jobNameToEndpoint[this.selectedJobName()]
+      return this.$store.state.jobInputDefState.jobNameToEndpoint[this.selectedJobName]
     },
 
     selectedJobDescription(){
-      return this.$store.state.jobInputDefState.jobNameToDescription[this.selectedJobName()]
+      return this.$store.state.jobInputDefState.jobNameToDescription[this.selectedJobName]
+    },
+
+    availableJobNames() {
+      return Object.keys(this.$store.state.jobInputDefState.jobNameToInputDef)
     },
 
     currentJobNestedStruct(){

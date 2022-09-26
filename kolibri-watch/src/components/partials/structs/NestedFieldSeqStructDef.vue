@@ -205,7 +205,15 @@ export default {
       // otherwise just emit the state update to the parent
       let combinedValue = Object.assign({}, fieldStates.value, selectedConditionalFieldsStates.value)
       if (props.isRoot) {
-        store.commit("updateSearchEvalJobDefState", combinedValue)
+        let nestedInputDef = new NestedFieldSequenceInputDef(
+            "root",
+            props.fields,
+            props.conditionalFields
+        )
+        store.commit("updateCurrentJobDefState", {
+          jobDefStateObj: combinedValue,
+          jobDefState: nestedInputDef
+        })
       }
       else {
         context.emit('valueChanged', {
