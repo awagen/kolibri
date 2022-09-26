@@ -1,17 +1,24 @@
 <template>
 
   <!-- make jobs selectable and then display below definition content dependent upon selection -->
-  <div class="form-group">
-    <div class="col-3 col-sm-12">
-      <label class="form-label" for="job-name-1">Select Job Name</label>
-    </div>
-    <div class="col-9 col-sm-12">
-      <select @change="jobNameSelectEvent($event)" class="form-select k-value-selector" id="job-name-1">
-        <option>Choose an option</option>
-        <option v-for="jobName in availableJobNames">{{ jobName }}</option>
-      </select>
-    </div>
+  <div class="row-container columns">
+    <form class="form-horizontal col-6 column">
+
+      <div class="form-group">
+        <div class="col-12 col-sm-12">
+          <label class="form-label" for="job-name-1">Select Job Name</label>
+        </div>
+        <div class="col-12 col-sm-12">
+          <select @change="jobNameSelectEvent($event)" class="form-select k-value-selector" id="job-name-1">
+            <option>Choose an option</option>
+            <option v-for="jobName in availableJobNames">{{ jobName }}</option>
+          </select>
+        </div>
+      </div>
+
+    </form>
   </div>
+
 
   <template v-if="selectedJobName !== undefined && selectedJobName !==''">
     <div class="row-container columns">
@@ -162,6 +169,16 @@ pre#template-content-display-1 {
 
 .k-value-selector {
   color: black;
+}
+
+.k-title {
+  font-size: x-large;
+}
+
+.k-description {
+  text-align: left;
+  font-size: 1em;
+  margin-bottom: 2em;
 }
 
 </style>
