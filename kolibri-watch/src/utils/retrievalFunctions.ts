@@ -377,7 +377,7 @@ function retrieveTemplateContentAndInfo(typeName, templateName) {
         })
 }
 
-function retrieveSearchEvalJobDefStructAndEndpoint() {
+function retrieveJobInformation() {
     return axios
         .get(kolibriSearchEvalJobDefinitionUrl)
         .then(response => response.data).catch(_ => {
@@ -393,5 +393,5 @@ export {
     retrieveSingleResultById, retrieveSingleResultByIdFiltered,
     retrieveAnalysisTopFlop, retrieveAnalysisVariance, retrieveRequestSamplesForData,
     retrieveAllAvailableIRMetrics, changeReducedToFullMetricsJsonList,
-    retrieveSearchEvalJobDefStructAndEndpoint
+    retrieveJobInformation
 }

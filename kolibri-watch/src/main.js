@@ -20,7 +20,7 @@ import {
     retrieveRequestSamplesForData,
     retrieveAllAvailableIRMetrics,
     changeReducedToFullMetricsJsonList,
-    retrieveSearchEvalJobDefStructAndEndpoint
+    retrieveJobInformation
 } from './utils/retrievalFunctions'
 
 // we could just reference style sheets relatively from assets folder, but we keep one central scss file instead
@@ -131,6 +131,13 @@ const store = createStore({
                 jobNameToInputDef: {},
                 jobNameToEndpoint: {},
                 jobNameToDescription: {},
+                // the name of the currently selected template
+                selectedJobName: "",
+                // the mapping of job name to current states of the inputs
+                jobNameToInputStatesObj: {},
+                jobNameToInputStates: {},
+                jobNameToInputStatesJson: {},
+
 
                 // current settings that just take details for the search evaluation use case
                 searchEvalInputDef: {},
@@ -142,8 +149,8 @@ const store = createStore({
     },
 
     mutations: {
-        retrieveSearchEvalJobDef(state) {
-            retrieveSearchEvalJobDefStructAndEndpoint().then(response => {
+        retrieveJobDefinitions(state) {
+            retrieveJobInformation().then(response => {
                 console.info("job response: ")
                 console.log(response)
                 let requiredJobDefObj = response["payloadDef"]
@@ -161,6 +168,8 @@ const store = createStore({
                 state.jobInputDefState.jobNameToInputDef[name] = inputDef
                 state.jobInputDefState.jobNameToEndpoint[name] = endpoint
                 state.jobInputDefState.jobNameToDescription[name] = description
+                // filling in the edit state
+                state.jobInputDefState.jobNameToInputStates[name] = inputDef.copy("root")
 
                 // filling in current structure
                 state.jobInputDefState.searchEvalInputDef = inputDef
@@ -168,9 +177,17 @@ const store = createStore({
             })
         },
 
-        updateSearchEvalJobDefState(state, jobDefState) {
-            state.jobInputDefState.searchEvalJobDefState = jobDefState
-            state.jobInputDefState.searchEvalJobDefJsonString = objectToJsonStringAndSyntaxHighlight(jobDefState)
+        updateSelectedJobName(state, jobName) {
+            state.jobInputDefState.selectedJobName = jobName
+        },
+
+        updateCurrentJobDefState(state, {jobDefStateObj, jobDefState}) {
+            // TODO: adjust to the fact that we have a) a json structure which is currently passed and the current state
+            // of the structural def with all the default values set to keep the selections.
+            // make sure to update both
+            state.jobInputDefState.jobNameToInputStatesObj[state.jobInputDefState.selectedJobName] = jobDefStateObj
+            state.jobInputDefState.jobNameToInputStatesJson[state.jobInputDefState.selectedJobName] = objectToJsonStringAndSyntaxHighlight(jobDefStateObj)
+            state.jobInputDefState.jobNameToInputStates[state.jobInputDefState.selectedJobName] = jobDefState
         },
 
         recalculateSelectedDataJsonString(state) {
@@ -513,7 +530,7 @@ store.commit("updateAvailableResultExecutionIDs")
 // load list of available ir metrics
 store.commit("updateAvailableIRMetrics")
 // load job definition for search evaluation
-store.commit("retrieveSearchEvalJobDef")
+store.commit("retrieveJobDefinitions")
 
 // regular scheduling
 window.setInterval(() => {

@@ -572,7 +572,11 @@ class FieldDef {
     }
 
     copy(name: string = this.name): FieldDef {
-        return new FieldDef(name, this.valueFormat, this.required, this.description)
+        return new FieldDef(
+            name,
+            this.valueFormat.copy(this.valueFormat.elementId),
+            this.required,
+            this.description)
     }
 }
 
@@ -604,9 +608,14 @@ class ConditionalFields {
     }
 
     copy(): ConditionalFields {
+        let mappingCopy = new Map<string, Array<FieldDef>>()
+        this.mapping.forEach((entry, key) => {
+            let copiedArray: Array<FieldDef> = entry.map(e => e.copy())
+            mappingCopy.set(key, copiedArray)
+        })
         return new ConditionalFields(
             this.conditionField,
-            new Map(this.mapping)
+            mappingCopy
         )
     }
 }

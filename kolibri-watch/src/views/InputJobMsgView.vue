@@ -8,12 +8,12 @@
     <div class="col-9 col-sm-12">
       <select @change="jobNameSelectEvent($event)" class="form-select k-value-selector" id="job-name-1">
         <option>Choose an option</option>
-        <option v-for="jobName in Object.keys(this.$store.state.jobInputDefState.jobNameToInputDef)">{{ jobName }}</option>
+        <option v-for="jobName in availableJobNames">{{ jobName }}</option>
       </select>
     </div>
   </div>
 
-  <template v-if="selectedJobName !== undefined || selectedJobName ===''">
+  <template v-if="selectedJobName !== undefined && selectedJobName !==''">
     <div class="row-container columns">
 
       <form class="form-horizontal col-8 column">
@@ -24,27 +24,31 @@
           {{selectedJobDescription}}
         </h3>
 
-        <NestedFieldSeqStructDef
-            @value-changed="valueChanged"
-            :conditional-fields="selectedJobDef.conditionalFields"
-            :fields="selectedJobDef.fields"
-            :is-root="false"
-        >
-        </NestedFieldSeqStructDef>
+        <template v-if="currentJobNestedStruct !== undefined">
+          <NestedFieldSeqStructDef
+              @value-changed="valueChanged"
+              :conditional-fields="currentJobNestedStruct.conditionalFields"
+              :fields="currentJobNestedStruct.fields"
+              :is-root="true"
+          >
+          </NestedFieldSeqStructDef>
+        </template>
 
       </form>
 
       <!-- json overview container -->
-      <form class="form-horizontal col-4 column">
-        <h3 class="k-title">
-          JSON
-        </h3>
+      <template v-if="currentJobNestedStructJson !== undefined">
+        <form class="form-horizontal col-4 column">
+          <h3 class="k-title">
+            JSON
+          </h3>
 
-        <div class="k-json-container col-12 col-sm-12">
-          <pre id="template-content-display-1" v-html="jobDefStateJsonString"/>
-        </div>
+          <div class="k-json-container col-12 col-sm-12">
+            <pre id="template-content-display-1" v-html="currentJobNestedStructJson"/>
+          </div>
 
-      </form>
+        </form>
+      </template>
 
     </div>
   </template>
@@ -55,43 +59,52 @@
 import NestedFieldSeqStructDef from "../components/partials/structs/NestedFieldSeqStructDef.vue";
 import {ref} from "vue";
 import {objectToJsonStringAndSyntaxHighlight} from "@/utils/formatFunctions";
+import {useStore} from "vuex";
 
 export default {
 
-  props: {
-    selectedJobName: {type: String, required: false},
-    selectedJobDef: {type: Object, required: false},
-    selectedJobDescription: {type: String, required: false},
-    selectedJobEndpoint: {type: String, required: false}
-  },
+  props: {},
   components: {NestedFieldSeqStructDef},
   methods: {},
+  computed: {
+    availableJobNames() {
+      return Object.keys(this.$store.state.jobInputDefState.jobNameToInputDef)
+    },
+
+    selectedJobName(){
+      return this.$store.state.jobInputDefState.selectedJobName
+    },
+
+    selectedJobEndpoint(){
+      return this.$store.state.jobInputDefState.jobNameToEndpoint[this.selectedJobName()]
+    },
+
+    selectedJobDescription(){
+      return this.$store.state.jobInputDefState.jobNameToDescription[this.selectedJobName()]
+    },
+
+    currentJobNestedStruct(){
+      return this.$store.state.jobInputDefState.jobNameToInputStates[this.$store.state.jobInputDefState.selectedJobName]
+    },
+
+    currentJobNestedStructJson(){
+      return this.$store.state.jobInputDefState.jobNameToInputStatesJson[this.$store.state.jobInputDefState.selectedJobName]
+    }
+  },
   setup(props, context) {
-    // let selectedJobName = ref("")
-    // let selectedJobDescription = ref("")
-    // let selectedJobDef = ref({})
-    // let selectedJobEndpoint = ref("")
-    let jobDefState = ref({})
-    let jobDefStateJsonString = ref("")
+    const store = useStore()
 
     function jobNameSelectEvent(event) {
-      props.selectedJobName = event.target.value
-      // TODO: access to store doesnt work here ... migth wanna manage globally the state edited
-      // so far for current selection, forgetting the previous ones (or map by name)
-      props.selectedJobDef = this.store.state.jobInputDefState.jobNameToInputDef[selectedJobName]
-      props.selectedJobDescription = this.store.state.jobInputDefState.jobNameToDescription[selectedJobName]
-      props.selectedJobEndpoint = this.store.state.jobInputDefState.jobNameToEndpoint[selectedJobName]
+      store.commit("updateSelectedJobName", event.target.value)
     }
 
     function valueChanged(attributes) {
-      console.info("child value changed: " + attributes.name + "/" + attributes.value)
-      let value = attributes.combinedValue
-      jobDefState = value
-      jobDefStateJsonString = objectToJsonStringAndSyntaxHighlight(jobDefState)
+      console.info("child value changed: " + JSON.stringify(attributes))
+      store.commit("updateCurrentJobDefState",
+          attributes)
     }
 
     return {
-      jobDefStateJsonString,
       jobNameSelectEvent,
       valueChanged
     }
