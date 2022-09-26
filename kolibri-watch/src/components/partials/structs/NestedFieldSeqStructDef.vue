@@ -6,14 +6,10 @@
       <template v-if="(field.valueFormat instanceof SingleValueInputDef)">
         <div class="col-3 col-sm-12">
           <DescriptionPopover :description="field.description"/>
-          <label class="form-label k-field-name"
-                 :for="field.valueFormat.elementId + '-' + field.name + '-' + position + '-' + index">{{
-              field.name
-            }}</label>
+          <label class="form-label k-field-name" :for="field.valueFormat.elementId + '-' + field.name + '-' + position + '-' + index">{{ field.name }}</label>
         </div>
 
-        <div :id="field.valueFormat.elementId + '-' + field.name + '-' + position + '-' + index"
-             class="k-input col-9 col-sm-12">
+        <div :id="field.valueFormat.elementId + '-' + field.name + '-' + position + '-' + index" class="k-input col-9 col-sm-12">
           <SingleValueStructDef
               @value-changed="valueChanged"
               :name="field.name"
@@ -27,13 +23,9 @@
       <template v-if="(field.valueFormat instanceof SeqInputDef)">
         <div class="col-3 col-sm-12">
           <DescriptionPopover :description="field.description"/>
-          <label class="form-label k-field-name"
-                 :for="field.valueFormat.elementId + '-' + field.name + '-' + position + '-' + index">{{
-              field.name
-            }}</label>
+          <label class="form-label k-field-name" :for="field.valueFormat.elementId + '-' + field.name + '-' + position + '-' + index">{{ field.name }}</label>
         </div>
-        <div :id="field.valueFormat.elementId + '-' + field.name + '-' + position + '-' + index"
-             class="k-input col-9 col-sm-12">
+        <div :id="field.valueFormat.elementId + '-' + field.name + '-' + position + '-' + index" class="k-input col-9 col-sm-12">
           <GenericSeqStructDef
               @value-changed="valueChanged"
               :name="field.name"
@@ -57,13 +49,9 @@
       <template v-if="(field.valueFormat instanceof NestedFieldSequenceInputDef)">
         <div class="col-3 col-sm-12">
           <DescriptionPopover :description="field.description"/>
-          <label class="form-label k-field-name"
-                 :for="field.valueFormat.elementId + '-' + field.name + '-' + position + '-' + index">{{
-              field.name
-            }}</label>
+          <label class="form-label k-field-name" :for="field.valueFormat.elementId + '-' + field.name + '-' + position + '-' + index">{{ field.name }}</label>
         </div>
-        <div :id="field.valueFormat.elementId + '-' + field.name  + '-' + position + '-' + index"
-             class="k-input col-9 col-sm-12">
+        <div :id="field.valueFormat.elementId + '-' + field.name  + '-' + position + '-' + index" class="k-input col-9 col-sm-12">
           <NestedFieldSeqStructDef
               @value-changed="valueChanged"
               :conditional-fields="field.valueFormat.conditionalFields"
@@ -88,7 +76,7 @@ import {
   KeyValuePairInputDef,
   KeyValueInputDef,
   MapInputDef,
-  NestedFieldSequenceInputDef, ConditionalFields, FieldDef
+  NestedFieldSequenceInputDef
 } from "@/utils/dataValidationFunctions";
 import SingleValueStructDef from "./SingleValueStructDef.vue";
 import {ref} from "vue";
@@ -128,20 +116,13 @@ export default {
     const store = useStore()
     // values for the permanent fields that are unconditional on other fields
     let fieldStates = ref({})
-    // the field definition (make sure the default value is updated to the one in fieldStates)
-    let fieldDef = ref({})
     // keeping the currently selected conditionalFields in separate state from permanent fields
     let selectedConditionalFields = ref([])
     let selectedConditionalFieldsStates = ref({})
-    // keep track of the actual conditional fields and make sure the values set as default values
-    // are updated on any update of selectedConditionalFieldsStates
-    let selectedConditionalFieldsDef = ref({})
     props.fields.forEach(field => {
       fieldStates.value[field.name] = undefined
     })
 
-    // TODO: ensure that default values are updates on every value change for the valueDef
-    // of each FieldDef
     function updateConditionalFields(attributes) {
       // now check whether we have any conditional fields that carry the attribute.name as conditionField
       // and contain the current value of the conditionField as key in the mapping. If yes, add all FieldDef that
@@ -200,8 +181,6 @@ export default {
 
     // the state keeping within the single components should take care of set values if state is altered,
     // otherwise we might need to set default values on the field's InputDefs (conditional or unconditional inputs)
-    // TODO: ensure that default values are updates on every value change for the valueDef
-    // of each FieldDef
     function valueChanged(attributes) {
       console.debug(`Nested struct def incoming value changed event: ${JSON.stringify(attributes)}`)
       let isUnconditionalField = true
@@ -221,30 +200,20 @@ export default {
       console.debug("Nested struct def conditional fields states: ")
       console.debug(selectedConditionalFieldsStates.value)
 
-      // the actual javascript state object of the edits so far, contains all structures nested
-      // into this one
+      // if it's a root element,
+      // update the global state of this object (merging the unconditional and the conditional fields)
+      // otherwise just emit the state update to the parent
       let combinedValue = Object.assign({}, fieldStates.value, selectedConditionalFieldsStates.value)
-      // the combined structDef object with default values set to selections
-      // TODO: this needs propagations of updates across single editable elements before this will work
-      // e.g all valueChanged calls will need to update the object and the structDef class with default values
-      // set to current values
-      // TODO: also, fieldStates and selectedConditionalFieldStates do not reflect the
-      // struct defs with default values but pure named values, thus passing them as fields / conditional
-      // fields does not work
-      let elementId = props.isRoot ? "root" : props.name + "-" + props.position
-      let currentStructDefState = new NestedFieldSequenceInputDef(
-          elementId,
-          fieldStates.value,
-          selectedConditionalFieldsStates.value
-      )
-
-      // TODO: the structDef can be either single def or can be list of structdefs
-      context.emit('valueChanged', {
-        name: props.name,
-        value: combinedValue,
-        structDef: currentStructDefState,
-        position: props.position
-      })
+      if (props.isRoot) {
+        store.commit("updateSearchEvalJobDefState", combinedValue)
+      }
+      else {
+        context.emit('valueChanged', {
+          name: props.name,
+          value: combinedValue,
+          position: props.position
+        })
+      }
     }
 
     return {
@@ -274,7 +243,7 @@ export default {
 }
 
 .k-field-name {
-  word-wrap: break-word;
+  word-wrap:break-word;
   padding-right: 1em;
   display: inline-block;
 }

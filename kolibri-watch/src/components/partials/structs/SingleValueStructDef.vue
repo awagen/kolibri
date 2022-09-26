@@ -169,15 +169,8 @@ export default {
         console.debug("value is valid")
         hideModal()
         value.value = parseRightType(updateValue)
-        // set value as default value of the actual elementDef
-        props.elementDef = props.elementDef.copy(props.elementDef.elementId, value.value)
         // emitting change event to make parent element react to update / update its structure
-        context.emit('valueChanged', {
-          name: props.name,
-          value: value.value,
-          structDef: props.elementDef,
-          position: props.position
-        })
+        context.emit('valueChanged', {name: props.name, value: value.value, position: props.position})
       } else {
         showModalMsg(validationResult.failReason)
         console.debug("value invalid")

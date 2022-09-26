@@ -7,7 +7,8 @@
 
       <template v-if="(field instanceof SingleValueInputDef)">
         <div class="k-value-and-delete">
-          <div class="k-single-value-input" :id="'container-' + field.elementId">
+          <div class="k-single-value-input"
+               :id="'container-' + field.elementId">
             <SingleValueStructDef
                 @value-changed="valueChanged"
                 :element-def="field"
@@ -24,7 +25,8 @@
 
       <template v-if="(field instanceof SeqInputDef)">
         <div class="k-value-and-delete">
-          <div class="k-single-value-input" :id="'container-' + field.elementId">
+          <div class="k-single-value-input"
+               :id="'container-' + field.elementId">
             <GenericSeqStructDef
                 @value-changed="valueChanged"
                 :name="name"
@@ -41,7 +43,8 @@
 
       <template v-if="(field instanceof NestedFieldSequenceInputDef)">
         <div class="k-value-and-delete">
-          <div class="k-single-value-input" :id="'container-' + field.elementId">
+          <div class="k-single-value-input"
+               :id="'container-' + field.elementId">
             <NestedFieldSeqStructDef
                 @value-changed="valueChanged"
                 :conditional-fields="field.conditionalFields"
@@ -123,19 +126,11 @@ export default {
       console.debug("generic struct def changed index: " + changedIndex)
       if (addedInputValues.value.length > changedIndex) {
         addedInputValues.value[changedIndex] = attributes.value
-        // actually change the default value in the structDef so a structure can be reloaded from
-        // the structDefs it contains
-        let modifiedInputDef = addedInputDefs.value[changedIndex]
-        addedInputDefs.value[changedIndex] = modifiedInputDef.copy(modifiedInputDef.elementId, attributes.value)
       }
-      // we submit the list of actual values in the value parameter (can be directly used to fill in
-      // a js object structure, while structDef contains the corresponding list of structDefs with defaultValue set
-      // to the currently selected value
       context.emit("valueChanged", {
-        name: props.name,
-        value: addedInputValues.value,
-        structDef: addedInputDefs.value,
-        position: props.position
+        "name": props.name,
+        "value": addedInputValues.value,
+        "position": props.position
       })
       console.debug("generic struct def value changed event: ")
       console.debug({"name": props.name, "value": addedInputValues.value})
@@ -165,12 +160,7 @@ export default {
       }
       addedInputDefs.value = newInputDefs
       // notify parent of change
-      context.emit("valueChanged", {
-        name: props.name,
-        value: addedInputValues.value,
-        structDef: addedInputDefs.value,
-        position: props.position
-      })
+      context.emit("valueChanged", {"name": props.name, "value": addedInputValues.value})
     }
 
     onMounted(() => {
