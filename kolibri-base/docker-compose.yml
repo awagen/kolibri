@@ -55,8 +55,8 @@ services:
       USE_CONNECTION_POOL_FLOW: 'true'
       RUNNING_TASK_PER_JOB_MAX_COUNT: 100
       RUNNING_TASK_PER_JOB_DEFAULT_COUNT: 3
-      KOLIBRI_DISPATCHER_PARALLELISM_MIN: 8
-      KOLIBRI_DISPATCHER_PARALLELISM_FACTOR: 8.0
+      KOLIBRI_DISPATCHER_PARALLELISM_MIN: 2
+      KOLIBRI_DISPATCHER_PARALLELISM_FACTOR: 1.5
       KOLIBRI_DISPATCHER_PARALLELISM_MAX: 32
       KOLIBRI_DISPATCHER_THROUGHPUT: 10
       DEFAULT_DISPATCHER_PARALLELISM_FACTOR: 1.0
@@ -75,6 +75,7 @@ services:
       USE_AGGREGATOR_BACKPRESSURE: 'false'
       AGGREGATOR_RECEIVE_PARALLELISM: 32
       MAX_NR_BATCH_RETRIES: 2
+      BATCH_MAX_TIME_TO_ACK_IN_MS: 500
       PERSISTENCE_MODE: 'CLASS'
       PERSISTENCE_MODULE_CLASS: 'de.awagen.kolibri.base.config.di.modules.persistence.LocalPersistenceModule'
       AWS_PROFILE: 'developer'
@@ -102,6 +103,8 @@ services:
       # above), also activate the routes for event sending which get collected within one actor per sourceId,
       # sharded over cluster
       USE_SHARDING_AND_ENDPOINTS: 'true'
+      TARGET_ALLOWED_HOSTS: 'search-service,search-service1'
+      TARGET_ALLOWED_PORTS: '80,81'
     volumes:
       - ./test-files:/app/test-files
 
@@ -135,8 +138,8 @@ services:
       USE_CONNECTION_POOL_FLOW: 'true'
       RUNNING_TASK_PER_JOB_MAX_COUNT: 100
       RUNNING_TASK_PER_JOB_DEFAULT_COUNT: 3
-      KOLIBRI_DISPATCHER_PARALLELISM_MIN: 8
-      KOLIBRI_DISPATCHER_PARALLELISM_FACTOR: 8.0
+      KOLIBRI_DISPATCHER_PARALLELISM_MIN: 2
+      KOLIBRI_DISPATCHER_PARALLELISM_FACTOR: 1.5
       KOLIBRI_DISPATCHER_PARALLELISM_MAX: 32
       KOLIBRI_DISPATCHER_THROUGHPUT: 10
       DEFAULT_DISPATCHER_PARALLELISM_FACTOR: 1.0
@@ -155,6 +158,7 @@ services:
       USE_AGGREGATOR_BACKPRESSURE: 'false'
       AGGREGATOR_RECEIVE_PARALLELISM: 32
       MAX_NR_BATCH_RETRIES: 2
+      BATCH_MAX_TIME_TO_ACK_IN_MS: 500
       PERSISTENCE_MODE: 'CLASS'
       PERSISTENCE_MODULE_CLASS: 'de.awagen.kolibri.base.config.di.modules.persistence.LocalPersistenceModule'
       AWS_PROFILE: 'developer'
@@ -175,6 +179,8 @@ services:
       JUDGEMENT_FILE_JSON_LINES_JUDGEMENT_VALUE_TYPE_CAST: 'STRING'
       USE_INSECURE_SSL_ENGINE: 'true'
       USE_SHARDING_AND_ENDPOINTS: 'true'
+      TARGET_ALLOWED_HOSTS: 'search-service,search-service1'
+      TARGET_ALLOWED_PORTS: '80,81'
     volumes:
       - ./test-files:/app/test-files
 

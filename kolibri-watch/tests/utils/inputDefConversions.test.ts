@@ -3,7 +3,7 @@
  */
 
 import {expect, test} from "vitest";
-import {objToInputDef} from "../../src/utils/inputDefConversions";
+import {choiceDefConverter, objToInputDef} from "../../src/utils/inputDefConversions";
 import {InputDef, NestedFieldSequenceInputDef} from "../../src/utils/dataValidationFunctions";
 
 
@@ -35,4 +35,22 @@ test("correctly parse full job definition", () => {
     const convertedInputDef: InputDef = objToInputDef(json, "test", 0)
     // then
     expect(convertedInputDef instanceof NestedFieldSequenceInputDef).true
+})
+
+test("correctly handle int choice selection", () => {
+    // given
+    const choiceDef = {"choices": [80, 81]}
+    // when
+    const inputDef = choiceDefConverter(choiceDef, "testElement", 1)
+    // then
+    expect(inputDef.getInputValidation().validate(80).isValid).true
+})
+
+test("correctly handle int choice selection on per-type inputDef generation", () => {
+    // given
+    const choiceDef = {"type": "CHOICE_INT", "choices": [80, 81]}
+    // when
+    const inputDef = objToInputDef(choiceDef, "testElement", 1)
+    // then
+    expect(inputDef.getInputValidation().validate(80).isValid).true
 })

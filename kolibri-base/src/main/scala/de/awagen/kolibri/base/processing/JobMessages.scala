@@ -129,6 +129,7 @@ object JobMessages {
                                                   queryParameter: String,
                                                   productIdSelector: JsValueSeqSelector,
                                                   otherSelectors: Seq[NamedAndTypedSelector[_]],
+                                                  otherCalculations: Seq[Calculation[WeaklyTypedMap[String], Double]],
                                                   judgementFilePath: String,
                                                   requestParameters: Seq[ValueSeqGenDefinition[_]],
                                                   excludeParamColumns: Seq[String],
@@ -185,7 +186,7 @@ object JobMessages {
           JudgementHandlingStrategy.EXIST_RESULTS_AND_JUDGEMENTS_MISSING_AS_ZEROS
         )
       )
-    )
+    ) ++ otherCalculations
     val filterFunc: SerializableFunction1[Tag, Boolean] = new SerializableFunction1[Tag, Boolean] {
       override def apply(v1: Tag): Boolean = true
     }
@@ -240,8 +241,8 @@ object JobMessagesImplicits {
   }
 
   implicit class QueryBasedSearchEvaluationImplicits(eval: QueryBasedSearchEvaluationDefinition) extends RunnableConvertible {
-    override def toRunnable(implicit as: ActorSystem, ec: ExecutionContext): ProcessActorRunnableJobCmd[_, _, _, _ <: WithCount] = {
-      val searchEval = SearchEvaluationDefinition(
+    def toFullSearchEvaluation: SearchEvaluationDefinition = {
+      SearchEvaluationDefinition(
         jobName = eval.jobName,
         requestTasks = eval.requestTasks,
         fixedParams = eval.fixedParams,
@@ -260,6 +261,10 @@ object JobMessagesImplicits {
         allowedTimeForJobInSeconds = eval.allowedTimeForJobInSeconds,
         expectResultsFromBatchCalculations = eval.expectResultsFromBatchCalculations
       )
+    }
+
+    override def toRunnable(implicit as: ActorSystem, ec: ExecutionContext): ProcessActorRunnableJobCmd[_, _, _, _ <: WithCount] = {
+      val searchEval = toFullSearchEvaluation
       searchEval.toRunnable
     }
   }

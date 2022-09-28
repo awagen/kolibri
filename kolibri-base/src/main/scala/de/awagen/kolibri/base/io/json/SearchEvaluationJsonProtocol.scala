@@ -23,18 +23,23 @@ import de.awagen.kolibri.base.domain.Connections.Connection
 import de.awagen.kolibri.base.http.client.request.RequestTemplate
 import de.awagen.kolibri.base.io.json.ConnectionJsonProtocol._
 import de.awagen.kolibri.base.io.json.ExecutionJsonProtocol._
+import de.awagen.kolibri.base.io.json.FIELD_KEYS._
 import de.awagen.kolibri.base.io.json.ParameterValuesJsonProtocol.ValueSeqGenDefinitionFormat
 import de.awagen.kolibri.base.io.json.ResourceDirectiveJsonProtocol.GenericResourceDirectiveFormat
 import de.awagen.kolibri.base.io.json.TaggingConfigurationsJsonProtocol._
-import de.awagen.kolibri.base.processing.JobMessages.SearchEvaluationDefinition
+import de.awagen.kolibri.base.processing.JobMessages.{QueryBasedSearchEvaluationDefinition, SearchEvaluationDefinition}
 import de.awagen.kolibri.base.processing.execution.functions.Execution
 import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ValueSeqGenDefinition
 import de.awagen.kolibri.base.processing.tagging.TaggingConfigurations.BaseTaggingConfiguration
 import de.awagen.kolibri.base.usecase.searchopt.io.json.CalculationsJsonProtocol._
-import de.awagen.kolibri.base.usecase.searchopt.io.json.ParsingConfigJsonProtocol
+import de.awagen.kolibri.base.usecase.searchopt.io.json.JsonSelectorJsonProtocol._
 import de.awagen.kolibri.base.usecase.searchopt.io.json.ParsingConfigJsonProtocol._
+import de.awagen.kolibri.base.usecase.searchopt.io.json.{JsonSelectorJsonProtocol, ParsingConfigJsonProtocol}
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.Calculation
+import de.awagen.kolibri.base.usecase.searchopt.parse.JsonSelectors.JsValueSeqSelector
+import de.awagen.kolibri.base.usecase.searchopt.parse.JsonSelectors.JsonSelectorPathRegularExpressions.recursivePathKeyGroupingRegex
 import de.awagen.kolibri.base.usecase.searchopt.parse.ParsingConfig
+import de.awagen.kolibri.base.usecase.searchopt.parse.TypedJsonSelectors.NamedAndTypedSelector
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
@@ -43,7 +48,7 @@ import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
 import spray.json.{DefaultJsonProtocol, RootJsonFormat}
 
 
-object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSupport with WithStructDef {
+object FIELD_KEYS {
 
   val JOB_NAME_FIELD = "jobName"
   val REQUEST_TASKS_FIELD = "requestTasks"
@@ -63,7 +68,19 @@ object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSu
   val ALLOWED_TIME_FOR_JOB_IN_SECONDS_FIELD = "allowedTimeForJobInSeconds"
   val EXPECT_RESULTS_FROM_BATCH_CALCULATIONS_FIELD = "expectResultsFromBatchCalculations"
 
-  implicit val queryAndParamProviderFormat: RootJsonFormat[SearchEvaluationDefinition] = jsonFormat(
+  val QUERY_PARAMETER_FIELD = "queryParameter"
+  val PRODUCT_ID_SELECTOR_FIELD = "productIdSelector"
+  val OTHER_SELECTORS_FIELD = "otherSelectors"
+  val OTHER_CALCULATIONS_FIELD = "otherCalculations"
+  val JUDGEMENT_FILE_PATH_FIELD = "judgementFilePath"
+
+}
+
+object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSupport with WithStructDef {
+
+
+
+  implicit val searchEvaluationFormat: RootJsonFormat[SearchEvaluationDefinition] = jsonFormat(
     (
       jobName: String,
       requestTasks: Int,
@@ -258,6 +275,140 @@ object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSu
             "The recommended way would be to leave this false such that per-tag results are written as results " +
             "to keep granularity and avoid serialization issues by sending around large single results " +
             "across the network."
+        )
+      ),
+      Seq.empty
+    )
+  }
+}
+
+object QueryBasedSearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSupport with WithStructDef {
+
+  implicit val queryBasedSearchEvaluationFormat: RootJsonFormat[QueryBasedSearchEvaluationDefinition] = jsonFormat(
+    (
+      jobName: String,
+      connections: Seq[Connection],
+      fixedParams: Map[String, Seq[String]],
+      contextPath: String,
+      queryParameter: String,
+      productIdSelector: JsValueSeqSelector,
+      otherSelectors: Seq[NamedAndTypedSelector[_]],
+      otherCalculations: Seq[Calculation[WeaklyTypedMap[String], Double]],
+      judgementFilePath: String,
+      requestParameters: Seq[ValueSeqGenDefinition[_]],
+      excludeParamColumns: Seq[String]
+    ) =>
+      QueryBasedSearchEvaluationDefinition.apply(
+        jobName,
+        connections,
+        fixedParams,
+        contextPath,
+        queryParameter,
+        productIdSelector,
+        otherSelectors,
+        otherCalculations,
+        judgementFilePath,
+        requestParameters,
+        excludeParamColumns
+      ),
+    JOB_NAME_FIELD,
+    CONNECTIONS_FIELD,
+    FIXED_PARAMS_FIELD,
+    CONTEXT_PATH_FIELD,
+    QUERY_PARAMETER_FIELD,
+    PRODUCT_ID_SELECTOR_FIELD,
+    OTHER_SELECTORS_FIELD,
+    OTHER_CALCULATIONS_FIELD,
+    JUDGEMENT_FILE_PATH_FIELD,
+    REQUEST_PARAMETERS_FIELD,
+    EXCLUDE_PARAMS_COLUMNS_FIELD
+  )
+
+  override def structDef: JsonStructDefs.StructDef[_] = {
+    NestedFieldSeqStructDef(
+      Seq(
+        FieldDef(
+          StringConstantStructDef(JOB_NAME_FIELD),
+          RegexStructDef(".+".r),
+          required = true,
+          description = "Name of the job, which is also used as folder name for the result output of the job."
+        ),
+        FieldDef(
+          StringConstantStructDef(CONNECTIONS_FIELD),
+          GenericSeqStructDef(ConnectionJsonProtocol.structDef),
+          required = true,
+          description = "The connections to utilize for sending requests. Can be very useful in cases such as when " +
+            "multiple clusters of the requested system are available. In this case all of them can be requested and such " +
+            "throughput significantly increased. The requesting of the external service happens in a balanced way, " +
+            "e.g in case the different connections specified here have roughly the same latency, they should see roughly the " +
+            "same amount of traffic."
+        ),
+        FieldDef(
+          StringConstantStructDef(FIXED_PARAMS_FIELD),
+          MapStructDef(StringStructDef, StringSeqStructDef),
+          required = true,
+          description = "List of url parameters, where each parameter can have multiple values."
+        ),
+        FieldDef(
+          StringConstantStructDef(CONTEXT_PATH_FIELD),
+          StringStructDef,
+          required = true,
+          description = "The context path when composing the request."
+        ),
+        FieldDef(
+          StringConstantStructDef(QUERY_PARAMETER_FIELD),
+          RegexStructDef(".+".r),
+          required = true,
+          description = "The url parameter holding the query value."
+        ),
+        FieldDef(
+          StringConstantStructDef(PRODUCT_ID_SELECTOR_FIELD),
+          RegexStructDef(recursivePathKeyGroupingRegex),
+          required = true,
+          description = "The url parameter holding the query value."
+        ),
+        FieldDef(
+          StringConstantStructDef(OTHER_SELECTORS_FIELD),
+          GenericSeqStructDef(JsonSelectorJsonProtocol.NamedAndTypedSelectorFormat.structDef),
+          required = true,
+          description = "Allows specifying other fields to extract from the response that can be used" +
+            "in custom calculations besides query-product based information retrieval metrics."
+        ),
+        FieldDef(
+          StringConstantStructDef(OTHER_CALCULATIONS_FIELD),
+          GenericSeqStructDef(
+            FromMapCalculationsDoubleFormat.structDef
+          ),
+          required = true,
+          description = "Calculations to be executed. Here the fields extracted in the parsingConfig are referenced. " +
+            "Note that common information retrieval metrics are already covered in the default settings," +
+            "thus calculations configured here allow either addition of further ones or specification of custom " +
+            "metrics based on data extracted within the otherSelectors attribute."
+        ),
+        FieldDef(
+          StringConstantStructDef(JUDGEMENT_FILE_PATH_FIELD),
+          RegexStructDef(".+".r),
+          required = true,
+          description = "The path relative to the configured storage path to pick the judgement file from." +
+            "Needs to be relative path specifying the full file name and suffix."
+        ),
+        FieldDef(
+          StringConstantStructDef(REQUEST_PARAMETERS_FIELD),
+          GenericSeqStructDef(ParameterValuesJsonProtocol.ValueSeqGenDefinitionFormat.structDef),
+          required = true,
+          description = "Allows specification of combinations of url parameters, headers and bodies. " +
+            "Note that standalone values are permutated with every other values, while mappings allow the mapping " +
+            "of values of a key provider to other values that logically belong to that key. Can be used to restrict " +
+            "the number of permutations to those that are actually meaningful."
+        ),
+        FieldDef(
+          StringConstantStructDef(EXCLUDE_PARAMS_COLUMNS_FIELD),
+          StringSeqStructDef,
+          required = true,
+          description = "The results are aggregated based on non-metric fields in the result files. All fixed parameters " +
+            "as specified in the fixedParams setting are excluded by default, yet parameters that are added " +
+            "in the requestParameters setting will need to be excluded by entering the names of the parameters here, " +
+            "otherwise the aggregation might be too granular."
         )
       ),
       Seq.empty

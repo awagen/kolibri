@@ -134,6 +134,10 @@ export default {
     let TOAST_ID = 'k-' + props.elementDef.elementId + "-" + props.name + '-msg-toast-' + props.position
     let TOAST_CONTENT_ID = 'k-' + props.elementDef.elementId + "-" + props.name + '-msg-toast-content-' + props.position
 
+    let convertInputToNumber = (props.elementDef instanceof ChoiceInputDef) &&
+        (props.elementDef.choices.filter(choice => isNaN(choice)).length == 0)
+
+
     let validator = props.elementDef.getInputValidation()
 
     function parseRightType(val) {
@@ -163,6 +167,9 @@ export default {
     function updateValueEvent(valueEvent) {
       console.debug("updateValueEvent called with value:" + valueEvent.target.value)
       let updateValue = valueEvent.target.value
+      if (convertInputToNumber) {
+        updateValue = Number(updateValue)
+      }
       let validationResult = validator.validate(updateValue)
       console.debug(`validation result: ${validationResult}`)
       if (validationResult.isValid) {

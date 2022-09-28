@@ -35,7 +35,7 @@ import de.awagen.kolibri.base.config.AppProperties.config.{analyzeTimeout, inter
 import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions
 import de.awagen.kolibri.base.http.server.routes.ResourceRoutes.TemplateTypeValidationAndExecutionInfo
 import de.awagen.kolibri.base.http.server.routes.StatusRoutes.corsHandler
-import de.awagen.kolibri.base.processing.JobMessages.{SearchEvaluationDefinition, TestPiCalculationDefinition}
+import de.awagen.kolibri.base.processing.JobMessages.{QueryBasedSearchEvaluationDefinition, SearchEvaluationDefinition, TestPiCalculationDefinition}
 import de.awagen.kolibri.base.processing.execution.functions.Execution
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.SearchJobDefinitions
 import de.awagen.kolibri.base.usecase.searchopt.provider.JudgementProvider
@@ -217,6 +217,22 @@ object BaseRoutes {
           entity(as[SearchEvaluationDefinition]) {
             searchEvaluation =>
               supervisorActor ! searchEvaluation
+              complete(StatusCodes.Accepted, "Starting search evaluation example")
+          }
+        }
+      })
+  }
+
+  def startQueryBasedReducedSearchEvalNoSerialize(implicit system: ActorSystem): Route = {
+    implicit val ec: ExecutionContextExecutor = system.dispatchers.lookup(kolibriDispatcherName)
+    import de.awagen.kolibri.base.io.json.QueryBasedSearchEvaluationJsonProtocol._
+    import de.awagen.kolibri.base.processing.JobMessagesImplicits.QueryBasedSearchEvaluationImplicits
+    corsHandler(
+      path("search_eval_query_reduced") {
+        post {
+          entity(as[QueryBasedSearchEvaluationDefinition]) {
+            searchEvaluation =>
+              supervisorActor ! searchEvaluation.toFullSearchEvaluation
               complete(StatusCodes.Accepted, "Starting search evaluation example")
           }
         }

@@ -151,29 +151,31 @@ const store = createStore({
     mutations: {
         retrieveJobDefinitions(state) {
             retrieveJobInformation().then(response => {
-                console.info("job response: ")
-                console.log(response)
-                let requiredJobDefObj = response["payloadDef"]
-                console.info("search evaluation job struct def:")
-                console.log(requiredJobDefObj)
-                let name = response["name"]
-                let description = response["description"]
-                let endpoint = response["endpoint"]
-                let inputDef = objToInputDef(
-                    requiredJobDefObj,
-                    "root",
-                    0
-                )
-                // filling in the new structure, e.g. mappings based on job names
-                state.jobInputDefState.jobNameToInputDef[name] = inputDef
-                state.jobInputDefState.jobNameToEndpoint[name] = endpoint
-                state.jobInputDefState.jobNameToDescription[name] = description
-                // filling in the edit state
-                state.jobInputDefState.jobNameToInputStates[name] = inputDef.copy("root")
+                response.forEach(jobDef => {
+                    console.info("job response: ")
+                    console.log(jobDef)
+                    let requiredJobDefObj = jobDef["payloadDef"]
+                    console.info("search evaluation job struct def:")
+                    console.log(requiredJobDefObj)
+                    let name = jobDef["name"]
+                    let description = jobDef["description"]
+                    let endpoint = jobDef["endpoint"]
+                    let inputDef = objToInputDef(
+                        requiredJobDefObj,
+                        "root",
+                        0
+                    )
+                    // filling in the new structure, e.g. mappings based on job names
+                    state.jobInputDefState.jobNameToInputDef[name] = inputDef
+                    state.jobInputDefState.jobNameToEndpoint[name] = endpoint
+                    state.jobInputDefState.jobNameToDescription[name] = description
+                    // filling in the edit state
+                    state.jobInputDefState.jobNameToInputStates[name] = inputDef.copy("root")
 
-                // filling in current structure
-                state.jobInputDefState.searchEvalInputDef = inputDef
-                state.jobInputDefState.searchEvalEndPoint = endpoint
+                    // filling in current structure
+                    state.jobInputDefState.searchEvalInputDef = inputDef
+                    state.jobInputDefState.searchEvalEndPoint = endpoint
+                })
             })
         },
 

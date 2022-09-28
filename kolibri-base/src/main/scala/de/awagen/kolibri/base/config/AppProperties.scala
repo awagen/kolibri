@@ -233,7 +233,6 @@ object AppProperties {
     val allowedRequestTargetPorts: Seq[String] = baseConfig.getString("kolibri.request.target.allowedPorts").split(",")
       .map(x => x.trim).filter(x => x.nonEmpty)
     val allowedRequestTargetContextPaths: Seq[String] = baseConfig.getString("kolibri.request.target.allowedContextPaths").split(",")
-    val enforcedHttpsForOutboundRequests: Boolean = baseConfig.getBoolean("kolibri.request.target.enforceHttps")
   }
 
 }

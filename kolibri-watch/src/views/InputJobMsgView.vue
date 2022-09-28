@@ -27,6 +27,9 @@
         <h3 class="k-title">
           Job: {{selectedJobName}}
         </h3>
+        <h3 class="k-title">
+          EndPoint: {{selectedJobEndpoint}}
+        </h3>
         <h3 class="k-description">
           {{selectedJobDescription}}
         </h3>

@@ -23,7 +23,8 @@ import akka.http.scaladsl.server.{PathMatcher0, Route}
 import de.awagen.kolibri.datatypes.io.json.JsonStructDefsJsonProtocol.JsonStructDefsFormat
 import de.awagen.kolibri.datatypes.types.JsonStructDefs.StructDef
 import akka.http.scaladsl.server.Directives._
-import de.awagen.kolibri.base.io.json.SearchEvaluationJsonProtocol
+import de.awagen.kolibri.base.http.server.routes.JobDefRoutes.Endpoints.{fullSearchEvaluationEndpoint, queryBasedSearchEvaluationEndpoint}
+import de.awagen.kolibri.base.io.json.{QueryBasedSearchEvaluationJsonProtocol, SearchEvaluationJsonProtocol}
 import spray.json.{DefaultJsonProtocol, RootJsonFormat}
 
 object JobDefRoutes extends DefaultJsonProtocol with CORSHandler {
@@ -37,6 +38,25 @@ object JobDefRoutes extends DefaultJsonProtocol with CORSHandler {
                          payloadDef: StructDef[_],
                          description: String = "")
 
+  object Endpoints {
+    val fullSearchEvaluationEndpoint: EndpointDef = EndpointDef(
+      "Search Evaluation (Full)",
+      "search_eval_no_ser",
+      SearchEvaluationJsonProtocol.structDef,
+      "Endpoint for search evaluation, providing the full range of configuration flexibility. " +
+        "Note that for specific use cases, one of the endpoint definitions with less flexibility / options " +
+        "might be more convenient."
+    )
+    val queryBasedSearchEvaluationEndpoint: EndpointDef = EndpointDef(
+      "Search Evaluation (Query-based, reduced configuration)",
+      "search_eval_query_reduced",
+      QueryBasedSearchEvaluationJsonProtocol.structDef,
+      "Endpoint for search evaluation, providing a reduced set of configuration flexibility. " +
+        "Particularly useful in case common information retrieval metrics shall be calculated and no custom " +
+        "calculations are needed"
+    )
+  }
+
   implicit val endpointAndStructDefFormat: RootJsonFormat[EndpointDef] = jsonFormat4(EndpointDef)
 
   def getSearchEvaluationEndpointAndJobDef(implicit system: ActorSystem): Route = {
@@ -44,15 +64,11 @@ object JobDefRoutes extends DefaultJsonProtocol with CORSHandler {
     corsHandler(
       path(matcher) {
         get {
-          val result = EndpointDef(
-            "Search Evaluation (Full)",
-            "search_eval_no_ser",
-            SearchEvaluationJsonProtocol.structDef,
-            "Endpoint for search evaluation, providing the full range of configuration flexibility. " +
-              "Note that for specific use cases, one of the endpoint definitions with less flexibility / options " +
-              "might be more convenient."
+          complete(StatusCodes.OK, Seq(
+            fullSearchEvaluationEndpoint,
+            queryBasedSearchEvaluationEndpoint
           )
-          complete(StatusCodes.OK, result.toJson.toString())
+            .toJson.toString())
         }
       }
     )

@@ -170,6 +170,7 @@ object ClusterNode extends App {
         ~ getExampleQueriesForValueSeqGenProviderSequence
         ~ getAvailableIRMetrics ~ getIRMetricJsonsFromReducedJsons
         ~ getSearchEvaluationEndpointAndJobDef
+        ~ startQueryBasedReducedSearchEvalNoSerialize
       )
       val usedRoute: Route = if (useRequestEventShardingAndEndpoints) {
         commonRoute ~ sendCombinedEvent ~ sendEntityEvent ~ sendKeyValueEvent
