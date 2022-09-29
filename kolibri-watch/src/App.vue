@@ -10,9 +10,6 @@
       <img id="menu-logo" alt="Kolibri logo" src="./assets/images/kolibri.svg"/>
     </section>
     <section class="navbar-section">
-     <!-- <router-link class="btn btn-link" to="/inputOverview">INPUT_OVERVIEW</router-link> -->
-      <router-link class="btn btn-link" to="/inputJobMsgView">JOB_MSG_DEF</router-link>
-<!--      <router-link class="btn btn-link" to="/dataCompose">DATA_COMPOSE</router-link>-->
 <!--      <router-link class="btn btn-link" to="/analyze">ANALYZE</router-link> -->
 <!--      <router-link class="btn btn-link" to="/result">RESULT</router-link>-->
     </section>

@@ -2,6 +2,11 @@
 
   <div class="row-container columns">
     <ul class="tab tab-block">
+      <li class="tab-item" v-bind:class="{'active':(isActiveInputDefView)}">
+        <a href="#" @click.prevent="this.selectDisplay('inputDefinition')">
+          <span class="choice-title">Job Input Selection</span>
+        </a>
+      </li>
       <li class="tab-item" v-bind:class="{'active':(isActiveTemplateView)}">
         <a href="#" @click.prevent="this.selectDisplay('template')">
           <span class="choice-title">Templates</span>
@@ -15,6 +20,9 @@
     </ul>
   </div>
 
+  <template v-if="this.isActiveInputDefView">
+    <InputJobMsgView/>
+  </template>
   <template v-if="this.isActiveTemplateView">
     <JobDefinitionByTemplates/>
   </template>
@@ -27,22 +35,32 @@
 <script>
 import JobDefinitionByTemplates from "../components/JobDefinitionByTemplates.vue";
 import DataCreation from "../components/DataCreation.vue";
+import InputJobMsgView from "./InputJobMsgView.vue";
 
 export default {
 
   components: {
+    InputJobMsgView,
     JobDefinitionByTemplates,
     DataCreation
   },
   methods: {
     selectDisplay(type) {
+      if (type === "inputDefinition"){
+        console.info("input definition type")
+        this.isActiveInputDefView = true
+        this.isActiveTemplateView = false
+        this.isActiveCreationView = false
+      }
       if (type === "template"){
         console.info("template type")
+        this.isActiveInputDefView = false
         this.isActiveTemplateView = true
         this.isActiveCreationView = false
       }
       else if (type === "creation"){
         console.info("creation type")
+        this.isActiveInputDefView = false
         this.isActiveTemplateView = false
         this.isActiveCreationView = true
       }
@@ -50,7 +68,8 @@ export default {
   },
   data() {
     return {
-      isActiveTemplateView: true,
+      isActiveInputDefView: true,
+      isActiveTemplateView: false,
       isActiveCreationView: false
     }
   },
