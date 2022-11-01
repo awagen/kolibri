@@ -97,7 +97,7 @@ export default {
     initWithValue: {
       type: Array,
       required: false,
-      default: {}
+      default: []
     }
   },
 
@@ -111,16 +111,15 @@ export default {
     )
   },
   methods: {
-
-    getValueForIndexKey(index) {
-      return saveGetArrayValueAtIndex(this.initWithValue, index, undefined)
-    },
-
   },
   setup(props, context) {
 
     let addedInputDefs = ref([])
     let addedInputValues = ref([])
+
+    function getValueForIndexKey(index) {
+      return saveGetArrayValueAtIndex(props.initWithValue, index, undefined)
+    }
 
     function generateIndexedInputDefForIndex(index) {
       let updatedCopy = props.inputDef.copy(
@@ -178,9 +177,17 @@ export default {
       context.emit("valueChanged", {"name": props.name, "value": addedInputValues.value})
     }
 
+    // initially we either initialize all slots needed for the initialization values
+    // or if not set we initialize the initial element
     onMounted(() => {
-      addedInputValues.value.push(undefined)
-      addedInputDefs.value.push(generateIndexedInputDefForIndex(0))
+      if (props.initWithValue !== undefined && props.initWithValue.length > 0) {
+        props.initWithValue.forEach(_ => {
+          addNextInputElement()
+        })
+      }
+      else {
+        addNextInputElement()
+      }
     })
 
     return {
@@ -190,7 +197,8 @@ export default {
       SeqInputDef,
       valueChanged,
       addNextInputElement,
-      deleteInputElement
+      deleteInputElement,
+      getValueForIndexKey
     }
   }
 
