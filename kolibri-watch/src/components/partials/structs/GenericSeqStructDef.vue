@@ -13,7 +13,8 @@
                 @value-changed="valueChanged"
                 :element-def="field"
                 :name="name + '-' + index"
-                :position="index">
+                :position="index"
+                :init-with-value="getValueForIndexKey(index)">
             </SingleValueStructDef>
           </div>
           <div class="k-delete-button">
@@ -31,7 +32,8 @@
                 @value-changed="valueChanged"
                 :name="name"
                 :input-def="field.inputDef"
-                :position="index">
+                :position="index"
+                :init-with-value="getValueForIndexKey(index)">
             </GenericSeqStructDef>
           </div>
           <div class="k-delete-button">
@@ -51,7 +53,8 @@
                 :fields="field.fields"
                 :name="name"
                 :position="index"
-                :is-root="false">
+                :is-root="false"
+                :init-with-value="getValueForIndexKey(index)">
             </NestedFieldSeqStructDef>
           </div>
           <div class="k-delete-button">
@@ -82,6 +85,7 @@ import {
   SeqInputDef
 } from "@/utils/dataValidationFunctions";
 import {onMounted, ref, defineAsyncComponent} from "vue";
+import {saveGetArrayValueAtIndex} from "@/utils/baseDatatypeFunctions";
 
 export default {
 
@@ -89,7 +93,12 @@ export default {
     name: String,
     inputDef: InputDef,
     position: Number,
-    description: String
+    description: String,
+    initWithValue: {
+      type: Array,
+      required: false,
+      default: {}
+    }
   },
 
   emits: ['valueChanged'],
@@ -101,7 +110,13 @@ export default {
         import('./NestedFieldSeqStructDef.vue')
     )
   },
-  methods: {},
+  methods: {
+
+    getValueForIndexKey(index) {
+      return saveGetArrayValueAtIndex(this.initWithValue, index, undefined)
+    },
+
+  },
   setup(props, context) {
 
     let addedInputDefs = ref([])

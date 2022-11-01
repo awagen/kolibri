@@ -15,7 +15,9 @@
               :name="field.name"
               :element-def="field.valueFormat"
               :position="position * 100 + index"
-              :description="field.description">
+              :description="field.description"
+              :init-with-value="saveGetMapValueForKey(initWithValue, field.name, '')"
+              >
           </SingleValueStructDef>
         </div>
       </template>
@@ -31,7 +33,9 @@
               :name="field.name"
               :input-def="field.valueFormat.inputDef"
               :position="position * 100 + index"
-              :description="field.description">
+              :description="field.description"
+              :init-with-value="saveGetMapValueForKey(initWithValue, field.name, [])"
+              >
           </GenericSeqStructDef>
         </div>
       </template>
@@ -42,6 +46,7 @@
             :name="field.name"
             :key-value-input-def="field.valueFormat.keyValueDef"
             :description="field.description"
+            :init-with-value="saveGetMapValueForKey(initWithValue, field.name, {})"
         >
         </MapStructDef>
       </template>
@@ -58,7 +63,9 @@
               :fields="field.valueFormat.fields"
               :name="field.name"
               :is-root="false"
-              :description="field.description">
+              :description="field.description"
+              :init-with-value="saveGetMapValueForKey(initWithValue, field.name, {})"
+              >
           </NestedFieldSeqStructDef>
         </div>
       </template>
@@ -81,6 +88,7 @@ import {
 import SingleValueStructDef from "./SingleValueStructDef.vue";
 import {ref} from "vue";
 import {useStore} from 'vuex';
+import {saveGetMapValueForKey} from "../../../utils/baseDatatypeFunctions.ts";
 import GenericSeqStructDef from "./GenericSeqStructDef.vue";
 import KeyValueStructDef from "./KeyValueStructDef.vue";
 import MapStructDef from "./MapStructDef.vue";
@@ -100,7 +108,12 @@ export default {
     name: {type: String, required: false},
     isRoot: {type: Boolean, required: true, default: true},
     position: {type: Number, required: false, default: 0},
-    description: {type: String, required: false}
+    description: {type: String, required: false},
+    initWithValue: {
+      type: Object,
+      required: false,
+      default: {}
+    }
   },
   emits: ['valueChanged'],
   components: {
@@ -110,7 +123,9 @@ export default {
     KeyValueStructDef,
     MapStructDef
   },
-  computed: {},
+  computed: {
+
+  },
   methods: {},
   setup(props, context) {
     const store = useStore()
@@ -232,7 +247,8 @@ export default {
       KeyValuePairInputDef,
       KeyValueInputDef,
       MapInputDef,
-      selectedConditionalFields
+      selectedConditionalFields,
+      saveGetMapValueForKey
     }
   }
 

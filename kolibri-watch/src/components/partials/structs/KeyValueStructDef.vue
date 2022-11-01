@@ -11,7 +11,8 @@
           @value-changed="keyValueChanged"
           :name="name + '-key-' + position"
           :position="position"
-          :element-def="keyInputDef">
+          :element-def="keyInputDef"
+          :init-with-value="getInitKey()">
       </SingleValueStructDef>
     </template>
     <template v-else>
@@ -29,7 +30,8 @@
           @value-changed="valueChanged"
           :name="name + '-value-' + position"
           :position="position"
-          :element-def="valueInputDef">
+          :element-def="valueInputDef"
+          :init-with-value="getInitValue()">
       </SingleValueStructDef>
     </template>
     <!-- value input -->
@@ -38,7 +40,8 @@
           @value-changed="valueChanged"
           :name="name + '-value-' + position"
           :input-def="valueInputDef.inputDef"
-          :position="position">
+          :position="position"
+          :init-with-value="getInitValue()">
       </GenericSeqStructDef>
     </template>
 
@@ -51,6 +54,7 @@ import {ref} from "vue";
 import SingleValueStructDef from "./SingleValueStructDef.vue";
 import GenericSeqStructDef from "./GenericSeqStructDef.vue";
 import {InputDef, StringInputDef, SingleValueInputDef, SeqInputDef} from "../../../utils/dataValidationFunctions";
+import {saveGetArrayValueAtIndex} from "@/utils/baseDatatypeFunctions";
 
 export default {
 
@@ -77,6 +81,11 @@ export default {
     valueInputDef: {
       type: InputDef,
       required: true
+    },
+    initWithValue: {
+      type: Array,
+      required: false,
+      default: []
     }
   },
   emits: ['valueChanged'],
@@ -84,7 +93,17 @@ export default {
     SingleValueStructDef,
     GenericSeqStructDef
   },
-  methods: {},
+  methods: {
+
+    getInitKey() {
+      return saveGetArrayValueAtIndex(this.initWithValue, 0, undefined)
+    },
+
+    getInitValue() {
+      return saveGetArrayValueAtIndex(this.initWithValue, 1, undefined)
+    }
+
+  },
   setup(props, context) {
 
     let keyValue = ref(props.keyValue)

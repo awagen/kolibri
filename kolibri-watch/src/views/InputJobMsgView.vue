@@ -40,6 +40,7 @@
               :conditional-fields="currentJobNestedStruct.conditionalFields"
               :fields="currentJobNestedStruct.fields"
               :is-root="true"
+              :init-with-value="testJobDef1"
           >
           </NestedFieldSeqStructDef>
         </template>
@@ -67,13 +68,19 @@
 <script>
 
 import NestedFieldSeqStructDef from "../components/partials/structs/NestedFieldSeqStructDef.vue";
-import {ref} from "vue";
-import {objectToJsonStringAndSyntaxHighlight} from "@/utils/formatFunctions";
 import {useStore} from "vuex";
+
+import testJobDef1 from "../../tests/testdata/testJobDef.json";
+import testJobDef2 from "../../tests/testdata/testJobDef1.json";
 
 export default {
 
-  props: {},
+  props: {
+    fillWithValue: {
+      type: Object,
+      required: false
+    }
+  },
   components: {NestedFieldSeqStructDef},
   methods: {},
   computed: {
@@ -116,7 +123,9 @@ export default {
 
     return {
       jobNameSelectEvent,
-      valueChanged
+      valueChanged,
+      testJobDef1,
+      testJobDef2
     }
   }
 

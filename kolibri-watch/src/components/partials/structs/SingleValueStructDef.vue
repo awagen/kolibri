@@ -4,7 +4,7 @@
     For some reason causes errors when check is baked directly
     into the :value binding below (:value="!!elementDef.defaultValue ? element.defaultValue : null"
     should do but causes input fields to be unusable)-->
-    <template v-if="!!elementDef.defaultValue">
+    <template v-if="elementDef.defaultValue === 0 || !!elementDef.defaultValue">
       <input :id=VALUE_INPUT_ID
              class="form-input metric"
              type="number"
@@ -97,7 +97,7 @@
 </template>
 
 <script>
-import {ref} from "vue";
+import {onMounted, ref} from "vue";
 import {
   InputDef, StringInputDef, BooleanInputDef, NumberInputDef, InputType,
   ChoiceInputDef, FloatChoiceInputDef
@@ -121,6 +121,11 @@ export default {
     description: {
       type: String,
       required: false
+    },
+    initWithValue: {
+      type: [String, Number, Boolean],
+      required: false,
+      default: undefined
     }
   },
   emits: ['valueChanged'],
@@ -137,8 +142,17 @@ export default {
     let convertInputToNumber = (props.elementDef instanceof ChoiceInputDef) &&
         (props.elementDef.choices.filter(choice => isNaN(choice)).length == 0)
 
-
     let validator = props.elementDef.getInputValidation()
+
+    onMounted(() => {
+      // if any value passed in props.fillWithValue, we set
+      if (props.initWithValue !== undefined) {
+        console.info("got props")
+        console.log(props.initWithValue)
+        updateValue(props.initWithValue)
+        props.elementDef.defaultValue = props.initWithValue
+      }
+    })
 
     function parseRightType(val) {
       console.info(`parsing right type for ${JSON.stringify(props.elementDef.toObject())} and value ${val} and type ${typeof val}}`)
@@ -164,24 +178,28 @@ export default {
       }
     });
 
-    function updateValueEvent(valueEvent) {
-      console.debug("updateValueEvent called with value:" + valueEvent.target.value)
-      let updateValue = valueEvent.target.value
+    function updateValue(newValue) {
       if (convertInputToNumber) {
-        updateValue = Number(updateValue)
+        newValue = Number(newValue)
       }
-      let validationResult = validator.validate(updateValue)
+      let validationResult = validator.validate(newValue)
       console.debug(`validation result: ${validationResult}`)
       if (validationResult.isValid) {
         console.debug("value is valid")
         hideModal()
-        value.value = parseRightType(updateValue)
+        value.value = parseRightType(newValue)
         // emitting change event to make parent element react to update / update its structure
         context.emit('valueChanged', {name: props.name, value: value.value, position: props.position})
       } else {
         showModalMsg(validationResult.failReason)
         console.debug("value invalid")
       }
+    }
+
+    function updateValueEvent(valueEvent) {
+      console.debug("updateValueEvent called with value:" + valueEvent.target.value)
+      let newValue = valueEvent.target.value
+      updateValue(newValue)
     }
 
     function showModalMsg(msg) {

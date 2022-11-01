@@ -17,7 +17,8 @@
                 :name="name + '-' + index"
                 :position="index"
                 :key-input-def="field.keyFormat"
-                :value-input-def="field.valueFormat">
+                :value-input-def="field.valueFormat"
+                :init-with-value="[getKeyForInitIndex(index), getValueForInitIndex(index)]">
             </KeyValueStructDef>
           </div>
           <div class="k-delete-button">
@@ -44,6 +45,7 @@ import {onMounted, ref} from "vue";
 import {KeyValueInputDef} from "../../../utils/dataValidationFunctions.ts";
 import KeyValueStructDef from "./KeyValueStructDef.vue";
 import DescriptionPopover from "./elements/DescriptionPopover.vue";
+import {saveGetArrayValueAtIndex} from "@/utils/baseDatatypeFunctions";
 
 export default {
 
@@ -59,17 +61,58 @@ export default {
     description: {
       type: String,
       required: false
+    },
+    // here init value needs to be an object. To initialize the values, in onMounted enough fields will be initialized
+    // and then above the init values are passed in sequence given by extracting a sequence of keys
+    // via Object.keys()
+    initWithValue: {
+      type: Object,
+      required: false,
+      default: {}
     }
   },
   components: {KeyValueStructDef, DescriptionPopover},
   emits: ["valueChanged"],
-  methods: {},
+  methods: {
+
+
+
+  },
   setup(props, context) {
 
     // contains the KeyValueInputDefs representing the elements already added
     let addedKeyValueDefs = ref([])
     // contains the values corresponding to the input defs in addedKeyValueDefs
     let addedKeyValuePairs = ref([])
+    // sorted keys for the key / value pairs to use for initialization
+    let initValueKeys = Object.keys(props.initWithValue)
+
+    onMounted(() => {
+      // here we simply initially add enough elements to fit all key-value pairs of initWithValue
+      // the actual setting of the right key-value pairs will be done above
+      if (props.initWithValue !== undefined) {
+        initValueKeys.forEach(_ => addNextInputElement())
+      }
+    })
+
+    /**
+     * If any initialisation key-value pairs are passed, determine the n-th key value
+     * @param index - index of the key. Order derived by transformation keys from dict to list via Object.keys()
+     * @returns string - key value for key at position given by passed index. undefined if out of bounds
+     */
+    function getKeyForInitIndex(index) {
+      return saveGetArrayValueAtIndex(initValueKeys, index, undefined)
+    }
+
+    /**
+     * If any initialisation key-value pairs are passed, determine the n-th value
+     * @param index - index of the key. Order derived by transformation keys from dict to list via Object.keys()
+     * @returns string - value for key at position given by passed index. undefined if out of bounds
+     */
+    function getValueForInitIndex(index) {
+      let key = getKeyForInitIndex(index)
+      return props.initWithValue[key]
+    }
 
     /**
      * Generates a new element out of the given KeyValueInputDef, setting the properly indexed
@@ -162,7 +205,9 @@ export default {
       valueChanged,
       deleteInputElement,
       addNextInputElement,
-      KeyValueInputDef
+      KeyValueInputDef,
+      getKeyForInitIndex,
+      getValueForInitIndex
     }
   }
 
