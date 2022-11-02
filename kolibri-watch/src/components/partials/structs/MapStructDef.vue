@@ -90,8 +90,12 @@ export default {
     onMounted(() => {
       // here we simply initially add enough elements to fit all key-value pairs of initWithValue
       // the actual setting of the right key-value pairs will be done above
-      if (props.initWithValue !== undefined) {
+      if (props.initWithValue !== undefined && initValueKeys.length > 0) {
         initValueKeys.forEach(_ => addNextInputElement())
+      }
+      else {
+        addedKeyValuePairs.value.push([undefined, undefined])
+        addedKeyValueDefs.value.push(generateIndexedInputDefForIndex(0))
       }
     })
 
@@ -194,11 +198,6 @@ export default {
       // notify parent of change
       context.emit("valueChanged", {"name": props.name, "value": mapFromKeyValuePairs()})
     }
-
-    onMounted(() => {
-      addedKeyValuePairs.value.push([undefined, undefined])
-      addedKeyValueDefs.value.push(generateIndexedInputDefForIndex(0))
-    })
 
     return {
       addedKeyValueDefs,
