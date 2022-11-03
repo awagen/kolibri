@@ -42,8 +42,6 @@ export default {
     },
 
     addStandaloneDataToComposer(fileObj){
-      console.info("called addStandaloneDataToComposer on fileObj:")
-      console.log(fileObj)
       this.$store.commit("addSelectedDataFile", fileObj)
     },
     addDataToComposerMapping(fileObj){
@@ -54,20 +52,13 @@ export default {
     },
 
     removeData(fileObj, mappingObj){
-      console.info("trying to delete fileObj:")
-      console.log(fileObj)
-      console.info("from mappingObj")
-      console.log(mappingObj)
       if (!fileObj.isMapping && mappingObj && fileObj === mappingObj.data.keyValues) {
-        console.info("deletion: is key for mapping")
         this.removeMappingFromComposer(mappingObj)
       }
       else if (!fileObj.isMapping && !mappingObj){
-        console.info("deletion: is standalone")
         this.removeDataFromComposer(fileObj)
       }
       else if (fileObj.isMapping){
-        console.info("deletion: is mapping")
         this.removeMappedValueFromComposerMapping(fileObj, mappingObj)
       }
     },

@@ -153,7 +153,6 @@ export default {
     })
 
     function parseRightType(val) {
-      console.info(`parsing right type for ${JSON.stringify(props.elementDef.toObject())} and value ${val} and type ${typeof val}}`)
       if (props.elementDef.valueType === InputType.INT) {
         return parseInt(val)
       } else if ([InputType.FLOAT, InputType.FLOAT_CHOICE]
@@ -169,7 +168,6 @@ export default {
       if (event.target.id !== VALUE_INPUT_ID) {
         return
       }
-      console.debug(`matching input id change event on input id '${event.target.id}, value '${event.target.value}'`)
       let validationResult = validator.validate(event.target.value)
       if (validationResult.isValid) {
         hideModal()
@@ -181,21 +179,17 @@ export default {
         newValue = Number(newValue)
       }
       let validationResult = validator.validate(newValue)
-      console.debug(`validation result: ${validationResult}`)
       if (validationResult.isValid) {
-        console.debug("value is valid")
         hideModal()
         value.value = parseRightType(newValue)
         // emitting change event to make parent element react to update / update its structure
         context.emit('valueChanged', {name: props.name, value: value.value, position: props.position})
       } else {
         showModalMsg(validationResult.failReason)
-        console.debug("value invalid")
       }
     }
 
     function updateValueEvent(valueEvent) {
-      console.debug("updateValueEvent called with value:" + valueEvent.target.value)
       let newValue = valueEvent.target.value
       updateValue(newValue)
     }
@@ -206,7 +200,6 @@ export default {
     }
 
     function hideModal() {
-      console.debug("hiding")
       document.getElementById(TOAST_ID).classList.add("display-none");
       document.getElementById(TOAST_CONTENT_ID).textContent = "";
     }

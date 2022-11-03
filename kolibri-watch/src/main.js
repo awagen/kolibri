@@ -155,8 +155,6 @@ const store = createStore({
                     console.info("job response: ")
                     console.log(jobDef)
                     let requiredJobDefObj = jobDef["payloadDef"]
-                    console.info("search evaluation job struct def:")
-                    console.log(requiredJobDefObj)
                     let name = jobDef["name"]
                     let description = jobDef["description"]
                     let endpoint = jobDef["endpoint"]
@@ -305,8 +303,6 @@ const store = createStore({
                 "type": "standalone",
                 "data": fileObj
             }
-            console.info("adding standalone data file:")
-            console.log(newElement)
             state.dataState.selectedData.push(newElement)
             this.commit("recalculateSelectedDataJsonString")
         },
@@ -331,8 +327,6 @@ const store = createStore({
                         "mappedValues": []
                     }
                 }
-                console.info("adding standalone value as mapping key:")
-                console.log(newMapping)
                 state.dataState.selectedDataMapping = newMapping
                 state.dataState.selectedData.push(newMapping)
             } else {
@@ -341,8 +335,6 @@ const store = createStore({
                         "Create one first by adding standalone data as key values.")
                     return
                 }
-                console.info("adding mapped value to existing mapping:")
-                console.log(fileObj)
                 state.dataState.selectedDataMapping.data.mappedValues.push(fileObj)
                 fileObj["mappedToIndex"] = 0
             }
@@ -371,13 +363,7 @@ const store = createStore({
          * @param mappingObj
          */
         removeSelectedMapping(state, mappingObj) {
-            console.info("remove selected state from mapping obj")
-            console.log(state)
-            console.log(mappingObj)
             let removeIndex = state.dataState.selectedData.map(x => x.data).indexOf(mappingObj)
-            console.info("found index of mapping obj in selectedData" + removeIndex)
-            console.info("selected data")
-            console.log(state.dataState.selectedData)
             if (removeIndex >= 0) {
                 state.dataState.selectedData.splice(removeIndex, 1)
             }
@@ -473,7 +459,6 @@ const store = createStore({
         },
 
         addIRMetricToSelected(state, metricType) {
-            console.info("adding metric to selected: " + metricType)
             let existingMetricIds = state.metricState.selectedIRMetrics.map(x => x.kId)
             let addCandidates = state.metricState.availableIRMetrics
                 .filter(metric => metric.type === metricType)

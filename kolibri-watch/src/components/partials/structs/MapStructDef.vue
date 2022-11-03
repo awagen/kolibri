@@ -145,16 +145,11 @@ export default {
      * After the set values are updated, events a state update for its parent to pick up.
      **/
     function valueChanged(attributes) {
-      console.debug("value changed event: ")
-      console.debug(attributes)
       let changedIndex = attributes.position
-      console.debug("changed index: " + changedIndex)
       if (addedKeyValuePairs.value.length > changedIndex) {
         addedKeyValuePairs.value[changedIndex] = [attributes.name, attributes.value]
       }
       context.emit("valueChanged", {"name": props.name, "value": mapFromKeyValuePairs()})
-      console.debug("value changed event: ")
-      console.debug({"name": props.name, "value": mapFromKeyValuePairs()})
     }
 
     /**
@@ -187,13 +182,11 @@ export default {
      **/
     function deleteInputElement(index) {
       addedKeyValuePairs.value.splice(index, 1)
-      console.debug("setting addedKeyValuePairs: " + JSON.stringify({"data": addedKeyValuePairs.value}))
       // now adjust indices
       let newInputDefs = []
       for (let [defIndex, _] of addedKeyValuePairs.value.entries()) {
         newInputDefs.push(generateIndexedInputDefForIndex(defIndex))
       }
-      console.debug("setting addedKeyValueDefs: " + newInputDefs.map(x => JSON.stringify(x.toObject())))
       addedKeyValueDefs.value = newInputDefs
       // notify parent of change
       context.emit("valueChanged", {"name": props.name, "value": mapFromKeyValuePairs()})

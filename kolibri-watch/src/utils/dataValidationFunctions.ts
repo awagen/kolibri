@@ -637,14 +637,12 @@ class InputValidation {
             let min = parseInt(params["min"])
             let max = parseInt(params["max"])
             this.validationFunction = (val) => {
-                console.info("validating value: " + val)
                 return getValidationByMinMax(min, max, type)(val)
             }
         } else if (type === InputType.FLOAT) {
             let min = parseFloat(params["min"])
             let max = parseFloat(params["max"])
             this.validationFunction = (val) => {
-                console.info("validating value: " + val)
                 return getValidationByMinMax(min, max, type)(val)
             }
         } else if (type === InputType.STRING) {

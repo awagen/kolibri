@@ -229,10 +229,6 @@ const mapDefConverter: DefConverter = (obj, elementId, position) => {
 
 const seqDefConverter: DefConverter = (obj, elementId, position) => {
     let perElementFormat: InputDef = objToInputDef(obj[KEY_PER_ELEMENT_FORMAT], adjustElementIdToPosition(elementId, position + 1), position + 1)
-    console.debug("seqdef per-element format")
-    console.debug(perElementFormat)
-    console.debug("is nested")
-    console.debug(perElementFormat instanceof NestedFieldSequenceInputDef)
     return new SeqInputDef(adjustElementIdToPosition(elementId, position), perElementFormat)
 }
 

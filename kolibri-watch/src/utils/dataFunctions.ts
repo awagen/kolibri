@@ -34,7 +34,6 @@ function filteredResultsReduced(executionResult) {
  * @param state
  */
 function selectedDataToParameterValuesJson(selectedData){
-    console.info("generating json")
     return selectedData.map(x => {
         if (x.type === "standalone") {
             return x.data.jsonDefinition

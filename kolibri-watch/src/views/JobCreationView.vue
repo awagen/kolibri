@@ -47,19 +47,16 @@ export default {
   methods: {
     selectDisplay(type) {
       if (type === "inputDefinition"){
-        console.info("input definition type")
         this.isActiveInputDefView = true
         this.isActiveTemplateView = false
         this.isActiveCreationView = false
       }
       if (type === "template"){
-        console.info("template type")
         this.isActiveInputDefView = false
         this.isActiveTemplateView = true
         this.isActiveCreationView = false
       }
       else if (type === "creation"){
-        console.info("creation type")
         this.isActiveInputDefView = false
         this.isActiveTemplateView = false
         this.isActiveCreationView = true

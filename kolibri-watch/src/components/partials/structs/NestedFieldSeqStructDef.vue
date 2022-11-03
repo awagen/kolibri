@@ -203,9 +203,6 @@ export default {
 
       // check those conditional fields that are conditioned on the passed attribute name and have a value mapping
       // for the current value
-      console.info("fieldStates keys")
-      console.log(fieldStates.value)
-
       let validConditionalFields = getAllValidConditionalFields()
 
       let validConditionalFieldNames = validConditionalFields.map(field => field.name)
@@ -239,7 +236,6 @@ export default {
     // the state keeping within the single components should take care of set values if state is altered,
     // otherwise we might need to set default values on the field's InputDefs (conditional or unconditional inputs)
     function valueChanged(attributes) {
-      console.debug(`Nested struct def incoming value changed event: ${JSON.stringify(attributes)}`)
       let unconditionalField = isUnconditionalField(attributes)
       if (unconditionalField) {
         fieldStates.value[attributes.name] = attributes.value

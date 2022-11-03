@@ -116,7 +116,6 @@ export default {
     }
 
     function valueChanged(attributes) {
-      console.info("child value changed: " + JSON.stringify(attributes))
       store.commit("updateCurrentJobDefState",
           attributes)
     }

@@ -124,7 +124,6 @@ export default {
     function generateIndexedInputDefForIndex(index) {
       let updatedCopy = props.inputDef.copy(
           `${props.inputDef.elementId}-index-${index}`, addedInputValues.value[index])
-      console.debug(`adding updated element copy ${JSON.stringify(updatedCopy.toObject())}`)
       return updatedCopy
     }
 
@@ -134,10 +133,7 @@ export default {
     }
 
     function valueChanged(attributes) {
-      console.debug("generic struct def value changed event: ")
-      console.debug(attributes)
       let changedIndex = attributes.position
-      console.debug("generic struct def changed index: " + changedIndex)
       if (addedInputValues.value.length > changedIndex) {
         addedInputValues.value[changedIndex] = attributes.value
       }
@@ -146,8 +142,6 @@ export default {
         "value": addedInputValues.value,
         "position": props.position
       })
-      console.debug("generic struct def value changed event: ")
-      console.debug({"name": props.name, "value": addedInputValues.value})
     }
 
     /**
