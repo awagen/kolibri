@@ -97,8 +97,16 @@ const intDefConverter: DefConverter = (obj, elementId, position) => {
 }
 
 const floatDefConverter: DefConverter = (obj, elementId, position) => {
-    return new NumberInputDef(adjustElementIdToPosition(elementId, position), 0.1, Number.MIN_VALUE, Number.MAX_VALUE)
+    return new NumberInputDef(adjustElementIdToPosition(elementId, position), 0.1, -Number.MAX_VALUE, Number.MAX_VALUE)
 }
+
+const floatingPointNumberMinMaxDefConverter: DefConverter = (obj, elementId, position) => {
+    let min = parseFloat(obj[KEY_MIN])
+    let max = parseFloat(obj[KEY_MAX])
+    let step = 0.1
+    return new NumberInputDef(adjustElementIdToPosition(elementId, position), step, min, max)
+}
+
 
 const numberMinMaxDefConverter: DefConverter = (obj, elementId, position) => {
     let min = obj[KEY_MIN]
@@ -255,9 +263,9 @@ function objToInputDef(obj: Object, elementId: string, position: number): InputD
         case MIN_MAX_INT_TYPE:
             return numberMinMaxDefConverter(obj, elementId, position)
         case MIN_MAX_FLOAT_TYPE:
-            return numberMinMaxDefConverter(obj, elementId, position)
+            return floatingPointNumberMinMaxDefConverter(obj, elementId, position)
         case MIN_MAX_DOUBLE_TYPE:
-            return numberMinMaxDefConverter(obj, elementId, position)
+            return floatingPointNumberMinMaxDefConverter(obj, elementId, position)
         case CHOICE_STRING_TYPE:
             return choiceDefConverter(obj, elementId, position)
         case CHOICE_INT_TYPE:
@@ -323,6 +331,7 @@ export {
     regexDefConverter,
     intDefConverter,
     floatDefConverter,
+    floatingPointNumberMinMaxDefConverter,
     numberMinMaxDefConverter,
     booleanDefConverter,
     stringConstantDefConverter,
