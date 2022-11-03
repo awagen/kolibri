@@ -147,10 +147,8 @@ export default {
     onMounted(() => {
       // if any value passed in props.fillWithValue, we set
       if (props.initWithValue !== undefined) {
-        console.info("got props")
-        console.log(props.initWithValue)
-        updateValue(props.initWithValue)
         props.elementDef.defaultValue = props.initWithValue
+        updateValue(props.initWithValue)
       }
     })
 

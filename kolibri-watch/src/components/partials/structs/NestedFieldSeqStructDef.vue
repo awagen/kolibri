@@ -6,10 +6,14 @@
       <template v-if="(field.valueFormat instanceof SingleValueInputDef)">
         <div class="col-3 col-sm-12">
           <DescriptionPopover :description="field.description"/>
-          <label class="form-label k-field-name" :for="field.valueFormat.elementId + '-' + field.name + '-' + position + '-' + index">{{ field.name }}</label>
+          <label class="form-label k-field-name"
+                 :for="field.valueFormat.elementId + '-' + field.name + '-' + position + '-' + index">{{
+              field.name
+            }}</label>
         </div>
 
-        <div :id="field.valueFormat.elementId + '-' + field.name + '-' + position + '-' + index" class="k-input col-9 col-sm-12">
+        <div :id="field.valueFormat.elementId + '-' + field.name + '-' + position + '-' + index"
+             class="k-input col-9 col-sm-12">
           <SingleValueStructDef
               @value-changed="valueChanged"
               :name="field.name"
@@ -17,7 +21,7 @@
               :position="position * 100 + index"
               :description="field.description"
               :init-with-value="saveGetMapValueForKey(initWithValue, field.name, '')"
-              >
+          >
           </SingleValueStructDef>
         </div>
       </template>
@@ -25,9 +29,13 @@
       <template v-if="(field.valueFormat instanceof SeqInputDef)">
         <div class="col-3 col-sm-12">
           <DescriptionPopover :description="field.description"/>
-          <label class="form-label k-field-name" :for="field.valueFormat.elementId + '-' + field.name + '-' + position + '-' + index">{{ field.name }}</label>
+          <label class="form-label k-field-name"
+                 :for="field.valueFormat.elementId + '-' + field.name + '-' + position + '-' + index">{{
+              field.name
+            }}</label>
         </div>
-        <div :id="field.valueFormat.elementId + '-' + field.name + '-' + position + '-' + index" class="k-input col-9 col-sm-12">
+        <div :id="field.valueFormat.elementId + '-' + field.name + '-' + position + '-' + index"
+             class="k-input col-9 col-sm-12">
           <GenericSeqStructDef
               @value-changed="valueChanged"
               :name="field.name"
@@ -35,7 +43,7 @@
               :position="position * 100 + index"
               :description="field.description"
               :init-with-value="saveGetMapValueForKey(initWithValue, field.name, [])"
-              >
+          >
           </GenericSeqStructDef>
         </div>
       </template>
@@ -54,9 +62,13 @@
       <template v-if="(field.valueFormat instanceof NestedFieldSequenceInputDef)">
         <div class="col-3 col-sm-12">
           <DescriptionPopover :description="field.description"/>
-          <label class="form-label k-field-name" :for="field.valueFormat.elementId + '-' + field.name + '-' + position + '-' + index">{{ field.name }}</label>
+          <label class="form-label k-field-name"
+                 :for="field.valueFormat.elementId + '-' + field.name + '-' + position + '-' + index">{{
+              field.name
+            }}</label>
         </div>
-        <div :id="field.valueFormat.elementId + '-' + field.name  + '-' + position + '-' + index" class="k-input col-9 col-sm-12">
+        <div :id="field.valueFormat.elementId + '-' + field.name  + '-' + position + '-' + index"
+             class="k-input col-9 col-sm-12">
           <NestedFieldSeqStructDef
               @value-changed="valueChanged"
               :conditional-fields="field.valueFormat.conditionalFields"
@@ -64,8 +76,9 @@
               :name="field.name"
               :is-root="false"
               :description="field.description"
+              :position="position * 100 + index"
               :init-with-value="saveGetMapValueForKey(initWithValue, field.name, {})"
-              >
+          >
           </NestedFieldSeqStructDef>
         </div>
       </template>
@@ -123,9 +136,7 @@ export default {
     KeyValueStructDef,
     MapStructDef
   },
-  computed: {
-
-  },
+  computed: {},
   methods: {},
   setup(props, context) {
     const store = useStore()
@@ -138,6 +149,45 @@ export default {
       fieldStates.value[field.name] = undefined
     })
 
+    /**
+     * Given a name and value of a condition field, find those conditional fields that
+     * a) depend on the passed field name and b) there exists a mapping for the value of the condition field that
+     * contains this field
+     * @param conditionFieldName - name of the field to search for dependent conditional fields
+     * @param conditionFieldValue - value of the field to search for dependent conditional fields
+     * @returns {V[]}
+     */
+    function getValidConditionalFieldsForConditionField(conditionFieldName, conditionFieldValue) {
+      return props.conditionalFields
+          .filter(condField => condField.conditionField === conditionFieldName)
+          .filter(condField => condField.mapping.get(conditionFieldValue) !== undefined)
+          .flatMap(condField => condField.mapping.get(conditionFieldValue))
+    }
+
+    function isConditionalValueAffected(conditionFieldName) {
+      return props.conditionalFields
+          .find(condField => condField.conditionField === conditionFieldName) !== undefined
+    }
+
+    /**
+     * Iterates over all key value pairs of non-conditional fields (those are the only ones that can cause
+     * an conditional field to become activated) and check which conditional fields would need to be made active
+     * (e.g since they are contained in the mapping of the condition
+     * @returns {*[]}
+     */
+    function getAllValidConditionalFields() {
+      let validConditionalFields = []
+      for (const [key, value] of Object.entries(fieldStates.value)) {
+        getValidConditionalFieldsForConditionField(key, value).forEach(element => {
+          if (!(element in validConditionalFields)) {
+            validConditionalFields.push(element)
+          }
+        })
+      }
+      return validConditionalFields
+    }
+
+
     function updateConditionalFields(attributes) {
       // now check whether we have any conditional fields that carry the attribute.name as conditionField
       // and contain the current value of the conditionField as key in the mapping. If yes, add all FieldDef that
@@ -145,40 +195,24 @@ export default {
       // NOTE: need to cherish default values update within the fields objects when a value is updated so
       // that we retain the values if an element is not deleted (e.g. when one or more elements are deleted)
 
-      // determine which conditional fields are still needed
-      console.debug(`all conditionalFields: ${props.conditionalFields.map(cField => JSON.stringify(cField.toObject()))}`)
-      console.debug(props.conditionalFields)
-
       // check if the changed field value actually influences any conditional fields
-      let existsConditionalField = props.conditionalFields
-          .find(condField => condField.conditionField === attributes.name)
-
-      // it's possible the changed value is not condition for conditional values, in which case we do not need
-      // to manage those and can return
-      if (existsConditionalField === undefined) {
+      let conditionalFieldIsAffected = isConditionalValueAffected(attributes.name)
+      if (!conditionalFieldIsAffected) {
         return
       }
 
-      // TODO: here actually check whether the conditional fields for the conditionField value
-      // suggest that any changes need to be made. If not, do not set the conditionalFields to empty, otherwise
-      // conditional fields will suddenly disappear (might already be avoided with the above existsConditionalField check.
-      // But check if there can be multiple conditionFields for which conditionalFields might be needed, in which case
-      // we need to strictly limit removal to those fields not needed anymore (e.g comparison before change to after change)
-      let validConditionalFields = props.conditionalFields
-          .filter(condField => condField.conditionField === attributes.name)
-          .filter(condField => condField.mapping.get(attributes.value) !== undefined)
-          .flatMap(condField => condField.mapping.get(attributes.value))
+      // check those conditional fields that are conditioned on the passed attribute name and have a value mapping
+      // for the current value
+      console.info("fieldStates keys")
+      console.log(fieldStates.value)
 
-      console.debug("valid conditional fields: " + validConditionalFields.map(field => (field === undefined) ? "undefined" : field.toObject()))
+      let validConditionalFields = getAllValidConditionalFields()
 
       let validConditionalFieldNames = validConditionalFields.map(field => field.name)
       let currentlySelectedFieldNames = selectedConditionalFields.value.map(field => field.name)
       let retainFieldNames = currentlySelectedFieldNames.filter(value => validConditionalFieldNames.includes(value))
       let addNewFieldNames = validConditionalFieldNames.filter(value => !currentlySelectedFieldNames.includes(value))
       let addConditionalFields = validConditionalFields.filter(field => addNewFieldNames.includes(field.name))
-
-      console.info(`retainFieldNames: ${retainFieldNames}`)
-      console.info(`addNewFieldNames: ${addNewFieldNames}`)
 
       // delete those selected conditional fields that don't need to be retained
       selectedConditionalFields.value = selectedConditionalFields.value.filter(field => retainFieldNames.includes(field.name))
@@ -194,26 +228,28 @@ export default {
       addNewFieldNames.forEach(fieldName => selectedConditionalFieldsStates[fieldName] = undefined)
     }
 
+    function isUnconditionalField(attributes) {
+      return props.fields.map(field => field.name).includes(attributes.name)
+    }
+
+    function isSelectedConditionalField(attributes) {
+      return selectedConditionalFields.value.map(field => field.name).includes(attributes.name)
+    }
+
     // the state keeping within the single components should take care of set values if state is altered,
     // otherwise we might need to set default values on the field's InputDefs (conditional or unconditional inputs)
     function valueChanged(attributes) {
       console.debug(`Nested struct def incoming value changed event: ${JSON.stringify(attributes)}`)
-      let isUnconditionalField = true
-      if (props.fields.map(field => field.name).includes(attributes.name)) {
+      let unconditionalField = isUnconditionalField(attributes)
+      if (unconditionalField) {
         fieldStates.value[attributes.name] = attributes.value
-      } else if (selectedConditionalFields.value.map(field => field.name).includes(attributes.name)) {
-        isUnconditionalField = false
+      } else if (isSelectedConditionalField(attributes)) {
         selectedConditionalFieldsStates.value[attributes.name] = attributes.value
       }
       // update the conditional fields
-      if (isUnconditionalField) {
+      if (unconditionalField) {
         updateConditionalFields(attributes)
       }
-
-      console.debug("Nested struct def conditional fields: ")
-      console.debug(selectedConditionalFields.value)
-      console.debug("Nested struct def conditional fields states: ")
-      console.debug(selectedConditionalFieldsStates.value)
 
       // if it's a root element,
       // update the global state of this object (merging the unconditional and the conditional fields)
@@ -229,8 +265,7 @@ export default {
           jobDefStateObj: combinedValue,
           jobDefState: nestedInputDef
         })
-      }
-      else {
+      } else {
         context.emit('valueChanged', {
           name: props.name,
           value: combinedValue,
@@ -267,7 +302,7 @@ export default {
 }
 
 .k-field-name {
-  word-wrap:break-word;
+  word-wrap: break-word;
   padding-right: 1em;
   display: inline-block;
 }
