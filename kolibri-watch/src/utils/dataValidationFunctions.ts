@@ -571,10 +571,11 @@ class FieldDef {
         this.description = description
     }
 
-    copy(name: string = this.name): FieldDef {
+    copy(name: string = this.name, clearValueFormatDefaultValue: boolean = false): FieldDef {
+        let valueFormatDefaultValue = clearValueFormatDefaultValue ? undefined : this.valueFormat.defaultValue
         return new FieldDef(
             name,
-            this.valueFormat.copy(this.valueFormat.elementId),
+            this.valueFormat.copy(this.valueFormat.elementId, valueFormatDefaultValue),
             this.required,
             this.description)
     }

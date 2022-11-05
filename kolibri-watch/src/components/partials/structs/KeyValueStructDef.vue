@@ -12,7 +12,9 @@
           :name="name + '-key-' + position"
           :position="position"
           :element-def="keyInputDef"
-          :init-with-value="getInitKey()">
+          :init-with-value="getInitKey()"
+          :reset-counter="childrenResetCounter"
+      >
       </SingleValueStructDef>
     </template>
     <template v-else>
@@ -31,7 +33,9 @@
           :name="name + '-value-' + position"
           :position="position"
           :element-def="valueInputDef"
-          :init-with-value="getInitValue()">
+          :init-with-value="getInitValue()"
+          :reset-counter="childrenResetCounter"
+      >
       </SingleValueStructDef>
     </template>
     <!-- value input -->
@@ -41,7 +45,9 @@
           :name="name + '-value-' + position"
           :input-def="valueInputDef.inputDef"
           :position="position"
-          :init-with-value="getInitValue()">
+          :init-with-value="getInitValue()"
+          :reset-counter="childrenResetCounter"
+      >
       </GenericSeqStructDef>
     </template>
 
@@ -50,7 +56,7 @@
 </template>
 
 <script>
-import {ref} from "vue";
+import {ref, watch} from "vue";
 import SingleValueStructDef from "./SingleValueStructDef.vue";
 import GenericSeqStructDef from "./GenericSeqStructDef.vue";
 import {InputDef, StringInputDef, SingleValueInputDef, SeqInputDef} from "../../../utils/dataValidationFunctions";
@@ -86,6 +92,11 @@ export default {
       type: Array,
       required: false,
       default: []
+    },
+    resetCounter: {
+      type: Number,
+      required: false,
+      default: 0
     }
   },
   emits: ['valueChanged'],
@@ -109,13 +120,37 @@ export default {
     let keyValue = ref(props.keyValue)
     let valueValue = ref(undefined)
 
+    let childrenResetCounter = ref(0)
+
+    function increaseChildrenResetCounter() {
+      childrenResetCounter.value = childrenResetCounter.value + 1
+    }
+
+    function resetValues(){
+      keyValue.value = props.keyValue
+      valueValue.value = undefined
+    }
+
+    function promoteCurrentStateUp() {
+      context.emit("valueChanged", {"name": keyValue.value, "value": valueValue.value, "position": props.position})
+    }
+
+    watch(() => props.resetCounter, (newValue, oldValue) => {
+      console.info(`element '${props.name}', resetCounter increase: ${newValue}`)
+      if (newValue > oldValue) {
+        increaseChildrenResetCounter()
+        resetValues()
+        promoteCurrentStateUp()
+      }
+    })
+
     /**
      * event handler where attributes.value provides the updated value
      * Emits valueChanged event with result of shape {"name": [keyValue], "value": [valueValue]}
      */
     function valueChanged(attributes) {
       valueValue.value = attributes.value
-      context.emit("valueChanged", {"name": keyValue.value, "value": valueValue.value, "position": props.position})
+      promoteCurrentStateUp()
     }
 
     /**
@@ -124,14 +159,15 @@ export default {
      */
     function keyValueChanged(attributes) {
       keyValue.value = attributes.value
-      context.emit("valueChanged", {"name": keyValue.value, "value": valueValue.value, "position": props.position})
+      promoteCurrentStateUp()
     }
 
     return {
       valueChanged,
       keyValueChanged,
       SingleValueInputDef,
-      SeqInputDef
+      SeqInputDef,
+      childrenResetCounter
     }
   }
 

@@ -14,7 +14,9 @@
                 :element-def="field"
                 :name="name + '-' + index"
                 :position="index"
-                :init-with-value="getValueForIndexKey(index)">
+                :init-with-value="getValueForIndexKey(index)"
+                :reset-counter="childrenResetCounter"
+            >
             </SingleValueStructDef>
           </div>
           <div class="k-delete-button">
@@ -33,7 +35,9 @@
                 :name="name"
                 :input-def="field.inputDef"
                 :position="index"
-                :init-with-value="getValueForIndexKey(index)">
+                :init-with-value="getValueForIndexKey(index)"
+                :reset-counter="childrenResetCounter"
+            >
             </GenericSeqStructDef>
           </div>
           <div class="k-delete-button">
@@ -54,7 +58,9 @@
                 :name="name"
                 :position="index"
                 :is-root="false"
-                :init-with-value="getValueForIndexKey(index)">
+                :init-with-value="getValueForIndexKey(index)"
+                :reset-counter="childrenResetCounter"
+            >
             </NestedFieldSeqStructDef>
           </div>
           <div class="k-delete-button">
@@ -84,7 +90,7 @@ import {
   NestedFieldSequenceInputDef,
   SeqInputDef
 } from "@/utils/dataValidationFunctions";
-import {onMounted, ref, defineAsyncComponent} from "vue";
+import {onMounted, ref, defineAsyncComponent, watch} from "vue";
 import {saveGetArrayValueAtIndex} from "@/utils/baseDatatypeFunctions";
 
 export default {
@@ -98,9 +104,13 @@ export default {
       type: Array,
       required: false,
       default: []
+    },
+    resetCounter: {
+      type: Number,
+      required: false,
+      default: 0
     }
   },
-
   emits: ['valueChanged'],
   components: {
     SingleValueStructDef: defineAsyncComponent(() =>
@@ -117,6 +127,26 @@ export default {
     let addedInputDefs = ref([])
     let addedInputValues = ref([])
 
+    let childrenResetCounter = ref(0)
+
+    function increaseChildrenResetCounter() {
+      childrenResetCounter.value = childrenResetCounter.value + 1
+    }
+
+    function resetValues() {
+      addedInputDefs.value = []
+      addedInputValues.value = []
+    }
+
+    watch(() => props.resetCounter, (newValue, oldValue) => {
+      console.info(`element '${props.name}', resetCounter increase: ${newValue}`)
+      if (newValue > oldValue) {
+        increaseChildrenResetCounter()
+        resetValues()
+        promoteCurrentStateUp()
+      }
+    })
+
     function getValueForIndexKey(index) {
       return saveGetArrayValueAtIndex(props.initWithValue, index, undefined)
     }
@@ -132,16 +162,20 @@ export default {
       return generateIndexedInputDefForIndex(newItemIndex)
     }
 
-    function valueChanged(attributes) {
-      let changedIndex = attributes.position
-      if (addedInputValues.value.length > changedIndex) {
-        addedInputValues.value[changedIndex] = attributes.value
-      }
+    function promoteCurrentStateUp() {
       context.emit("valueChanged", {
         "name": props.name,
         "value": addedInputValues.value,
         "position": props.position
       })
+    }
+
+    function valueChanged(attributes) {
+      let changedIndex = attributes.position
+      if (addedInputValues.value.length > changedIndex) {
+        addedInputValues.value[changedIndex] = attributes.value
+      }
+      promoteCurrentStateUp()
     }
 
     /**
@@ -192,7 +226,8 @@ export default {
       valueChanged,
       addNextInputElement,
       deleteInputElement,
-      getValueForIndexKey
+      getValueForIndexKey,
+      childrenResetCounter
     }
   }
 

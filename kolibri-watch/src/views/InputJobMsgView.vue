@@ -41,6 +41,7 @@
               :fields="currentJobNestedStruct.fields"
               :is-root="true"
               :init-with-value="testJobDef1"
+              :reset-counter="resetCounter"
           >
           </NestedFieldSeqStructDef>
         </template>
@@ -72,6 +73,7 @@ import {useStore} from "vuex";
 
 import testJobDef1 from "../../tests/testdata/testJobDef.json";
 import testJobDef2 from "../../tests/testdata/testJobDef1.json";
+import {ref} from "vue";
 
 export default {
 
@@ -110,6 +112,7 @@ export default {
   },
   setup(props, context) {
     const store = useStore()
+    let resetCounter = ref(0)
 
     function jobNameSelectEvent(event) {
       store.commit("updateSelectedJobName", event.target.value)
@@ -124,7 +127,8 @@ export default {
       jobNameSelectEvent,
       valueChanged,
       testJobDef1,
-      testJobDef2
+      testJobDef2,
+      resetCounter
     }
   }
 

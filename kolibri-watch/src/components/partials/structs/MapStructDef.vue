@@ -18,7 +18,9 @@
                 :position="index"
                 :key-input-def="field.keyFormat"
                 :value-input-def="field.valueFormat"
-                :init-with-value="[getKeyForInitIndex(index), getValueForInitIndex(index)]">
+                :init-with-value="[getKeyForInitIndex(index), getValueForInitIndex(index)]"
+                :reset-counter="childrenResetCounter"
+            >
             </KeyValueStructDef>
           </div>
           <div class="k-delete-button">
@@ -41,7 +43,7 @@
 </template>
 
 <script>
-import {onMounted, ref} from "vue";
+import {onMounted, ref, watch} from "vue";
 import {KeyValueInputDef} from "../../../utils/dataValidationFunctions.ts";
 import KeyValueStructDef from "./KeyValueStructDef.vue";
 import DescriptionPopover from "./elements/DescriptionPopover.vue";
@@ -69,14 +71,16 @@ export default {
       type: Object,
       required: false,
       default: {}
+    },
+    resetCounter: {
+      type: Number,
+      required: false,
+      default: 0
     }
   },
   components: {KeyValueStructDef, DescriptionPopover},
   emits: ["valueChanged"],
   methods: {
-
-
-
   },
   setup(props, context) {
 
@@ -87,7 +91,28 @@ export default {
     // sorted keys for the key / value pairs to use for initialization
     let initValueKeys = Object.keys(props.initWithValue)
 
-    onMounted(() => {
+    let childrenResetCounter = ref(0)
+
+    function increaseChildrenResetCounter() {
+      childrenResetCounter.value = childrenResetCounter.value + 1
+    }
+
+    function promoteCurrentStateUp() {
+      context.emit("valueChanged", {"name": props.name, "value": mapFromKeyValuePairs()})
+    }
+
+    watch(() => props.resetCounter, (newValue, oldValue) => {
+      console.info(`element '${props.name}', resetCounter increase: ${newValue}`)
+      if (newValue > oldValue) {
+        increaseChildrenResetCounter()
+        initializeValues()
+        promoteCurrentStateUp()
+      }
+    })
+
+    function initializeValues() {
+      addedKeyValueDefs.value = []
+      addedKeyValuePairs.value = []
       // here we simply initially add enough elements to fit all key-value pairs of initWithValue
       // the actual setting of the right key-value pairs will be done above
       if (props.initWithValue !== undefined && initValueKeys.length > 0) {
@@ -97,6 +122,10 @@ export default {
         addedKeyValuePairs.value.push([undefined, undefined])
         addedKeyValueDefs.value.push(generateIndexedInputDefForIndex(0))
       }
+    }
+
+    onMounted(() => {
+      initializeValues()
     })
 
     /**
@@ -149,7 +178,7 @@ export default {
       if (addedKeyValuePairs.value.length > changedIndex) {
         addedKeyValuePairs.value[changedIndex] = [attributes.name, attributes.value]
       }
-      context.emit("valueChanged", {"name": props.name, "value": mapFromKeyValuePairs()})
+      promoteCurrentStateUp()
     }
 
     /**
@@ -189,7 +218,7 @@ export default {
       }
       addedKeyValueDefs.value = newInputDefs
       // notify parent of change
-      context.emit("valueChanged", {"name": props.name, "value": mapFromKeyValuePairs()})
+      promoteCurrentStateUp()
     }
 
     return {
@@ -199,7 +228,8 @@ export default {
       addNextInputElement,
       KeyValueInputDef,
       getKeyForInitIndex,
-      getValueForInitIndex
+      getValueForInitIndex,
+      childrenResetCounter
     }
   }
 
