@@ -158,6 +158,7 @@ export default {
     }
 
     function resetValues() {
+      props.elementDef.defaultValue = undefined
       value.value = minValueDefault()
     }
 

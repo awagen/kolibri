@@ -14,7 +14,7 @@
                 :element-def="field"
                 :name="name + '-' + index"
                 :position="index"
-                :init-with-value="getValueForIndexKey(index)"
+                :init-with-value="getInitValueForIndexKey(index)"
                 :reset-counter="childrenResetCounter"
             >
             </SingleValueStructDef>
@@ -35,7 +35,7 @@
                 :name="name"
                 :input-def="field.inputDef"
                 :position="index"
-                :init-with-value="getValueForIndexKey(index)"
+                :init-with-value="getInitValueForIndexKey(index)"
                 :reset-counter="childrenResetCounter"
             >
             </GenericSeqStructDef>
@@ -58,7 +58,7 @@
                 :name="name"
                 :position="index"
                 :is-root="false"
-                :init-with-value="getValueForIndexKey(index)"
+                :init-with-value="getInitValueForIndexKey(index)"
                 :reset-counter="childrenResetCounter"
             >
             </NestedFieldSeqStructDef>
@@ -127,19 +127,34 @@ export default {
     let addedInputDefs = ref([])
     let addedInputValues = ref([])
 
+    // counter solely set to be passed as props to children such that they can react on changes.
+    // A change of this value signals to children that they shall reset their state
     let childrenResetCounter = ref(0)
 
+    /**
+     * Increase value passed as props to children such that children can react to changes with
+     * a reset of their state
+     */
     function increaseChildrenResetCounter() {
       childrenResetCounter.value = childrenResetCounter.value + 1
     }
 
+    /**
+     * Reset the currently set values
+     */
     function resetValues() {
       addedInputDefs.value = []
       addedInputValues.value = []
     }
 
+    /**
+     * The reset counter is to be increased by the parent whenever we need a reset of the data set in this component
+     * and its children. Thus we watch for a change here 1) notify the children of this component by increasing the
+     * childrenResetCounter, 2) resetting values of this component and 3) promote the resulting state back up to the
+     * parent
+     */
     watch(() => props.resetCounter, (newValue, oldValue) => {
-      console.info(`element '${props.name}', resetCounter increase: ${newValue}`)
+      console.debug(`element '${props.name}', resetCounter increase: ${newValue}`)
       if (newValue > oldValue) {
         increaseChildrenResetCounter()
         resetValues()
@@ -147,21 +162,38 @@ export default {
       }
     })
 
-    function getValueForIndexKey(index) {
+    /**
+     * Get initialization value for the passed index
+     * @param index
+     * @returns If any initialization value for the passed index is set, return that value, otherwise returns undefined
+     */
+    function getInitValueForIndexKey(index) {
       return saveGetArrayValueAtIndex(props.initWithValue, index, undefined)
     }
 
+    /**
+     * Generate copy of the inputDef for passed index
+     * @param index
+     * @returns Correctly indexed copy for the passed inputDef
+     */
     function generateIndexedInputDefForIndex(index) {
       let updatedCopy = props.inputDef.copy(
           `${props.inputDef.elementId}-index-${index}`, addedInputValues.value[index])
       return updatedCopy
     }
 
+    /**
+     * Creates a copy of the inputDef with properly set indexed (e.g increasing last used index by one)
+     * @returns Correctly indexed copy for the passed inputDef
+     */
     function generateIndexedInputDef() {
       let newItemIndex = addedInputDefs.value.length
       return generateIndexedInputDefForIndex(newItemIndex)
     }
 
+    /**
+     * Communicate change of value to parent
+     */
     function promoteCurrentStateUp() {
       context.emit("valueChanged", {
         "name": props.name,
@@ -170,6 +202,10 @@ export default {
       })
     }
 
+    /**
+     * Handles value change
+     * @param attributes
+     */
     function valueChanged(attributes) {
       let changedIndex = attributes.position
       if (addedInputValues.value.length > changedIndex) {
@@ -226,7 +262,7 @@ export default {
       valueChanged,
       addNextInputElement,
       deleteInputElement,
-      getValueForIndexKey,
+      getInitValueForIndexKey,
       childrenResetCounter
     }
   }
