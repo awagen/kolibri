@@ -1,98 +1,100 @@
 <template>
-  <template v-if="(elementDef instanceof NumberInputDef)">
-    <!-- check if default value is filled, and if so, set value.
-    For some reason causes errors when check is baked directly
-    into the :value binding below (:value="!!elementDef.defaultValue ? element.defaultValue : null"
-    should do but causes input fields to be unusable)-->
-    <template v-if="elementDef.defaultValue === 0 || !!elementDef.defaultValue">
-      <input :id="getValueInputId()"
-             class="form-input metric"
-             type="number"
-             :step=elementDef.step
-             :value="elementDef.defaultValue"
-             @input="updateValueEvent"
-             placeholder="Number Input">
+  <div class="k-input-container">
+    <template v-if="(elementDef instanceof NumberInputDef)">
+      <!-- check if default value is filled, and if so, set value.
+      For some reason causes errors when check is baked directly
+      into the :value binding below (:value="!!elementDef.defaultValue ? element.defaultValue : null"
+      should do but causes input fields to be unusable)-->
+      <template v-if="elementDef.defaultValue === 0 || !!elementDef.defaultValue">
+        <input :id="getValueInputId()"
+               class="form-input metric"
+               type="number"
+               :step=elementDef.step
+               :value="elementDef.defaultValue"
+               @input="updateValueEvent"
+               placeholder="Number Input">
+      </template>
+      <template v-else>
+        <input :id="getValueInputId()"
+               class="form-input metric"
+               type="number"
+               :step=elementDef.step
+               @input="updateValueEvent"
+               placeholder="Number Input">
+      </template>
     </template>
-    <template v-else>
-      <input :id="getValueInputId()"
-             class="form-input metric"
-             type="number"
-             :step=elementDef.step
-             @input="updateValueEvent"
-             placeholder="Number Input">
+    <template v-if="(elementDef instanceof StringInputDef)">
+      <template v-if="!!elementDef.defaultValue">
+        <input :id="getValueInputId()"
+               class="form-input metric"
+               type="text"
+               :value="(!!elementDef.defaultValue) ? elementDef.defaultValue : null"
+               @input="updateValueEvent"
+               placeholder="Text Input">
+      </template>
+      <template v-else>
+        <input :id="getValueInputId()"
+               class="form-input metric"
+               type="text"
+               @input="updateValueEvent"
+               placeholder="Text Input">
+      </template>
     </template>
-  </template>
-  <template v-if="(elementDef instanceof StringInputDef)">
-    <template v-if="!!elementDef.defaultValue">
-      <input :id="getValueInputId()"
-             class="form-input metric"
-             type="text"
-             :value="(!!elementDef.defaultValue) ? elementDef.defaultValue : null"
-             @input="updateValueEvent"
-             placeholder="Text Input">
-    </template>
-    <template v-else>
-      <input :id="getValueInputId()"
-             class="form-input metric"
-             type="text"
-             @input="updateValueEvent"
-             placeholder="Text Input">
-    </template>
-  </template>
-  <template v-if="(elementDef instanceof BooleanInputDef)">
-    <label class="form-radio form-inline">
-      <input :id="getValueInputId()"
-             type="radio"
-             :name="getValueInputId()"
-             :value="true"
-             :checked="(elementDef.defaultValue === true) ? '' : null"
-             @change="updateValueEvent">
-      <i class="form-icon"></i>
-      true
-    </label>
-    <label class="form-radio form-inline">
-      <input :id="getValueInputId()"
-             type="radio"
-             :name="getValueInputId()"
-             :value="false"
-             :checked="(elementDef.defaultValue === false) ? '' : null"
-             @change="updateValueEvent">
-      <i class="form-icon"></i>
-      false
-    </label>
-  </template>
-  <template v-if="(elementDef instanceof ChoiceInputDef)">
-    <template v-for="element in elementDef.choices">
+    <template v-if="(elementDef instanceof BooleanInputDef)">
       <label class="form-radio form-inline">
         <input :id="getValueInputId()"
                type="radio"
                :name="getValueInputId()"
-               :value="element"
-               :checked="(elementDef.defaultValue === element) ? '' : null"
+               :value="true"
+               :checked="(elementDef.defaultValue === true) ? '' : null"
                @change="updateValueEvent">
         <i class="form-icon"></i>
-        {{ element }}
+        true
       </label>
-    </template>
-  </template>
-  <template v-if="(elementDef instanceof FloatChoiceInputDef)">
-    <template v-for="element in elementDef.choices">
       <label class="form-radio form-inline">
         <input :id="getValueInputId()"
                type="radio"
                :name="getValueInputId()"
-               :value="element"
-               :checked="(elementDef.defaultValue === element) ? '' : null"
+               :value="false"
+               :checked="(elementDef.defaultValue === false) ? '' : null"
                @change="updateValueEvent">
         <i class="form-icon"></i>
-        {{ element }}
+        false
       </label>
     </template>
-  </template>
-  <!-- Toast element for warnings / validation messages -->
-  <div :id="getToastId()" class="toast toast-warning display-none">
-    <button type='button' class="btn btn-clear float-right" @click="hideModal"></button>
-    <span :id="getToastContentId()"></span>
+    <template v-if="(elementDef instanceof ChoiceInputDef)">
+      <template v-for="element in elementDef.choices">
+        <label class="form-radio form-inline">
+          <input :id="getValueInputId()"
+                 type="radio"
+                 :name="getValueInputId()"
+                 :value="element"
+                 :checked="(elementDef.defaultValue === element) ? '' : null"
+                 @change="updateValueEvent">
+          <i class="form-icon"></i>
+          {{ element }}
+        </label>
+      </template>
+    </template>
+    <template v-if="(elementDef instanceof FloatChoiceInputDef)">
+      <template v-for="element in elementDef.choices">
+        <label class="form-radio form-inline">
+          <input :id="getValueInputId()"
+                 type="radio"
+                 :name="getValueInputId()"
+                 :value="element"
+                 :checked="(elementDef.defaultValue === element) ? '' : null"
+                 @change="updateValueEvent">
+          <i class="form-icon"></i>
+          {{ element }}
+        </label>
+      </template>
+    </template>
+    <!-- Toast element for warnings / validation messages -->
+    <div :id="getToastId()" class="toast toast-warning display-none">
+      <button type='button' class="btn btn-clear float-right" @click="hideModal"></button>
+      <span :id="getToastContentId()"></span>
+    </div>
   </div>
 </template>
 
@@ -270,6 +272,14 @@ export default {
 </script>
 
 <style scoped>
+
+.k-input-container {
+  overflow-wrap: break-word;
+}
+
+label {
+  max-width: 100%;
+}
 
 .form-input.metric {
   display: inline-block;

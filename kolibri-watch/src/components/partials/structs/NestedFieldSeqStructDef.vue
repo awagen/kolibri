@@ -363,6 +363,10 @@ export default {
 
 <style scoped>
 
+label {
+  max-width: 100%;
+}
+
 .k-input {
   text-align: left;
 }
