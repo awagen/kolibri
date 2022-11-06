@@ -29,8 +29,8 @@ import de.awagen.kolibri.base.io.reader.{DataOverviewReader, Reader}
 import de.awagen.kolibri.base.io.writer.Writers
 import de.awagen.kolibri.base.processing.JobMessages.SearchEvaluationDefinition
 import org.slf4j.{Logger, LoggerFactory}
-import spray.json.DefaultJsonProtocol.{StringJsonFormat, immSeqFormat}
-import spray.json.{JsValue, JsonReader, enrichAny}
+import spray.json.DefaultJsonProtocol.{StringJsonFormat, immSeqFormat, jsonFormat3, mapFormat}
+import spray.json.{JsValue, JsonReader, RootJsonFormat, enrichAny}
 
 import scala.reflect.runtime.universe._
 import scala.reflect.runtime.universe.typeOf
@@ -96,6 +96,7 @@ object ResourceRoutes {
   val JOBS_PATH_PREFIX = "jobs"
   val TYPES_PATH = "types"
   val OVERVIEW_PATH = "overview"
+  val ALL_PATH = "all"
   val PARAM_TYPE = "type"
   val PARAM_TEMPLATE_NAME = "templateName"
   val PARAM_IDENTIFIER = "identifier"
@@ -151,21 +152,32 @@ object ResourceRoutes {
       })
   }
 
+  def getAvailableJobTemplateTypes(): Seq[String] = {
+    directoryOverviewReader
+    .listResources(s"$jobTemplatePath", _ => true)
+    .map(filepath => filepath.split("/").last.trim)
+  }
+
   def getJobTemplateTypes(implicit system: ActorSystem): Route = {
     corsHandler(
       pathPrefix(TEMPLATES_PATH_PREFIX) {
         pathPrefix(JOBS_PATH_PREFIX) {
           path(TYPES_PATH) {
             get {
-              val resources: Seq[String] = directoryOverviewReader
-                .listResources(s"$jobTemplatePath", _ => true)
-                .map(filepath => filepath.split("/").last.trim)
+              val resources: Seq[String] = getAvailableJobTemplateTypes()
               complete(StatusCodes.OK, resources.toJson.toString())
             }
           }
         }
       }
     )
+  }
+
+  def getAvailableJobTemplatesForType(templateType: String): Seq[String] = {
+    jsonFileOverviewReader
+    .listResources(s"$jobTemplatePath/$templateType", _ => true)
+    .map(filepath => filepath.split("/").last)
+    .filter(filename => filename != contentInfoFileName)
   }
 
   def getJobTemplateOverviewForType(implicit system: ActorSystem): Route = {
@@ -176,10 +188,7 @@ object ResourceRoutes {
             get {
               parameters(PARAM_TYPE) { typeName => {
                 // retrieve the available json template definitions for the given type
-                val resources: Seq[String] = jsonFileOverviewReader
-                  .listResources(s"$jobTemplatePath/$typeName", _ => true)
-                  .map(filepath => filepath.split("/").last)
-                  .filter(filename => filename != contentInfoFileName)
+                val resources: Seq[String] = getAvailableJobTemplatesForType(typeName)
                 complete(StatusCodes.OK, resources.toJson.toString())
               }
               }
@@ -188,6 +197,38 @@ object ResourceRoutes {
         }
       }
     )
+  }
+
+  case class TemplateInfo(templateType: String, templateId: String, content: String)
+
+  implicit val templateInfoFormat: RootJsonFormat[TemplateInfo] = jsonFormat3(TemplateInfo)
+
+
+  def getTemplateTypeToAvailableTemplatesMapping(): Map[String, Seq[TemplateInfo]] = {
+    val templateTypes: Seq[String] = getAvailableJobTemplateTypes()
+    templateTypes.map(templateType => {
+      val jobTemplates: Seq[TemplateInfo] = getAvailableJobTemplatesForType(templateType)
+        .map(path => {
+          val relativePath = s"$jobTemplatePath/$templateType/$path"
+          val content: String = safeContentRead(relativePath, "{}", logOnFail = true)
+          TemplateInfo(templateType, path, content)
+        })
+      (templateType, jobTemplates)
+    }).toMap
+  }
+
+  def getAvailableTemplatesByType(implicit  system: ActorSystem): Route = {
+    corsHandler(
+      pathPrefix(TEMPLATES_PATH_PREFIX) {
+        pathPrefix(JOBS_PATH_PREFIX) {
+          path(ALL_PATH) {
+            get {
+              val mapping: Map[String, Seq[TemplateInfo]] = getTemplateTypeToAvailableTemplatesMapping()
+              complete(StatusCodes.OK, mapping.toJson.toString())
+            }
+          }
+        }
+      })
   }
 
   def getJobTemplateByTypeAndIdentifier(implicit system: ActorSystem): Route = {
