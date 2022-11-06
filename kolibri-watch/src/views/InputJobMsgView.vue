@@ -86,9 +86,6 @@
 
 import NestedFieldSeqStructDef from "../components/partials/structs/NestedFieldSeqStructDef.vue";
 import {useStore} from "vuex";
-
-import testJobDef1 from "../../tests/testdata/testJobDef.json";
-import testJobDef2 from "../../tests/testdata/testJobDef1.json";
 import {ref, watch} from "vue";
 
 export default {
@@ -190,8 +187,6 @@ export default {
       jobNameSelectEvent,
       jobTemplateSelectEvent,
       valueChanged,
-      testJobDef1,
-      testJobDef2,
       resetCounter,
       componentKeyValue
     }
