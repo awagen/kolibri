@@ -291,7 +291,7 @@ object QueryBasedSearchEvaluationJsonProtocol extends DefaultJsonProtocol with S
       fixedParams: Map[String, Seq[String]],
       contextPath: String,
       queryParameter: String,
-      productIdSelector: JsValueSeqSelector,
+      productIdSelector: String,
       otherSelectors: Seq[NamedAndTypedSelector[_]],
       otherCalculations: Seq[Calculation[WeaklyTypedMap[String], Double]],
       judgementFilePath: String,

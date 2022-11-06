@@ -43,7 +43,7 @@ import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.Aggregators
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.{Calculation, JudgementsFromResourceIRMetricsCalculations}
 import de.awagen.kolibri.base.usecase.searchopt.metrics.{IRMetricFunctions, JudgementHandlingStrategy, Metric, MetricsCalculation}
 import de.awagen.kolibri.base.usecase.searchopt.parse.JsonSelectors.JsValueSeqSelector
-import de.awagen.kolibri.base.usecase.searchopt.parse.ParsingConfig
+import de.awagen.kolibri.base.usecase.searchopt.parse.{JsonSelectors, ParsingConfig}
 import de.awagen.kolibri.base.usecase.searchopt.parse.TypedJsonSelectors.{NamedAndTypedSelector, TypedJsonSeqSelector}
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
@@ -127,7 +127,7 @@ object JobMessages {
                                                   fixedParams: Map[String, Seq[String]],
                                                   contextPath: String,
                                                   queryParameter: String,
-                                                  productIdSelector: JsValueSeqSelector,
+                                                  productIdSelector: String,
                                                   otherSelectors: Seq[NamedAndTypedSelector[_]],
                                                   otherCalculations: Seq[Calculation[WeaklyTypedMap[String], Double]],
                                                   judgementFilePath: String,
@@ -159,7 +159,8 @@ object JobMessages {
       Seq(
         TypedJsonSeqSelector(
           productIdsKey,
-          productIdSelector,
+          JsonSelectors.JsonSelectorPathRegularExpressions.pathToSelector(productIdSelector)
+            .map(x => x.asInstanceOf[JsValueSeqSelector]).get,
           JsonTypeCast.STRING
         )) ++ otherSelectors
     )
