@@ -24,10 +24,11 @@ import akka.http.scaladsl.server.Route
 import de.awagen.kolibri.base.config.AppConfig.persistenceModule
 import de.awagen.kolibri.base.config.AppProperties
 import de.awagen.kolibri.base.http.server.routes.StatusRoutes.corsHandler
+import de.awagen.kolibri.base.io.json.QueryBasedSearchEvaluationJsonProtocol.queryBasedSearchEvaluationFormat
 import de.awagen.kolibri.base.io.reader.ReaderUtils.safeContentRead
 import de.awagen.kolibri.base.io.reader.{DataOverviewReader, Reader}
 import de.awagen.kolibri.base.io.writer.Writers
-import de.awagen.kolibri.base.processing.JobMessages.SearchEvaluationDefinition
+import de.awagen.kolibri.base.processing.JobMessages.{QueryBasedSearchEvaluationDefinition, SearchEvaluationDefinition}
 import org.slf4j.{Logger, LoggerFactory}
 import spray.json.DefaultJsonProtocol.{StringJsonFormat, immSeqFormat, jsonFormat3, mapFormat}
 import spray.json.{JsValue, JsonReader, RootJsonFormat, enrichAny}
@@ -79,6 +80,7 @@ object ResourceRoutes {
     }
 
     val SEARCH_EVALUATION: Val[_] = Val[SearchEvaluationDefinition]("search_eval_no_ser")
+    val SEARCH_EVALUATION_SHORT: Val[_] = Val[QueryBasedSearchEvaluationDefinition]("search_eval_query_reduced")
 
   }
 
@@ -114,7 +116,9 @@ object ResourceRoutes {
               val json: JsValue = jsonString.parseJson
               parameters(PARAM_TYPE, PARAM_TEMPLATE_NAME) { (typeName, templateName) => {
                 if (templateName.trim.isEmpty || typeName.startsWith("..") || templateName.startsWith("..")) complete(StatusCodes.BadRequest)
-                val isValid = TemplateTypeValidationAndExecutionInfo.getByNameFunc()(typeName).exists(func => func.isValid(json))
+                val isValid = TemplateTypeValidationAndExecutionInfo
+                  .getByNameFunc()(typeName)
+                  .exists(func => func.isValid(json))
                 if (!isValid) {
                   val message: String = s"no valid type for typeName: '$typeName'"
                   logger.warn(message)
