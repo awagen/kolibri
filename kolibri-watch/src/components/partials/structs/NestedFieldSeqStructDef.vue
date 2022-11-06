@@ -180,7 +180,7 @@ export default {
 
     watch(() => props.resetCounter, (newValue, oldValue) => {
       console.info(`element '${props.name}', resetCounter increase: ${newValue}`)
-      if (newValue > oldValue && newValue) {
+      if (newValue > oldValue) {
         increaseChildrenResetCounter();
         resetValues();
         promoteCurrentStateUp();

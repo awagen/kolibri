@@ -150,7 +150,7 @@ export default {
 
     watch(() => store.state.jobInputDefState.selectedJobTemplate, (newValue, oldValue) => {
       if (newValue === 'None') {
-        componentKeyValue.value = ""
+        resetCounter.value = resetCounter.value + 1
       }
       else {
         componentKeyValue.value = newValue
