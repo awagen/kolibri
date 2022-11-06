@@ -366,7 +366,8 @@ object SupplierJsonProtocol extends DefaultJsonProtocol {
               JSON_SINGLE_MAPPINGS_TYPE,
               JSON_ARRAY_MAPPINGS_TYPE,
               FILE_PREFIX_TO_FILE_LINES_MAPPING_TYPE,
-              CSV_MAPPINGS_TYPE
+              CSV_MAPPINGS_TYPE,
+              VALUES_FROM_NODE_STORAGE_TYPE
             )),
             required = true
           )
@@ -438,6 +439,13 @@ object SupplierJsonProtocol extends DefaultJsonProtocol {
               FieldDef(
                 StringConstantStructDef(VALUE_COLUMN_INDEX_KEY),
                 IntMinMaxStructDef(0, Int.MaxValue),
+                required = true
+              )
+            ),
+            VALUES_FROM_NODE_STORAGE_TYPE -> Seq(
+              FieldDef(
+                StringConstantStructDef(IDENTIFIER_KEY),
+                StringStructDef,
                 required = true
               )
             )

@@ -13,7 +13,10 @@
                 @value-changed="valueChanged"
                 :element-def="field"
                 :name="name + '-' + index"
-                :position="index">
+                :position="index"
+                :init-with-value="getInitValueForIndexKey(index)"
+                :reset-counter="childrenResetCounter"
+            >
             </SingleValueStructDef>
           </div>
           <div class="k-delete-button">
@@ -31,7 +34,10 @@
                 @value-changed="valueChanged"
                 :name="name"
                 :input-def="field.inputDef"
-                :position="index">
+                :position="index"
+                :init-with-value="getInitValueForIndexKey(index)"
+                :reset-counter="childrenResetCounter"
+            >
             </GenericSeqStructDef>
           </div>
           <div class="k-delete-button">
@@ -51,7 +57,10 @@
                 :fields="field.fields"
                 :name="name"
                 :position="index"
-                :is-root="false">
+                :is-root="false"
+                :init-with-value="getInitValueForIndexKey(index)"
+                :reset-counter="childrenResetCounter"
+            >
             </NestedFieldSeqStructDef>
           </div>
           <div class="k-delete-button">
@@ -81,7 +90,8 @@ import {
   NestedFieldSequenceInputDef,
   SeqInputDef
 } from "@/utils/dataValidationFunctions";
-import {onMounted, ref, defineAsyncComponent} from "vue";
+import {onMounted, ref, defineAsyncComponent, watch} from "vue";
+import {saveGetArrayValueAtIndex} from "@/utils/baseDatatypeFunctions";
 
 export default {
 
@@ -89,9 +99,18 @@ export default {
     name: String,
     inputDef: InputDef,
     position: Number,
-    description: String
+    description: String,
+    initWithValue: {
+      type: Array,
+      required: false,
+      default: []
+    },
+    resetCounter: {
+      type: Number,
+      required: false,
+      default: 0
+    }
   },
-
   emits: ['valueChanged'],
   components: {
     SingleValueStructDef: defineAsyncComponent(() =>
@@ -101,39 +120,98 @@ export default {
         import('./NestedFieldSeqStructDef.vue')
     )
   },
-  methods: {},
+  methods: {
+  },
   setup(props, context) {
 
     let addedInputDefs = ref([])
     let addedInputValues = ref([])
 
+    // counter solely set to be passed as props to children such that they can react on changes.
+    // A change of this value signals to children that they shall reset their state
+    let childrenResetCounter = ref(0)
+
+    /**
+     * Increase value passed as props to children such that children can react to changes with
+     * a reset of their state
+     */
+    function increaseChildrenResetCounter() {
+      childrenResetCounter.value = childrenResetCounter.value + 1
+    }
+
+    /**
+     * Reset the currently set values
+     */
+    function resetValues() {
+      addedInputDefs.value = []
+      addedInputValues.value = []
+    }
+
+    /**
+     * The reset counter is to be increased by the parent whenever we need a reset of the data set in this component
+     * and its children. Thus we watch for a change here 1) notify the children of this component by increasing the
+     * childrenResetCounter, 2) resetting values of this component and 3) promote the resulting state back up to the
+     * parent
+     */
+    watch(() => props.resetCounter, (newValue, oldValue) => {
+      console.debug(`element '${props.name}', resetCounter increase: ${newValue}`)
+      if (newValue > oldValue) {
+        increaseChildrenResetCounter()
+        resetValues()
+        promoteCurrentStateUp()
+      }
+    })
+
+    /**
+     * Get initialization value for the passed index
+     * @param index
+     * @returns If any initialization value for the passed index is set, return that value, otherwise returns undefined
+     */
+    function getInitValueForIndexKey(index) {
+      return saveGetArrayValueAtIndex(props.initWithValue, index, undefined)
+    }
+
+    /**
+     * Generate copy of the inputDef for passed index
+     * @param index
+     * @returns Correctly indexed copy for the passed inputDef
+     */
     function generateIndexedInputDefForIndex(index) {
       let updatedCopy = props.inputDef.copy(
           `${props.inputDef.elementId}-index-${index}`, addedInputValues.value[index])
-      console.debug(`adding updated element copy ${JSON.stringify(updatedCopy.toObject())}`)
       return updatedCopy
     }
 
+    /**
+     * Creates a copy of the inputDef with properly set indexed (e.g increasing last used index by one)
+     * @returns Correctly indexed copy for the passed inputDef
+     */
     function generateIndexedInputDef() {
       let newItemIndex = addedInputDefs.value.length
       return generateIndexedInputDefForIndex(newItemIndex)
     }
 
-    function valueChanged(attributes) {
-      console.debug("generic struct def value changed event: ")
-      console.debug(attributes)
-      let changedIndex = attributes.position
-      console.debug("generic struct def changed index: " + changedIndex)
-      if (addedInputValues.value.length > changedIndex) {
-        addedInputValues.value[changedIndex] = attributes.value
-      }
+    /**
+     * Communicate change of value to parent
+     */
+    function promoteCurrentStateUp() {
       context.emit("valueChanged", {
         "name": props.name,
         "value": addedInputValues.value,
         "position": props.position
       })
-      console.debug("generic struct def value changed event: ")
-      console.debug({"name": props.name, "value": addedInputValues.value})
+    }
+
+    /**
+     * Handles value change
+     * @param attributes
+     */
+    function valueChanged(attributes) {
+      let changedIndex = attributes.position
+      if (addedInputValues.value.length > changedIndex) {
+        addedInputValues.value[changedIndex] = attributes.value
+      }
+      promoteCurrentStateUp()
     }
 
     /**
@@ -163,9 +241,17 @@ export default {
       context.emit("valueChanged", {"name": props.name, "value": addedInputValues.value})
     }
 
+    // initially we either initialize all slots needed for the initialization values
+    // or if not set we initialize the initial element
     onMounted(() => {
-      addedInputValues.value.push(undefined)
-      addedInputDefs.value.push(generateIndexedInputDefForIndex(0))
+      if (props.initWithValue !== undefined && props.initWithValue.length > 0) {
+        props.initWithValue.forEach(_ => {
+          addNextInputElement()
+        })
+      }
+      else {
+        addNextInputElement()
+      }
     })
 
     return {
@@ -175,7 +261,9 @@ export default {
       SeqInputDef,
       valueChanged,
       addNextInputElement,
-      deleteInputElement
+      deleteInputElement,
+      getInitValueForIndexKey,
+      childrenResetCounter
     }
   }
 

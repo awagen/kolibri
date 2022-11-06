@@ -20,7 +20,8 @@ import {
     retrieveRequestSamplesForData,
     retrieveAllAvailableIRMetrics,
     changeReducedToFullMetricsJsonList,
-    retrieveSearchEvalJobDefStructAndEndpoint
+    retrieveJobInformation,
+    retrieveAllAvailableTemplateInfos
 } from './utils/retrievalFunctions'
 
 // we could just reference style sheets relatively from assets folder, but we keep one central scss file instead
@@ -81,7 +82,28 @@ const store = createStore({
                 selectedParsingSelectorsFormattedJsonString: ""
             },
 
+            resultState: {
+                // result states
+                availableResultExecutionIDs: [],
+                currentlySelectedExecutionID: "",
+                availableResultsForSelectedExecutionID: [],
+                fullResultForExecutionIDAndResultID: {},
+                filteredResultForExecutionIDAndResultID: {},
+                reducedFilteredResultForExecutionIDAndResultID: {}
+            },
+
+            analysisState: {
+                // analysis states
+                analysisTopFlop: {},
+                analysisVariances: {}
+            },
+
             templateState: {
+                // keys given by template types, values are mappings of templateId to templateContent
+                // (keys of the first map gives the available template types, keys of the second give the templateIds
+                // for the respective type. And the values of the second mapping gives the templateContent)
+                templateTypeToTemplateIdToContentMapping: {},
+
                 // the names of template types for which specific templates can be requested
                 templateTypes: [],
                 // the names of the available templates as retrieved via the templates url
@@ -110,48 +132,94 @@ const store = createStore({
                 changedTemplateParts: {}
             },
 
-            resultState: {
-                // result states
-                availableResultExecutionIDs: [],
-                currentlySelectedExecutionID: "",
-                availableResultsForSelectedExecutionID: [],
-                fullResultForExecutionIDAndResultID: {},
-                filteredResultForExecutionIDAndResultID: {},
-                reducedFilteredResultForExecutionIDAndResultID: {}
-            },
-
-            analysisState: {
-                // analysis states
-                analysisTopFlop: {},
-                analysisVariances: {}
-            },
-
             jobInputDefState: {
+                // new structure to load an arbitrary number of endpoints and selectively configure
+                jobNameToInputDef: {},
+                jobNameToEndpoint: {},
+                jobNameToShortDescription: {},
+                jobNameToDescription: {},
+                // the name of the currently selected job type
+                selectedJobName: "",
+                // the name of the currently selected template for the job type
+                selectedJobTemplate: "",
+                // the mapping of job name to current states of the inputs
+                jobNameToInputStatesObj: {},
+                jobNameToInputStates: {},
+                jobNameToInputStatesJson: {},
+
+
+                // current settings that just take details for the search evaluation use case
                 searchEvalInputDef: {},
                 searchEvalEndPoint: "",
                 searchEvalJobDefState: {},
                 searchEvalJobDefJsonString: ""
-            }
+            },
+
+            availableJobTemplateIdsForType(templateType){
+                let templateIdToContentMapping = this.templateState.templateTypeToTemplateIdToContentMapping[templateType]
+                if (templateIdToContentMapping === undefined) {
+                    templateIdToContentMapping = {}
+                }
+                return Object.keys(templateIdToContentMapping)
+            },
+
+            templateContentForTemplateTypeAndId(templateType, templateId) {
+                let infoForType = this.templateState.templateTypeToTemplateIdToContentMapping[templateType]
+                if (infoForType === undefined) {
+                    infoForType = {}
+                }
+                let templateForId = infoForType[templateId]
+                return templateForId !== undefined ? templateForId : {}
+            },
         }
     },
 
     mutations: {
-        retrieveSearchEvalJobDef(state) {
-            retrieveSearchEvalJobDefStructAndEndpoint().then(response => {
-                console.info("search evaluation job struct def:")
-                console.log(response["jobDef"])
-                state.jobInputDefState.searchEvalInputDef = objToInputDef(
-                    response["jobDef"],
-                    "root",
-                    0
-                )
-                state.jobInputDefState.searchEvalEndPoint = response["endpoint"]
+        retrieveJobDefinitions(state) {
+            retrieveJobInformation().then(response => {
+                response.forEach(jobDef => {
+                    console.info("job response: ")
+                    console.log(jobDef)
+                    let requiredJobDefObj = jobDef["payloadDef"]
+                    let name = jobDef["id"]
+                    let shortDescription = jobDef["name"]
+                    let description = jobDef["description"]
+                    let endpoint = jobDef["endpoint"]
+                    let inputDef = objToInputDef(
+                        requiredJobDefObj,
+                        "root",
+                        0
+                    )
+                    // filling in the new structure, e.g. mappings based on job names
+                    state.jobInputDefState.jobNameToInputDef[name] = inputDef
+                    state.jobInputDefState.jobNameToEndpoint[name] = endpoint
+                    state.jobInputDefState.jobNameToShortDescription[name] = shortDescription
+                    state.jobInputDefState.jobNameToDescription[name] = description
+                    // filling in the edit state
+                    state.jobInputDefState.jobNameToInputStates[name] = inputDef.copy("root")
+
+                    // filling in current structure
+                    state.jobInputDefState.searchEvalInputDef = inputDef
+                    state.jobInputDefState.searchEvalEndPoint = endpoint
+                })
             })
         },
 
-        updateSearchEvalJobDefState(state, jobDefState) {
-            state.jobInputDefState.searchEvalJobDefState = jobDefState
-            state.jobInputDefState.searchEvalJobDefJsonString = objectToJsonStringAndSyntaxHighlight(jobDefState)
+        updateSelectedJobName(state, jobName) {
+            state.jobInputDefState.selectedJobName = jobName
+        },
+
+        updateSelectedJobTemplate(state, template) {
+            state.jobInputDefState.selectedJobTemplate = template
+        },
+
+        updateCurrentJobDefState(state, {jobDefStateObj, jobDefState}) {
+            // TODO: adjust to the fact that we have a) a json structure which is currently passed and the current state
+            // of the structural def with all the default values set to keep the selections.
+            // make sure to update both
+            state.jobInputDefState.jobNameToInputStatesObj[state.jobInputDefState.selectedJobName] = jobDefStateObj
+            state.jobInputDefState.jobNameToInputStatesJson[state.jobInputDefState.selectedJobName] = objectToJsonStringAndSyntaxHighlight(jobDefStateObj)
+            state.jobInputDefState.jobNameToInputStates[state.jobInputDefState.selectedJobName] = jobDefState
         },
 
         recalculateSelectedDataJsonString(state) {
@@ -267,8 +335,6 @@ const store = createStore({
                 "type": "standalone",
                 "data": fileObj
             }
-            console.info("adding standalone data file:")
-            console.log(newElement)
             state.dataState.selectedData.push(newElement)
             this.commit("recalculateSelectedDataJsonString")
         },
@@ -293,8 +359,6 @@ const store = createStore({
                         "mappedValues": []
                     }
                 }
-                console.info("adding standalone value as mapping key:")
-                console.log(newMapping)
                 state.dataState.selectedDataMapping = newMapping
                 state.dataState.selectedData.push(newMapping)
             } else {
@@ -303,8 +367,6 @@ const store = createStore({
                         "Create one first by adding standalone data as key values.")
                     return
                 }
-                console.info("adding mapped value to existing mapping:")
-                console.log(fileObj)
                 state.dataState.selectedDataMapping.data.mappedValues.push(fileObj)
                 fileObj["mappedToIndex"] = 0
             }
@@ -333,13 +395,7 @@ const store = createStore({
          * @param mappingObj
          */
         removeSelectedMapping(state, mappingObj) {
-            console.info("remove selected state from mapping obj")
-            console.log(state)
-            console.log(mappingObj)
             let removeIndex = state.dataState.selectedData.map(x => x.data).indexOf(mappingObj)
-            console.info("found index of mapping obj in selectedData" + removeIndex)
-            console.info("selected data")
-            console.log(state.dataState.selectedData)
             if (removeIndex >= 0) {
                 state.dataState.selectedData.splice(removeIndex, 1)
             }
@@ -370,6 +426,10 @@ const store = createStore({
                 console.info("could not find fileObj in mappingObj. Ignoring request for deletion")
             }
             this.commit("recalculateSelectedDataJsonString")
+        },
+
+        updateAllAvailableTemplateInfos(state) {
+            retrieveAllAvailableTemplateInfos().then(response => state.templateState.templateTypeToTemplateIdToContentMapping = response)
         },
 
         updateAvailableTemplateTypes(state) {
@@ -435,7 +495,6 @@ const store = createStore({
         },
 
         addIRMetricToSelected(state, metricType) {
-            console.info("adding metric to selected: " + metricType)
             let existingMetricIds = state.metricState.selectedIRMetrics.map(x => x.kId)
             let addCandidates = state.metricState.availableIRMetrics
                 .filter(metric => metric.type === metricType)
@@ -488,13 +547,14 @@ store.commit("updateNodeStatus")
 store.commit("updateRunningJobs")
 store.commit("updateJobHistory")
 store.commit("updateAvailableTemplateTypes")
+store.commit("updateAllAvailableTemplateInfos")
 store.commit("updateAvailableDataFiles", 5)
 // initial loading of executionIds for which results are available
 store.commit("updateAvailableResultExecutionIDs")
 // load list of available ir metrics
 store.commit("updateAvailableIRMetrics")
 // load job definition for search evaluation
-store.commit("retrieveSearchEvalJobDef")
+store.commit("retrieveJobDefinitions")
 
 // regular scheduling
 window.setInterval(() => {

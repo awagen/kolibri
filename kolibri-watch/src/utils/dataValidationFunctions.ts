@@ -571,8 +571,13 @@ class FieldDef {
         this.description = description
     }
 
-    copy(name: string = this.name): FieldDef {
-        return new FieldDef(name, this.valueFormat, this.required, this.description)
+    copy(name: string = this.name, clearValueFormatDefaultValue: boolean = false): FieldDef {
+        let valueFormatDefaultValue = clearValueFormatDefaultValue ? undefined : this.valueFormat.defaultValue
+        return new FieldDef(
+            name,
+            this.valueFormat.copy(this.valueFormat.elementId, valueFormatDefaultValue),
+            this.required,
+            this.description)
     }
 }
 
@@ -604,9 +609,14 @@ class ConditionalFields {
     }
 
     copy(): ConditionalFields {
+        let mappingCopy = new Map<string, Array<FieldDef>>()
+        this.mapping.forEach((entry, key) => {
+            let copiedArray: Array<FieldDef> = entry.map(e => e.copy())
+            mappingCopy.set(key, copiedArray)
+        })
         return new ConditionalFields(
             this.conditionField,
-            new Map(this.mapping)
+            mappingCopy
         )
     }
 }
@@ -628,14 +638,12 @@ class InputValidation {
             let min = parseInt(params["min"])
             let max = parseInt(params["max"])
             this.validationFunction = (val) => {
-                console.info("validating value: " + val)
                 return getValidationByMinMax(min, max, type)(val)
             }
         } else if (type === InputType.FLOAT) {
             let min = parseFloat(params["min"])
             let max = parseFloat(params["max"])
             this.validationFunction = (val) => {
-                console.info("validating value: " + val)
                 return getValidationByMinMax(min, max, type)(val)
             }
         } else if (type === InputType.STRING) {

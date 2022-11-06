@@ -6,7 +6,9 @@ import {
     resultExecutionIdsOverviewUrl, resultExecutionIdsSingleResultsOverviewUrl,
     resultExecutionIdGetDataByIdUrl, resultExecutionIdGetFilteredDataByIdUrl,
     resultAnalysisTopFlowUrl, resultAnalysisVarianceUrl, parameterValuesSampleRequestUrl,
-    irMetricsAllUrl, irMetricsReducedToFullJsonListUrl, kolibriSearchEvalJobDefinitionUrl
+    irMetricsAllUrl, irMetricsReducedToFullJsonListUrl, kolibriSearchEvalJobDefinitionUrl,
+    templateAllTypeToInfoMapUrl,
+    kolibriBaseUrl
 } from '../utils/globalConstants'
 
 
@@ -324,6 +326,31 @@ function retrieveTemplatesForType(typeName) {
         })
 }
 
+/**
+ * Retrieve infos for all available templates for all types
+ * (e.g need to have a folder of their name in the templates folder looked in)
+ *
+ * Result: mapping of templateType -> {templateId -> templateContent (json)}
+ */
+function retrieveAllAvailableTemplateInfos() {
+    return axios
+        .get(templateAllTypeToInfoMapUrl)
+        .then(response => {
+            let data = response.data
+            let templateTypes = Object.keys(data)
+            let result = {}
+            templateTypes.forEach(templateType => {
+                result[templateType] = {}
+                data[templateType].forEach(info => {
+                    result[templateType][info["templateId"]] = JSON.parse(info["content"])
+                })
+            })
+            return result
+        }).catch(_ => {
+            return {}
+        })
+}
+
 function retrieveTemplateTypes() {
     return axios
         .get(templateTypeUrl)
@@ -352,6 +379,22 @@ function saveTemplate(templateTypeName, templateName, templateContent) {
         })
 }
 
+function postAgainstEndpoint(endpoint, jsonContent) {
+    return axios
+        .post(`${kolibriBaseUrl}/${endpoint}`, jsonContent)
+        .then(response => {
+            console.info(`got content posting response for endpoint '${endpoint}'`)
+            console.log(response)
+            // TODO: add custom response format here, e.g success / error
+            return {"success": true}
+        })
+        .catch(e => {
+            console.info(`exception on posting content to endpoint '${endpoint}'`)
+            console.log(e)
+            return {"success": false}
+        })
+}
+
 function executeJob(typeName, jobDefinitionContent) {
     return axios
         .post(templateExecuteUrl + "?type=" + typeName, jobDefinitionContent)
@@ -377,12 +420,11 @@ function retrieveTemplateContentAndInfo(typeName, templateName) {
         })
 }
 
-function retrieveSearchEvalJobDefStructAndEndpoint() {
+function retrieveJobInformation() {
     return axios
         .get(kolibriSearchEvalJobDefinitionUrl)
-        .then(response => {
-            return {"endpoint": response.data["endpoint"], "jobDef": response.data["jobDef"]}
-        }).catch(_ => {
+        .then(response => response.data)
+        .catch(_ => {
             return {}
         })
 }
@@ -395,5 +437,6 @@ export {
     retrieveSingleResultById, retrieveSingleResultByIdFiltered,
     retrieveAnalysisTopFlop, retrieveAnalysisVariance, retrieveRequestSamplesForData,
     retrieveAllAvailableIRMetrics, changeReducedToFullMetricsJsonList,
-    retrieveSearchEvalJobDefStructAndEndpoint
+    retrieveJobInformation, retrieveAllAvailableTemplateInfos,
+    postAgainstEndpoint
 }

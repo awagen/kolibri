@@ -1,0 +1,134 @@
+{
+  "jobName": "testJob1",
+  "connections": [
+    {
+      "host": "search-service",
+      "port": 80,
+      "useHttps": false
+    },
+    {
+      "host": "search-service1",
+      "port": 81,
+      "useHttps": false
+    }
+  ],
+  "fixedParams": {
+    "k1": [
+      "v1",
+      "v2"
+    ],
+    "k2": [
+      "v3"
+    ]
+  },
+  "contextPath": "search",
+  "queryParameter": "q",
+  "productIdSelector": "\\ response \\ docs \\\\ product_id",
+  "otherSelectors": [
+    {
+      "name": "bools",
+      "castType": "BOOLEAN",
+      "selector": "\\ response \\ docs \\\\ bool"
+    }
+  ],
+  "otherCalculations": [
+    {
+      "name": "FIRST_TRUE_BOOL",
+      "dataKey": "bools",
+      "type": "FIRST_TRUE"
+    }
+  ],
+  "judgementFilePath": "test-judgements/test_judgements.txt",
+  "requestParameters": [
+    {
+      "type": "MAPPING",
+      "values": {
+        "key_values": {
+          "name": "keyId",
+          "values_type": "URL_PARAMETER",
+          "values": {
+            "type": "FROM_ORDERED_VALUES_TYPE",
+            "values": {
+              "type": "FROM_FILENAME_KEYS_TYPE",
+              "directory": "data/fileMappingSingleValueTest",
+              "filesSuffix": ".txt",
+              "name": "keyId"
+            }
+          }
+        },
+        "mapped_values": [
+          {
+            "name": "mapped_id",
+            "values_type": "URL_PARAMETER",
+            "values": {
+              "type": "CSV_MAPPING_TYPE",
+              "values": "data/csvMappedParameterTest/mapping1.csv",
+              "column_delimiter": ",",
+              "key_column_index": 0,
+              "value_column_index": 1
+            }
+          }
+        ],
+        "key_mapping_assignments": [
+          [
+            0,
+            1
+          ]
+        ]
+      }
+    },
+    {
+      "type": "STANDALONE",
+      "values": {
+        "name": "q",
+        "values_type": "URL_PARAMETER",
+        "values": {
+          "type": "FROM_ORDERED_VALUES_TYPE",
+          "values": {
+            "type": "FROM_FILES_LINES_TYPE",
+            "name": "q",
+            "file": "test-paramfiles/test_queries.txt"
+          }
+        }
+      }
+    },
+    {
+      "type": "STANDALONE",
+      "values": {
+        "name": "a1",
+        "values_type": "URL_PARAMETER",
+        "values": {
+          "type": "FROM_ORDERED_VALUES_TYPE",
+          "values": {
+            "type": "FROM_VALUES_TYPE",
+            "name": "a1",
+            "values": [
+              "0.45",
+              "0.32"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "type": "STANDALONE",
+      "values": {
+        "name": "o",
+        "values_type": "URL_PARAMETER",
+        "values": {
+          "type": "FROM_ORDERED_VALUES_TYPE",
+          "values": {
+            "type": "FROM_RANGE_TYPE",
+            "name": "o",
+            "start": 0.0,
+            "end": 2000.0,
+            "stepSize": 1.0
+          }
+        }
+      }
+    }
+  ],
+  "excludeParamColumns": [
+    "q"
+  ]
+}

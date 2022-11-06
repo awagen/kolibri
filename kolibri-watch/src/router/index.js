@@ -5,18 +5,12 @@ import StatusView from "../views/StatusView.vue";
 import AnalyzeView from "../views/AnalyzeView.vue";
 import ResultView from "../views/ResultView.vue";
 import NotFoundView from "../views/NotFoundView.vue";
-import DataComposeView from "../views/DataComposeView.vue";
 
 const routes = [
     {
         path: "/jobCreation",
         name: "JobCreation",
         component: JobCreationView
-    },
-    {
-        path: "/dataCompose",
-        name: "DataCompose",
-        component: DataComposeView
     },
     {
         path: "/history",

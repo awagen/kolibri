@@ -11,7 +11,10 @@
           @value-changed="keyValueChanged"
           :name="name + '-key-' + position"
           :position="position"
-          :element-def="keyInputDef">
+          :element-def="keyInputDef"
+          :init-with-value="getInitKey()"
+          :reset-counter="childrenResetCounter"
+      >
       </SingleValueStructDef>
     </template>
     <template v-else>
@@ -29,7 +32,10 @@
           @value-changed="valueChanged"
           :name="name + '-value-' + position"
           :position="position"
-          :element-def="valueInputDef">
+          :element-def="valueInputDef"
+          :init-with-value="getInitValue()"
+          :reset-counter="childrenResetCounter"
+      >
       </SingleValueStructDef>
     </template>
     <!-- value input -->
@@ -38,7 +44,10 @@
           @value-changed="valueChanged"
           :name="name + '-value-' + position"
           :input-def="valueInputDef.inputDef"
-          :position="position">
+          :position="position"
+          :init-with-value="getInitValue()"
+          :reset-counter="childrenResetCounter"
+      >
       </GenericSeqStructDef>
     </template>
 
@@ -47,10 +56,11 @@
 </template>
 
 <script>
-import {ref} from "vue";
+import {ref, watch} from "vue";
 import SingleValueStructDef from "./SingleValueStructDef.vue";
 import GenericSeqStructDef from "./GenericSeqStructDef.vue";
 import {InputDef, StringInputDef, SingleValueInputDef, SeqInputDef} from "../../../utils/dataValidationFunctions";
+import {saveGetArrayValueAtIndex} from "@/utils/baseDatatypeFunctions";
 
 export default {
 
@@ -77,6 +87,16 @@ export default {
     valueInputDef: {
       type: InputDef,
       required: true
+    },
+    initWithValue: {
+      type: Array,
+      required: false,
+      default: []
+    },
+    resetCounter: {
+      type: Number,
+      required: false,
+      default: 0
     }
   },
   emits: ['valueChanged'],
@@ -84,11 +104,45 @@ export default {
     SingleValueStructDef,
     GenericSeqStructDef
   },
-  methods: {},
+  methods: {
+
+    getInitKey() {
+      return saveGetArrayValueAtIndex(this.initWithValue, 0, undefined)
+    },
+
+    getInitValue() {
+      return saveGetArrayValueAtIndex(this.initWithValue, 1, undefined)
+    }
+
+  },
   setup(props, context) {
 
     let keyValue = ref(props.keyValue)
     let valueValue = ref(undefined)
+
+    let childrenResetCounter = ref(0)
+
+    function increaseChildrenResetCounter() {
+      childrenResetCounter.value = childrenResetCounter.value + 1
+    }
+
+    function resetValues(){
+      keyValue.value = props.keyValue
+      valueValue.value = undefined
+    }
+
+    function promoteCurrentStateUp() {
+      context.emit("valueChanged", {"name": keyValue.value, "value": valueValue.value, "position": props.position})
+    }
+
+    watch(() => props.resetCounter, (newValue, oldValue) => {
+      console.info(`element '${props.name}', resetCounter increase: ${newValue}`)
+      if (newValue > oldValue) {
+        increaseChildrenResetCounter()
+        resetValues()
+        promoteCurrentStateUp()
+      }
+    })
 
     /**
      * event handler where attributes.value provides the updated value
@@ -96,7 +150,7 @@ export default {
      */
     function valueChanged(attributes) {
       valueValue.value = attributes.value
-      context.emit("valueChanged", {"name": keyValue.value, "value": valueValue.value, "position": props.position})
+      promoteCurrentStateUp()
     }
 
     /**
@@ -105,14 +159,15 @@ export default {
      */
     function keyValueChanged(attributes) {
       keyValue.value = attributes.value
-      context.emit("valueChanged", {"name": keyValue.value, "value": valueValue.value, "position": props.position})
+      promoteCurrentStateUp()
     }
 
     return {
       valueChanged,
       keyValueChanged,
       SingleValueInputDef,
-      SeqInputDef
+      SeqInputDef,
+      childrenResetCounter
     }
   }
 

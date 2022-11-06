@@ -222,6 +222,17 @@ object AppProperties {
     val useInsecureSSLEngine: Boolean = baseConfig.getBoolean("kolibri.ssl.useInsecureEngine")
 
     val useRequestEventShardingAndEndpoints: Boolean = baseConfig.getBoolean("kolibri.state.useShardingAndEndpoints")
+
+    // hosts set as allowed to fire requests on.
+    // wildcard "*" specifies all hosts are allowed. Config value shall contain
+    // comma-separated host names
+    // TODO: incorporate the below for configs / config checks
+    // and refuse in case the limitations are not met
+    val allowedRequestTargetHosts: Seq[String] = baseConfig.getString("kolibri.request.target.allowedHosts").split(",")
+      .map(x => x.trim).filter(x => x.nonEmpty)
+    val allowedRequestTargetPorts: Seq[String] = baseConfig.getString("kolibri.request.target.allowedPorts").split(",")
+      .map(x => x.trim).filter(x => x.nonEmpty)
+    val allowedRequestTargetContextPaths: Seq[String] = baseConfig.getString("kolibri.request.target.allowedContextPaths").split(",")
   }
 
 }

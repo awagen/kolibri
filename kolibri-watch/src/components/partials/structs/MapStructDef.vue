@@ -17,7 +17,10 @@
                 :name="name + '-' + index"
                 :position="index"
                 :key-input-def="field.keyFormat"
-                :value-input-def="field.valueFormat">
+                :value-input-def="field.valueFormat"
+                :init-with-value="[getKeyForInitIndex(index), getValueForInitIndex(index)]"
+                :reset-counter="childrenResetCounter"
+            >
             </KeyValueStructDef>
           </div>
           <div class="k-delete-button">
@@ -40,10 +43,11 @@
 </template>
 
 <script>
-import {onMounted, ref} from "vue";
+import {onMounted, ref, watch} from "vue";
 import {KeyValueInputDef} from "../../../utils/dataValidationFunctions.ts";
 import KeyValueStructDef from "./KeyValueStructDef.vue";
 import DescriptionPopover from "./elements/DescriptionPopover.vue";
+import {saveGetArrayValueAtIndex} from "@/utils/baseDatatypeFunctions";
 
 export default {
 
@@ -59,17 +63,89 @@ export default {
     description: {
       type: String,
       required: false
+    },
+    // here init value needs to be an object. To initialize the values, in onMounted enough fields will be initialized
+    // and then above the init values are passed in sequence given by extracting a sequence of keys
+    // via Object.keys()
+    initWithValue: {
+      type: Object,
+      required: false,
+      default: {}
+    },
+    resetCounter: {
+      type: Number,
+      required: false,
+      default: 0
     }
   },
   components: {KeyValueStructDef, DescriptionPopover},
   emits: ["valueChanged"],
-  methods: {},
+  methods: {
+  },
   setup(props, context) {
 
     // contains the KeyValueInputDefs representing the elements already added
     let addedKeyValueDefs = ref([])
     // contains the values corresponding to the input defs in addedKeyValueDefs
     let addedKeyValuePairs = ref([])
+    // sorted keys for the key / value pairs to use for initialization
+    let initValueKeys = Object.keys(props.initWithValue)
+
+    let childrenResetCounter = ref(0)
+
+    function increaseChildrenResetCounter() {
+      childrenResetCounter.value = childrenResetCounter.value + 1
+    }
+
+    function promoteCurrentStateUp() {
+      context.emit("valueChanged", {"name": props.name, "value": mapFromKeyValuePairs()})
+    }
+
+    watch(() => props.resetCounter, (newValue, oldValue) => {
+      console.info(`element '${props.name}', resetCounter increase: ${newValue}`)
+      if (newValue > oldValue) {
+        increaseChildrenResetCounter()
+        initializeValues()
+        promoteCurrentStateUp()
+      }
+    })
+
+    function initializeValues() {
+      addedKeyValueDefs.value = []
+      addedKeyValuePairs.value = []
+      // here we simply initially add enough elements to fit all key-value pairs of initWithValue
+      // the actual setting of the right key-value pairs will be done above
+      if (props.initWithValue !== undefined && initValueKeys.length > 0) {
+        initValueKeys.forEach(_ => addNextInputElement())
+      }
+      else {
+        addedKeyValuePairs.value.push([undefined, undefined])
+        addedKeyValueDefs.value.push(generateIndexedInputDefForIndex(0))
+      }
+    }
+
+    onMounted(() => {
+      initializeValues()
+    })
+
+    /**
+     * If any initialisation key-value pairs are passed, determine the n-th key value
+     * @param index - index of the key. Order derived by transformation keys from dict to list via Object.keys()
+     * @returns string - key value for key at position given by passed index. undefined if out of bounds
+     */
+    function getKeyForInitIndex(index) {
+      return saveGetArrayValueAtIndex(initValueKeys, index, undefined)
+    }
+
+    /**
+     * If any initialisation key-value pairs are passed, determine the n-th value
+     * @param index - index of the key. Order derived by transformation keys from dict to list via Object.keys()
+     * @returns string - value for key at position given by passed index. undefined if out of bounds
+     */
+    function getValueForInitIndex(index) {
+      let key = getKeyForInitIndex(index)
+      return props.initWithValue[key]
+    }
 
     /**
      * Generates a new element out of the given KeyValueInputDef, setting the properly indexed
@@ -98,16 +174,11 @@ export default {
      * After the set values are updated, events a state update for its parent to pick up.
      **/
     function valueChanged(attributes) {
-      console.debug("value changed event: ")
-      console.debug(attributes)
       let changedIndex = attributes.position
-      console.debug("changed index: " + changedIndex)
       if (addedKeyValuePairs.value.length > changedIndex) {
         addedKeyValuePairs.value[changedIndex] = [attributes.name, attributes.value]
       }
-      context.emit("valueChanged", {"name": props.name, "value": mapFromKeyValuePairs()})
-      console.debug("value changed event: ")
-      console.debug({"name": props.name, "value": mapFromKeyValuePairs()})
+      promoteCurrentStateUp()
     }
 
     /**
@@ -140,29 +211,25 @@ export default {
      **/
     function deleteInputElement(index) {
       addedKeyValuePairs.value.splice(index, 1)
-      console.debug("setting addedKeyValuePairs: " + JSON.stringify({"data": addedKeyValuePairs.value}))
       // now adjust indices
       let newInputDefs = []
       for (let [defIndex, _] of addedKeyValuePairs.value.entries()) {
         newInputDefs.push(generateIndexedInputDefForIndex(defIndex))
       }
-      console.debug("setting addedKeyValueDefs: " + newInputDefs.map(x => JSON.stringify(x.toObject())))
       addedKeyValueDefs.value = newInputDefs
       // notify parent of change
-      context.emit("valueChanged", {"name": props.name, "value": mapFromKeyValuePairs()})
+      promoteCurrentStateUp()
     }
-
-    onMounted(() => {
-      addedKeyValuePairs.value.push([undefined, undefined])
-      addedKeyValueDefs.value.push(generateIndexedInputDefForIndex(0))
-    })
 
     return {
       addedKeyValueDefs,
       valueChanged,
       deleteInputElement,
       addNextInputElement,
-      KeyValueInputDef
+      KeyValueInputDef,
+      getKeyForInitIndex,
+      getValueForInitIndex,
+      childrenResetCounter
     }
   }
 

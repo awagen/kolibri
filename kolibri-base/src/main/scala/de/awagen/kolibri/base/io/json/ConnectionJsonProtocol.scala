@@ -16,11 +16,12 @@
 
 package de.awagen.kolibri.base.io.json
 
+import de.awagen.kolibri.base.config.AppProperties
 import de.awagen.kolibri.base.domain.Connections.Connection
 import de.awagen.kolibri.base.domain.jobdefinitions.provider.CredentialsProvider
 import de.awagen.kolibri.base.io.json.CredentialsProviderJsonProtocol.CredentialsProviderFormat
 import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
-import de.awagen.kolibri.datatypes.types.JsonStructDefs.{BooleanStructDef, IntMinMaxStructDef, NestedFieldSeqStructDef, RegexStructDef, StringConstantStructDef}
+import de.awagen.kolibri.datatypes.types.JsonStructDefs._
 import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
 import spray.json.{DefaultJsonProtocol, RootJsonFormat}
 
@@ -42,10 +43,29 @@ object ConnectionJsonProtocol extends DefaultJsonProtocol with WithStructDef {
   )
 
   override def structDef: JsonStructDefs.StructDef[_] = {
+    val allowedHosts = AppProperties.config.allowedRequestTargetHosts
+    val allowedTargetPorts = AppProperties.config.allowedRequestTargetPorts
+
+    val hostFieldDef = allowedHosts match {
+      case e if e.contains("*") =>
+        FieldDef(StringConstantStructDef(HOST_FIELD), RegexStructDef("\\w+".r), required = true)
+      case _ =>
+        FieldDef(StringConstantStructDef(HOST_FIELD), StringChoiceStructDef(allowedHosts), required = true)
+    }
+
+    val portFieldDef = allowedTargetPorts match {
+      case e if e.contains("*") =>
+        FieldDef(StringConstantStructDef(PORT_FIELD), IntMinMaxStructDef(0, 10000), required = true)
+      case _ =>
+        FieldDef(StringConstantStructDef(PORT_FIELD), IntChoiceStructDef(
+          allowedTargetPorts.map(x => x.toInt)
+        ), required = true)
+    }
+
     NestedFieldSeqStructDef(
       Seq(
-        FieldDef(StringConstantStructDef(HOST_FIELD), RegexStructDef("\\w+".r), required = true),
-        FieldDef(StringConstantStructDef(PORT_FIELD), IntMinMaxStructDef(0, 10000), required = true),
+        hostFieldDef,
+        portFieldDef,
         FieldDef(StringConstantStructDef(USE_HTTPS_FIELD), BooleanStructDef, required = true),
       ),
       Seq()

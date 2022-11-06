@@ -22,7 +22,7 @@ import akka.actor.typed.{ActorRef, Behavior}
 import akka.serialization.{SerializationExtension, Serializers}
 import de.awagen.kolibri.base.actors.KolibriTypedTestKitNoCluster
 import de.awagen.kolibri.base.io.json.ParameterValuesJsonProtocol.ValueSeqGenDefinitionFormat
-import de.awagen.kolibri.base.io.json.SearchEvaluationJsonProtocol.queryAndParamProviderFormat
+import de.awagen.kolibri.base.io.json.SearchEvaluationJsonProtocol.searchEvaluationFormat
 import de.awagen.kolibri.base.processing.JobMessages.SearchEvaluationDefinition
 import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ValueType.URL_PARAMETER
 import de.awagen.kolibri.base.processing.modifiers.ParameterValues.{MappedParameterValues, ParameterValueMappingDefinition, ValueSeqGenDefinition}

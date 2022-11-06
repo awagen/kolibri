@@ -152,9 +152,7 @@ export default {
       }
       connections.value.push(connection)
       created_state.value["connections"] = connections.value
-      created_json_string_state.value = objectToJsonStringAndSyntaxHighlight(created_state.value) //syntaxHighlight(JSON.stringify(created_state.value, null, '\t'))
-      console.log(connections.value)
-      console.log(created_state.value)
+      created_json_string_state.value = objectToJsonStringAndSyntaxHighlight(created_state.value)
     }
 
     onMounted(() => {

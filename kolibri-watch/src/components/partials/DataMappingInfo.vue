@@ -49,20 +49,13 @@ export default {
     },
 
     removeData(fileObj, mappingObj){
-      console.info("trying to delete fileObj:")
-      console.log(fileObj)
-      console.info("from mappingObj")
-      console.log(mappingObj)
       if (!fileObj.isMapping && mappingObj !== undefined && fileObj === mappingObj.keyValues) {
-        console.info("deletion: is key for mapping")
         this.removeMappingFromComposer(mappingObj)
       }
       else if (!fileObj.isMapping && mappingObj === undefined){
-        console.info("deletion: is standalone")
         this.removeDataFromComposer(fileObj)
       }
       else if (fileObj.isMapping){
-        console.info("deletion: is mapping")
         this.removeMappedValueFromComposerMapping(fileObj, mappingObj)
       }
     },
