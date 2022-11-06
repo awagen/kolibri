@@ -20,7 +20,7 @@
               :element-def="field.valueFormat"
               :position="position * 100 + index"
               :description="field.description"
-              :init-with-value="saveGetMapValueForKey(initWithValue, field.name, '')"
+              :init-with-value="saveGetMapValueForKey(initWithValue, field.name, undefined)"
               :reset-counter="childrenResetCounter"
           >
           </SingleValueStructDef>
@@ -43,7 +43,7 @@
               :input-def="field.valueFormat.inputDef"
               :position="position * 100 + index"
               :description="field.description"
-              :init-with-value="saveGetMapValueForKey(initWithValue, field.name, [])"
+              :init-with-value="saveGetMapValueForKey(initWithValue, field.name, undefined)"
               :reset-counter="childrenResetCounter"
           >
           </GenericSeqStructDef>
@@ -56,7 +56,7 @@
             :name="field.name"
             :key-value-input-def="field.valueFormat.keyValueDef"
             :description="field.description"
-            :init-with-value="saveGetMapValueForKey(initWithValue, field.name, {})"
+            :init-with-value="saveGetMapValueForKey(initWithValue, field.name, undefined)"
             :reset-counter="childrenResetCounter"
         >
         </MapStructDef>
@@ -83,7 +83,7 @@
               :is-root="false"
               :description="field.description"
               :position="position * 100 + index"
-              :init-with-value="saveGetMapValueForKey(initWithValue, field.name, {})"
+              :init-with-value="saveGetMapValueForKey(initWithValue, field.name, undefined)"
               :reset-counter="childrenResetCounter"
           >
           </NestedFieldSeqStructDef>
