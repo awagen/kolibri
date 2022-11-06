@@ -230,6 +230,12 @@ export default {
   color: #9c9c9c;
 }
 
+pre#template-content-display-1 {
+
+  margin-top: 2em;
+
+}
+
 textarea#template-edit-1 {
 
   color: #9c9c9c;;
@@ -264,12 +270,6 @@ textarea.form-input:focus {
 input#template-edit-saveto-filename-1 {
   padding-right: 1em;
   width: 98%;
-}
-
-pre#template-content-display-1 {
-
-  margin-top: 2em;
-
 }
 
 button#save-template-1 {

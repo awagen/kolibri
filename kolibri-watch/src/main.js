@@ -153,7 +153,24 @@ const store = createStore({
                 searchEvalEndPoint: "",
                 searchEvalJobDefState: {},
                 searchEvalJobDefJsonString: ""
-            }
+            },
+
+            availableJobTemplateIdsForType(templateType){
+                let templateIdToContentMapping = this.templateState.templateTypeToTemplateIdToContentMapping[templateType]
+                if (templateIdToContentMapping === undefined) {
+                    templateIdToContentMapping = {}
+                }
+                return Object.keys(templateIdToContentMapping)
+            },
+
+            templateContentForTemplateTypeAndId(templateType, templateId) {
+                let infoForType = this.templateState.templateTypeToTemplateIdToContentMapping[templateType]
+                if (infoForType === undefined) {
+                    infoForType = {}
+                }
+                let templateForId = infoForType[templateId]
+                return templateForId !== undefined ? templateForId : {}
+            },
         }
     },
 

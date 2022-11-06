@@ -7,7 +7,8 @@ import {
     resultExecutionIdGetDataByIdUrl, resultExecutionIdGetFilteredDataByIdUrl,
     resultAnalysisTopFlowUrl, resultAnalysisVarianceUrl, parameterValuesSampleRequestUrl,
     irMetricsAllUrl, irMetricsReducedToFullJsonListUrl, kolibriSearchEvalJobDefinitionUrl,
-    templateAllTypeToInfoMapUrl
+    templateAllTypeToInfoMapUrl,
+    kolibriBaseUrl
 } from '../utils/globalConstants'
 
 
@@ -378,6 +379,22 @@ function saveTemplate(templateTypeName, templateName, templateContent) {
         })
 }
 
+function postAgainstEndpoint(endpoint, jsonContent) {
+    return axios
+        .post(`${kolibriBaseUrl}/${endpoint}`, jsonContent)
+        .then(response => {
+            console.info(`got content posting response for endpoint '${endpoint}'`)
+            console.log(response)
+            // TODO: add custom response format here, e.g success / error
+            return {"success": true}
+        })
+        .catch(e => {
+            console.info(`exception on posting content to endpoint '${endpoint}'`)
+            console.log(e)
+            return {"success": false}
+        })
+}
+
 function executeJob(typeName, jobDefinitionContent) {
     return axios
         .post(templateExecuteUrl + "?type=" + typeName, jobDefinitionContent)
@@ -420,5 +437,6 @@ export {
     retrieveSingleResultById, retrieveSingleResultByIdFiltered,
     retrieveAnalysisTopFlop, retrieveAnalysisVariance, retrieveRequestSamplesForData,
     retrieveAllAvailableIRMetrics, changeReducedToFullMetricsJsonList,
-    retrieveJobInformation, retrieveAllAvailableTemplateInfos
+    retrieveJobInformation, retrieveAllAvailableTemplateInfos,
+    postAgainstEndpoint
 }

@@ -25,7 +25,7 @@
         <div class="col-12 col-sm-12">
           <select @change="jobTemplateSelectEvent($event)" class="form-select k-value-selector" id="template-name-1">
             <option>Choose an option</option>
-            <option v-for="templateName in [...['None'], ...availableJobTemplateIdsForType(selectedJobName)]">{{ templateName }}</option>
+            <option v-for="templateName in [...['None'], ...this.$store.state.availableJobTemplateIdsForType(selectedJobName)]">{{ templateName }}</option>
           </select>
         </div>
       </template>
@@ -62,6 +62,9 @@
           </NestedFieldSeqStructDef>
         </template>
 
+        <!-- Input controls -->
+        <JobTemplateControls></JobTemplateControls>
+
       </form>
 
       <!-- json overview container -->
@@ -77,7 +80,6 @@
 
         </form>
       </template>
-
     </div>
   </template>
 </template>
@@ -87,6 +89,7 @@
 import NestedFieldSeqStructDef from "../components/partials/structs/NestedFieldSeqStructDef.vue";
 import {useStore} from "vuex";
 import {ref, watch} from "vue";
+import JobTemplateControls from "../components/partials/JobTemplateControls.vue";
 
 export default {
 
@@ -96,24 +99,8 @@ export default {
       required: false
     }
   },
-  components: {NestedFieldSeqStructDef},
+  components: {JobTemplateControls, NestedFieldSeqStructDef},
   methods: {
-    availableJobTemplateIdsForType(templateType){
-      let templateIdToContentMapping = this.$store.state.templateState.templateTypeToTemplateIdToContentMapping[templateType]
-      if (templateIdToContentMapping === undefined) {
-        templateIdToContentMapping = {}
-      }
-      return Object.keys(templateIdToContentMapping)
-    },
-
-    templateContentForTemplateTypeAndId(templateType, templateId) {
-      let infoForType = this.$store.state.templateState.templateTypeToTemplateIdToContentMapping[templateType]
-      if (infoForType === undefined) {
-        infoForType = {}
-      }
-      let templateForId = infoForType[templateId]
-      return templateForId !== undefined ? templateForId : {}
-    },
   },
   computed: {
     selectedJobName(){
@@ -137,7 +124,7 @@ export default {
     },
 
     selectedJobTemplate() {
-      return this.templateContentForTemplateTypeAndId(this.selectedJobName, this.selectedJobTemplateName)
+      return this.$store.state.templateContentForTemplateTypeAndId(this.selectedJobName, this.selectedJobTemplateName)
     },
 
     availableJobNames() {
