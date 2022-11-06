@@ -20,7 +20,8 @@ import {
     retrieveRequestSamplesForData,
     retrieveAllAvailableIRMetrics,
     changeReducedToFullMetricsJsonList,
-    retrieveJobInformation
+    retrieveJobInformation,
+    retrieveAllAvailableTemplateInfos
 } from './utils/retrievalFunctions'
 
 // we could just reference style sheets relatively from assets folder, but we keep one central scss file instead
@@ -81,7 +82,28 @@ const store = createStore({
                 selectedParsingSelectorsFormattedJsonString: ""
             },
 
+            resultState: {
+                // result states
+                availableResultExecutionIDs: [],
+                currentlySelectedExecutionID: "",
+                availableResultsForSelectedExecutionID: [],
+                fullResultForExecutionIDAndResultID: {},
+                filteredResultForExecutionIDAndResultID: {},
+                reducedFilteredResultForExecutionIDAndResultID: {}
+            },
+
+            analysisState: {
+                // analysis states
+                analysisTopFlop: {},
+                analysisVariances: {}
+            },
+
             templateState: {
+                // keys given by template types, values are mappings of templateId to templateContent
+                // (keys of the first map gives the available template types, keys of the second give the templateIds
+                // for the respective type. And the values of the second mapping gives the templateContent)
+                templateTypeToTemplateIdToContentMapping: {},
+
                 // the names of template types for which specific templates can be requested
                 templateTypes: [],
                 // the names of the available templates as retrieved via the templates url
@@ -110,29 +132,16 @@ const store = createStore({
                 changedTemplateParts: {}
             },
 
-            resultState: {
-                // result states
-                availableResultExecutionIDs: [],
-                currentlySelectedExecutionID: "",
-                availableResultsForSelectedExecutionID: [],
-                fullResultForExecutionIDAndResultID: {},
-                filteredResultForExecutionIDAndResultID: {},
-                reducedFilteredResultForExecutionIDAndResultID: {}
-            },
-
-            analysisState: {
-                // analysis states
-                analysisTopFlop: {},
-                analysisVariances: {}
-            },
-
             jobInputDefState: {
                 // new structure to load an arbitrary number of endpoints and selectively configure
                 jobNameToInputDef: {},
                 jobNameToEndpoint: {},
+                jobNameToShortDescription: {},
                 jobNameToDescription: {},
-                // the name of the currently selected template
+                // the name of the currently selected job type
                 selectedJobName: "",
+                // the name of the currently selected template for the job type
+                selectedJobTemplate: "",
                 // the mapping of job name to current states of the inputs
                 jobNameToInputStatesObj: {},
                 jobNameToInputStates: {},
@@ -155,7 +164,8 @@ const store = createStore({
                     console.info("job response: ")
                     console.log(jobDef)
                     let requiredJobDefObj = jobDef["payloadDef"]
-                    let name = jobDef["name"]
+                    let name = jobDef["id"]
+                    let shortDescription = jobDef["name"]
                     let description = jobDef["description"]
                     let endpoint = jobDef["endpoint"]
                     let inputDef = objToInputDef(
@@ -166,6 +176,7 @@ const store = createStore({
                     // filling in the new structure, e.g. mappings based on job names
                     state.jobInputDefState.jobNameToInputDef[name] = inputDef
                     state.jobInputDefState.jobNameToEndpoint[name] = endpoint
+                    state.jobInputDefState.jobNameToShortDescription[name] = shortDescription
                     state.jobInputDefState.jobNameToDescription[name] = description
                     // filling in the edit state
                     state.jobInputDefState.jobNameToInputStates[name] = inputDef.copy("root")
@@ -179,6 +190,10 @@ const store = createStore({
 
         updateSelectedJobName(state, jobName) {
             state.jobInputDefState.selectedJobName = jobName
+        },
+
+        updateSelectedJobTemplate(state, template) {
+            state.jobInputDefState.selectedJobTemplate = template
         },
 
         updateCurrentJobDefState(state, {jobDefStateObj, jobDefState}) {
@@ -396,6 +411,10 @@ const store = createStore({
             this.commit("recalculateSelectedDataJsonString")
         },
 
+        updateAllAvailableTemplateInfos(state) {
+            retrieveAllAvailableTemplateInfos().then(response => state.templateState.templateTypeToTemplateIdToContentMapping = response)
+        },
+
         updateAvailableTemplateTypes(state) {
             retrieveTemplateTypes().then(response => state.templateState.templateTypes = response)
         },
@@ -511,6 +530,7 @@ store.commit("updateNodeStatus")
 store.commit("updateRunningJobs")
 store.commit("updateJobHistory")
 store.commit("updateAvailableTemplateTypes")
+store.commit("updateAllAvailableTemplateInfos")
 store.commit("updateAvailableDataFiles", 5)
 // initial loading of executionIds for which results are available
 store.commit("updateAvailableResultExecutionIDs")

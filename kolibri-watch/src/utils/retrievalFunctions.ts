@@ -6,7 +6,8 @@ import {
     resultExecutionIdsOverviewUrl, resultExecutionIdsSingleResultsOverviewUrl,
     resultExecutionIdGetDataByIdUrl, resultExecutionIdGetFilteredDataByIdUrl,
     resultAnalysisTopFlowUrl, resultAnalysisVarianceUrl, parameterValuesSampleRequestUrl,
-    irMetricsAllUrl, irMetricsReducedToFullJsonListUrl, kolibriSearchEvalJobDefinitionUrl
+    irMetricsAllUrl, irMetricsReducedToFullJsonListUrl, kolibriSearchEvalJobDefinitionUrl,
+    templateAllTypeToInfoMapUrl
 } from '../utils/globalConstants'
 
 
@@ -324,6 +325,31 @@ function retrieveTemplatesForType(typeName) {
         })
 }
 
+/**
+ * Retrieve infos for all available templates for all types
+ * (e.g need to have a folder of their name in the templates folder looked in)
+ *
+ * Result: mapping of templateType -> {templateId -> templateContent (json)}
+ */
+function retrieveAllAvailableTemplateInfos() {
+    return axios
+        .get(templateAllTypeToInfoMapUrl)
+        .then(response => {
+            let data = response.data
+            let templateTypes = Object.keys(data)
+            let result = {}
+            templateTypes.forEach(templateType => {
+                result[templateType] = {}
+                data[templateType].forEach(info => {
+                    result[templateType][info["templateId"]] = JSON.parse(info["content"])
+                })
+            })
+            return result
+        }).catch(_ => {
+            return {}
+        })
+}
+
 function retrieveTemplateTypes() {
     return axios
         .get(templateTypeUrl)
@@ -380,7 +406,8 @@ function retrieveTemplateContentAndInfo(typeName, templateName) {
 function retrieveJobInformation() {
     return axios
         .get(kolibriSearchEvalJobDefinitionUrl)
-        .then(response => response.data).catch(_ => {
+        .then(response => response.data)
+        .catch(_ => {
             return {}
         })
 }
@@ -393,5 +420,5 @@ export {
     retrieveSingleResultById, retrieveSingleResultByIdFiltered,
     retrieveAnalysisTopFlop, retrieveAnalysisVariance, retrieveRequestSamplesForData,
     retrieveAllAvailableIRMetrics, changeReducedToFullMetricsJsonList,
-    retrieveJobInformation
+    retrieveJobInformation, retrieveAllAvailableTemplateInfos
 }

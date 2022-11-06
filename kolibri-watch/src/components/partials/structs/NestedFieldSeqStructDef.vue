@@ -162,6 +162,7 @@ export default {
       fieldStates.value[field.name] = undefined
     })
 
+    // this for resetting components (but will not call their initial setup again)
     let childrenResetCounter = ref(0)
 
     function increaseChildrenResetCounter() {

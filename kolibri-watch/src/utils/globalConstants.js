@@ -30,6 +30,8 @@ export const resultExecutionIdGetFilteredDataByIdUrl = `${kolibriBaseUrl}/${impo
 export const resultAnalysisTopFlowUrl = `${kolibriBaseUrl}/${import.meta.env.VITE_KOLIBRI_RESULT_ANALYSIS_TOP_FLOP_PATH}`
 export const resultAnalysisVarianceUrl = `${kolibriBaseUrl}/${import.meta.env.VITE_KOLIBRI_RESULT_ANALYSIS_VARIANCE_PATH}`
 
+// url to retrieve mapping of type to template info
+export const templateAllTypeToInfoMapUrl = `${kolibriBaseUrl}/${import.meta.env.VITE_KOLIBRI_TEMPLATE_TYPE_TO_INFO_MAP_PATH}`
 // url to request available template types
 export const templateTypeUrl = `${kolibriBaseUrl}/${import.meta.env.VITE_KOLIBRI_TEMPLATE_TYPES_PATH}`
 // url to retrieve the templates overview from. This endpoint provides available templates that can be retrieved
