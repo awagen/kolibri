@@ -32,16 +32,71 @@
     </div>
   </div>
 
+  <ResponseModal
+    :show="showModal"
+    :mode="mode"
+    @responseModalClosed="responseModalClosedHandler"
+    @responseModalOpened="responseModalOpenedHandler"
+    :modal-title="modalTitle"
+    :main-content="mainContent"
+    :footer-content="footerContent"
+    :fade-out-ok='true'
+  >
+  </ResponseModal>
+
 </template>
 
 <script>
 import {postAgainstEndpoint, saveTemplate} from "@/utils/retrievalFunctions";
+import ResponseModal from "../partials/ResponseModal.vue";
+import {ref} from "vue";
+import {useStore} from "vuex";
 
 export default {
 
   props: {},
-  components: {},
+  components: {ResponseModal},
   methods: {
+  },
+  computed: {},
+  setup(props, context) {
+    const store = useStore()
+
+    let showModal = ref(false)
+    let modalTitle = ref(undefined)
+    let mainContent = ref(undefined)
+    let footerContent = ref(undefined)
+    let mode = ref("k-success")
+
+    function responseModalClosedHandler() {
+      showModal.value = false
+    }
+
+    function responseModalOpenedHandler() {
+      showModal.value = true
+    }
+
+    function prepareOKResponseShow() {
+      modalTitle.value = undefined
+      mainContent.value = undefined
+      mode.value = "k-success"
+    }
+
+    function prepareOKResponseShowAndShow() {
+      prepareOKResponseShow()
+      showModal.value = true
+    }
+
+    function prepareErrorResponseShow(title, description) {
+      modalTitle.value = title
+      mainContent.value = description
+      mode.value = "k-fail"
+    }
+
+    function prepareErrorResponseShowAndShow(title, description) {
+      prepareErrorResponseShow(title, description)
+      showModal.value = true
+    }
 
     /**
      * Retrieve the target file name to store to from input field
@@ -51,30 +106,55 @@ export default {
      * for that particular job and display successful store / error
      * messages
      */
-    getSelectionsAndSaveTemplate() {
-      console.info("saving template")
+    async function getSelectionsAndSaveTemplate() {
       let relativeFileName = document.getElementById("template-edit-saveto-filename-1").value
-      let jobName = this.$store.state.jobInputDefState.selectedJobName
+      let jobName = store.state.jobInputDefState.selectedJobName
       if (relativeFileName === "") {
-        console.info("empty relative file name, not sending for storage")
+        prepareErrorResponseShowAndShow("Persist Fail", "empty relative file name, not sending for storage")
+        return
       }
-      let templateContent = this.$store.state.jobInputDefState.jobNameToInputStatesObj[jobName]
-      saveTemplate(jobName, relativeFileName, templateContent)
-    },
-
-    getSelectionAndExecuteJob() {
-      let templateContent = this.$store.state.jobInputDefState.jobNameToInputStatesObj[this.$store.state.jobInputDefState.selectedJobName]
-      // TODO: as in the above display success / error message here
-      let jobName = this.$store.state.jobInputDefState.selectedJobName
-      let jobEndpoint = this.$store.state.jobInputDefState.jobNameToEndpoint[jobName]
-      console.info(`posting content for job endpoint '${jobEndpoint}'`)
-      postAgainstEndpoint(jobEndpoint, templateContent)
+      let templateContent = store.state.jobInputDefState.jobNameToInputStatesObj[jobName]
+      let saveResult = await saveTemplate(jobName, relativeFileName, templateContent)
+      if (saveResult.success) {
+        prepareOKResponseShowAndShow()
+      }
+      else {
+        prepareErrorResponseShowAndShow("Persist Fail", saveResult.msg)
+      }
     }
 
-  },
-  computed: {},
-  setup(props, context) {
-    return {}
+    async function getSelectionAndExecuteJob() {
+      let templateContent = store.state.jobInputDefState.jobNameToInputStatesObj[store.state.jobInputDefState.selectedJobName]
+      let jobName = store.state.jobInputDefState.selectedJobName
+      let jobEndpoint = store.state.jobInputDefState.jobNameToEndpoint[jobName]
+      if (jobEndpoint == null || jobEndpoint.trim() === '') {
+        prepareErrorResponseShowAndShow("Job Posting Fail", `job endpoint '${jobEndpoint}' not valid`)
+        return;
+      }
+      if (templateContent == null || Object.keys(templateContent).length === 0) {
+        prepareErrorResponseShowAndShow("Job Posting Fail", `template content '${templateContent}' not valid`)
+        return;
+      }
+      let postResult = await postAgainstEndpoint(jobEndpoint, templateContent)
+      if (postResult.success) {
+        prepareOKResponseShowAndShow()
+      }
+      else {
+        prepareErrorResponseShowAndShow("Job Posting Fail", postResult.msg)
+      }
+    }
+
+    return {
+      showModal,
+      getSelectionsAndSaveTemplate,
+      getSelectionAndExecuteJob,
+      responseModalClosedHandler,
+      responseModalOpenedHandler,
+      modalTitle,
+      mainContent,
+      footerContent,
+      mode
+    }
   }
 
 }

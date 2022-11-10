@@ -11,6 +11,7 @@
     "test-ui": "vitest --ui"
   },
   "dependencies": {
+    "animejs": "^3.2.1",
     "axios": "^0.24.0",
     "d3": "^7.3.0",
     "d3-dsv": "^3.0.1",

@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios, {AxiosResponse} from "axios";
 import {
     jobHistoryUrl, jobStateUrl, appIsUpUrl, nodeStateUrl, templateOverviewForTypeUrl,
     templateTypeUrl, templateSaveUrl, templateExecuteUrl,
@@ -10,6 +10,35 @@ import {
     templateAllTypeToInfoMapUrl,
     kolibriBaseUrl
 } from '../utils/globalConstants'
+
+
+class Response {
+    success: boolean
+    data: any
+    msg: string
+
+    constructor(success: boolean, data: any, msg: string) {
+        this.success = success
+        this.data = data
+        this.msg = msg
+    }
+
+    static failResponse(msg: string): Response {
+        return new Response(false, undefined, msg)
+    }
+
+    static successResponse(data: any): Response {
+        return new Response(true, data, "")
+    }
+
+    static fromAxiosResponse(response: AxiosResponse, msg: string = ""): Response {
+        if (response.status >= 400) {
+            return this.failResponse(msg)
+        }
+        return this.successResponse(response.data)
+    }
+
+}
 
 
 /**
@@ -280,8 +309,6 @@ function changeReducedToFullMetricsJsonList(dataObj){
     return axios
         .post(url, dataObj, config)
         .then(response => {
-            console.info("retrieved list of full ir metric json representations")
-            console.log(response)
             return response.data
         }).catch(_ => {
             return []
@@ -361,53 +388,89 @@ function retrieveTemplateTypes() {
         })
 }
 
+function executeGetRequest(url): Promise<AxiosResponse> {
+    return axios.get(url)
+}
+
+function executePostRequest(url, bodyContent): Promise<AxiosResponse> {
+    return axios.post(url, bodyContent)
+}
+
+function executePutRequest(url, bodyContent): Promise<AxiosResponse> {
+    return axios.put(url, bodyContent)
+}
+
+function axiosRequestToJsonString(request: XMLHttpRequest): string {
+    if (request !== null) {
+        return JSON.stringify({
+            "status": request.status,
+        })
+    }
+    return "{}"
+}
+
+function handleResponse(responsePromise: Promise<AxiosResponse>): Promise<Response> {
+    return responsePromise
+        .then(response => {
+            return Response.fromAxiosResponse(response)
+        })
+        .catch(function(error) {
+            if (error.response) {
+                // Request made and server responded
+                return Response.failResponse(error.response.data)
+            } else if (error.request) {
+                // The request was made but no response was received
+                // host protocol method path
+                return Response.failResponse(`request failed - status: ${axiosRequestToJsonString(error.request)}`)
+            } else {
+                // Something happened in setting up the request that triggered an Error
+                return Response.failResponse(error.message)
+            }
+        })
+}
+
+function executeAndHandleGetRequest(url): Promise<Response> {
+    return handleResponse(executeGetRequest(url))
+}
+
+function executeAndHandlePostRequest(url, bodyContent): Promise<Response> {
+    return handleResponse(executePostRequest(url, bodyContent))
+}
+
+function executeAndHandlePutRequest(url, bodyContent): Promise<Response> {
+    return handleResponse(executePutRequest(url, bodyContent))
+}
+
 function saveTemplate(templateTypeName, templateName, templateContent) {
     if (templateName === "") {
-        console.info("empty template name, not sending for storage")
+        return Response.failResponse("empty template name, not sending for storage")
     }
-    return axios
-        .post(templateSaveUrl + "?type=" + templateTypeName + "&templateName=" + templateName, templateContent)
-        .then(response => {
-            console.info("success job template store call")
-            console.log(response)
-            return true
-        })
-        .catch(e => {
-            console.info("exception on trying to store job template")
-            console.log(e)
-            return false
-        })
+    let url = templateSaveUrl + "?type=" + templateTypeName + "&templateName=" + templateName
+    return executeAndHandlePostRequest(url, templateContent)
 }
 
+/**
+ * Generic function allowing posting of json content against a passed endpoint.
+ * Mainly used to post job definitions to job-specific endpoints to execute the jobs.
+ * @param endpoint
+ * @param jsonContent
+ */
 function postAgainstEndpoint(endpoint, jsonContent) {
-    return axios
-        .post(`${kolibriBaseUrl}/${endpoint}`, jsonContent)
-        .then(response => {
-            console.info(`got content posting response for endpoint '${endpoint}'`)
-            console.log(response)
-            // TODO: add custom response format here, e.g success / error
-            return {"success": true}
-        })
-        .catch(e => {
-            console.info(`exception on posting content to endpoint '${endpoint}'`)
-            console.log(e)
-            return {"success": false}
-        })
+    let url = `${kolibriBaseUrl}/${endpoint}`
+    return executeAndHandlePostRequest(url, jsonContent)
 }
 
+/**
+ * Executing job definitions, yet posting to a generic endpoint.
+ * Thus here is no differentiation which endpoint holds for which execution.
+ * TODO: should be replaceable as soon as all job definitions come with their specific endpoints,
+ * which would make a generic one obsolete
+ * @param typeName
+ * @param jobDefinitionContent
+ */
 function executeJob(typeName, jobDefinitionContent) {
-    return axios
-        .post(templateExecuteUrl + "?type=" + typeName, jobDefinitionContent)
-        .then(response => {
-            console.info("success job execution call")
-            console.log(response)
-            return true
-        })
-        .catch(e => {
-            console.info("exception on trying send job execution")
-            console.log(e)
-            return false
-        })
+    let url = templateExecuteUrl + "?type=" + typeName
+    return executeAndHandlePostRequest(url, jobDefinitionContent)
 }
 
 function retrieveTemplateContentAndInfo(typeName, templateName) {
