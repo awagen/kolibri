@@ -7,13 +7,13 @@
     <!-- template save button -->
     <div class="form-separator"></div>
     <div class="col-6 col-sm-12">
-      <button type='button' @click="getSelectionsAndSaveTemplate()" class="k-form k-full btn btn-action"
+      <button type='button' @click="getSelectionsAndSaveTemplate" class="k-form k-full btn btn-action"
               id="save-template-1">
         SAVE TEMPLATE
       </button>
     </div>
     <div class="col-6 col-sm-12">
-      <button type='button' @click="getSelectionAndExecuteJob()" class="k-form k-full btn btn-action"
+      <button type='button' @click="getSelectionAndExecuteJob" class="k-form k-full btn btn-action"
               id="run-template-1">
         RUN TEMPLATE
       </button>
@@ -63,9 +63,9 @@ export default {
     const store = useStore()
 
     let showModal = ref(false)
-    let modalTitle = ref(undefined)
-    let mainContent = ref(undefined)
-    let footerContent = ref(undefined)
+    let modalTitle = ref("")
+    let mainContent = ref("")
+    let footerContent = ref("")
     let mode = ref("k-success")
 
     function responseModalClosedHandler() {
@@ -77,8 +77,8 @@ export default {
     }
 
     function prepareOKResponseShow() {
-      modalTitle.value = undefined
-      mainContent.value = undefined
+      modalTitle.value = ""
+      mainContent.value = ""
       mode.value = "k-success"
     }
 

@@ -13,16 +13,16 @@
 
     <!-- So far we only display any further content if its a fail-case  -->
     <div v-if="mode === 'k-fail'" class="modal-container">
-      <div v-if="modalTitle !== undefined" class="modal-header">
+      <div v-if="modalTitle !== undefined && modalTitle !== ''" class="modal-header">
 <!--        <a href="#close" @click="close()" class="btn btn-clear float-right" aria-label="Close"></a>-->
         <div class="modal-title h5">{{modalTitle}}</div>
       </div>
-      <div v-if="mainContent !== undefined" class="modal-body">
+      <div v-if="mainContent !== undefined && mainContent !== ''" class="modal-body">
         <div class="content">
           {{ mainContent }}
         </div>
       </div>
-      <div v-if="footerContent !== undefined" class="modal-footer">
+      <div v-if="footerContent !== undefined && footerContent !== ''" class="modal-footer">
         {{footerContent}}
       </div>
     </div>
