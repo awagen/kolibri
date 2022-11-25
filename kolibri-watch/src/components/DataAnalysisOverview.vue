@@ -101,7 +101,7 @@ export default {
         "executionId": executionId,
         "resultId": resultID,
         // TODO: make those hardcoded values selectable
-        "metricName": "NDCG_10",
+        "metricName": "NDCG@8",
         "topN": 20000000,
         "reversed": false
       }
@@ -116,7 +116,7 @@ export default {
         // TODO: make those hardcoded values selectable
         "currentParams": {"a1": ["0.45"], "k1": ["v1", "v2"], "k2": ["v3"], "o": ["479.0"]},
         "compareParams": [{"a1": ["0.32"],"k1": ["v1", "v2"],"k2": ["v3"],"o": ["1760.0"]},{"a1": ["0.45"],"k1": ["v1", "v2"],"k2": ["v3"],"o": ["384.0"]},{"a1": ["0.45"],"k1": ["v1", "v2"],"k2": ["v3"],"o": ["1325.0"]}],
-        "metricName": "NDCG_10",
+        "metricName": "NDCG@8",
         "queryParamName": "q",
         "n_best": 10,
         "n_worst": 10
@@ -128,7 +128,7 @@ export default {
       let payload = {
         "executionId": executionId,
         // TODO: make those hardcoded values selectable
-        "metricName": "NDCG_10",
+        "metricName": "NDCG@8",
         "queryParamName": "q"
       }
       this.$store.commit("updateAnalysisVariance", payload)

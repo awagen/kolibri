@@ -3,19 +3,19 @@
   elements where all have to adhere to the passed def -->
 
   <div class="k-seq-container">
-    <template v-for="(field, index) in addedInputDefs">
+    <template :key="childKeyValue + '-' + item.elementId" v-for="(item, index) in addedInputDefs">
 
-      <template v-if="(field instanceof SingleValueInputDef)">
+      <template v-if="(item instanceof SingleValueInputDef)">
         <div class="k-value-and-delete">
           <div class="k-single-value-input"
-               :id="'container-' + field.elementId">
+               :id="'container-' + item.elementId">
             <SingleValueStructDef
-                @value-changed="valueChanged"
-                :element-def="field"
+                @valueChanged="valueChanged"
+                @valueConfirm="valueConfirm"
+                :element-def="item"
                 :name="name + '-' + index"
                 :position="index"
                 :init-with-value="getInitValueForIndexKey(index)"
-                :reset-counter="childrenResetCounter"
             >
             </SingleValueStructDef>
           </div>
@@ -26,17 +26,16 @@
         </div>
       </template>
 
-      <template v-if="(field instanceof SeqInputDef)">
+      <template v-if="(item instanceof SeqInputDef)">
         <div class="k-value-and-delete">
           <div class="k-single-value-input"
-               :id="'container-' + field.elementId">
+               :id="'container-' + item.elementId">
             <GenericSeqStructDef
                 @value-changed="valueChanged"
                 :name="name"
-                :input-def="field.inputDef"
+                :input-def="item.inputDef"
                 :position="index"
                 :init-with-value="getInitValueForIndexKey(index)"
-                :reset-counter="childrenResetCounter"
             >
             </GenericSeqStructDef>
           </div>
@@ -47,19 +46,18 @@
         </div>
       </template>
 
-      <template v-if="(field instanceof NestedFieldSequenceInputDef)">
+      <template v-if="(item instanceof NestedFieldSequenceInputDef)">
         <div class="k-value-and-delete">
           <div class="k-single-value-input"
-               :id="'container-' + field.elementId">
+               :id="'container-' + item.elementId">
             <NestedFieldSeqStructDef
                 @value-changed="valueChanged"
-                :conditional-fields="field.conditionalFields"
-                :fields="field.fields"
+                :conditional-fields="item.conditionalFields"
+                :fields="item.fields"
                 :name="name"
                 :position="index"
                 :is-root="false"
                 :init-with-value="getInitValueForIndexKey(index)"
-                :reset-counter="childrenResetCounter"
             >
             </NestedFieldSeqStructDef>
           </div>
@@ -89,9 +87,11 @@ import {
   SingleValueInputDef,
   NestedFieldSequenceInputDef,
   SeqInputDef
-} from "@/utils/dataValidationFunctions";
-import {onMounted, ref, defineAsyncComponent, watch} from "vue";
-import {saveGetArrayValueAtIndex} from "@/utils/baseDatatypeFunctions";
+} from "../../../utils/dataValidationFunctions.ts";
+import {defineAsyncComponent, ref} from "vue";
+import _ from "lodash";
+import {safeGetArrayValueAtIndex} from "../../../utils/baseDatatypeFunctions.ts";
+
 
 export default {
 
@@ -104,11 +104,6 @@ export default {
       type: Array,
       required: false,
       default: []
-    },
-    resetCounter: {
-      type: Number,
-      required: false,
-      default: 0
     }
   },
   emits: ['valueChanged'],
@@ -120,107 +115,64 @@ export default {
         import('./NestedFieldSeqStructDef.vue')
     )
   },
-  methods: {
+  data() {
+    return {
+      addedInputDefs: this.initIndexedInputDefsForInputValues(this.initWithValue),
+      addedInputValues: _.cloneDeep((this.initWithValue !== undefined && this.initWithValue !== null) ? this.initWithValue : []),
+    }
   },
-  setup(props, context) {
-
-    let addedInputDefs = ref([])
-    let addedInputValues = ref([])
-
-    // counter solely set to be passed as props to children such that they can react on changes.
-    // A change of this value signals to children that they shall reset their state
-    let childrenResetCounter = ref(0)
-
-    /**
-     * Increase value passed as props to children such that children can react to changes with
-     * a reset of their state
-     */
-    function increaseChildrenResetCounter() {
-      childrenResetCounter.value = childrenResetCounter.value + 1
+  computed: {
+    inputValueSize() {
+      return this.addedInputValues.length
+    },
+    inputDefSize() {
+      return this.addedInputDefs.length
     }
-
-    /**
-     * Reset the currently set values
-     */
-    function resetValues() {
-      addedInputDefs.value = []
-      addedInputValues.value = []
-    }
-
-    /**
-     * The reset counter is to be increased by the parent whenever we need a reset of the data set in this component
-     * and its children. Thus we watch for a change here 1) notify the children of this component by increasing the
-     * childrenResetCounter, 2) resetting values of this component and 3) promote the resulting state back up to the
-     * parent
-     */
-    watch(() => props.resetCounter, (newValue, oldValue) => {
-      console.debug(`element '${props.name}', resetCounter increase: ${newValue}`)
-      if (newValue > oldValue) {
-        increaseChildrenResetCounter()
-        resetValues()
-        promoteCurrentStateUp()
-      }
-    })
-
+  },
+  methods: {
     /**
      * Get initialization value for the passed index
-     * @param index
+     * @param idx
      * @returns If any initialization value for the passed index is set, return that value, otherwise returns undefined
      */
-    function getInitValueForIndexKey(index) {
-      return saveGetArrayValueAtIndex(props.initWithValue, index, undefined)
-    }
+    getInitValueForIndexKey(idx) {
+      return safeGetArrayValueAtIndex(this.addedInputValues, idx, undefined)
+    },
 
     /**
-     * Generate copy of the inputDef for passed index
-     * @param index
-     * @returns Correctly indexed copy for the passed inputDef
+     * Add new input def and an empty value
      */
-    function generateIndexedInputDefForIndex(index) {
-      let updatedCopy = props.inputDef.copy(
-          `${props.inputDef.elementId}-index-${index}`, addedInputValues.value[index])
-      return updatedCopy
-    }
+    addNextInputElement(value = undefined) {
+      this.addedInputValues.push(value)
+      this.addedInputDefs.push(this.generateIndexedInputDef())
+    },
 
-    /**
-     * Creates a copy of the inputDef with properly set indexed (e.g increasing last used index by one)
-     * @returns Correctly indexed copy for the passed inputDef
-     */
-    function generateIndexedInputDef() {
-      let newItemIndex = addedInputDefs.value.length
-      return generateIndexedInputDefForIndex(newItemIndex)
-    }
-
-    /**
-     * Communicate change of value to parent
-     */
-    function promoteCurrentStateUp() {
-      context.emit("valueChanged", {
-        "name": props.name,
-        "value": addedInputValues.value,
-        "position": props.position
-      })
-    }
+    valueConfirm(attributes) {
+      this.promoteCurrentStateUp()
+    },
 
     /**
      * Handles value change
      * @param attributes
      */
-    function valueChanged(attributes) {
+    valueChanged(attributes) {
       let changedIndex = attributes.position
-      if (addedInputValues.value.length > changedIndex) {
-        addedInputValues.value[changedIndex] = attributes.value
+      if (this.inputValueSize > changedIndex) {
+        this.addedInputValues[changedIndex] = attributes.value
       }
-      promoteCurrentStateUp()
-    }
+      this.promoteCurrentStateUp()
+    },
 
     /**
-     * Add new input def and an empty value
+     * Communicate change of value to parent
      */
-    function addNextInputElement() {
-      addedInputValues.value.push(undefined)
-      addedInputDefs.value.push(generateIndexedInputDef())
-    }
+    promoteCurrentStateUp() {
+      this.$emit("valueChanged", {
+        "name": this.name,
+        "value": this.addedInputValues,
+        "position": this.position
+      })
+    },
 
     /**
      * Deletion of input element at given index.
@@ -228,42 +180,63 @@ export default {
      * pass validation where the index matches, on deletion of an input element we also have to make sure
      * we adjust all indices in addedInputDefs
      **/
-    function deleteInputElement(index) {
-      addedInputValues.value.splice(index, 1)
-      addedInputDefs.value.splice(index, 1)
-      // now adjust indices
-      let newInputDefs = []
-      for (let [defIndex, _] of addedInputDefs.value.entries()) {
-        newInputDefs.push(generateIndexedInputDefForIndex(defIndex))
-      }
-      addedInputDefs.value = newInputDefs
+    deleteInputElement(index) {
+      this.addedInputValues.splice(index, 1)
+      this.addedInputDefs.splice(index, 1)
       // notify parent of change
-      context.emit("valueChanged", {"name": props.name, "value": addedInputValues.value})
+      this.$emit("valueChanged", {"name": this.name, "value": this.addedInputValues})
+      this.increaseChildKeyValueIndex()
+    },
+
+    initIndexedInputDefsForInputValues(values) {
+      if (values === undefined || values === null) {
+        return []
+      }
+      let defArray = values.map((value, index) => {
+        return this.generateIndexedInputDefForIndex(index, values)
+      })
+      return defArray
+    },
+
+    /**
+     * Generate copy of the inputDef for passed index
+     * @param index
+     * @param values
+     * @returns Correctly indexed copy for the passed inputDef
+     */
+    generateIndexedInputDefForIndex(index, values) {
+      let newDefaultValue = values[index]
+      return this.inputDef.copy(
+          `${this.inputDef.elementId}-index-${index}`,
+          newDefaultValue)
+    },
+
+    /**
+     * Creates a copy of the inputDef with properly set indexed (e.g increasing last used index by one)
+     * @returns Correctly indexed copy for the passed inputDef
+     */
+    generateIndexedInputDef() {
+      let newItemIndex = this.inputDefSize
+      return this.generateIndexedInputDefForIndex(newItemIndex, this.addedInputValues)
+    }
+  },
+
+  setup(props, context) {
+
+    let childKeyValueIndex = 0
+    let childKeyValue = ref(`${props.name}-${props.position}-${childKeyValueIndex}`)
+
+    function increaseChildKeyValueIndex() {
+      childKeyValueIndex += 1
+      childKeyValue.value = `${props.name}-${props.position}-${childKeyValueIndex}`
     }
 
-    // initially we either initialize all slots needed for the initialization values
-    // or if not set we initialize the initial element
-    onMounted(() => {
-      if (props.initWithValue !== undefined && props.initWithValue.length > 0) {
-        props.initWithValue.forEach(_ => {
-          addNextInputElement()
-        })
-      }
-      else {
-        addNextInputElement()
-      }
-    })
-
     return {
-      addedInputDefs,
       SingleValueInputDef,
       NestedFieldSequenceInputDef,
       SeqInputDef,
-      valueChanged,
-      addNextInputElement,
-      deleteInputElement,
-      getInitValueForIndexKey,
-      childrenResetCounter
+      childKeyValue,
+      increaseChildKeyValueIndex
     }
   }
 

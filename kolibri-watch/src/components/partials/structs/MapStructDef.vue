@@ -19,7 +19,6 @@
                 :key-input-def="field.keyFormat"
                 :value-input-def="field.valueFormat"
                 :init-with-value="[getKeyForInitIndex(index), getValueForInitIndex(index)]"
-                :reset-counter="childrenResetCounter"
             >
             </KeyValueStructDef>
           </div>
@@ -43,11 +42,12 @@
 </template>
 
 <script>
-import {onMounted, ref, watch} from "vue";
+import {onMounted, ref} from "vue";
+import _ from "lodash";
 import {KeyValueInputDef} from "../../../utils/dataValidationFunctions.ts";
 import KeyValueStructDef from "./KeyValueStructDef.vue";
 import DescriptionPopover from "./elements/DescriptionPopover.vue";
-import {saveGetArrayValueAtIndex} from "@/utils/baseDatatypeFunctions";
+import {safeGetArrayValueAtIndex, safeGetMapValueForKey} from "../../../utils/baseDatatypeFunctions";
 
 export default {
 
@@ -71,11 +71,6 @@ export default {
       type: Object,
       required: false,
       default: {}
-    },
-    resetCounter: {
-      type: Number,
-      required: false,
-      default: 0
     }
   },
   components: {KeyValueStructDef, DescriptionPopover},
@@ -89,34 +84,20 @@ export default {
     // contains the values corresponding to the input defs in addedKeyValueDefs
     let addedKeyValuePairs = ref([])
     // sorted keys for the key / value pairs to use for initialization
-    let initValueKeys = Object.keys(props.initWithValue)
-
-    let childrenResetCounter = ref(0)
-
-    function increaseChildrenResetCounter() {
-      childrenResetCounter.value = childrenResetCounter.value + 1
-    }
+    let initValues = _.cloneDeep((props.initWithValue !== undefined && props.initWithValue !== null) ? props.initWithValue : {})
+    let initValueKeys = Object.keys(initValues)
 
     function promoteCurrentStateUp() {
       context.emit("valueChanged", {"name": props.name, "value": mapFromKeyValuePairs()})
     }
-
-    watch(() => props.resetCounter, (newValue, oldValue) => {
-      console.info(`element '${props.name}', resetCounter increase: ${newValue}`)
-      if (newValue > oldValue) {
-        increaseChildrenResetCounter()
-        initializeValues()
-        promoteCurrentStateUp()
-      }
-    })
 
     function initializeValues() {
       addedKeyValueDefs.value = []
       addedKeyValuePairs.value = []
       // here we simply initially add enough elements to fit all key-value pairs of initWithValue
       // the actual setting of the right key-value pairs will be done above
-      if (props.initWithValue !== undefined && initValueKeys.length > 0) {
-        initValueKeys.forEach(_ => addNextInputElement())
+      if (initValues !== undefined && initValues.length > 0) {
+        initValues.forEach(_ => addNextInputElement())
       }
       else {
         addedKeyValuePairs.value.push([undefined, undefined])
@@ -134,7 +115,7 @@ export default {
      * @returns string - key value for key at position given by passed index. undefined if out of bounds
      */
     function getKeyForInitIndex(index) {
-      return saveGetArrayValueAtIndex(initValueKeys, index, undefined)
+      return safeGetArrayValueAtIndex(initValueKeys, index, undefined)
     }
 
     /**
@@ -144,7 +125,7 @@ export default {
      */
     function getValueForInitIndex(index) {
       let key = getKeyForInitIndex(index)
-      return props.initWithValue[key]
+      return safeGetMapValueForKey(initValues, key, undefined)
     }
 
     /**
@@ -228,8 +209,7 @@ export default {
       addNextInputElement,
       KeyValueInputDef,
       getKeyForInitIndex,
-      getValueForInitIndex,
-      childrenResetCounter
+      getValueForInitIndex
     }
   }
 

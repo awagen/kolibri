@@ -1,6 +1,9 @@
 function getStringValidationByRegexFunction(regexStr: string): (any) => ValidationResult {
     let regex = new RegExp(regexStr)
     return function (str: any) {
+        if (str == undefined) {
+            return new ValidationResult(false, `value is undefined`)
+        }
         let isValid = regex.test(str)
         return new ValidationResult(isValid, isValid ? "" :
             `value '${str}' does not match regex '${regexStr}'`)
@@ -12,7 +15,10 @@ function getValidationByMinMax(min,
                                expectedType: InputType = InputType.INT): (any) => ValidationResult {
     return function (val: any) {
         // nothing entered yet or clearing
-        if (val === "") {
+        if (val == undefined) {
+            return new ValidationResult(false, `value is undefined`)
+        }
+        else if (val === "") {
             return new ValidationResult(true, "")
         } else if (expectedType === InputType.INT && !Number.isInteger(Number(val))) {
             return new ValidationResult(false,
@@ -39,6 +45,9 @@ function getChoiceValidationFunction(choices: Array<any>): (any) => ValidationRe
 
 function getFloatChoiceValidationFunction(choices: Array<number>, accuracy: Number = 0.0001): (any) => ValidationResult {
     return function (val: any) {
+        if (val == undefined) {
+            return new ValidationResult(false, `value is undefined`)
+        }
         let parsedValue: number = (typeof val === 'string') ? parseFloat(val) : val
         if (typeof parsedValue !== 'number') {
             return new ValidationResult(false, `value '${val}' is not a number`)
@@ -53,6 +62,9 @@ function getFloatChoiceValidationFunction(choices: Array<number>, accuracy: Numb
 
 function getSeqValidationFromValidationDef(validationDef: Object): (any) => ValidationResult {
     return function (val: any) {
+        if (val == undefined) {
+            return new ValidationResult(false, `value is undefined`)
+        }
         let singleElementValidation: (any) => ValidationResult = (any) => new InputValidation(validationDef).validationFunction.apply(any)
         if (!(val instanceof Array)) {
             return new ValidationResult(false, `value '${val}' is not array`)
@@ -71,6 +83,9 @@ function getSeqValidationFromValidationDef(validationDef: Object): (any) => Vali
 function getMatchAnyValidation(validationDefs: Array<Object>): (any) => ValidationResult {
     let inputValidations = validationDefs.map((def) => new InputValidation(def))
     return function (val: any) {
+        if (val == undefined) {
+            return new ValidationResult(false, `value is undefined`)
+        }
         let results = inputValidations.map((validation) => validation.validate(val))
         let passed = results.find(res => res.isValid)
         if (passed !== undefined) {
@@ -431,7 +446,7 @@ class KeyValueInputDef extends KeyValuePairInputDef {
         return obj
     }
 
-    override copy(elementId: string, defaultValue: any = undefined): KeyValueInputDef {
+    override copy(elementId: string, defaultValue: any = this.defaultValue): KeyValueInputDef {
         return new KeyValueInputDef(
             elementId,
             (defaultValue === undefined) ? this.keyFormat : this.keyFormat.copy(this.keyFormat.elementId, defaultValue[0]),
@@ -470,7 +485,7 @@ class MapInputDef extends MapValuesInputDef {
         return obj
     }
 
-    override copy(elementId: string, defaultValue: any = undefined): MapInputDef {
+    override copy(elementId: string, defaultValue: any = this.defaultValue): MapInputDef {
         return new MapInputDef(elementId, this.keyValueDef, defaultValue);
     }
 }
@@ -518,6 +533,9 @@ class NestedFieldSequenceInputDef extends NestedFieldSequenceValuesInputDef {
         super(elementId, InputType.NESTED_FIELDS, {
             "type": InputType.NESTED_FIELDS,
             "validationFunction": (val) => {
+                if (val == undefined) {
+                    return new ValidationResult(false, `value is undefined`)
+                }
                 let fieldValueAndValueValidationPairs: Array<Array<any>> = this.getAllNeededFields(val).map(field => [val.get(field.name), new InputValidation(field.valueFormat.validation)])
                 let validationResults: Array<ValidationResult> = fieldValueAndValueValidationPairs.map(valueValidationPair => valueValidationPair[1].validationFunction.apply(valueValidationPair[0]))
                 let failedValidationResults: Array<ValidationResult> = validationResults.filter(result => !result.isValid)

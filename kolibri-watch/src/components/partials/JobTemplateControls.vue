@@ -47,7 +47,7 @@
 </template>
 
 <script>
-import {postAgainstEndpoint, saveTemplate} from "@/utils/retrievalFunctions";
+import {postAgainstEndpoint, saveTemplate} from "../../utils/retrievalFunctions";
 import ResponseModal from "../partials/ResponseModal.vue";
 import {ref} from "vue";
 import {useStore} from "vuex";
