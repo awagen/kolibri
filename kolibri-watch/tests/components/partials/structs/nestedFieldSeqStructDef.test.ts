@@ -10,8 +10,6 @@ import {
     getNestedFieldSequenceInputDef
 } from "../../../testutils/inputDefHelper";
 import { createStore } from 'vuex'
-import {HTMLElement} from "happy-dom";
-import {preservingJsonFormat} from "../../../../src/utils/formatFunctions";
 import {objToFieldDef} from "../../../../src/utils/inputDefConversions";
 
 
@@ -32,7 +30,7 @@ beforeEach(() => {
     store = createStore({})
 })
 
-test("initialize to initWithValue but only take changes into account on complete refresh", async() => {
+test("initialize to initWithValue and only take new initWithValue values into account on key value update", async() => {
     //given
     let {nestedInputDef, nestedInputProps} = getNestedFieldSequenceInputDef(
         "nested",
@@ -66,7 +64,12 @@ test("initialize to initWithValue but only take changes into account on complete
     let inputValues2 = getAllInputValues(div)
     expect(inputValues2).toEqual(["val1", "field2Val1", "field3Val1"])
     let emitted1 = component.emitted()
-    expect(emitted1).toEqual({"valueChanged":[[{"name":"test-nested-input","value":{"field1":"val1"},"position":1}],[{"name":"test-nested-input","value":{"field1":"val1","field2":"field2Val1"},"position":1}],[{"name":"test-nested-input","value":{"field1":"val1","field2":"field2Val1","field3":"field3Val1"},"position":1}]]})
+    expect(emitted1).toEqual({"valueChanged":[
+        [{"name":"test-nested-input","value":{"field1":"val1","field2":"field2Val1","field3": "field3Val1"},"position":1}],
+        [{"name":"test-nested-input","value":{"field1":"val1","field2":"field2Val1","field3": "field3Val1"},"position":1}],
+        [{"name":"test-nested-input","value":{"field1":"val1","field2":"field2Val1","field3":"field3Val1"},"position":1}]
+        ]
+    })
     // now setting key should lead to recreation of the mounted component
     // thus we expect new values set. Note though that it seems we cannot
     // get an updated emitted(), likely a consequence of refreshing the component
@@ -83,16 +86,12 @@ test("request parameters input def should load initial values properly", async (
     // loading the definition and initial values in json format
     let initialValues = require("../../../testdata/requestParameters.json")
     let parameterDefinition = require("../../../testdata/requestParametersDefinition.json")
-    console.info(`initialValues: ${preservingJsonFormat(initialValues)}`)
-    console.info(`parameter def: ${preservingJsonFormat(parameterDefinition)}`)
 
     // that is the fieldDef of a single field, requestParameters.
     // passing this into fields argument for the NestedFieldSeqStructDef
     // and setting the initialValues as initWithValues should set the right
     // parameters
     let inputDef = objToFieldDef(parameterDefinition, "root", 0)
-    console.info(`inputDef: ${preservingJsonFormat(inputDef)}`)
-
     let {nestedInputDef, nestedInputProps} = getNestedFieldSequenceInputDef(
         "nested",
         [inputDef],
@@ -112,8 +111,53 @@ test("request parameters input def should load initial values properly", async (
     })
     await flushPromises();
     let inputValues1 = getAllInputValues(div);
-    console.info(`input values: ${preservingJsonFormat(inputValues1)}`)
-
-    // when
-
+    expect(inputValues1).toEqual([
+        "MAPPING",
+        "keyId",
+        "URL_PARAMETER",
+        "FROM_ORDERED_VALUES_TYPE",
+        "FROM_FILENAME_KEYS_TYPE",
+        "keyId",
+        "data/fileMappingSingleValueTest",
+        ".txt",
+        "mapped_id",
+        "URL_PARAMETER",
+        "CSV_MAPPING_TYPE",
+        "data/csvMappedParameterTest/mapping1.csv",
+        ",",
+        0,
+        1,
+        "value",
+        "URL_PARAMETER",
+        "VALUES_FROM_NODE_STORAGE",
+        "prefixToFilesLines1",
+        0,
+        1,
+        0,
+        2,
+        "STANDALONE",
+        "q",
+        "URL_PARAMETER",
+        "FROM_ORDERED_VALUES_TYPE",
+        "FROM_FILES_LINES_TYPE",
+        "q",
+        "test-paramfiles/test_queries.txt",
+        "STANDALONE",
+        "a1",
+        "URL_PARAMETER",
+        "FROM_ORDERED_VALUES_TYPE",
+        "FROM_VALUES_TYPE",
+        "a1",
+        "0.45",
+        "0.32",
+        "STANDALONE",
+        "o",
+        "URL_PARAMETER",
+        "FROM_ORDERED_VALUES_TYPE",
+        "FROM_RANGE_TYPE",
+        "o",
+        0,
+        2000,
+        1
+        ])
 })

@@ -6,13 +6,11 @@ import {beforeEach, expect, test} from "vitest";
 import {mount, flushPromises} from "@vue/test-utils";
 import GenericSeqStructDef from "../../../../src/components/partials/structs/GenericSeqStructDef.vue";
 import {
-    getAllInputValues,
     getAllInputValuesWithFieldName,
     getSeqInputDefAndProps,
     getStringInputDefAndProps
 } from "../../../testutils/inputDefHelper";
 import {objToInputDef} from "../../../../src/utils/inputDefConversions";
-import {preservingJsonFormat} from "../../../../src/utils/formatFunctions";
 import {createStore} from "vuex";
 
 const testValue = ["teststr1", "teststr2"]
@@ -74,16 +72,9 @@ test("nested input def with default value correct deletion", async () => {
         }
     })
     await flushPromises();
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    // TODO: this just gives the values of all input values,
-    // yet not the full substructure represented in html,
-    // e.g nested field names would not appear because they are
-    // not single leave input elements
-    let inputValues1 = getAllInputValuesWithFieldName(div);
-    console.info(`input values: ${preservingJsonFormat(inputValues1)}`)
-    let inputs = component.findAll("input")
-    console.info(`inputs: ${inputs.map(x => x.html())}`)
-    // console.info(`div: ${div.outerHTML}`)
-    // console.info(`component: ${component.html()}`)
-    // console.info(`input values -2: ${component.vm.addedInputValues.map(x => preservingJsonFormat(x))}`)
+    await new Promise(resolve => setTimeout(resolve, 500));
+    let nameValueSequence = getAllInputValuesWithFieldName(div);
+    expect(nameValueSequence).toEqual([
+        {"name":"type","value":"MAPPING"},{"name":"name","value":"keyId"},{"name":"values_type","value":"URL_PARAMETER"},{"name":"type","value":"FROM_ORDERED_VALUES_TYPE"},{"name":"type","value":"FROM_FILENAME_KEYS_TYPE"},{"name":"name","value":"keyId"},{"name":"directory","value":"data/fileMappingSingleValueTest"},{"name":"filesSuffix","value":".txt"},{"name":"name","value":"mapped_id"},{"name":"values_type","value":"URL_PARAMETER"},{"name":"type","value":"CSV_MAPPING_TYPE"},{"name":"values","value":"data/csvMappedParameterTest/mapping1.csv"},{"name":"column_delimiter","value":","},{"name":"key_column_index","value":0},{"name":"value_column_index","value":1},{"name":"name","value":"value"},{"name":"values_type","value":"URL_PARAMETER"},{"name":"type","value":"VALUES_FROM_NODE_STORAGE"},{"name":"identifier","value":"prefixToFilesLines1"},{"name":"key_mapping_assignments","value":0},{"name":"key_mapping_assignments","value":1},{"name":"key_mapping_assignments","value":0},{"name":"key_mapping_assignments","value":2},{"name":"type","value":"STANDALONE"},{"name":"name","value":"q"},{"name":"values_type","value":"URL_PARAMETER"},{"name":"type","value":"FROM_ORDERED_VALUES_TYPE"},{"name":"type","value":"FROM_FILES_LINES_TYPE"},{"name":"name","value":"q"},{"name":"file","value":"test-paramfiles/test_queries.txt"},{"name":"type","value":"STANDALONE"},{"name":"name","value":"a1"},{"name":"values_type","value":"URL_PARAMETER"},{"name":"type","value":"FROM_ORDERED_VALUES_TYPE"},{"name":"type","value":"FROM_VALUES_TYPE"},{"name":"name","value":"a1"},{"name":"values","value":"0.45"},{"name":"values","value":"0.32"},{"name":"type","value":"STANDALONE"},{"name":"name","value":"o"},{"name":"values_type","value":"URL_PARAMETER"},{"name":"type","value":"FROM_ORDERED_VALUES_TYPE"},{"name":"type","value":"FROM_RANGE_TYPE"},{"name":"name","value":"o"},{"name":"start","value":0},{"name":"end","value":2000},{"name":"stepSize","value":1}
+    ])
 })

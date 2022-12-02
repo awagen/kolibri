@@ -25,7 +25,10 @@
         <div class="col-12 col-sm-12">
           <select @change="jobTemplateSelectEvent($event)" class="form-select k-value-selector" id="template-name-1">
             <option>Choose an option</option>
-            <option v-for="templateName in [...['None'], ...this.$store.state.availableJobTemplateIdsForType(selectedJobName)]">{{ templateName }}</option>
+            <option
+                v-for="templateName in [...['None'], ...this.$store.state.availableJobTemplateIdsForType(selectedJobName)]">
+              {{ templateName }}
+            </option>
           </select>
         </div>
       </template>
@@ -40,13 +43,13 @@
 
       <form class="form-horizontal col-8 column">
         <h3 class="k-title">
-          Job: {{selectedJobShortDescription}}
+          Job: {{ selectedJobShortDescription }}
         </h3>
         <h3 class="k-title">
-          EndPoint: {{selectedJobEndpoint}}
+          EndPoint: {{ selectedJobEndpoint }}
         </h3>
         <h3 class="k-description">
-          {{selectedJobDescription}}
+          {{ selectedJobDescription }}
         </h3>
 
         <template v-if="currentJobNestedStruct !== undefined">
@@ -99,92 +102,89 @@ export default {
     }
   },
   components: {JobTemplateControls, NestedFieldSeqStructDef},
-  methods: {
-  },
-  setup(props, context) {
-    const store = useStore()
-    let componentKeyValue = ref("")
 
-
-    let selectedJobName = computed(() => {
-      return store.state.jobInputDefState.selectedJobName
-    })
-
-    let selectedJobTemplateName = computed(() => {
-      return store.state.jobInputDefState.selectedJobTemplate
-    })
-
-    let selectedJobShortDescription = computed(() => {
-      return store.state.jobInputDefState.jobNameToShortDescription[selectedJobName]
-    })
-
-    let selectedJobEndpoint = computed(() => {
-      return store.state.jobInputDefState.jobNameToEndpoint[selectedJobName]
-    })
-
-    let selectedJobDescription = computed(() => {
-      return store.state.jobInputDefState.jobNameToDescription[selectedJobName]
-    })
-
-    let selectedJobTemplate = computed(() => {
-      let selectedJobNameValue = store.state.jobInputDefState.selectedJobName
-      let selectedJobTemplateNameValue = store.state.jobInputDefState.selectedJobTemplate
-      return store.state.templateContentForTemplateTypeAndId(selectedJobNameValue, selectedJobTemplateNameValue)
-    })
-
-    let availableJobNames = computed(() => {
-      return Object.keys(store.state.jobInputDefState.jobNameToInputDef)
-    })
-
-    let availableJobTemplateTypes = computed(() => {
-      return Object.keys(store.state.templateState.templateTypeToTemplateIdToContentMapping)
-    })
-
-    let currentJobNestedStruct = computed(() => {
-      return store.state.jobInputDefState.jobNameToInputStates[store.state.jobInputDefState.selectedJobName]
-    })
-
-    let currentJobNestedStructJson = computed(() => {
-      return store.state.jobInputDefState.jobNameToInputStatesJson[store.state.jobInputDefState.selectedJobName]
-    })
-
-    function changeComponentKeyValue(value) {
-      componentKeyValue.value = value
-    }
-
-    watch(() => store.state.jobInputDefState.selectedJobTemplate, (newValue, oldValue) => {
-      changeComponentKeyValue(newValue)
-    })
-
-    function jobNameSelectEvent(event) {
-      store.commit("updateSelectedJobName", event.target.value)
-    }
-
-    function jobTemplateSelectEvent(event) {
-      store.commit("updateSelectedJobTemplate", event.target.value)
-    }
-
-    function valueChanged(attributes) {
-      store.commit("updateCurrentJobDefState",
-          attributes)
-    }
-
+  data() {
     return {
-      jobNameSelectEvent,
-      jobTemplateSelectEvent,
-      valueChanged,
-      componentKeyValue,
-      selectedJobName,
-      selectedJobTemplateName,
-      selectedJobShortDescription,
-      selectedJobEndpoint,
-      selectedJobDescription,
-      selectedJobTemplate,
-      availableJobNames,
-      availableJobTemplateTypes,
-      currentJobNestedStruct,
-      currentJobNestedStructJson
+      componentKeyValue: ""
     }
+  },
+
+  methods: {
+
+    changeComponentKeyValue(value) {
+      this.componentKeyValue = value
+    },
+
+    jobNameSelectEvent(event) {
+      this.$store.commit("updateSelectedJobName", event.target.value)
+    },
+
+    jobTemplateSelectEvent(event) {
+      this.$store.commit("updateSelectedJobTemplate", event.target.value)
+    },
+
+    valueChanged(attributes) {
+      this.$store.commit("updateCurrentJobDefState", attributes)
+    }
+
+  },
+
+  computed: {
+
+    selectedJobName() {
+      return this.$store.state.jobInputDefState.selectedJobName
+    },
+
+    selectedJobTemplateName() {
+      return this.$store.state.jobInputDefState.selectedJobTemplate
+    },
+
+    selectedJobShortDescription() {
+      return this.$store.state.jobInputDefState.jobNameToShortDescription[this.selectedJobName]
+    },
+
+    selectedJobEndpoint() {
+      return this.$store.state.jobInputDefState.jobNameToEndpoint[this.selectedJobName]
+    },
+
+    selectedJobDescription() {
+      return this.$store.state.jobInputDefState.jobNameToDescription[this.selectedJobName]
+    },
+
+    selectedJobTemplate() {
+      let selectedJobNameValue = this.$store.state.jobInputDefState.selectedJobName
+      let selectedJobTemplateNameValue = this.$store.state.jobInputDefState.selectedJobTemplate
+      return this.$store.state.templateContentForTemplateTypeAndId(selectedJobNameValue, selectedJobTemplateNameValue)
+    },
+
+    availableJobNames() {
+      return Object.keys(this.$store.state.jobInputDefState.jobNameToInputDef)
+    },
+
+    availableJobTemplateTypes() {
+      return Object.keys(this.$store.state.templateState.templateTypeToTemplateIdToContentMapping)
+    },
+
+    currentJobNestedStruct() {
+      return this.$store.state.jobInputDefState.jobNameToInputStates[this.$store.state.jobInputDefState.selectedJobName]
+    },
+
+    currentJobNestedStructJson() {
+      return this.$store.state.jobInputDefState.jobNameToInputStatesJson[this.$store.state.jobInputDefState.selectedJobName]
+    }
+
+  },
+
+  mounted() {
+
+    watch(() => this.$store.state.jobInputDefState.selectedJobTemplate, (newValue, oldValue) => {
+      this.changeComponentKeyValue(newValue)
+    })
+
+  },
+
+  setup() {
+    return {}
   }
 
 }

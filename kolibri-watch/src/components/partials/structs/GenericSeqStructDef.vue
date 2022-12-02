@@ -2,6 +2,9 @@
   <!-- struct that takes some struct def and allows adding of
   elements where all have to adhere to the passed def -->
 
+  <!-- NOTE: we need the key here to be able to rerender,
+   otherwise state updates not proper, e.g correct position deletion
+    and the like -->
   <div class="k-seq-container">
     <template :key="childKeyValue + '-' + item.elementId" v-for="(item, index) in addedInputDefs">
 
@@ -119,6 +122,7 @@ export default {
     return {
       addedInputDefs: this.initIndexedInputDefsForInputValues(this.initWithValue),
       addedInputValues: _.cloneDeep((this.initWithValue !== undefined && this.initWithValue !== null) ? this.initWithValue : []),
+      childKeyValueIndex: 0
     }
   },
   computed: {
@@ -127,6 +131,9 @@ export default {
     },
     inputDefSize() {
       return this.addedInputDefs.length
+    },
+    childKeyValue() {
+      return `${this.name}-${this.position}-${this.childKeyValueIndex}`
     }
   },
   methods: {
@@ -218,25 +225,19 @@ export default {
     generateIndexedInputDef() {
       let newItemIndex = this.inputDefSize
       return this.generateIndexedInputDefForIndex(newItemIndex, this.addedInputValues)
+    },
+
+    increaseChildKeyValueIndex() {
+      this.childKeyValueIndex += 1
     }
   },
 
-  setup(props, context) {
-
-    let childKeyValueIndex = 0
-    let childKeyValue = ref(`${props.name}-${props.position}-${childKeyValueIndex}`)
-
-    function increaseChildKeyValueIndex() {
-      childKeyValueIndex += 1
-      childKeyValue.value = `${props.name}-${props.position}-${childKeyValueIndex}`
-    }
+  setup() {
 
     return {
       SingleValueInputDef,
       NestedFieldSequenceInputDef,
-      SeqInputDef,
-      childKeyValue,
-      increaseChildKeyValueIndex
+      SeqInputDef
     }
   }
 

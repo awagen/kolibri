@@ -1,5 +1,7 @@
 <template>
 
+  <!-- NOTE: key needed to cause rerender on change of
+   conditional fields -->
   <template :key="childKeyValue + '-' + field.value.valueFormat.elementId"
     v-for="(field, index) in [...toRefs(state.usedFields), ...toRefs(state.selectedConditionalFields)]">
 
@@ -136,11 +138,6 @@ export default {
       type: Object,
       required: false,
       default: {}
-    },
-    resetCounter: {
-      type: Number,
-      required: false,
-      default: 0
     }
   },
   emits: ['valueChanged'],
@@ -218,7 +215,7 @@ export default {
         // we only recreate the rendered part in this particular case where the changed attribute is a
         // unconditional one and the value is a string (which qualifies it to change conditional values. We need
         // to recreate children with the updated values in this case to ensure correct display of input elements)
-        if (_.isString(attributes.value)) {
+        if (_.isString(attributes.value) && state.usedConditionalFields.length > 0 && !props.isRoot) {
           increaseChildKeyCounter()
         }
 

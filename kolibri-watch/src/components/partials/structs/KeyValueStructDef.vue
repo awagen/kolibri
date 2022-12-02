@@ -2,17 +2,18 @@
 
   <!-- adding key wrapper with col-3 and value wrapper with col-9 to ensure correct relative sizes
    when wrapping this in another container -->
-  <div class="col-3 col-sm-12 k-float-left">
+  <div :key="childKeyValue" class="col-3 col-sm-12 k-float-left">
     <!-- key input -->
     <!-- NOTE: the key might just be given and not changeable, in which case
      just create a key placeholder with the fixed value -->
     <template v-if="keyValue === undefined">
       <SingleValueStructDef
-          @value-changed="keyValueChanged"
+          @valueChanged="keyValueChanged"
+          @valueConfirm="valueConfirm"
           :name="name + '-key-' + position"
           :position="position"
           :element-def="keyInputDef"
-          :init-with-value="initKey"
+          :init-with-value="currentKeyValue"
       >
       </SingleValueStructDef>
     </template>
@@ -28,22 +29,23 @@
     <!-- value input -->
     <template v-if="(valueInputDef instanceof SingleValueInputDef)">
       <SingleValueStructDef
-          @value-changed="valueChanged"
+          @valueChanged="valueChanged"
+          @valueConfirm="valueConfirm"
           :name="name + '-value-' + position"
           :position="position"
           :element-def="valueInputDef"
-          :init-with-value="initValue"
+          :init-with-value="currentValueValue"
       >
       </SingleValueStructDef>
     </template>
     <!-- value input -->
     <template v-if="(valueInputDef instanceof SeqInputDef)">
       <GenericSeqStructDef
-          @value-changed="valueChanged"
+          @valueChanged="valueChanged"
           :name="name + '-value-' + position"
           :input-def="valueInputDef.inputDef"
           :position="position"
-          :init-with-value="initValue"
+          :init-with-value="currentValueValue"
       >
       </GenericSeqStructDef>
     </template>
@@ -53,7 +55,6 @@
 </template>
 
 <script>
-import {ref, watch} from "vue";
 import SingleValueStructDef from "./SingleValueStructDef.vue";
 import GenericSeqStructDef from "./GenericSeqStructDef.vue";
 import {InputDef, StringInputDef, SingleValueInputDef, SeqInputDef} from "../../../utils/dataValidationFunctions";
@@ -91,50 +92,61 @@ export default {
       default: []
     }
   },
-  emits: ['valueChanged'],
+  emits: ['valueChanged', 'valueConfirm'],
   components: {
     SingleValueStructDef,
     GenericSeqStructDef
   },
-  methods: {
-  },
-  setup(props, context) {
-
-    let keyValue = ref(props.keyValue)
-    let valueValue = ref(undefined)
-
-    let initKey = safeGetArrayValueAtIndex(props.initWithValue, 0, undefined)
-    let initValue = safeGetArrayValueAtIndex(props.initWithValue, 1, undefined)
-
-    function promoteCurrentStateUp() {
-      context.emit("valueChanged", {"name": keyValue.value, "value": valueValue.value, "position": props.position})
+  data() {
+    return {
+      currentKeyValue: (this.keyValue !== undefined && this.keyValue !== null) ? this.keyValue : safeGetArrayValueAtIndex(this.initWithValue, 0, undefined),
+      currentValueValue: safeGetArrayValueAtIndex(this.initWithValue, 1, undefined),
+      childKeyValue: 0
     }
+  },
+  methods: {
+
+    increaseChildKeyCounter() {
+      console.debug(`increasing childKeyValue: ${this.childKeyValue + 1}`)
+      this.childKeyValue = this.childKeyValue + 1
+    },
+
+    promoteCurrentStateUp() {
+      this.$emit("valueChanged", {
+        "name": this.currentKeyValue,
+        "value": this.currentValueValue,
+        "position": this.position
+      })
+    },
 
     /**
      * event handler where attributes.value provides the updated value
      * Emits valueChanged event with result of shape {"name": [keyValue], "value": [valueValue]}
      */
-    function valueChanged(attributes) {
-      valueValue.value = attributes.value
-      promoteCurrentStateUp()
-    }
+    valueChanged(attributes) {
+      this.currentValueValue = attributes.value
+      this.promoteCurrentStateUp()
+    },
+
+    valueConfirm(attributes) {
+      this.$emit("valueConfirm", {"name": this.currentKeyValue, "value": this.currentValueValue, "position": this.position})
+    },
 
     /**
      * event handler where attributes.value provides the updated key value.
      * Emits valueChanged event with result of shape {"name": [keyValue], "value": [valueValue]}
      */
-    function keyValueChanged(attributes) {
-      keyValue.value = attributes.value
-      promoteCurrentStateUp()
+     keyValueChanged(attributes) {
+      this.currentKeyValue = attributes.value
+      this.promoteCurrentStateUp()
     }
+  },
+
+  setup(props, context) {
 
     return {
-      valueChanged,
-      keyValueChanged,
       SingleValueInputDef,
-      SeqInputDef,
-      initKey,
-      initValue
+      SeqInputDef
     }
   }
 

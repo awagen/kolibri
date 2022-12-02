@@ -13,15 +13,21 @@ const testValue = "teststr"
 test("InputDef default value set as input value", () => {
     // given
     let {inputDef, props} = getStringInputDefAndProps("el1", ".*")
-    inputDef.defaultValue = testValue
+
+    const div = document.createElement('div')
+    document.body.appendChild(div)
+
+    props["initWithValue"] = testValue
     const inputId = getInputElementId(inputDef.elementId, props.name, 1)
     const component = mount(SingleValueStructDef, {
         // @ts-ignore
-        props: props
+        props: props,
+        attachTo: div
     })
     // when, then
     // @ts-ignore
     let inputContent = component.find(`#${inputId}`).element.value
+    console.info(`inputContent: ${inputContent}`)
     expect(inputContent).toContain(testValue)
     component.unmount()
 })
@@ -56,6 +62,6 @@ test("initWithValue set as initial input value but changes ignored", async () =>
     let newInputContent = newInputElement.value
     expect(newInputContent).toContain(testValue)
     // test that the change event was submitted
-    expect(component.emitted()).toEqual({"valueChanged":[[{"name":"test-string-input","value":"teststr","position":1}]]})
+    expect(component.emitted()).toEqual({"valueConfirm":[[{"name":"test-string-input","value":"teststr","position":1}]]})
     component.unmount()
 })

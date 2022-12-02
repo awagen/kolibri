@@ -5,59 +5,76 @@
       For some reason causes errors when check is baked directly
       into the :value binding below (:value="!!elementDef.defaultValue ? element.defaultValue : null"
       should do but causes input fields to be unusable)-->
+
+      <!-- NOTE that we need to define key below otherwise
+       focus will drop after typing of first char and needs another
+       click. Setting a static key will avoid this recreation of
+       input element and thus keep focus -->
       <template v-if="value === 0 || !!value">
-        <input :id="getValueInputId()"
+        <input :id="getValueInputId"
                class="form-input metric"
                type="number"
                :step=usedElementDef.step
                :value="value"
                @input="updateValueEvent"
-               placeholder="Number Input">
+               placeholder="Number Input"
+               :key="position + '-' + name + '-' + JSON.stringify(usedElementDef.toObject())"
+        >
       </template>
       <template v-else>
-        <input :id="getValueInputId()"
+        <input :id="getValueInputId"
                class="form-input metric"
                type="number"
                :step=usedElementDef.step
                @input="updateValueEvent"
-               placeholder="Number Input">
+               placeholder="Number Input"
+               :key="position + '-' + name + '-' + JSON.stringify(usedElementDef.toObject())"
+        >
       </template>
     </template>
     <template v-if="(usedElementDef instanceof StringInputDef)">
       <template v-if="!!value">
-        <input :id="getValueInputId()"
+        <input :id="getValueInputId"
                class="form-input metric"
                type="text"
                :value="(!!value) ? value : null"
                @input="updateValueEvent"
-               placeholder="Text Input">
+               placeholder="Text Input"
+               :key="position + '-' + name + '-' + JSON.stringify(usedElementDef.toObject())"
+        >
       </template>
       <template v-else>
-        <input :id="getValueInputId()"
+        <input :id="getValueInputId"
                class="form-input metric"
                type="text"
                @input="updateValueEvent"
-               placeholder="Text Input">
+               placeholder="Text Input"
+               :key="position + '-' + name + '-' + JSON.stringify(usedElementDef.toObject())"
+        >
       </template>
     </template>
     <template v-if="(usedElementDef instanceof BooleanInputDef)">
       <label class="form-radio form-inline">
-        <input :id="getValueInputId()"
+        <input :id="getValueInputId"
                type="radio"
-               :name="getValueInputId()"
+               :name="getValueInputId"
                :value="true"
                :checked="(value === true) ? '' : null"
-               @change="updateValueEvent">
+               @change="updateValueEvent"
+               :key="position + '-' + name + '-' + JSON.stringify(usedElementDef.toObject())"
+        >
         <i class="form-icon"></i>
         true
       </label>
       <label class="form-radio form-inline">
-        <input :id="getValueInputId()"
+        <input :id="getValueInputId"
                type="radio"
-               :name="getValueInputId()"
+               :name="getValueInputId"
                :value="false"
                :checked="(value === false) ? '' : null"
-               @change="updateValueEvent">
+               @change="updateValueEvent"
+               :key="position + '-' + name + '-' + JSON.stringify(usedElementDef.toObject())"
+        >
         <i class="form-icon"></i>
         false
       </label>
@@ -65,12 +82,14 @@
     <template v-if="(usedElementDef instanceof ChoiceInputDef)">
       <template v-for="element in usedElementDef.choices">
         <label class="form-radio form-inline">
-          <input :id="getValueInputId()"
+          <input :id="getValueInputId"
                  type="radio"
-                 :name="getValueInputId()"
+                 :name="getValueInputId"
                  :value="element"
                  :checked="(value === element) ? '' : null"
-                 @change="updateValueEvent">
+                 @change="updateValueEvent"
+                 :key="position + '-' + name + '-' + JSON.stringify(usedElementDef.toObject())"
+          >
           <i class="form-icon"></i>
           {{ element }}
         </label>
@@ -79,27 +98,28 @@
     <template v-if="(usedElementDef instanceof FloatChoiceInputDef)">
       <template v-for="element in usedElementDef.choices">
         <label class="form-radio form-inline">
-          <input :id="getValueInputId()"
+          <input :id="getValueInputId"
                  type="radio"
-                 :name="getValueInputId()"
+                 :name="getValueInputId"
                  :value="element"
                  :checked="(value === element) ? '' : null"
-                 @change="updateValueEvent">
+                 @change="updateValueEvent"
+                 :key="position + '-' + name + '-' + JSON.stringify(usedElementDef.toObject())"
+          >
           <i class="form-icon"></i>
           {{ element }}
         </label>
       </template>
     </template>
     <!-- Toast element for warnings / validation messages -->
-    <div :id="getToastId()" class="toast toast-warning display-none">
+    <div :id="getToastId" class="toast toast-warning display-none">
       <button type='button' class="btn btn-clear float-right" @click="hideModal"></button>
-      <span :id="getToastContentId()"></span>
+      <span :id="getToastContentId"></span>
     </div>
   </div>
 </template>
 
 <script>
-import {onMounted, onUpdated, ref} from "vue";
 import {
   InputDef, StringInputDef, BooleanInputDef, NumberInputDef, InputType,
   ChoiceInputDef, FloatChoiceInputDef
@@ -144,137 +164,128 @@ export default {
   // c) valueChanged with an actual value. This needs recalculation on parent end
   // on the valid values
   emits: ['valueChanged', 'valueConfirm'],
-  components: {},
-  methods: {
+  data() {
+    return {
+      usedElementDef: this.elementDef.copy(this.elementDef.elementId),
+      validator: this.elementDef.getInputValidation(),
+      value: this.initWithValue,
+      convertInputToNumber: (this.elementDef instanceof ChoiceInputDef) &&
+          (this.elementDef.choices.filter(choice => isNaN(choice)).length == 0)
+    }
   },
+  components: {},
+  computed: {
+    getValueInputId() {
+      return getInputElementId(this.usedElementDef.elementId, this.name, this.position)
+    },
 
-  setup(props, context) {
+    getToastId() {
+      return getInputElementToastId(this.usedElementDef.elementId, this.name, this.position)
+    },
 
-    let usedElementDef = props.elementDef.copy(props.elementDef.elementId)
-
-    let validator = usedElementDef.getInputValidation()
-
-    let value = props.initWithValue
-
-    let convertInputToNumber = (usedElementDef instanceof ChoiceInputDef) &&
-        (usedElementDef.choices.filter(choice => isNaN(choice)).length == 0)
-
-    onMounted(() => {
-      if (value !== undefined) {
-        updateValue(value, true)
-      }
-    })
-
-    function getValueInputId() {
-      return getInputElementId(usedElementDef.elementId, props.name, props.position)
-    }
-
-    function getToastId() {
-      return getInputElementToastId(usedElementDef.elementId, props.name, props.position)
-    }
-
-    function getToastContentId() {
-      return getInputElementToastContentId(usedElementDef.elementId, props.name, props.position)
-    }
-
-    onUpdated(() => {
-      convertInputToNumber = (usedElementDef instanceof ChoiceInputDef) &&
-          (usedElementDef.choices.filter(choice => isNaN(choice)).length == 0)
-      // note that we need to update the validator here as its possible another elementDef has been passed.
-      // if that new def carries another validation, we'd be still using the old, thus the update here.
-      // NOTE: do not set possibly changing state in the setup or update it with proper hooks
-      validator = usedElementDef.getInputValidation()
-    })
-
-    function parseRightType(val) {
-      if (usedElementDef.valueType === InputType.INT) {
+    getToastContentId() {
+      return getInputElementToastContentId(this.usedElementDef.elementId, this.name, this.position)
+    },
+  },
+  methods: {
+    parseRightType(val) {
+      if (this.usedElementDef.valueType === InputType.INT) {
         return parseInt(val)
-      } else if ([InputType.FLOAT, InputType.FLOAT_CHOICE]
-          .includes(usedElementDef.valueType)) {
+      } else if ([InputType.FLOAT, InputType.FLOAT_CHOICE].includes(this.usedElementDef.valueType)) {
         return parseFloat(val)
-      } else if (usedElementDef.valueType === InputType.BOOLEAN) {
+      } else if (this.usedElementDef.valueType === InputType.BOOLEAN) {
         return (val === null || val === undefined) ? val : (val === 'true' || val === true)
       }
       return val
-    }
+    },
 
-    document.addEventListener('change', function handle(event) {
-      if (event.target.id !== getValueInputId()) {
-        return
-      }
-      let validationResult = validator.validate(event.target.value)
-      if (validationResult.isValid) {
-        hideModal()
-      }
-    });
+    emitValueConfirmEvent() {
+      this.$emit('valueConfirm', {name: this.name, value: this.value, position: this.position})
+    },
 
-    function emitValueConfirmEvent() {
-      context.emit('valueConfirm', {name: props.name, value: value, position: props.position})
-    }
+    emitValueChangedEvent() {
+      this.$emit('valueChanged', {name: this.name, value: this.value, position: this.position})
+    },
 
-    function emitValueChangedEvent() {
-      context.emit('valueChanged', {name: props.name, value: value, position: props.position})
-    }
-
-    function updateValue(newValue, isInitValue) {
+    updateValue(newValue, isInitValue) {
       if (newValue === undefined && isInitValue) {
-        emitValueConfirmEvent()
+        this.emitValueConfirmEvent()
         return;
       }
-      if (convertInputToNumber) {
+      if (this.convertInputToNumber) {
         newValue = Number(newValue)
       }
-      let validationResult = validator.validate(newValue)
+      let validationResult = this.validator.validate(newValue)
       if (validationResult.isValid) {
-        hideModal()
-        value = parseRightType(newValue)
+        this.hideModal()
+        this.value = this.parseRightType(newValue)
         // emitting change event to make parent element react to update / update its structure
         if (isInitValue) {
-          emitValueConfirmEvent()
-        }
-        else {
-          emitValueChangedEvent()
+          this.emitValueConfirmEvent()
+        } else {
+          this.emitValueChangedEvent()
         }
       } else {
-        value = undefined
-        showModalMsg(validationResult.failReason)
-        emitValueChangedEvent()
+        this.value = undefined
+        this.showModalMsg(validationResult.failReason)
+        this.emitValueChangedEvent()
       }
-    }
+    },
 
     /**
      * Function for manual edit
      * @param valueEvent
      */
-    function updateValueEvent(valueEvent) {
+    updateValueEvent(valueEvent) {
       let newValue = valueEvent.target.value
-      updateValue(newValue, false)
+      this.updateValue(newValue, false)
+    },
+
+    showModalMsg(msg) {
+      document.getElementById(this.getToastContentId).textContent = msg;
+      document.getElementById(this.getToastId).classList.remove("display-none");
+    },
+
+    hideModal() {
+      document.getElementById(this.getToastContentId).textContent = "";
+      document.getElementById(this.getToastId).classList.add("display-none");
+    }
+  },
+
+  updated() {
+    this.convertInputToNumber = (this.usedElementDef instanceof ChoiceInputDef) &&
+        (this.usedElementDef.choices.filter(choice => isNaN(choice)).length == 0)
+    // note that we need to update the validator here as its possible another elementDef has been passed.
+    // if that new def carries another validation, we'd be still using the old, thus the update here.
+    // NOTE: do not set possibly changing state in the setup or update it with proper hooks
+    this.validator = this.usedElementDef.getInputValidation()
+  },
+
+  mounted() {
+    if (this.value !== undefined) {
+      this.updateValue(this.value, true)
     }
 
-    function showModalMsg(msg) {
-      document.getElementById(getToastContentId()).textContent = msg;
-      document.getElementById(getToastId()).classList.remove("display-none");
-    }
+    // document.addEventListener('change', function handle(event) {
+    //   if (event.target.id !== this.getValueInputId) {
+    //     return
+    //   }
+    //   let validationResult = this.validator.validate(event.target.value)
+    //   if (validationResult.isValid) {
+    //     this.hideModal()
+    //   }
+    // });
+  },
 
-    function hideModal() {
-      document.getElementById(getToastContentId()).textContent = "";
-      document.getElementById(getToastId()).classList.add("display-none");
-    }
+  setup() {
 
     return {
-      updateValueEvent,
-      hideModal,
-      getValueInputId,
-      getToastId,
-      getToastContentId,
       InputType,
       NumberInputDef,
       StringInputDef,
       BooleanInputDef,
       ChoiceInputDef,
-      FloatChoiceInputDef,
-      value,
-      usedElementDef
+      FloatChoiceInputDef
     }
   }
 
