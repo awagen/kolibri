@@ -36,7 +36,10 @@ import spray.json.{JsValue, JsonReader, RootJsonFormat, enrichAny}
 import scala.reflect.runtime.universe._
 import scala.reflect.runtime.universe.typeOf
 
-object ResourceRoutes {
+
+// TODO: unify with JobDefRoutes. Refers especially to the type checking below before a
+//  job template is stored, while job structural descriptions are provided in JobDefRoutes
+object JobTemplateResourceRoutes {
 
   /**
     * Encapsulates validation that the json of passed type can indeed be parsed to the correct type.
@@ -84,7 +87,7 @@ object ResourceRoutes {
 
   }
 
-  private[this] val logger: Logger = LoggerFactory.getLogger(ResourceRoutes.getClass)
+  private[this] val logger: Logger = LoggerFactory.getLogger(JobTemplateResourceRoutes.getClass)
 
   val JSON_FILE_SUFFIX = ".json"
   val jsonFileOverviewReader: DataOverviewReader = persistenceModule.persistenceDIModule.dataOverviewReader(x => x.endsWith(JSON_FILE_SUFFIX))

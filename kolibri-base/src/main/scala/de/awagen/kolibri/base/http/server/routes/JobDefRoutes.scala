@@ -24,9 +24,12 @@ import de.awagen.kolibri.datatypes.io.json.JsonStructDefsJsonProtocol.JsonStruct
 import de.awagen.kolibri.datatypes.types.JsonStructDefs.StructDef
 import akka.http.scaladsl.server.Directives._
 import de.awagen.kolibri.base.http.server.routes.JobDefRoutes.Endpoints.{fullSearchEvaluationEndpoint, queryBasedSearchEvaluationEndpoint}
+import de.awagen.kolibri.base.http.server.routes.JobTemplateResourceRoutes.TemplateTypeValidationAndExecutionInfo.{SEARCH_EVALUATION, SEARCH_EVALUATION_SHORT}
 import de.awagen.kolibri.base.io.json.{QueryBasedSearchEvaluationJsonProtocol, SearchEvaluationJsonProtocol}
 import spray.json.{DefaultJsonProtocol, RootJsonFormat}
 
+
+// TODO: unify with JobTemplateResourceRoutes
 object JobDefRoutes extends DefaultJsonProtocol with CORSHandler {
 
   val ENDPOINTS_PATH_PREFIX = "endpoints"
@@ -46,7 +49,7 @@ object JobDefRoutes extends DefaultJsonProtocol with CORSHandler {
     val fullSearchEvaluationEndpoint: EndpointDef = EndpointDef(
       ID_SEARCH_EVALUATION,
       "Search Evaluation (Full)",
-      "search_eval_no_ser",
+      SEARCH_EVALUATION.requestPath,
       SearchEvaluationJsonProtocol.structDef,
       "Endpoint for search evaluation, providing the full range of configuration flexibility. " +
         "Note that for specific use cases, one of the endpoint definitions with less flexibility / options " +
@@ -55,7 +58,7 @@ object JobDefRoutes extends DefaultJsonProtocol with CORSHandler {
     val queryBasedSearchEvaluationEndpoint: EndpointDef = EndpointDef(
       ID_SEARCH_EVALUATION_SHORT,
       "Search Evaluation (Query-based, reduced configuration)",
-      "search_eval_query_reduced",
+      SEARCH_EVALUATION_SHORT.requestPath,
       QueryBasedSearchEvaluationJsonProtocol.structDef,
       "Endpoint for search evaluation, providing a reduced set of configuration flexibility. " +
         "Particularly useful in case common information retrieval metrics shall be calculated and no custom " +

@@ -249,7 +249,7 @@ object JobMessagesImplicits {
         fixedParams = eval.fixedParams,
         contextPath = eval.contextPath,
         connections = eval.connections,
-        resourceDirectives = Seq.empty,
+        resourceDirectives = eval.resourceDirectives,
         requestParameters = eval.requestParameters,
         batchByIndex = eval.batchByIndex,
         parsingConfig = eval.parsingConfig,

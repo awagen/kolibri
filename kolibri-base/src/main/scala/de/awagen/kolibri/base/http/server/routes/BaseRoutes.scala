@@ -33,7 +33,7 @@ import de.awagen.kolibri.base.cluster.ClusterStates.ClusterStatus
 import de.awagen.kolibri.base.config.AppConfig
 import de.awagen.kolibri.base.config.AppProperties.config.{analyzeTimeout, internalJobStatusRequestTimeout, kolibriDispatcherName}
 import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions
-import de.awagen.kolibri.base.http.server.routes.ResourceRoutes.TemplateTypeValidationAndExecutionInfo
+import de.awagen.kolibri.base.http.server.routes.JobTemplateResourceRoutes.TemplateTypeValidationAndExecutionInfo
 import de.awagen.kolibri.base.http.server.routes.StatusRoutes.corsHandler
 import de.awagen.kolibri.base.processing.JobMessages.{QueryBasedSearchEvaluationDefinition, SearchEvaluationDefinition, TestPiCalculationDefinition}
 import de.awagen.kolibri.base.processing.execution.functions.Execution
