@@ -40,7 +40,6 @@ class RequestTemplateBuilder extends KolibriSerializable {
   private[request] var headers: Seq[HttpHeader] = Seq.empty
   private[request] var bodyContentType: ContentType = ContentTypes.`application/json`
   private[request] var bodyString: String = ""
-  private[request] var body: MessageEntity = HttpEntity.Empty
   // string replacements on the set body value,
   // those are only set in the pre-build phase and only applied
   // on the string value of the body on the build() call, without
@@ -67,7 +66,6 @@ class RequestTemplateBuilder extends KolibriSerializable {
   def withBody(bodyString: String, contentType: ContentType = ContentTypes.`application/json`): RequestTemplateBuilder = {
     this.bodyContentType = contentType
     this.bodyString = bodyString
-    this.body = HttpEntity(contentType, this.bodyString.getBytes)
     this
   }
 
@@ -126,8 +124,11 @@ class RequestTemplateBuilder extends KolibriSerializable {
   }
 
   def build(): RequestTemplate = {
-    val newBodyValue = applyReplacementsToBodyAndReturnNewValue()
-    val newBody = HttpEntity(this.bodyContentType, newBodyValue.getBytes)
+    var newBody = HttpEntity.Empty
+    if (!Objects.isNull(this.bodyString) && this.bodyString.nonEmpty) {
+      val newBodyValue = applyReplacementsToBodyAndReturnNewValue()
+      newBody = HttpEntity(this.bodyContentType, newBodyValue.getBytes)
+    }
     new RequestTemplate(
       contextPath = contextPath,
       parameters = parameters,
