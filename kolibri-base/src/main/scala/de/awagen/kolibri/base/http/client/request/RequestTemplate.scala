@@ -34,12 +34,14 @@ object RequestTemplate {
             parameters: immutable.Map[String, Seq[String]],
             headers: immutable.Seq[HttpHeader],
             body: MessageEntity = HttpEntity.Empty,
+            bodyReplaceParameters: immutable.Map[String, String] = immutable.Map.empty,
             httpMethod: HttpMethod = HttpMethods.GET,
             protocol: HttpProtocol = HttpProtocols.`HTTP/2.0`): RequestTemplate = {
     new RequestTemplate(contextPath = contextPath,
       parameters = parameters,
       headers = headers,
       body = body,
+      bodyReplaceParameters = bodyReplaceParameters,
       httpMethod = httpMethod,
       protocol = protocol)
   }
@@ -61,6 +63,7 @@ class RequestTemplate(val contextPath: String,
                       val parameters: immutable.Map[String, Seq[String]],
                       val headers: immutable.Seq[HttpHeader],
                       val body: MessageEntity,
+                      val bodyReplaceParameters: immutable.Map[String, String],
                       val httpMethod: HttpMethod,
                       val protocol: HttpProtocol = HttpProtocols.`HTTP/1.1`)
   extends HttpRequestProvider {
@@ -105,7 +108,12 @@ class RequestTemplate(val contextPath: String,
   }
 
   def getParameter(name: String): Option[Seq[String]] = {
-    parameters.get(name)
+    if (parameters.contains(name)) {
+      parameters.get(name)
+    }
+    else {
+      bodyReplaceParameters.get(name).map(x => Seq(x))
+    }
   }
 
   def getHeader(name: String): Option[HttpHeader] = {
@@ -116,8 +124,16 @@ class RequestTemplate(val contextPath: String,
            parameters: immutable.Map[String, Seq[String]] = parameters,
            headers: immutable.Seq[HttpHeader] = headers,
            body: MessageEntity = body,
+           bodyReplaceParameters: immutable.Map[String, String] = bodyReplaceParameters,
            httpMethod: HttpMethod,
            protocol: HttpProtocol = protocol) =
-    new RequestTemplate(contextPath, parameters, headers, body, httpMethod, protocol)
+    new RequestTemplate(
+      contextPath,
+      parameters,
+      headers,
+      body,
+      bodyReplaceParameters,
+      httpMethod,
+      protocol)
 
 }

@@ -134,6 +134,7 @@ class RequestTemplateBuilder extends KolibriSerializable {
       parameters = parameters,
       headers = headers,
       body = newBody,
+      bodyReplaceParameters = this.bodyValueReplacementMap,
       httpMethod = httpMethod,
       protocol = protocol
     )
