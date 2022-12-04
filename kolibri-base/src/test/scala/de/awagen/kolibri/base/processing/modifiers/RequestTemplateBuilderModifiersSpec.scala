@@ -90,6 +90,20 @@ class RequestTemplateBuilderModifiersSpec extends UnitTestSpec {
       modifiedBuilder.build().contextPath mustBe "/newPath"
     }
 
+    "correctly apply BodyReplaceModifier on build irrespective of order of application of body and bodyReplace modifiers" in {
+      // given
+      val testJsonBodyInit = """{"key": "value", "key2": "$$value2$$"}"""
+      val testJsonBodyFinal = """{"key": "value", "key2": "yay"}"""
+      val body = HttpEntity.Strict(ContentTypes.`application/json`, ByteString(testJsonBodyFinal))
+      val modifier = BodyModifier(testJsonBodyInit, ContentTypes.`application/json`)
+      val modifier1 = BodyReplaceModifier(Map("$$value2$$" -> "yay"))
+      // when, then
+      val modifiedTemplateBuilder1 = modifier1.apply(modifier.apply(createRequestTemplateBuilder))
+      val modifiedTemplateBuilder2 = modifier.apply(modifier1.apply(createRequestTemplateBuilder))
+      modifiedTemplateBuilder1.build().body mustBe body
+      modifiedTemplateBuilder2.build().body mustBe body
+    }
+
   }
 
 }
