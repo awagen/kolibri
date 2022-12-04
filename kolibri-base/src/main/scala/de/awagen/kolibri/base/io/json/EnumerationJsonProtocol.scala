@@ -50,6 +50,7 @@ object EnumerationJsonProtocol extends DefaultJsonProtocol {
     override def structDef: JsonStructDefs.StructDef[_] = {
       StringChoiceStructDef(Seq(
         ValueType.BODY.toString,
+        ValueType.BODY_REPLACE.toString,
         ValueType.HEADER.toString,
         ValueType.URL_PARAMETER.toString,
       ))

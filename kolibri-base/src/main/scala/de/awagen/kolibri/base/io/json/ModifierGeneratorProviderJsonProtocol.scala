@@ -64,15 +64,18 @@ object ModifierGeneratorProviderJsonProtocol extends DefaultJsonProtocol {
       params: Option[OrderedMultiValues],
       headers: Option[OrderedMultiValues],
       bodies: Option[Seq[String]],
+      bodyReplacements: Option[OrderedMultiValues],
       bodyContentType: Option[String]
     ) => RequestPermutation.apply(
       params.getOrElse(GridOrderedMultiValues(Seq.empty)),
       headers.getOrElse(GridOrderedMultiValues(Seq.empty)),
       bodies.getOrElse(Seq.empty),
+      bodyReplacements.getOrElse(GridOrderedMultiValues(Seq.empty)),
       stringToContentType(bodyContentType.getOrElse("json"))),
     "params",
     "headers",
     "bodies",
+    "bodyReplacements",
     "bodyContentType"
   )
 

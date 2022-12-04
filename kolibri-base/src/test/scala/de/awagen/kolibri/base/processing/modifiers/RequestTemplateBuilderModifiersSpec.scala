@@ -70,7 +70,7 @@ class RequestTemplateBuilderModifiersSpec extends UnitTestSpec {
       // given
       val testJsonBody = """{"key": "value"}"""
       val body = HttpEntity.Strict(ContentTypes.`application/json`, ByteString(testJsonBody))
-      val modifier = BodyModifier(body)
+      val modifier = BodyModifier(testJsonBody, ContentTypes.`application/json`)
       // when, then
       modifier.apply(createRequestTemplateBuilder).build().body mustBe body
     }
@@ -79,7 +79,7 @@ class RequestTemplateBuilderModifiersSpec extends UnitTestSpec {
       // given
       val testJsonBody = """{"key": "value"}"""
       val body = HttpEntity.Strict(ContentTypes.`application/json`, ByteString(testJsonBody))
-      val bodyModifier = BodyModifier(body)
+      val bodyModifier = BodyModifier(testJsonBody, ContentTypes.`application/json`)
       val modifierReplace = HeaderModifier(Seq(RawHeader("h1", "v1"), RawHeader("h3", "v3")), replace = true)
       val contextModifier = ContextPathModifier("newPath")
       // when

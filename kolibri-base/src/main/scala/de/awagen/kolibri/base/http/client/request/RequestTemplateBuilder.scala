@@ -17,17 +17,35 @@
 
 package de.awagen.kolibri.base.http.client.request
 
-import akka.http.scaladsl.model.{HttpEntity, HttpHeader, HttpMethod, HttpMethods, HttpProtocol, HttpProtocols, MessageEntity}
+import akka.http.scaladsl.model._
+import de.awagen.kolibri.base.http.client.request.RequestTemplateBuilder.logger
 import de.awagen.kolibri.base.utils.IterableUtils
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
+import org.slf4j.{Logger, LoggerFactory}
 
+import java.util.Objects
+import scala.collection.immutable
+
+
+object RequestTemplateBuilder {
+
+  private val logger: Logger = LoggerFactory.getLogger(this.getClass)
+
+}
 
 class RequestTemplateBuilder extends KolibriSerializable {
 
   private[request] var contextPath: String = ""
   private[request] var parameters: Map[String, Seq[String]] = Map.empty
   private[request] var headers: Seq[HttpHeader] = Seq.empty
+  private[request] var bodyContentType: ContentType = ContentTypes.`application/json`
+  private[request] var bodyString: String = ""
   private[request] var body: MessageEntity = HttpEntity.Empty
+  // string replacements on the set body value,
+  // those are only set in the pre-build phase and only applied
+  // on the string value of the body on the build() call, without
+  // changing the state of the builder itself
+  private[request] var bodyValueReplacementMap: immutable.Map[String, String] = immutable.Map.empty
   private[request] var httpMethod: HttpMethod = HttpMethods.GET
   private[request] var protocol: HttpProtocol = HttpProtocols.`HTTP/1.1`
 
@@ -46,8 +64,15 @@ class RequestTemplateBuilder extends KolibriSerializable {
     this
   }
 
-  def withBody(body: MessageEntity): RequestTemplateBuilder = {
-    this.body = body
+  def withBody(bodyString: String, contentType: ContentType = ContentTypes.`application/json`): RequestTemplateBuilder = {
+    this.bodyContentType = contentType
+    this.bodyString = bodyString
+    this.body = HttpEntity(contentType, this.bodyString.getBytes)
+    this
+  }
+
+  def addBodyReplaceValues(replaceMap: immutable.Map[String, String]): RequestTemplateBuilder = {
+    this.bodyValueReplacementMap = this.bodyValueReplacementMap ++ replaceMap
     this
   }
 
@@ -68,18 +93,46 @@ class RequestTemplateBuilder extends KolibriSerializable {
       contextPath == other.contextPath &&
         parameters == other.parameters &&
         headers == other.headers &&
-        body == other.body &&
+        bodyString == other.bodyString &&
+        bodyValueReplacementMap == other.bodyValueReplacementMap &&
+        bodyContentType == other.bodyContentType &&
         httpMethod == other.httpMethod &&
         protocol == other.protocol
     }
   }
 
+  /**
+   * Using the current string value of the body to send,
+   * apply all set string replacements on that body value and
+   * return the resulting update.
+   * Note: does not change any state, purely applies on input value
+   * and returns result
+   *
+   * @return
+   */
+  private[request] def applyReplacementsToBodyAndReturnNewValue(): String = {
+    if (Objects.isNull(this.bodyString)) {
+      logger.warn(s"Could not apply replacement of body values" +
+        s" since body has not yet been set")
+      this.bodyString
+    }
+    else {
+      var modifiedBody = this.bodyString
+      this.bodyValueReplacementMap.foreach(paramNameAndValue => {
+        modifiedBody = modifiedBody.replace(paramNameAndValue._1, paramNameAndValue._2)
+      })
+      modifiedBody
+    }
+  }
+
   def build(): RequestTemplate = {
+    val newBodyValue = applyReplacementsToBodyAndReturnNewValue()
+    val newBody = HttpEntity(this.bodyContentType, newBodyValue.getBytes)
     new RequestTemplate(
       contextPath = contextPath,
       parameters = parameters,
       headers = headers,
-      body = body,
+      body = newBody,
       httpMethod = httpMethod,
       protocol = protocol
     )

@@ -41,7 +41,10 @@ object ParameterValues {
           case ValueType.HEADER =>
             RequestTemplateBuilderModifiers.HeaderModifier(Seq(RawHeader(value.name, value.value)), replace = false)
           case ValueType.BODY =>
-            RequestTemplateBuilderModifiers.BodyModifier(HttpEntity.Strict(ContentTypes.`application/json`, ByteString(value.value)))
+            RequestTemplateBuilderModifiers.BodyModifier(value.value, ContentTypes.`application/json`)
+          case ValueType.BODY_REPLACE =>
+            RequestTemplateBuilderModifiers.BodyReplaceModifier(Map(value.name -> value.value))
+
         }
       }
     }
@@ -55,7 +58,7 @@ object ParameterValues {
 
   object ValueType extends Enumeration with KolibriSerializable {
     type ValueType = Value
-    val URL_PARAMETER, HEADER, BODY = Value
+    val URL_PARAMETER, HEADER, BODY, BODY_REPLACE = Value
   }
 
   sealed trait ValueSeqGenDefinition[+T] extends KolibriSerializable {
