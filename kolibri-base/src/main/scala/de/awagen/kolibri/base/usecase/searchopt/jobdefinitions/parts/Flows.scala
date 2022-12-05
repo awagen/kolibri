@@ -30,7 +30,8 @@ import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifie
 import de.awagen.kolibri.base.processing.tagging.TaggingConfigurations.TaggingConfiguration
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.ReservedStorageKeys.REQUEST_TEMPLATE_STORAGE_KEY
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.{Calculation, ResultRecord}
-import de.awagen.kolibri.base.usecase.searchopt.metrics.Functions.{resultRecordToMetricValue, throwableToMetricRowResponse}
+import de.awagen.kolibri.base.usecase.searchopt.metrics.MetricRowFunctions.throwableToMetricRowResponse
+import de.awagen.kolibri.base.usecase.searchopt.metrics.MetricValueFunctions.resultRecordToMetricValue
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.tagging.TagType

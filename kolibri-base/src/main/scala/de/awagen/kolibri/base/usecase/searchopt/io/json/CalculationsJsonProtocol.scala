@@ -23,8 +23,8 @@ import de.awagen.kolibri.base.io.json.ResourceJsonProtocol.resourceMapStringDoub
 import de.awagen.kolibri.base.usecase.searchopt.io.json.CalculationName.{BINARY_PRECISION_FALSE_AS_YES, BINARY_PRECISION_TRUE_AS_YES, FALSE_COUNT, FIRST_FALSE, FIRST_TRUE, IDENTITY, IR_METRICS, TRUE_COUNT}
 import de.awagen.kolibri.base.usecase.searchopt.io.json.MetricsCalculationJsonProtocol._
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations._
-import de.awagen.kolibri.base.usecase.searchopt.metrics.Functions.{booleanPrecision, countValues, findFirstValue}
-import de.awagen.kolibri.base.usecase.searchopt.metrics.{Functions, MetricsCalculation}
+import de.awagen.kolibri.base.usecase.searchopt.metrics.ComputeResultFunctions.{booleanPrecision, countValues, findFirstValue}
+import de.awagen.kolibri.base.usecase.searchopt.metrics.{ComputeResultFunctions, MetricsCalculation}
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
 import de.awagen.kolibri.datatypes.types.JsonStructDefs._
@@ -65,7 +65,7 @@ object CalculationsJsonProtocol extends DefaultJsonProtocol {
           case IDENTITY.name =>
             val metricName: String = fields(NAME_KEY).convertTo[String]
             val dataKey: String = fields(DATA_KEY_KEY).convertTo[String]
-            FromMapCalculation[Double, Double](Set(metricName), dataKey, Functions.identity[Double])
+            FromMapCalculation[Double, Double](Set(metricName), dataKey, ComputeResultFunctions.identity[Double])
           case FIRST_TRUE.name =>
             val metricName: String = fields(NAME_KEY).convertTo[String]
             val dataKey: String = fields(DATA_KEY_KEY).convertTo[String]

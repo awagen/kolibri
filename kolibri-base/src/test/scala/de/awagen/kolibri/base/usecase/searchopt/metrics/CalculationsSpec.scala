@@ -31,7 +31,9 @@ import de.awagen.kolibri.base.resources.{ResourceAlreadyExists, ResourceOK}
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.ReservedStorageKeys._
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations._
 import de.awagen.kolibri.base.usecase.searchopt.metrics.CalculationsTestHelper._
-import de.awagen.kolibri.base.usecase.searchopt.metrics.Functions._
+import de.awagen.kolibri.base.usecase.searchopt.metrics.ComputeResultFunctions.{booleanPrecision, countValues, findFirstValue}
+import de.awagen.kolibri.base.usecase.searchopt.metrics.MetricRowFunctions.{computeFailReasonsToMetricRowResponse, resultEitherToMetricRowResponse, throwableToMetricRowResponse}
+import de.awagen.kolibri.base.usecase.searchopt.metrics.PlainMetricValueFunctions._
 import de.awagen.kolibri.datatypes.mutable.stores.{BaseWeaklyTypedMap, WeaklyTypedMap}
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason
 import de.awagen.kolibri.datatypes.stores.MetricRow

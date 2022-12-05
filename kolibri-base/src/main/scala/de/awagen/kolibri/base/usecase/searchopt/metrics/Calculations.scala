@@ -19,21 +19,20 @@ package de.awagen.kolibri.base.usecase.searchopt.metrics
 
 import de.awagen.kolibri.base.cluster.ClusterNodeObj
 import de.awagen.kolibri.base.config.AppProperties.config.judgementQueryAndProductDelimiter
-import de.awagen.kolibri.base.directives.{Resource, RetrievalDirective, WithResources}
+import de.awagen.kolibri.base.directives.{Resource, RetrievalDirective}
 import de.awagen.kolibri.base.http.client.request.RequestTemplate
 import de.awagen.kolibri.base.resources.RetrievalError
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.ReservedStorageKeys._
-import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.{ComputeResult, ResultRecord}
+import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.{BooleanSeqToDoubleCalculation, Calculation, ComputeResult, ResultRecord}
 import de.awagen.kolibri.base.usecase.searchopt.metrics.ComputeFailReason.missingKeyFailReason
-import de.awagen.kolibri.base.usecase.searchopt.metrics.Functions.{countValues, findFirstValue}
+import de.awagen.kolibri.base.usecase.searchopt.metrics.ComputeResultFunctions.{countValues, findFirstValue}
+import de.awagen.kolibri.base.usecase.searchopt.metrics.PlainMetricValueFunctions.binarizeBooleanSeq
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 import de.awagen.kolibri.datatypes.values.MetricValue
-
-import scala.concurrent.{ExecutionContext, Future}
 
 
 /**
@@ -57,14 +56,12 @@ object Calculations {
     def names: Set[String]
   }
 
-
-  trait FutureCalculation[In, ResultIdentifier, Out] extends KolibriSerializable with WithResources {
-    val name: String
-    val calculationResultIdentifier: ResultIdentifier
-
-    def apply(in: In)(implicit ec: ExecutionContext): Future[Out]
-  }
-
+  /**
+   * Generic class to derive a double-valued metric from a sequence of booleans.
+   * @param names - set of metric names, here referring to the set of names of all produced metrics. Only duplicated here
+   *              to be able to know the metric names upfront without calculating
+   * @param calculation - calculation function, calculating metrics from sequence of booleans
+   */
   case class BooleanSeqToDoubleCalculation(names: Set[String], calculation: SerializableFunction1[Seq[Boolean], Seq[ResultRecord[Double]]]) extends Calculation[Seq[Boolean], Double]
 
   /**
@@ -137,6 +134,10 @@ object Calculations {
     s"$searchTerm$judgementQueryAndProductDelimiter$productId"
   }
 
+}
+
+object CalculationFunctions {
+
   def booleanFindFirst(names: Set[String], findTrue: Boolean): Calculation[Seq[Boolean], Double] =
     BooleanSeqToDoubleCalculation(names, seq => Seq(ResultRecord(names.head, findFirstValue(findTrue).apply(seq))))
 
@@ -146,7 +147,33 @@ object Calculations {
 
 }
 
-object Functions {
+object ComputeResultFunctions {
+
+  def identity[T]: SerializableFunction1[T, ComputeResult[T]] = new SerializableFunction1[T, ComputeResult[T]] {
+    override def apply(msg: T): Either[Seq[ComputeFailReason], T] = Right(msg)
+  }
+
+  def findFirstValue(findTrue: Boolean): SerializableFunction1[Seq[Boolean], ComputeResult[Double]] = new SerializableFunction1[Seq[Boolean], ComputeResult[Double]] {
+    override def apply(msg: Seq[Boolean]): Either[Seq[ComputeFailReason], Double] =
+      msg.indices.find(index => if (findTrue) msg(index) else !msg(index))
+        .map(x => Right(x.toDouble))
+        .getOrElse(Left(Seq(ComputeFailReason.NO_RESULTS)))
+  }
+
+  def countValues(findTrue: Boolean): SerializableFunction1[Seq[Boolean], ComputeResult[Double]] = new SerializableFunction1[Seq[Boolean], ComputeResult[Double]] {
+    override def apply(msg: Seq[Boolean]): Either[Seq[ComputeFailReason], Double] =
+      Right(msg.indices.count(index => if (findTrue) msg(index) else !msg(index)).toDouble)
+  }
+
+  def booleanPrecision(useTrue: Boolean, k: Int): SerializableFunction1[Seq[Boolean], ComputeResult[Double]] = new SerializableFunction1[Seq[Boolean], ComputeResult[Double]] {
+    override def apply(msg: Seq[Boolean]): ComputeResult[Double] = {
+      val binarizedSeq = binarizeBooleanSeq(!useTrue, msg)
+      IRMetricFunctions.precisionAtK(k, 0.9).apply(binarizedSeq)
+    }
+  }
+}
+
+object MetricRowFunctions {
 
   /**
    * Helper function to generate a MetricRow result from a throwable.
@@ -182,11 +209,14 @@ object Functions {
   }
 
   def resultEitherToMetricRowResponse(metricName: String, result: ComputeResult[Double], params: Map[String, Seq[String]]): MetricRow = result match {
-    case Left(e) => computeFailReasonsToMetricRowResponse(e, metricName, params)
+    case Left(e) => MetricRowFunctions.computeFailReasonsToMetricRowResponse(e, metricName, params)
     case Right(e) =>
       val addValue: MetricValue[Double] = MetricValue.createAvgSuccessSample(metricName, e, 1.0)
       MetricRow.empty.copy(params = params).addMetricDontChangeCountStore(addValue)
   }
+}
+
+object MetricValueFunctions {
 
   def resultRecordToMetricValue(record: ResultRecord[Double]): MetricValue[Double] = {
     record.value match {
@@ -198,22 +228,16 @@ object Functions {
     }
   }
 
-  def identity[T]: SerializableFunction1[T, ComputeResult[T]] = new SerializableFunction1[T, ComputeResult[T]] {
-    override def apply(msg: T): Either[Seq[ComputeFailReason], T] = Right(msg)
-  }
+}
 
-  def findFirstValue(findTrue: Boolean): SerializableFunction1[Seq[Boolean], ComputeResult[Double]] = new SerializableFunction1[Seq[Boolean], ComputeResult[Double]] {
-    override def apply(msg: Seq[Boolean]): Either[Seq[ComputeFailReason], Double] =
-      msg.indices.find(index => if (findTrue) msg(index) else !msg(index))
-        .map(x => Right(x.toDouble))
-        .getOrElse(Left(Seq(ComputeFailReason.NO_RESULTS)))
-  }
+object PlainMetricValueFunctions {
 
-  def countValues(findTrue: Boolean): SerializableFunction1[Seq[Boolean], ComputeResult[Double]] = new SerializableFunction1[Seq[Boolean], ComputeResult[Double]] {
-    override def apply(msg: Seq[Boolean]): Either[Seq[ComputeFailReason], Double] =
-      Right(msg.indices.count(index => if (findTrue) msg(index) else !msg(index)).toDouble)
-  }
-
+  /**
+   * Transform sequence of booleans to sequence of double, where True -> 1.0, False -> 0.0 or the other way around if invert = True
+   * @param invert - if True, transforms False -> 1.0, True -> 0.0, otherwise False -> 0.0, True -> 1.0
+   * @param seq - the sequence of booleans
+   * @return mapped sequence
+   */
   def binarizeBooleanSeq(invert: Boolean, seq: Seq[Boolean]): Seq[Double] = {
     seq.indices.map(index => if (!invert) {
       if (seq(index)) 1.0 else 0.0
@@ -222,11 +246,45 @@ object Functions {
     })
   }
 
-  def booleanPrecision(useTrue: Boolean, k: Int): SerializableFunction1[Seq[Boolean], ComputeResult[Double]] = new SerializableFunction1[Seq[Boolean], ComputeResult[Double]] {
-    override def apply(msg: Seq[Boolean]): ComputeResult[Double] = {
-      val binarizedSeq = binarizeBooleanSeq(!useTrue, msg)
-      IRMetricFunctions.precisionAtK(k, 0.9).apply(binarizedSeq)
-    }
+  /**
+   * Takes sequence of type T and counts the occurrence for each value.
+   * @param seq - sequence of elements of type T
+   * @param k - number giving how many of the results (from start) are taken into account
+   * @return - Map with key = value, value = count of occurrence
+   */
+  def valueToOccurrenceCountMap[T](seq: Seq[T], k: Int): Map[T, Int] =  {
+    seq.slice(0, k).toSet[T].map[(T, Int)](x => (x, seq.count(y => y == x))).toMap
+  }
+
+  /**
+   * Given a sequence of values, derive the unique values
+   * @param seq - Input sequence
+   * @param k - number of first values of input sequence to take into account
+   * @return: set of unique values occurring in first k elements of input sequence
+   */
+  def stringSequenceToUniqueValues[T](seq: Seq[T], k: Int): Set[T]  =  {
+    seq.slice(0, k).toSet
+  }
+
+  /**
+   *
+   * @param seq - value seq
+   * @param k - number of first values of input sequence to take into account
+   * @return count of distinct values occurring in the first k elements
+   */
+  def stringSequenceToUniqueValuesCount[T](seq: Seq[T], k: Int): Int  =  {
+    stringSequenceToUniqueValues(seq, k).size
+  }
+
+  /**
+   *
+   * @param seq - value seq
+   * @param value - value to compare input sequence values against to count occurrence
+   * @param k - number of first values of input sequence to take into account
+   * @return number of occurrences of value
+   */
+  def occurrencesOfValue[T](seq: Seq[T], value: T, k: Int): Int = {
+    seq.count(x => x == value)
   }
 
 }
