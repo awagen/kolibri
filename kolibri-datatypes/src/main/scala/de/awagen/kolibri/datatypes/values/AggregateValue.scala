@@ -18,15 +18,15 @@ package de.awagen.kolibri.datatypes.values
 
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 
-trait AggregateValue[A] extends KolibriSerializable {
+trait AggregateValue[+A] extends KolibriSerializable {
 
   def numSamples: Int
   def weight: Double
   def value: A
   def weighted(weight: Double): AggregateValue[A]
 
-  def add(other: AggregateValue[A]): AggregateValue[A]
+  def add[B >: A](other: AggregateValue[B]): AggregateValue[A]
 
-  def add(otherValue: DataPoint[A]): AggregateValue[A]
+  def add[B >: A](otherValue: DataPoint[B]): AggregateValue[A]
 
 }

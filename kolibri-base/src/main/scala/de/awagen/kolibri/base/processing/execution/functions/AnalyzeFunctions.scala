@@ -110,7 +110,7 @@ object AnalyzeFunctions {
       var queryVariancePairs: Seq[(String, Double)] = Seq.empty
       filteredFiles.foreach(file => {
         val document: MetricDocument[Tag] = FileUtils.fileToMetricDocument(file, fileReader)
-        val singleValues: Seq[Double] = document.rows.values.map(x => x.metrics(metricName).biValue.value2.value).toSeq
+        val singleValues: Seq[Double] = document.rows.values.map(x => x.metrics(metricName).biValue.value2.value).map(x => x.asInstanceOf[Double]).toSeq
         val mean = if (singleValues.isEmpty) 0 else singleValues.sum / singleValues.size
         val variance = if (singleValues.isEmpty) 0 else singleValues.map(x => math.pow(x - mean, 2.0)).sum / singleValues.size
         queryVariancePairs = queryVariancePairs :+ (queryFromFilename(file), variance)
@@ -150,7 +150,7 @@ object AnalyzeFunctions {
         var currentValueOpt: Option[MetricValue[Double]] = None
         var compareRows: Seq[MetricRow] = Seq.empty
         document.rows.foreach({
-          case e if e._1 == currentParams => currentValueOpt = e._2.getMetricsValue(metricName)
+          case e if e._1 == currentParams => currentValueOpt = e._2.getMetricsValue(metricName).map(x => x.asInstanceOf[MetricValue[Double]])
           case e if compareParams.contains(e._1) => compareRows = compareRows :+ e._2
           case _ => // do nothing
         })
@@ -166,7 +166,7 @@ object AnalyzeFunctions {
           val settingsToDiff: Seq[QueryParamValue] = compareRows
             .filter(row => row.metrics.contains(metricName))
             .map(row => {
-              val value: MetricValue[Double] = row.metrics(metricName)
+              val value: MetricValue[Double] = row.metrics(metricName).asInstanceOf[MetricValue[Double]]
               val diffRelativeToCurrent = value.biValue.value2.value - currentValue.biValue.value2.value
               QueryParamValue(queryFromFilename.apply(file), row.params, diffRelativeToCurrent)
             })

@@ -182,7 +182,7 @@ case class CSVParameterBasedMetricDocumentFormat(columnSeparator: String) extend
       data = data :+ paramValues
     }
     metricNames.foreach(x => {
-      val metricValue: MetricValue[Double] = row.metrics.getOrElse(x, MetricValue.createEmptyAveragingMetricValue(x))
+      val metricValue: MetricValue[Any] = row.metrics.getOrElse(x, MetricValue.createEmptyAveragingMetricValue(x))
       val failMapValue: Map[ComputeFailReason, Int] = metricValue.biValue.value1.value
       val totalErrors = metricValue.biValue.value1.numSamples
       val weightedTotalErrors = metricValue.biValue.value1.weight
@@ -198,7 +198,7 @@ case class CSVParameterBasedMetricDocumentFormat(columnSeparator: String) extend
         s"$errorString",
         s"$totalSuccess",
         s"${String.format("%.4f",weightedTotalSuccess)}",
-        s"${String.format("%.4f", metricValue.biValue.value2.value)}"
+        s"${String.format("%.4f", metricValue.biValue.value2.value.asInstanceOf[Double])}"
       )
     })
     data.mkString(columnSeparator)

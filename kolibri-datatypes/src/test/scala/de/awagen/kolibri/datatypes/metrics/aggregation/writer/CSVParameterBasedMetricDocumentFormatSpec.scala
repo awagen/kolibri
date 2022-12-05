@@ -172,8 +172,8 @@ class CSVParameterBasedMetricDocumentFormatSpec extends UnitTestSpec {
     "correctly parse MetricRow" in {
       // given, when
       val metricRow: MetricRow = writer.metricRowFromHeadersAndColumns(testHeaders, testParamsMap, testColumns)
-      val row1: MetricValue[Double] = metricRow.metrics("M1")
-      val row2: MetricValue[Double] = metricRow.metrics("M2")
+      val row1: MetricValue[Double] = metricRow.metrics("M1").asInstanceOf[MetricValue[Double]]
+      val row2: MetricValue[Double] = metricRow.metrics("M2").asInstanceOf[MetricValue[Double]]
       // then
       metricRow.metrics.keys.size mustBe 2
       row1.name mustBe "M1"
@@ -193,8 +193,8 @@ class CSVParameterBasedMetricDocumentFormatSpec extends UnitTestSpec {
       val row: String = testColumns.mkString("\t")
       // when
       val metricRow: MetricRow = writer.readRow(testHeaders, row)
-      val row1: MetricValue[Double] = metricRow.metrics("M1")
-      val row2: MetricValue[Double] = metricRow.metrics("M2")
+      val row1: MetricValue[Double] = metricRow.metrics("M1").asInstanceOf[MetricValue[Double]]
+      val row2: MetricValue[Double] = metricRow.metrics("M2").asInstanceOf[MetricValue[Double]]
       // then
       metricRow.metrics.keys.size mustBe 2
       row1.name mustBe "M1"
@@ -219,8 +219,8 @@ class CSVParameterBasedMetricDocumentFormatSpec extends UnitTestSpec {
       val metricDocument: stores.MetricDocument[Tag] = writer.readDocument(testHeaders, rows, StringTag("q=test"))
       val params1 = Map("p1" -> Seq("p1_v1"), "p2" -> Seq("p2_v1", "p2_v2"))
       val params2 = Map("p1" -> Seq("p1_v2"), "p2" -> Seq("p2_a1", "p2_a2"))
-      val row1Metrics: Map[String, MetricValue[Double]] = metricDocument.rows(params1).metrics
-      val row2Metrics: Map[String, MetricValue[Double]] = metricDocument.rows(params2).metrics
+      val row1Metrics: Map[String, MetricValue[Double]] = metricDocument.rows(params1).metrics.asInstanceOf[Map[String, MetricValue[Double]]]
+      val row2Metrics: Map[String, MetricValue[Double]] = metricDocument.rows(params2).metrics.asInstanceOf[Map[String, MetricValue[Double]]]
       val row1M1: MetricValue[Double] = row1Metrics("M1")
       val row1M2: MetricValue[Double] = row1Metrics("M2")
       val row2M1: MetricValue[Double] = row2Metrics("M1")

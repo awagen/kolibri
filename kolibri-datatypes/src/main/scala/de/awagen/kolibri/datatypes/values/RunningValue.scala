@@ -26,20 +26,20 @@ object RunningValue {
 
   object RunningValueAdd extends Enumeration with KolibriSerializable {
 
-    case class RVal[A](addFunc: (AggregateValue[A], AggregateValue[A]) => A) extends Val with KolibriSerializable
+    case class RVal[+A](addFunc: (AggregateValue[Any], AggregateValue[Any]) => A) extends Val with KolibriSerializable
 
-    val doubleAvgAdd: RVal[Double] = RVal[Double](new SerializableFunction2[AggregateValue[Double], AggregateValue[Double], Double] {
-      override def apply(v1: AggregateValue[Double], v2: AggregateValue[Double]): Double = {
+    val doubleAvgAdd: RVal[Double] = RVal[Double](new SerializableFunction2[AggregateValue[Any], AggregateValue[Any], Double] {
+      override def apply(v1: AggregateValue[Any], v2: AggregateValue[Any]): Double = {
         val totalWeight: Double = v1.weight + v2.weight
-        if (totalWeight == 0) 0.0 else (v1.value * v1.weight + v2.weight * v2.value) / totalWeight
+        if (totalWeight == 0) 0.0 else (v1.value.asInstanceOf[Double] * v1.weight + v2.weight * v2.value.asInstanceOf[Double]) / totalWeight
       }
     })
 
     val errorMapAdd: RVal[Map[ComputeFailReason, Int]] = {
-      val func: SerializableFunction2[AggregateValue[Map[ComputeFailReason, Int]], AggregateValue[Map[ComputeFailReason, Int]], Map[ComputeFailReason, Int]] = new SerializableFunction2[AggregateValue[Map[ComputeFailReason, Int]], AggregateValue[Map[ComputeFailReason, Int]], Map[ComputeFailReason, Int]] {
-        override def apply(x: AggregateValue[Map[ComputeFailReason, Int]], y: AggregateValue[Map[ComputeFailReason, Int]]): Map[ComputeFailReason, Int] = {
-          val allKeys = x.value.keySet ++ y.value.keySet
-          allKeys.map(k => k -> (x.value.getOrElse(k, 0) + y.value.getOrElse(k, 0))).toMap
+      val func: SerializableFunction2[AggregateValue[Any], AggregateValue[Any], Map[ComputeFailReason, Int]] = new SerializableFunction2[AggregateValue[Any], AggregateValue[Any], Map[ComputeFailReason, Int]] {
+        override def apply(x: AggregateValue[Any], y: AggregateValue[Any]): Map[ComputeFailReason, Int] = {
+          val allKeys = x.value.asInstanceOf[Map[ComputeFailReason, Int]].keySet ++ y.value.asInstanceOf[Map[ComputeFailReason, Int]].keySet
+          allKeys.map(k => k -> (x.value.asInstanceOf[Map[ComputeFailReason, Int]].getOrElse(k, 0) + y.value.asInstanceOf[Map[ComputeFailReason, Int]].getOrElse(k, 0))).toMap
         }
       }
       RVal(func)
@@ -78,17 +78,17 @@ object RunningValue {
  * @param addFunc - function used to add two AggregateValues
  * @tparam A - type of the value
  */
-case class RunningValue[A](weight: Double,
+case class RunningValue[+A](weight: Double,
                            numSamples: Int,
                            value: A,
                            weightFunction: (Double, Double) => Double,
-                           addFunc: (AggregateValue[A], AggregateValue[A]) => A) extends AggregateValue[A] {
+                           addFunc: (AggregateValue[_], AggregateValue[_]) => A) extends AggregateValue[A] {
 
-  override def add(other: DataPoint[A]): AggregateValue[A] = {
+  override def add[B >: A](other: DataPoint[B]): AggregateValue[A] = {
     this.add(RunningValue(other.weight, 1, other.data, weightFunction, addFunc))
   }
 
-  override def add(other: AggregateValue[A]): AggregateValue[A] = {
+  override def add[B >: A](other: AggregateValue[B]): AggregateValue[A] = {
     RunningValue(weight + other.weight, numSamples = this.numSamples + other.numSamples, value = addFunc.apply(this, other), weightFunction, addFunc = addFunc)
   }
 

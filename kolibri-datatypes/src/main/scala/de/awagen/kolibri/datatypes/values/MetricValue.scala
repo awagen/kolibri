@@ -54,4 +54,4 @@ object MetricValue {
   *                into it
   * @tparam A - type of the aggregated value made of successful computations
   */
-case class MetricValue[A](name: String, biValue: BiRunningValue[Map[ComputeFailReason, Int], A])
+case class MetricValue[+A](name: String, biValue: BiRunningValue[Map[ComputeFailReason, Int], A])
