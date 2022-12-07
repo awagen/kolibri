@@ -187,7 +187,7 @@ object MetricRowFunctions {
   def throwableToMetricRowResponse(e: Throwable, valueNames: Set[String], params: Map[String, Seq[String]]): MetricRow = {
     var metricRow = MetricRow.empty.copy(params = params)
     valueNames.foreach(x => {
-      val addValue: MetricValue[Double] = MetricValue.createAvgFailSample(metricName = x, failMap = Map[ComputeFailReason, Int](ComputeFailReason(s"${e.getClass.getName}") -> 1))
+      val addValue: MetricValue[Double] = MetricValue.createDoubleAvgFailSample(metricName = x, failMap = Map[ComputeFailReason, Int](ComputeFailReason(s"${e.getClass.getName}") -> 1))
       metricRow = metricRow.addMetricDontChangeCountStore(addValue)
     })
     metricRow
@@ -202,7 +202,7 @@ object MetricRowFunctions {
   def computeFailReasonsToMetricRowResponse(failReason: Seq[ComputeFailReason], metricName: String, params: Map[String, Seq[String]]): MetricRow = {
     var metricRow = MetricRow.empty.copy(params = params)
     failReason.foreach(reason => {
-      val addValue: MetricValue[Double] = MetricValue.createAvgFailSample(metricName = metricName, failMap = Map[ComputeFailReason, Int](reason -> 1))
+      val addValue: MetricValue[Double] = MetricValue.createDoubleAvgFailSample(metricName = metricName, failMap = Map[ComputeFailReason, Int](reason -> 1))
       metricRow = metricRow.addMetricDontChangeCountStore(addValue)
     })
     metricRow
@@ -211,7 +211,7 @@ object MetricRowFunctions {
   def resultEitherToMetricRowResponse(metricName: String, result: ComputeResult[Double], params: Map[String, Seq[String]]): MetricRow = result match {
     case Left(e) => MetricRowFunctions.computeFailReasonsToMetricRowResponse(e, metricName, params)
     case Right(e) =>
-      val addValue: MetricValue[Double] = MetricValue.createAvgSuccessSample(metricName, e, 1.0)
+      val addValue: MetricValue[Double] = MetricValue.createDoubleAvgSuccessSample(metricName, e, 1.0)
       MetricRow.empty.copy(params = params).addMetricDontChangeCountStore(addValue)
   }
 }
@@ -222,9 +222,9 @@ object MetricValueFunctions {
     record.value match {
       case Left(failReasons) =>
         val countMap: Map[ComputeFailReason, Int] = failReasons.toSet[ComputeFailReason].map(reason => (reason, failReasons.count(fr => fr == reason))).toMap
-        MetricValue.createAvgFailSample(metricName = record.name, failMap = countMap)
+        MetricValue.createDoubleAvgFailSample(metricName = record.name, failMap = countMap)
       case Right(value) =>
-        MetricValue.createAvgSuccessSample(record.name, value, 1.0)
+        MetricValue.createDoubleAvgSuccessSample(record.name, value, 1.0)
     }
   }
 

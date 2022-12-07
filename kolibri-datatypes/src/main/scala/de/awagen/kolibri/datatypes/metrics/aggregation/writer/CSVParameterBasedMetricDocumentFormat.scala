@@ -45,7 +45,7 @@ case class CSVParameterBasedMetricDocumentFormat(columnSeparator: String) extend
     (Seq(header) ++ rowSeq).mkString("\n")
   }
 
-  def formatHeader(paramNames: Seq[String], metricNames: Seq[String]): String = {
+  private[writer] def formatHeader(paramNames: Seq[String], metricNames: Seq[String]): String = {
     var header = Seq.empty[String]
     header ++= paramNames
     metricNames
@@ -67,7 +67,7 @@ case class CSVParameterBasedMetricDocumentFormat(columnSeparator: String) extend
     header.split(columnSeparator).map(x => x.trim).filter(x => x.nonEmpty).toSeq
   }
 
-  def paramNameToValueColumnMapFromHeaders(headers: Seq[String]): Map[String, Int] = {
+  private[writer] def paramNameToValueColumnMapFromHeaders(headers: Seq[String]): Map[String, Int] = {
     // determine the parameters
     headers.indices.filter(x => {
       val value: String = headers(x)
@@ -82,7 +82,7 @@ case class CSVParameterBasedMetricDocumentFormat(columnSeparator: String) extend
     }).toMap
   }
 
-  def paramMapFromParamToColumnMap(paramNameToColumn: Map[String, Int], values: Seq[String]): Map[String, Seq[String]] = {
+  private[writer] def paramMapFromParamToColumnMap(paramNameToColumn: Map[String, Int], values: Seq[String]): Map[String, Seq[String]] = {
     paramNameToColumn.keys.map(paramName => {
       val paramIndex = paramNameToColumn(paramName)
       val paramValues: Seq[String] = values(paramIndex).split(MULTI_VALUE_SEPARATOR).toSeq
@@ -90,14 +90,14 @@ case class CSVParameterBasedMetricDocumentFormat(columnSeparator: String) extend
     }).toMap
   }
 
-  def metricNameToColumnMapForCategoryFromHeaders(categoryPrefix: String, headers: Seq[String]): Map[String, Int] = {
+  private[writer] def metricNameToColumnMapForCategoryFromHeaders(categoryPrefix: String, headers: Seq[String]): Map[String, Int] = {
     headers.indices
       .filter(index => headers(index).startsWith(categoryPrefix))
       .map(index => (headers(index).stripPrefix(s"$categoryPrefix"), index))
       .toMap
   }
 
-  def metricRowFromHeadersAndColumns(headers: Seq[String], paramsMap: Map[String, Seq[String]], columns: Seq[String]): MetricRow = {
+  private[writer] def metricRowFromHeadersAndColumns(headers: Seq[String], paramsMap: Map[String, Seq[String]], columns: Seq[String]): MetricRow = {
     // map holding the match of metric name to the indices of the column
     val successCountColumnIndexForMetricMap: Map[String, Int] = metricNameToColumnMapForCategoryFromHeaders(SUCCESS_COUNT_COLUMN_PREFIX, headers)
     val weightedSuccessCountColumnIndexForMetricMap: Map[String, Int] = metricNameToColumnMapForCategoryFromHeaders(WEIGHTED_SUCCESS_COUNT_COLUMN_PREFIX, headers)
@@ -134,7 +134,7 @@ case class CSVParameterBasedMetricDocumentFormat(columnSeparator: String) extend
       val successCount: Int = columns(successCountIndex).toInt
       val weightedSuccessCount: Double = columns(weightedSuccessCountIndex).toDouble
       // Map[ComputeFailReason, Int] creason to count map needed beside value, also success and fail counts
-      val metricValueObj = MetricValue.createEmptyAveragingMetricValue(metricName)
+      val metricValueObj = MetricValue.createDoubleEmptyAveragingMetricValue(metricName)
       val newRunningValue: BiRunningValue[Map[ComputeFailReason, Int], Double] = metricValueObj
         .biValue
         .addFirst(RunningValue(weightedFailCount, failCount, failReasonsCountMap, failMapKeepWeightFon,  errorMapAdd.addFunc))
@@ -144,11 +144,11 @@ case class CSVParameterBasedMetricDocumentFormat(columnSeparator: String) extend
     metricRow
   }
 
-  def getColumnsFromLine(headerLine: String): Seq[String] = {
+  private[writer] def getColumnsFromLine(headerLine: String): Seq[String] = {
     headerLine.split(columnSeparator).map(x => x.trim).toSeq
   }
 
-  def readRow(headers: Seq[String], paramNamesToColumnIndexMap: Map[String, Int], row: String): MetricRow = {
+  private[writer] def readRow(headers: Seq[String], paramNamesToColumnIndexMap: Map[String, Int], row: String): MetricRow = {
     val colStrValues: Seq[String] = getColumnsFromLine(row)
     assert(headers.size == colStrValues.size, s"header key size '${headers.size}' does not match size of column values '${colStrValues.size}'")
     val paramsMap: Map[String, Seq[String]] = paramMapFromParamToColumnMap(paramNamesToColumnIndexMap, colStrValues)
@@ -156,7 +156,7 @@ case class CSVParameterBasedMetricDocumentFormat(columnSeparator: String) extend
     metricRowFromHeadersAndColumns(headers, paramsMap, colStrValues)
   }
 
-  def readRow(headers: Seq[String], row: String): MetricRow = {
+  private[writer] def readRow(headers: Seq[String], row: String): MetricRow = {
     // map holding the parameter values
     val paramNamesToColumnIndexMap: Map[String, Int] = paramNameToValueColumnMapFromHeaders(headers)
     readRow(headers, paramNamesToColumnIndexMap, row)
@@ -171,18 +171,18 @@ case class CSVParameterBasedMetricDocumentFormat(columnSeparator: String) extend
     document
   }
 
-  def paramsToValueString(values: Map[String, Seq[String]], paramNames: Seq[String]): String = {
+  private[writer] def paramsToValueString(values: Map[String, Seq[String]], paramNames: Seq[String]): String = {
     paramNames.map(x => values.getOrElse(x, Seq.empty).mkString(MULTI_VALUE_SEPARATOR)).mkString(columnSeparator)
   }
 
-  def formatRow(row: MetricRow, paramNames: Seq[String], metricNames: Seq[String]): String = {
+  private[writer] def formatRow(row: MetricRow, paramNames: Seq[String], metricNames: Seq[String]): String = {
     var data: Seq[String] = Seq.empty[String]
     val paramValues: String = paramsToValueString(row.params, paramNames)
     if (paramValues.nonEmpty) {
       data = data :+ paramValues
     }
     metricNames.foreach(x => {
-      val metricValue: MetricValue[Any] = row.metrics.getOrElse(x, MetricValue.createEmptyAveragingMetricValue(x))
+      val metricValue: MetricValue[Any] = row.metrics.getOrElse(x, MetricValue.createDoubleEmptyAveragingMetricValue(x))
       val failMapValue: Map[ComputeFailReason, Int] = metricValue.biValue.value1.value
       val totalErrors = metricValue.biValue.value1.numSamples
       val weightedTotalErrors = metricValue.biValue.value1.weight

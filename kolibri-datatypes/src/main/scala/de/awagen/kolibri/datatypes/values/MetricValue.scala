@@ -17,26 +17,53 @@
 package de.awagen.kolibri.datatypes.values
 
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason
-import de.awagen.kolibri.datatypes.values.RunningValue.{calcErrorRunningValue, doubleAvgRunningValue}
+import de.awagen.kolibri.datatypes.values.RunningValue.{calcErrorRunningValue, doubleAvgRunningValue, mapValueAvgRunningValue, mapValueSumUpRunningValue, nestedMapValueSumUpRunningValue}
 
 
 object MetricValue {
 
-  def createAvgFailSample(metricName: String, failMap: Map[ComputeFailReason, Int]): MetricValue[Double] = {
+  def createMetricValue[T](metricName: String,
+                           failCount: Int,
+                           failMap: Map[ComputeFailReason, Int],
+                           runningValue: RunningValue[T]): MetricValue[T] = {
     MetricValue(name = metricName,
-      BiRunningValue(value1 = calcErrorRunningValue(1, failMap),
-        value2 = doubleAvgRunningValue(0.0, 0, 0.0)))
+      BiRunningValue(value1 = calcErrorRunningValue(failCount, failMap), value2 = runningValue))
   }
 
-  def createAvgSuccessSample(metricName: String, value: Double, weight: Double): MetricValue[Double] = {
-    MetricValue(name = metricName,
-      BiRunningValue(value1 = calcErrorRunningValue(0, Map.empty),
-        value2 = doubleAvgRunningValue(weight, 1, value)))
+  def createSingleFailSample[T](metricName: String, failMap: Map[ComputeFailReason, Int], runningValue: RunningValue[T]): MetricValue[T] = {
+    createMetricValue(metricName, 1, failMap, runningValue)
   }
 
-  def createEmptyAveragingMetricValue(name: String): MetricValue[Double] = {
-    MetricValue(name = name, BiRunningValue(value1 = calcErrorRunningValue(0, Map.empty),
-      value2 = doubleAvgRunningValue(0.0, 0, 0.0)))
+  def createNoFailSample[T](metricName: String, runningValue: RunningValue[T]): MetricValue[T] = {
+    createMetricValue(metricName, 0, Map.empty, runningValue)
+  }
+
+  def createMapValueCountFailSample[T](metricName: String, failMap: Map[ComputeFailReason, Int], runningValue: RunningValue[Map[T, Int]]): MetricValue[Map[T, Int]] = {
+    createSingleFailSample(metricName, failMap, runningValue)
+  }
+
+  def createMapAvgValueSuccessSample[T](metricName: String, value: Map[T, Double], weight: Double): MetricValue[Map[T, Double]] = {
+    createNoFailSample(metricName, mapValueAvgRunningValue(weight, 1, value))
+  }
+
+  def createMapSumValueSuccessSample[T](metricName: String, value: Map[T, Double], weight: Double): MetricValue[Map[T, Double]] = {
+    createNoFailSample(metricName, mapValueSumUpRunningValue(weight, 1, value))
+  }
+
+  def createNestedMapSumValueSuccessSample[U, V](metricName: String, value: Map[U, Map[V, Double]], weight: Double): MetricValue[Map[U, Map[V, Double]]] = {
+    createNoFailSample(metricName, nestedMapValueSumUpRunningValue(weight, 1, value))
+  }
+
+  def createDoubleAvgFailSample(metricName: String, failMap: Map[ComputeFailReason, Int]): MetricValue[Double] = {
+    createSingleFailSample[Double](metricName, failMap, doubleAvgRunningValue(0.0, 0, 0.0))
+  }
+
+  def createDoubleAvgSuccessSample(metricName: String, value: Double, weight: Double): MetricValue[Double] = {
+    createNoFailSample(metricName, doubleAvgRunningValue(weight, 1, value))
+  }
+
+  def createDoubleEmptyAveragingMetricValue(name: String): MetricValue[Double] = {
+    createNoFailSample(name, doubleAvgRunningValue(0.0, 0, 0.0))
   }
 
 }

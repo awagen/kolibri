@@ -30,9 +30,9 @@ object MetricsCalculation {
   def calculationResultToMetricValue(name: String, calculationResult: ComputeResult[Double]): MetricValue[Double] = {
     calculationResult match {
       case Right(score) =>
-        MetricValue.createAvgSuccessSample(name, score, 1.0)
+        MetricValue.createDoubleAvgSuccessSample(name, score, 1.0)
       case Left(failReasons) =>
-        MetricValue.createAvgFailSample(metricName = name, RunningValue.mapFromFailReasons(failReasons))
+        MetricValue.createDoubleAvgFailSample(metricName = name, RunningValue.mapFromFailReasons(failReasons))
     }
   }
 

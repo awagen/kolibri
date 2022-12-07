@@ -105,8 +105,9 @@ case class MetricRow(countStore: ResultCountStore, params: Map[String, Seq[Strin
 
   override def getMetricsValue(key: String): Option[MetricValue[Any]] = metrics.get(key)
 
+  // TODO: we cannot fallback to a Double type MetricValue but need to make it dependent on the metric type
   override def addMetricDontChangeCountStore[T >: Any](addMetric: MetricValue[T]): MetricRow = {
-    val currentMetricState: MetricValue[Any] = metrics.getOrElse(addMetric.name, MetricValue.createEmptyAveragingMetricValue(addMetric.name))
+    val currentMetricState: MetricValue[Any] = metrics.getOrElse(addMetric.name, MetricValue.createDoubleEmptyAveragingMetricValue(addMetric.name))
     val updatedMetricState = MetricValue[Any](addMetric.name, currentMetricState.biValue.add(addMetric.biValue))
     MetricRow(countStore, params, metrics + (addMetric.name -> updatedMetricState))
   }
