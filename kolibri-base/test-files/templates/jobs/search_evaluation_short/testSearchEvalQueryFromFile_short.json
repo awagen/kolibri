@@ -38,6 +38,9 @@
       "type": "FIRST_TRUE"
     }
   ],
+  "otherMetricNameToAggregationTypeMapping": {
+    "FIRST_TRUE_BOOL": "DOUBLE_AVG"
+  },
   "judgementFilePath": "test-judgements/test_judgements.txt",
   "requestParameters": [
     {
