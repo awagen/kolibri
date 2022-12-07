@@ -17,7 +17,7 @@
 package de.awagen.kolibri.datatypes.values
 
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason
-import de.awagen.kolibri.datatypes.values.RunningValue.{calcErrorRunningValue, doubleAvgRunningValue, mapValueAvgRunningValue, mapValueWeightedSumUpRunningValue, nestedMapValueWeightedSumUpRunningValue}
+import de.awagen.kolibri.datatypes.values.RunningValue.{calcErrorRunningValue, doubleAvgRunningValue, mapValueAvgRunningValue, mapValueWeightedSumRunningValue, nestedMapValueWeightedSumUpRunningValue}
 
 
 object MetricValue {
@@ -47,7 +47,7 @@ object MetricValue {
   }
 
   def createMapSumValueSuccessSample[T](metricName: String, value: Map[T, Double], weight: Double): MetricValue[Map[T, Double]] = {
-    createNoFailSample(metricName, mapValueWeightedSumUpRunningValue(weight, 1, value))
+    createNoFailSample(metricName, mapValueWeightedSumRunningValue(weight, 1, value))
   }
 
   def createNestedMapSumValueSuccessSample[U, V](metricName: String, value: Map[U, Map[V, Double]], weight: Double): MetricValue[Map[U, Map[V, Double]]] = {

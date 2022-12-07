@@ -106,14 +106,14 @@ object RunningValue {
   /**
    * Running value that sums up the (weighted!) values of the created map values
    */
-  def mapValueWeightedSumUpRunningValue[T](weightedCount: Double, count: Int, value: Map[T, Double]): RunningValue[Map[T, Double]] = {
+  def mapValueWeightedSumRunningValue[T](weightedCount: Double, count: Int, value: Map[T, Double]): RunningValue[Map[T, Double]] = {
     RunningValue(weightedCount, count, value, weightMultiplyFunction, valueMapAdd(weighted = true).addFunc)
   }
 
   /**
    * Running value that sums up the (unweighted, meaning weight = 1.0 per sample) values of the created map values
    */
-  def mapValueUnweightedSumUpRunningValue[T](weightedCount: Double, count: Int, value: Map[T, Double]): RunningValue[Map[T, Double]] = {
+  def mapValueUnweightedSumRunningValue[T](weightedCount: Double, count: Int, value: Map[T, Double]): RunningValue[Map[T, Double]] = {
     RunningValue(weightedCount, count, value, weightMultiplyFunction, valueMapAdd(weighted = false).addFunc)
   }
 
