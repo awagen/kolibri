@@ -40,10 +40,10 @@ object AggregationUtils {
    * Calculate new map from nested mappings, calculating sums of the values of the inner mappings
    * as values
    */
-  def sumUpNestedNumericValueMaps[U, V](defaultValue: Double, maps: AggregateValue[Map[U, Map[V, Double]]]*): Map[U, Map[V, Double]] = {
+  def sumUpNestedNumericValueMaps[U, V](defaultValue: Double, weighted: Boolean, maps: AggregateValue[Map[U, Map[V, Double]]]*): Map[U, Map[V, Double]] = {
     val allKeys = maps.flatMap(x => x.value.keys).toSet
     allKeys.map(x => {
-      (x, weightedNumericValueMapSumUp(defaultValue, maps.map(y => (y.value.getOrElse(x, Map.empty), y.weight)):_*))
+      (x, numericValueMapSumUp(defaultValue, weighted, maps.map(y => (y.value.getOrElse(x, Map.empty), y.weight)):_*))
     }).toMap
   }
 
@@ -54,10 +54,10 @@ object AggregationUtils {
    * @param valueWeightTuples - tuple of map and weight
    * @return - new map where values per key are weighted sums over all passed maps
    */
-  def weightedNumericValueMapSumUp[T](defaultValue: Double, valueWeightTuples: (Map[T, Double], Double)*): Map[T, Double] = {
+  def numericValueMapSumUp[T](defaultValue: Double, weighted: Boolean, valueWeightTuples: (Map[T, Double], Double)*): Map[T, Double] = {
     val allKeys = valueWeightTuples.flatMap(x => x._1.keys).toSet
     valueWeightTuples.foldLeft(mutable.Map.empty[T, Double])((mapSoFar, mapWeightTuple) => {
-      val sampleWeight = mapWeightTuple._2
+      val sampleWeight = if (weighted) mapWeightTuple._2 else 1.0
       allKeys.foreach(key => {
         val valueSoFar: Double = mapSoFar.getOrElse(key, defaultValue)
         val aggregateValueValue: Double = mapWeightTuple._1.getOrElse(key, defaultValue) * sampleWeight
@@ -75,8 +75,8 @@ object AggregationUtils {
    * @tparam T - type of the key values
    * @return - aggregated map
    */
-  def sumUpNumericValueMaps[T](defaultValue: Double, maps: AggregateValue[Map[T, Double]]*): Map[T, Double] = {
-    weightedNumericValueMapSumUp(defaultValue, maps.map(x => (x.value, x.weight)):_*)
+  def numericValueMapAggregateValueSumUp[T](defaultValue: Double, weighted: Boolean, maps: AggregateValue[Map[T, Double]]*): Map[T, Double] = {
+    numericValueMapSumUp(defaultValue, weighted, maps.map(x => (x.value, x.weight)):_*)
   }
 
   /**
@@ -87,9 +87,9 @@ object AggregationUtils {
    * @param maps
    * @return
    */
-  def avgNumericValueMaps[T](defaultValue: Double, maps: AggregateValue[Map[T, Double]]*): Map[T, Double] = {
+  def avgNumericValueMaps[T](defaultValue: Double, weighted: Boolean, maps: AggregateValue[Map[T, Double]]*): Map[T, Double] = {
     val totalWeight: Double = maps.map(x => x.weight).sum
-    val addedValueMap: Map[T, Double] = sumUpNumericValueMaps(defaultValue, maps: _*)
+    val addedValueMap: Map[T, Double] = numericValueMapAggregateValueSumUp(defaultValue, weighted, maps: _*)
     divideNumericMapValues(totalWeight, addedValueMap)
   }
 

@@ -19,7 +19,7 @@ package de.awagen.kolibri.datatypes.values
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction2
-import de.awagen.kolibri.datatypes.values.AggregationUtils.{divideNumericMapValues, filterValuesByInstanceOfCheck, sumUpNestedNumericValueMaps, sumUpNumericValueMaps}
+import de.awagen.kolibri.datatypes.values.AggregationUtils.{divideNumericMapValues, filterValuesByInstanceOfCheck, sumUpNestedNumericValueMaps, numericValueMapAggregateValueSumUp}
 import de.awagen.kolibri.datatypes.values.RunningValue.RunningValueAdd.{doubleAvgAdd, errorMapAdd, failMapKeepWeightFon, valueMapAdd, valueMapAvg, valueNestedMapAdd, weightMultiplyFunction}
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -42,14 +42,14 @@ object RunningValue {
     /**
      * Summing up the values per key of the inner maps
      */
-    def valueNestedMapAdd[U, V]: RVal[Map[U, Map[V, Double]]] = RVal[Map[U, Map[V, Double]]](new SerializableFunction2[AggregateValue[Any], AggregateValue[Any], Map[U, Map[V, Double]]] {
+    def valueNestedMapAdd[U, V](weighted: Boolean): RVal[Map[U, Map[V, Double]]] = RVal[Map[U, Map[V, Double]]](new SerializableFunction2[AggregateValue[Any], AggregateValue[Any], Map[U, Map[V, Double]]] {
       override def apply(v1: AggregateValue[Any], v2: AggregateValue[Any]): Map[U, Map[V, Double]] = {
         val validMergeValues: Seq[AggregateValue[Map[U, Map[V, Double]]]] = filterValuesByInstanceOfCheck[Map[U, Map[V, Double]]](v1, v2)
         if (validMergeValues.size < 2) {
           logger.warn(s"Not all values match the required type for merge, value1: '${v1.value.getClass.getName}', " +
             s"value2: '${v2.value.getClass.getName}'")
         }
-        sumUpNestedNumericValueMaps(0, validMergeValues: _*)
+        sumUpNestedNumericValueMaps(0, weighted, validMergeValues: _*)
       }
     })
 
@@ -58,14 +58,14 @@ object RunningValue {
      *
      * @return
      */
-    def valueMapAdd[T]: RVal[Map[T, Double]] = RVal[Map[T, Double]](new SerializableFunction2[AggregateValue[Any], AggregateValue[Any], Map[T, Double]] {
+    def valueMapAdd[T](weighted: Boolean): RVal[Map[T, Double]] = RVal[Map[T, Double]](new SerializableFunction2[AggregateValue[Any], AggregateValue[Any], Map[T, Double]] {
       override def apply(v1: AggregateValue[Any], v2: AggregateValue[Any]): Map[T, Double] = {
         val validMergeValues: Seq[AggregateValue[Map[T, Double]]] = filterValuesByInstanceOfCheck[Map[T, Double]](v1, v2)
         if (validMergeValues.size < 2) {
           logger.warn(s"Not all values match the required type for merge, value1: '${v1.value.getClass.getName}', " +
             s"value2: '${v2.value.getClass.getName}'")
         }
-        sumUpNumericValueMaps(0, validMergeValues: _*)
+        numericValueMapAggregateValueSumUp(0, weighted, validMergeValues: _*)
       }
     })
 
@@ -77,7 +77,7 @@ object RunningValue {
     def valueMapAvg[T]: RVal[Map[T, Double]] = RVal[Map[T, Double]](new SerializableFunction2[AggregateValue[Any], AggregateValue[Any], Map[T, Double]] {
       override def apply(v1: AggregateValue[Any], v2: AggregateValue[Any]): Map[T, Double] = {
         val totalWeight: Double = Seq(v1, v2).map(x => x.weight).sum
-        val summedUp: Map[T, Double] = valueMapAdd[T].addFunc.apply(v1, v2)
+        val summedUp: Map[T, Double] = valueMapAdd[T](weighted = true).addFunc.apply(v1, v2)
         divideNumericMapValues[T, Double](totalWeight, summedUp)
       }
     })
@@ -104,17 +104,31 @@ object RunningValue {
   }
 
   /**
-   * Running value that sums up the values of the created map values
+   * Running value that sums up the (weighted!) values of the created map values
    */
-  def mapValueSumUpRunningValue[T](weightedCount: Double, count: Int, value: Map[T, Double]): RunningValue[Map[T, Double]] = {
-    RunningValue(weightedCount, count, value, weightMultiplyFunction, valueMapAdd.addFunc)
+  def mapValueWeightedSumUpRunningValue[T](weightedCount: Double, count: Int, value: Map[T, Double]): RunningValue[Map[T, Double]] = {
+    RunningValue(weightedCount, count, value, weightMultiplyFunction, valueMapAdd(weighted = true).addFunc)
   }
 
   /**
-   * Running value that sums up the values of the created map values
+   * Running value that sums up the (unweighted, meaning weight = 1.0 per sample) values of the created map values
    */
-  def nestedMapValueSumUpRunningValue[U, V](weightedCount: Double, count: Int, value: Map[U, Map[V, Double]]): RunningValue[Map[U, Map[V, Double]]] = {
-    RunningValue(weightedCount, count, value, weightMultiplyFunction, valueNestedMapAdd.addFunc)
+  def mapValueUnweightedSumUpRunningValue[T](weightedCount: Double, count: Int, value: Map[T, Double]): RunningValue[Map[T, Double]] = {
+    RunningValue(weightedCount, count, value, weightMultiplyFunction, valueMapAdd(weighted = false).addFunc)
+  }
+
+  /**
+   * Running value that sums up the values (weighted!) of the created map values
+   */
+  def nestedMapValueWeightedSumUpRunningValue[U, V](weightedCount: Double, count: Int, value: Map[U, Map[V, Double]]): RunningValue[Map[U, Map[V, Double]]] = {
+    RunningValue(weightedCount, count, value, weightMultiplyFunction, valueNestedMapAdd(weighted = true).addFunc)
+  }
+
+  /**
+   * Running value that sums up the values (unweighted, meaning weight = 1.0 per sample) of the created map values
+   */
+  def nestedMapValueUnweightedSumUpRunningValue[U, V](weightedCount: Double, count: Int, value: Map[U, Map[V, Double]]): RunningValue[Map[U, Map[V, Double]]] = {
+    RunningValue(weightedCount, count, value, weightMultiplyFunction, valueNestedMapAdd(weighted = false).addFunc)
   }
 
   /**
