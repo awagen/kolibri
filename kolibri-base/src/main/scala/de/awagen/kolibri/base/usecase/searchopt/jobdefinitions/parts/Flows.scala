@@ -31,13 +31,14 @@ import de.awagen.kolibri.base.processing.tagging.TaggingConfigurations.TaggingCo
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.ReservedStorageKeys.REQUEST_TEMPLATE_STORAGE_KEY
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.{Calculation, ResultRecord}
 import de.awagen.kolibri.base.usecase.searchopt.metrics.MetricRowFunctions.throwableToMetricRowResponse
-import de.awagen.kolibri.base.usecase.searchopt.metrics.MetricValueFunctions.resultRecordToMetricValue
+import de.awagen.kolibri.base.usecase.searchopt.metrics.MetricValueFunctions.AggregationType.AggregationType
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.tagging.TagType
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.values.MetricValue
 
+import java.util.Objects
 import scala.concurrent.ExecutionContext
 import scala.util.Try
 
@@ -96,12 +97,14 @@ object Flows {
    * including the calculations to execute on the parsed data
    * @param processingMessage
    * @param calculations
+   * @param metricNameToAggregationTypeMapping
    * @param excludeParamsFromMetricRow
    * @param ec
    * @return
    */
   def metricsCalc(processingMessage: ProcessingMessage[(Either[Throwable, WeaklyTypedMap[String]], RequestTemplate)],
-                  calculations: Seq[Calculation[WeaklyTypedMap[String], Double]],
+                  calculations: Seq[Calculation[WeaklyTypedMap[String], Any]],
+                  metricNameToAggregationTypeMapping: Map[String, AggregationType],
                   excludeParamsFromMetricRow: Seq[String])(implicit ec: ExecutionContext): ProcessingMessage[MetricRow] = {
     val metricRowParams: Map[String, Seq[String]] = Map(processingMessage.data._2.parameters.toSeq.filter(x => !excludeParamsFromMetricRow.contains(x._1)): _*)
     processingMessage.data._1 match {
@@ -117,12 +120,17 @@ object Flows {
         // add query parameter
         e.value.put[RequestTemplate](REQUEST_TEMPLATE_STORAGE_KEY.name, processingMessage.data._2)
         // compute and add single results
-        val singleResults: Seq[MetricValue[Double]] = calculations
+        val singleResults: Seq[MetricValue[Any]] = calculations
           .flatMap(x => {
-            val values: Seq[ResultRecord[Double]] = x.calculation.apply(e.value)
+            // ResultRecord is only combination of name and Either[Seq[ComputeFailReason], T]
+            val values: Seq[ResultRecord[Any]] = x.calculation.apply(e.value)
+            // we ue all result records for which we have a AggregationType mapping
+            // TODO: allow more than one aggregation type mapping per result record name
             values.map(value => {
-              resultRecordToMetricValue(value)
+              metricNameToAggregationTypeMapping.get(value.name)
+                .map(aggregationType => aggregationType.singleSampleFunction.apply(value)).orNull
             })
+              .filter(x => Objects.nonNull(x))
           })
         // add all in MetricRow
         var metricRow = MetricRow.emptyForParams(params = metricRowParams)
@@ -152,7 +160,8 @@ object Flows {
                          requestAndParsingFlow: Flow[ProcessingMessage[RequestTemplate], ProcessingMessage[(Either[Throwable, WeaklyTypedMap[String]], RequestTemplate)], NotUsed],
                          excludeParamsFromMetricRow: Seq[String],
                          taggingConfiguration: Option[TaggingConfiguration[RequestTemplate, (Either[Throwable, WeaklyTypedMap[String]], RequestTemplate), MetricRow]],
-                         calculations: Seq[Calculation[WeaklyTypedMap[String], Double]])
+                         calculations: Seq[Calculation[WeaklyTypedMap[String], Any]],
+                         metricNameToAggregationTypeMapping: Map[String, AggregationType])
                         (implicit as: ActorSystem, ec: ExecutionContext): Flow[RequestTemplateBuilderModifier, ProcessingMessage[MetricRow], NotUsed] = {
     val partialFlow: Flow[RequestTemplateBuilderModifier, ProcessingMessage[(Either[Throwable, WeaklyTypedMap[String]], RequestTemplate)], NotUsed] =
       modifiersToRequestTemplateMessageFlow(contextPath, fixedParams)
@@ -169,6 +178,7 @@ object Flows {
         partialFlow.via(Flow.fromFunction(processingMsg => metricsCalc(
           processingMessage = processingMsg,
           calculations,
+          metricNameToAggregationTypeMapping,
           excludeParamsFromMetricRow = excludeParamsFromMetricRow
         )))
       // tagging

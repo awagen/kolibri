@@ -32,7 +32,7 @@ import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
-import de.awagen.kolibri.datatypes.values.MetricValue
+import de.awagen.kolibri.datatypes.values.{MetricValue, RunningValue}
 
 
 /**
@@ -218,13 +218,71 @@ object MetricRowFunctions {
 
 object MetricValueFunctions {
 
-  def resultRecordToMetricValue(record: ResultRecord[Double]): MetricValue[Double] = {
+  object AggregationType extends Enumeration {
+    type AggregationType = Val[_]
+    case class Val[+T](singleSampleFunction: ResultRecord[_] => MetricValue[T]) extends super.Val
+
+    def byName(name: String): Val[_] = name.toUpperCase match {
+      case "DOUBLE_AVG" => DOUBLE_AVG
+      case "MAP_UNWEIGHTED_SUM_VALUE" => MAP_UNWEIGHTED_SUM_VALUE
+      case "MAP_WEIGHTED_SUM_VALUE" => MAP_WEIGHTED_SUM_VALUE
+      case "NESTED_MAP_UNWEIGHTED_SUM_VALUE" => NESTED_MAP_UNWEIGHTED_SUM_VALUE
+      case "NESTED_MAP_WEIGHTED_SUM_VALUE" => NESTED_MAP_WEIGHTED_SUM_VALUE
+      case _ => throw new IllegalArgumentException(s"no DataFileType by name '$name' found")
+    }
+
+    val DOUBLE_AVG: Val[Double] = Val(resultRecordToDoubleAvgMetricValue)
+    val MAP_UNWEIGHTED_SUM_VALUE: Val[Map[_, Double]] = Val(resultRecordToMapCountMetricValue(weighted = false))
+    val MAP_WEIGHTED_SUM_VALUE: Val[Map[_, Double]] = Val(resultRecordToMapCountMetricValue(weighted = true))
+    val NESTED_MAP_UNWEIGHTED_SUM_VALUE: Val[Map[_, Map[_, Double]]] = Val(resultRecordToNestedMapCountMetricValue(weighted = false))
+    val NESTED_MAP_WEIGHTED_SUM_VALUE: Val[Map[_, Map[_, Double]]] = Val(resultRecordToNestedMapCountMetricValue(weighted = true))
+  }
+
+  def failReasonSeqToCountMap(failReasons: Seq[ComputeFailReason]): Map[ComputeFailReason, Int] = {
+    failReasons.toSet[ComputeFailReason].map(reason => (reason, failReasons.count(fr => fr == reason))).toMap
+  }
+
+  def resultRecordToDoubleAvgMetricValue(record: ResultRecord[Any]): MetricValue[Double] = {
     record.value match {
       case Left(failReasons) =>
-        val countMap: Map[ComputeFailReason, Int] = failReasons.toSet[ComputeFailReason].map(reason => (reason, failReasons.count(fr => fr == reason))).toMap
+        val countMap: Map[ComputeFailReason, Int] = failReasonSeqToCountMap(failReasons)
         MetricValue.createDoubleAvgFailSample(metricName = record.name, failMap = countMap)
       case Right(value) =>
-        MetricValue.createDoubleAvgSuccessSample(record.name, value, 1.0)
+        MetricValue.createDoubleAvgSuccessSample(record.name, value.asInstanceOf[Double], 1.0)
+    }
+  }
+
+  def resultRecordToMapCountMetricValue[T](weighted: Boolean)(record: ResultRecord[Any]): MetricValue[Map[T, Double]] = {
+    record.value match {
+      case Left(failReasons) =>
+        val countMap: Map[ComputeFailReason, Int] = failReasonSeqToCountMap(failReasons)
+        MetricValue.createMapValueCountFailSample[T](
+          metricName = record.name,
+          failMap = countMap,
+          runningValue = if (weighted) RunningValue.mapValueWeightedSumRunningValue[T](1.0, 1, Map.empty[T, Double]) else RunningValue.mapValueUnweightedSumRunningValue[T](1.0, 1, Map.empty[T, Double])
+        )
+      case Right(value) =>
+        MetricValue.createMapSumValueSuccessSample(
+          record.name,
+          value.asInstanceOf[Map[T, Double]],
+          1.0)
+    }
+  }
+
+  def resultRecordToNestedMapCountMetricValue[U, V](weighted: Boolean)(record: ResultRecord[Any]): MetricValue[Map[U, Map[V, Double]]] = {
+    record.value match {
+      case Left(failReasons) =>
+        val countMap: Map[ComputeFailReason, Int] = failReasonSeqToCountMap(failReasons)
+        MetricValue.createNestedMapSumValueFailSample[U, V](
+          metricName = record.name,
+          failMap = countMap,
+          runningValue = if (weighted) RunningValue.nestedMapValueWeightedSumUpRunningValue[U, V](1.0, 1, Map.empty) else RunningValue.nestedMapValueUnweightedSumUpRunningValue[U, V](1.0, 1, Map.empty)
+        )
+      case Right(value) =>
+        MetricValue.createNestedMapSumValueSuccessSample(
+          record.name,
+          value.asInstanceOf[Map[U, Map[V, Double]]],
+          1.0)
     }
   }
 

@@ -172,6 +172,7 @@ object SearchJobDefinitions {
       ),
       taggingConfiguration = eval.taggingConfiguration,
       calculations = eval.calculations,
+      metricNameToAggregationTypeMapping = eval.metricNameToAggregationTypeMapping
     )
   }
 

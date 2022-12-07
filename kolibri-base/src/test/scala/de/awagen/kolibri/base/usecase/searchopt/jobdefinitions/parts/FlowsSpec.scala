@@ -1,18 +1,18 @@
 /**
-  * Copyright 2021 Andreas Wagenmann
-  *
-  * Licensed under the Apache License, Version 2.0 (the "License");
-  * you may not use this file except in compliance with the License.
-  * You may obtain a copy of the License at
-  *
-  * http://www.apache.org/licenses/LICENSE-2.0
-  *
-  * Unless required by applicable law or agreed to in writing, software
-  * distributed under the License is distributed on an "AS IS" BASIS,
-  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  * See the License for the specific language governing permissions and
-  * limitations under the License.
-  */
+ * Copyright 2021 Andreas Wagenmann
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 
 package de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts
@@ -41,6 +41,7 @@ import de.awagen.kolibri.base.resources.{ResourceAlreadyExists, ResourceOK}
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.Flows.{fullProcessingFlow, metricsCalc, processingMsgToRequestTuple}
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.FromMapCalculation
 import de.awagen.kolibri.base.usecase.searchopt.metrics.CalculationsTestHelper._
+import de.awagen.kolibri.base.usecase.searchopt.metrics.MetricValueFunctions.AggregationType
 import de.awagen.kolibri.base.usecase.searchopt.metrics.{IRMetricFunctions, Metric}
 import de.awagen.kolibri.datatypes.mutable.stores.{BaseWeaklyTypedMap, WeaklyTypedMap}
 import de.awagen.kolibri.datatypes.stores.MetricRow
@@ -192,6 +193,12 @@ class FlowsSpec extends KolibriTestKitNoCluster
           calculation,
           FromMapCalculation[Seq[Int], Double](Set("metric1"), "key1", x => Right(x.sum))
         ),
+        Map(
+          "metric1" -> AggregationType.DOUBLE_AVG,
+          NDCG5_NAME -> AggregationType.DOUBLE_AVG,
+          NDCG10_NAME -> AggregationType.DOUBLE_AVG,
+          NDCG2_NAME -> AggregationType.DOUBLE_AVG
+        ),
         Seq(QUERY_PARAM)
       )
       val result: MetricRow = calc.data
@@ -247,7 +254,13 @@ class FlowsSpec extends KolibriTestKitNoCluster
         requestAndParsingFlow = requestAndParsingFlow,
         excludeParamsFromMetricRow = excludeParamsFromMetricRow,
         taggingConfiguration = taggingConfiguration,
-        calculations = calculations
+        calculations = calculations,
+        Map(
+          "metric1" -> AggregationType.DOUBLE_AVG,
+          NDCG5_NAME -> AggregationType.DOUBLE_AVG,
+          NDCG10_NAME -> AggregationType.DOUBLE_AVG,
+          NDCG2_NAME -> AggregationType.DOUBLE_AVG
+        )
       )
       // when
       val result: Seq[MetricRow] = Await.result(Source.apply(

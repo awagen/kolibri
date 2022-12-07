@@ -41,6 +41,8 @@ import de.awagen.kolibri.base.provider.WeightProviders
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.SearchJobDefinitions
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.Aggregators.{fullJobToSingleTagAggregatorSupplier, singleBatchAggregatorSupplier}
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.{Calculation, JudgementsFromResourceIRMetricsCalculations}
+import de.awagen.kolibri.base.usecase.searchopt.metrics.MetricValueFunctions.AggregationType
+import de.awagen.kolibri.base.usecase.searchopt.metrics.MetricValueFunctions.AggregationType.AggregationType
 import de.awagen.kolibri.base.usecase.searchopt.metrics.{IRMetricFunctions, JudgementHandlingStrategy, Metric, MetricsCalculation}
 import de.awagen.kolibri.base.usecase.searchopt.parse.JsonSelectors.JsValueSeqSelector
 import de.awagen.kolibri.base.usecase.searchopt.parse.{JsonSelectors, ParsingConfig}
@@ -55,6 +57,7 @@ import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.types.JsonTypeCast
 import de.awagen.kolibri.datatypes.types.SerializableCallable.{SerializableConsumer, SerializableFunction1, SerializableSupplier}
 import de.awagen.kolibri.datatypes.types.Types.WithCount
+import de.awagen.kolibri.datatypes.utils.MapUtils
 import de.awagen.kolibri.datatypes.values.AggregateValue
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators
 
@@ -94,6 +97,7 @@ object JobMessages {
                                         parsingConfig: ParsingConfig,
                                         excludeParamColumns: Seq[String],
                                         calculations: Seq[Calculation[WeaklyTypedMap[String], Double]],
+                                        metricNameToAggregationTypeMapping: Map[String, AggregationType],
                                         taggingConfiguration: Option[BaseTaggingConfiguration[RequestTemplate, (Either[Throwable, WeaklyTypedMap[String]], RequestTemplate), MetricRow]],
                                         wrapUpFunction: Option[Execution[Any]],
                                         allowedTimePerElementInMillis: Int = 1000,
@@ -130,6 +134,7 @@ object JobMessages {
                                                   productIdSelector: String,
                                                   otherSelectors: Seq[NamedAndTypedSelector[_]],
                                                   otherCalculations: Seq[Calculation[WeaklyTypedMap[String], Double]],
+                                                  otherMetricNameToAggregationTypeMapping: Map[String, AggregationType],
                                                   judgementFilePath: String,
                                                   requestParameters: Seq[ValueSeqGenDefinition[_]],
                                                   excludeParamColumns: Seq[String],
@@ -188,6 +193,19 @@ object JobMessages {
         )
       )
     ) ++ otherCalculations
+    val defaultAggregatorMappings = Map(
+      "NDCG@2" -> AggregationType.DOUBLE_AVG,
+      "NDCG@4" -> AggregationType.DOUBLE_AVG,
+      "NDCG@8" -> AggregationType.DOUBLE_AVG,
+      "NDCG@12" -> AggregationType.DOUBLE_AVG,
+      "NDCG@24" -> AggregationType.DOUBLE_AVG,
+      "PRECISION@k=2,t=0.2" -> AggregationType.DOUBLE_AVG,
+      "PRECISION@k=4,t=0.2" -> AggregationType.DOUBLE_AVG,
+      "RECALL@k=2,t=0.2" -> AggregationType.DOUBLE_AVG,
+      "RECALL@k=4,t=0.2" -> AggregationType.DOUBLE_AVG
+    )
+    val metricNameToAggregationTypeMapping = MapUtils.combineMaps(defaultAggregatorMappings, otherMetricNameToAggregationTypeMapping, (x: AggregationType, y: AggregationType) => y)
+
     val filterFunc: SerializableFunction1[Tag, Boolean] = new SerializableFunction1[Tag, Boolean] {
       override def apply(v1: Tag): Boolean = true
     }
@@ -255,6 +273,7 @@ object JobMessagesImplicits {
         parsingConfig = eval.parsingConfig,
         excludeParamColumns = eval.excludeParamColumns,
         calculations = eval.calculations,
+        metricNameToAggregationTypeMapping = eval.metricNameToAggregationTypeMapping,
         taggingConfiguration = eval.taggingConfiguration,
         wrapUpFunction = eval.wrapUpFunction,
         allowedTimePerElementInMillis = eval.allowedTimePerElementInMillis,

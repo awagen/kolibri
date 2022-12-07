@@ -38,7 +38,7 @@ object MetricValue {
     createMetricValue(metricName, 0, Map.empty, runningValue)
   }
 
-  def createMapValueCountFailSample[T](metricName: String, failMap: Map[ComputeFailReason, Int], runningValue: RunningValue[Map[T, Int]]): MetricValue[Map[T, Int]] = {
+  def createMapValueCountFailSample[T](metricName: String, failMap: Map[ComputeFailReason, Int], runningValue: RunningValue[Map[T, Double]]): MetricValue[Map[T, Double]] = {
     createSingleFailSample(metricName, failMap, runningValue)
   }
 
@@ -52,6 +52,10 @@ object MetricValue {
 
   def createNestedMapSumValueSuccessSample[U, V](metricName: String, value: Map[U, Map[V, Double]], weight: Double): MetricValue[Map[U, Map[V, Double]]] = {
     createNoFailSample(metricName, nestedMapValueWeightedSumUpRunningValue(weight, 1, value))
+  }
+
+  def createNestedMapSumValueFailSample[U, V](metricName: String, failMap: Map[ComputeFailReason, Int], runningValue: RunningValue[Map[U, Map[V, Double]]]): MetricValue[Map[U, Map[V, Double]]] = {
+    createSingleFailSample(metricName, failMap, nestedMapValueWeightedSumUpRunningValue(0.0, 0, Map.empty))
   }
 
   def createDoubleAvgFailSample(metricName: String, failMap: Map[ComputeFailReason, Int]): MetricValue[Double] = {
