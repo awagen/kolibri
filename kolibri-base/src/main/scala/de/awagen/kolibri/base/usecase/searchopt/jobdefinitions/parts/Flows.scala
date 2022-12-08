@@ -36,7 +36,8 @@ import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.tagging.TagType
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
-import de.awagen.kolibri.datatypes.values.{MetricValue, RunningValue}
+import de.awagen.kolibri.datatypes.values.RunningValues.RunningValue
+import de.awagen.kolibri.datatypes.values.{MetricValue, RunningValues}
 
 import java.util.Objects
 import scala.concurrent.ExecutionContext

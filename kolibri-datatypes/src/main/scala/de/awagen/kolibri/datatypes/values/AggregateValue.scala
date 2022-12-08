@@ -25,6 +25,16 @@ trait AggregateValue[+A] extends KolibriSerializable {
   def value: A
   def weighted(weight: Double): AggregateValue[A]
 
+  override def equals(obj: Any): Boolean = {
+    if (!obj.isInstanceOf[AggregateValue[A]]) {
+      false
+    }
+    else {
+      val other = obj.asInstanceOf[AggregateValue[A]]
+      this.numSamples == other.numSamples && this.weight == other.weight && this.value == other.value
+    }
+  }
+
   def emptyCopy(): AggregateValue[A]
 
   def add[B >: A](other: AggregateValue[B]): AggregateValue[A]

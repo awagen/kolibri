@@ -18,7 +18,7 @@
 package de.awagen.kolibri.datatypes.values
 
 import de.awagen.kolibri.datatypes.testclasses.UnitTestSpec
-import de.awagen.kolibri.datatypes.values.RunningValue.{mapValueAvgRunningValue, mapValueUnweightedSumRunningValue, mapValueWeightedSumRunningValue, nestedMapValueUnweightedSumUpRunningValue, nestedMapValueWeightedSumUpRunningValue}
+import de.awagen.kolibri.datatypes.values.RunningValues.{RunningValue, mapValueAvgRunningValue, mapValueUnweightedSumRunningValue, mapValueWeightedSumRunningValue, nestedMapValueUnweightedSumUpRunningValue, nestedMapValueWeightedSumUpRunningValue}
 
 class RunningValueSpec extends UnitTestSpec {
 
@@ -59,26 +59,26 @@ class RunningValueSpec extends UnitTestSpec {
   "Nested Map running value" must {
 
     "correctly calculate weighted add" in {
-      val value1: RunningValue[Map[String, Map[Int, Double]]] = nestedMapValueWeightedSumUpRunningValue(1.0, 1, Map("key1" -> Map(1 -> 1.0)))
-      val value2: RunningValue[Map[String, Map[Int, Double]]] = nestedMapValueWeightedSumUpRunningValue(2.0, 1,
-        Map("key1" -> Map(1 -> 1.0, 2 -> 2.0), "key2" -> Map(4 -> 5.0))
+      val value1: RunningValue[Map[String, Map[String, Double]]] = nestedMapValueWeightedSumUpRunningValue(1.0, 1, Map("key1" -> Map("1" -> 1.0)))
+      val value2: RunningValue[Map[String, Map[String, Double]]] = nestedMapValueWeightedSumUpRunningValue(2.0, 1,
+        Map("key1" -> Map("1" -> 1.0, "2" -> 2.0), "key2" -> Map("4" -> 5.0))
       )
       // when
       val addedValue = value1.add(value2)
       // then
-      addedValue.value mustBe Map("key1" -> Map(1 -> 3.0, 2 -> 4.0), "key2" -> Map(4 -> 10.0))
+      addedValue.value mustBe Map("key1" -> Map("1" -> 3.0, "2" -> 4.0), "key2" -> Map("4" -> 10.0))
     }
 
     "correctly calculate un-weighted add" in {
-      val value1: RunningValue[Map[String, Map[Int, Double]]] = nestedMapValueUnweightedSumUpRunningValue(1.0, 1,
-        Map("key1" -> Map(1 -> 1.0)))
-      val value2: RunningValue[Map[String, Map[Int, Double]]] = nestedMapValueUnweightedSumUpRunningValue(2.0, 1,
-        Map("key1" -> Map(1 -> 1.0, 2 -> 2.0), "key2" -> Map(4 -> 5.0))
+      val value1: RunningValue[Map[String, Map[String, Double]]] = nestedMapValueUnweightedSumUpRunningValue(1.0, 1,
+        Map("key1" -> Map("1" -> 1.0)))
+      val value2: RunningValue[Map[String, Map[String, Double]]] = nestedMapValueUnweightedSumUpRunningValue(2.0, 1,
+        Map("key1" -> Map("1" -> 1.0, "2" -> 2.0), "key2" -> Map("4" -> 5.0))
       )
       // when
       val addedValue = value1.add(value2)
       // then
-      addedValue.value mustBe Map("key1" -> Map(1 -> 2.0, 2 -> 2.0), "key2" -> Map(4 -> 5.0))
+      addedValue.value mustBe Map("key1" -> Map("1" -> 2.0, "2" -> 2.0), "key2" -> Map("4" -> 5.0))
     }
 
   }

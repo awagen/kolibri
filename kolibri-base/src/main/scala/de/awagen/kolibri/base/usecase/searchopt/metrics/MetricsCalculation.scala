@@ -20,7 +20,7 @@ import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.{ComputeRes
 import de.awagen.kolibri.base.usecase.searchopt.metrics.JudgementValidation.JudgementValidation
 import de.awagen.kolibri.base.usecase.searchopt.metrics.MetricsCalculation.calculationResultToMetricValue
 import de.awagen.kolibri.datatypes.stores.MetricRow
-import de.awagen.kolibri.datatypes.values.{MetricValue, RunningValue}
+import de.awagen.kolibri.datatypes.values.{MetricValue, RunningValues}
 
 import scala.collection.immutable
 
@@ -32,7 +32,7 @@ object MetricsCalculation {
       case Right(score) =>
         MetricValue.createDoubleAvgSuccessSample(name, score, 1.0)
       case Left(failReasons) =>
-        MetricValue.createDoubleAvgFailSample(metricName = name, RunningValue.mapFromFailReasons(failReasons))
+        MetricValue.createDoubleAvgFailSample(metricName = name, RunningValues.mapFromFailReasons(failReasons))
     }
   }
 

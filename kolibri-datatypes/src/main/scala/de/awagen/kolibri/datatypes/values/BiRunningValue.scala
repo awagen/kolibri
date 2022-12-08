@@ -28,6 +28,17 @@ package de.awagen.kolibri.datatypes.values
   * @tparam B - type of the aggregate for value2
   */
 case class BiRunningValue[+A, +B](value1: AggregateValue[A], value2: AggregateValue[B]) {
+
+  override def equals(obj: Any): Boolean = {
+    if (!obj.isInstanceOf[BiRunningValue[A, B]]) {
+      false
+    }
+    else {
+      val other = obj.asInstanceOf[BiRunningValue[A, B]]
+      this.value1 == other.value1 && this.value2 == other.value2
+    }
+  }
+
   def add[C >: A, D >: B](other: BiRunningValue[C, D]): BiRunningValue[A, B] = BiRunningValue(value1.add(other.value1), value2.add(other.value2))
 
   def addFirst[C >: A](other: AggregateValue[C]): BiRunningValue[A, B] = BiRunningValue(value1.add(other), value2)

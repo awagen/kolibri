@@ -23,7 +23,7 @@ import de.awagen.kolibri.datatypes.tagging.TagType.AGGREGATION
 import de.awagen.kolibri.datatypes.tagging.TaggedWithType
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.types.SerializableCallable.{SerializableFunction1, SerializableFunction2, SerializableSupplier}
-import de.awagen.kolibri.datatypes.values.RunningValue.doubleAvgRunningValue
+import de.awagen.kolibri.datatypes.values.RunningValues.doubleAvgRunningValue
 import de.awagen.kolibri.datatypes.values.{AggregateValue, DataPoint}
 import org.slf4j.{Logger, LoggerFactory}
 

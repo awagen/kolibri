@@ -38,6 +38,7 @@ import de.awagen.kolibri.datatypes.mutable.stores.{BaseWeaklyTypedMap, WeaklyTyp
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSupplier
 import de.awagen.kolibri.datatypes.utils.MathUtils
+import de.awagen.kolibri.datatypes.values.RunningValues
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
@@ -127,16 +128,21 @@ class CalculationsSpec extends KolibriTestKitNoCluster
       inputData.put(PRODUCT_IDS_KEY, Seq("p0", "p3", "p2", "p1", "p4"))
       // when
 
-      val calcResult: Seq[ResultRecord[Double]] = calculation.calculation.apply(inputData)
-      val ndcg5Result: ComputeResult[Double] = calcResult.find(x => x.name == NDCG5_NAME).get.value
-      val ndcg10Result: ComputeResult[Double] = calcResult.find(x => x.name == NDCG10_NAME).get.value
-      val ndcg2Result: ComputeResult[Double] = calcResult.find(x => x.name == NDCG2_NAME).get.value
+      val calcResult: Seq[ResultRecord[_]] = calculation.calculation.apply(inputData)
+      val ndcg5Result: ComputeResult[_] = calcResult.find(x => x.name == NDCG5_NAME).get.value
+      val ndcg10Result: ComputeResult[_] = calcResult.find(x => x.name == NDCG10_NAME).get.value
+      val ndcg2Result: ComputeResult[_] = calcResult.find(x => x.name == NDCG2_NAME).get.value
       val expectedNDCG2Result: ComputeResult[Double] = IRMetricFunctions.ndcgAtK(2).apply(Seq(0.10, 0.4, 0.3, 0.2, 0.0))
       val expectedNDCG5Result: ComputeResult[Double] = IRMetricFunctions.ndcgAtK(5).apply(Seq(0.10, 0.4, 0.3, 0.2, 0.0))
       // then
-      MathUtils.equalWithPrecision[Double](ndcg2Result.getOrElse[Double](-10), expectedNDCG2Result.getOrElse[Double](-1.0), 0.0001) mustBe true
-      MathUtils.equalWithPrecision[Double](ndcg5Result.getOrElse[Double](-10), expectedNDCG5Result.getOrElse[Double](-1.0), 0.0001) mustBe true
-      MathUtils.equalWithPrecision[Double](ndcg5Result.getOrElse[Double](-10), ndcg10Result.getOrElse[Double](-1), 0.0001) mustBe true
+      MathUtils.equalWithPrecision[Double](
+        ndcg2Result.getOrElse[Any](-10).asInstanceOf[Double],
+        expectedNDCG2Result.getOrElse[Any](-1.0).asInstanceOf[Double], 0.0001) mustBe true
+      MathUtils.equalWithPrecision[Double](
+        ndcg5Result.getOrElse[Any](-10).asInstanceOf[Double],
+        expectedNDCG5Result.getOrElse[Any](-1.0).asInstanceOf[Double], 0.0001) mustBe true
+      MathUtils.equalWithPrecision[Double](ndcg5Result.getOrElse[Any](-10).asInstanceOf[Double],
+        ndcg10Result.getOrElse[Any](-1).asInstanceOf[Double], 0.0001) mustBe true
     }
   }
 
@@ -172,7 +178,10 @@ class CalculationsSpec extends KolibriTestKitNoCluster
       val params = Map("p1" -> Seq("p1v1"), "p2" -> Seq("p2v1"))
       val result: MetricRow = throwableToMetricRowResponse(
         e = new RuntimeException("ups"),
-        valueNames = Set("val1", "val2"),
+        valueNamesToEmptyAggregationValuesMap = Map(
+          "val1" -> RunningValues.doubleAvgRunningValue(0.0, 0, 0),
+          "val2" -> RunningValues.doubleAvgRunningValue(0.0, 0, 0)
+        ),
         params = params)
       val val1Result = result.metrics("val1").biValue
       val val2Result = result.metrics("val2").biValue

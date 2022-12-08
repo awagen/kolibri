@@ -36,15 +36,29 @@ class CSVParameterBasedMetricDocumentFormatSpec extends UnitTestSpec {
   val metricsSuccess4: MetricValue[Double] = MetricValue.createDoubleAvgSuccessSample("metrics4", 0.3, 1.0)
   val metricsSuccess5: MetricValue[Double] = MetricValue.createDoubleAvgSuccessSample("metrics5", 0.6, 1.0)
 
+  val histogramMetricSuccess1: MetricValue[Map[String, Map[String, Double]]] = MetricValue.createNestedMapSumValueSuccessSample(
+    "histogram1",
+    Map("key1" -> Map("1" -> 1.0, "2" -> 2.0), "key2" -> Map("3" -> 1.0)),
+    1.0)
+  val histogramMetricSuccess2: MetricValue[Map[String, Map[String, Double]]] = MetricValue.createNestedMapSumValueSuccessSample(
+    "histogram1",
+    Map("key1" -> Map("2" -> 1.0, "3" -> 4.0), "key2" -> Map("2" -> 1.0)),
+    1.0)
+
 
   val metricRecord1: MetricRow = MetricRow.emptyForParams(parameterTag1.value).addFullMetricsSampleAndIncreaseSampleCount(metricsSuccess1, metricsSuccess2)
   val metricRecord2: MetricRow = MetricRow.emptyForParams(parameterTag2.value).addFullMetricsSampleAndIncreaseSampleCount(metricsSuccess3)
   val metricRecord3: MetricRow = MetricRow.emptyForParams(parameterTag3.value).addFullMetricsSampleAndIncreaseSampleCount(metricsSuccess4)
 
+  val histogramMetricRecord1: MetricRow = MetricRow.emptyForParams(parameterTag1.value).addFullMetricsSampleAndIncreaseSampleCount(histogramMetricSuccess1)
+
   val doc: MetricDocument[String] = MetricDocument.empty[String]("doc1")
   doc.add(metricRecord1)
   doc.add(metricRecord2)
   doc.add(metricRecord3)
+
+  val histogramDoc1: MetricDocument[String] = MetricDocument.empty[String]("histogramDoc1")
+  histogramDoc1.add(histogramMetricRecord1)
 
 
   val writer: CSVParameterBasedMetricDocumentFormat = CSVParameterBasedMetricDocumentFormat("\t")
@@ -82,6 +96,17 @@ class CSVParameterBasedMetricDocumentFormatSpec extends UnitTestSpec {
       // when
       val actual = writer.metricDocumentToString(doc)
       actual mustBe expectedDocString
+    }
+
+    "correctly give formatted representation of histogram aggregation" in {
+      // given
+      val expectedHeader1 = "p1\tp2\tfail-count-histogram1\tweighted-fail-count-histogram1\tfailReasons-histogram1\tsuccess-count-histogram1\tweighted-success-count-histogram1\tvalue-histogram1"
+      val expectedRow1 = "v1_1\tv1_2\t0\t0.0000\t\t1\t1.0000\t{\"key1\":{\"1\":1.0,\"2\":2.0},\"key2\":{\"3\":1.0}}"
+      val expectedDocString = Seq(expectedHeader1, expectedRow1).mkString("\n")
+      // when
+      val actualFormat = writer.metricDocumentToString(histogramDoc1)
+      // then
+      actualFormat mustBe expectedDocString
     }
 
     "correctly read header" in {

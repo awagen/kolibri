@@ -96,7 +96,7 @@ object CalculationsJsonProtocol extends DefaultJsonProtocol {
             val metricName: String = fields(NAME_KEY).convertTo[String]
             val dataKey: String = fields(DATA_KEY_KEY).convertTo[String]
             val k: Int = fields(K_KEY).convertTo[Int]
-            FromMapCalculation[Seq[String], Map[String, Map[Int, Double]]](Set(metricName), dataKey, stringSeqHistogram(k))
+            FromMapCalculation[Seq[String], Map[String, Map[String, Double]]](Set(metricName), dataKey, stringSeqHistogram(k))
         }
     }
 

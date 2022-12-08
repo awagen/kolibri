@@ -17,7 +17,7 @@
 package de.awagen.kolibri.datatypes.values
 
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason
-import de.awagen.kolibri.datatypes.values.RunningValue._
+import de.awagen.kolibri.datatypes.values.RunningValues._
 
 
 object MetricValue {
@@ -92,6 +92,16 @@ object MetricValue {
   */
 case class MetricValue[+A](name: String,
                            biValue: BiRunningValue[Map[ComputeFailReason, Int], A]) {
+
+  override def equals(obj: Any): Boolean = {
+    if (!obj.isInstanceOf[MetricValue[A]]) {
+      false
+    }
+    else {
+      val other = obj.asInstanceOf[MetricValue[A]]
+      this.name == other.name && this.biValue == other.biValue
+    }
+  }
 
   def emptyCopy(): MetricValue[A] = {
     this.copy(name: String, BiRunningValue[Map[ComputeFailReason, Int], A](

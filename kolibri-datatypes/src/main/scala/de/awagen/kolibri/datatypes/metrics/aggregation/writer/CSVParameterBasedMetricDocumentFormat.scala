@@ -20,8 +20,9 @@ import de.awagen.kolibri.datatypes.io.json.AnyJsonProtocol.AnyJsonFormat
 import de.awagen.kolibri.datatypes.metrics.aggregation.writer.CSVParameterBasedMetricDocumentFormat._
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason
 import de.awagen.kolibri.datatypes.stores.{MetricDocument, MetricRow}
-import de.awagen.kolibri.datatypes.values.RunningValue.RunningValueAdd.{doubleAvgAdd, errorMapAdd, failMapKeepWeightFon, weightMultiplyFunction}
-import de.awagen.kolibri.datatypes.values.{BiRunningValue, MetricValue, RunningValue}
+import de.awagen.kolibri.datatypes.values.MetricValue
+import de.awagen.kolibri.datatypes.values.RunningValues.RunningValueAdd.{doubleAvgAdd, errorMapAdd}
+import de.awagen.kolibri.datatypes.values.RunningValues.{RunningValue, failMapKeepWeightFon, weightMultiplyFunction}
 import spray.json.DefaultJsonProtocol.{StringJsonFormat, mapFormat}
 import spray.json.enrichAny
 
@@ -140,10 +141,10 @@ case class CSVParameterBasedMetricDocumentFormat(columnSeparator: String) extend
       val metricValueObj = MetricValue.createDoubleEmptyAveragingMetricValue(metricName)
 
       // TODO: this below still uses a standard doubleAvg running value. This need to be changed, since we also have map metrics (e.g histograms) and the like
-      val newRunningValue: BiRunningValue[Map[ComputeFailReason, Int], Any] = metricValueObj
+      val newRunningValue = metricValueObj
         .biValue
-        .addFirst(RunningValue(weightedFailCount, failCount, failReasonsCountMap, failMapKeepWeightFon,  errorMapAdd.addFunc, () => Map.empty))
-        .addSecond(RunningValue(weightedSuccessCount, successCount, metricValue, weightMultiplyFunction, doubleAvgAdd.addFunc, () => 0.0))
+        .addFirst(RunningValue(weightedFailCount, failCount, failReasonsCountMap, failMapKeepWeightFon, errorMapAdd, () => Map.empty))
+        .addSecond(RunningValue(weightedSuccessCount, successCount, metricValue, weightMultiplyFunction, doubleAvgAdd, () => 0.0))
       metricRow = metricRow.addMetricDontChangeCountStore(metricValueObj.copy(biValue = newRunningValue))
     })
     metricRow
@@ -200,7 +201,13 @@ case class CSVParameterBasedMetricDocumentFormat(columnSeparator: String) extend
       val value = metricValue.biValue.value2.value
       val valueStringFormat: String = value match {
         case _: Double => s"${String.format("%.4f", value.asInstanceOf[Double])}"
-        case e: Map[String, Any] => e.toJson.toString()
+        case _: Float => s"${String.format("%.4f", value.asInstanceOf[Float])}"
+        case s: String => s
+        case i: Int => i.toString
+        case b: Boolean => b.toString
+        // NOTE: mapping any via json string write requires that the object can be mapped
+        // e.g for Maps only use String keys (otherwise it will try to map it to string and fail)
+        case e: Any => e.toJson.toString()
       }
       data = data ++ Seq(
         s"$totalErrors",

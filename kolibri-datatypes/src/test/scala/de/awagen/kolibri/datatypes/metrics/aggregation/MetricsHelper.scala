@@ -18,18 +18,18 @@ package de.awagen.kolibri.datatypes.metrics.aggregation
 
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason
 import de.awagen.kolibri.datatypes.stores.MetricRow
-import de.awagen.kolibri.datatypes.values.{BiRunningValue, MetricValue, RunningValue}
+import de.awagen.kolibri.datatypes.values.{BiRunningValue, MetricValue, RunningValues}
 
 object MetricsHelper {
 
   def createMetricsCalculationSuccess(name: String, score: Double): MetricValue[Double] = {
-    MetricValue(name, BiRunningValue(value1 = RunningValue.calcErrorRunningValue(0, Map.empty),
-      value2 = RunningValue.doubleAvgRunningValue(1.0, 1, score)))
+    MetricValue(name, BiRunningValue(value1 = RunningValues.calcErrorRunningValue(0, Map.empty),
+      value2 = RunningValues.doubleAvgRunningValue(1.0, 1, score)))
   }
 
   def createMetricsCalculationFailure(name: String, fails: Seq[ComputeFailReason]): MetricValue[Double] = {
-    MetricValue(name, BiRunningValue(value1 = RunningValue.calcErrorRunningValue(1, RunningValue.mapFromFailReasons(fails)),
-      value2 = RunningValue.doubleAvgRunningValue(0.0, 0, 0.0)))
+    MetricValue(name, BiRunningValue(value1 = RunningValues.calcErrorRunningValue(1, RunningValues.mapFromFailReasons(fails)),
+      value2 = RunningValues.doubleAvgRunningValue(0.0, 0, 0.0)))
   }
 
   val metricsSuccess1: MetricValue[Double] = MetricValue.createDoubleAvgSuccessSample("metrics1", 0.2, 1.0)

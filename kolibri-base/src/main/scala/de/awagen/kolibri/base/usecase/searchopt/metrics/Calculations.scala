@@ -32,7 +32,8 @@ import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.types.SerializableCallable.{SerializableFunction1, SerializableSupplier}
-import de.awagen.kolibri.datatypes.values.{MetricValue, RunningValue}
+import de.awagen.kolibri.datatypes.values.RunningValues.RunningValue
+import de.awagen.kolibri.datatypes.values.{MetricValue, RunningValues}
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.mutable
@@ -67,7 +68,7 @@ object Calculations {
    */
   case class BooleanSeqToDoubleCalculation(names: Set[String], calculation: SerializableFunction1[Seq[Boolean], Seq[ResultRecord[Double]]]) extends Calculation[Seq[Boolean], Double]
 
-  case class StringSeqToHistogramCalculation(names: Set[String], calculation: SerializableFunction1[Seq[String], Seq[ResultRecord[Map[String, Map[Int, Double]]]]]) extends Calculation[Seq[String], Map[String, Map[Int, Double]]]
+  case class StringSeqToHistogramCalculation(names: Set[String], calculation: SerializableFunction1[Seq[String], Seq[ResultRecord[Map[String, Map[String, Double]]]]]) extends Calculation[Seq[String], Map[String, Map[String, Double]]]
 
   /**
    * Calculation of single result, given a data key to retrieve input data from
@@ -159,8 +160,8 @@ object ComputeResultFunctions {
     override def apply(msg: T): Either[Seq[ComputeFailReason], T] = Right(msg)
   }
 
-  def stringSeqHistogram(k: Int): SerializableFunction1[Seq[String], ComputeResult[Map[String, Map[Int, Double]]]] = new SerializableFunction1[Seq[String], ComputeResult[Map[String, Map[Int, Double]]]] {
-    override def apply(msg: Seq[String]): Either[Seq[ComputeFailReason], Map[String, Map[Int, Double]]] = {
+  def stringSeqHistogram(k: Int): SerializableFunction1[Seq[String], ComputeResult[Map[String, Map[String, Double]]]] = new SerializableFunction1[Seq[String], ComputeResult[Map[String, Map[String, Double]]]] {
+    override def apply(msg: Seq[String]): Either[Seq[ComputeFailReason], Map[String, Map[String, Double]]] = {
       try {
         val result = stringSequenceToPositionOccurrenceCountMap(msg, k)
         Right(result)
@@ -238,11 +239,11 @@ object MetricValueFunctions {
       case _ => throw new IllegalArgumentException(s"no DataFileType by name '$name' found")
     }
 
-    val DOUBLE_AVG: Val[Double] = Val(resultRecordToDoubleAvgMetricValue, () => RunningValue.doubleAvgRunningValue(0.0, 0, 0.0))
-    val MAP_UNWEIGHTED_SUM_VALUE: Val[Map[String, Double]] = Val(resultRecordToMapCountMetricValue(weighted = false), () => RunningValue.mapValueUnweightedSumRunningValue(0.0, 0, Map.empty[String, Double]))
-    val MAP_WEIGHTED_SUM_VALUE: Val[Map[String, Double]] = Val(resultRecordToMapCountMetricValue(weighted = true), () => RunningValue.mapValueWeightedSumRunningValue(0.0, 0, Map.empty[String, Double]))
-    val NESTED_MAP_UNWEIGHTED_SUM_VALUE: Val[Map[String, Map[String, Double]]] = Val(resultRecordToNestedMapCountMetricValue(weighted = false), () => RunningValue.nestedMapValueUnweightedSumUpRunningValue(0.0, 0, Map.empty[String, Map[String, Double]]))
-    val NESTED_MAP_WEIGHTED_SUM_VALUE: Val[Map[String, Map[String, Double]]] = Val(resultRecordToNestedMapCountMetricValue(weighted = true), () => RunningValue.nestedMapValueWeightedSumUpRunningValue(0.0, 0, Map.empty[String, Map[String, Double]]))
+    val DOUBLE_AVG: Val[Double] = Val(resultRecordToDoubleAvgMetricValue, () => RunningValues.doubleAvgRunningValue(0.0, 0, 0.0))
+    val MAP_UNWEIGHTED_SUM_VALUE: Val[Map[String, Double]] = Val(resultRecordToMapCountMetricValue(weighted = false), () => RunningValues.mapValueUnweightedSumRunningValue(0.0, 0, Map.empty[String, Double]))
+    val MAP_WEIGHTED_SUM_VALUE: Val[Map[String, Double]] = Val(resultRecordToMapCountMetricValue(weighted = true), () => RunningValues.mapValueWeightedSumRunningValue(0.0, 0, Map.empty[String, Double]))
+    val NESTED_MAP_UNWEIGHTED_SUM_VALUE: Val[Map[String, Map[String, Double]]] = Val(resultRecordToNestedMapCountMetricValue(weighted = false), () => RunningValues.nestedMapValueUnweightedSumUpRunningValue(0.0, 0, Map.empty[String, Map[String, Double]]))
+    val NESTED_MAP_WEIGHTED_SUM_VALUE: Val[Map[String, Map[String, Double]]] = Val(resultRecordToNestedMapCountMetricValue(weighted = true), () => RunningValues.nestedMapValueWeightedSumUpRunningValue(0.0, 0, Map.empty[String, Map[String, Double]]))
   }
 
   def failReasonSeqToCountMap(failReasons: Seq[ComputeFailReason]): Map[ComputeFailReason, Int] = {
@@ -266,7 +267,7 @@ object MetricValueFunctions {
         MetricValue.createMapValueCountFailSample[T](
           metricName = record.name,
           failMap = countMap,
-          runningValue = if (weighted) RunningValue.mapValueWeightedSumRunningValue[T](1.0, 1, Map.empty[T, Double]) else RunningValue.mapValueUnweightedSumRunningValue[T](1.0, 1, Map.empty[T, Double])
+          runningValue = if (weighted) RunningValues.mapValueWeightedSumRunningValue[T](1.0, 1, Map.empty[T, Double]) else RunningValues.mapValueUnweightedSumRunningValue[T](1.0, 1, Map.empty[T, Double])
         )
       case Right(value) =>
         MetricValue.createMapSumValueSuccessSample(
@@ -327,13 +328,13 @@ object PlainMetricValueFunctions {
    * @param k
    * @return
    */
-  def stringSequenceToPositionOccurrenceCountMap(seq: Seq[String], k: Int): Map[String, Map[Int, Double]] = {
+  def stringSequenceToPositionOccurrenceCountMap(seq: Seq[String], k: Int): Map[String, Map[String, Double]] = {
     val sequence: Seq[String] = seq.slice(0, k)
     val valueSet = sequence.toSet
-    valueSet.foldLeft(mutable.Map.empty[String, Map[Int, Double]])((valueMap, value) => {
+    valueSet.foldLeft(mutable.Map.empty[String, Map[String, Double]])((valueMap, value) => {
       val listOfOccurrenceIndices = sequence.zipWithIndex.filter(pair => pair._1 == value).map(pair => pair._2)
-      val indexOccurrenceMap: Map[Int, Double] = listOfOccurrenceIndices.foldLeft(mutable.Map.empty[Int, Double])((indexMap, index) => {
-        indexMap(index) = 1.0
+      val indexOccurrenceMap: Map[String, Double] = listOfOccurrenceIndices.foldLeft(mutable.Map.empty[String, Double])((indexMap, index) => {
+        indexMap(index.toString) = 1.0
         indexMap
       }).toMap
       valueMap(value) = indexOccurrenceMap
