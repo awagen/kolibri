@@ -32,10 +32,9 @@ import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.ReservedSto
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations._
 import de.awagen.kolibri.base.usecase.searchopt.metrics.CalculationsTestHelper._
 import de.awagen.kolibri.base.usecase.searchopt.metrics.ComputeResultFunctions.{booleanPrecision, countValues, findFirstValue}
-import de.awagen.kolibri.base.usecase.searchopt.metrics.MetricRowFunctions.{computeFailReasonsToMetricRowResponse, resultEitherToMetricRowResponse, throwableToMetricRowResponse}
+import de.awagen.kolibri.base.usecase.searchopt.metrics.MetricRowFunctions.throwableToMetricRowResponse
 import de.awagen.kolibri.base.usecase.searchopt.metrics.PlainMetricValueFunctions._
 import de.awagen.kolibri.datatypes.mutable.stores.{BaseWeaklyTypedMap, WeaklyTypedMap}
-import de.awagen.kolibri.datatypes.reason.ComputeFailReason
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSupplier
 import de.awagen.kolibri.datatypes.utils.MathUtils
@@ -190,49 +189,6 @@ class CalculationsSpec extends KolibriTestKitNoCluster
       val2Result.value1.numSamples mustBe 1
       val2FailReasonKey.description mustBe "java.lang.RuntimeException"
       val2Result.value1.value(val2FailReasonKey) mustBe 1
-    }
-
-    "correctly apply computeFailReasonsToMetricRowResponse" in {
-      // given
-      val failReasons = Seq(
-        de.awagen.kolibri.datatypes.reason.ComputeFailReason.NO_RESULTS,
-        de.awagen.kolibri.datatypes.reason.ComputeFailReason.ZERO_DENOMINATOR
-      )
-      val params = Map("p1" -> Seq("p1v1"), "p2" -> Seq("p2v1"))
-      // when
-      val metricRow: MetricRow = computeFailReasonsToMetricRowResponse(failReasons, "testMetric", params)
-      val metricResult = metricRow.metrics("testMetric").biValue
-      // then
-      metricResult.value1.numSamples mustBe 2
-      metricResult.value2.numSamples mustBe 0
-      metricResult.value1.value(de.awagen.kolibri.datatypes.reason.ComputeFailReason.NO_RESULTS) mustBe 1
-      metricResult.value1.value(de.awagen.kolibri.datatypes.reason.ComputeFailReason.ZERO_DENOMINATOR) mustBe 1
-    }
-
-    "correctly apply resultEitherToMetricRowResponse" in {
-      // given
-      val params = Map("p1" -> Seq("p1v1"), "p2" -> Seq("p2v1"))
-      // when
-      val metricRow1 = resultEitherToMetricRowResponse(
-        "testMetric",
-        Right(0.2),
-        params
-      )
-      val metricRow2 = resultEitherToMetricRowResponse(
-        "testMetric",
-        Left[Seq[ComputeFailReason], Double](Seq(new ComputeFailReason("runtimeException"))),
-        params
-      )
-      val row1Result = metricRow1.metrics("testMetric").biValue
-      val row2Result = metricRow2.metrics("testMetric").biValue
-      // then
-      row1Result.value1.numSamples mustBe 0
-      row1Result.value2.numSamples mustBe 1
-      row2Result.value1.numSamples mustBe 1
-      row2Result.value2.numSamples mustBe 0
-      row1Result.value2.value mustBe 0.2
-      row2Result.value1.value.keySet.map(x => x.description) mustBe Set("runtimeException")
-
     }
 
     "correctly apply findFirstValue" in {

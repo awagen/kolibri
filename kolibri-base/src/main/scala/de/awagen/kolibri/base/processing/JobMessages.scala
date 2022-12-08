@@ -96,7 +96,7 @@ object JobMessages {
                                         batchByIndex: Int,
                                         parsingConfig: ParsingConfig,
                                         excludeParamColumns: Seq[String],
-                                        calculations: Seq[Calculation[WeaklyTypedMap[String], Double]],
+                                        calculations: Seq[Calculation[WeaklyTypedMap[String], Any]],
                                         metricNameToAggregationTypeMapping: Map[String, AggregationType],
                                         taggingConfiguration: Option[BaseTaggingConfiguration[RequestTemplate, (Either[Throwable, WeaklyTypedMap[String]], RequestTemplate), MetricRow]],
                                         wrapUpFunction: Option[Execution[Any]],
@@ -133,7 +133,7 @@ object JobMessages {
                                                   queryParameter: String,
                                                   productIdSelector: String,
                                                   otherSelectors: Seq[NamedAndTypedSelector[_]],
-                                                  otherCalculations: Seq[Calculation[WeaklyTypedMap[String], Double]],
+                                                  otherCalculations: Seq[Calculation[WeaklyTypedMap[String], Any]],
                                                   otherMetricNameToAggregationTypeMapping: Map[String, AggregationType],
                                                   judgementFilePath: String,
                                                   requestParameters: Seq[ValueSeqGenDefinition[_]],
@@ -169,7 +169,7 @@ object JobMessages {
           JsonTypeCast.STRING
         )) ++ otherSelectors
     )
-    val calculations: Seq[Calculation[WeaklyTypedMap[String], Double]] = Seq(
+    val calculations: Seq[Calculation[WeaklyTypedMap[String], Any]] = Seq(
       JudgementsFromResourceIRMetricsCalculations(
         productIdsKey,
         queryParameter,

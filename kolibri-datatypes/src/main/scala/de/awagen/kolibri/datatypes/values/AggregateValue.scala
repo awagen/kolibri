@@ -25,6 +25,8 @@ trait AggregateValue[+A] extends KolibriSerializable {
   def value: A
   def weighted(weight: Double): AggregateValue[A]
 
+  def emptyCopy(): AggregateValue[A]
+
   def add[B >: A](other: AggregateValue[B]): AggregateValue[A]
 
   def add[B >: A](otherValue: DataPoint[B]): AggregateValue[A]

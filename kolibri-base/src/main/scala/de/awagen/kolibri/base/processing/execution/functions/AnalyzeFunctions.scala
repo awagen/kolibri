@@ -110,6 +110,7 @@ object AnalyzeFunctions {
       var queryVariancePairs: Seq[(String, Double)] = Seq.empty
       filteredFiles.foreach(file => {
         val document: MetricDocument[Tag] = FileUtils.fileToMetricDocument(file, fileReader)
+        // TODO: fix, since not every metric is double by now
         val singleValues: Seq[Double] = document.rows.values.map(x => x.metrics(metricName).biValue.value2.value).map(x => x.asInstanceOf[Double]).toSeq
         val mean = if (singleValues.isEmpty) 0 else singleValues.sum / singleValues.size
         val variance = if (singleValues.isEmpty) 0 else singleValues.map(x => math.pow(x - mean, 2.0)).sum / singleValues.size

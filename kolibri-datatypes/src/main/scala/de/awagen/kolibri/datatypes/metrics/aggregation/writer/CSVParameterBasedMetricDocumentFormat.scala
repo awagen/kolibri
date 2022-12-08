@@ -16,11 +16,14 @@
 
 package de.awagen.kolibri.datatypes.metrics.aggregation.writer
 
+import de.awagen.kolibri.datatypes.io.json.AnyJsonProtocol.AnyJsonFormat
 import de.awagen.kolibri.datatypes.metrics.aggregation.writer.CSVParameterBasedMetricDocumentFormat._
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason
 import de.awagen.kolibri.datatypes.stores.{MetricDocument, MetricRow}
 import de.awagen.kolibri.datatypes.values.RunningValue.RunningValueAdd.{doubleAvgAdd, errorMapAdd, failMapKeepWeightFon, weightMultiplyFunction}
 import de.awagen.kolibri.datatypes.values.{BiRunningValue, MetricValue, RunningValue}
+import spray.json.DefaultJsonProtocol.{StringJsonFormat, mapFormat}
+import spray.json.enrichAny
 
 
 object CSVParameterBasedMetricDocumentFormat {
@@ -135,10 +138,12 @@ case class CSVParameterBasedMetricDocumentFormat(columnSeparator: String) extend
       val weightedSuccessCount: Double = columns(weightedSuccessCountIndex).toDouble
       // Map[ComputeFailReason, Int] creason to count map needed beside value, also success and fail counts
       val metricValueObj = MetricValue.createDoubleEmptyAveragingMetricValue(metricName)
-      val newRunningValue: BiRunningValue[Map[ComputeFailReason, Int], Double] = metricValueObj
+
+      // TODO: this below still uses a standard doubleAvg running value. This need to be changed, since we also have map metrics (e.g histograms) and the like
+      val newRunningValue: BiRunningValue[Map[ComputeFailReason, Int], Any] = metricValueObj
         .biValue
-        .addFirst(RunningValue(weightedFailCount, failCount, failReasonsCountMap, failMapKeepWeightFon,  errorMapAdd.addFunc))
-        .addSecond(RunningValue(weightedSuccessCount, successCount, metricValue, weightMultiplyFunction, doubleAvgAdd.addFunc))
+        .addFirst(RunningValue(weightedFailCount, failCount, failReasonsCountMap, failMapKeepWeightFon,  errorMapAdd.addFunc, () => Map.empty))
+        .addSecond(RunningValue(weightedSuccessCount, successCount, metricValue, weightMultiplyFunction, doubleAvgAdd.addFunc, () => 0.0))
       metricRow = metricRow.addMetricDontChangeCountStore(metricValueObj.copy(biValue = newRunningValue))
     })
     metricRow
@@ -192,13 +197,18 @@ case class CSVParameterBasedMetricDocumentFormat(columnSeparator: String) extend
         .sorted[ComputeFailReason]((x, y) => x.description compare y.description)
         .map(failReason => s"${failReason.description}:${failMapValue(failReason)}")
         .mkString(",")
+      val value = metricValue.biValue.value2.value
+      val valueStringFormat: String = value match {
+        case _: Double => s"${String.format("%.4f", value.asInstanceOf[Double])}"
+        case e: Map[String, Any] => e.toJson.toString()
+      }
       data = data ++ Seq(
         s"$totalErrors",
         s"${String.format("%.4f",weightedTotalErrors)}",
         s"$errorString",
         s"$totalSuccess",
         s"${String.format("%.4f",weightedTotalSuccess)}",
-        s"${String.format("%.4f", metricValue.biValue.value2.value.asInstanceOf[Double])}"
+        valueStringFormat
       )
     })
     data.mkString(columnSeparator)

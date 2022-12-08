@@ -17,7 +17,7 @@
 package de.awagen.kolibri.datatypes.values
 
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason
-import de.awagen.kolibri.datatypes.values.RunningValue.{calcErrorRunningValue, doubleAvgRunningValue, mapValueAvgRunningValue, mapValueWeightedSumRunningValue, nestedMapValueWeightedSumUpRunningValue}
+import de.awagen.kolibri.datatypes.values.RunningValue._
 
 
 object MetricValue {
@@ -26,11 +26,15 @@ object MetricValue {
                            failCount: Int,
                            failMap: Map[ComputeFailReason, Int],
                            runningValue: RunningValue[T]): MetricValue[T] = {
-    MetricValue(name = metricName,
+    MetricValue(
+      name = metricName,
       BiRunningValue(value1 = calcErrorRunningValue(failCount, failMap), value2 = runningValue))
   }
 
-  def createSingleFailSample[T](metricName: String, failMap: Map[ComputeFailReason, Int], runningValue: RunningValue[T]): MetricValue[T] = {
+  def createSingleFailSample[T](metricName: String,
+                                failMap: Map[ComputeFailReason, Int],
+                                runningValue: RunningValue[T],
+                               ): MetricValue[T] = {
     createMetricValue(metricName, 1, failMap, runningValue)
   }
 
@@ -54,7 +58,7 @@ object MetricValue {
     createNoFailSample(metricName, nestedMapValueWeightedSumUpRunningValue(weight, 1, value))
   }
 
-  def createNestedMapSumValueFailSample[U, V](metricName: String, failMap: Map[ComputeFailReason, Int], runningValue: RunningValue[Map[U, Map[V, Double]]]): MetricValue[Map[U, Map[V, Double]]] = {
+  def createNestedMapSumValueFailSample[U, V](metricName: String, failMap: Map[ComputeFailReason, Int]): MetricValue[Map[U, Map[V, Double]]] = {
     createSingleFailSample(metricName, failMap, nestedMapValueWeightedSumUpRunningValue(0.0, 0, Map.empty))
   }
 
@@ -83,6 +87,17 @@ object MetricValue {
   *                utilizing AggregateValue[Map[ComputeFailReason, Int]] and AggregateValue[A]. Thus note that the
   *                sum of the counts in the error type map will always be >= the actual count of the sampels that went
   *                into it
+  * @param aggregateValueInitSupplier -
   * @tparam A - type of the aggregated value made of successful computations
   */
-case class MetricValue[+A](name: String, biValue: BiRunningValue[Map[ComputeFailReason, Int], A])
+case class MetricValue[+A](name: String,
+                           biValue: BiRunningValue[Map[ComputeFailReason, Int], A]) {
+
+  def emptyCopy(): MetricValue[A] = {
+    this.copy(name: String, BiRunningValue[Map[ComputeFailReason, Int], A](
+      value1 = calcErrorRunningValue(0, Map.empty),
+      value2 = biValue.value2.emptyCopy()
+    ))
+  }
+
+}

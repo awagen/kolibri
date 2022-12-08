@@ -36,7 +36,7 @@ import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.tagging.TagType
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
-import de.awagen.kolibri.datatypes.values.MetricValue
+import de.awagen.kolibri.datatypes.values.{MetricValue, RunningValue}
 
 import java.util.Objects
 import scala.concurrent.ExecutionContext
@@ -111,7 +111,14 @@ object Flows {
       case e@Left(_) =>
         // need to add paramNames here to set the fail reasons for each
         val allParamNames: Set[String] = calculations.flatMap(x => x.names).toSet
-        val metricRow = throwableToMetricRowResponse(e.value, allParamNames, metricRowParams)
+        // check if we know rhe right running value mapping, otherwise need to ignore the metric
+        val validParamNameEmptyRunningValueMap: Map[String, RunningValue[_]] = allParamNames.map(name => {
+          (name, metricNameToAggregationTypeMapping.get(name)
+            .map(aggType => aggType.emptyRunningValueSupplier.apply())
+            .orNull)
+        })
+          .filter(x => Objects.nonNull(x._2)).toMap
+        val metricRow = throwableToMetricRowResponse(e.value, validParamNameEmptyRunningValueMap, metricRowParams)
         val result: ProcessingMessage[MetricRow] = Corn(metricRow)
         val originalTags: Set[Tag] = processingMessage.getTagsForType(TagType.AGGREGATION)
         result.addTags(TagType.AGGREGATION, originalTags)
