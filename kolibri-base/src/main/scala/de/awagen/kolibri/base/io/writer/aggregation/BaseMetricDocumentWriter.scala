@@ -28,6 +28,7 @@ case class BaseMetricDocumentWriter(writer: Writer[String, String, Any],
                                     subFolder: String,
                                     pathSeparator: String = "/",
                                     keyToFilenameFunc: Tag => String = x => x.toString,
+                                    commentLines: Seq[String] = Seq.empty
                                    ) extends Writer[MetricDocument[Tag], Tag, Any] {
 
   private[this] val logger: Logger = LoggerFactory.getLogger(this.getClass)
@@ -41,7 +42,9 @@ case class BaseMetricDocumentWriter(writer: Writer[String, String, Any],
       val filename = s"$subFolder$pathSeparator${keyToFilenameFunc.apply(targetIdentifier)}"
       logger.info(s"Trying to write result to: $filename")
       try {
-        val doc = format.metricDocumentToString(data)
+        var doc = format.metricDocumentToString(data)
+        val comments = commentLines.map(line => s"# $line").mkString("\n")
+        doc = if (commentLines.isEmpty) doc else s"$comments\n$doc"
         val writeResult: Either[Exception, Any] = writer.write(doc, filename)
         logger.info(s"Finished write result to: $filename")
         writeResult

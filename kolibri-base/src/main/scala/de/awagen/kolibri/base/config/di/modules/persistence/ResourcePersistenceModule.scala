@@ -45,7 +45,9 @@ class ResourcePersistenceModule extends PersistenceDIModule with tagging.Tag[RES
     }
   }
 
-  override def csvMetricAggregationWriter(subFolder: String, tagToDataIdentifierFunc: Tags.Tag => String): Writers.Writer[MetricAggregation[Tags.Tag], Tags.Tag, Any] = new Writers.Writer[MetricAggregation[Tags.Tag], Tags.Tag, Any] {
+  override def csvMetricAggregationWriter(subFolder: String,
+                                          tagToDataIdentifierFunc: Tags.Tag => String,
+                                          commentLines: Seq[String]): Writers.Writer[MetricAggregation[Tags.Tag], Tags.Tag, Any] = new Writers.Writer[MetricAggregation[Tags.Tag], Tags.Tag, Any] {
     override def write(data: MetricAggregation[Tags.Tag], targetIdentifier: Tags.Tag): Either[Exception, Any] = Left(new IOException("not writing to local resources"))
   }
 

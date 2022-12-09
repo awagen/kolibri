@@ -48,11 +48,14 @@ class LocalPersistenceModule extends PersistenceDIModule with tagging.Tag[LOCAL_
     baseFilenameFilter = fileFilter)
 
 
-  def csvMetricAggregationWriter(subFolder: String, tagToDataIdentifierFunc: Tags.Tag => String): Writer[MetricAggregation[Tags.Tag], Tags.Tag, Any] = Writer.localMetricAggregationWriter(
+  def csvMetricAggregationWriter(subFolder: String,
+                                 tagToDataIdentifierFunc: Tags.Tag => String,
+                                 commentLines: Seq[String] = Seq.empty): Writer[MetricAggregation[Tags.Tag], Tags.Tag, Any] = Writer.localMetricAggregationWriter(
     s"${AppProperties.config.localPersistenceWriteBasePath.get.trim.stripSuffix("/")}/${localPersistenceWriteResultsSubPath.get.stripPrefix("/")}",
     csvColumnSeparator,
     subFolder,
-    tagToDataIdentifierFunc
+    tagToDataIdentifierFunc,
+    commentLines
   )
 
 }

@@ -87,10 +87,16 @@ object SearchJobDefinitions {
   def searchEvaluationToRunnableJobCmd(searchEvaluation: SearchEvaluationDefinition)(implicit as: ActorSystem, ec: ExecutionContext):
   SupervisorActor.ProcessActorRunnableJobCmd[RequestTemplateBuilderModifier, MetricRow, MetricRow, MetricAggregation[Tag]] = {
     val persistenceModule = AppConfig.persistenceModule
-    val writer = persistenceModule.persistenceDIModule.csvMetricAggregationWriter(subFolder = searchEvaluation.jobName, x => {
-      val randomAdd: String = Random.alphanumeric.take(5).mkString
-      s"${x.toString()}-$randomAdd"
-    })
+    val writer = persistenceModule.persistenceDIModule.csvMetricAggregationWriter(
+      subFolder = searchEvaluation.jobName,
+      x => {
+        val randomAdd: String = Random.alphanumeric.take(5).mkString
+        s"${x.toString()}-$randomAdd"
+      },
+      searchEvaluation.metricNameToAggregationTypeMapping.map(mapping => {
+        s"K_METRIC_AGGREGATOR_MAPPING ${mapping._1} ${mapping._2.toString()}"
+      }).toSeq
+    )
     JobMsgFactory.createActorRunnableJobCmd[Seq[IndexedGenerator[Modifier[RequestTemplateBuilder]]], RequestTemplateBuilderModifier, MetricRow, MetricRow, MetricAggregation[Tag]](
       // the what (which job, which data, which batching method)
       jobId = searchEvaluation.jobName,

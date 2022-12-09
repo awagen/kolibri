@@ -56,7 +56,9 @@ object Modules {
 
     def dataOverviewReader(dataIdentifierFilter: String => Boolean): DataOverviewReader
 
-    def csvMetricAggregationWriter(subFolder: String, tagToDataIdentifierFunc: Tags.Tag => String): Writer[MetricAggregation[Tags.Tag], Tags.Tag, Any]
+    def csvMetricAggregationWriter(subFolder: String,
+                                   tagToDataIdentifierFunc: Tags.Tag => String,
+                                   commentLines: Seq[String]): Writer[MetricAggregation[Tags.Tag], Tags.Tag, Any]
 
   }
 
