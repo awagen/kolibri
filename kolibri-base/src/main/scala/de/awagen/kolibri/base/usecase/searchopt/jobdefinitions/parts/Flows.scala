@@ -29,15 +29,15 @@ import de.awagen.kolibri.base.processing.modifiers.Modifier
 import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
 import de.awagen.kolibri.base.processing.tagging.TaggingConfigurations.TaggingConfiguration
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.ReservedStorageKeys.REQUEST_TEMPLATE_STORAGE_KEY
-import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.{Calculation, ResultRecord}
 import de.awagen.kolibri.base.usecase.searchopt.metrics.MetricRowFunctions.throwableToMetricRowResponse
-import de.awagen.kolibri.base.usecase.searchopt.metrics.MetricValueFunctions.AggregationType.AggregationType
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.tagging.TagType
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
+import de.awagen.kolibri.datatypes.values.Calculations.{Calculation, ResultRecord}
+import de.awagen.kolibri.datatypes.values.MetricValue
+import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType.AggregationType
 import de.awagen.kolibri.datatypes.values.RunningValues.RunningValue
-import de.awagen.kolibri.datatypes.values.{MetricValue, RunningValues}
 
 import java.util.Objects
 import scala.concurrent.ExecutionContext

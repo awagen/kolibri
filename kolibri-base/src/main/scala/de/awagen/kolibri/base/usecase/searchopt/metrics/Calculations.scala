@@ -23,17 +23,17 @@ import de.awagen.kolibri.base.directives.{Resource, RetrievalDirective}
 import de.awagen.kolibri.base.http.client.request.RequestTemplate
 import de.awagen.kolibri.base.resources.RetrievalError
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.ReservedStorageKeys._
-import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.{BooleanSeqToDoubleCalculation, Calculation, ComputeResult, ResultRecord}
+import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.BooleanSeqToDoubleCalculation
 import de.awagen.kolibri.base.usecase.searchopt.metrics.ComputeFailReason.missingKeyFailReason
 import de.awagen.kolibri.base.usecase.searchopt.metrics.ComputeResultFunctions.{countValues, findFirstValue}
 import de.awagen.kolibri.base.usecase.searchopt.metrics.PlainMetricValueFunctions.{binarizeBooleanSeq, stringSequenceToPositionOccurrenceCountMap}
-import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason
 import de.awagen.kolibri.datatypes.stores.MetricRow
-import de.awagen.kolibri.datatypes.types.SerializableCallable.{SerializableFunction1, SerializableSupplier}
+import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
+import de.awagen.kolibri.datatypes.values.Calculations.{Calculation, ComputeResult, ResultRecord}
+import de.awagen.kolibri.datatypes.values.MetricValue
 import de.awagen.kolibri.datatypes.values.RunningValues.RunningValue
-import de.awagen.kolibri.datatypes.values.{MetricValue, RunningValues}
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.mutable
@@ -43,22 +43,6 @@ import scala.collection.mutable
  * Holding distinct types of calculation definitions.
  */
 object Calculations {
-
-  type ComputeResult[+T] = Either[Seq[ComputeFailReason], T]
-
-  trait Record[+T] extends KolibriSerializable {
-    def name: String
-
-    def value: T
-  }
-
-  case class ResultRecord[+T](name: String, value: ComputeResult[T]) extends Record[ComputeResult[T]]
-
-  trait Calculation[In, +Out] extends KolibriSerializable {
-    def calculation: SerializableFunction1[In, Seq[ResultRecord[Out]]]
-
-    def names: Set[String]
-  }
 
   /**
    * Generic class to derive a double-valued metric from a sequence of booleans.
@@ -219,78 +203,6 @@ object MetricRowFunctions {
       metricRow = metricRow.addMetricDontChangeCountStore(addValue)
     })
     metricRow
-  }
-
-}
-
-object MetricValueFunctions {
-
-  object AggregationType extends Enumeration {
-    type AggregationType = Val[_]
-    case class Val[+T](singleSampleFunction: ResultRecord[_] => MetricValue[T],
-                       emptyRunningValueSupplier: SerializableSupplier[RunningValue[T]]) extends super.Val
-
-    def byName(name: String): Val[_] = name.toUpperCase match {
-      case "DOUBLE_AVG" => DOUBLE_AVG
-      case "MAP_UNWEIGHTED_SUM_VALUE" => MAP_UNWEIGHTED_SUM_VALUE
-      case "MAP_WEIGHTED_SUM_VALUE" => MAP_WEIGHTED_SUM_VALUE
-      case "NESTED_MAP_UNWEIGHTED_SUM_VALUE" => NESTED_MAP_UNWEIGHTED_SUM_VALUE
-      case "NESTED_MAP_WEIGHTED_SUM_VALUE" => NESTED_MAP_WEIGHTED_SUM_VALUE
-      case _ => throw new IllegalArgumentException(s"no DataFileType by name '$name' found")
-    }
-
-    val DOUBLE_AVG: Val[Double] = Val(resultRecordToDoubleAvgMetricValue, () => RunningValues.doubleAvgRunningValue(0.0, 0, 0.0))
-    val MAP_UNWEIGHTED_SUM_VALUE: Val[Map[String, Double]] = Val(resultRecordToMapCountMetricValue(weighted = false), () => RunningValues.mapValueUnweightedSumRunningValue(0.0, 0, Map.empty[String, Double]))
-    val MAP_WEIGHTED_SUM_VALUE: Val[Map[String, Double]] = Val(resultRecordToMapCountMetricValue(weighted = true), () => RunningValues.mapValueWeightedSumRunningValue(0.0, 0, Map.empty[String, Double]))
-    val NESTED_MAP_UNWEIGHTED_SUM_VALUE: Val[Map[String, Map[String, Double]]] = Val(resultRecordToNestedMapCountMetricValue(weighted = false), () => RunningValues.nestedMapValueUnweightedSumUpRunningValue(0.0, 0, Map.empty[String, Map[String, Double]]))
-    val NESTED_MAP_WEIGHTED_SUM_VALUE: Val[Map[String, Map[String, Double]]] = Val(resultRecordToNestedMapCountMetricValue(weighted = true), () => RunningValues.nestedMapValueWeightedSumUpRunningValue(0.0, 0, Map.empty[String, Map[String, Double]]))
-  }
-
-  def failReasonSeqToCountMap(failReasons: Seq[ComputeFailReason]): Map[ComputeFailReason, Int] = {
-    failReasons.toSet[ComputeFailReason].map(reason => (reason, failReasons.count(fr => fr == reason))).toMap
-  }
-
-  def resultRecordToDoubleAvgMetricValue(record: ResultRecord[Any]): MetricValue[Double] = {
-    record.value match {
-      case Left(failReasons) =>
-        val countMap: Map[ComputeFailReason, Int] = failReasonSeqToCountMap(failReasons)
-        MetricValue.createDoubleAvgFailSample(metricName = record.name, failMap = countMap)
-      case Right(value) =>
-        MetricValue.createDoubleAvgSuccessSample(record.name, value.asInstanceOf[Double], 1.0)
-    }
-  }
-
-  def resultRecordToMapCountMetricValue[T](weighted: Boolean)(record: ResultRecord[Any]): MetricValue[Map[T, Double]] = {
-    record.value match {
-      case Left(failReasons) =>
-        val countMap: Map[ComputeFailReason, Int] = failReasonSeqToCountMap(failReasons)
-        MetricValue.createMapValueCountFailSample[T](
-          metricName = record.name,
-          failMap = countMap,
-          runningValue = if (weighted) RunningValues.mapValueWeightedSumRunningValue[T](1.0, 1, Map.empty[T, Double]) else RunningValues.mapValueUnweightedSumRunningValue[T](1.0, 1, Map.empty[T, Double])
-        )
-      case Right(value) =>
-        MetricValue.createMapSumValueSuccessSample(
-          record.name,
-          value.asInstanceOf[Map[T, Double]],
-          1.0)
-    }
-  }
-
-  def resultRecordToNestedMapCountMetricValue[U, V](weighted: Boolean)(record: ResultRecord[Any]): MetricValue[Map[U, Map[V, Double]]] = {
-    record.value match {
-      case Left(failReasons) =>
-        val countMap: Map[ComputeFailReason, Int] = failReasonSeqToCountMap(failReasons)
-        MetricValue.createNestedMapSumValueFailSample[U, V](
-          metricName = record.name,
-          failMap = countMap
-        )
-      case Right(value) =>
-        MetricValue.createNestedMapSumValueSuccessSample(
-          record.name,
-          value.asInstanceOf[Map[U, Map[V, Double]]],
-          1.0)
-    }
   }
 
 }

@@ -19,8 +19,9 @@ package de.awagen.kolibri.datatypes.values
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason
 import de.awagen.kolibri.datatypes.types.SerializableCallable.{SerializableFunction2, SerializableSupplier}
-import de.awagen.kolibri.datatypes.values.AggregationUtils.{divideNumericMapValues, filterValuesByInstanceOfCheck, numericValueMapAggregateValueSumUp, sumUpNestedNumericValueMaps}
+import de.awagen.kolibri.datatypes.values.aggregation.AggregationUtils.{divideNumericMapValues, filterValuesByInstanceOfCheck, numericValueMapAggregateValueSumUp, sumUpNestedNumericValueMaps}
 import de.awagen.kolibri.datatypes.values.RunningValues.RunningValueAdd.{doubleAvgAdd, errorMapAdd, valueMapAdd, valueMapAvg, valueNestedMapAdd}
+import de.awagen.kolibri.datatypes.values.aggregation.AggregateValue
 import org.slf4j.{Logger, LoggerFactory}
 
 
@@ -156,6 +157,7 @@ object RunningValues {
    * @param initValueSupplier - used to provide a copy of the running value set back to initial, empty state (e.g corresponding to no samples yet)
    * @tparam A - type of the value
    */
+  // TODO: add aggregateValueType to the running value, so we can write it to the result
   case class RunningValue[+A](weight: Double,
                               numSamples: Int,
                               value: A,

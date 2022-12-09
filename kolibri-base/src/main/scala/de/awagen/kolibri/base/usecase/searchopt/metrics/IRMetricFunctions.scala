@@ -16,9 +16,9 @@
 
 package de.awagen.kolibri.base.usecase.searchopt.metrics
 
-import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.ComputeResult
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
+import de.awagen.kolibri.datatypes.values.Calculations.ComputeResult
 
 import scala.collection.immutable
 

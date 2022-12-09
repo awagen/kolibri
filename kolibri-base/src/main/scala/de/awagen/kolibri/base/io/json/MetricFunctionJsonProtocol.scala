@@ -17,12 +17,12 @@
 
 package de.awagen.kolibri.base.io.json
 
-import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.ComputeResult
 import de.awagen.kolibri.base.usecase.searchopt.metrics.IRMetricFunctions
 import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
-import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
-import de.awagen.kolibri.datatypes.types.JsonStructDefs.{ConditionalFields, DoubleMinMaxStructDef, IntMinMaxStructDef, NestedFieldSeqStructDef, StringChoiceStructDef, StringConstantStructDef}
+import de.awagen.kolibri.datatypes.types.JsonStructDefs._
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
+import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
+import de.awagen.kolibri.datatypes.values.Calculations.ComputeResult
 import spray.json.{DefaultJsonProtocol, JsValue, JsonFormat, enrichAny}
 
 object MetricFunctionJsonProtocol extends DefaultJsonProtocol with WithStructDef {

@@ -29,6 +29,7 @@ import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
 import de.awagen.kolibri.datatypes.types.JsonStructDefs._
 import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
+import de.awagen.kolibri.datatypes.values.Calculations.Calculation
 import spray.json.{DefaultJsonProtocol, JsValue, JsonFormat, enrichAny}
 
 

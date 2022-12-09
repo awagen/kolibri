@@ -41,11 +41,11 @@ import de.awagen.kolibri.base.resources.{ResourceAlreadyExists, ResourceOK}
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.Flows.{fullProcessingFlow, metricsCalc, processingMsgToRequestTuple}
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.FromMapCalculation
 import de.awagen.kolibri.base.usecase.searchopt.metrics.CalculationsTestHelper._
-import de.awagen.kolibri.base.usecase.searchopt.metrics.MetricValueFunctions.AggregationType
 import de.awagen.kolibri.base.usecase.searchopt.metrics.{IRMetricFunctions, Metric}
 import de.awagen.kolibri.datatypes.mutable.stores.{BaseWeaklyTypedMap, WeaklyTypedMap}
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSupplier
+import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike

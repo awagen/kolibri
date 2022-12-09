@@ -27,7 +27,7 @@ import de.awagen.kolibri.datatypes.mutable.stores.{TypeTaggedMap, TypedMapStore}
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.stores.MetricRow.ResultCountStore
 import de.awagen.kolibri.datatypes.utils.MathUtils
-import de.awagen.kolibri.datatypes.values.AggregateValue
+import de.awagen.kolibri.datatypes.values.aggregation.AggregateValue
 
 import scala.collection.mutable
 

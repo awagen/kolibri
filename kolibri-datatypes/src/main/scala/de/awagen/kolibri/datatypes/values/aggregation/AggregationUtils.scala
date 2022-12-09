@@ -1,24 +1,7 @@
-/**
- * Copyright 2022 Andreas Wagenmann
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-
-package de.awagen.kolibri.datatypes.values
+package de.awagen.kolibri.datatypes.values.aggregation
 
 import scala.collection.mutable
-import scala.math.Numeric.Implicits.infixNumericOps
+import Numeric.Implicits._
 
 object AggregationUtils {
 
@@ -43,14 +26,15 @@ object AggregationUtils {
   def sumUpNestedNumericValueMaps[U, V](defaultValue: Double, weighted: Boolean, maps: AggregateValue[Map[U, Map[V, Double]]]*): Map[U, Map[V, Double]] = {
     val allKeys = maps.flatMap(x => x.value.keys).toSet
     allKeys.map(x => {
-      (x, numericValueMapSumUp(defaultValue, weighted, maps.map(y => (y.value.getOrElse(x, Map.empty), y.weight)):_*))
+      (x, numericValueMapSumUp(defaultValue, weighted, maps.map(y => (y.value.getOrElse(x, Map.empty), y.weight)): _*))
     }).toMap
   }
 
   /**
    * Given tuples of Map and weight, calculate weighted sum per key, where each value is weighted
    * by the passed weight
-   * @param defaultValue - in case the map doesnt contain a key, default value is used
+   *
+   * @param defaultValue      - in case the map doesnt contain a key, default value is used
    * @param valueWeightTuples - tuple of map and weight
    * @return - new map where values per key are weighted sums over all passed maps
    */
@@ -76,7 +60,7 @@ object AggregationUtils {
    * @return - aggregated map
    */
   def numericValueMapAggregateValueSumUp[T](defaultValue: Double, weighted: Boolean, maps: AggregateValue[Map[T, Double]]*): Map[T, Double] = {
-    numericValueMapSumUp(defaultValue, weighted, maps.map(x => (x.value, x.weight)):_*)
+    numericValueMapSumUp(defaultValue, weighted, maps.map(x => (x.value, x.weight)): _*)
   }
 
   /**
@@ -95,15 +79,16 @@ object AggregationUtils {
 
   /**
    * Create new map where each value of the input map is divided by divideBy
+   *
    * @param divideBy - value to divide by
-   * @param map - initial map
+   * @param map      - initial map
    * @return - new map where each value is the value of the initial map divided by divideBy
    */
-  def divideNumericMapValues[T, U](divideBy: U, map: Map[T, U])(implicit ev:Fractional[U]): Map[T, U] = {
+  def divideNumericMapValues[T, U](divideBy: U, map: Map[T, U])(implicit ev: Fractional[U]): Map[T, U] = {
     map.map(kv => (kv._1, ev.div(kv._2, divideBy)))
   }
 
-  def multiplyNumericMapValues[T, U](multiplyBy: U, map: Map[T, U])(implicit ev:Numeric[U]): Map[T, U] = {
+  def multiplyNumericMapValues[T, U](multiplyBy: U, map: Map[T, U])(implicit ev: Numeric[U]): Map[T, U] = {
     map.map(kv => (kv._1, kv._2 * multiplyBy))
   }
 

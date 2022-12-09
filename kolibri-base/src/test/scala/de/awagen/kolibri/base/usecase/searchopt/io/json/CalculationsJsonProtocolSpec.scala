@@ -19,8 +19,8 @@ package de.awagen.kolibri.base.usecase.searchopt.io.json
 
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
 import de.awagen.kolibri.base.usecase.searchopt.io.json.CalculationsJsonProtocol.FromMapCalculationsFormat
-import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.Calculation
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
+import de.awagen.kolibri.datatypes.values.Calculations.Calculation
 import spray.json._
 
 class CalculationsJsonProtocolSpec extends UnitTestSpec {

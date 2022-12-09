@@ -40,13 +40,11 @@ import de.awagen.kolibri.base.processing.tagging.TaggingConfigurations.{BaseTagg
 import de.awagen.kolibri.base.provider.WeightProviders
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.SearchJobDefinitions
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.Aggregators.{fullJobToSingleTagAggregatorSupplier, singleBatchAggregatorSupplier}
-import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.{Calculation, JudgementsFromResourceIRMetricsCalculations}
-import de.awagen.kolibri.base.usecase.searchopt.metrics.MetricValueFunctions.AggregationType
-import de.awagen.kolibri.base.usecase.searchopt.metrics.MetricValueFunctions.AggregationType.AggregationType
+import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.JudgementsFromResourceIRMetricsCalculations
 import de.awagen.kolibri.base.usecase.searchopt.metrics.{IRMetricFunctions, JudgementHandlingStrategy, Metric, MetricsCalculation}
 import de.awagen.kolibri.base.usecase.searchopt.parse.JsonSelectors.JsValueSeqSelector
-import de.awagen.kolibri.base.usecase.searchopt.parse.{JsonSelectors, ParsingConfig}
 import de.awagen.kolibri.base.usecase.searchopt.parse.TypedJsonSelectors.{NamedAndTypedSelector, TypedJsonSeqSelector}
+import de.awagen.kolibri.base.usecase.searchopt.parse.{JsonSelectors, ParsingConfig}
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
@@ -58,8 +56,10 @@ import de.awagen.kolibri.datatypes.types.JsonTypeCast
 import de.awagen.kolibri.datatypes.types.SerializableCallable.{SerializableConsumer, SerializableFunction1, SerializableSupplier}
 import de.awagen.kolibri.datatypes.types.Types.WithCount
 import de.awagen.kolibri.datatypes.utils.MapUtils
-import de.awagen.kolibri.datatypes.values.AggregateValue
-import de.awagen.kolibri.datatypes.values.aggregation.Aggregators
+import de.awagen.kolibri.datatypes.values.Calculations.Calculation
+import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType
+import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType.AggregationType
+import de.awagen.kolibri.datatypes.values.aggregation.{AggregateValue, Aggregators}
 
 import scala.concurrent.ExecutionContext
 import scala.language.implicitConversions
@@ -118,12 +118,13 @@ object JobMessages {
    * This job config represents a reduced set of options to simplify the needed configuration input.
    * If full options are needed, refer to SearchEvaluationDefinition.
    * It assumes some common settings, e.g predefined sets of metrics and the like.
-   * @param jobName - name of the job, also determining the name of the subfolder where results are stored.
-   * @param connections - connections to send the requests against (balanced)
-   * @param fixedParams - fixed parameters. They are by default excluded from the result file (e.g to avoid finer granularity of aggregations than wanted)
-   * @param contextPath - context path to be used for the composed URLs
-   * @param judgementFilePath - file path relative to the configured file system / bucket / basepath.
-   * @param requestParameters - the composition of actual parameters to compose the queries with. Define the permutations.
+   *
+   * @param jobName             - name of the job, also determining the name of the subfolder where results are stored.
+   * @param connections         - connections to send the requests against (balanced)
+   * @param fixedParams         - fixed parameters. They are by default excluded from the result file (e.g to avoid finer granularity of aggregations than wanted)
+   * @param contextPath         - context path to be used for the composed URLs
+   * @param judgementFilePath   - file path relative to the configured file system / bucket / basepath.
+   * @param requestParameters   - the composition of actual parameters to compose the queries with. Define the permutations.
    * @param excludeParamColumns - further parameter names to exclude from the result file
    */
   case class QueryBasedSearchEvaluationDefinition(jobName: String,
@@ -298,10 +299,18 @@ object JobMessagesImplicits {
     }
 
     def getWriter: Writer[MetricAggregation[Tag], Tag, Any] = {
-      persistenceModule.persistenceDIModule.csvMetricAggregationWriter(subFolder = eval.jobName, x => {
-        val randomAdd: String = Random.alphanumeric.take(5).mkString
-        s"${x.toString()}-$randomAdd"
-      })
+      persistenceModule.persistenceDIModule.csvMetricAggregationWriter(
+        subFolder = eval.jobName,
+        x => {
+          val randomAdd: String = Random.alphanumeric.take(5).mkString
+          s"${x.toString()}-$randomAdd"
+        },
+        // writing the metric name to AggregatorType mapping into csv comment.
+        // TODO: adjust depending on writer type, e.g in json we can represent this explicitly in the mapping
+        eval.metricNameToAggregationTypeMapping.map(mapping => {
+          s"K_METRIC_AGGREGATOR_MAPPING ${mapping._1} ${mapping._2.toString()}"
+        }).toSeq
+      )
     }
 
     def getBatchAggregationSupplier: () => Aggregators.Aggregator[ProcessingMessages.ProcessingMessage[MetricRow], MetricAggregation[Tag]] = singleBatchAggregatorSupplier

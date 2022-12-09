@@ -16,12 +16,15 @@
 
 package de.awagen.kolibri.datatypes.values
 
+import de.awagen.kolibri.datatypes.values.aggregation.AggregateValue
+
 
 /**
   * Running value of two distinct types, e.g can be used to record occurring errors and successful computation values
   * in a single record, e.g in case your computation returns Either[SomeFailType, SomeComputationValue] or similar
   * settings where two values are in some way connected. AggregateValue keeps the count of samples aggregated and
   * the current value of the aggregation
+ *
   * @param value1 - first aggregate value
   * @param value2 - second aggregate value
   * @tparam A - type of the aggregate for value1

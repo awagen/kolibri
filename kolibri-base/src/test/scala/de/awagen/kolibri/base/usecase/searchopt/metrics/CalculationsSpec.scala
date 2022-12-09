@@ -38,6 +38,7 @@ import de.awagen.kolibri.datatypes.mutable.stores.{BaseWeaklyTypedMap, WeaklyTyp
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSupplier
 import de.awagen.kolibri.datatypes.utils.MathUtils
+import de.awagen.kolibri.datatypes.values.Calculations.{ComputeResult, ResultRecord}
 import de.awagen.kolibri.datatypes.values.RunningValues
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.must.Matchers

@@ -29,13 +29,13 @@ import de.awagen.kolibri.base.http.server.routes.DataRoutes.DataFileType
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnableSinkType
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnableSinkType.ActorRunnableSinkType
 import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ValueType
-import de.awagen.kolibri.base.usecase.searchopt.metrics.MetricValueFunctions.AggregationType
-import de.awagen.kolibri.base.usecase.searchopt.metrics.MetricValueFunctions.AggregationType.AggregationType
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.io.json.EnumerationJsonProtocol.EnumerationProtocol
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.types.JsonStructDefs.StringChoiceStructDef
 import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
+import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType
+import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType.AggregationType
 import spray.json.{DefaultJsonProtocol, DeserializationException, JsString, JsValue}
 
 

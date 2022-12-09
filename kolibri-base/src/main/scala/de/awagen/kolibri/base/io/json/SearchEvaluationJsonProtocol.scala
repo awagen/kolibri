@@ -36,8 +36,6 @@ import de.awagen.kolibri.base.usecase.searchopt.io.json.CalculationsJsonProtocol
 import de.awagen.kolibri.base.usecase.searchopt.io.json.JsonSelectorJsonProtocol._
 import de.awagen.kolibri.base.usecase.searchopt.io.json.ParsingConfigJsonProtocol._
 import de.awagen.kolibri.base.usecase.searchopt.io.json.{JsonSelectorJsonProtocol, ParsingConfigJsonProtocol}
-import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.Calculation
-import de.awagen.kolibri.base.usecase.searchopt.metrics.MetricValueFunctions.AggregationType.AggregationType
 import de.awagen.kolibri.base.usecase.searchopt.parse.JsonSelectors.JsonSelectorPathRegularExpressions.recursivePathKeyGroupingRegex
 import de.awagen.kolibri.base.usecase.searchopt.parse.ParsingConfig
 import de.awagen.kolibri.base.usecase.searchopt.parse.TypedJsonSelectors.NamedAndTypedSelector
@@ -46,6 +44,8 @@ import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
 import de.awagen.kolibri.datatypes.types.JsonStructDefs._
 import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
+import de.awagen.kolibri.datatypes.values.Calculations.Calculation
+import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType.AggregationType
 import spray.json.{DefaultJsonProtocol, RootJsonFormat}
 
 

@@ -16,10 +16,10 @@
 
 package de.awagen.kolibri.base.usecase.searchopt.metrics
 
-import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.{ComputeResult, ResultRecord}
 import de.awagen.kolibri.base.usecase.searchopt.metrics.JudgementValidation.JudgementValidation
 import de.awagen.kolibri.base.usecase.searchopt.metrics.MetricsCalculation.calculationResultToMetricValue
 import de.awagen.kolibri.datatypes.stores.MetricRow
+import de.awagen.kolibri.datatypes.values.Calculations.{ComputeResult, ResultRecord}
 import de.awagen.kolibri.datatypes.values.{MetricValue, RunningValues}
 
 import scala.collection.immutable
