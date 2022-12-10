@@ -157,7 +157,6 @@ object RunningValues {
    * @param initValueSupplier - used to provide a copy of the running value set back to initial, empty state (e.g corresponding to no samples yet)
    * @tparam A - type of the value
    */
-  // TODO: add aggregateValueType to the running value, so we can write it to the result
   case class RunningValue[+A](weight: Double,
                               numSamples: Int,
                               value: A,
@@ -170,7 +169,7 @@ object RunningValues {
     }
 
     override def add[B >: A](other: AggregateValue[B]): AggregateValue[A] = {
-      RunningValue(weight + other.weight, numSamples = this.numSamples + other.numSamples, value = addFunc.apply(this, other), weightFunction, addFunc = addFunc, initValueSupplier)
+      RunningValue(weight = weight + other.weight, numSamples = this.numSamples + other.numSamples, value = addFunc.apply(this, other), weightFunction, addFunc = addFunc, initValueSupplier)
     }
 
     override def weighted(weight: Double): AggregateValue[A] = {

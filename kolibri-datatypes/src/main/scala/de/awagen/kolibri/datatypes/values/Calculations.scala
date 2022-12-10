@@ -101,12 +101,12 @@ object MetricValueFunctions {
     record.value match {
       case Left(failReasons) =>
         val countMap: Map[ComputeFailReason, Int] = failReasonSeqToCountMap(failReasons)
-        MetricValue.createNestedMapSumValueFailSample[U, V](
+        MetricValue.createNestedMapSumValueFailSample[U, V](weighted = weighted)(
           metricName = record.name,
           failMap = countMap
         )
       case Right(value) =>
-        MetricValue.createNestedMapSumValueSuccessSample(
+        MetricValue.createNestedMapSumValueSuccessSample(weighted = weighted)(
           record.name,
           value.asInstanceOf[Map[U, Map[V, Double]]],
           1.0)

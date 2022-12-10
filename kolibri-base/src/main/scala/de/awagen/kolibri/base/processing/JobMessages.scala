@@ -22,6 +22,7 @@ import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.ProcessActorRunnableJobCmd
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages
 import de.awagen.kolibri.base.config.AppConfig.{filepathToJudgementProvider, persistenceModule}
+import de.awagen.kolibri.base.config.AppProperties
 import de.awagen.kolibri.base.directives.ResourceDirectives.{GenericResourceDirective, ResourceDirective}
 import de.awagen.kolibri.base.directives.{ExpirePolicy, Resource, ResourceType, WithResources}
 import de.awagen.kolibri.base.domain.Connections.Connection
@@ -226,8 +227,8 @@ object JobMessages {
     )
     val wrapUpFunction: Option[Execution[Any]] = Some(
       AggregateFromDirectoryByRegexWeighted(
-        jobName,
-        jobName,
+        s"${AppProperties.config.outputResultsPath.getOrElse("")}/$jobName",
+        s"${AppProperties.config.outputResultsPath.getOrElse("")}/$jobName",
         s".*[(]$queryParameter=.+[)].*".r,
         WeightProviders.ConstantWeightProvider(1.0),
         "(ALL)"

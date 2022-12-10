@@ -20,11 +20,14 @@ import de.awagen.kolibri.datatypes.io.json.AnyJsonProtocol.AnyJsonFormat
 import de.awagen.kolibri.datatypes.metrics.aggregation.writer.CSVParameterBasedMetricDocumentFormat._
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason
 import de.awagen.kolibri.datatypes.stores.{MetricDocument, MetricRow}
+import de.awagen.kolibri.datatypes.values.Calculations.ResultRecord
 import de.awagen.kolibri.datatypes.values.MetricValue
-import de.awagen.kolibri.datatypes.values.RunningValues.RunningValueAdd.{doubleAvgAdd, errorMapAdd}
-import de.awagen.kolibri.datatypes.values.RunningValues.{RunningValue, failMapKeepWeightFon, weightMultiplyFunction}
-import spray.json.DefaultJsonProtocol.{StringJsonFormat, mapFormat}
-import spray.json.enrichAny
+import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType
+import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType.AggregationType
+import de.awagen.kolibri.datatypes.values.RunningValues.RunningValueAdd.errorMapAdd
+import de.awagen.kolibri.datatypes.values.RunningValues.{RunningValue, failMapKeepWeightFon}
+import spray.json.DefaultJsonProtocol.{DoubleJsonFormat, StringJsonFormat, mapFormat}
+import spray.json._
 
 
 object CSVParameterBasedMetricDocumentFormat {
@@ -101,7 +104,22 @@ case class CSVParameterBasedMetricDocumentFormat(columnSeparator: String) extend
       .toMap
   }
 
-  private[writer] def metricRowFromHeadersAndColumns(headers: Seq[String], paramsMap: Map[String, Seq[String]], columns: Seq[String]): MetricRow = {
+  private[writer] def convertValue(value: String, aggregationType: AggregationType): Any = {
+    aggregationType match {
+      case AggregationType.DOUBLE_AVG =>
+        value.toDouble
+      case AggregationType.MAP_UNWEIGHTED_SUM_VALUE =>
+        value.stripMargin.parseJson.convertTo[Map[String, Double]]
+      case AggregationType.MAP_WEIGHTED_SUM_VALUE =>
+        value.stripMargin.parseJson.convertTo[Map[String, Double]]
+      case AggregationType.NESTED_MAP_UNWEIGHTED_SUM_VALUE =>
+        value.stripMargin.parseJson.convertTo[Map[String, Map[String, Double]]]
+      case AggregationType.NESTED_MAP_WEIGHTED_SUM_VALUE =>
+        value.stripMargin.parseJson.convertTo[Map[String, Map[String, Double]]]
+    }
+  }
+
+  private[writer] def metricRowFromHeadersAndColumns(headers: Seq[String], paramsMap: Map[String, Seq[String]], columns: Seq[String], metricNameAggregationTypeMap: Map[String, AggregationType]): MetricRow = {
     // map holding the match of metric name to the indices of the column
     val successCountColumnIndexForMetricMap: Map[String, Int] = metricNameToColumnMapForCategoryFromHeaders(SUCCESS_COUNT_COLUMN_PREFIX, headers)
     val weightedSuccessCountColumnIndexForMetricMap: Map[String, Int] = metricNameToColumnMapForCategoryFromHeaders(WEIGHTED_SUCCESS_COUNT_COLUMN_PREFIX, headers)
@@ -122,7 +140,8 @@ case class CSVParameterBasedMetricDocumentFormat(columnSeparator: String) extend
       val successCountIndex: Int = successCountColumnIndexForMetricMap(metricName)
       val weightedSuccessCountIndex: Int = weightedSuccessCountColumnIndexForMetricMap(metricName)
       // then determine the values
-      val metricValue: Double = columns(metricIndex).toDouble
+      val metricAggregationType = metricNameAggregationTypeMap.getOrElse(metricName, AggregationType.DOUBLE_AVG)
+      val metricValue: Any = convertValue(columns(metricIndex), metricAggregationType)
       val failCount: Int = columns(failCountIndex).toInt
       val weightedFailCount: Double = columns(weightedFailCountIndex).toDouble
       val failReasonsCountMap: Map[ComputeFailReason, Int] = columns(failReasonsIndex)
@@ -137,14 +156,14 @@ case class CSVParameterBasedMetricDocumentFormat(columnSeparator: String) extend
         }).toMap
       val successCount: Int = columns(successCountIndex).toInt
       val weightedSuccessCount: Double = columns(weightedSuccessCountIndex).toDouble
-      // Map[ComputeFailReason, Int] creason to count map needed beside value, also success and fail counts
-      val metricValueObj = MetricValue.createDoubleEmptyAveragingMetricValue(metricName)
 
-      // TODO: this below still uses a standard doubleAvg running value. This need to be changed, since we also have map metrics (e.g histograms) and the like
-      val newRunningValue = metricValueObj
+      val metricValueObj = metricAggregationType.singleSampleFunction.apply(ResultRecord[Any](metricName, Right(metricValue)))
+      val runningValueSample = metricValueObj.biValue.value2.asInstanceOf[RunningValue[Any]]
+
+      val newRunningValue = metricValueObj.emptyCopy()
         .biValue
         .addFirst(RunningValue(weightedFailCount, failCount, failReasonsCountMap, failMapKeepWeightFon, errorMapAdd, () => Map.empty))
-        .addSecond(RunningValue(weightedSuccessCount, successCount, metricValue, weightMultiplyFunction, doubleAvgAdd, () => 0.0))
+        .addSecond(RunningValue(weightedSuccessCount, successCount, metricValue, runningValueSample.weightFunction , runningValueSample.addFunc, () => 0.0))
       metricRow = metricRow.addMetricDontChangeCountStore(metricValueObj.copy(biValue = newRunningValue))
     })
     metricRow
@@ -154,24 +173,24 @@ case class CSVParameterBasedMetricDocumentFormat(columnSeparator: String) extend
     headerLine.split(columnSeparator).map(x => x.trim).toSeq
   }
 
-  private[writer] def readRow(headers: Seq[String], paramNamesToColumnIndexMap: Map[String, Int], row: String): MetricRow = {
+  private[writer] def readRow(headers: Seq[String], paramNamesToColumnIndexMap: Map[String, Int], row: String, metricNameAggregationTypeMap: Map[String, AggregationType]): MetricRow = {
     val colStrValues: Seq[String] = getColumnsFromLine(row)
     assert(headers.size == colStrValues.size, s"header key size '${headers.size}' does not match size of column values '${colStrValues.size}'")
     val paramsMap: Map[String, Seq[String]] = paramMapFromParamToColumnMap(paramNamesToColumnIndexMap, colStrValues)
     // calculate the values and put in MetricRow
-    metricRowFromHeadersAndColumns(headers, paramsMap, colStrValues)
+    metricRowFromHeadersAndColumns(headers, paramsMap, colStrValues, metricNameAggregationTypeMap)
   }
 
-  private[writer] def readRow(headers: Seq[String], row: String): MetricRow = {
+  private[writer] def readRow(headers: Seq[String], row: String, metricNameAggregationTypeMap: Map[String, AggregationType]): MetricRow = {
     // map holding the parameter values
     val paramNamesToColumnIndexMap: Map[String, Int] = paramNameToValueColumnMapFromHeaders(headers)
-    readRow(headers, paramNamesToColumnIndexMap, row)
+    readRow(headers, paramNamesToColumnIndexMap, row, metricNameAggregationTypeMap)
   }
 
-  def readDocument[T <: AnyRef](headers: Seq[String], rows: Iterable[String], tag: T): MetricDocument[T] = {
+  def readDocument[T <: AnyRef](headers: Seq[String], rows: Iterable[String], tag: T, metricNameAggregationTypeMap: Map[String, AggregationType]): MetricDocument[T] = {
     val document = MetricDocument.empty(tag)
     rows.foreach(row => {
-      val metricRow: MetricRow = readRow(headers, row)
+      val metricRow: MetricRow = readRow(headers, row, metricNameAggregationTypeMap)
       document.add(metricRow)
     })
     document

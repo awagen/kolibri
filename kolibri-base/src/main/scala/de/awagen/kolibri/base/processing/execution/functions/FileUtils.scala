@@ -23,10 +23,33 @@ import de.awagen.kolibri.datatypes.metrics.aggregation.writer.CSVParameterBasedM
 import de.awagen.kolibri.datatypes.stores.MetricDocument
 import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
+import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType
+import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType.AggregationType
+import org.slf4j.{Logger, LoggerFactory}
 
+import java.util.Objects
 import scala.util.matching.Regex
 
 object FileUtils {
+
+  private[this] val logger: Logger = LoggerFactory.getLogger(FileUtils.getClass)
+
+  def readValueAggregatorMappingFromLines(lines: Seq[String]): Map[String, AggregationType] = {
+    lines.filter(s => s.startsWith("K_METRIC_AGGREGATOR_MAPPING"))
+      .map(s => {
+        try {
+          val splitted: Seq[String] = s.split("\\s+").toSeq
+          (splitted(1), AggregationType.byName(splitted(2)))
+        }
+        catch {
+          case _: Exception =>
+            logger.warn(s"Could not create name to AggregationType mapping from line: $s")
+            null
+        }
+      })
+      .filter(x => Objects.nonNull(x))
+      .toMap
+  }
 
   /**
     * Read file into MetricDocument
@@ -37,12 +60,16 @@ object FileUtils {
   def fileToMetricDocument(file: String,
                            fileReader: Reader[String, Seq[String]]): MetricDocument[Tag] = {
     val csvFormat: CSVParameterBasedMetricDocumentFormat = CSVParameterBasedMetricDocumentFormat("\t")
-    val lines: Seq[String] = fileReader.getSource(file).getLines()
+    val allLines: Seq[String] = fileReader.getSource(file).getLines().toSeq
+    val comments: Seq[String] = allLines.filter(line => line.startsWith("#"))
+      .map(x => x.stripPrefix("#").trim)
+    val metricNameTypeMapping = readValueAggregatorMappingFromLines(comments)
+    val lines: Seq[String] = allLines
       .filter(line => !line.startsWith("#") && line.trim.nonEmpty)
-      .toSeq
     val headerColumns: Seq[String] = csvFormat.readHeader(lines.head)
     val rows: Seq[String] = lines.slice(1, lines.length)
-    csvFormat.readDocument(headerColumns, rows, StringTag(""))
+
+    csvFormat.readDocument(headerColumns, rows, StringTag(""), metricNameTypeMapping)
   }
 
   def regexDirectoryReader(regex: Regex): DataOverviewReader = persistenceDIModule.dataOverviewReader(
