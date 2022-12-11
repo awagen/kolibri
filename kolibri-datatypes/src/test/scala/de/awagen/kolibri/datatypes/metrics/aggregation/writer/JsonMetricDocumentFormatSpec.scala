@@ -32,85 +32,133 @@ class JsonMetricDocumentFormatSpec extends UnitTestSpec {
       |      "datasets": [
       |        {
       |          "data": [
-      |            0.2
+      |            0.2,
+      |            0.0,
+      |            0.0
       |          ],
       |          "failReasons": [
+      |            {},
+      |            {},
       |            {}
       |          ],
       |          "failSamples": [
+      |            0,
+      |            0,
       |            0
       |          ],
       |          "name": "metrics1",
       |          "successSamples": [
-      |            1
+      |            1,
+      |            0,
+      |            0
       |          ],
       |          "weightedFailSamples": [
+      |            0.0,
+      |            0.0,
       |            0.0
       |          ],
       |          "weightedSuccessSamples": [
-      |            1.0
+      |            1.0,
+      |            0.0,
+      |            0.0
       |          ]
       |        },
       |        {
       |          "data": [
-      |            0.4
+      |            0.4,
+      |            0.0,
+      |            0.0
       |          ],
       |          "failReasons": [
+      |            {},
+      |            {},
       |            {}
       |          ],
       |          "failSamples": [
+      |            0,
+      |            0,
       |            0
       |          ],
       |          "name": "metrics2",
       |          "successSamples": [
-      |            1
+      |            1,
+      |            0,
+      |            0
       |          ],
       |          "weightedFailSamples": [
+      |            0.0,
+      |            0.0,
       |            0.0
       |          ],
       |          "weightedSuccessSamples": [
-      |            1.0
+      |            1.0,
+      |            0.0,
+      |            0.0
       |          ]
       |        },
       |        {
       |          "data": [
-      |            0.1
+      |            0.0,
+      |            0.1,
+      |            0.0
       |          ],
       |          "failReasons": [
+      |            {},
+      |            {},
       |            {}
       |          ],
       |          "failSamples": [
+      |            0,
+      |            0,
       |            0
       |          ],
       |          "name": "metrics3",
       |          "successSamples": [
-      |            1
+      |            0,
+      |            1,
+      |            0
       |          ],
       |          "weightedFailSamples": [
+      |            0.0,
+      |            0.0,
       |            0.0
       |          ],
       |          "weightedSuccessSamples": [
-      |            1.0
+      |            0.0,
+      |            1.0,
+      |            0.0
       |          ]
       |        },
       |        {
       |          "data": [
+      |            0.0,
+      |            0.0,
       |            0.3
       |          ],
       |          "failReasons": [
+      |            {},
+      |            {},
       |            {}
       |          ],
       |          "failSamples": [
+      |            0,
+      |            0,
       |            0
       |          ],
       |          "name": "metrics4",
       |          "successSamples": [
+      |            0,
+      |            0,
       |            1
       |          ],
       |          "weightedFailSamples": [
+      |            0.0,
+      |            0.0,
       |            0.0
       |          ],
       |          "weightedSuccessSamples": [
+      |            0.0,
+      |            0.0,
       |            1.0
       |          ]
       |        }

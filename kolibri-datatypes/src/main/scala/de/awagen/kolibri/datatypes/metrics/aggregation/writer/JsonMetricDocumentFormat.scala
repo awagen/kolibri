@@ -23,6 +23,7 @@ import de.awagen.kolibri.datatypes.io.json.EnumerationJsonProtocol.aggregateType
 import de.awagen.kolibri.datatypes.io.json.TimeStampJsonProtocol.TimeStampFormat
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason
 import de.awagen.kolibri.datatypes.stores.{MetricDocument, MetricRow}
+import de.awagen.kolibri.datatypes.values.MetricValue
 import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType
 import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType.AggregationType
 import de.awagen.kolibri.datatypes.values.aggregation.AggregateValue
@@ -190,11 +191,16 @@ class JsonMetricDocumentFormat(metricNameToTypeMapping: Map[String, AggregationT
    * @return
    */
   override def metricDocumentToString(ma: MetricDocument[_]): String = {
-    val sortedMetricNames = ma.getMetricNames.toSeq.sorted
+    val metricNameToDefaultMetricValueMap: Map[String, MetricValue[Any]] = ma.getMetricNames.map(metricName => {
+      ma.rows.values.find(x => x.metrics.keySet.contains(metricName))
+        .map(x => (metricName, x.metrics(metricName).emptyCopy()))
+    }).filter(x => x.nonEmpty).map(x => x.get).toMap
+
+    val sortedMetricNames = metricNameToDefaultMetricValueMap.keySet.toSeq.sorted
 
     // for each metricName, create a DataSet. Then we iteratively extend Entries with the new label
     // corresponding to a new set of parameters and then fill in new data points for every single metric
-    val parameterNameToDataSetMap: Map[String, DataSetBuilder] = sortedMetricNames.map(x => (x, DataSetBuilder(x))).toMap
+    val metricNameToDataSetMap: Map[String, DataSetBuilder] = sortedMetricNames.map(x => (x, DataSetBuilder(x))).toMap
 
     val aggregationTypeToEntriesBuilderMap: Map[String, EntriesBuilder] = metricNameToTypeMapping.map(x => (x._2.toString(), EntriesBuilder(x._2)))
 
@@ -204,18 +210,22 @@ class JsonMetricDocumentFormat(metricNameToTypeMapping: Map[String, AggregationT
       // adding the label to each entries builder
       aggregationTypeToEntriesBuilderMap.values.foreach(entriesBuilder => {
         entriesBuilder.addLabel(keyMap)
+        // NOTE: those might be incorrect in case rows do not contain the same metrics,
+        // since they do not distinguish by metric type,
+        // yet usually we should have all metrics in all rows
         entriesBuilder.setSuccessCount(metricsForParameters.countStore.successCount)
         entriesBuilder.setFailCount(metricsForParameters.countStore.failCount)
       })
 
       // for each metric extracting data for the current setting of parameters
-      metricsForParameters.metrics.foreach(metricNameAndValue => {
-        val metricValue: AggregateValue[Any] = metricNameAndValue._2.biValue.value2
-        val failRecordValue: AggregateValue[Map[ComputeFailReason, Int]] = metricNameAndValue._2.biValue.value1
+      sortedMetricNames.foreach(metricName => {
+        val metricValueContainer: MetricValue[Any] = metricsForParameters.metrics.getOrElse(metricName, metricNameToDefaultMetricValueMap(metricName))
+        val metricValue = metricValueContainer.biValue.value2
+        val failRecordValue: AggregateValue[Map[ComputeFailReason, Int]] = metricValueContainer.biValue.value1
 
         // adding a datapoint corresponding to the current label
         // given by the parameters
-        val datasetBuilder: DataSetBuilder = parameterNameToDataSetMap(metricNameAndValue._1)
+        val datasetBuilder: DataSetBuilder = metricNameToDataSetMap(metricName)
         datasetBuilder.addSample(
           dataSample = metricValue.value,
           successSamples = metricValue.numSamples,
@@ -229,7 +239,7 @@ class JsonMetricDocumentFormat(metricNameToTypeMapping: Map[String, AggregationT
     })
 
     val metricNameToDataSet: Map[String, DataSet] = sortedMetricNames.map(name => {
-      (name, parameterNameToDataSetMap(name).build)
+      (name, metricNameToDataSetMap(name).build)
     }).toMap
 
     // now go by metric and add to the right entriesBuilder
