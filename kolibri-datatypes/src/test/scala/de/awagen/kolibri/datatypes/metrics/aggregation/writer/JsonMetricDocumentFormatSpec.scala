@@ -19,6 +19,7 @@ package de.awagen.kolibri.datatypes.metrics.aggregation.writer
 
 import de.awagen.kolibri.datatypes.metrics.aggregation.writer.JsonMetricDocumentFormat.{Document, jsonDocumentFormat}
 import de.awagen.kolibri.datatypes.metrics.aggregation.writer.MetricFormatTestHelper.{doc, histogramDoc1, metricsNameAggregationTypeMapping}
+import de.awagen.kolibri.datatypes.stores.MetricDocument
 import de.awagen.kolibri.datatypes.testclasses.UnitTestSpec
 
 import scala.util.matching.Regex
@@ -344,6 +345,22 @@ class JsonMetricDocumentFormatSpec extends UnitTestSpec {
       val timestamp = extractTimestampValueFromJsonDocument(documentStr)
       val expectedResult = nestedMetricDocJson.replace("$$timestampPlaceholder", timestamp)
       documentStr mustBe expectedResult
+    }
+
+    "correctly transform into MetricDocument" in {
+      implicit val df: RootJsonFormat[Document] = jsonDocumentFormat
+      val format = new JsonMetricDocumentFormat(metricsNameAggregationTypeMapping)
+      val documentJsValue = nestedMetricDocJson.parseJson
+      val document = documentJsValue.convertTo[JsonMetricDocumentFormat.Document]
+      val metricDocument: MetricDocument[_] = format.jsonDocumentToMetricDocument(document)
+      metricDocument.id mustBe "histogramDoc1"
+      metricDocument.rows.keys.toSeq mustBe Seq(Map(
+        "p1" -> Seq("v1_1"),
+        "p2" -> Seq("v1_2")
+      ))
+      metricDocument.rows.values.size mustBe 1
+      metricDocument.rows.values.head.metrics.keys.size mustBe 1
+      metricDocument.rows.values.head.metrics("histogram1").biValue.value2.value mustBe Map("key1" -> Map("1" -> 1.0, "2" -> 2.0), "key2" -> Map("3" -> 1.0))
     }
 
   }

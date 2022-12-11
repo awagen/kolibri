@@ -23,17 +23,20 @@ import de.awagen.kolibri.datatypes.io.json.EnumerationJsonProtocol.aggregateType
 import de.awagen.kolibri.datatypes.io.json.TimeStampJsonProtocol.TimeStampFormat
 import de.awagen.kolibri.datatypes.metrics.aggregation.writer.JsonMetricDocumentFormat.{DataSet, DataSetBuilder, Document, DocumentBuilder, EntriesBuilder, jsonDocumentFormat}
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason
+import de.awagen.kolibri.datatypes.stores.MetricDocument.ParamMap
+import de.awagen.kolibri.datatypes.stores.MetricRow.ResultCountStore
 import de.awagen.kolibri.datatypes.stores.{MetricDocument, MetricRow}
-import de.awagen.kolibri.datatypes.values.MetricValue
 import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType
 import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType.AggregationType
 import de.awagen.kolibri.datatypes.values.aggregation.AggregateValue
+import de.awagen.kolibri.datatypes.values.{MetricValue, RunningValues}
+import org.slf4j.LoggerFactory
 import spray.json.DefaultJsonProtocol.{DoubleJsonFormat, IntJsonFormat, StringJsonFormat, immSeqFormat, jsonFormat3, jsonFormat5, jsonFormat7, mapFormat}
 import spray.json.{JsonFormat, RootJsonFormat, enrichAny}
 
 import java.sql.Timestamp
 import java.text.SimpleDateFormat
-import java.util.Date
+import java.util.{Date, Objects}
 
 object JsonMetricDocumentFormat {
 
@@ -188,6 +191,8 @@ object JsonMetricDocumentFormat {
 
 class JsonMetricDocumentFormat(metricNameToTypeMapping: Map[String, AggregationType]) extends MetricDocumentFormat {
 
+  private[this] val logger = LoggerFactory.getLogger(this.getClass)
+
   /**
    * We first fill the MetricDocument into the above defined Document and then
    * just use spray json write method to dump it into a file.
@@ -265,6 +270,86 @@ class JsonMetricDocumentFormat(metricNameToTypeMapping: Map[String, AggregationT
     val document = documentBuilder.build
     implicit val dw: JsonFormat[Document] = jsonDocumentFormat
     document.toJson.toString()
+  }
+
+  /**
+   * From existing json format Document, create MetricDocument.
+   * Used to have a common aggregation format from which different outputs can be set (e.g csv, json,...)
+   *
+   * @param doc
+   * @return
+   */
+  def jsonDocumentToMetricDocument(doc: Document): MetricDocument[_] = {
+    val tag = doc.name
+    val metricDocument = MetricDocument.empty(tag)
+
+    // collect distinct params for which to compose MetricRows
+    val distinctParams: Seq[ParamMap] = doc.data.foldLeft[Set[ParamMap]](Set.empty)((soFar, next) => {
+      soFar ++ next.labels.map(x => x.asInstanceOf[ParamMap]).toSet
+    }).toSeq
+
+    // per parameter setting create one metric row, fill it with all the data and add it to the
+    // metric document
+    distinctParams.foreach(params => {
+      var metricRow: MetricRow = null
+      // check correct indices in all entries
+      doc.data.indices.foreach(index => {
+        val entries = doc.data(index)
+        val entryType: AggregationType = entries.entryType
+        if (Objects.isNull(metricRow)) {
+          val resultCountStore = new ResultCountStore(entries.successCount, entries.failCount)
+          metricRow = MetricRow(resultCountStore, params, Map.empty)
+        }
+        val valueIndex = entries.labels.indexOf(params)
+        if (valueIndex >= 0) {
+          entries.datasets.map(dataset => {
+            val name: String = dataset.name
+            val value: Any = dataset.data(valueIndex)
+            val successCount: Int = dataset.successSamples(valueIndex)
+            val failCount: Int = dataset.failSamples(valueIndex)
+            val weightedSuccessSamples: Double = dataset.weightedSuccessSamples(valueIndex)
+            // NOTE: right now we assume fail counts to be pure counts without any weight, thus weightedFailSamples not utilized here
+            // val weightedFailSamples: Double = dataset.weightedFailSamples(valueIndex)
+            val failReasons: Map[ComputeFailReason, Int] = dataset.failReasons(valueIndex)
+
+            // now compose the MetricValues to add to the metricRow
+            val runningValue = entryType match {
+              case AggregationType.DOUBLE_AVG =>
+                RunningValues.doubleAvgRunningValue(weightedSuccessSamples, successCount, value.asInstanceOf[Double])
+              case AggregationType.MAP_WEIGHTED_SUM_VALUE =>
+                RunningValues.mapValueWeightedSumRunningValue(weightedSuccessSamples, successCount, value.asInstanceOf[Map[String, Double]])
+              case AggregationType.MAP_UNWEIGHTED_SUM_VALUE =>
+                RunningValues.mapValueUnweightedSumRunningValue(weightedSuccessSamples, successCount, value.asInstanceOf[Map[String, Double]])
+              case AggregationType.NESTED_MAP_WEIGHTED_SUM_VALUE =>
+                RunningValues.nestedMapValueWeightedSumUpRunningValue(weightedSuccessSamples, successCount, value.asInstanceOf[Map[String, Map[String, Double]]])
+              case AggregationType.NESTED_MAP_UNWEIGHTED_SUM_VALUE =>
+                RunningValues.nestedMapValueUnweightedSumUpRunningValue(weightedSuccessSamples, successCount, value.asInstanceOf[Map[String, Map[String, Double]]])
+            }
+
+            val metricValue: MetricValue[Any] = MetricValue.createMetricValue(
+              metricName = name,
+              failCount = failCount,
+              failMap = failReasons,
+              runningValue = runningValue
+            )
+
+            logger.info(s"Adding MetricValue to MetricRow: $metricValue")
+            metricRow = metricRow.addMetricDontChangeCountStore(metricValue)
+
+          })
+        }
+      })
+      if (Objects.nonNull(metricRow)) {
+        logger.info(s"Adding metric row to document: $metricRow")
+        metricDocument.add(metricRow)
+      }
+      else {
+        logger.warn(s"MetricRow is null for params '$params', skipping addition to document")
+      }
+    })
+
+    metricDocument
+
   }
 
 }
