@@ -17,6 +17,7 @@
 
 package de.awagen.kolibri.base.io.reader
 
+import de.awagen.kolibri.base.processing.execution.functions.FileUtils.regexDirectoryReader
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
 
 class LocalResourceFileReaderSpec extends UnitTestSpec {
@@ -33,6 +34,13 @@ class LocalResourceFileReaderSpec extends UnitTestSpec {
       val fileReader: LocalResourceFileReader = LocalResourceFileReader(basePath = "", delimiterAndPosition = Some(("\\s+", 1)), fromClassPath = true)
       val queries: Seq[String] = fileReader.read("data/queryterms_column2.txt")
       queries mustBe Seq("term1", "term2", "term3", "term4", "term5")
+    }
+
+    "correctly find files in directory" in {
+      val folder = "data/example_query_results_csv"
+      val directoryReader: DataOverviewReader = regexDirectoryReader(".*"r)
+      val files = directoryReader.listResources(folder, _ => true)
+      files.length mustBe 24
     }
 
   }

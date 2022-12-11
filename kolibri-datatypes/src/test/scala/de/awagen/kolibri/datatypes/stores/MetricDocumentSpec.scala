@@ -21,6 +21,7 @@ import de.awagen.kolibri.datatypes.metrics.aggregation.MetricsHelper._
 import de.awagen.kolibri.datatypes.stores.MetricDocument.ParamMap
 import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}
 import de.awagen.kolibri.datatypes.testclasses.UnitTestSpec
+import de.awagen.kolibri.datatypes.values.aggregation.AggregationTestHelper.metricValueSupplier
 
 import scala.collection.mutable
 
@@ -45,6 +46,19 @@ class MetricDocumentSpec extends UnitTestSpec {
       // then
       doc.rows(metricRow1.params) mustBe metricRow1
       doc.rows(metricRow2.params) mustBe metricRow2
+    }
+
+    "correctly add many values to doc" in {
+      // given
+      val doc = MetricDocument.empty[Tag](StringTag("test"))
+      // when
+      Range(0,100).foreach(_ => {
+        val row = MetricRow.emptyForParams(Map("p" -> Seq("1.0")))
+          .addFullMetricsSampleAndIncreaseSampleCount(metricValueSupplier.apply())
+        doc.add(row)
+      })
+      // then
+      doc.rows.values.head.metrics("m1").biValue.value2.value mustBe Map("key1" -> Map("1" -> 100.0))
     }
 
   }

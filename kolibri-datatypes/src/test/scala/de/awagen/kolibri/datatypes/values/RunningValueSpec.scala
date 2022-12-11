@@ -18,7 +18,9 @@
 package de.awagen.kolibri.datatypes.values
 
 import de.awagen.kolibri.datatypes.testclasses.UnitTestSpec
-import de.awagen.kolibri.datatypes.values.RunningValues.{RunningValue, mapValueAvgRunningValue, mapValueUnweightedSumRunningValue, mapValueWeightedSumRunningValue, nestedMapValueUnweightedSumUpRunningValue, nestedMapValueWeightedSumUpRunningValue}
+import de.awagen.kolibri.datatypes.values.RunningValues._
+import de.awagen.kolibri.datatypes.values.aggregation.AggregationTestHelper.runningValueSupplier
+
 
 class RunningValueSpec extends UnitTestSpec {
 
@@ -79,6 +81,17 @@ class RunningValueSpec extends UnitTestSpec {
       val addedValue = value1.add(value2)
       // then
       addedValue.value mustBe Map("key1" -> Map("1" -> 2.0, "2" -> 2.0), "key2" -> Map("4" -> 5.0))
+    }
+
+    "correctly add many values" in {
+      // given
+      var value: RunningValue[Map[String, Map[String, Double]]] = runningValueSupplier.apply()
+      // when
+      Range(0,100).foreach(_ => {
+        value = value.add(runningValueSupplier.apply()).asInstanceOf[RunningValue[Map[String, Map[String, Double]]]]
+      })
+      // then
+      value.value mustBe Map("key1" -> Map("1" -> 101.0))
     }
 
   }
