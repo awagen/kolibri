@@ -22,7 +22,6 @@ import de.awagen.kolibri.base.directives.ResourceDirectives.ResourceDirective
 import de.awagen.kolibri.base.domain.Connections.Connection
 import de.awagen.kolibri.base.http.client.request.RequestTemplate
 import de.awagen.kolibri.base.io.json.ConnectionJsonProtocol._
-import de.awagen.kolibri.base.io.json.EnumerationJsonProtocol.aggregateTypeFormat
 import de.awagen.kolibri.base.io.json.ExecutionJsonProtocol._
 import de.awagen.kolibri.base.io.json.FIELD_KEYS._
 import de.awagen.kolibri.base.io.json.ParameterValuesJsonProtocol.ValueSeqGenDefinitionFormat
@@ -39,6 +38,7 @@ import de.awagen.kolibri.base.usecase.searchopt.io.json.{JsonSelectorJsonProtoco
 import de.awagen.kolibri.base.usecase.searchopt.parse.JsonSelectors.JsonSelectorPathRegularExpressions.recursivePathKeyGroupingRegex
 import de.awagen.kolibri.base.usecase.searchopt.parse.ParsingConfig
 import de.awagen.kolibri.base.usecase.searchopt.parse.TypedJsonSelectors.NamedAndTypedSelector
+import de.awagen.kolibri.datatypes.io.json.EnumerationJsonProtocol.aggregateTypeFormat
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
@@ -242,7 +242,7 @@ object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSu
         ),
         FieldDef(
           StringConstantStructDef(METRIC_NAME_TO_AGGREGATION_TYPE_MAPPING_FIELD),
-          MapStructDef(StringStructDef, EnumerationJsonProtocol.aggregateTypeFormat.structDef),
+          MapStructDef(StringStructDef, aggregateTypeFormat.structDef),
           required = true,
           description = "Mapping of metric names to aggregation type."
         ),
@@ -402,7 +402,7 @@ object QueryBasedSearchEvaluationJsonProtocol extends DefaultJsonProtocol with S
         ),
         FieldDef(
           StringConstantStructDef(OTHER_METRIC_NAME_TO_AGGREGATION_TYPE_MAPPING_FIELD),
-          MapStructDef(StringStructDef, EnumerationJsonProtocol.aggregateTypeFormat.structDef),
+          MapStructDef(StringStructDef, aggregateTypeFormat.structDef),
           required = true,
           description = "Mapping of metric names to aggregation type."
         ),

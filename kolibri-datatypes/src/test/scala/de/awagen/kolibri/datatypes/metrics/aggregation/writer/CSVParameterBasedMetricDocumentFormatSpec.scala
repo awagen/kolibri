@@ -17,10 +17,11 @@
 package de.awagen.kolibri.datatypes.metrics.aggregation.writer
 
 import de.awagen.kolibri.datatypes.metrics.aggregation.writer.CSVParameterBasedMetricDocumentFormat._
+import de.awagen.kolibri.datatypes.metrics.aggregation.writer.MetricFormatTestHelper._
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason
 import de.awagen.kolibri.datatypes.stores
-import de.awagen.kolibri.datatypes.stores.{MetricDocument, MetricRow}
-import de.awagen.kolibri.datatypes.tagging.Tags.{ParameterMultiValueTag, StringTag, Tag}
+import de.awagen.kolibri.datatypes.stores.MetricRow
+import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}
 import de.awagen.kolibri.datatypes.testclasses.UnitTestSpec
 import de.awagen.kolibri.datatypes.values.MetricValue
 import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType
@@ -30,39 +31,7 @@ import spray.json._
 
 class CSVParameterBasedMetricDocumentFormatSpec extends UnitTestSpec {
 
-  val parameterTag1: ParameterMultiValueTag = ParameterMultiValueTag(Map("p1" -> Seq("v1_1"), "p2" -> Seq("v1_2")))
-  val parameterTag2: ParameterMultiValueTag = ParameterMultiValueTag(Map("p1" -> Seq("v2_1"), "p2" -> Seq("v2_2")))
-  val parameterTag3: ParameterMultiValueTag = ParameterMultiValueTag(Map("p1" -> Seq("v3_1"), "p3" -> Seq("v3_2")))
 
-  val metricsSuccess1: MetricValue[Double] = MetricValue.createDoubleAvgSuccessSample("metrics1", 0.2, 1.0)
-  val metricsSuccess2: MetricValue[Double] = MetricValue.createDoubleAvgSuccessSample("metrics2", 0.4, 1.0)
-  val metricsSuccess3: MetricValue[Double] = MetricValue.createDoubleAvgSuccessSample("metrics3", 0.1, 1.0)
-  val metricsSuccess4: MetricValue[Double] = MetricValue.createDoubleAvgSuccessSample("metrics4", 0.3, 1.0)
-  val metricsSuccess5: MetricValue[Double] = MetricValue.createDoubleAvgSuccessSample("metrics5", 0.6, 1.0)
-
-  val histogramMetricSuccess1: MetricValue[Map[String, Map[String, Double]]] = MetricValue.createNestedMapSumValueSuccessSample(weighted = true)(
-    "histogram1",
-    Map("key1" -> Map("1" -> 1.0, "2" -> 2.0), "key2" -> Map("3" -> 1.0)),
-    1.0)
-  val histogramMetricSuccess2: MetricValue[Map[String, Map[String, Double]]] = MetricValue.createNestedMapSumValueSuccessSample(weighted = true)(
-    "histogram1",
-    Map("key1" -> Map("2" -> 1.0, "3" -> 4.0), "key2" -> Map("2" -> 1.0)),
-    1.0)
-
-
-  val metricRecord1: MetricRow = MetricRow.emptyForParams(parameterTag1.value).addFullMetricsSampleAndIncreaseSampleCount(metricsSuccess1, metricsSuccess2)
-  val metricRecord2: MetricRow = MetricRow.emptyForParams(parameterTag2.value).addFullMetricsSampleAndIncreaseSampleCount(metricsSuccess3)
-  val metricRecord3: MetricRow = MetricRow.emptyForParams(parameterTag3.value).addFullMetricsSampleAndIncreaseSampleCount(metricsSuccess4)
-
-  val histogramMetricRecord1: MetricRow = MetricRow.emptyForParams(parameterTag1.value).addFullMetricsSampleAndIncreaseSampleCount(histogramMetricSuccess1)
-
-  val doc: MetricDocument[String] = MetricDocument.empty[String]("doc1")
-  doc.add(metricRecord1)
-  doc.add(metricRecord2)
-  doc.add(metricRecord3)
-
-  val histogramDoc1: MetricDocument[String] = MetricDocument.empty[String]("histogramDoc1")
-  histogramDoc1.add(histogramMetricRecord1)
 
 
   val writer: CSVParameterBasedMetricDocumentFormat = CSVParameterBasedMetricDocumentFormat("\t")

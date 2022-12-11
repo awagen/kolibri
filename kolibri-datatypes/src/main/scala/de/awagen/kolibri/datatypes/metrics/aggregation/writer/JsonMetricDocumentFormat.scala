@@ -1,0 +1,252 @@
+/**
+ * Copyright 2022 Andreas Wagenmann
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+package de.awagen.kolibri.datatypes.metrics.aggregation.writer
+
+import de.awagen.kolibri.datatypes.io.json.AnyJsonProtocol.AnyJsonFormat
+import de.awagen.kolibri.datatypes.io.json.ComputeFailReasonJsonProtocol.ComputeFailReasonFormat
+import de.awagen.kolibri.datatypes.io.json.EnumerationJsonProtocol.aggregateTypeFormat
+import de.awagen.kolibri.datatypes.io.json.TimeStampJsonProtocol.TimeStampFormat
+import de.awagen.kolibri.datatypes.reason.ComputeFailReason
+import de.awagen.kolibri.datatypes.stores.{MetricDocument, MetricRow}
+import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType
+import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType.AggregationType
+import de.awagen.kolibri.datatypes.values.aggregation.AggregateValue
+import spray.json.DefaultJsonProtocol.{DoubleJsonFormat, IntJsonFormat, StringJsonFormat, immSeqFormat, jsonFormat3, jsonFormat5, jsonFormat7, mapFormat}
+import spray.json.{RootJsonFormat, enrichAny}
+
+import java.sql.Timestamp
+import java.text.SimpleDateFormat
+import java.util.Date
+
+class JsonMetricDocumentFormat(metricNameToTypeMapping: Map[String, AggregationType]) extends MetricDocumentFormat {
+
+  val DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+
+  /**
+   * DataSet represents collection of values for the same metrics.
+   * It also contains complementary information such as number of samples
+   * aggregated in the data (successful vs failed, weighted success and fail samples
+   * and in case of fails, the mapping of ComputeFailReasons to the counts of occurrence
+   *
+   * @param name                     - name of the metric
+   * @param data                     - the actual data
+   * @param successSamples          - number of successfully computed results that are aggregated per data point
+   * @param weightedSuccessSamples - as success_samples, but in case the aggregated samples carry weights != 1.0, will deviate from it
+   *                                 since on adding each sample count is multiplied by its weight
+   * @param failSamples             - number of failed compute results aggregated in the sample
+   * @param weightedFailSamples    - same as case above for the success samples, but for the failed samples
+   * @param failReasons             - per data point a mapping of specific ComputeFailReasons to the count of occurrence (e.g how many samples are yielding the fail reason)
+   */
+  case class DataSet(name: String,
+                     data: Seq[Any],
+                     successSamples: Seq[Int],
+                     weightedSuccessSamples: Seq[Double],
+                     failSamples: Seq[Int],
+                     weightedFailSamples: Seq[Double],
+                     failReasons: Seq[Map[ComputeFailReason, Int]])
+
+  implicit val jsonDocDatasetFormat: RootJsonFormat[DataSet] = jsonFormat7(DataSet)
+
+
+  case class DataSetBuilder(name: String) {
+
+    private[this] var dataSeq: Seq[Any] = Seq.empty
+    private[this] var successSamplesSeq: Seq[Int] = Seq.empty
+    private[this] var weightedSuccessSamplesSeq: Seq[Double] = Seq.empty
+    private[this] var failSamplesSeq: Seq[Int] = Seq.empty
+    private[this] var weightedFailSamplesSeq: Seq[Double] = Seq.empty
+    private[this] var failReasonsSeq: Seq[Map[ComputeFailReason, Int]] = Seq.empty
+
+
+    def addSample(dataSample: Any,
+                  successSamples: Int,
+                  weightedSuccessSamples: Double,
+                  failSamples: Int,
+                  weightedFailSamples: Double,
+                  failReasons: Map[ComputeFailReason, Int]): Unit = {
+      dataSeq = dataSeq :+ dataSample
+      successSamplesSeq = successSamplesSeq :+ successSamples
+      weightedSuccessSamplesSeq = weightedSuccessSamplesSeq :+ weightedSuccessSamples
+      failSamplesSeq = failSamplesSeq :+ failSamples
+      weightedFailSamplesSeq = weightedFailSamplesSeq :+ weightedFailSamples
+      failReasonsSeq = failReasonsSeq :+ failReasons
+    }
+
+    def build: DataSet = DataSet(
+      name = name,
+      data = dataSeq,
+      successSamples = successSamplesSeq,
+      weightedSuccessSamples = weightedSuccessSamplesSeq,
+      failSamples = failSamplesSeq,
+      weightedFailSamples = weightedFailSamplesSeq,
+      failReasons = failReasonsSeq
+    )
+
+  }
+
+  /**
+   * Collecting data belonging to the same AggregationType and labels.
+   * Each measure is provided in a separate DataSet
+   *
+   * @param entryType - the type of entries specifying the data, e.g sequence vs histogram,...
+   * @param labels    - labels for each data point. Note that the data seq of the DataSets
+   *                  needs to have same length as labels, otherwise its unclear where
+   *                  something might be missing and thus the data can not properly be represented.
+   *                  Note that these labels determine which group the datasets belong to, which
+   *                  in the experiments will usually mean parameter sets of type Map[String, Seq[String]].
+   *                  The values of each data point might come with additional groupings,
+   *                  such as in the case of histograms (e.g numerical label (e.g position) + count)
+   * @param datasets  - one dataset per metric
+   */
+  case class Entries(entryType: AggregationType,
+                     labels: Seq[Any],
+                     datasets: Seq[DataSet],
+                     successCount: Int,
+                     failCount: Int)
+
+  implicit val jsonDocEntriesFormat: RootJsonFormat[Entries] = jsonFormat5(Entries)
+
+  case class EntriesBuilder(entryType: AggregationType) {
+    private[this] var labels: Seq[Any] = Seq.empty
+    private[this] var datasets: Seq[DataSet] = Seq.empty
+    private[this] var successCount: Int = 0
+    private[this] var failCount: Int = 0
+
+    def addLabel(label: Any): Unit = {
+      labels = labels :+ label
+    }
+
+    def addDataset(dataset: DataSet): Unit = {
+      datasets = datasets :+ dataset
+    }
+
+    def setSuccessCount(count: Int): Unit = {
+      successCount = count
+    }
+
+    def setFailCount(count: Int): Unit = {
+      failCount = count
+    }
+
+    def build: Entries = Entries(entryType, labels, datasets, successCount, failCount)
+  }
+
+  /**
+   * Representation of a full json document, representing one result (aggregated or single).
+   * Further information such as payloads used for the jobs that generated the data
+   * are stored separately from this.
+   *
+   * @param name      - name specifying the document. Usually some experiment name
+   * @param timestamp - timestamp of the time the results were retrieved.
+   * @param data      - the actual data
+   */
+  case class Document(name: String,
+                      timestamp: Timestamp,
+                      data: Seq[Entries])
+
+  implicit val jsonDocumentFormat: RootJsonFormat[Document] = jsonFormat3(Document)
+
+  case class DocumentBuilder(name: String) {
+
+    private[this] var timestamp: Timestamp = _
+    private[this] var data: Seq[Entries] = Seq.empty
+
+    def withTimeStamp(timestamp: Timestamp): Unit = {
+      this.timestamp = timestamp
+    }
+
+    def addEntry(entries: Entries): Unit = {
+      data = data :+ entries
+    }
+
+    def build: Document = Document(
+      name,
+      timestamp,
+      data
+    )
+
+  }
+
+  /**
+   * We first fill the MetricDocument into the above defined Document and then
+   * just use spray json write method to dump it into a file.
+   * For converting a file back to json, we can just use spray json read.
+   * @param ma
+   * @return
+   */
+  override def metricDocumentToString(ma: MetricDocument[_]): String = {
+    val sortedMetricNames = ma.getMetricNames.toSeq.sorted
+
+    // for each metricName, create a DataSet. Then we iteratively extend Entries with the new label
+    // corresponding to a new set of parameters and then fill in new data points for every single metric
+    val parameterNameToDataSetMap: Map[String, DataSetBuilder] = sortedMetricNames.map(x => (x, DataSetBuilder(x))).toMap
+
+    val aggregationTypeToEntriesBuilderMap: Map[String, EntriesBuilder] = metricNameToTypeMapping.map(x => (x._2.toString(), EntriesBuilder(x._2)))
+
+    // iterating over all parameter settings
+    ma.rows.keys.foreach(keyMap => {
+      val metricsForParameters: MetricRow = ma.rows(keyMap)
+      // adding the label to each entries builder
+      aggregationTypeToEntriesBuilderMap.values.foreach(entriesBuilder => {
+        entriesBuilder.addLabel(keyMap)
+        entriesBuilder.setSuccessCount(metricsForParameters.countStore.successCount)
+        entriesBuilder.setFailCount(metricsForParameters.countStore.failCount)
+      })
+
+      // for each metric extracting data for the current setting of parameters
+      metricsForParameters.metrics.foreach(metricNameAndValue => {
+        val metricValue: AggregateValue[Any] = metricNameAndValue._2.biValue.value2
+        val failRecordValue: AggregateValue[Map[ComputeFailReason, Int]] = metricNameAndValue._2.biValue.value1
+
+        // adding a datapoint corresponding to the current label
+        // given by the parameters
+        val datasetBuilder: DataSetBuilder = parameterNameToDataSetMap(metricNameAndValue._1)
+        datasetBuilder.addSample(
+          dataSample = metricValue.value,
+          successSamples = metricValue.numSamples,
+          weightedSuccessSamples= metricValue.weight,
+          failSamples = failRecordValue.numSamples,
+          weightedFailSamples = failRecordValue.weight,
+          failReasons = failRecordValue.value
+        )
+      })
+      // now we have filled in all datapoints for every metric for the current parameter settings
+    })
+
+    val metricNameToDataSet: Map[String, DataSet] = sortedMetricNames.map(name => {
+      (name, parameterNameToDataSetMap(name).build)
+    }).toMap
+
+    // now go by metric and add to the right entriesBuilder
+    sortedMetricNames.foreach(metricName => {
+      val aggregationType: AggregationType = metricNameToTypeMapping.getOrElse(
+        metricName, AggregationType.DOUBLE_AVG)
+      val entryBuilder: EntriesBuilder = aggregationTypeToEntriesBuilderMap(aggregationType.toString())
+      entryBuilder.addDataset(metricNameToDataSet(metricName))
+    })
+
+    // now build all entries and add to the documentBuilder
+    val documentBuilder = DocumentBuilder(ma.id.toString)
+    aggregationTypeToEntriesBuilderMap.values.foreach(entriesBuilder => {
+      documentBuilder.addEntry(entriesBuilder.build)
+    })
+    documentBuilder.withTimeStamp(new Timestamp(new Date().getTime))
+    val document = documentBuilder.build
+    document.toJson.toString()
+  }
+}
