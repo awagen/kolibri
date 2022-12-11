@@ -21,6 +21,7 @@ import de.awagen.kolibri.datatypes.io.json.AnyJsonProtocol.AnyJsonFormat
 import de.awagen.kolibri.datatypes.io.json.ComputeFailReasonJsonProtocol.ComputeFailReasonFormat
 import de.awagen.kolibri.datatypes.io.json.EnumerationJsonProtocol.aggregateTypeFormat
 import de.awagen.kolibri.datatypes.io.json.TimeStampJsonProtocol.TimeStampFormat
+import de.awagen.kolibri.datatypes.metrics.aggregation.writer.JsonMetricDocumentFormat.{DataSet, DataSetBuilder, Document, DocumentBuilder, EntriesBuilder, jsonDocumentFormat}
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason
 import de.awagen.kolibri.datatypes.stores.{MetricDocument, MetricRow}
 import de.awagen.kolibri.datatypes.values.MetricValue
@@ -28,13 +29,13 @@ import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType
 import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType.AggregationType
 import de.awagen.kolibri.datatypes.values.aggregation.AggregateValue
 import spray.json.DefaultJsonProtocol.{DoubleJsonFormat, IntJsonFormat, StringJsonFormat, immSeqFormat, jsonFormat3, jsonFormat5, jsonFormat7, mapFormat}
-import spray.json.{RootJsonFormat, enrichAny}
+import spray.json.{JsonFormat, RootJsonFormat, enrichAny}
 
 import java.sql.Timestamp
 import java.text.SimpleDateFormat
 import java.util.Date
 
-class JsonMetricDocumentFormat(metricNameToTypeMapping: Map[String, AggregationType]) extends MetricDocumentFormat {
+object JsonMetricDocumentFormat {
 
   val DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
@@ -44,14 +45,14 @@ class JsonMetricDocumentFormat(metricNameToTypeMapping: Map[String, AggregationT
    * aggregated in the data (successful vs failed, weighted success and fail samples
    * and in case of fails, the mapping of ComputeFailReasons to the counts of occurrence
    *
-   * @param name                     - name of the metric
-   * @param data                     - the actual data
-   * @param successSamples          - number of successfully computed results that are aggregated per data point
+   * @param name                   - name of the metric
+   * @param data                   - the actual data
+   * @param successSamples         - number of successfully computed results that are aggregated per data point
    * @param weightedSuccessSamples - as success_samples, but in case the aggregated samples carry weights != 1.0, will deviate from it
-   *                                 since on adding each sample count is multiplied by its weight
-   * @param failSamples             - number of failed compute results aggregated in the sample
+   *                               since on adding each sample count is multiplied by its weight
+   * @param failSamples            - number of failed compute results aggregated in the sample
    * @param weightedFailSamples    - same as case above for the success samples, but for the failed samples
-   * @param failReasons             - per data point a mapping of specific ComputeFailReasons to the count of occurrence (e.g how many samples are yielding the fail reason)
+   * @param failReasons            - per data point a mapping of specific ComputeFailReasons to the count of occurrence (e.g how many samples are yielding the fail reason)
    */
   case class DataSet(name: String,
                      data: Seq[Any],
@@ -62,7 +63,6 @@ class JsonMetricDocumentFormat(metricNameToTypeMapping: Map[String, AggregationT
                      failReasons: Seq[Map[ComputeFailReason, Int]])
 
   implicit val jsonDocDatasetFormat: RootJsonFormat[DataSet] = jsonFormat7(DataSet)
-
 
   case class DataSetBuilder(name: String) {
 
@@ -160,7 +160,7 @@ class JsonMetricDocumentFormat(metricNameToTypeMapping: Map[String, AggregationT
                       timestamp: Timestamp,
                       data: Seq[Entries])
 
-  implicit val jsonDocumentFormat: RootJsonFormat[Document] = jsonFormat3(Document)
+  val jsonDocumentFormat: RootJsonFormat[Document] = jsonFormat3(Document)
 
   case class DocumentBuilder(name: String) {
 
@@ -183,10 +183,16 @@ class JsonMetricDocumentFormat(metricNameToTypeMapping: Map[String, AggregationT
 
   }
 
+
+}
+
+class JsonMetricDocumentFormat(metricNameToTypeMapping: Map[String, AggregationType]) extends MetricDocumentFormat {
+
   /**
    * We first fill the MetricDocument into the above defined Document and then
    * just use spray json write method to dump it into a file.
    * For converting a file back to json, we can just use spray json read.
+   *
    * @param ma
    * @return
    */
@@ -229,7 +235,7 @@ class JsonMetricDocumentFormat(metricNameToTypeMapping: Map[String, AggregationT
         datasetBuilder.addSample(
           dataSample = metricValue.value,
           successSamples = metricValue.numSamples,
-          weightedSuccessSamples= metricValue.weight,
+          weightedSuccessSamples = metricValue.weight,
           failSamples = failRecordValue.numSamples,
           weightedFailSamples = failRecordValue.weight,
           failReasons = failRecordValue.value
@@ -257,6 +263,8 @@ class JsonMetricDocumentFormat(metricNameToTypeMapping: Map[String, AggregationT
     })
     documentBuilder.withTimeStamp(new Timestamp(new Date().getTime))
     val document = documentBuilder.build
+    implicit val dw: JsonFormat[Document] = jsonDocumentFormat
     document.toJson.toString()
   }
+
 }

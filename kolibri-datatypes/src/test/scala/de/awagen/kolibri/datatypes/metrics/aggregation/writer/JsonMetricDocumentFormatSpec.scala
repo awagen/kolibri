@@ -17,10 +17,13 @@
 
 package de.awagen.kolibri.datatypes.metrics.aggregation.writer
 
+import de.awagen.kolibri.datatypes.metrics.aggregation.writer.JsonMetricDocumentFormat.{Document, jsonDocumentFormat}
 import de.awagen.kolibri.datatypes.metrics.aggregation.writer.MetricFormatTestHelper.{doc, histogramDoc1, metricsNameAggregationTypeMapping}
 import de.awagen.kolibri.datatypes.testclasses.UnitTestSpec
 
 import scala.util.matching.Regex
+import spray.json._
+
 
 class JsonMetricDocumentFormatSpec extends UnitTestSpec {
 
@@ -331,6 +334,16 @@ class JsonMetricDocumentFormatSpec extends UnitTestSpec {
       val timestamp = extractTimestampValueFromJsonDocument(jsonResult)
       val expectedResult = nestedMetricDocJson.replace("$$timestampPlaceholder", timestamp)
       jsonResult.stripMargin mustBe expectedResult
+    }
+
+    "correctly read an existing result" in {
+      implicit val df: RootJsonFormat[Document] = jsonDocumentFormat
+      val documentJsValue = nestedMetricDocJson.parseJson
+      val document = documentJsValue.convertTo[JsonMetricDocumentFormat.Document]
+      val documentStr = document.toJson.toString()
+      val timestamp = extractTimestampValueFromJsonDocument(documentStr)
+      val expectedResult = nestedMetricDocJson.replace("$$timestampPlaceholder", timestamp)
+      documentStr mustBe expectedResult
     }
 
   }
