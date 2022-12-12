@@ -36,7 +36,7 @@ object ComputeFailReasonJsonProtocol {
     }
 
     override def write(obj: ComputeFailReason): JsValue = obj match {
-      case _ => JsString(obj.toString)
+      case _ => JsString(obj.description)
     }
   }
 

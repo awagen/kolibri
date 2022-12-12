@@ -34,7 +34,7 @@ import de.awagen.kolibri.datatypes.values.aggregation.AggregateValue
 import de.awagen.kolibri.datatypes.values.{MetricValue, RunningValues}
 import org.slf4j.LoggerFactory
 import spray.json.DefaultJsonProtocol.{DoubleJsonFormat, IntJsonFormat, StringJsonFormat, immSeqFormat, jsonFormat3, jsonFormat5, jsonFormat7, mapFormat}
-import spray.json._
+import spray.json.{RootJsonFormat, _}
 
 import java.sql.Timestamp
 import java.text.SimpleDateFormat
@@ -67,7 +67,7 @@ object JsonMetricDocumentFormat {
                      weightedFailSamples: Seq[Double],
                      failReasons: Seq[Map[ComputeFailReason, Int]])
 
-  implicit val jsonDocDatasetFormat: RootJsonFormat[DataSet] = jsonFormat7(DataSet)
+  val jsonDocDatasetFormat: RootJsonFormat[DataSet] = jsonFormat7(DataSet)
 
   case class DataSetBuilder(name: String) {
 
@@ -125,7 +125,8 @@ object JsonMetricDocumentFormat {
                      successCount: Int,
                      failCount: Int)
 
-  implicit val jsonDocEntriesFormat: RootJsonFormat[Entries] = jsonFormat5(Entries)
+  implicit val datasetFormat: JsonFormat[DataSet] = jsonDocDatasetFormat
+  val jsonDocEntriesFormat: RootJsonFormat[Entries] = jsonFormat5(Entries)
 
   case class EntriesBuilder(entryType: AggregationType) {
     private[this] var labels: Seq[Any] = Seq.empty
@@ -165,6 +166,7 @@ object JsonMetricDocumentFormat {
                       timestamp: Timestamp,
                       data: Seq[Entries])
 
+  implicit val entriesFormat: JsonFormat[Entries] = jsonDocEntriesFormat
   val jsonDocumentFormat: RootJsonFormat[Document] = jsonFormat3(Document)
 
   case class DocumentBuilder(name: String) {
