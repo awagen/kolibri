@@ -300,17 +300,12 @@ object JobMessagesImplicits {
     }
 
     def getWriter: Writer[MetricAggregation[Tag], Tag, Any] = {
-      persistenceModule.persistenceDIModule.csvMetricAggregationWriter(
+      persistenceModule.persistenceDIModule.metricAggregationWriter(
         subFolder = eval.jobName,
         x => {
           val randomAdd: String = Random.alphanumeric.take(5).mkString
           s"${x.toString()}-$randomAdd"
-        },
-        // writing the metric name to AggregatorType mapping into csv comment.
-        // TODO: adjust depending on writer type, e.g in json we can represent this explicitly in the mapping
-        eval.metricNameToAggregationTypeMapping.map(mapping => {
-          s"K_METRIC_AGGREGATOR_MAPPING ${mapping._1} ${mapping._2.toString()}"
-        }).toSeq
+        }
       )
     }
 

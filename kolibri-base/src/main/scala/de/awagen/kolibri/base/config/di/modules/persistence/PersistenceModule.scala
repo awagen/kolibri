@@ -24,7 +24,6 @@ import de.awagen.kolibri.base.config.di.modules.Modules.PersistenceDIModule
 import de.awagen.kolibri.base.config.di.modules.persistence.PersistenceModule.logger
 import de.awagen.kolibri.base.io.writer.Writers.Writer
 import de.awagen.kolibri.base.io.writer.aggregation.BaseMetricDocumentWriter
-import de.awagen.kolibri.datatypes.metrics.aggregation.writer.{CSVParameterBasedMetricDocumentFormat, MetricDocumentFormat}
 import de.awagen.kolibri.datatypes.stores.MetricDocument
 import de.awagen.kolibri.datatypes.tagging.Tags
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
@@ -54,8 +53,6 @@ class PersistenceModule {
 
   import persistenceDIModule._
 
-  lazy val metricDocFormat: MetricDocumentFormat = CSVParameterBasedMetricDocumentFormat("\t")
-
   lazy val keyToFilenameFunc: SerializableFunction1[Tags.Tag, String] = new SerializableFunction1[Tags.Tag, String] {
     val randomAdd: String = Random.alphanumeric.take(5).mkString
     override def apply(v1: Tags.Tag): String = s"${v1.toString}-$randomAdd"
@@ -63,7 +60,7 @@ class PersistenceModule {
 
   // apply qualifiers by specifying tagging value
   def metricDocumentWriter(subfolder: String): Writer[MetricDocument[Tags.Tag], Tags.Tag, Any] =
-    BaseMetricDocumentWriter(writer, metricDocFormat, subfolder, directoryPathSeparator,
+    BaseMetricDocumentWriter(writer, AppProperties.config.metricDocumentFormats, subfolder, directoryPathSeparator,
       keyToFilenameFunc)
 
 

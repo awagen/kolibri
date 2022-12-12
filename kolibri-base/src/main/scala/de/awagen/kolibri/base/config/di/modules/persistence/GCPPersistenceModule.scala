@@ -19,7 +19,7 @@ package de.awagen.kolibri.base.config.di.modules.persistence
 
 import com.softwaremill.tagging
 import de.awagen.kolibri.base.config.AppProperties
-import de.awagen.kolibri.base.config.AppProperties.config.{csvColumnSeparator, directoryPathSeparator}
+import de.awagen.kolibri.base.config.AppProperties.config.directoryPathSeparator
 import de.awagen.kolibri.base.config.di.modules.Modules.{GCP_MODULE, PersistenceDIModule}
 import de.awagen.kolibri.base.io.reader.{DataOverviewReader, GcpGSDirectoryReader, GcpGSFileReader, Reader}
 import de.awagen.kolibri.base.io.writer.Writers
@@ -58,16 +58,13 @@ class GCPPersistenceModule extends PersistenceDIModule with tagging.Tag[GCP_MODU
     directoryPathSeparator,
     filterNone)
 
-  override def csvMetricAggregationWriter(subFolder: String,
-                                          tagToDataIdentifierFunc: Tags.Tag => String,
-                                          commentLines: Seq[String] = Seq.empty): Writers.Writer[MetricAggregation[Tags.Tag], Tags.Tag, Any] = Writer.gcpCsvMetricAggregationWriter(
+  override def metricAggregationWriter(subFolder: String,
+                                       tagToDataIdentifierFunc: Tags.Tag => String): Writers.Writer[MetricAggregation[Tags.Tag], Tags.Tag, Any] = Writer.gcpCsvMetricAggregationWriter(
     bucketName = AppProperties.config.gcpGSBucket.get,
     directory = AppProperties.config.gcpGSBucketPath.get,
     projectId = AppProperties.config.gcpGSProjectID.get,
-    columnSeparator = csvColumnSeparator,
     subFolder = subFolder,
-    tagToFilenameFunc = tagToDataIdentifierFunc,
-    commentLines = commentLines
+    tagToFilenameFunc = tagToDataIdentifierFunc
   )
 
 }

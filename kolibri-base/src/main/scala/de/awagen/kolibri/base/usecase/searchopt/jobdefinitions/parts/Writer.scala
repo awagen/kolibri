@@ -18,54 +18,43 @@
 package de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts
 
 import com.amazonaws.regions.Regions
+import de.awagen.kolibri.base.config.AppProperties
 import de.awagen.kolibri.base.io.writer.Writers.{FileWriter, Writer}
 import de.awagen.kolibri.base.io.writer.aggregation.{BaseMetricAggregationWriter, BaseMetricDocumentWriter}
 import de.awagen.kolibri.base.io.writer.base.{AwsS3FileWriter, GcpGSFileWriter, LocalDirectoryFileWriter}
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
-import de.awagen.kolibri.datatypes.metrics.aggregation.writer.CSVParameterBasedMetricDocumentFormat
 import de.awagen.kolibri.datatypes.stores.MetricDocument
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
-import org.slf4j.{Logger, LoggerFactory}
 
 object Writer {
-
-  private[this] val logger: Logger = LoggerFactory.getLogger(Writer.getClass)
 
   def localDirectoryfileWriter(directory: String): FileWriter[String, Any] = LocalDirectoryFileWriter(directory = directory)
 
   def documentWriter(fileWriter: FileWriter[String, Any],
-                     columnSeparator: String = "\t",
                      subFolder: String,
-                     tagToFilenameFunc: Tag => String = x => x.toString,
-                     commentLines: Seq[String]): Writer[MetricDocument[Tag], Tag, Any] = {
+                     tagToFilenameFunc: Tag => String = x => x.toString): Writer[MetricDocument[Tag], Tag, Any] = {
     BaseMetricDocumentWriter(
       writer = fileWriter,
-      format = CSVParameterBasedMetricDocumentFormat(columnSeparator = columnSeparator),
+      formats = AppProperties.config.metricDocumentFormats,
       subFolder = subFolder,
       keyToFilenameFunc = tagToFilenameFunc,
-      commentLines = commentLines
     )
   }
 
   def localMetricAggregationWriter(directory: String,
-                                   columnSeparator: String = "\t",
                                    subFolder: String,
-                                   tagToFilenameFunc: Tag => String = x => x.toString,
-                                   commentLines: Seq[String] = Seq.empty): Writer[MetricAggregation[Tag], Tag, Any] = BaseMetricAggregationWriter(
+                                   tagToFilenameFunc: Tag => String = x => x.toString): Writer[MetricAggregation[Tag], Tag, Any] = BaseMetricAggregationWriter(
     writer = documentWriter(
       localDirectoryfileWriter(directory),
-      columnSeparator,
       subFolder,
-      tagToFilenameFunc,
-      commentLines)
+      tagToFilenameFunc
+    )
   )
 
-  def awsCsvMetricAggregationWriter(bucketName: String,
-                                    directory: String,
-                                    columnSeparator: String = "\t",
-                                    subFolder: String,
-                                    tagToFilenameFunc: Tag => String = x => x.toString,
-                                    commentLines: Seq[String]): Writer[MetricAggregation[Tag], Tag, Any] = {
+  def awsMetricAggregationWriter(bucketName: String,
+                                 directory: String,
+                                 subFolder: String,
+                                 tagToFilenameFunc: Tag => String = x => x.toString): Writer[MetricAggregation[Tag], Tag, Any] = {
     val awsWriter = AwsS3FileWriter(
       bucketName = bucketName,
       dirPath = directory,
@@ -73,10 +62,8 @@ object Writer {
     )
     val writer: Writer[MetricDocument[Tag], Tag, Any] = documentWriter(
       awsWriter,
-      columnSeparator,
       subFolder,
-      tagToFilenameFunc,
-      commentLines
+      tagToFilenameFunc
     )
     BaseMetricAggregationWriter(writer = writer)
   }
@@ -84,10 +71,8 @@ object Writer {
   def gcpCsvMetricAggregationWriter(bucketName: String,
                                     directory: String,
                                     projectId: String,
-                                    columnSeparator: String = "\t",
                                     subFolder: String,
-                                    tagToFilenameFunc: Tag => String = x => x.toString,
-                                    commentLines: Seq[String] = Seq.empty): Writer[MetricAggregation[Tag], Tag, Any] = {
+                                    tagToFilenameFunc: Tag => String = x => x.toString): Writer[MetricAggregation[Tag], Tag, Any] = {
     val gcpWriter = GcpGSFileWriter(
       bucketName = bucketName,
       dirPath = directory,
@@ -95,10 +80,8 @@ object Writer {
     )
     val writer: Writer[MetricDocument[Tag], Tag, Any] = documentWriter(
       gcpWriter,
-      columnSeparator,
       subFolder,
-      tagToFilenameFunc,
-      commentLines)
+      tagToFilenameFunc)
     BaseMetricAggregationWriter(writer = writer)
   }
 

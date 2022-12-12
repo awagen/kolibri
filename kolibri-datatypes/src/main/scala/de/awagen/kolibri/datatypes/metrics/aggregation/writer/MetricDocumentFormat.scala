@@ -22,6 +22,8 @@ import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType.A
 
 trait MetricDocumentFormat {
 
+  def identifier: String
+
   def metricDocumentToString(ma: MetricDocument[_]): String
 
   def metricNameToTypeMappingFromContent(content: String): Map[String, AggregationType]

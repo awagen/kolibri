@@ -24,11 +24,10 @@ import org.slf4j.{Logger, LoggerFactory}
 
 
 case class BaseMetricDocumentWriter(writer: Writer[String, String, Any],
-                                    format: MetricDocumentFormat,
+                                    formats: Seq[MetricDocumentFormat],
                                     subFolder: String,
                                     pathSeparator: String = "/",
-                                    keyToFilenameFunc: Tag => String = x => x.toString,
-                                    commentLines: Seq[String] = Seq.empty
+                                    keyToFilenameFunc: Tag => String = x => x.toString
                                    ) extends Writer[MetricDocument[Tag], Tag, Any] {
 
   private[this] val logger: Logger = LoggerFactory.getLogger(this.getClass)
@@ -39,22 +38,23 @@ case class BaseMetricDocumentWriter(writer: Writer[String, String, Any],
     if (data.id != targetIdentifier) Left(new RuntimeException(s"tragetIdentifier '$targetIdentifier' does not match" +
       s"tag '${data.id}' in document '$data'"))
     else {
-      val filename = s"$subFolder$pathSeparator${keyToFilenameFunc.apply(targetIdentifier)}"
-      logger.info(s"Trying to write result to: $filename")
-      try {
-        var doc = format.metricDocumentToString(data)
-        val comments = commentLines.map(line => s"# $line").mkString("\n")
-        doc = if (commentLines.isEmpty) doc else s"$comments\n$doc"
-        val writeResult: Either[Exception, Any] = writer.write(doc, filename)
-        logger.info(s"Finished write result to: $filename")
-        writeResult
-      }
-      catch {
-        case e: Exception =>
-          logger.warn(s"Failed write result to: $filename")
-          e.printStackTrace()
-          Left(e)
-      }
+      val writeResults: Seq[Either[Exception, Any]] = formats.map(format => {
+        val filename = s"$subFolder$pathSeparator${keyToFilenameFunc.apply(targetIdentifier)}.${format.identifier}"
+        logger.info(s"Trying to write result to: $filename")
+        try {
+          val doc = format.metricDocumentToString(data)
+          val writeResult: Either[Exception, Any] = writer.write(doc, filename)
+          logger.info(s"Finished write result to: $filename")
+          writeResult
+        }
+        catch {
+          case e: Exception =>
+            logger.warn(s"Failed write result to: $filename")
+            e.printStackTrace()
+            Left(e)
+        }
+      })
+      writeResults.find(x => x.isLeft).getOrElse(Right(true))
     }
   }
 }

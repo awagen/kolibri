@@ -46,6 +46,8 @@ object CSVParameterBasedMetricDocumentFormat {
 
 case class CSVParameterBasedMetricDocumentFormat(columnSeparator: String) extends MetricDocumentFormat {
 
+  val identifier = "csv"
+
   private[this] val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
   override def metricDocumentToString(ma: MetricDocument[_]): String = {

@@ -194,6 +194,8 @@ object JsonMetricDocumentFormat {
 
 class JsonMetricDocumentFormat() extends MetricDocumentFormat {
 
+  val identifier = "json"
+
   private[this] val logger = LoggerFactory.getLogger(this.getClass)
 
   /**
@@ -369,14 +371,14 @@ class JsonMetricDocumentFormat() extends MetricDocumentFormat {
               runningValue = runningValue
             )
 
-            logger.info(s"Adding MetricValue to MetricRow: $metricValue")
+            logger.debug(s"Adding MetricValue to MetricRow: $metricValue")
             metricRow = metricRow.addMetricDontChangeCountStore(metricValue)
 
           })
         }
       })
       if (Objects.nonNull(metricRow)) {
-        logger.info(s"Adding metric row to document: $metricRow")
+        logger.debug(s"Adding metric row to document: $metricRow")
         metricDocument.add(metricRow)
       }
       else {
