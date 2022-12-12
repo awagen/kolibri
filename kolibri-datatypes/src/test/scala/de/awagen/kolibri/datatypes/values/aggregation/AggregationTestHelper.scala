@@ -17,6 +17,7 @@
 
 package de.awagen.kolibri.datatypes.values.aggregation
 
+import de.awagen.kolibri.datatypes.metrics.aggregation.writer.MetricDocumentFormatHelper
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason
 import de.awagen.kolibri.datatypes.stores.{MetricDocument, MetricRow}
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
@@ -27,13 +28,15 @@ import de.awagen.kolibri.datatypes.values.RunningValues.{RunningValue, nestedMap
 
 object AggregationTestHelper {
 
-  val runningValueSupplier: () => RunningValue[Map[String, Map[String, Double]]] = () => nestedMapValueUnweightedSumUpRunningValue(1.0, 1,
+  val runningValueSupplier: () => RunningValue[Map[String, Map[String, Double]]] = () =>
+    nestedMapValueUnweightedSumUpRunningValue(1.0, 1,
     Map("key1" -> Map("1" -> 1.0)))
 
   val biRunningValueSupplier: () => BiRunningValue[Map[ComputeFailReason, Int], Map[String, Map[String, Double]]] = () => {
     val runningValue = nestedMapValueUnweightedSumUpRunningValue(1.0, 1,
       Map("key1" -> Map("1" -> 1.0)))
-    val value: MetricValue[Map[String, Map[String, Double]]] = AggregationType.NESTED_MAP_UNWEIGHTED_SUM_VALUE.singleSampleFunction.apply(
+    val value = MetricDocumentFormatHelper.getMetricValueFromTypeAndSample(
+      AggregationType.NESTED_MAP_UNWEIGHTED_SUM_VALUE,
       ResultRecord("m1", Right(runningValue.value))
     )
     value.biValue
@@ -42,7 +45,9 @@ object AggregationTestHelper {
   val metricValueSupplier: () => MetricValue[Map[String, Map[String, Double]]] = () => {
     val runningValue = nestedMapValueUnweightedSumUpRunningValue(1.0, 1,
       Map("key1" -> Map("1" -> 1.0)))
-    AggregationType.NESTED_MAP_UNWEIGHTED_SUM_VALUE.singleSampleFunction.apply(
+
+    MetricDocumentFormatHelper.getMetricValueFromTypeAndSample(
+      AggregationType.NESTED_MAP_UNWEIGHTED_SUM_VALUE,
       ResultRecord("m1", Right(runningValue.value))
     )
   }

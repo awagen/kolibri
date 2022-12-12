@@ -21,7 +21,7 @@ import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason
 import de.awagen.kolibri.datatypes.types.SerializableCallable.{SerializableFunction1, SerializableSupplier}
 import de.awagen.kolibri.datatypes.values.Calculations.ResultRecord
-import de.awagen.kolibri.datatypes.values.RunningValues.RunningValue
+import de.awagen.kolibri.datatypes.values.RunningValues.{RunningValue, calcErrorRunningValue}
 
 object Calculations {
 
@@ -46,9 +46,22 @@ object Calculations {
 object MetricValueFunctions {
 
   object AggregationType extends Enumeration {
+
     type AggregationType = Val[_]
-    case class Val[+T](singleSampleFunction: ResultRecord[_] => MetricValue[T],
-                       emptyRunningValueSupplier: SerializableSupplier[RunningValue[T]]) extends super.Val
+
+    case class Val[+T](emptyRunningValueSupplier: SerializableSupplier[RunningValue[T]]) extends super.Val {
+
+      def singleSampleToRunningValue(record: ResultRecord[_]): RunningValue[_] = {
+        record.value match {
+          case Left(failReasons) =>
+            val countMap: Map[ComputeFailReason, Int] = failReasonSeqToCountMap(failReasons)
+            RunningValues.calcErrorRunningValue(1, countMap)
+          case Right(value) =>
+            val emptyValue: RunningValue[T] = emptyRunningValueSupplier.apply()
+            emptyValue.copy(weight = 1.0, numSamples = 1, value = value)
+        }
+      }
+    }
 
     def byName(name: String): Val[_] = name.toUpperCase match {
       case "DOUBLE_AVG" => DOUBLE_AVG
@@ -59,15 +72,24 @@ object MetricValueFunctions {
       case _ => throw new IllegalArgumentException(s"no DataFileType by name '$name' found")
     }
 
-    val DOUBLE_AVG: Val[Double] = Val(resultRecordToDoubleAvgMetricValue, () => RunningValues.doubleAvgRunningValue(0.0, 0, 0.0))
-    val MAP_UNWEIGHTED_SUM_VALUE: Val[Map[String, Double]] = Val(resultRecordToMapCountMetricValue(weighted = false), () => RunningValues.mapValueUnweightedSumRunningValue(0.0, 0, Map.empty[String, Double]))
-    val MAP_WEIGHTED_SUM_VALUE: Val[Map[String, Double]] = Val(resultRecordToMapCountMetricValue(weighted = true), () => RunningValues.mapValueWeightedSumRunningValue(0.0, 0, Map.empty[String, Double]))
-    val NESTED_MAP_UNWEIGHTED_SUM_VALUE: Val[Map[String, Map[String, Double]]] = Val(resultRecordToNestedMapCountMetricValue(weighted = false), () => RunningValues.nestedMapValueUnweightedSumUpRunningValue(0.0, 0, Map.empty[String, Map[String, Double]]))
-    val NESTED_MAP_WEIGHTED_SUM_VALUE: Val[Map[String, Map[String, Double]]] = Val(resultRecordToNestedMapCountMetricValue(weighted = true), () => RunningValues.nestedMapValueWeightedSumUpRunningValue(0.0, 0, Map.empty[String, Map[String, Double]]))
+    val DOUBLE_AVG: Val[Double] = Val(() => RunningValues.doubleAvgRunningValue(0.0, 0, 0.0))
+    val MAP_AVG_VALUE: Val[Map[String, Double]] = Val(() => RunningValues.mapValueUnweightedSumRunningValue(0.0, 0, Map.empty[String, Double]))
+    val MAP_UNWEIGHTED_SUM_VALUE: Val[Map[String, Double]] = Val(() => RunningValues.mapValueUnweightedSumRunningValue(0.0, 0, Map.empty[String, Double]))
+    val MAP_WEIGHTED_SUM_VALUE: Val[Map[String, Double]] = Val(() => RunningValues.mapValueWeightedSumRunningValue(0.0, 0, Map.empty[String, Double]))
+    val NESTED_MAP_UNWEIGHTED_SUM_VALUE: Val[Map[String, Map[String, Double]]] = Val(() => RunningValues.nestedMapValueUnweightedSumUpRunningValue(0.0, 0, Map.empty[String, Map[String, Double]]))
+    val NESTED_MAP_WEIGHTED_SUM_VALUE: Val[Map[String, Map[String, Double]]] = Val(() => RunningValues.nestedMapValueWeightedSumUpRunningValue(0.0, 0, Map.empty[String, Map[String, Double]]))
+    val ERROR_MAP_VALUE: Val[Map[ComputeFailReason, Int]] = Val(() => RunningValues.calcErrorRunningValue(0, Map.empty))
   }
+
 
   def failReasonSeqToCountMap(failReasons: Seq[ComputeFailReason]): Map[ComputeFailReason, Int] = {
     failReasons.toSet[ComputeFailReason].map(reason => (reason, failReasons.count(fr => fr == reason))).toMap
+  }
+
+  def initMetricValueFromValueRunningValue(name: String, runningValue: RunningValue[_]) = {
+    MetricValue(
+      name = name,
+      BiRunningValue(value1 = calcErrorRunningValue(0, Map.empty), value2 = runningValue))
   }
 
   def resultRecordToDoubleAvgMetricValue(record: ResultRecord[Any]): MetricValue[Double] = {
@@ -112,5 +134,6 @@ object MetricValueFunctions {
           1.0)
     }
   }
+
 
 }

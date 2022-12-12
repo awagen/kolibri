@@ -18,12 +18,13 @@
 package de.awagen.kolibri.datatypes.metrics.aggregation.writer
 
 import de.awagen.kolibri.datatypes.metrics.aggregation.writer.JsonMetricDocumentFormat.{Document, jsonDocumentFormat}
-import de.awagen.kolibri.datatypes.metrics.aggregation.writer.MetricFormatTestHelper.{doc, histogramDoc1, metricsNameAggregationTypeMapping}
+import de.awagen.kolibri.datatypes.metrics.aggregation.writer.MetricFormatTestHelper.{doc, histogramDoc1}
 import de.awagen.kolibri.datatypes.stores.MetricDocument
+import de.awagen.kolibri.datatypes.tagging.Tags.StringTag
 import de.awagen.kolibri.datatypes.testclasses.UnitTestSpec
+import spray.json._
 
 import scala.util.matching.Regex
-import spray.json._
 
 
 class JsonMetricDocumentFormatSpec extends UnitTestSpec {
@@ -196,38 +197,6 @@ class JsonMetricDocumentFormatSpec extends UnitTestSpec {
       |        }
       |      ],
       |      "successCount": 1
-      |    },
-      |    {
-      |      "datasets": [],
-      |      "entryType": "NESTED_MAP_UNWEIGHTED_SUM_VALUE",
-      |      "failCount": 0,
-      |      "labels": [
-      |        {
-      |          "p1": [
-      |            "v1_1"
-      |          ],
-      |          "p2": [
-      |            "v1_2"
-      |          ]
-      |        },
-      |        {
-      |          "p1": [
-      |            "v2_1"
-      |          ],
-      |          "p2": [
-      |            "v2_2"
-      |          ]
-      |        },
-      |        {
-      |          "p1": [
-      |            "v3_1"
-      |          ],
-      |          "p3": [
-      |            "v3_2"
-      |          ]
-      |        }
-      |      ],
-      |      "successCount": 1
       |    }
       |  ],
       |  "name": "doc1",
@@ -239,22 +208,6 @@ class JsonMetricDocumentFormatSpec extends UnitTestSpec {
     """
       |{
       |  "data": [
-      |    {
-      |      "datasets": [],
-      |      "entryType": "DOUBLE_AVG",
-      |      "failCount": 0,
-      |      "labels": [
-      |        {
-      |          "p1": [
-      |            "v1_1"
-      |          ],
-      |          "p2": [
-      |            "v1_2"
-      |          ]
-      |        }
-      |      ],
-      |      "successCount": 1
-      |    },
       |    {
       |      "datasets": [
       |        {
@@ -317,7 +270,7 @@ class JsonMetricDocumentFormatSpec extends UnitTestSpec {
 
     "correctly write out json from MetricDocument with plain metrics" in {
       // given
-      val format = new JsonMetricDocumentFormat(metricsNameAggregationTypeMapping)
+      val format = new JsonMetricDocumentFormat()
       // when
       val jsonResult: String = format.metricDocumentToString(doc)
       // then
@@ -328,7 +281,7 @@ class JsonMetricDocumentFormatSpec extends UnitTestSpec {
 
     "correctly write out json from MetricDocument with nested metrics" in {
       // given
-      val format = new JsonMetricDocumentFormat(metricsNameAggregationTypeMapping)
+      val format = new JsonMetricDocumentFormat()
       // when
       val jsonResult = format.metricDocumentToString(histogramDoc1)
       // then
@@ -349,11 +302,11 @@ class JsonMetricDocumentFormatSpec extends UnitTestSpec {
 
     "correctly transform into MetricDocument" in {
       implicit val df: RootJsonFormat[Document] = jsonDocumentFormat
-      val format = new JsonMetricDocumentFormat(metricsNameAggregationTypeMapping)
+      val format = new JsonMetricDocumentFormat()
       val documentJsValue = nestedMetricDocJson.parseJson
       val document = documentJsValue.convertTo[JsonMetricDocumentFormat.Document]
       val metricDocument: MetricDocument[_] = format.jsonDocumentToMetricDocument(document)
-      metricDocument.id mustBe "histogramDoc1"
+      metricDocument.id.asInstanceOf[StringTag].value mustBe "histogramDoc1"
       metricDocument.rows.keys.toSeq mustBe Seq(Map(
         "p1" -> Seq("v1_1"),
         "p2" -> Seq("v1_2")

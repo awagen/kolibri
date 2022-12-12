@@ -206,7 +206,7 @@ object JobMessages {
       "RECALL@k=2,t=0.2" -> AggregationType.DOUBLE_AVG,
       "RECALL@k=4,t=0.2" -> AggregationType.DOUBLE_AVG
     )
-    val metricNameToAggregationTypeMapping = MapUtils.combineMaps(defaultAggregatorMappings, otherMetricNameToAggregationTypeMapping, (x: AggregationType, y: AggregationType) => y)
+    val metricNameToAggregationTypeMapping: Map[String, AggregationType] = MapUtils.combineMaps(defaultAggregatorMappings, otherMetricNameToAggregationTypeMapping, (x: AggregationType, y: AggregationType) => y)
 
     val filterFunc: SerializableFunction1[Tag, Boolean] = new SerializableFunction1[Tag, Boolean] {
       override def apply(v1: Tag): Boolean = true

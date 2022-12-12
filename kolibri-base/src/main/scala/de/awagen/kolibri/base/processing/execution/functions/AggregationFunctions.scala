@@ -93,7 +93,8 @@ object AggregationFunctions {
         files.foreach(file => {
           logger.info(s"adding file: $file")
           val weight: Double = sampleIdentifierToWeight.apply(file.split("/").last)
-          val doc: MetricDocument[Tag] = FileUtils.fileToMetricDocument(file, fileReader).weighted(weight)
+          // TODO: make format selectable or detect by file ending
+          val doc: MetricDocument[Tag] = FileUtils.fileToMetricDocument(file, fileReader, csvFormat).weighted(weight)
           overallDoc.add(doc, ignoreIdDiff = true)
           logger.info(s"done adding file: $file")
         })

@@ -37,7 +37,7 @@ object MetricDocument {
  * @param rows
  * @tparam A
  */
-case class MetricDocument[A <: AnyRef](id: A, rows: mutable.Map[ParamMap, MetricRow]) {
+case class MetricDocument[+A <: AnyRef](id: A, rows: mutable.Map[ParamMap, MetricRow]) {
 
   private[this] var paramNames: Set[String] = rows.keySet.flatMap(x => x.keys).toSet
   private[this] var metricNames: Set[String] = rows.values.map(x => x.metricNames.toSet).fold(Set.empty[String])((y, z) => y ++ z)
@@ -56,7 +56,7 @@ case class MetricDocument[A <: AnyRef](id: A, rows: mutable.Map[ParamMap, Metric
     paramNames = paramNames ++ row.params.keySet
   }
 
-  def add(doc: MetricDocument[A], ignoreIdDiff: Boolean = false): Unit = {
+  def add[B >: A <: AnyRef](doc: MetricDocument[B], ignoreIdDiff: Boolean = false): Unit = {
     if (!ignoreIdDiff && doc.id != id) {
       throw new IllegalArgumentException(s"trying to add document with id ${doc.id} to doc with id $id")
     }

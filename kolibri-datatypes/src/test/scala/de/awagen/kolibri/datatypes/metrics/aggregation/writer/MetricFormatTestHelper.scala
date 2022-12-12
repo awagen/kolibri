@@ -34,11 +34,11 @@ object MetricFormatTestHelper {
   val metricsSuccess4: MetricValue[Double] = MetricValue.createDoubleAvgSuccessSample("metrics4", 0.3, 1.0)
   val metricsSuccess5: MetricValue[Double] = MetricValue.createDoubleAvgSuccessSample("metrics5", 0.6, 1.0)
 
-  val histogramMetricSuccess1: MetricValue[Map[String, Map[String, Double]]] = MetricValue.createNestedMapSumValueSuccessSample(weighted = true)(
+  val histogramMetricSuccess1: MetricValue[Map[String, Map[String, Double]]] = MetricValue.createNestedMapSumValueSuccessSample(weighted = false)(
     "histogram1",
     Map("key1" -> Map("1" -> 1.0, "2" -> 2.0), "key2" -> Map("3" -> 1.0)),
     1.0)
-  val histogramMetricSuccess2: MetricValue[Map[String, Map[String, Double]]] = MetricValue.createNestedMapSumValueSuccessSample(weighted = true)(
+  val histogramMetricSuccess2: MetricValue[Map[String, Map[String, Double]]] = MetricValue.createNestedMapSumValueSuccessSample(weighted = false)(
     "histogram1",
     Map("key1" -> Map("2" -> 1.0, "3" -> 4.0), "key2" -> Map("2" -> 1.0)),
     1.0)

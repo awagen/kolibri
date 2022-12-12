@@ -26,13 +26,15 @@ import de.awagen.kolibri.datatypes.reason.ComputeFailReason
 import de.awagen.kolibri.datatypes.stores.MetricDocument.ParamMap
 import de.awagen.kolibri.datatypes.stores.MetricRow.ResultCountStore
 import de.awagen.kolibri.datatypes.stores.{MetricDocument, MetricRow}
+import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}
 import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType
 import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType.AggregationType
+import de.awagen.kolibri.datatypes.values.RunningValues.RunningValue
 import de.awagen.kolibri.datatypes.values.aggregation.AggregateValue
 import de.awagen.kolibri.datatypes.values.{MetricValue, RunningValues}
 import org.slf4j.LoggerFactory
 import spray.json.DefaultJsonProtocol.{DoubleJsonFormat, IntJsonFormat, StringJsonFormat, immSeqFormat, jsonFormat3, jsonFormat5, jsonFormat7, mapFormat}
-import spray.json.{JsonFormat, RootJsonFormat, enrichAny}
+import spray.json._
 
 import java.sql.Timestamp
 import java.text.SimpleDateFormat
@@ -189,7 +191,8 @@ object JsonMetricDocumentFormat {
 
 }
 
-class JsonMetricDocumentFormat(metricNameToTypeMapping: Map[String, AggregationType]) extends MetricDocumentFormat {
+
+class JsonMetricDocumentFormat() extends MetricDocumentFormat {
 
   private[this] val logger = LoggerFactory.getLogger(this.getClass)
 
@@ -202,6 +205,7 @@ class JsonMetricDocumentFormat(metricNameToTypeMapping: Map[String, AggregationT
    * @return
    */
   override def metricDocumentToString(ma: MetricDocument[_]): String = {
+    val metricNameToTypeMapping = MetricDocumentFormatHelper.getMetricNameToAggregationTypeMap(ma)
     val metricNameToDefaultMetricValueMap: Map[String, MetricValue[Any]] = ma.getMetricNames.map(metricName => {
       ma.rows.values.find(x => x.metrics.keySet.contains(metricName))
         .map(x => (metricName, x.metrics(metricName).emptyCopy()))
@@ -273,14 +277,53 @@ class JsonMetricDocumentFormat(metricNameToTypeMapping: Map[String, AggregationT
   }
 
   /**
+   * Extract mapping of metric names to aggregation type from document
+   */
+  def documentToMetricTypeMapping(doc: Document): Map[String, AggregationType] = {
+    doc.data.flatMap(entries => {
+      entries.datasets.map(dataset => (dataset.name, entries.entryType))
+    }).toMap
+  }
+
+  /**
+   * Taking in a string containing a json in the format needed by the above-defined
+   * json document, translate to the common data structure used to group and merge results
+   * @param content - full json string (e.g from a result file)
+   * @return - MetricDocument[_]
+   */
+  def contentToMetricDocumentAndMetricTypeMapping(content: String): MetricDocument[Tag] = {
+    implicit val dw: JsonFormat[Document] = jsonDocumentFormat
+    val document = content.parseJson.convertTo[Document]
+    jsonDocumentToMetricDocument(document)
+  }
+
+  def metricValueForAggregationType(aggregationType: AggregationType,
+                                    weightedSuccessCount: Double,
+                                    successCount: Int,
+                                    value: Any): RunningValue[_] = {
+    aggregationType match {
+      case AggregationType.DOUBLE_AVG =>
+        RunningValues.doubleAvgRunningValue(weightedSuccessCount, successCount, value.asInstanceOf[Double])
+      case AggregationType.MAP_WEIGHTED_SUM_VALUE =>
+        RunningValues.mapValueWeightedSumRunningValue(weightedSuccessCount, successCount, value.asInstanceOf[Map[String, Double]])
+      case AggregationType.MAP_UNWEIGHTED_SUM_VALUE =>
+        RunningValues.mapValueUnweightedSumRunningValue(weightedSuccessCount, successCount, value.asInstanceOf[Map[String, Double]])
+      case AggregationType.NESTED_MAP_WEIGHTED_SUM_VALUE =>
+        RunningValues.nestedMapValueWeightedSumUpRunningValue(weightedSuccessCount, successCount, value.asInstanceOf[Map[String, Map[String, Double]]])
+      case AggregationType.NESTED_MAP_UNWEIGHTED_SUM_VALUE =>
+        RunningValues.nestedMapValueUnweightedSumUpRunningValue(weightedSuccessCount, successCount, value.asInstanceOf[Map[String, Map[String, Double]]])
+    }
+  }
+
+  /**
    * From existing json format Document, create MetricDocument.
    * Used to have a common aggregation format from which different outputs can be set (e.g csv, json,...)
    *
    * @param doc
    * @return
    */
-  def jsonDocumentToMetricDocument(doc: Document): MetricDocument[_] = {
-    val tag = doc.name
+  def jsonDocumentToMetricDocument(doc: Document): MetricDocument[Tag] = {
+    val tag = StringTag(doc.name)
     val metricDocument = MetricDocument.empty(tag)
 
     // collect distinct params for which to compose MetricRows
@@ -313,18 +356,11 @@ class JsonMetricDocumentFormat(metricNameToTypeMapping: Map[String, AggregationT
             val failReasons: Map[ComputeFailReason, Int] = dataset.failReasons(valueIndex)
 
             // now compose the MetricValues to add to the metricRow
-            val runningValue = entryType match {
-              case AggregationType.DOUBLE_AVG =>
-                RunningValues.doubleAvgRunningValue(weightedSuccessSamples, successCount, value.asInstanceOf[Double])
-              case AggregationType.MAP_WEIGHTED_SUM_VALUE =>
-                RunningValues.mapValueWeightedSumRunningValue(weightedSuccessSamples, successCount, value.asInstanceOf[Map[String, Double]])
-              case AggregationType.MAP_UNWEIGHTED_SUM_VALUE =>
-                RunningValues.mapValueUnweightedSumRunningValue(weightedSuccessSamples, successCount, value.asInstanceOf[Map[String, Double]])
-              case AggregationType.NESTED_MAP_WEIGHTED_SUM_VALUE =>
-                RunningValues.nestedMapValueWeightedSumUpRunningValue(weightedSuccessSamples, successCount, value.asInstanceOf[Map[String, Map[String, Double]]])
-              case AggregationType.NESTED_MAP_UNWEIGHTED_SUM_VALUE =>
-                RunningValues.nestedMapValueUnweightedSumUpRunningValue(weightedSuccessSamples, successCount, value.asInstanceOf[Map[String, Map[String, Double]]])
-            }
+            val runningValue = metricValueForAggregationType(
+              entryType,
+              weightedSuccessSamples,
+              successCount,
+              value)
 
             val metricValue: MetricValue[Any] = MetricValue.createMetricValue(
               metricName = name,
@@ -352,4 +388,12 @@ class JsonMetricDocumentFormat(metricNameToTypeMapping: Map[String, AggregationT
 
   }
 
+  /**
+   * From file content, extract the metric name to aggregation type mappings
+   */
+  override def metricNameToTypeMappingFromContent(content: String): Map[String, AggregationType] = {
+    implicit val dw: JsonFormat[Document] = jsonDocumentFormat
+    val document = content.parseJson.convertTo[Document]
+    documentToMetricTypeMapping(document)
+  }
 }

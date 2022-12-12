@@ -26,16 +26,6 @@ class RunningValueSpec extends UnitTestSpec {
 
   "Map running value" must {
 
-    "correctly calculate weighted avg" in {
-      // given
-      val value1: RunningValue[Map[String, Double]] = mapValueAvgRunningValue(1.0, 1, Map("key1" -> 1.0))
-      val value2: RunningValue[Map[String, Double]] = mapValueAvgRunningValue(2.0, 1, Map("key1" -> 1.0, "key2" -> 2.0))
-      // when
-      val addedValue = value1.add(value2)
-      // then
-      addedValue.value mustBe Map("key1" -> 1.0, "key2" -> 4.toDouble/3)
-    }
-
     "correctly calculate un-weighted add" in {
       // given
       val value1: RunningValue[Map[String, Double]] = mapValueUnweightedSumRunningValue(1.0, 1, Map("key1" -> 1.0))

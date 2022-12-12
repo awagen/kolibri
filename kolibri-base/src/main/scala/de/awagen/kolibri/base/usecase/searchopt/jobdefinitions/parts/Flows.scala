@@ -30,6 +30,7 @@ import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifie
 import de.awagen.kolibri.base.processing.tagging.TaggingConfigurations.TaggingConfiguration
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.ReservedStorageKeys.REQUEST_TEMPLATE_STORAGE_KEY
 import de.awagen.kolibri.base.usecase.searchopt.metrics.MetricRowFunctions.throwableToMetricRowResponse
+import de.awagen.kolibri.datatypes.metrics.aggregation.writer.MetricDocumentFormatHelper.getMetricValueFromTypeAndSample
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.tagging.TagType
@@ -132,11 +133,13 @@ object Flows {
           .flatMap(x => {
             // ResultRecord is only combination of name and Either[Seq[ComputeFailReason], T]
             val values: Seq[ResultRecord[Any]] = x.calculation.apply(e.value)
-            // we ue all result records for which we have a AggregationType mapping
+            // we use all result records for which we have a AggregationType mapping
             // TODO: allow more than one aggregation type mapping per result record name
             values.map(value => {
-              metricNameToAggregationTypeMapping.get(value.name)
-                .map(aggregationType => aggregationType.singleSampleFunction.apply(value)).orNull
+              val metricAggregationType: Option[AggregationType] = metricNameToAggregationTypeMapping.get(value.name)
+              metricAggregationType.map(aggregationType => {
+                getMetricValueFromTypeAndSample(aggregationType, value)
+              }).orNull
             })
               .filter(x => Objects.nonNull(x))
           })

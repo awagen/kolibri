@@ -46,10 +46,6 @@ object MetricValue {
     createSingleFailSample(metricName, failMap, runningValue)
   }
 
-  def createMapAvgValueSuccessSample[T](metricName: String, value: Map[T, Double], weight: Double): MetricValue[Map[T, Double]] = {
-    createNoFailSample(metricName, mapValueAvgRunningValue(weight, 1, value))
-  }
-
   def createMapSumValueSuccessSample[T](metricName: String, value: Map[T, Double], weight: Double): MetricValue[Map[T, Double]] = {
     createNoFailSample(metricName, mapValueWeightedSumRunningValue(weight, 1, value))
   }

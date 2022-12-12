@@ -19,9 +19,11 @@ package de.awagen.kolibri.datatypes.values
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason
 import de.awagen.kolibri.datatypes.types.SerializableCallable.{SerializableFunction2, SerializableSupplier}
-import de.awagen.kolibri.datatypes.values.aggregation.AggregationUtils.{divideNumericMapValues, filterValuesByInstanceOfCheck, numericValueMapAggregateValueSumUp, sumUpNestedNumericValueMaps}
-import de.awagen.kolibri.datatypes.values.RunningValues.RunningValueAdd.{doubleAvgAdd, errorMapAdd, valueMapAdd, valueMapAvg, valueNestedMapAdd}
+import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType
+import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType.AggregationType
+import de.awagen.kolibri.datatypes.values.RunningValues.RunningValueAdd.{doubleAvgAdd, errorMapAdd, valueMapAdd, valueNestedMapAdd}
 import de.awagen.kolibri.datatypes.values.aggregation.AggregateValue
+import de.awagen.kolibri.datatypes.values.aggregation.AggregationUtils.{divideNumericMapValues, filterValuesByInstanceOfCheck, numericValueMapAggregateValueSumUp, sumUpNestedNumericValueMaps}
 import org.slf4j.{Logger, LoggerFactory}
 
 
@@ -103,43 +105,42 @@ object RunningValues {
    * Running value that sums up the (weighted!) values of the created map values
    */
   def mapValueWeightedSumRunningValue[T](weightedCount: Double, count: Int, value: Map[T, Double]): RunningValue[Map[T, Double]] = {
-    RunningValue(weightedCount, count, value, weightMultiplyFunction, valueMapAdd(weighted = true), () => Map.empty)
+    RunningValue(weightedCount, count, value, weightMultiplyFunction, valueMapAdd(weighted = true), () => Map.empty,
+      AggregationType.MAP_WEIGHTED_SUM_VALUE)
   }
 
   /**
    * Running value that sums up the (unweighted, meaning weight = 1.0 per sample) values of the created map values
    */
   def mapValueUnweightedSumRunningValue[T](weightedCount: Double, count: Int, value: Map[T, Double]): RunningValue[Map[T, Double]] = {
-    RunningValue(weightedCount, count, value, weightMultiplyFunction, valueMapAdd(weighted = false), () => Map.empty)
+    RunningValue(weightedCount, count, value, weightMultiplyFunction, valueMapAdd(weighted = false), () => Map.empty,
+      AggregationType.MAP_UNWEIGHTED_SUM_VALUE)
   }
 
   /**
    * Running value that sums up the values (weighted!) of the created map values
    */
   def nestedMapValueWeightedSumUpRunningValue[U, V](weightedCount: Double, count: Int, value: Map[U, Map[V, Double]]): RunningValue[Map[U, Map[V, Double]]] = {
-    RunningValue(weightedCount, count, value, weightMultiplyFunction, valueNestedMapAdd(weighted = true), () => Map.empty)
+    RunningValue(weightedCount, count, value, weightMultiplyFunction, valueNestedMapAdd(weighted = true), () => Map.empty,
+      AggregationType.NESTED_MAP_WEIGHTED_SUM_VALUE)
   }
 
   /**
    * Running value that sums up the values (unweighted, meaning weight = 1.0 per sample) of the created map values
    */
   def nestedMapValueUnweightedSumUpRunningValue[U, V](weightedCount: Double, count: Int, value: Map[U, Map[V, Double]]): RunningValue[Map[U, Map[V, Double]]] = {
-    RunningValue(weightedCount, count, value, weightMultiplyFunction, valueNestedMapAdd(weighted = false), () => Map.empty)
-  }
-
-  /**
-   * Running value that averages the values of the created map values
-   */
-  def mapValueAvgRunningValue[T](weightedCount: Double, count: Int, value: Map[T, Double]): RunningValue[Map[T, Double]] = {
-    RunningValue(weightedCount, count, value, weightMultiplyFunction, valueMapAvg, () => Map.empty)
+    RunningValue(weightedCount, count, value, weightMultiplyFunction, valueNestedMapAdd(weighted = false),
+      () => Map.empty, AggregationType.NESTED_MAP_UNWEIGHTED_SUM_VALUE)
   }
 
   def doubleAvgRunningValue(weightedCount: Double, count: Int, value: Double): RunningValue[Double] =
-    RunningValue(weightedCount, count, value, weightMultiplyFunction, doubleAvgAdd, () => 0.0)
+    RunningValue(weightedCount, count, value, weightMultiplyFunction, doubleAvgAdd, () => 0.0,
+      AggregationType.DOUBLE_AVG)
 
 
   def calcErrorRunningValue(count: Int, value: Map[ComputeFailReason, Int]): RunningValue[Map[ComputeFailReason, Int]] =
-    RunningValue(count, count, value, failMapKeepWeightFon, errorMapAdd, () => Map.empty)
+    RunningValue(count, count, value, failMapKeepWeightFon, errorMapAdd, () => Map.empty,
+      AggregationType.ERROR_MAP_VALUE)
 
   def mapFromFailReasons(as: Seq[ComputeFailReason]): Map[ComputeFailReason, Int] = {
     as.toSet[ComputeFailReason]
@@ -162,18 +163,22 @@ object RunningValues {
                               value: A,
                               weightFunction: (Double, Double) => Double,
                               addFunc: (AggregateValue[_], AggregateValue[_]) => A,
-                              initValueSupplier: SerializableSupplier[A]) extends AggregateValue[A] {
+                              initValueSupplier: SerializableSupplier[A],
+                              aggregationType: AggregationType) extends AggregateValue[A] {
 
     override def add[B >: A](other: DataPoint[B]): AggregateValue[A] = {
-      this.add(RunningValue(other.weight, 1, other.data, weightFunction, addFunc, initValueSupplier))
+      this.add(RunningValue(other.weight, 1, other.data, weightFunction, addFunc, initValueSupplier, aggregationType))
     }
 
     override def add[B >: A](other: AggregateValue[B]): AggregateValue[A] = {
-      RunningValue(weight = weight + other.weight, numSamples = this.numSamples + other.numSamples, value = addFunc.apply(this, other), weightFunction, addFunc = addFunc, initValueSupplier)
+      RunningValue(weight = weight + other.weight, numSamples = this.numSamples + other.numSamples,
+        value = addFunc.apply(this, other), weightFunction, addFunc = addFunc,
+        initValueSupplier, aggregationType)
     }
 
     override def weighted(weight: Double): AggregateValue[A] = {
-      RunningValue(weightFunction.apply(this.weight, weight), numSamples, this.value, weightFunction, addFunc, initValueSupplier)
+      RunningValue(weightFunction.apply(this.weight, weight), numSamples, this.value, weightFunction, addFunc,
+        initValueSupplier, aggregationType)
     }
 
     override def emptyCopy(): AggregateValue[A] = RunningValue[A](
@@ -182,6 +187,7 @@ object RunningValues {
       initValueSupplier.apply(),
       weightFunction,
       addFunc,
-      initValueSupplier)
+      initValueSupplier,
+      aggregationType)
   }
 }
