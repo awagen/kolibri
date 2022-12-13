@@ -31,7 +31,7 @@ import de.awagen.kolibri.base.processing.execution.functions.Execution
 import de.awagen.kolibri.base.processing.failure.TaskFailType
 import de.awagen.kolibri.datatypes.stores.PriorityStores.{BasePriorityStore, PriorityStore}
 import org.slf4j.{Logger, LoggerFactory}
-import spray.json.{DefaultJsonProtocol, RootJsonFormat, enrichAny}
+import spray.json._
 
 object AnalysisRoutes extends DefaultJsonProtocol {
 
@@ -91,7 +91,7 @@ object AnalysisRoutes extends DefaultJsonProtocol {
     corsHandler(
       path(matcher) {
         get {
-          val resources = readResourcesFromPath(s"$outputResultsPath")
+          val resources = readResourcesFromPath(s"$outputResultsPath", "")
           logger.debug(s"found resources: $resources")
           complete(StatusCodes.OK, resources.toJson.toString())
         }
@@ -116,9 +116,9 @@ object AnalysisRoutes extends DefaultJsonProtocol {
       })
   }
 
-  private[this] def readResourcesFromPath(path: String): Seq[String] = {
+  private[this] def readResourcesFromPath(path: String, fileSuffix: String = ".json"): Seq[String] = {
     directoryOverviewReader.listResources(
-      path, _ => true
+      path, x => x.toLowerCase.endsWith(fileSuffix)
     ).map(filepath => filepath.split(DIRECTORY_PATH_DELIMITER).last.trim)
   }
 
@@ -155,6 +155,10 @@ object AnalysisRoutes extends DefaultJsonProtocol {
 
   implicit val csvFileContentFormat: RootJsonFormat[CsvFileContent] = jsonFormat4(CsvFileContent)
 
+
+  private[this] def readJsonFromPath(path: String): JsValue = {
+    contentReader.read(path).mkString("\n").parseJson
+  }
 
   private[this] def readCsvFromPath(path: String,
                                     extractParamNamesFunc: Seq[String] => Seq[String] = paramNamesFromFirstLineFunc,
@@ -193,23 +197,23 @@ object AnalysisRoutes extends DefaultJsonProtocol {
    * @param system
    * @return
    */
-  def getSingleResult(implicit system: ActorSystem): Route = {
+  def getSingleJsonResult(implicit system: ActorSystem): Route = {
     val matcher: PathMatcher1[String] = RESULT_PREFIX / EXECUTIONS_PATH / """(\w+)""".r / "byId"
     corsHandler(
       path(matcher) { executionId =>
         get {
           parameters(RESULT_IDENTIFIER_KEY) {
             resultId => {
-              val results: CsvFileContent = readCsvFromPath(s"$outputResultsPath/$executionId/$resultId")
+              val results = readJsonFromPath(s"$outputResultsPath/$executionId/$resultId")
               logger.debug(s"found resources: $results")
-              complete(StatusCodes.OK, results.toJson.toString())
+              complete(StatusCodes.OK, results.toString())
             }
           }
         }
       })
   }
 
-  def getSingleResultFiltered(implicit system: ActorSystem): Route = {
+  def getSingleCsvResultFiltered(implicit system: ActorSystem): Route = {
     val matcher: PathMatcher1[String] = RESULT_PREFIX / EXECUTIONS_PATH / """(\w+)""".r / "byIdFiltered"
     corsHandler(
       path(matcher) { executionId =>
