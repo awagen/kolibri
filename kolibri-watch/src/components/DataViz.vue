@@ -11,7 +11,10 @@
         <div class="col-9 col-sm-12">
           <select @change="experimentSelectEvent($event)" class="form-select k-value-selector" id="template-type-1">
             <option>Choose an option</option>
-            <option v-for="executionId in this.$store.state.resultState.availableResultExecutionIDs">{{ executionId }}</option>
+            <option v-for="executionId in this.$store.state.resultState.availableResultExecutionIDs">{{
+                executionId
+              }}
+            </option>
           </select>
         </div>
         <div class="k-form-separator"></div>
@@ -20,10 +23,14 @@
           <label class="form-label" for="template-name-1">Select Result</label>
         </div>
         <div class="col-9 col-sm-12">
-          <select @change="resultSelectEvent($event, this.$store.state.resultState.currentlySelectedExecutionID)" class="form-select k-field k-value-selector"
+          <select @change="resultSelectEvent($event, this.$store.state.resultState.currentlySelectedExecutionID)"
+                  class="form-select k-field k-value-selector"
                   id="template-name-1">
             <option>Choose an option</option>
-            <option v-for="resultId in this.$store.state.resultState.availableResultsForSelectedExecutionID">{{ resultId }}</option>
+            <option v-for="resultId in this.$store.state.resultState.availableResultsForSelectedExecutionID">{{
+                resultId
+              }}
+            </option>
           </select>
         </div>
 
@@ -33,7 +40,8 @@
           <label class="form-label" for="template-metric-1">Select Metric</label>
         </div>
         <div class="col-9 col-sm-12">
-          <select v-model="this.$store.state.resultState.selectedMetricName" @change="metricSelectEvent($event)" class="form-select k-field k-value-selector"
+          <select v-model="this.$store.state.resultState.selectedMetricName" @change="metricSelectEvent($event)"
+                  class="form-select k-field k-value-selector"
                   id="template-metric-1">
             <option>Choose an option</option>
             <option v-for="metricName in this.$store.state.resultState.availableMetricNames">{{ metricName }}</option>
@@ -43,52 +51,29 @@
       </div>
     </form>
 
-    <form class="form-horizontal col-12 column">
-      <div class="form-group">
-        <div class="col-12 col-sm-12">
-          <!-- chart.js element -->
-          <div class="timeSeriesContainer">
-            <canvas id="timelineChart"></canvas>
-          </div>
-        </div>
-      </div>
-    </form>
-    <!-- second placeholder for chart  -->
-    <form class="form-horizontal col-6 column">
-      <div class="form-group">
-        <div class="col-12 col-sm-12">
-          <!-- chart.js element -->
-          <div class="timeSeriesContainer">
-            <canvas id="timelineChart1"></canvas>
-          </div>
-        </div>
-      </div>
-    </form>
+    <template v-for="(value, index) in labels">
 
-    <form class="form-horizontal col-6 column">
-      <div class="form-group">
-        <div class="col-12 col-sm-12">
-          <!-- chart.js element -->
-          <div class="timeSeriesContainer">
-            <canvas id="barChart1"></canvas>
+      <form class="form-horizontal col-12 column">
+        <div class="form-group">
+          <div class="col-12 col-sm-12">
+            <ChartJsGraph
+                :labels="value"
+                :datasets="datasets[index]"
+                :canvas-id="String(index)"
+                />
           </div>
         </div>
-      </div>
-    </form>
+      </form>
 
-    <!--    <div class="form-horizontal col-12">-->
-    <!--      <form class="form-horizontal col-6 column">-->
-    <!--        <h3 class="k-title">-->
-    <!--          Visualization Selection-->
-    <!--        </h3>-->
-    <!--      </form>-->
-    <!--    </div>-->
+    </template>
+
   </div>
 
 </template>
 
 <script>
 import Plotly from 'plotly.js-dist-min'
+import ChartJsGraph from "../components/partials/ChartJsGraph.vue";
 import {Chart, registerables} from "chart.js";
 import {Colors} from "chart.js"
 
@@ -96,13 +81,10 @@ Chart.register(...registerables);
 Chart.register(Colors);
 import {onMounted} from "vue";
 import dataVizTestJson from "../data/dataVizTestData.json";
-import {preservingJsonFormat} from "../utils/formatFunctions";
-import {interpolateYlGn} from "d3-scale-chromatic";
-import * as d3 from 'd3';;
 
 export default {
 
-  components: {},
+  components: {ChartJsGraph},
   props: [],
   methods: {
     experimentSelectEvent(event) {
@@ -122,10 +104,7 @@ export default {
 
 
     /**
-    TODO: provide methods to select single data from
-    this.$store.state.resultState.fullResultForExecutionIDAndResultID
-    after executino and result id are selected
-    structure:
+     structure of single results requested from server:
 
      * {
      *   data: [
@@ -152,90 +131,20 @@ export default {
   },
   setup(props, context) {
 
-    let numDatasets = dataVizTestJson["datasets"].length
-
-    const data = {
-      labels: dataVizTestJson["labels"],
-
-      // for nice colors, see also:
-      // https://medium.com/code-nebula/automatically-generate-chart-colors-with-chart-js-d3s-color-scales-f62e282b2b41
-      // and
-      // https://github.com/d3/d3-scale-chromatic
-      datasets: dataVizTestJson["datasets"].map((data, index) => {
-        let color = numDatasets > 1 ? d3.interpolateCool(index / (numDatasets - 1)) : interpolateYlGn(1.0)
-        data["backgroundColor"] = color
-        data["borderColor"] = color
-        data["borderWidth"] = 1
-        data["lineTension"] = 0.2
-        data["fill"] = false
-        return data
-      })
-    };
-
-    console.info(`data: ${preservingJsonFormat(data)}`)
-
-    const config = {
-      type: 'line',
-      data: data,
-      options: {
-        maintainAspectRatio: false,
-        plugins: {
-          colors: {
-            enabled: false
-          }
-        }
-      }
-    };
-
-    const barConfig1 = {
-      type: 'bar',
-      data: data,
-      options: {
-        maintainAspectRatio: false,
-        plugins: {
-          colors: {
-            enabled: false
-          }
-        },
-        indexAxis: 'x',
-        scales: {
-          xAxes: {
-            ticks: {
-              autoSkip: false,
-              maxRotation: 90,
-              minRotation: 90
-            }
-          }
-        }
-      }
-    };
-
-    onMounted(() => {
-      let chartElement = document.getElementById('timelineChart')
-      let chartElement1 = document.getElementById('timelineChart1')
-      let barChartElement1 = document.getElementById('barChart1')
-
-      const chart = new Chart(
-          chartElement,
-          config
-      );
-      const chart1 = new Chart(
-          chartElement1,
-          config
-      );
-      const barChart1 = new Chart(
-          barChartElement1,
-          barConfig1
-      );
+    let labels = [dataVizTestJson["labels"]]
+    dataVizTestJson["datasets"].forEach(ds => {
+      ds["name"] = ds["label"]
     })
+    let datasets = [dataVizTestJson["datasets"]]
+
+    onMounted(() => {})
 
     return {
-      Colors
+      Colors,
+      labels,
+      datasets
     }
-
-
   }
-
 
 }
 
@@ -247,13 +156,8 @@ export default {
   margin: 3em;
 }
 
-.timeSeriesContainer {
-  height: 400px;
-}
-
 .k-value-selector {
   color: black;
 }
-
 
 </style>
