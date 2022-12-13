@@ -66,14 +66,22 @@
       <form class="form-horizontal col-12 column">
         <div class="form-group">
           <div class="col-12 col-sm-12">
+
+            <!-- if there is a graph before, offer to merge them -->
+            <div v-if="index > 0 && haveSameType(index, index - 1)" class="k-merge-button-container">
+              <button type="button" @click.prevent="collapseData(index, index - 1)" class="btn btn-action k-merge-button s-circle">
+                <i class="icon icon-resize-vert"></i>
+              </button>
+            </div>
+
             <div class="k-delete-button">
               <a @click.prevent="deleteInputElement(index)" href="#" class="k-delete btn btn-clear"
                  aria-label="Close" role="button"></a>
             </div>
             <ChartJsGraph
                 :labels="value['labels']"
-                :datasets="[value['datasets'][0]]"
-                :canvas-id="value['name']"
+                :datasets="value['datasets']"
+                :canvas-id="'canvas-' + index"
                 chart-type="line"
                 :index="index"
             />
@@ -179,7 +187,15 @@ export default {
           data = {}
           // if its only a series of float values, just set data to the array of values
           if (dataType === "DOUBLE_AVG") {
-            data = relatedDataset.data
+            // now by default sort by descending. For this zip labels and data
+            // sort and then unzip
+            let dataAndLabels = []
+            for (const [index, label] of labels.entries()) {
+              dataAndLabels.push([relatedDataset.data[index], label])
+            }
+            dataAndLabels = dataAndLabels.sort(function(a, b){ return b[0] - a[0]; })
+            data = dataAndLabels.map(x => x[0])
+            labels = dataAndLabels.map(x => x[1])
           }
           if (["NESTED_MAP_UNWEIGHTED_SUM_VALUE", "NESTED_MAP_WEIGHTED_SUM_VALUE"].includes(dataType)) {
             // for histogram data, we need per value a series of labels and a series of counts
@@ -212,7 +228,6 @@ export default {
             return key + '__' + x[key].join('_')
           }).join('|')
         })),
-        name: metricName,
         datasets: [
           {
             label: metricName,
@@ -220,6 +235,31 @@ export default {
           }
         ]
       }
+    }
+
+    function haveSameType(index1, index2) {
+      return data.value[index1].dataType === data.value[index2].dataType
+    }
+
+    /**
+     * Option to collapse data from one index into another.
+     * Both datasets need to share the same data type
+     * @param startIndex
+     * @param toIndex
+     */
+    function collapseData(startIndex, toIndex) {
+      if (data.value.length <= Math.max(startIndex, toIndex)) {
+        console.warn("Can not merge data for indices, at least one index out of bounds")
+        return;
+      }
+      let data1 = data.value[startIndex]
+      let data2 = data.value[toIndex]
+      if (data1.dataType !== data2.dataType) {
+        console.warn(`Can not merge datasets, datatypes differ: ${data1.dataType}, ${data2.dataType}`);
+        return;
+      }
+      data2.datasets.push(...data1.datasets)
+      deleteInputElement(startIndex)
     }
 
     function increaseDisplayKey() {
@@ -232,8 +272,9 @@ export default {
     }
 
     function deleteInputElement(index) {
-      data.value.splice(index, 1);
+      let deletedData = data.value.splice(index, 1);
       increaseDisplayKey()
+      return deletedData
     }
 
     onMounted(() => {
@@ -244,7 +285,9 @@ export default {
       data,
       deleteInputElement,
       addGraph,
-      displayKey
+      displayKey,
+      collapseData,
+      haveSameType
     }
   }
 
@@ -290,6 +333,20 @@ button#add-data-1 {
   width: 2em;
   height: auto;
 }
+
+button.k-merge-button{
+  background-color: #588274;
+  border-width: 0;
+  color: white;
+}
+
+.k-merge-button-container {
+  text-align: center;
+  margin-top: 2em;
+  margin-bottom: 2em;
+}
+
+
 
 
 </style>
