@@ -72,7 +72,7 @@ export default {
       type: 'line',
       data: {},
       options: {
-        // showLine: false,
+        showLine: true,
         responsive: true,
         maintainAspectRatio: false,
         plugins: {

@@ -62,7 +62,7 @@
       </div>
     </form>
 
-    <template :key="displayKey" v-for="(value, index) in data">
+    <template :key="displayKey" v-for="(value, index) in this.$store.state.resultState.selectedData">
       <form class="form-horizontal col-12 column">
         <div class="form-group">
           <div class="col-12 col-sm-12">
@@ -157,7 +157,6 @@ export default {
 
     const store = useStore()
 
-    let data = ref([])
     let displayKey = ref(0)
 
     /**
@@ -238,7 +237,11 @@ export default {
     }
 
     function haveSameType(index1, index2) {
-      return data.value[index1].dataType === data.value[index2].dataType
+      return store.state.resultState.selectedData[index1].dataType === store.state.resultState.selectedData[index2].dataType
+    }
+
+    function updateSelectedDataEvent(data) {
+      store.commit("updateSelectedData", data)
     }
 
     /**
@@ -248,18 +251,28 @@ export default {
      * @param toIndex
      */
     function collapseData(startIndex, toIndex) {
-      if (data.value.length <= Math.max(startIndex, toIndex)) {
+      if (store.state.resultState.selectedData.length <= Math.max(startIndex, toIndex)) {
         console.warn("Can not merge data for indices, at least one index out of bounds")
         return;
       }
-      let data1 = data.value[startIndex]
-      let data2 = data.value[toIndex]
+      let data1 = store.state.resultState.selectedData[startIndex]
+      let data2 = store.state.resultState.selectedData[toIndex]
       if (data1.dataType !== data2.dataType) {
         console.warn(`Can not merge datasets, datatypes differ: ${data1.dataType}, ${data2.dataType}`);
         return;
       }
-      data2.datasets.push(...data1.datasets)
+      let newData = _.cloneDeep(store.state.resultState.selectedData)
+      newData[toIndex].datasets.push(..._.cloneDeep(data1.datasets))
+      updateSelectedDataEvent(newData)
       deleteInputElement(startIndex)
+    }
+
+    function deleteInputElement(index) {
+      let newData = _.cloneDeep(store.state.resultState.selectedData)
+      let deletedData = newData.splice(index, 1);
+      updateSelectedDataEvent(newData)
+      increaseDisplayKey()
+      return deletedData
     }
 
     function increaseDisplayKey() {
@@ -268,13 +281,9 @@ export default {
 
     function addGraph() {
       let newData = getDataForCurrentSelection()
-      data.value.push(newData)
-    }
-
-    function deleteInputElement(index) {
-      let deletedData = data.value.splice(index, 1);
-      increaseDisplayKey()
-      return deletedData
+      let updatedState = _.cloneDeep(store.state.resultState.selectedData)
+      updatedState.push(newData)
+      updateSelectedDataEvent(updatedState)
     }
 
     onMounted(() => {
@@ -282,7 +291,6 @@ export default {
 
     return {
       Colors,
-      data,
       deleteInputElement,
       addGraph,
       displayKey,

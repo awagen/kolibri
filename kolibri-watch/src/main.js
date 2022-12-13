@@ -96,6 +96,7 @@ export function createAppStore() {
                     availableMetricNames: [],
                     metricNameToDataType: {},
                     selectedMetricName: "",
+                    selectedData: []
                 },
 
                 analysisState: {
@@ -282,6 +283,15 @@ export function createAppStore() {
              */
             updateSelectedMetricName(state, metricName) {
                 state.resultState.selectedMetricName = metricName
+            },
+
+            /**
+             * Update the selected data state
+             * @param state
+             * @param data
+             */
+            updateSelectedData(state, data) {
+                state.resultState.selectedData = data
             },
 
             updateAnalysisTopFlop(state, {
