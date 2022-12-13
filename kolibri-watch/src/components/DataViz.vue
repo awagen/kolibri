@@ -48,23 +48,38 @@
           </select>
         </div>
 
+
+        <div class="k-form-separator"></div>
+        <!-- button to add graphic to display -->
+        <div class="col-9 col-sm-12">
+        </div>
+        <div class="col-3 col-sm-12 k-action-buttons">
+          <button type='button' @click="addGraph()" class="k-form k-full btn btn-action"
+                  id="add-data-1">
+            ADD DATA
+          </button>
+        </div>
       </div>
     </form>
 
-    <template v-for="(value, index) in labels">
-
+    <template :key="displayKey" v-for="(value, index) in data">
       <form class="form-horizontal col-12 column">
         <div class="form-group">
           <div class="col-12 col-sm-12">
+            <div class="k-delete-button">
+              <a @click.prevent="deleteInputElement(index)" href="#" class="k-delete btn btn-clear"
+                 aria-label="Close" role="button"></a>
+            </div>
             <ChartJsGraph
-                :labels="value"
-                :datasets="datasets[index]"
-                :canvas-id="String(index)"
-                />
+                :labels="value['labels']"
+                :datasets="[value['datasets'][0]]"
+                :canvas-id="value['name']"
+                chart-type="line"
+                :index="index"
+            />
           </div>
         </div>
       </form>
-
     </template>
 
   </div>
@@ -79,8 +94,9 @@ import {Colors} from "chart.js"
 
 Chart.register(...registerables);
 Chart.register(Colors);
-import {onMounted} from "vue";
-import dataVizTestJson from "../data/dataVizTestData.json";
+import {onMounted, ref} from "vue";
+import _ from "lodash";
+import {useStore} from "vuex";
 
 export default {
 
@@ -100,7 +116,7 @@ export default {
     metricSelectEvent(event) {
       let metricName = event.target.value
       this.$store.commit("updateSelectedMetricName", metricName)
-    },
+    }
 
 
     /**
@@ -131,18 +147,104 @@ export default {
   },
   setup(props, context) {
 
-    let labels = [dataVizTestJson["labels"]]
-    dataVizTestJson["datasets"].forEach(ds => {
-      ds["name"] = ds["label"]
-    })
-    let datasets = [dataVizTestJson["datasets"]]
+    const store = useStore()
 
-    onMounted(() => {})
+    let data = ref([])
+    let displayKey = ref(0)
+
+    /**
+     * selected data should contain the following:
+     * {
+     *   dataType: "",
+     *   labels: ["a", ...],
+     *   name: "n",
+     *   data: [0.64]
+     * }
+     * Based on this we can distinguish whether to add a plot of single points or
+     * are deriving a histogram (histogram needs further selection,
+     * e.g the single values the parameter can take. Then needs mapping of the
+     * value keys to integers to pick the labels
+     */
+    function getDataForCurrentSelection() {
+      // set metric name
+      let metricName = store.state.resultState.selectedMetricName
+      // extract data points and corresponding labels
+      let dataType = store.state.resultState.metricNameToDataType[metricName]
+      let data = []
+      let labels = []
+      store.state.resultState.fullResultForExecutionIDAndResultID.data.find(entries => {
+        let relatedDataset = entries.datasets.find(dataset => dataset.name === metricName)
+        if (relatedDataset !== undefined) {
+          labels = entries.labels
+          data = {}
+          // if its only a series of float values, just set data to the array of values
+          if (dataType === "DOUBLE_AVG") {
+            data = relatedDataset.data
+          }
+          if (["NESTED_MAP_UNWEIGHTED_SUM_VALUE", "NESTED_MAP_WEIGHTED_SUM_VALUE"].includes(dataType)) {
+            // for histogram data, we need per value a series of labels and a series of counts
+            relatedDataset.data.forEach(sample => {
+              let keys = Object.keys(sample)
+              keys.forEach(key => {
+                data[key] = {}
+                let dataForKey = sample[key]
+                // TODO: for other types of data it might no hold that the values the
+                // counts are assigned to are numeric, thus add a more general mechanism
+                // without numeric value casting
+                // now will in the data and label keys
+                let sortedKeys = Object.keys(dataForKey)
+                let intPositionLabels = sortedKeys.map(x => parseInt(x))
+                let positionCountValues = sortedKeys.map(x => dataForKey[x])
+                data[key]["labels"] = intPositionLabels
+                data[key]["data"] = positionCountValues
+              })
+            })
+          }
+          return true
+        }
+        return false
+      })
+
+      return {
+        dataType: dataType,
+        labels: _.cloneDeep(labels.map(x => {
+          return Object.keys(x).flatMap(key => {
+            return key + '__' + x[key].join('_')
+          }).join('|')
+        })),
+        name: metricName,
+        datasets: [
+          {
+            label: metricName,
+            data: _.cloneDeep(data)
+          }
+        ]
+      }
+    }
+
+    function increaseDisplayKey() {
+      displayKey.value = displayKey.value + 1
+    }
+
+    function addGraph() {
+      let newData = getDataForCurrentSelection()
+      data.value.push(newData)
+    }
+
+    function deleteInputElement(index) {
+      data.value.splice(index, 1);
+      increaseDisplayKey()
+    }
+
+    onMounted(() => {
+    })
 
     return {
       Colors,
-      labels,
-      datasets
+      data,
+      deleteInputElement,
+      addGraph,
+      displayKey
     }
   }
 
@@ -159,5 +261,35 @@ export default {
 .k-value-selector {
   color: black;
 }
+
+.k-form.btn {
+  padding: 0;
+  margin: 0;
+  display: block;
+  background-color: #9999;
+  color: black;
+  border-width: 0;
+}
+
+.k-full.btn {
+  width: 98%;
+  padding-right: 1em;
+}
+
+button#add-data-1 {
+  background-color: darkgreen;
+}
+
+.k-action-buttons {
+  margin-top: 0.5em;
+}
+
+.k-delete-button {
+  float: right;
+  display: inline-block;
+  width: 2em;
+  height: auto;
+}
+
 
 </style>

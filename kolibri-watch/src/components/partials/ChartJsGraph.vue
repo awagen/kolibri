@@ -11,7 +11,6 @@
 import {Chart, registerables} from "chart.js";
 import {Colors} from "chart.js"
 import * as d3 from "d3";
-import {interpolateYlGn} from "d3-scale-chromatic";
 import _ from "lodash";
 import {onMounted} from "vue";
 
@@ -22,6 +21,11 @@ export default {
 
   name: "ChartJsGraph",
   props: {
+    index: {
+      type: Number,
+      required: false,
+      default: 0
+    },
     canvasId: {
       type: String,
       required: true
@@ -48,12 +52,11 @@ export default {
   },
   setup(props, context) {
 
-    let numDatasets = props.datasets.length
     // data settings, enriching the passed info
     let data = {
       labels: props.labels,
       datasets: _.cloneDeep(props.datasets).map((data, index) => {
-        let color = numDatasets > 1 ? d3.interpolateCool(index / (numDatasets - 1)) : interpolateYlGn(1.0)
+        let color = d3.interpolateCool(Math.random())
         data["backgroundColor"] = color
         data["borderColor"] = color
         data["borderWidth"] = 1
@@ -69,7 +72,36 @@ export default {
       type: 'line',
       data: {},
       options: {
+        // showLine: false,
+        responsive: true,
         maintainAspectRatio: false,
+        plugins: {
+          colors: {
+            enabled: false
+          }
+        },
+        // scales: {
+        //   xAxes: {
+        //     ticks: {
+        //       autoSkip: false,
+        //       maxRotation: 90,
+        //       minRotation: 90
+        //     }
+        //   }
+        // }
+      }
+    };
+
+    const scatterConfig = {
+      type: 'scatter',
+      data: {},
+      options: {
+        scales: {
+          x: {
+            type: 'linear',
+            position: 'bottom'
+          }
+        },
         plugins: {
           colors: {
             enabled: false
@@ -77,6 +109,7 @@ export default {
         }
       }
     };
+
     const barConfig = {
       type: 'bar',
       data: {},
@@ -102,6 +135,7 @@ export default {
 
 
     let configType = {
+      scatter: scatterConfig,
       line: lineConfig,
       bar: barConfig
     }
@@ -124,7 +158,7 @@ export default {
 <style scoped>
 
 .chartContainer {
-  height: 400px;
+  height: 600px;
 }
 
 </style>
