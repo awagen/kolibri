@@ -1,7 +1,48 @@
 <template>
 
   <div class="row-container columns">
-    <!--    <form class="form-horizontal col-6 column">-->
+
+    <!-- file selector -->
+    <form class="form-horizontal col-6 column">
+      <div class="form-group">
+        <div class="col-3 col-sm-12">
+          <label class="form-label" for="template-type-1">Select Execution / Experiment</label>
+        </div>
+        <div class="col-9 col-sm-12">
+          <select @change="experimentSelectEvent($event)" class="form-select k-value-selector" id="template-type-1">
+            <option>Choose an option</option>
+            <option v-for="executionId in this.$store.state.resultState.availableResultExecutionIDs">{{ executionId }}</option>
+          </select>
+        </div>
+        <div class="k-form-separator"></div>
+        <!-- select the needed template based on above selection -->
+        <div class="col-3 col-sm-12">
+          <label class="form-label" for="template-name-1">Select Result</label>
+        </div>
+        <div class="col-9 col-sm-12">
+          <select @change="resultSelectEvent($event, this.$store.state.resultState.currentlySelectedExecutionID)" class="form-select k-field k-value-selector"
+                  id="template-name-1">
+            <option>Choose an option</option>
+            <option v-for="resultId in this.$store.state.resultState.availableResultsForSelectedExecutionID">{{ resultId }}</option>
+          </select>
+        </div>
+
+        <div class="k-form-separator"></div>
+        <!-- select the metric name based on above selection -->
+        <div class="col-3 col-sm-12">
+          <label class="form-label" for="template-metric-1">Select Metric</label>
+        </div>
+        <div class="col-9 col-sm-12">
+          <select v-model="this.$store.state.resultState.selectedMetricName" @change="metricSelectEvent($event)" class="form-select k-field k-value-selector"
+                  id="template-metric-1">
+            <option>Choose an option</option>
+            <option v-for="metricName in this.$store.state.resultState.availableMetricNames">{{ metricName }}</option>
+          </select>
+        </div>
+
+      </div>
+    </form>
+
     <form class="form-horizontal col-12 column">
       <div class="form-group">
         <div class="col-12 col-sm-12">
@@ -63,7 +104,52 @@ export default {
 
   components: {},
   props: [],
-  methods: {},
+  methods: {
+    experimentSelectEvent(event) {
+      this.$store.commit("updateAvailableResultsForExecutionID", event.target.value)
+    },
+
+    resultSelectEvent(event, executionId) {
+      let resultID = event.target.value
+      let payload = {"executionId": executionId, "resultId": resultID}
+      this.$store.commit("updateSingleResultState", payload)
+    },
+
+    metricSelectEvent(event) {
+      let metricName = event.target.value
+      this.$store.commit("updateSelectedMetricName", metricName)
+    },
+
+
+    /**
+    TODO: provide methods to select single data from
+    this.$store.state.resultState.fullResultForExecutionIDAndResultID
+    after executino and result id are selected
+    structure:
+
+     * {
+     *   data: [
+     *     datasets: [
+     *       {
+     *         name: "n"
+     *         data: [0.64, ...],
+     *         failReasons: [{},..],
+     *         failSamples: [0,..],
+     *         successSamples: [1,..],
+     *         weightedFailSamples: [0.0,...],
+     *         weightedSuccessSamples: [1.0, ...]
+     *       }
+     *     ]
+     *     // entry type indicates the kind of value, e.g avg (double / float) or histogram
+     *     entryType: "DOUBLE_AVG" / ""NESTED_MAP_UNWEIGHTED_SUM_VALUE""
+     *     failCount: 0
+     *     successCount: 0
+     *     labels: ["a", ...]  //all arrays in single datasets have as many elements as labels here
+     *   ]
+     *
+     * }
+     */
+  },
   setup(props, context) {
 
     let numDatasets = dataVizTestJson["datasets"].length
@@ -163,6 +249,10 @@ export default {
 
 .timeSeriesContainer {
   height: 400px;
+}
+
+.k-value-selector {
+  color: black;
 }
 
 

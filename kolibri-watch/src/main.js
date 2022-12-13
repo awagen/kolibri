@@ -14,7 +14,6 @@ import {
     retrieveExecutionIDs,
     retrieveSingleResultIDsForExecutionID,
     retrieveSingleResultById,
-    retrieveSingleResultByIdFiltered,
     retrieveAnalysisTopFlop,
     retrieveAnalysisVariance,
     retrieveRequestSamplesForData,
@@ -23,13 +22,14 @@ import {
     retrieveJobInformation,
     retrieveAllAvailableTemplateInfos
 } from './utils/retrievalFunctions'
+import _ from "lodash";
 
 // we could just reference style sheets relatively from assets folder, but we keep one central scss file instead
 // as central place, mixing sheets and overwriting styles
 import './assets/css/styles.scss';
 import {kolibriStateRefreshInterval} from "./utils/globalConstants";
 import {objectToJsonStringAndSyntaxHighlight, stringifyObj} from "./utils/formatFunctions";
-import {filteredResultsReduced, selectedDataToParameterValuesJson} from "./utils/dataFunctions";
+import {selectedDataToParameterValuesJson} from "./utils/dataFunctions";
 import {idForMetric} from "./utils/metricFunctions";
 import {objToInputDef} from "./utils/inputDefConversions";
 
@@ -84,13 +84,35 @@ export function createAppStore() {
                 },
 
                 resultState: {
-                    // result states
+                    // available execution ids (e.g corresponding to jobIds)
                     availableResultExecutionIDs: [],
                     currentlySelectedExecutionID: "",
+                    // single result identifier for the currently selected executionId
                     availableResultsForSelectedExecutionID: [],
+                    // for selected execution and result file name, represents the selected
+                    // result
                     fullResultForExecutionIDAndResultID: {},
-                    filteredResultForExecutionIDAndResultID: {},
-                    reducedFilteredResultForExecutionIDAndResultID: {}
+
+                    // data type corresponds to entryType in the result
+                    availableMetricNames: [],
+                    metricNameToDataType: {},
+                    selectedMetricName: "",
+                    /**
+                     * elected data should contain the following:
+                     * {
+                     *   dataType: "",
+                     *   labels: ["a", ...],
+                     *   name: "n",
+                     *   data: [0.64]
+                     * }
+                     * Based on this we can distinguish whether to add a plot of single points or
+                     * are deriving a histogram (histogram needs further selection,
+                     * e.g the single values the parameter can take. Then needs mapping of the
+                     * value keys to integers to pick the labels
+                     */
+                    selectedData: {}
+
+
                 },
 
                 analysisState: {
@@ -241,20 +263,87 @@ export function createAppStore() {
             updateAvailableResultsForExecutionID(state, executionId) {
                 state.resultState.currentlySelectedExecutionID = executionId
                 retrieveSingleResultIDsForExecutionID(executionId)
-                    .then(response => state.resultState.availableResultsForSelectedExecutionID = response.sort())
+                    .then(response => {
+                        state.resultState.availableResultsForSelectedExecutionID = response.sort()
+                    })
             },
 
+            /**
+             * Given execution and resultId, load the corresponding result state
+             * @param state
+             * @param executionId
+             * @param resultId
+             */
             updateSingleResultState(state, {executionId, resultId}) {
                 retrieveSingleResultById(executionId, resultId)
-                    .then(response => state.resultState.fullResultForExecutionIDAndResultID = response)
+                    .then(response => {
+                        // first reset downstream selections
+                        state.resultState.selectedMetricName = ""
+                        state.resultState.selectedData = {}
+                        // now setting selections
+                        state.resultState.fullResultForExecutionIDAndResultID = response
+                        state.resultState.availableMetricNames = response.data.flatMap(x =>  x.datasets.map(ds => ds.name))
+                        let metricNameToDataTypeMap = {}
+                        response.data.forEach(x =>  x.datasets.forEach(entry => {
+                            metricNameToDataTypeMap[entry.name] = x.entryType
+                        }))
+                        state.resultState.metricNameToDataType = metricNameToDataTypeMap
+                    })
             },
 
-            updateSingleResultStateFiltered(state, {executionId, resultId, metricName, topN, reversed}) {
-                retrieveSingleResultByIdFiltered(executionId, resultId, metricName, topN, reversed)
-                    .then(response => {
-                        state.resultState.filteredResultForExecutionIDAndResultID = response
-                        state.resultState.reducedFilteredResultForExecutionIDAndResultID = filteredResultsReduced(response)
-                    })
+            /**
+             * Metric names are selectable after experiment and specific result file are
+             * selected, thus after the metric name is selected,
+             * we can pull all example data to render it
+             * @param state
+             * @param metricName
+             */
+            updateSelectedMetricName(state, metricName) {
+                // set metric name
+                state.resultState.selectedMetricName = metricName
+                // extract data points and corresponding labels
+                let dataType = state.resultState.metricNameToDataType[metricName]
+                let data = []
+                let labels = []
+                state.resultState.fullResultForExecutionIDAndResultID.data.find(entries => {
+                    let relatedDataset = entries.datasets.find(dataset => dataset.name === metricName)
+                    if (relatedDataset !== undefined) {
+                        labels = entries.labels
+                        data = {}
+                        // if its only a series of float values, just set data to the array of values
+                        if (dataType === "DOUBLE_AVG") {
+                            data = relatedDataset.data
+                        }
+                        if (["NESTED_MAP_UNWEIGHTED_SUM_VALUE", "NESTED_MAP_WEIGHTED_SUM_VALUE"].includes(dataType)) {
+                            // for histogram data, we need per value a series of labels and a series of counts
+                            let transformedData = relatedDataset.data.map(sample => {
+                                let keys = Object.keys(sample)
+                                keys.forEach(key => {
+                                    data[key] = {}
+                                    let dataForKey = sample[key]
+                                    // TODO: for other types of data it might no hold that the values the
+                                    // counts are assigned to are numeric, thus add a more general mechanism
+                                    // without numeric value casting
+                                    // now will in the data and label keys
+                                    let sortedKeys = Object.keys(dataForKey)
+                                    let intPositionLabels = sortedKeys.map(x => parseInt(x))
+                                    let positionCountValues = sortedKeys.map(x => dataForKey[x])
+                                    data[key]["labels"] = intPositionLabels
+                                    data[key]["data"] = positionCountValues
+                                })
+                            })
+                        }
+                        return true
+                    }
+                    return false
+                })
+                // set full data object sufficient for visualizing the data
+                state.resultState.selectedData = {
+                    name: metricName,
+                    dataType: dataType,
+                    labels: _.cloneDeep(labels),
+                    data: _.cloneDeep(data)
+                }
             },
 
             updateAnalysisTopFlop(state, {

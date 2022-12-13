@@ -27,10 +27,6 @@ vue client is executed should have highest prio and not be overwritten
 ```store.commit("updateAvailableResultsForExecutionID", "testJob1")```
 - Retrieve full result data for resultId for given executionId:
 ```store.commit("updateSingleResultState", {"executionId": "testJob1", "resultId": "(ALL1)"})```
-- Retrieve filtered result data for resultId for given executionId:
-```store.commit("updateSingleResultStateFiltered", {"executionId": "testJob1", "resultId": "(ALL1)",
-    "metricName": "NDCG_10", "topN": 20, "reversed": false})
-```
 - Retrieve tops and flops queries (improving / worsening) for given executionId and current parameter settings and 
 settings to compare against:
 ```

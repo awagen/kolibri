@@ -23,7 +23,7 @@
             <label class="form-label" for="template-name-1">Select Result</label>
           </div>
           <div class="col-9 col-sm-12">
-            <select @change="filteredResultSelectEvent($event, this.$store.state.resultState.currentlySelectedExecutionID)" class="form-select k-field k-value-selector"
+            <select @change="updateTopFlopAndVarianceSelectEvent($event, this.$store.state.resultState.currentlySelectedExecutionID)" class="form-select k-field k-value-selector"
                     id="template-name-1">
               <option>Choose an option</option>
               <option v-for="resultId in this.$store.state.resultState.availableResultsForSelectedExecutionID">{{ resultId }}</option>
@@ -95,17 +95,7 @@ export default {
       this.$store.commit("updateSingleResultState", payload)
     },
 
-    filteredResultSelectEvent(event, executionId) {
-      let resultID = event.target.value
-      let payload = {
-        "executionId": executionId,
-        "resultId": resultID,
-        // TODO: make those hardcoded values selectable
-        "metricName": "NDCG@8",
-        "topN": 20000000,
-        "reversed": false
-      }
-      this.$store.commit("updateSingleResultStateFiltered", payload)
+    updateTopFlopAndVarianceSelectEvent(event, executionId) {
       this.updateAnalysisTopFlop(executionId)
       this.updateAnalysisVariance(executionId)
     },
