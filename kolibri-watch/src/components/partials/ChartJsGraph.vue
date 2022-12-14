@@ -1,7 +1,5 @@
 <template>
 
-  <!-- TODO: enrich each chart besides the metricname with the name of the
-   experiment and filename -->
   <div class="chartContainer">
     <canvas :id="canvasId"></canvas>
   </div>

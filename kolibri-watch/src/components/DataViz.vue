@@ -352,6 +352,10 @@ export default {
     getDataForCurrentSelection() {
       // set metric name
       let metricName = this.$store.state.resultState.selectedMetricName
+      let executionId = this.$store.state.resultState.currentlySelectedExecutionID
+      let resultId = this.$store.state.resultState.currentlySelectedResultId
+      let normalizedResultId = resultId.split(".")[0]
+      let metricIdentifier = `${executionId}_${normalizedResultId}_${metricName}`
       // extract data points and corresponding labels
       let dataType = this.$store.state.resultState.metricNameToDataType[metricName]
       let data = []
@@ -366,7 +370,7 @@ export default {
           if (dataType === "DOUBLE_AVG") {
             // now by default sort by descending. For this zip labels and data
             // sort and then unzip
-            metricNames.push(metricName)
+            metricNames.push(metricIdentifier)
             let dataAndLabels = []
             for (const [index, label] of labels.entries()) {
               dataAndLabels.push([relatedDataset.data[index], label])
@@ -384,8 +388,7 @@ export default {
             let histogramMap = this.getHistogramMapForMetricNameAndLabel(metricName, selectedHistogramParameterSetting)
             let selectedHistogramData = this.getHistogramDataEntryForValue(histogramMap, selectedHistogramValue, dataType)
 
-            // TODO: add more naming here e.g which experiment, which label, which parameter
-            metricNames.push(`${metricName}-${selectedHistogramValue}`)
+            metricNames.push(`${metricIdentifier}_${selectedHistogramValue}`)
             labels = selectedHistogramData.labels
             data.push(selectedHistogramData.datasets[0].data)
           }
@@ -438,7 +441,8 @@ export default {
       let newData = _.cloneDeep(this.$store.state.resultState.selectedData)
 
       if (["DOUBLE_AVG"].includes(data1.dataType)) {
-        newData[toIndex].datasets.push(..._.cloneDeep(data1.datasets))
+        // we adjust the labels of dataset corresponding to startIndex to those from the destination
+        newData[toIndex].datasets.push(...data1.datasets.map(ds => this.extendDataSet(data1.labels, data2.labels, ds)))
       }
       if (["NESTED_MAP_UNWEIGHTED_SUM_VALUE", "NESTED_MAP_WEIGHTED_SUM_VALUE"].includes(data1.dataType)) {
         let labels1 = data1.labels
