@@ -373,7 +373,7 @@ export default {
               return b[0] - a[0];
             })
             data.push(dataAndLabels.map(x => x[0]))
-            labels = dataAndLabels.map(x => x[1])
+            labels = this.parameterMapsToString(dataAndLabels.map(x => x[1]))
           }
           if (["NESTED_MAP_UNWEIGHTED_SUM_VALUE", "NESTED_MAP_WEIGHTED_SUM_VALUE"].includes(dataType)) {
             let selectedHistogramParameterSetting = this.$store.state.resultState.selectedHistogramLabelName
