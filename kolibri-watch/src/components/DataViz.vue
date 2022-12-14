@@ -172,7 +172,6 @@ export default {
         let histogramData = this.getHistogramDataForMetric(metricName)
         let availableLabels = histogramData.labels
         let availableHistogramValues = Object.keys(histogramData.data["data"][0])
-        console.info(`histogram values: ${preservingJsonFormat(availableHistogramValues)}`)
         this.$store.commit("updateAvailableHistogramLabelNames", availableLabels)
         this.$store.commit("updateAvailableHistogramValues", availableHistogramValues)
       }
@@ -234,7 +233,6 @@ export default {
      * @returns {*}
      */
     parameterMapsToString(paramMapList) {
-      console.info(`passed paramMap: ${preservingJsonFormat(paramMapList)}`)
       return paramMapList.map(x => {
         return Object.keys(x).flatMap(key => {
           return key + '__' + x[key].join('_')
