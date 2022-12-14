@@ -56,7 +56,7 @@ export default {
     let data = {
       labels: props.labels,
       datasets: _.cloneDeep(props.datasets).map((data, index) => {
-        let color = d3.interpolateCool(Math.random())
+        let color = d3.interpolateCool(index / 10.0)
         data["backgroundColor"] = color
         data["borderColor"] = color
         data["borderWidth"] = 1
