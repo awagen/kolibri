@@ -1,0 +1,770 @@
+{
+  "type": "NESTED",
+  "fields": [
+    {
+      "nameFormat": {
+        "type": "STRING_CONSTANT",
+        "value": "type"
+      },
+      "required": true,
+      "valueFormat": {
+        "type": "CHOICE_STRING",
+        "choices": [
+          "STANDALONE",
+          "MAPPING"
+        ]
+      },
+      "description": ""
+    }
+  ],
+  "conditionalFieldsSeq": [
+    {
+      "conditionFieldId": "type",
+      "mapping": {
+        "STANDALONE": [
+          {
+            "nameFormat": {
+              "type": "STRING_CONSTANT",
+              "value": "values"
+            },
+            "required": true,
+            "valueFormat": {
+              "type": "NESTED",
+              "fields": [
+                {
+                  "nameFormat": {
+                    "type": "STRING_CONSTANT",
+                    "value": "name"
+                  },
+                  "required": true,
+                  "valueFormat": {
+                    "type": "STRING"
+                  },
+                  "description": ""
+                },
+                {
+                  "nameFormat": {
+                    "type": "STRING_CONSTANT",
+                    "value": "values_type"
+                  },
+                  "required": true,
+                  "valueFormat": {
+                    "type": "CHOICE_STRING",
+                    "choices": [
+                      "BODY",
+                      "HEADER",
+                      "URL_PARAMETER"
+                    ]
+                  },
+                  "description": ""
+                },
+                {
+                  "nameFormat": {
+                    "type": "STRING_CONSTANT",
+                    "value": "values"
+                  },
+                  "required": true,
+                  "valueFormat": {
+                    "type": "NESTED",
+                    "fields": [
+                      {
+                        "nameFormat": {
+                          "type": "STRING_CONSTANT",
+                          "value": "type"
+                        },
+                        "required": true,
+                        "valueFormat": {
+                          "type": "CHOICE_STRING",
+                          "choices": [
+                            "FROM_ORDERED_VALUES_TYPE",
+                            "PARAMETER_VALUES_TYPE",
+                            "VALUES_FROM_NODE_STORAGE"
+                          ]
+                        },
+                        "description": ""
+                      }
+                    ],
+                    "conditionalFieldsSeq": [
+                      {
+                        "conditionFieldId": "type",
+                        "mapping": {
+                          "FROM_ORDERED_VALUES_TYPE": [
+                            {
+                              "nameFormat": {
+                                "type": "STRING_CONSTANT",
+                                "value": "values"
+                              },
+                              "required": true,
+                              "valueFormat": {
+                                "type": "NESTED",
+                                "fields": [
+                                  {
+                                    "nameFormat": {
+                                      "type": "STRING_CONSTANT",
+                                      "value": "type"
+                                    },
+                                    "required": true,
+                                    "valueFormat": {
+                                      "type": "CHOICE_STRING",
+                                      "choices": [
+                                        "FROM_FILENAME_KEYS_TYPE",
+                                        "FROM_FILES_LINES_TYPE",
+                                        "FROM_VALUES_TYPE",
+                                        "FROM_RANGE_TYPE"
+                                      ]
+                                    },
+                                    "description": ""
+                                  },
+                                  {
+                                    "nameFormat": {
+                                      "type": "STRING_CONSTANT",
+                                      "value": "name"
+                                    },
+                                    "required": true,
+                                    "valueFormat": {
+                                      "type": "STRING"
+                                    },
+                                    "description": ""
+                                  }
+                                ],
+                                "conditionalFieldsSeq": [
+                                  {
+                                    "conditionFieldId": "type",
+                                    "mapping": {
+                                      "FROM_FILENAME_KEYS_TYPE": [
+                                        {
+                                          "nameFormat": {
+                                            "type": "STRING_CONSTANT",
+                                            "value": "directory"
+                                          },
+                                          "required": true,
+                                          "valueFormat": {
+                                            "type": "STRING"
+                                          },
+                                          "description": ""
+                                        },
+                                        {
+                                          "nameFormat": {
+                                            "type": "STRING_CONSTANT",
+                                            "value": "filesSuffix"
+                                          },
+                                          "required": true,
+                                          "valueFormat": {
+                                            "type": "STRING"
+                                          },
+                                          "description": ""
+                                        }
+                                      ],
+                                      "FROM_FILES_LINES_TYPE": [
+                                        {
+                                          "nameFormat": {
+                                            "type": "STRING_CONSTANT",
+                                            "value": "file"
+                                          },
+                                          "required": true,
+                                          "valueFormat": {
+                                            "type": "STRING"
+                                          },
+                                          "description": ""
+                                        }
+                                      ],
+                                      "FROM_VALUES_TYPE": [
+                                        {
+                                          "nameFormat": {
+                                            "type": "STRING_CONSTANT",
+                                            "value": "values"
+                                          },
+                                          "required": true,
+                                          "valueFormat": {
+                                            "type": "STRING_SEQ"
+                                          },
+                                          "description": ""
+                                        }
+                                      ],
+                                      "FROM_RANGE_TYPE": [
+                                        {
+                                          "nameFormat": {
+                                            "type": "STRING_CONSTANT",
+                                            "value": "start"
+                                          },
+                                          "required": true,
+                                          "valueFormat": {
+                                            "type": "DOUBLE"
+                                          },
+                                          "description": ""
+                                        },
+                                        {
+                                          "nameFormat": {
+                                            "type": "STRING_CONSTANT",
+                                            "value": "end"
+                                          },
+                                          "required": true,
+                                          "valueFormat": {
+                                            "type": "DOUBLE"
+                                          },
+                                          "description": ""
+                                        },
+                                        {
+                                          "nameFormat": {
+                                            "type": "STRING_CONSTANT",
+                                            "value": "stepSize"
+                                          },
+                                          "required": true,
+                                          "valueFormat": {
+                                            "type": "DOUBLE"
+                                          },
+                                          "description": ""
+                                        }
+                                      ]
+                                    }
+                                  }
+                                ]
+                              },
+                              "description": ""
+                            }
+                          ],
+                          "PARAMETER_VALUES_TYPE": [
+                            {
+                              "nameFormat": {
+                                "type": "STRING_CONSTANT",
+                                "value": "values"
+                              },
+                              "required": true,
+                              "valueFormat": {
+                                "type": "STRING_SEQ"
+                              },
+                              "description": ""
+                            }
+                          ],
+                          "VALUES_FROM_NODE_STORAGE": [
+                            {
+                              "nameFormat": {
+                                "type": "STRING_CONSTANT",
+                                "value": "identifier"
+                              },
+                              "required": true,
+                              "valueFormat": {
+                                "type": "STRING"
+                              },
+                              "description": ""
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  "description": ""
+                }
+              ],
+              "conditionalFieldsSeq": []
+            },
+            "description": ""
+          }
+        ],
+        "MAPPING": [
+          {
+            "nameFormat": {
+              "type": "STRING_CONSTANT",
+              "value": "values"
+            },
+            "required": true,
+            "valueFormat": {
+              "type": "NESTED",
+              "fields": [
+                {
+                  "nameFormat": {
+                    "type": "STRING_CONSTANT",
+                    "value": "key_values"
+                  },
+                  "required": true,
+                  "valueFormat": {
+                    "type": "NESTED",
+                    "fields": [
+                      {
+                        "nameFormat": {
+                          "type": "STRING_CONSTANT",
+                          "value": "name"
+                        },
+                        "required": true,
+                        "valueFormat": {
+                          "type": "STRING"
+                        },
+                        "description": ""
+                      },
+                      {
+                        "nameFormat": {
+                          "type": "STRING_CONSTANT",
+                          "value": "values_type"
+                        },
+                        "required": true,
+                        "valueFormat": {
+                          "type": "CHOICE_STRING",
+                          "choices": [
+                            "BODY",
+                            "HEADER",
+                            "URL_PARAMETER"
+                          ]
+                        },
+                        "description": ""
+                      },
+                      {
+                        "nameFormat": {
+                          "type": "STRING_CONSTANT",
+                          "value": "values"
+                        },
+                        "required": true,
+                        "valueFormat": {
+                          "type": "NESTED",
+                          "fields": [
+                            {
+                              "nameFormat": {
+                                "type": "STRING_CONSTANT",
+                                "value": "type"
+                              },
+                              "required": true,
+                              "valueFormat": {
+                                "type": "CHOICE_STRING",
+                                "choices": [
+                                  "FROM_ORDERED_VALUES_TYPE",
+                                  "PARAMETER_VALUES_TYPE",
+                                  "VALUES_FROM_NODE_STORAGE"
+                                ]
+                              },
+                              "description": ""
+                            }
+                          ],
+                          "conditionalFieldsSeq": [
+                            {
+                              "conditionFieldId": "type",
+                              "mapping": {
+                                "FROM_ORDERED_VALUES_TYPE": [
+                                  {
+                                    "nameFormat": {
+                                      "type": "STRING_CONSTANT",
+                                      "value": "values"
+                                    },
+                                    "required": true,
+                                    "valueFormat": {
+                                      "type": "NESTED",
+                                      "fields": [
+                                        {
+                                          "nameFormat": {
+                                            "type": "STRING_CONSTANT",
+                                            "value": "type"
+                                          },
+                                          "required": true,
+                                          "valueFormat": {
+                                            "type": "CHOICE_STRING",
+                                            "choices": [
+                                              "FROM_FILENAME_KEYS_TYPE",
+                                              "FROM_FILES_LINES_TYPE",
+                                              "FROM_VALUES_TYPE",
+                                              "FROM_RANGE_TYPE"
+                                            ]
+                                          },
+                                          "description": ""
+                                        },
+                                        {
+                                          "nameFormat": {
+                                            "type": "STRING_CONSTANT",
+                                            "value": "name"
+                                          },
+                                          "required": true,
+                                          "valueFormat": {
+                                            "type": "STRING"
+                                          },
+                                          "description": ""
+                                        }
+                                      ],
+                                      "conditionalFieldsSeq": [
+                                        {
+                                          "conditionFieldId": "type",
+                                          "mapping": {
+                                            "FROM_FILENAME_KEYS_TYPE": [
+                                              {
+                                                "nameFormat": {
+                                                  "type": "STRING_CONSTANT",
+                                                  "value": "directory"
+                                                },
+                                                "required": true,
+                                                "valueFormat": {
+                                                  "type": "STRING"
+                                                },
+                                                "description": ""
+                                              },
+                                              {
+                                                "nameFormat": {
+                                                  "type": "STRING_CONSTANT",
+                                                  "value": "filesSuffix"
+                                                },
+                                                "required": true,
+                                                "valueFormat": {
+                                                  "type": "STRING"
+                                                },
+                                                "description": ""
+                                              }
+                                            ],
+                                            "FROM_FILES_LINES_TYPE": [
+                                              {
+                                                "nameFormat": {
+                                                  "type": "STRING_CONSTANT",
+                                                  "value": "file"
+                                                },
+                                                "required": true,
+                                                "valueFormat": {
+                                                  "type": "STRING"
+                                                },
+                                                "description": ""
+                                              }
+                                            ],
+                                            "FROM_VALUES_TYPE": [
+                                              {
+                                                "nameFormat": {
+                                                  "type": "STRING_CONSTANT",
+                                                  "value": "values"
+                                                },
+                                                "required": true,
+                                                "valueFormat": {
+                                                  "type": "STRING_SEQ"
+                                                },
+                                                "description": ""
+                                              }
+                                            ],
+                                            "FROM_RANGE_TYPE": [
+                                              {
+                                                "nameFormat": {
+                                                  "type": "STRING_CONSTANT",
+                                                  "value": "start"
+                                                },
+                                                "required": true,
+                                                "valueFormat": {
+                                                  "type": "DOUBLE"
+                                                },
+                                                "description": ""
+                                              },
+                                              {
+                                                "nameFormat": {
+                                                  "type": "STRING_CONSTANT",
+                                                  "value": "end"
+                                                },
+                                                "required": true,
+                                                "valueFormat": {
+                                                  "type": "DOUBLE"
+                                                },
+                                                "description": ""
+                                              },
+                                              {
+                                                "nameFormat": {
+                                                  "type": "STRING_CONSTANT",
+                                                  "value": "stepSize"
+                                                },
+                                                "required": true,
+                                                "valueFormat": {
+                                                  "type": "DOUBLE"
+                                                },
+                                                "description": ""
+                                              }
+                                            ]
+                                          }
+                                        }
+                                      ]
+                                    },
+                                    "description": ""
+                                  }
+                                ],
+                                "PARAMETER_VALUES_TYPE": [
+                                  {
+                                    "nameFormat": {
+                                      "type": "STRING_CONSTANT",
+                                      "value": "values"
+                                    },
+                                    "required": true,
+                                    "valueFormat": {
+                                      "type": "STRING_SEQ"
+                                    },
+                                    "description": ""
+                                  }
+                                ],
+                                "VALUES_FROM_NODE_STORAGE": [
+                                  {
+                                    "nameFormat": {
+                                      "type": "STRING_CONSTANT",
+                                      "value": "identifier"
+                                    },
+                                    "required": true,
+                                    "valueFormat": {
+                                      "type": "STRING"
+                                    },
+                                    "description": ""
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        },
+                        "description": ""
+                      }
+                    ],
+                    "conditionalFieldsSeq": []
+                  },
+                  "description": ""
+                },
+                {
+                  "nameFormat": {
+                    "type": "STRING_CONSTANT",
+                    "value": "mapped_values"
+                  },
+                  "required": true,
+                  "valueFormat": {
+                    "type": "GENERIC_SEQ_FORMAT",
+                    "perElementFormat": {
+                      "type": "NESTED",
+                      "fields": [
+                        {
+                          "nameFormat": {
+                            "type": "STRING_CONSTANT",
+                            "value": "name"
+                          },
+                          "required": true,
+                          "valueFormat": {
+                            "type": "STRING"
+                          },
+                          "description": ""
+                        },
+                        {
+                          "nameFormat": {
+                            "type": "STRING_CONSTANT",
+                            "value": "values_type"
+                          },
+                          "required": true,
+                          "valueFormat": {
+                            "type": "CHOICE_STRING",
+                            "choices": [
+                              "BODY",
+                              "HEADER",
+                              "URL_PARAMETER"
+                            ]
+                          },
+                          "description": ""
+                        },
+                        {
+                          "nameFormat": {
+                            "type": "STRING_CONSTANT",
+                            "value": "values"
+                          },
+                          "required": true,
+                          "valueFormat": {
+                            "type": "NESTED",
+                            "fields": [
+                              {
+                                "nameFormat": {
+                                  "type": "STRING_CONSTANT",
+                                  "value": "type"
+                                },
+                                "required": true,
+                                "valueFormat": {
+                                  "type": "CHOICE_STRING",
+                                  "choices": [
+                                    "JSON_VALUES_MAPPING_TYPE",
+                                    "JSON_VALUES_FILES_MAPPING_TYPE",
+                                    "JSON_SINGLE_MAPPINGS_TYPE",
+                                    "JSON_ARRAY_MAPPINGS_TYPE",
+                                    "FILE_PREFIX_TO_FILE_LINES_TYPE",
+                                    "CSV_MAPPING_TYPE",
+                                    "VALUES_FROM_NODE_STORAGE"
+                                  ]
+                                },
+                                "description": ""
+                              }
+                            ],
+                            "conditionalFieldsSeq": [
+                              {
+                                "conditionFieldId": "type",
+                                "mapping": {
+                                  "JSON_VALUES_FILES_MAPPING_TYPE": [
+                                    {
+                                      "nameFormat": {
+                                        "type": "STRING_CONSTANT",
+                                        "value": "values"
+                                      },
+                                      "required": true,
+                                      "valueFormat": {
+                                        "type": "MAP",
+                                        "keyFormat": {
+                                          "type": "STRING"
+                                        },
+                                        "valueFormat": {
+                                          "type": "STRING"
+                                        }
+                                      },
+                                      "description": ""
+                                    }
+                                  ],
+                                  "VALUES_FROM_NODE_STORAGE": [
+                                    {
+                                      "nameFormat": {
+                                        "type": "STRING_CONSTANT",
+                                        "value": "identifier"
+                                      },
+                                      "required": true,
+                                      "valueFormat": {
+                                        "type": "STRING"
+                                      },
+                                      "description": ""
+                                    }
+                                  ],
+                                  "JSON_ARRAY_MAPPINGS_TYPE": [
+                                    {
+                                      "nameFormat": {
+                                        "type": "STRING_CONSTANT",
+                                        "value": "values"
+                                      },
+                                      "required": true,
+                                      "valueFormat": {
+                                        "type": "STRING"
+                                      },
+                                      "description": ""
+                                    }
+                                  ],
+                                  "JSON_VALUES_MAPPING_TYPE": [
+                                    {
+                                      "nameFormat": {
+                                        "type": "STRING_CONSTANT",
+                                        "value": "values"
+                                      },
+                                      "required": true,
+                                      "valueFormat": {
+                                        "type": "MAP",
+                                        "keyFormat": {
+                                          "type": "STRING"
+                                        },
+                                        "valueFormat": {
+                                          "type": "STRING_SEQ"
+                                        }
+                                      },
+                                      "description": ""
+                                    }
+                                  ],
+                                  "CSV_MAPPING_TYPE": [
+                                    {
+                                      "nameFormat": {
+                                        "type": "STRING_CONSTANT",
+                                        "value": "values"
+                                      },
+                                      "required": true,
+                                      "valueFormat": {
+                                        "type": "STRING"
+                                      },
+                                      "description": ""
+                                    },
+                                    {
+                                      "nameFormat": {
+                                        "type": "STRING_CONSTANT",
+                                        "value": "column_delimiter"
+                                      },
+                                      "required": true,
+                                      "valueFormat": {
+                                        "type": "STRING"
+                                      },
+                                      "description": ""
+                                    },
+                                    {
+                                      "nameFormat": {
+                                        "type": "STRING_CONSTANT",
+                                        "value": "key_column_index"
+                                      },
+                                      "required": true,
+                                      "valueFormat": {
+                                        "type": "MIN_MAX_INT",
+                                        "min": 0,
+                                        "max": 2147483647
+                                      },
+                                      "description": ""
+                                    },
+                                    {
+                                      "nameFormat": {
+                                        "type": "STRING_CONSTANT",
+                                        "value": "value_column_index"
+                                      },
+                                      "required": true,
+                                      "valueFormat": {
+                                        "type": "MIN_MAX_INT",
+                                        "min": 0,
+                                        "max": 2147483647
+                                      },
+                                      "description": ""
+                                    }
+                                  ],
+                                  "JSON_SINGLE_MAPPINGS_TYPE": [
+                                    {
+                                      "nameFormat": {
+                                        "type": "STRING_CONSTANT",
+                                        "value": "values"
+                                      },
+                                      "required": true,
+                                      "valueFormat": {
+                                        "type": "STRING"
+                                      },
+                                      "description": ""
+                                    }
+                                  ],
+                                  "FILE_PREFIX_TO_FILE_LINES_TYPE": [
+                                    {
+                                      "nameFormat": {
+                                        "type": "STRING_CONSTANT",
+                                        "value": "directory"
+                                      },
+                                      "required": true,
+                                      "valueFormat": {
+                                        "type": "STRING"
+                                      },
+                                      "description": ""
+                                    },
+                                    {
+                                      "nameFormat": {
+                                        "type": "STRING_CONSTANT",
+                                        "value": "files_suffix"
+                                      },
+                                      "required": true,
+                                      "valueFormat": {
+                                        "type": "STRING"
+                                      },
+                                      "description": ""
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          },
+                          "description": ""
+                        }
+                      ],
+                      "conditionalFieldsSeq": []
+                    }
+                  },
+                  "description": ""
+                },
+                {
+                  "nameFormat": {
+                    "type": "STRING_CONSTANT",
+                    "value": "key_mapping_assignments"
+                  },
+                  "required": true,
+                  "valueFormat": {
+                    "type": "GENERIC_SEQ_FORMAT",
+                    "perElementFormat": {
+                      "type": "INT_SEQ"
+                    }
+                  },
+                  "description": ""
+                }
+              ],
+              "conditionalFieldsSeq": []
+            },
+            "description": ""
+          }
+        ]
+      }
+    }
+  ]
+}

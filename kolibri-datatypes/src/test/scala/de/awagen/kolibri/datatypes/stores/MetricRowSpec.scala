@@ -19,6 +19,7 @@ package de.awagen.kolibri.datatypes.stores
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricsHelper._
 import de.awagen.kolibri.datatypes.testclasses.UnitTestSpec
 import de.awagen.kolibri.datatypes.values.MetricValue
+import de.awagen.kolibri.datatypes.values.aggregation.AggregationTestHelper.metricRowSupplier
 
 
 class MetricRowSpec extends UnitTestSpec {
@@ -68,6 +69,19 @@ class MetricRowSpec extends UnitTestSpec {
       fullStore.metrics.keys mustBe Set("mName1", "mName3")
       fullStore.metricValues mustBe Seq(metricsValue1, metricsValue3)
     }
+
+    "correctly add many values to MetricRow" in {
+      // given
+      var resultRow = MetricRow.emptyForParams(Map("p" -> Seq("1.0")))
+      // when
+      Range(0,100).foreach(_ => {
+        resultRow = resultRow.addRecordAndIncreaseSampleCount(metricRowSupplier.apply())
+      })
+      // then
+      resultRow.metricValues.head.biValue.value2.value mustBe Map("key1" -> Map("1" -> 100.0))
+    }
+
+
 
   }
 

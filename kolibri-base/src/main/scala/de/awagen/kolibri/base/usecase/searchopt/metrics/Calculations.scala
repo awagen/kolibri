@@ -19,21 +19,24 @@ package de.awagen.kolibri.base.usecase.searchopt.metrics
 
 import de.awagen.kolibri.base.cluster.ClusterNodeObj
 import de.awagen.kolibri.base.config.AppProperties.config.judgementQueryAndProductDelimiter
-import de.awagen.kolibri.base.directives.{Resource, RetrievalDirective, WithResources}
+import de.awagen.kolibri.base.directives.{Resource, RetrievalDirective}
 import de.awagen.kolibri.base.http.client.request.RequestTemplate
 import de.awagen.kolibri.base.resources.RetrievalError
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.ReservedStorageKeys._
-import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.{ComputeResult, ResultRecord}
+import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.BooleanSeqToDoubleCalculation
 import de.awagen.kolibri.base.usecase.searchopt.metrics.ComputeFailReason.missingKeyFailReason
-import de.awagen.kolibri.base.usecase.searchopt.metrics.Functions.{countValues, findFirstValue}
-import de.awagen.kolibri.datatypes.io.KolibriSerializable
+import de.awagen.kolibri.base.usecase.searchopt.metrics.ComputeResultFunctions.{countValues, findFirstValue}
+import de.awagen.kolibri.base.usecase.searchopt.metrics.PlainMetricValueFunctions.{binarizeBooleanSeq, stringSequenceToPositionOccurrenceCountMap}
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
+import de.awagen.kolibri.datatypes.values.Calculations.{Calculation, ComputeResult, ResultRecord}
 import de.awagen.kolibri.datatypes.values.MetricValue
+import de.awagen.kolibri.datatypes.values.RunningValues.RunningValue
+import org.slf4j.{Logger, LoggerFactory}
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.collection.mutable
 
 
 /**
@@ -41,31 +44,15 @@ import scala.concurrent.{ExecutionContext, Future}
  */
 object Calculations {
 
-  type ComputeResult[+T] = Either[Seq[ComputeFailReason], T]
-
-  trait Record[+T] extends KolibriSerializable {
-    def name: String
-
-    def value: T
-  }
-
-  case class ResultRecord[+T](name: String, value: ComputeResult[T]) extends Record[ComputeResult[T]]
-
-  trait Calculation[In, +Out] extends KolibriSerializable {
-    def calculation: SerializableFunction1[In, Seq[ResultRecord[Out]]]
-
-    def names: Set[String]
-  }
-
-
-  trait FutureCalculation[In, ResultIdentifier, Out] extends KolibriSerializable with WithResources {
-    val name: String
-    val calculationResultIdentifier: ResultIdentifier
-
-    def apply(in: In)(implicit ec: ExecutionContext): Future[Out]
-  }
-
+  /**
+   * Generic class to derive a double-valued metric from a sequence of booleans.
+   * @param names - set of metric names, here referring to the set of names of all produced metrics. Only duplicated here
+   *              to be able to know the metric names upfront without calculating
+   * @param calculation - calculation function, calculating metrics from sequence of booleans
+   */
   case class BooleanSeqToDoubleCalculation(names: Set[String], calculation: SerializableFunction1[Seq[Boolean], Seq[ResultRecord[Double]]]) extends Calculation[Seq[Boolean], Double]
+
+  case class StringSeqToHistogramCalculation(names: Set[String], calculation: SerializableFunction1[Seq[String], Seq[ResultRecord[Map[String, Map[String, Double]]]]]) extends Calculation[Seq[String], Map[String, Map[String, Double]]]
 
   /**
    * Calculation of single result, given a data key to retrieve input data from
@@ -98,12 +85,12 @@ object Calculations {
   case class JudgementsFromResourceIRMetricsCalculations(productIdsKey: String,
                                                          queryParamName: String,
                                                          judgementsResource: Resource[Map[String, Double]],
-                                                         metricsCalculation: MetricsCalculation) extends Calculation[WeaklyTypedMap[String], Double] {
+                                                         metricsCalculation: MetricsCalculation) extends Calculation[WeaklyTypedMap[String], Any] {
     def calculationResultIdentifier: Set[String] = metricsCalculation.metrics.map(x => x.name).toSet
 
     override val names: Set[String] = metricsCalculation.metrics.map(metric => metric.name).toSet
 
-    override val calculation: SerializableFunction1[WeaklyTypedMap[String], Seq[ResultRecord[Double]]] = tMap => {
+    override val calculation: SerializableFunction1[WeaklyTypedMap[String], Seq[ResultRecord[Any]]] = tMap => {
       val requestTemplate: RequestTemplate = tMap.get[RequestTemplate](REQUEST_TEMPLATE_STORAGE_KEY.name).get
       val query: String = requestTemplate.getParameter(queryParamName).map(x => x.head).getOrElse("")
       val productOpt: Option[Seq[String]] = tMap.get[Seq[String]](productIdsKey)
@@ -137,6 +124,10 @@ object Calculations {
     s"$searchTerm$judgementQueryAndProductDelimiter$productId"
   }
 
+}
+
+object CalculationFunctions {
+
   def booleanFindFirst(names: Set[String], findTrue: Boolean): Calculation[Seq[Boolean], Double] =
     BooleanSeqToDoubleCalculation(names, seq => Seq(ResultRecord(names.head, findFirstValue(findTrue).apply(seq))))
 
@@ -146,60 +137,26 @@ object Calculations {
 
 }
 
-object Functions {
-
-  /**
-   * Helper function to generate a MetricRow result from a throwable.
-   * Since the scope of the exception might affect multiple metrics
-   * (e.g such as when a request fails, which affects all metrics),
-   * thus it takes a set of metric names
-   *
-   * @param e : The throwable to map to MetricRow
-   * @return
-   */
-  def throwableToMetricRowResponse(e: Throwable, valueNames: Set[String], params: Map[String, Seq[String]]): MetricRow = {
-    var metricRow = MetricRow.empty.copy(params = params)
-    valueNames.foreach(x => {
-      val addValue: MetricValue[Double] = MetricValue.createAvgFailSample(metricName = x, failMap = Map[ComputeFailReason, Int](ComputeFailReason(s"${e.getClass.getName}") -> 1))
-      metricRow = metricRow.addMetricDontChangeCountStore(addValue)
-    })
-    metricRow
-  }
-
-  /**
-   * Helper function to generate a MetricRow result from a ComputeFailReason
-   *
-   * @param failReason - ComputeFailReason
-   * @return
-   */
-  def computeFailReasonsToMetricRowResponse(failReason: Seq[ComputeFailReason], metricName: String, params: Map[String, Seq[String]]): MetricRow = {
-    var metricRow = MetricRow.empty.copy(params = params)
-    failReason.foreach(reason => {
-      val addValue: MetricValue[Double] = MetricValue.createAvgFailSample(metricName = metricName, failMap = Map[ComputeFailReason, Int](reason -> 1))
-      metricRow = metricRow.addMetricDontChangeCountStore(addValue)
-    })
-    metricRow
-  }
-
-  def resultEitherToMetricRowResponse(metricName: String, result: ComputeResult[Double], params: Map[String, Seq[String]]): MetricRow = result match {
-    case Left(e) => computeFailReasonsToMetricRowResponse(e, metricName, params)
-    case Right(e) =>
-      val addValue: MetricValue[Double] = MetricValue.createAvgSuccessSample(metricName, e, 1.0)
-      MetricRow.empty.copy(params = params).addMetricDontChangeCountStore(addValue)
-  }
-
-  def resultRecordToMetricValue(record: ResultRecord[Double]): MetricValue[Double] = {
-    record.value match {
-      case Left(failReasons) =>
-        val countMap: Map[ComputeFailReason, Int] = failReasons.toSet[ComputeFailReason].map(reason => (reason, failReasons.count(fr => fr == reason))).toMap
-        MetricValue.createAvgFailSample(metricName = record.name, failMap = countMap)
-      case Right(value) =>
-        MetricValue.createAvgSuccessSample(record.name, value, 1.0)
-    }
-  }
+object ComputeResultFunctions {
+  private[this] val logger: Logger = LoggerFactory.getLogger(ComputeResultFunctions.getClass)
 
   def identity[T]: SerializableFunction1[T, ComputeResult[T]] = new SerializableFunction1[T, ComputeResult[T]] {
     override def apply(msg: T): Either[Seq[ComputeFailReason], T] = Right(msg)
+  }
+
+  def stringSeqHistogram(k: Int): SerializableFunction1[Seq[String], ComputeResult[Map[String, Map[String, Double]]]] = new SerializableFunction1[Seq[String], ComputeResult[Map[String, Map[String, Double]]]] {
+    override def apply(msg: Seq[String]): Either[Seq[ComputeFailReason], Map[String, Map[String, Double]]] = {
+      try {
+        val result = stringSequenceToPositionOccurrenceCountMap(msg, k)
+        Right(result)
+      }
+      catch {
+        case e: Exception =>
+          logger.warn(s"failed composing histogram metric from string sequence '${msg}': \n${e.getMessage}")
+          e.printStackTrace()
+          Left(Seq(ComputeFailReason.FAILED_HISTOGRAM))
+      }
+    }
   }
 
   def findFirstValue(findTrue: Boolean): SerializableFunction1[Seq[Boolean], ComputeResult[Double]] = new SerializableFunction1[Seq[Boolean], ComputeResult[Double]] {
@@ -214,6 +171,50 @@ object Functions {
       Right(msg.indices.count(index => if (findTrue) msg(index) else !msg(index)).toDouble)
   }
 
+  def booleanPrecision(useTrue: Boolean, k: Int): SerializableFunction1[Seq[Boolean], ComputeResult[Double]] = new SerializableFunction1[Seq[Boolean], ComputeResult[Double]] {
+    override def apply(msg: Seq[Boolean]): ComputeResult[Double] = {
+      val binarizedSeq = binarizeBooleanSeq(!useTrue, msg)
+      IRMetricFunctions.precisionAtK(k, 0.9).apply(binarizedSeq)
+    }
+  }
+}
+
+object MetricRowFunctions {
+
+  /**
+   * Helper function to generate a MetricRow result from a throwable.
+   * Since the scope of the exception might affect multiple metrics
+   * (e.g such as when a request fails, which affects all metrics),
+   * thus it takes a set of metric names
+   *
+   * @param e : The throwable to map to MetricRow
+   * @return
+   */
+  def throwableToMetricRowResponse(e: Throwable,
+                                   valueNamesToEmptyAggregationValuesMap: Map[String, RunningValue[Any]],
+                                   params: Map[String, Seq[String]]): MetricRow = {
+    var metricRow = MetricRow.empty.copy(params = params)
+    valueNamesToEmptyAggregationValuesMap.foreach(x => {
+      val addValue: MetricValue[Any] = MetricValue.createSingleFailSample(
+        metricName = x._1,
+        failMap = Map[ComputeFailReason, Int](ComputeFailReason(s"${e.getClass.getName}") -> 1),
+        runningValue = x._2
+      )
+      metricRow = metricRow.addMetricDontChangeCountStore(addValue)
+    })
+    metricRow
+  }
+
+}
+
+object PlainMetricValueFunctions {
+
+  /**
+   * Transform sequence of booleans to sequence of double, where True -> 1.0, False -> 0.0 or the other way around if invert = True
+   * @param invert - if True, transforms False -> 1.0, True -> 0.0, otherwise False -> 0.0, True -> 1.0
+   * @param seq - the sequence of booleans
+   * @return mapped sequence
+   */
   def binarizeBooleanSeq(invert: Boolean, seq: Seq[Boolean]): Seq[Double] = {
     seq.indices.map(index => if (!invert) {
       if (seq(index)) 1.0 else 0.0
@@ -222,11 +223,66 @@ object Functions {
     })
   }
 
-  def booleanPrecision(useTrue: Boolean, k: Int): SerializableFunction1[Seq[Boolean], ComputeResult[Double]] = new SerializableFunction1[Seq[Boolean], ComputeResult[Double]] {
-    override def apply(msg: Seq[Boolean]): ComputeResult[Double] = {
-      val binarizedSeq = binarizeBooleanSeq(!useTrue, msg)
-      IRMetricFunctions.precisionAtK(k, 0.9).apply(binarizedSeq)
-    }
+  /**
+   * Takes sequence of type T and counts the occurrence for each value.
+   * @param seq - sequence of elements of type T
+   * @param k - number giving how many of the results (from start) are taken into account
+   * @return - Map with key = value, value = count of occurrence
+   */
+  def valueToOccurrenceCountMap[T](seq: Seq[T], k: Int): Map[T, Int] =  {
+    seq.slice(0, k).toSet[T].map[(T, Int)](x => (x, seq.count(y => y == x))).toMap
+  }
+
+  /**
+   * Calculate for the string values in the sequence the mapping {"value1" -> {1 -> 1.0, 2 -> 1.0}} to represent
+   * a position histogram
+   * @param seq
+   * @param k
+   * @return
+   */
+  def stringSequenceToPositionOccurrenceCountMap(seq: Seq[String], k: Int): Map[String, Map[String, Double]] = {
+    val sequence: Seq[String] = seq.slice(0, k)
+    val valueSet = sequence.toSet
+    valueSet.foldLeft(mutable.Map.empty[String, Map[String, Double]])((valueMap, value) => {
+      val listOfOccurrenceIndices = sequence.zipWithIndex.filter(pair => pair._1 == value).map(pair => pair._2)
+      val indexOccurrenceMap: Map[String, Double] = listOfOccurrenceIndices.foldLeft(mutable.Map.empty[String, Double])((indexMap, index) => {
+        indexMap(index.toString) = 1.0
+        indexMap
+      }).toMap
+      valueMap(value) = indexOccurrenceMap
+      valueMap
+    }).toMap
+  }
+
+  /**
+   * Given a sequence of values, derive the unique values
+   * @param seq - Input sequence
+   * @param k - number of first values of input sequence to take into account
+   * @return: set of unique values occurring in first k elements of input sequence
+   */
+  def stringSequenceToUniqueValues[T](seq: Seq[T], k: Int): Set[T]  =  {
+    seq.slice(0, k).toSet
+  }
+
+  /**
+   *
+   * @param seq - value seq
+   * @param k - number of first values of input sequence to take into account
+   * @return count of distinct values occurring in the first k elements
+   */
+  def stringSequenceToUniqueValuesCount[T](seq: Seq[T], k: Int): Int  =  {
+    stringSequenceToUniqueValues(seq, k).size
+  }
+
+  /**
+   *
+   * @param seq - value seq
+   * @param value - value to compare input sequence values against to count occurrence
+   * @param k - number of first values of input sequence to take into account
+   * @return number of occurrences of value
+   */
+  def occurrencesOfValue[T](seq: Seq[T], value: T, k: Int): Int = {
+    seq.count(x => x == value)
   }
 
 }

@@ -31,12 +31,15 @@ import de.awagen.kolibri.base.resources.{ResourceAlreadyExists, ResourceOK}
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.ReservedStorageKeys._
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations._
 import de.awagen.kolibri.base.usecase.searchopt.metrics.CalculationsTestHelper._
-import de.awagen.kolibri.base.usecase.searchopt.metrics.Functions._
+import de.awagen.kolibri.base.usecase.searchopt.metrics.ComputeResultFunctions.{booleanPrecision, countValues, findFirstValue}
+import de.awagen.kolibri.base.usecase.searchopt.metrics.MetricRowFunctions.throwableToMetricRowResponse
+import de.awagen.kolibri.base.usecase.searchopt.metrics.PlainMetricValueFunctions._
 import de.awagen.kolibri.datatypes.mutable.stores.{BaseWeaklyTypedMap, WeaklyTypedMap}
-import de.awagen.kolibri.datatypes.reason.ComputeFailReason
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSupplier
 import de.awagen.kolibri.datatypes.utils.MathUtils
+import de.awagen.kolibri.datatypes.values.Calculations.{ComputeResult, ResultRecord}
+import de.awagen.kolibri.datatypes.values.RunningValues
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
@@ -126,16 +129,21 @@ class CalculationsSpec extends KolibriTestKitNoCluster
       inputData.put(PRODUCT_IDS_KEY, Seq("p0", "p3", "p2", "p1", "p4"))
       // when
 
-      val calcResult: Seq[ResultRecord[Double]] = calculation.calculation.apply(inputData)
-      val ndcg5Result: ComputeResult[Double] = calcResult.find(x => x.name == NDCG5_NAME).get.value
-      val ndcg10Result: ComputeResult[Double] = calcResult.find(x => x.name == NDCG10_NAME).get.value
-      val ndcg2Result: ComputeResult[Double] = calcResult.find(x => x.name == NDCG2_NAME).get.value
+      val calcResult: Seq[ResultRecord[_]] = calculation.calculation.apply(inputData)
+      val ndcg5Result: ComputeResult[_] = calcResult.find(x => x.name == NDCG5_NAME).get.value
+      val ndcg10Result: ComputeResult[_] = calcResult.find(x => x.name == NDCG10_NAME).get.value
+      val ndcg2Result: ComputeResult[_] = calcResult.find(x => x.name == NDCG2_NAME).get.value
       val expectedNDCG2Result: ComputeResult[Double] = IRMetricFunctions.ndcgAtK(2).apply(Seq(0.10, 0.4, 0.3, 0.2, 0.0))
       val expectedNDCG5Result: ComputeResult[Double] = IRMetricFunctions.ndcgAtK(5).apply(Seq(0.10, 0.4, 0.3, 0.2, 0.0))
       // then
-      MathUtils.equalWithPrecision[Double](ndcg2Result.getOrElse[Double](-10), expectedNDCG2Result.getOrElse[Double](-1.0), 0.0001) mustBe true
-      MathUtils.equalWithPrecision[Double](ndcg5Result.getOrElse[Double](-10), expectedNDCG5Result.getOrElse[Double](-1.0), 0.0001) mustBe true
-      MathUtils.equalWithPrecision[Double](ndcg5Result.getOrElse[Double](-10), ndcg10Result.getOrElse[Double](-1), 0.0001) mustBe true
+      MathUtils.equalWithPrecision[Double](
+        ndcg2Result.getOrElse[Any](-10).asInstanceOf[Double],
+        expectedNDCG2Result.getOrElse[Any](-1.0).asInstanceOf[Double], 0.0001) mustBe true
+      MathUtils.equalWithPrecision[Double](
+        ndcg5Result.getOrElse[Any](-10).asInstanceOf[Double],
+        expectedNDCG5Result.getOrElse[Any](-1.0).asInstanceOf[Double], 0.0001) mustBe true
+      MathUtils.equalWithPrecision[Double](ndcg5Result.getOrElse[Any](-10).asInstanceOf[Double],
+        ndcg10Result.getOrElse[Any](-1).asInstanceOf[Double], 0.0001) mustBe true
     }
   }
 
@@ -171,7 +179,10 @@ class CalculationsSpec extends KolibriTestKitNoCluster
       val params = Map("p1" -> Seq("p1v1"), "p2" -> Seq("p2v1"))
       val result: MetricRow = throwableToMetricRowResponse(
         e = new RuntimeException("ups"),
-        valueNames = Set("val1", "val2"),
+        valueNamesToEmptyAggregationValuesMap = Map(
+          "val1" -> RunningValues.doubleAvgRunningValue(0.0, 0, 0),
+          "val2" -> RunningValues.doubleAvgRunningValue(0.0, 0, 0)
+        ),
         params = params)
       val val1Result = result.metrics("val1").biValue
       val val2Result = result.metrics("val2").biValue
@@ -188,49 +199,6 @@ class CalculationsSpec extends KolibriTestKitNoCluster
       val2Result.value1.numSamples mustBe 1
       val2FailReasonKey.description mustBe "java.lang.RuntimeException"
       val2Result.value1.value(val2FailReasonKey) mustBe 1
-    }
-
-    "correctly apply computeFailReasonsToMetricRowResponse" in {
-      // given
-      val failReasons = Seq(
-        de.awagen.kolibri.datatypes.reason.ComputeFailReason.NO_RESULTS,
-        de.awagen.kolibri.datatypes.reason.ComputeFailReason.ZERO_DENOMINATOR
-      )
-      val params = Map("p1" -> Seq("p1v1"), "p2" -> Seq("p2v1"))
-      // when
-      val metricRow: MetricRow = computeFailReasonsToMetricRowResponse(failReasons, "testMetric", params)
-      val metricResult = metricRow.metrics("testMetric").biValue
-      // then
-      metricResult.value1.numSamples mustBe 2
-      metricResult.value2.numSamples mustBe 0
-      metricResult.value1.value(de.awagen.kolibri.datatypes.reason.ComputeFailReason.NO_RESULTS) mustBe 1
-      metricResult.value1.value(de.awagen.kolibri.datatypes.reason.ComputeFailReason.ZERO_DENOMINATOR) mustBe 1
-    }
-
-    "correctly apply resultEitherToMetricRowResponse" in {
-      // given
-      val params = Map("p1" -> Seq("p1v1"), "p2" -> Seq("p2v1"))
-      // when
-      val metricRow1 = resultEitherToMetricRowResponse(
-        "testMetric",
-        Right(0.2),
-        params
-      )
-      val metricRow2 = resultEitherToMetricRowResponse(
-        "testMetric",
-        Left[Seq[ComputeFailReason], Double](Seq(new ComputeFailReason("runtimeException"))),
-        params
-      )
-      val row1Result = metricRow1.metrics("testMetric").biValue
-      val row2Result = metricRow2.metrics("testMetric").biValue
-      // then
-      row1Result.value1.numSamples mustBe 0
-      row1Result.value2.numSamples mustBe 1
-      row2Result.value1.numSamples mustBe 1
-      row2Result.value2.numSamples mustBe 0
-      row1Result.value2.value mustBe 0.2
-      row2Result.value1.value.keySet.map(x => x.description) mustBe Set("runtimeException")
-
     }
 
     "correctly apply findFirstValue" in {

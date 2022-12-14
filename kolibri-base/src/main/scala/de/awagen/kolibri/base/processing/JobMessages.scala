@@ -22,6 +22,7 @@ import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.ProcessActorRunnableJobCmd
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages
 import de.awagen.kolibri.base.config.AppConfig.{filepathToJudgementProvider, persistenceModule}
+import de.awagen.kolibri.base.config.AppProperties
 import de.awagen.kolibri.base.directives.ResourceDirectives.{GenericResourceDirective, ResourceDirective}
 import de.awagen.kolibri.base.directives.{ExpirePolicy, Resource, ResourceType, WithResources}
 import de.awagen.kolibri.base.domain.Connections.Connection
@@ -40,11 +41,11 @@ import de.awagen.kolibri.base.processing.tagging.TaggingConfigurations.{BaseTagg
 import de.awagen.kolibri.base.provider.WeightProviders
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.SearchJobDefinitions
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.Aggregators.{fullJobToSingleTagAggregatorSupplier, singleBatchAggregatorSupplier}
-import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.{Calculation, JudgementsFromResourceIRMetricsCalculations}
+import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.JudgementsFromResourceIRMetricsCalculations
 import de.awagen.kolibri.base.usecase.searchopt.metrics.{IRMetricFunctions, JudgementHandlingStrategy, Metric, MetricsCalculation}
 import de.awagen.kolibri.base.usecase.searchopt.parse.JsonSelectors.JsValueSeqSelector
-import de.awagen.kolibri.base.usecase.searchopt.parse.{JsonSelectors, ParsingConfig}
 import de.awagen.kolibri.base.usecase.searchopt.parse.TypedJsonSelectors.{NamedAndTypedSelector, TypedJsonSeqSelector}
+import de.awagen.kolibri.base.usecase.searchopt.parse.{JsonSelectors, ParsingConfig}
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
@@ -55,8 +56,11 @@ import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.types.JsonTypeCast
 import de.awagen.kolibri.datatypes.types.SerializableCallable.{SerializableConsumer, SerializableFunction1, SerializableSupplier}
 import de.awagen.kolibri.datatypes.types.Types.WithCount
-import de.awagen.kolibri.datatypes.values.AggregateValue
-import de.awagen.kolibri.datatypes.values.aggregation.Aggregators
+import de.awagen.kolibri.datatypes.utils.MapUtils
+import de.awagen.kolibri.datatypes.values.Calculations.Calculation
+import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType
+import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType.AggregationType
+import de.awagen.kolibri.datatypes.values.aggregation.{AggregateValue, Aggregators}
 
 import scala.concurrent.ExecutionContext
 import scala.language.implicitConversions
@@ -93,7 +97,8 @@ object JobMessages {
                                         batchByIndex: Int,
                                         parsingConfig: ParsingConfig,
                                         excludeParamColumns: Seq[String],
-                                        calculations: Seq[Calculation[WeaklyTypedMap[String], Double]],
+                                        calculations: Seq[Calculation[WeaklyTypedMap[String], Any]],
+                                        metricNameToAggregationTypeMapping: Map[String, AggregationType],
                                         taggingConfiguration: Option[BaseTaggingConfiguration[RequestTemplate, (Either[Throwable, WeaklyTypedMap[String]], RequestTemplate), MetricRow]],
                                         wrapUpFunction: Option[Execution[Any]],
                                         allowedTimePerElementInMillis: Int = 1000,
@@ -114,12 +119,13 @@ object JobMessages {
    * This job config represents a reduced set of options to simplify the needed configuration input.
    * If full options are needed, refer to SearchEvaluationDefinition.
    * It assumes some common settings, e.g predefined sets of metrics and the like.
-   * @param jobName - name of the job, also determining the name of the subfolder where results are stored.
-   * @param connections - connections to send the requests against (balanced)
-   * @param fixedParams - fixed parameters. They are by default excluded from the result file (e.g to avoid finer granularity of aggregations than wanted)
-   * @param contextPath - context path to be used for the composed URLs
-   * @param judgementFilePath - file path relative to the configured file system / bucket / basepath.
-   * @param requestParameters - the composition of actual parameters to compose the queries with. Define the permutations.
+   *
+   * @param jobName             - name of the job, also determining the name of the subfolder where results are stored.
+   * @param connections         - connections to send the requests against (balanced)
+   * @param fixedParams         - fixed parameters. They are by default excluded from the result file (e.g to avoid finer granularity of aggregations than wanted)
+   * @param contextPath         - context path to be used for the composed URLs
+   * @param judgementFilePath   - file path relative to the configured file system / bucket / basepath.
+   * @param requestParameters   - the composition of actual parameters to compose the queries with. Define the permutations.
    * @param excludeParamColumns - further parameter names to exclude from the result file
    */
   case class QueryBasedSearchEvaluationDefinition(jobName: String,
@@ -129,7 +135,8 @@ object JobMessages {
                                                   queryParameter: String,
                                                   productIdSelector: String,
                                                   otherSelectors: Seq[NamedAndTypedSelector[_]],
-                                                  otherCalculations: Seq[Calculation[WeaklyTypedMap[String], Double]],
+                                                  otherCalculations: Seq[Calculation[WeaklyTypedMap[String], Any]],
+                                                  otherMetricNameToAggregationTypeMapping: Map[String, AggregationType],
                                                   judgementFilePath: String,
                                                   requestParameters: Seq[ValueSeqGenDefinition[_]],
                                                   excludeParamColumns: Seq[String],
@@ -164,7 +171,7 @@ object JobMessages {
           JsonTypeCast.STRING
         )) ++ otherSelectors
     )
-    val calculations: Seq[Calculation[WeaklyTypedMap[String], Double]] = Seq(
+    val calculations: Seq[Calculation[WeaklyTypedMap[String], Any]] = Seq(
       JudgementsFromResourceIRMetricsCalculations(
         productIdsKey,
         queryParameter,
@@ -188,6 +195,19 @@ object JobMessages {
         )
       )
     ) ++ otherCalculations
+    val defaultAggregatorMappings = Map(
+      "NDCG@2" -> AggregationType.DOUBLE_AVG,
+      "NDCG@4" -> AggregationType.DOUBLE_AVG,
+      "NDCG@8" -> AggregationType.DOUBLE_AVG,
+      "NDCG@12" -> AggregationType.DOUBLE_AVG,
+      "NDCG@24" -> AggregationType.DOUBLE_AVG,
+      "PRECISION@k=2,t=0.2" -> AggregationType.DOUBLE_AVG,
+      "PRECISION@k=4,t=0.2" -> AggregationType.DOUBLE_AVG,
+      "RECALL@k=2,t=0.2" -> AggregationType.DOUBLE_AVG,
+      "RECALL@k=4,t=0.2" -> AggregationType.DOUBLE_AVG
+    )
+    val metricNameToAggregationTypeMapping: Map[String, AggregationType] = MapUtils.combineMaps(defaultAggregatorMappings, otherMetricNameToAggregationTypeMapping, (x: AggregationType, y: AggregationType) => y)
+
     val filterFunc: SerializableFunction1[Tag, Boolean] = new SerializableFunction1[Tag, Boolean] {
       override def apply(v1: Tag): Boolean = true
     }
@@ -207,8 +227,8 @@ object JobMessages {
     )
     val wrapUpFunction: Option[Execution[Any]] = Some(
       AggregateFromDirectoryByRegexWeighted(
-        jobName,
-        jobName,
+        s"${AppProperties.config.outputResultsPath.getOrElse("")}/$jobName",
+        s"${AppProperties.config.outputResultsPath.getOrElse("")}/$jobName",
         s".*[(]$queryParameter=.+[)].*".r,
         WeightProviders.ConstantWeightProvider(1.0),
         "(ALL)"
@@ -249,12 +269,13 @@ object JobMessagesImplicits {
         fixedParams = eval.fixedParams,
         contextPath = eval.contextPath,
         connections = eval.connections,
-        resourceDirectives = Seq.empty,
+        resourceDirectives = eval.resourceDirectives,
         requestParameters = eval.requestParameters,
         batchByIndex = eval.batchByIndex,
         parsingConfig = eval.parsingConfig,
         excludeParamColumns = eval.excludeParamColumns,
         calculations = eval.calculations,
+        metricNameToAggregationTypeMapping = eval.metricNameToAggregationTypeMapping,
         taggingConfiguration = eval.taggingConfiguration,
         wrapUpFunction = eval.wrapUpFunction,
         allowedTimePerElementInMillis = eval.allowedTimePerElementInMillis,
@@ -279,10 +300,13 @@ object JobMessagesImplicits {
     }
 
     def getWriter: Writer[MetricAggregation[Tag], Tag, Any] = {
-      persistenceModule.persistenceDIModule.csvMetricAggregationWriter(subFolder = eval.jobName, x => {
-        val randomAdd: String = Random.alphanumeric.take(5).mkString
-        s"${x.toString()}-$randomAdd"
-      })
+      persistenceModule.persistenceDIModule.metricAggregationWriter(
+        subFolder = eval.jobName,
+        x => {
+          val randomAdd: String = Random.alphanumeric.take(5).mkString
+          s"${x.toString()}-$randomAdd"
+        }
+      )
     }
 
     def getBatchAggregationSupplier: () => Aggregators.Aggregator[ProcessingMessages.ProcessingMessage[MetricRow], MetricAggregation[Tag]] = singleBatchAggregatorSupplier

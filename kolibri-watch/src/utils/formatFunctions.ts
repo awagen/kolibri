@@ -34,4 +34,8 @@ function objectToJsonStringAndSyntaxHighlight(obj) {
     return syntaxHighlight(stringifyObj(obj))
 }
 
-export {syntaxHighlight, stringifyObj, objectToJsonStringAndSyntaxHighlight, baseJsonFormatting}
+function preservingJsonFormat(obj: Object) {
+    return JSON.stringify(obj, (k, v) => v === undefined ? null : v)
+}
+
+export {syntaxHighlight, stringifyObj, objectToJsonStringAndSyntaxHighlight, baseJsonFormatting, preservingJsonFormat}

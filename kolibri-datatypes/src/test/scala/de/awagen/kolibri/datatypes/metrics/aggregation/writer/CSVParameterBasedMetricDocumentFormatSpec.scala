@@ -16,35 +16,22 @@
 
 package de.awagen.kolibri.datatypes.metrics.aggregation.writer
 
-import de.awagen.kolibri.datatypes.metrics.aggregation.writer.CSVParameterBasedMetricDocumentFormat.{FAIL_COUNT_COLUMN_PREFIX, FAIL_REASONS_COLUMN_PREFIX, SUCCESS_COUNT_COLUMN_PREFIX, VALUE_COLUMN_PREFIX, WEIGHTED_FAIL_COUNT_COLUMN_PREFIX, WEIGHTED_SUCCESS_COUNT_COLUMN_PREFIX}
+import de.awagen.kolibri.datatypes.metrics.aggregation.writer.CSVParameterBasedMetricDocumentFormat._
+import de.awagen.kolibri.datatypes.metrics.aggregation.writer.MetricFormatTestHelper._
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason
 import de.awagen.kolibri.datatypes.stores
-import de.awagen.kolibri.datatypes.stores.{MetricDocument, MetricRow}
-import de.awagen.kolibri.datatypes.tagging.Tags.{ParameterMultiValueTag, StringTag, Tag}
+import de.awagen.kolibri.datatypes.stores.MetricRow
+import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}
 import de.awagen.kolibri.datatypes.testclasses.UnitTestSpec
 import de.awagen.kolibri.datatypes.values.MetricValue
+import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType
+import spray.json.DefaultJsonProtocol.{DoubleJsonFormat, StringJsonFormat, mapFormat}
+import spray.json._
+
 
 class CSVParameterBasedMetricDocumentFormatSpec extends UnitTestSpec {
 
-  val parameterTag1: ParameterMultiValueTag = ParameterMultiValueTag(Map("p1" -> Seq("v1_1"), "p2" -> Seq("v1_2")))
-  val parameterTag2: ParameterMultiValueTag = ParameterMultiValueTag(Map("p1" -> Seq("v2_1"), "p2" -> Seq("v2_2")))
-  val parameterTag3: ParameterMultiValueTag = ParameterMultiValueTag(Map("p1" -> Seq("v3_1"), "p3" -> Seq("v3_2")))
 
-  val metricsSuccess1: MetricValue[Double] = MetricValue.createAvgSuccessSample("metrics1", 0.2, 1.0)
-  val metricsSuccess2: MetricValue[Double] = MetricValue.createAvgSuccessSample("metrics2", 0.4, 1.0)
-  val metricsSuccess3: MetricValue[Double] = MetricValue.createAvgSuccessSample("metrics3", 0.1, 1.0)
-  val metricsSuccess4: MetricValue[Double] = MetricValue.createAvgSuccessSample("metrics4", 0.3, 1.0)
-  val metricsSuccess5: MetricValue[Double] = MetricValue.createAvgSuccessSample("metrics5", 0.6, 1.0)
-
-
-  val metricRecord1: MetricRow = MetricRow.emptyForParams(parameterTag1.value).addFullMetricsSampleAndIncreaseSampleCount(metricsSuccess1, metricsSuccess2)
-  val metricRecord2: MetricRow = MetricRow.emptyForParams(parameterTag2.value).addFullMetricsSampleAndIncreaseSampleCount(metricsSuccess3)
-  val metricRecord3: MetricRow = MetricRow.emptyForParams(parameterTag3.value).addFullMetricsSampleAndIncreaseSampleCount(metricsSuccess4)
-
-  val doc: MetricDocument[String] = MetricDocument.empty[String]("doc1")
-  doc.add(metricRecord1)
-  doc.add(metricRecord2)
-  doc.add(metricRecord3)
 
 
   val writer: CSVParameterBasedMetricDocumentFormat = CSVParameterBasedMetricDocumentFormat("\t")
@@ -74,14 +61,27 @@ class CSVParameterBasedMetricDocumentFormatSpec extends UnitTestSpec {
 
     "correctly give formatted representation of the aggregation for full document" in {
       //given
+      val typeHeader = "# K_METRIC_AGGREGATOR_MAPPING metrics1 DOUBLE_AVG\n# K_METRIC_AGGREGATOR_MAPPING metrics2 DOUBLE_AVG\n# K_METRIC_AGGREGATOR_MAPPING metrics3 DOUBLE_AVG\n# K_METRIC_AGGREGATOR_MAPPING metrics4 DOUBLE_AVG"
       val expectedHeader1 = "p1\tp2\tp3\tfail-count-metrics1\tweighted-fail-count-metrics1\tfailReasons-metrics1\tsuccess-count-metrics1\tweighted-success-count-metrics1\tvalue-metrics1\tfail-count-metrics2\tweighted-fail-count-metrics2\tfailReasons-metrics2\tsuccess-count-metrics2\tweighted-success-count-metrics2\tvalue-metrics2\tfail-count-metrics3\tweighted-fail-count-metrics3\tfailReasons-metrics3\tsuccess-count-metrics3\tweighted-success-count-metrics3\tvalue-metrics3\tfail-count-metrics4\tweighted-fail-count-metrics4\tfailReasons-metrics4\tsuccess-count-metrics4\tweighted-success-count-metrics4\tvalue-metrics4"
       val expectedRow1 = "v1_1\tv1_2\t\t0\t0.0000\t\t1\t1.0000\t0.2000\t0\t0.0000\t\t1\t1.0000\t0.4000\t0\t0.0000\t\t0\t0.0000\t0.0000\t0\t0.0000\t\t0\t0.0000\t0.0000"
       val expectedRow2 = "v2_1\tv2_2\t\t0\t0.0000\t\t0\t0.0000\t0.0000\t0\t0.0000\t\t0\t0.0000\t0.0000\t0\t0.0000\t\t1\t1.0000\t0.1000\t0\t0.0000\t\t0\t0.0000\t0.0000"
       val expectedRow3 = "v3_1\t\tv3_2\t0\t0.0000\t\t0\t0.0000\t0.0000\t0\t0.0000\t\t0\t0.0000\t0.0000\t0\t0.0000\t\t0\t0.0000\t0.0000\t0\t0.0000\t\t1\t1.0000\t0.3000"
-      val expectedDocString = Seq(expectedHeader1, expectedRow1, expectedRow2, expectedRow3).mkString("\n")
+      val expectedDocString = Seq(typeHeader, expectedHeader1, expectedRow1, expectedRow2, expectedRow3).mkString("\n")
       // when
       val actual = writer.metricDocumentToString(doc)
       actual mustBe expectedDocString
+    }
+
+    "correctly give formatted representation of histogram aggregation" in {
+      // given
+      val typeHeader = "# K_METRIC_AGGREGATOR_MAPPING histogram1 NESTED_MAP_UNWEIGHTED_SUM_VALUE"
+      val expectedHeader1 = "p1\tp2\tfail-count-histogram1\tweighted-fail-count-histogram1\tfailReasons-histogram1\tsuccess-count-histogram1\tweighted-success-count-histogram1\tvalue-histogram1"
+      val expectedRow1 = "v1_1\tv1_2\t0\t0.0000\t\t1\t1.0000\t{\"key1\":{\"1\":1.0,\"2\":2.0},\"key2\":{\"3\":1.0}}"
+      val expectedDocString = Seq(typeHeader, expectedHeader1, expectedRow1).mkString("\n")
+      // when
+      val actualFormat = writer.metricDocumentToString(histogramDoc1)
+      // then
+      actualFormat mustBe expectedDocString
     }
 
     "correctly read header" in {
@@ -171,9 +171,11 @@ class CSVParameterBasedMetricDocumentFormatSpec extends UnitTestSpec {
 
     "correctly parse MetricRow" in {
       // given, when
-      val metricRow: MetricRow = writer.metricRowFromHeadersAndColumns(testHeaders, testParamsMap, testColumns)
-      val row1: MetricValue[Double] = metricRow.metrics("M1")
-      val row2: MetricValue[Double] = metricRow.metrics("M2")
+      val nameToTypeMapping = Map("M1" -> AggregationType.DOUBLE_AVG, "M2" -> AggregationType.DOUBLE_AVG)
+      val metricRow: MetricRow = writer.metricRowFromHeadersAndColumns(testHeaders, testParamsMap, testColumns,
+        nameToTypeMapping)
+      val row1: MetricValue[Double] = metricRow.metrics("M1").asInstanceOf[MetricValue[Double]]
+      val row2: MetricValue[Double] = metricRow.metrics("M2").asInstanceOf[MetricValue[Double]]
       // then
       metricRow.metrics.keys.size mustBe 2
       row1.name mustBe "M1"
@@ -192,9 +194,10 @@ class CSVParameterBasedMetricDocumentFormatSpec extends UnitTestSpec {
       // given
       val row: String = testColumns.mkString("\t")
       // when
-      val metricRow: MetricRow = writer.readRow(testHeaders, row)
-      val row1: MetricValue[Double] = metricRow.metrics("M1")
-      val row2: MetricValue[Double] = metricRow.metrics("M2")
+      val nameToTypeMapping = Map("M1" -> AggregationType.DOUBLE_AVG, "M2" -> AggregationType.DOUBLE_AVG)
+      val metricRow: MetricRow = writer.readRow(testHeaders, row, nameToTypeMapping)
+      val row1: MetricValue[Double] = metricRow.metrics("M1").asInstanceOf[MetricValue[Double]]
+      val row2: MetricValue[Double] = metricRow.metrics("M2").asInstanceOf[MetricValue[Double]]
       // then
       metricRow.metrics.keys.size mustBe 2
       row1.name mustBe "M1"
@@ -216,11 +219,12 @@ class CSVParameterBasedMetricDocumentFormatSpec extends UnitTestSpec {
         testColumns1.mkString("\t")
       )
       // when
-      val metricDocument: stores.MetricDocument[Tag] = writer.readDocument(testHeaders, rows, StringTag("q=test"))
+      val nameToTypeMapping = Map("M1" -> AggregationType.DOUBLE_AVG, "M2" -> AggregationType.DOUBLE_AVG)
+      val metricDocument: stores.MetricDocument[Tag] = writer.readDocument(testHeaders, rows, StringTag("q=test"), nameToTypeMapping)
       val params1 = Map("p1" -> Seq("p1_v1"), "p2" -> Seq("p2_v1", "p2_v2"))
       val params2 = Map("p1" -> Seq("p1_v2"), "p2" -> Seq("p2_a1", "p2_a2"))
-      val row1Metrics: Map[String, MetricValue[Double]] = metricDocument.rows(params1).metrics
-      val row2Metrics: Map[String, MetricValue[Double]] = metricDocument.rows(params2).metrics
+      val row1Metrics: Map[String, MetricValue[Double]] = metricDocument.rows(params1).metrics.asInstanceOf[Map[String, MetricValue[Double]]]
+      val row2Metrics: Map[String, MetricValue[Double]] = metricDocument.rows(params2).metrics.asInstanceOf[Map[String, MetricValue[Double]]]
       val row1M1: MetricValue[Double] = row1Metrics("M1")
       val row1M2: MetricValue[Double] = row1Metrics("M2")
       val row2M1: MetricValue[Double] = row2Metrics("M1")
@@ -249,6 +253,23 @@ class CSVParameterBasedMetricDocumentFormatSpec extends UnitTestSpec {
       row2M2.biValue.value2.numSamples mustBe 4
       row2M2.biValue.value2.value mustBe "0.10".toDouble
     }
+  }
+
+  "correctly parse mapping" in {
+    // given
+    val testString =  "{\"p12\":{\"0\":1.0},\"p15\":{\"2\":1.0},\"p3\":{\"4\":1.0,\"7\":1.0},\"p14\":{\"3\":1.0},\"p17\":{\"1\":1.0},\"p6\":{\"5\":1.0,\"8\":1.0},\"p4\":{\"9\":1.0},\"p5\":{\"6\":1.0}}"
+    // when, then
+    val result: Map[String, Map[String, Double]] = testString.stripMargin.parseJson.convertTo[Map[String, Map[String, Double]]]
+    result mustBe Map(
+      "p12" -> Map("0" -> 1.0),
+      "p15" -> Map("2" -> 1.0),
+      "p3" -> Map("4" -> 1.0, "7" -> 1.0),
+      "p14" -> Map("3" -> 1.0),
+      "p17" -> Map("1" -> 1.0),
+      "p6" -> Map("5" -> 1.0, "8" -> 1.0),
+      "p4" -> Map("9" -> 1.0),
+      "p5" -> Map("6" -> 1.0),
+    )
   }
 
 }

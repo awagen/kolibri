@@ -25,7 +25,10 @@
         <div class="col-12 col-sm-12">
           <select @change="jobTemplateSelectEvent($event)" class="form-select k-value-selector" id="template-name-1">
             <option>Choose an option</option>
-            <option v-for="templateName in [...['None'], ...this.$store.state.availableJobTemplateIdsForType(selectedJobName)]">{{ templateName }}</option>
+            <option
+                v-for="templateName in [...['None'], ...this.$store.state.availableJobTemplateIdsForType(selectedJobName)]">
+              {{ templateName }}
+            </option>
           </select>
         </div>
       </template>
@@ -40,13 +43,13 @@
 
       <form class="form-horizontal col-8 column">
         <h3 class="k-title">
-          Job: {{selectedJobShortDescription}}
+          Job: {{ selectedJobShortDescription }}
         </h3>
         <h3 class="k-title">
-          EndPoint: {{selectedJobEndpoint}}
+          EndPoint: {{ selectedJobEndpoint }}
         </h3>
         <h3 class="k-description">
-          {{selectedJobDescription}}
+          {{ selectedJobDescription }}
         </h3>
 
         <template v-if="currentJobNestedStruct !== undefined">
@@ -57,7 +60,6 @@
               :fields="currentJobNestedStruct.fields"
               :is-root="true"
               :init-with-value="selectedJobTemplate"
-              :reset-counter="resetCounter"
           >
           </NestedFieldSeqStructDef>
         </template>
@@ -88,7 +90,7 @@
 
 import NestedFieldSeqStructDef from "../components/partials/structs/NestedFieldSeqStructDef.vue";
 import {useStore} from "vuex";
-import {ref, watch} from "vue";
+import {ref, watch, computed} from "vue";
 import JobTemplateControls from "../components/partials/JobTemplateControls.vue";
 
 export default {
@@ -100,14 +102,40 @@ export default {
     }
   },
   components: {JobTemplateControls, NestedFieldSeqStructDef},
-  methods: {
+
+  data() {
+    return {
+      componentKeyValue: ""
+    }
   },
+
+  methods: {
+
+    changeComponentKeyValue(value) {
+      this.componentKeyValue = value
+    },
+
+    jobNameSelectEvent(event) {
+      this.$store.commit("updateSelectedJobName", event.target.value)
+    },
+
+    jobTemplateSelectEvent(event) {
+      this.$store.commit("updateSelectedJobTemplate", event.target.value)
+    },
+
+    valueChanged(attributes) {
+      this.$store.commit("updateCurrentJobDefState", attributes)
+    }
+
+  },
+
   computed: {
-    selectedJobName(){
+
+    selectedJobName() {
       return this.$store.state.jobInputDefState.selectedJobName
     },
 
-    selectedJobTemplateName(){
+    selectedJobTemplateName() {
       return this.$store.state.jobInputDefState.selectedJobTemplate
     },
 
@@ -115,68 +143,48 @@ export default {
       return this.$store.state.jobInputDefState.jobNameToShortDescription[this.selectedJobName]
     },
 
-    selectedJobEndpoint(){
+    selectedJobEndpoint() {
       return this.$store.state.jobInputDefState.jobNameToEndpoint[this.selectedJobName]
     },
 
-    selectedJobDescription(){
+    selectedJobDescription() {
       return this.$store.state.jobInputDefState.jobNameToDescription[this.selectedJobName]
     },
 
     selectedJobTemplate() {
-      return this.$store.state.templateContentForTemplateTypeAndId(this.selectedJobName, this.selectedJobTemplateName)
+      let selectedJobNameValue = this.$store.state.jobInputDefState.selectedJobName
+      let selectedJobTemplateNameValue = this.$store.state.jobInputDefState.selectedJobTemplate
+      return this.$store.state.templateContentForTemplateTypeAndId(selectedJobNameValue, selectedJobTemplateNameValue)
     },
 
     availableJobNames() {
       return Object.keys(this.$store.state.jobInputDefState.jobNameToInputDef)
     },
 
-    availableJobTemplateTypes(){
+    availableJobTemplateTypes() {
       return Object.keys(this.$store.state.templateState.templateTypeToTemplateIdToContentMapping)
     },
 
-    currentJobNestedStruct(){
+    currentJobNestedStruct() {
       return this.$store.state.jobInputDefState.jobNameToInputStates[this.$store.state.jobInputDefState.selectedJobName]
     },
 
-    currentJobNestedStructJson(){
+    currentJobNestedStructJson() {
       return this.$store.state.jobInputDefState.jobNameToInputStatesJson[this.$store.state.jobInputDefState.selectedJobName]
     }
-  },
-  setup(props, context) {
-    const store = useStore()
-    let resetCounter = ref(0)
-    let componentKeyValue = ref("")
 
-    watch(() => store.state.jobInputDefState.selectedJobTemplate, (newValue, oldValue) => {
-      if (newValue === 'None') {
-        resetCounter.value = resetCounter.value + 1
-      }
-      else {
-        componentKeyValue.value = newValue
-      }
+  },
+
+  mounted() {
+
+    watch(() => this.$store.state.jobInputDefState.selectedJobTemplate, (newValue, oldValue) => {
+      this.changeComponentKeyValue(newValue)
     })
 
-    function jobNameSelectEvent(event) {
-      store.commit("updateSelectedJobName", event.target.value)
-    }
+  },
 
-    function jobTemplateSelectEvent(event) {
-      store.commit("updateSelectedJobTemplate", event.target.value)
-    }
-
-    function valueChanged(attributes) {
-      store.commit("updateCurrentJobDefState",
-          attributes)
-    }
-
-    return {
-      jobNameSelectEvent,
-      jobTemplateSelectEvent,
-      valueChanged,
-      resetCounter,
-      componentKeyValue
-    }
+  setup() {
+    return {}
   }
 
 }

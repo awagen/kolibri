@@ -29,6 +29,11 @@
       "name": "bools",
       "castType": "BOOLEAN",
       "selector": "\\ response \\ docs \\\\ bool"
+    },
+    {
+      "name": "string_seq",
+      "castType": "STRING",
+      "selector": "\\ response \\ docs \\\\ string_val_1"
     }
   ],
   "otherCalculations": [
@@ -36,8 +41,18 @@
       "name": "FIRST_TRUE_BOOL",
       "dataKey": "bools",
       "type": "FIRST_TRUE"
+    },
+    {
+      "name": "STRING_HISTOGRAM",
+      "dataKey": "string_seq",
+      "k": 10,
+      "type": "STRING_SEQUENCE_VALUE_OCCURRENCE_HISTOGRAM"
     }
   ],
+  "otherMetricNameToAggregationTypeMapping": {
+    "FIRST_TRUE_BOOL": "DOUBLE_AVG",
+    "STRING_HISTOGRAM": "NESTED_MAP_UNWEIGHTED_SUM_VALUE"
+  },
   "judgementFilePath": "test-judgements/test_judgements.txt",
   "requestParameters": [
     {

@@ -22,6 +22,7 @@ object ComputeFailReason {
 
   val ZERO_DENOMINATOR: ComputeFailReason = ComputeFailReason("ZERO_DENOMINATOR")
   val NO_RESULTS: ComputeFailReason = ComputeFailReason("NO_RESULTS")
+  val FAILED_HISTOGRAM: ComputeFailReason = ComputeFailReason("FAILED_HISTOGRAM")
 
 }
 

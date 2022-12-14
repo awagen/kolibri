@@ -2,24 +2,29 @@
 
   <div class="k-map-name col-3 col-sm-12">
     <DescriptionPopover :description="description"/>
-    <span>{{name}}</span>
+    <span>{{ name }}</span>
   </div>
 
   <div class="k-seq-container col-9 col-sm-12">
 
-    <template v-for="(field, index) in addedKeyValueDefs">
+    <!-- NOTE: key value needs to be increased on deletion of element
+     to rerender the correct order of elements, otherwise
+     you might see first element deleted but last one removed
+     in the display -->
+    <template :key="childKeyValue" v-for="(field, index) in addedKeyValueDefs">
       <template v-if="(field instanceof KeyValueInputDef)">
         <div class="k-value-and-delete">
           <div class="k-single-value-input"
                :id="'container-' + field.elementId">
             <KeyValueStructDef
-                @value-changed="valueChanged"
+                @valueChanged="valueChanged"
+                @valueConfirm="valueConfirm"
                 :name="name + '-' + index"
                 :position="index"
                 :key-input-def="field.keyFormat"
                 :value-input-def="field.valueFormat"
                 :init-with-value="[getKeyForInitIndex(index), getValueForInitIndex(index)]"
-                :reset-counter="childrenResetCounter"
+                :key="name + '-' + index"
             >
             </KeyValueStructDef>
           </div>
@@ -43,11 +48,11 @@
 </template>
 
 <script>
-import {onMounted, ref, watch} from "vue";
 import {KeyValueInputDef} from "../../../utils/dataValidationFunctions.ts";
 import KeyValueStructDef from "./KeyValueStructDef.vue";
 import DescriptionPopover from "./elements/DescriptionPopover.vue";
-import {saveGetArrayValueAtIndex} from "@/utils/baseDatatypeFunctions";
+import {safeGetArrayValueAtIndex} from "../../../utils/baseDatatypeFunctions";
+import {preservingJsonFormat} from "../../../utils/formatFunctions";
 
 export default {
 
@@ -71,81 +76,74 @@ export default {
       type: Object,
       required: false,
       default: {}
-    },
-    resetCounter: {
-      type: Number,
-      required: false,
-      default: 0
     }
   },
   components: {KeyValueStructDef, DescriptionPopover},
   emits: ["valueChanged"],
-  methods: {
+  computed: {
+
+    /**
+     * From the currently set values generates an Object with the right map key and within it sequentially the
+     * key-value pairs created.
+     **/
+    mapFromKeyValuePairs() {
+      let result = {}
+      this.addedKeyValuePairs.forEach((keyValuePair) => {
+        if (keyValuePair[0] !== undefined) {
+          result[keyValuePair[0]] = keyValuePair[1]
+        }
+      })
+      return result
+    }
+
   },
-  setup(props, context) {
 
-    // contains the KeyValueInputDefs representing the elements already added
-    let addedKeyValueDefs = ref([])
-    // contains the values corresponding to the input defs in addedKeyValueDefs
-    let addedKeyValuePairs = ref([])
-    // sorted keys for the key / value pairs to use for initialization
-    let initValueKeys = Object.keys(props.initWithValue)
+  methods: {
 
-    let childrenResetCounter = ref(0)
+    increaseChildKeyCounter() {
+      console.debug(`increasing childKeyValue: ${this.childKeyValue + 1}`)
+      this.childKeyValue = this.childKeyValue + 1
+    },
 
-    function increaseChildrenResetCounter() {
-      childrenResetCounter.value = childrenResetCounter.value + 1
-    }
+    promoteCurrentStateUp() {
+      this.$emit("valueChanged", {"name": this.name, "value": this.mapFromKeyValuePairs})
+    },
 
-    function promoteCurrentStateUp() {
-      context.emit("valueChanged", {"name": props.name, "value": mapFromKeyValuePairs()})
-    }
-
-    watch(() => props.resetCounter, (newValue, oldValue) => {
-      console.info(`element '${props.name}', resetCounter increase: ${newValue}`)
-      if (newValue > oldValue) {
-        increaseChildrenResetCounter()
-        initializeValues()
-        promoteCurrentStateUp()
-      }
-    })
-
-    function initializeValues() {
-      addedKeyValueDefs.value = []
-      addedKeyValuePairs.value = []
+    initializeValues() {
+      this.addedKeyValueDefs = []
+      this.addedKeyValuePairs = []
       // here we simply initially add enough elements to fit all key-value pairs of initWithValue
       // the actual setting of the right key-value pairs will be done above
-      if (props.initWithValue !== undefined && initValueKeys.length > 0) {
-        initValueKeys.forEach(_ => addNextInputElement())
+      if (this.initWithValue !== undefined && this.initWithValue !== null) {
+        for (const [key, value] of Object.entries(this.initWithValue)) {
+          this.addedKeyValuePairs.push([key, value])
+          this.addedKeyValueDefs.push(this.generateIndexedInputDef())
+        }
+      } else {
+        this.addedKeyValuePairs.push([undefined, undefined])
+        this.addedKeyValueDefs.push(this.generateIndexedInputDefForIndex(0))
       }
-      else {
-        addedKeyValuePairs.value.push([undefined, undefined])
-        addedKeyValueDefs.value.push(generateIndexedInputDefForIndex(0))
-      }
-    }
-
-    onMounted(() => {
-      initializeValues()
-    })
+    },
 
     /**
      * If any initialisation key-value pairs are passed, determine the n-th key value
      * @param index - index of the key. Order derived by transformation keys from dict to list via Object.keys()
      * @returns string - key value for key at position given by passed index. undefined if out of bounds
      */
-    function getKeyForInitIndex(index) {
-      return saveGetArrayValueAtIndex(initValueKeys, index, undefined)
-    }
+    getKeyForInitIndex(index) {
+      let valueKeys = this.addedKeyValuePairs.map(x => x[0])
+      return safeGetArrayValueAtIndex(valueKeys, index, "")
+    },
 
     /**
      * If any initialisation key-value pairs are passed, determine the n-th value
      * @param index - index of the key. Order derived by transformation keys from dict to list via Object.keys()
      * @returns string - value for key at position given by passed index. undefined if out of bounds
      */
-    function getValueForInitIndex(index) {
-      let key = getKeyForInitIndex(index)
-      return props.initWithValue[key]
-    }
+    getValueForInitIndex(index) {
+      let valueArray = this.addedKeyValuePairs.map(x => x[1])
+      return safeGetArrayValueAtIndex(valueArray, index, "")
+    },
 
     /**
      * Generates a new element out of the given KeyValueInputDef, setting the properly indexed
@@ -154,18 +152,22 @@ export default {
      * This will be undefined if the value corresponds to a new index for which no value yet exists, in which
      * case the undefined default value is ignored within the InputDef object itself
      **/
-    function generateIndexedInputDefForIndex(index) {
-      return props.keyValueInputDef.copy(
-          `${props.keyValueInputDef.elementId}-index-${index}`, addedKeyValuePairs.value[index])
-    }
+    generateIndexedInputDefForIndex(index) {
+      return this.keyValueInputDef.copy(
+          `${this.keyValueInputDef.elementId}-index-${index}`, this.addedKeyValuePairs[index])
+    },
 
     /**
      * Checks how many field definitions were added already and adds the next.
      **/
-    function generateIndexedInputDef() {
-      let newItemIndex = addedKeyValueDefs.value.length
-      return generateIndexedInputDefForIndex(newItemIndex)
-    }
+    generateIndexedInputDef() {
+      let newItemIndex = this.addedKeyValueDefs.length
+      return this.generateIndexedInputDefForIndex(newItemIndex)
+    },
+
+    valueConfirm(attributes) {
+      this.promoteCurrentStateUp()
+    },
 
     /**
      * Event on value change. Assumes the 'name' attribute to provide the key of the changed / added entry,
@@ -173,63 +175,62 @@ export default {
      *
      * After the set values are updated, events a state update for its parent to pick up.
      **/
-    function valueChanged(attributes) {
+    valueChanged(attributes) {
       let changedIndex = attributes.position
-      if (addedKeyValuePairs.value.length > changedIndex) {
-        addedKeyValuePairs.value[changedIndex] = [attributes.name, attributes.value]
+      if (this.addedKeyValuePairs.length > changedIndex) {
+        this.addedKeyValuePairs[changedIndex] = [attributes.name, attributes.value]
       }
-      promoteCurrentStateUp()
-    }
+      this.promoteCurrentStateUp()
+    },
 
     /**
      * Add new input def and an empty value
      */
-    function addNextInputElement() {
-      addedKeyValuePairs.value.push([undefined, undefined])
-      addedKeyValueDefs.value.push(generateIndexedInputDef())
-    }
-
-    /**
-     * From the currently set values generates an Object with the right map key and within it sequentially the
-     * key-value pairs created.
-     **/
-    function mapFromKeyValuePairs() {
-      let result = {}
-      addedKeyValuePairs.value.forEach((keyValuePair) => {
-        if (keyValuePair[0] !== undefined) {
-          result[keyValuePair[0]] = keyValuePair[1]
-        }
-      })
-      return result
-    }
+    addNextInputElement() {
+      this.addedKeyValuePairs.push([undefined, undefined])
+      this.addedKeyValueDefs.push(this.generateIndexedInputDef())
+    },
 
     /**
      * Deletion of input element at given index.
-     * As current logic doesnt directly bind what is displayed in the html input but only updates values if they
+     * As current logic doesn't directly bind what is displayed in the html input but only updates values if they
      * pass validation where the index matches, on deletion of an input element we also have to make sure
      * we adjust all indices in addedInputDefs
      **/
-    function deleteInputElement(index) {
-      addedKeyValuePairs.value.splice(index, 1)
+    deleteInputElement(index) {
+      this.addedKeyValuePairs.splice(index, 1)
       // now adjust indices
       let newInputDefs = []
-      for (let [defIndex, _] of addedKeyValuePairs.value.entries()) {
-        newInputDefs.push(generateIndexedInputDefForIndex(defIndex))
+      for (let [defIndex, _] of this.addedKeyValuePairs.entries()) {
+        newInputDefs.push(this.generateIndexedInputDefForIndex(defIndex))
       }
-      addedKeyValueDefs.value = newInputDefs
+      this.addedKeyValueDefs = newInputDefs
       // notify parent of change
-      promoteCurrentStateUp()
+      this.promoteCurrentStateUp()
+      this.increaseChildKeyCounter()
     }
 
+
+  },
+  data() {
     return {
-      addedKeyValueDefs,
-      valueChanged,
-      deleteInputElement,
-      addNextInputElement,
-      KeyValueInputDef,
-      getKeyForInitIndex,
-      getValueForInitIndex,
-      childrenResetCounter
+      // contains the KeyValueInputDefs representing the elements already added
+      addedKeyValueDefs: [],
+      // contains the values corresponding to the input defs in addedKeyValueDefs
+      addedKeyValuePairs: [],
+      // key value for child rendering. If changed, recreates the respective visual
+      childKeyValue: 0
+    }
+  },
+
+  mounted() {
+    this.initializeValues()
+  },
+
+  setup() {
+    return {
+      KeyValueStructDef,
+      KeyValueInputDef
     }
   }
 

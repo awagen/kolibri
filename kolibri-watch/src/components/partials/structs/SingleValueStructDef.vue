@@ -1,112 +1,137 @@
 <template>
   <div class="k-input-container">
-    <template v-if="(elementDef instanceof NumberInputDef)">
+    <template v-if="(usedElementDef instanceof NumberInputDef)">
       <!-- check if default value is filled, and if so, set value.
       For some reason causes errors when check is baked directly
       into the :value binding below (:value="!!elementDef.defaultValue ? element.defaultValue : null"
       should do but causes input fields to be unusable)-->
-      <template v-if="elementDef.defaultValue === 0 || !!elementDef.defaultValue">
-        <input :id="getValueInputId()"
+
+      <!-- NOTE that we need to define key below otherwise
+       focus will drop after typing of first char and needs another
+       click. Setting a static key will avoid this recreation of
+       input element and thus keep focus -->
+      <template v-if="value === 0 || !!value">
+        <input :id="getValueInputId"
                class="form-input metric"
                type="number"
-               :step=elementDef.step
-               :value="elementDef.defaultValue"
+               :step=usedElementDef.step
+               :value="value"
                @input="updateValueEvent"
-               placeholder="Number Input">
+               placeholder="Number Input"
+               :key="position + '-' + name + '-' + JSON.stringify(usedElementDef.toObject())"
+        >
       </template>
       <template v-else>
-        <input :id="getValueInputId()"
+        <input :id="getValueInputId"
                class="form-input metric"
                type="number"
-               :step=elementDef.step
+               :step=usedElementDef.step
                @input="updateValueEvent"
-               placeholder="Number Input">
+               placeholder="Number Input"
+               :key="position + '-' + name + '-' + JSON.stringify(usedElementDef.toObject())"
+        >
       </template>
     </template>
-    <template v-if="(elementDef instanceof StringInputDef)">
-      <template v-if="!!elementDef.defaultValue">
-        <input :id="getValueInputId()"
+    <template v-if="(usedElementDef instanceof StringInputDef)">
+      <template v-if="!!value">
+        <input :id="getValueInputId"
                class="form-input metric"
                type="text"
-               :value="(!!elementDef.defaultValue) ? elementDef.defaultValue : null"
+               :value="(!!value) ? value : null"
                @input="updateValueEvent"
-               placeholder="Text Input">
+               placeholder="Text Input"
+               :key="position + '-' + name + '-' + JSON.stringify(usedElementDef.toObject())"
+        >
       </template>
       <template v-else>
-        <input :id="getValueInputId()"
+        <input :id="getValueInputId"
                class="form-input metric"
                type="text"
                @input="updateValueEvent"
-               placeholder="Text Input">
+               placeholder="Text Input"
+               :key="position + '-' + name + '-' + JSON.stringify(usedElementDef.toObject())"
+        >
       </template>
     </template>
-    <template v-if="(elementDef instanceof BooleanInputDef)">
+    <template v-if="(usedElementDef instanceof BooleanInputDef)">
       <label class="form-radio form-inline">
-        <input :id="getValueInputId()"
+        <input :id="getValueInputId"
                type="radio"
-               :name="getValueInputId()"
+               :name="getValueInputId"
                :value="true"
-               :checked="(elementDef.defaultValue === true) ? '' : null"
-               @change="updateValueEvent">
+               :checked="(value === true) ? '' : null"
+               @change="updateValueEvent"
+               :key="position + '-' + name + '-' + JSON.stringify(usedElementDef.toObject())"
+        >
         <i class="form-icon"></i>
         true
       </label>
       <label class="form-radio form-inline">
-        <input :id="getValueInputId()"
+        <input :id="getValueInputId"
                type="radio"
-               :name="getValueInputId()"
+               :name="getValueInputId"
                :value="false"
-               :checked="(elementDef.defaultValue === false) ? '' : null"
-               @change="updateValueEvent">
+               :checked="(value === false) ? '' : null"
+               @change="updateValueEvent"
+               :key="position + '-' + name + '-' + JSON.stringify(usedElementDef.toObject())"
+        >
         <i class="form-icon"></i>
         false
       </label>
     </template>
-    <template v-if="(elementDef instanceof ChoiceInputDef)">
-      <template v-for="element in elementDef.choices">
+    <template v-if="(usedElementDef instanceof ChoiceInputDef)">
+      <template v-for="element in usedElementDef.choices">
         <label class="form-radio form-inline">
-          <input :id="getValueInputId()"
+          <input :id="getValueInputId"
                  type="radio"
-                 :name="getValueInputId()"
+                 :name="getValueInputId"
                  :value="element"
-                 :checked="(elementDef.defaultValue === element) ? '' : null"
-                 @change="updateValueEvent">
+                 :checked="(value === element) ? '' : null"
+                 @change="updateValueEvent"
+                 :key="position + '-' + name + '-' + JSON.stringify(usedElementDef.toObject())"
+          >
           <i class="form-icon"></i>
           {{ element }}
         </label>
       </template>
     </template>
-    <template v-if="(elementDef instanceof FloatChoiceInputDef)">
-      <template v-for="element in elementDef.choices">
+    <template v-if="(usedElementDef instanceof FloatChoiceInputDef)">
+      <template v-for="element in usedElementDef.choices">
         <label class="form-radio form-inline">
-          <input :id="getValueInputId()"
+          <input :id="getValueInputId"
                  type="radio"
-                 :name="getValueInputId()"
+                 :name="getValueInputId"
                  :value="element"
-                 :checked="(elementDef.defaultValue === element) ? '' : null"
-                 @change="updateValueEvent">
+                 :checked="(value === element) ? '' : null"
+                 @change="updateValueEvent"
+                 :key="position + '-' + name + '-' + JSON.stringify(usedElementDef.toObject())"
+          >
           <i class="form-icon"></i>
           {{ element }}
         </label>
       </template>
     </template>
     <!-- Toast element for warnings / validation messages -->
-    <div :id="getToastId()" class="toast toast-warning display-none">
+    <div :id="getToastId" class="toast toast-warning display-none">
       <button type='button' class="btn btn-clear float-right" @click="hideModal"></button>
-      <span :id="getToastContentId()"></span>
+      <span :id="getToastContentId"></span>
     </div>
   </div>
 </template>
 
 <script>
-import {onMounted, onUpdated, ref, watch} from "vue";
 import {
   InputDef, StringInputDef, BooleanInputDef, NumberInputDef, InputType,
   ChoiceInputDef, FloatChoiceInputDef
-} from "../../../utils/dataValidationFunctions.ts"
+} from "../../../utils/dataValidationFunctions"
+import {
+  getInputElementToastContentId,
+  getInputElementToastId,
+  getInputElementId
+} from "../../../utils/structDefFunctions";
 
 export default {
-
+  name: "SingleValueStructDef",
   props: {
     elementDef: {
       type: InputDef,
@@ -128,142 +153,139 @@ export default {
       type: [String, Number, Boolean],
       required: false,
       default: undefined
-    },
-    resetCounter: {
-      type: Number,
-      required: false,
-      default: 0
     }
   },
-  emits: ['valueChanged'],
+  // possible situations:
+  // a) value passed in initWithValue is confirmed, in which case we only need to send a valueConfirmEvent
+  // on which the parent component doesn't need to react,
+  // b) send valueChanged with value === undefined, where the parent only
+  // needs to update the value presenting that state (e.g if it is a unconditioned field, set all the fields
+  // conditioned on it also to undefined),
+  // c) valueChanged with an actual value. This needs recalculation on parent end
+  // on the valid values
+  emits: ['valueChanged', 'valueConfirm'],
+  data() {
+    return {
+      usedElementDef: this.elementDef.copy(this.elementDef.elementId),
+      validator: this.elementDef.getInputValidation(),
+      value: this.initWithValue,
+      convertInputToNumber: (this.elementDef instanceof ChoiceInputDef) &&
+          (this.elementDef.choices.filter(choice => isNaN(choice)).length == 0)
+    }
+  },
   components: {},
-  methods: {
+  computed: {
+    getValueInputId() {
+      return getInputElementId(this.usedElementDef.elementId, this.name, this.position)
+    },
+
+    getToastId() {
+      return getInputElementToastId(this.usedElementDef.elementId, this.name, this.position)
+    },
+
+    getToastContentId() {
+      return getInputElementToastContentId(this.usedElementDef.elementId, this.name, this.position)
+    },
   },
-
-  setup(props, context) {
-    let value = ref(minValueDefault())
-
-    function minValueDefault() {
-      return (props.elementDef.validation.min !== undefined) ? props.elementDef.validation.min : 0
-    }
-
-    function getValueInputId() {
-      return 'k-' + props.elementDef.elementId + "-" + props.name + "-input-" + props.position
-    }
-
-    function getToastId() {
-      return 'k-' + props.elementDef.elementId + "-" + props.name + '-msg-toast-' + props.position
-    }
-
-    function getToastContentId() {
-      return 'k-' + props.elementDef.elementId + "-" + props.name + '-msg-toast-content-' + props.position
-    }
-
-    function resetValues() {
-      props.elementDef.defaultValue = undefined
-      value.value = minValueDefault()
-    }
-
-    let convertInputToNumber = (props.elementDef instanceof ChoiceInputDef) &&
-        (props.elementDef.choices.filter(choice => isNaN(choice)).length == 0)
-
-    let validator = props.elementDef.getInputValidation()
-
-    watch(() => props.elementDef, (newValue, oldValue) => {
-      resetValues()
-    })
-
-    watch(() => props.resetCounter, (newValue, oldValue) => {
-      console.info(`element '${props.name}', resetCounter increase: ${newValue}`)
-      if (newValue > oldValue) {
-        resetValues()
-      }
-    })
-
-    onUpdated(() => {
-      // note that we need to update the validator here as its possible another elementDef has been passed.
-      // if that new def carries another validation, we'd be still using the old, thus the update here.
-      // NOTE: do not set possibly changing state in the setup or update it with proper hooks
-      validator = props.elementDef.getInputValidation()
-    })
-
-    onMounted(() => {
-      // if any value passed in props.fillWithValue, we set
-      if (props.initWithValue !== undefined) {
-        props.elementDef.defaultValue = props.initWithValue
-        updateValue(props.initWithValue)
-      }
-    })
-
-    function parseRightType(val) {
-      if (props.elementDef.valueType === InputType.INT) {
+  methods: {
+    parseRightType(val) {
+      if (this.usedElementDef.valueType === InputType.INT) {
         return parseInt(val)
-      } else if ([InputType.FLOAT, InputType.FLOAT_CHOICE]
-          .includes(props.elementDef.valueType)) {
+      } else if ([InputType.FLOAT, InputType.FLOAT_CHOICE].includes(this.usedElementDef.valueType)) {
         return parseFloat(val)
-      } else if (props.elementDef.valueType === InputType.BOOLEAN) {
+      } else if (this.usedElementDef.valueType === InputType.BOOLEAN) {
         return (val === null || val === undefined) ? val : (val === 'true' || val === true)
       }
       return val
-    }
+    },
 
-    document.addEventListener('change', function handle(event) {
-      if (event.target.id !== getValueInputId()) {
-        return
+    emitValueConfirmEvent() {
+      this.$emit('valueConfirm', {name: this.name, value: this.value, position: this.position})
+    },
+
+    emitValueChangedEvent() {
+      this.$emit('valueChanged', {name: this.name, value: this.value, position: this.position})
+    },
+
+    updateValue(newValue, isInitValue) {
+      if (newValue === undefined && isInitValue) {
+        this.emitValueConfirmEvent()
+        return;
       }
-      let validationResult = validator.validate(event.target.value)
-      if (validationResult.isValid) {
-        hideModal()
-      }
-    });
-
-    function promoteCurrentStateUp() {
-      context.emit('valueChanged', {name: props.name, value: value.value, position: props.position})
-    }
-
-    function updateValue(newValue) {
-      if (convertInputToNumber) {
+      if (this.convertInputToNumber) {
         newValue = Number(newValue)
       }
-      let validationResult = validator.validate(newValue)
+      let validationResult = this.validator.validate(newValue)
       if (validationResult.isValid) {
-        hideModal()
-        value.value = parseRightType(newValue)
+        this.hideModal()
+        this.value = this.parseRightType(newValue)
         // emitting change event to make parent element react to update / update its structure
-        promoteCurrentStateUp()
+        if (isInitValue) {
+          this.emitValueConfirmEvent()
+        } else {
+          this.emitValueChangedEvent()
+        }
       } else {
-        showModalMsg(validationResult.failReason)
+        this.value = undefined
+        this.showModalMsg(validationResult.failReason)
+        this.emitValueChangedEvent()
       }
-    }
+    },
 
-    function updateValueEvent(valueEvent) {
+    /**
+     * Function for manual edit
+     * @param valueEvent
+     */
+    updateValueEvent(valueEvent) {
       let newValue = valueEvent.target.value
-      updateValue(newValue)
+      this.updateValue(newValue, false)
+    },
+
+    showModalMsg(msg) {
+      document.getElementById(this.getToastContentId).textContent = msg;
+      document.getElementById(this.getToastId).classList.remove("display-none");
+    },
+
+    hideModal() {
+      document.getElementById(this.getToastContentId).textContent = "";
+      document.getElementById(this.getToastId).classList.add("display-none");
+    }
+  },
+
+  updated() {
+    this.convertInputToNumber = (this.usedElementDef instanceof ChoiceInputDef) &&
+        (this.usedElementDef.choices.filter(choice => isNaN(choice)).length == 0)
+    // note that we need to update the validator here as its possible another elementDef has been passed.
+    // if that new def carries another validation, we'd be still using the old, thus the update here.
+    // NOTE: do not set possibly changing state in the setup or update it with proper hooks
+    this.validator = this.usedElementDef.getInputValidation()
+  },
+
+  mounted() {
+    if (this.value !== undefined) {
+      this.updateValue(this.value, true)
     }
 
-    function showModalMsg(msg) {
-      document.getElementById(getToastContentId()).textContent = msg;
-      document.getElementById(getToastId()).classList.remove("display-none");
-    }
+    // document.addEventListener('change', function handle(event) {
+    //   if (event.target.id !== this.getValueInputId) {
+    //     return
+    //   }
+    //   let validationResult = this.validator.validate(event.target.value)
+    //   if (validationResult.isValid) {
+    //     this.hideModal()
+    //   }
+    // });
+  },
 
-    function hideModal() {
-      document.getElementById(getToastContentId()).textContent = "";
-      document.getElementById(getToastId()).classList.add("display-none");
-    }
+  setup() {
 
     return {
-      updateValueEvent,
-      hideModal,
-      getValueInputId,
-      getToastId,
-      getToastContentId,
       InputType,
       NumberInputDef,
       StringInputDef,
       BooleanInputDef,
       ChoiceInputDef,
-      FloatChoiceInputDef,
-      value
+      FloatChoiceInputDef
     }
   }
 

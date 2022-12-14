@@ -1,0 +1,31 @@
+{
+  "labels": [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+
+    "Juli",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December"
+  ],
+  "datasets": [
+    {
+      "label": "Data1",
+      "data": [0, 10, 5, 2, 20, 30, 45, 20, 10, 8, 13, 80, 100]
+    },
+    {
+      "label": "Data2",
+      "data": [4, 2, 0, 8, 10, 40, 60, 30, 20, 60, 70, 80, 55]
+    },
+    {
+      "label": "Data3",
+      "data": [40, 2, 80, 60, 28, 10, 50, 90, 100, 30, 50, 60, 88]
+    }
+  ]
+}

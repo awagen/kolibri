@@ -22,7 +22,8 @@ import de.awagen.kolibri.datatypes.stores.{MetricDocument, MetricRow}
 import de.awagen.kolibri.datatypes.tagging.TaggedWithType
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.testclasses.UnitTestSpec
-import de.awagen.kolibri.datatypes.values.{AggregateValue, DataPoint}
+import de.awagen.kolibri.datatypes.values.DataPoint
+import de.awagen.kolibri.datatypes.values.aggregation.AggregateValue
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.{Aggregator, TagKeyMetricAggregationPerClassAggregator, TagKeyMetricDocumentPerClassAggregator, TagKeyRunningDoubleAvgPerClassAggregator}
 
 class AggregatorsJsonProtocolSpec extends UnitTestSpec {

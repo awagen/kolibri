@@ -19,7 +19,7 @@ package de.awagen.kolibri.base.config.di.modules.persistence
 
 import com.softwaremill.tagging
 import de.awagen.kolibri.base.config.AppProperties
-import de.awagen.kolibri.base.config.AppProperties.config.{csvColumnSeparator, localPersistenceWriteResultsSubPath}
+import de.awagen.kolibri.base.config.AppProperties.config.localPersistenceWriteResultsSubPath
 import de.awagen.kolibri.base.config.di.modules.Modules.{LOCAL_MODULE, PersistenceDIModule}
 import de.awagen.kolibri.base.io.reader.{DataOverviewReader, LocalDirectoryReader, LocalResourceFileReader, Reader}
 import de.awagen.kolibri.base.io.writer.Writers.{FileWriter, Writer}
@@ -48,9 +48,9 @@ class LocalPersistenceModule extends PersistenceDIModule with tagging.Tag[LOCAL_
     baseFilenameFilter = fileFilter)
 
 
-  def csvMetricAggregationWriter(subFolder: String, tagToDataIdentifierFunc: Tags.Tag => String): Writer[MetricAggregation[Tags.Tag], Tags.Tag, Any] = Writer.localMetricAggregationWriter(
+  def metricAggregationWriter(subFolder: String,
+                              tagToDataIdentifierFunc: Tags.Tag => String): Writer[MetricAggregation[Tags.Tag], Tags.Tag, Any] = Writer.localMetricAggregationWriter(
     s"${AppProperties.config.localPersistenceWriteBasePath.get.trim.stripSuffix("/")}/${localPersistenceWriteResultsSubPath.get.stripPrefix("/")}",
-    csvColumnSeparator,
     subFolder,
     tagToDataIdentifierFunc
   )

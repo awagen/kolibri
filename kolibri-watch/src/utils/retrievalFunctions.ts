@@ -4,7 +4,7 @@ import {
     templateTypeUrl, templateSaveUrl, templateExecuteUrl,
     templateContentUrl, dataFileInfoAllUrl,
     resultExecutionIdsOverviewUrl, resultExecutionIdsSingleResultsOverviewUrl,
-    resultExecutionIdGetDataByIdUrl, resultExecutionIdGetFilteredDataByIdUrl,
+    resultExecutionIdGetDataByIdUrl,
     resultAnalysisTopFlowUrl, resultAnalysisVarianceUrl, parameterValuesSampleRequestUrl,
     irMetricsAllUrl, irMetricsReducedToFullJsonListUrl, kolibriSearchEvalJobDefinitionUrl,
     templateAllTypeToInfoMapUrl,
@@ -71,6 +71,7 @@ function retrieveSingleResultIDsForExecutionID(executionId) {
         })
 }
 
+
 /**
  * retrieve a single result for an executionId (execitionId refers to a single experiment / execution)
  * @param executionId - the id of the execution / experiment
@@ -81,57 +82,7 @@ function retrieveSingleResultById(executionId, resultId) {
     return axios
         .get(url)
         .then(response => {
-            let result = response.data
-            let returnValue = {}
-            // list of parameter names (parameters valied)
-            returnValue["paramNames"] = result["paramNames"]
-            // list of metric names (single metrics calculated)
-            returnValue["metricNames"] = result["metricNames"]
-            // list of all column names, includes parameter names and
-            // prefixed metricNames (e.g metric name prefixed with "value-[metricName]")
-            returnValue["columnNames"] = result["columnNames"]
-            // actual data lines. This is list of lists, where each top-level list represents
-            // a row and the contained list the distinct columns corresponding to columnNames
-            returnValue["dataLinesAsColumns"] = result["dataLinesAsColumns"]
-            return returnValue
-        }).catch(_ => {
-            return {}
-        })
-}
-
-/**
- * Similar to retrieveSingleResultById, yet allows sorting by passed metric name
- * and only return topN results. If topN < 0, all results will be retrieved.
- * If reversed is set to true, will reverse sorting, e.g with metric value asc.
- * @param executionId
- * @param resultId
- * @param metricName
- * @param topN
- * @param reversed
- */
-function retrieveSingleResultByIdFiltered(executionId, resultId, metricName, topN, reversed) {
-    const url = resultExecutionIdGetFilteredDataByIdUrl
-        .replace("#EXECUTION_ID", executionId)
-        + "?id=" + resultId
-        + "&sortByMetric=" +  metricName
-        + "&topN=" + topN
-        + "&reversed=" + reversed
-    return axios
-        .get(url)
-        .then(response => {
-            let result = response.data
-            let returnValue = {}
-            // list of parameter names (parameters valied)
-            returnValue["paramNames"] = result["paramNames"]
-            // list of metric names (single metrics calculated)
-            returnValue["metricNames"] = result["metricNames"]
-            // list of all column names, includes parameter names and
-            // prefixed metricNames (e.g metric name prefixed with "value-[metricName]")
-            returnValue["columnNames"] = result["columnNames"]
-            // actual data lines. This is list of lists, where each top-level list represents
-            // a row and the contained list the distinct columns corresponding to columnNames
-            returnValue["dataLinesAsColumns"] = result["dataLinesAsColumns"]
-            return returnValue
+            return response.data
         }).catch(_ => {
             return {}
         })
@@ -497,7 +448,7 @@ export {
     retrieveTemplatesForType, retrieveTemplateTypes, saveTemplate, executeJob,
     retrieveTemplateContentAndInfo, retrieveDataFileInfoAll,
     retrieveExecutionIDs, retrieveSingleResultIDsForExecutionID,
-    retrieveSingleResultById, retrieveSingleResultByIdFiltered,
+    retrieveSingleResultById,
     retrieveAnalysisTopFlop, retrieveAnalysisVariance, retrieveRequestSamplesForData,
     retrieveAllAvailableIRMetrics, changeReducedToFullMetricsJsonList,
     retrieveJobInformation, retrieveAllAvailableTemplateInfos,

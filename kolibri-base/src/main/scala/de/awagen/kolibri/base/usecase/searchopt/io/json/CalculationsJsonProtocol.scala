@@ -20,15 +20,16 @@ package de.awagen.kolibri.base.usecase.searchopt.io.json
 import de.awagen.kolibri.base.directives.Resource
 import de.awagen.kolibri.base.io.json.ResourceJsonProtocol.StructDefs.RESOURCE_MAP_STRING_DOUBLE_STRUCT_DEF
 import de.awagen.kolibri.base.io.json.ResourceJsonProtocol.resourceMapStringDoubleFormat
-import de.awagen.kolibri.base.usecase.searchopt.io.json.CalculationName.{BINARY_PRECISION_FALSE_AS_YES, BINARY_PRECISION_TRUE_AS_YES, FALSE_COUNT, FIRST_FALSE, FIRST_TRUE, IDENTITY, IR_METRICS, TRUE_COUNT}
+import de.awagen.kolibri.base.usecase.searchopt.io.json.CalculationName.{BINARY_PRECISION_FALSE_AS_YES, BINARY_PRECISION_TRUE_AS_YES, FALSE_COUNT, FIRST_FALSE, FIRST_TRUE, IDENTITY, IR_METRICS, STRING_SEQUENCE_VALUE_OCCURRENCE_HISTOGRAM, TRUE_COUNT}
 import de.awagen.kolibri.base.usecase.searchopt.io.json.MetricsCalculationJsonProtocol._
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations._
-import de.awagen.kolibri.base.usecase.searchopt.metrics.Functions.{booleanPrecision, countValues, findFirstValue}
-import de.awagen.kolibri.base.usecase.searchopt.metrics.{Functions, MetricsCalculation}
+import de.awagen.kolibri.base.usecase.searchopt.metrics.ComputeResultFunctions.{booleanPrecision, countValues, findFirstValue, stringSeqHistogram}
+import de.awagen.kolibri.base.usecase.searchopt.metrics.{ComputeResultFunctions, MetricsCalculation}
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
 import de.awagen.kolibri.datatypes.types.JsonStructDefs._
 import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
+import de.awagen.kolibri.datatypes.values.Calculations.Calculation
 import spray.json.{DefaultJsonProtocol, JsValue, JsonFormat, enrichAny}
 
 
@@ -44,12 +45,12 @@ object CalculationsJsonProtocol extends DefaultJsonProtocol {
   val METRICS_CALCULATION_KEY = "metricsCalculation"
   val EXCLUDE_PARAMS_KEY = "excludeParams"
 
-  implicit object FromMapCalculationsDoubleFormat extends JsonFormat[Calculation[WeaklyTypedMap[String], Double]] with WithStructDef {
+  implicit object FromMapCalculationsFormat extends JsonFormat[Calculation[WeaklyTypedMap[String], Any]] with WithStructDef {
     val DATA_KEY_KEY = "dataKey"
     val TYPE_KEY = "type"
     val K_KEY = "k"
 
-    override def read(json: JsValue): Calculation[WeaklyTypedMap[String], Double] = json match {
+    override def read(json: JsValue): Calculation[WeaklyTypedMap[String], Any] = json match {
       case spray.json.JsObject(fields) =>
         fields(TYPE_KEY).convertTo[String] match {
           case IR_METRICS.name =>
@@ -65,7 +66,7 @@ object CalculationsJsonProtocol extends DefaultJsonProtocol {
           case IDENTITY.name =>
             val metricName: String = fields(NAME_KEY).convertTo[String]
             val dataKey: String = fields(DATA_KEY_KEY).convertTo[String]
-            FromMapCalculation[Double, Double](Set(metricName), dataKey, Functions.identity[Double])
+            FromMapCalculation[Double, Double](Set(metricName), dataKey, ComputeResultFunctions.identity[Double])
           case FIRST_TRUE.name =>
             val metricName: String = fields(NAME_KEY).convertTo[String]
             val dataKey: String = fields(DATA_KEY_KEY).convertTo[String]
@@ -92,11 +93,16 @@ object CalculationsJsonProtocol extends DefaultJsonProtocol {
             val dataKey: String = fields(DATA_KEY_KEY).convertTo[String]
             val k: Int = fields(K_KEY).convertTo[Int]
             FromMapCalculation[Seq[Boolean], Double](Set(metricName), dataKey, booleanPrecision(useTrue = false, k))
+          case STRING_SEQUENCE_VALUE_OCCURRENCE_HISTOGRAM.name =>
+            val metricName: String = fields(NAME_KEY).convertTo[String]
+            val dataKey: String = fields(DATA_KEY_KEY).convertTo[String]
+            val k: Int = fields(K_KEY).convertTo[Int]
+            FromMapCalculation[Seq[String], Map[String, Map[String, Double]]](Set(metricName), dataKey, stringSeqHistogram(k))
         }
     }
 
     // TODO
-    override def write(obj: Calculation[WeaklyTypedMap[String], Double]): JsValue = """{}""".toJson
+    override def write(obj: Calculation[WeaklyTypedMap[String], Any]): JsValue = """{}""".toJson
 
     override def structDef: JsonStructDefs.StructDef[_] = {
       val singleValueCalculationMandatoryFields = Seq(
@@ -117,6 +123,7 @@ object CalculationsJsonProtocol extends DefaultJsonProtocol {
               FALSE_COUNT.name,
               BINARY_PRECISION_TRUE_AS_YES.name,
               BINARY_PRECISION_FALSE_AS_YES.name,
+              STRING_SEQUENCE_VALUE_OCCURRENCE_HISTOGRAM.name
             )),
             required = true
           ),
@@ -141,7 +148,12 @@ object CalculationsJsonProtocol extends DefaultJsonProtocol {
               ) ++ singleValueCalculationMandatoryFields),
               BINARY_PRECISION_FALSE_AS_YES.name -> (Seq(
                 FieldDef(StringConstantStructDef(K_KEY), IntMinMaxStructDef(0, 1000), required = true)
-              ) ++ singleValueCalculationMandatoryFields)
+              ) ++ singleValueCalculationMandatoryFields),
+              STRING_SEQUENCE_VALUE_OCCURRENCE_HISTOGRAM.name -> (
+                Seq(
+                  FieldDef(StringConstantStructDef(K_KEY), IntMinMaxStructDef(0, 1000), required = true)
+                ) ++ singleValueCalculationMandatoryFields
+              )
             )
           )
         )

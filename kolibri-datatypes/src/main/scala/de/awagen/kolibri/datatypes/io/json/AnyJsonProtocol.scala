@@ -42,7 +42,7 @@ object AnyJsonProtocol extends DefaultJsonProtocol {
       case JsTrue => true
       case JsFalse => false
       case JsArray(elements) => elements.map(x => read(x))
-      case JsObject(fields) => fields.view.mapValues(x => read(x))
+      case JsObject(fields) => fields.view.mapValues(x => read(x)).toMap
     }
   }
 

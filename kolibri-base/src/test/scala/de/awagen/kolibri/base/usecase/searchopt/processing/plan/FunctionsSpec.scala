@@ -27,7 +27,7 @@ import de.awagen.kolibri.datatypes.mutable.stores.{TypeTaggedMap, TypedMapStore}
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.stores.MetricRow.ResultCountStore
 import de.awagen.kolibri.datatypes.utils.MathUtils
-import de.awagen.kolibri.datatypes.values.AggregateValue
+import de.awagen.kolibri.datatypes.values.aggregation.AggregateValue
 
 import scala.collection.mutable
 
@@ -122,9 +122,9 @@ class FunctionsSpec extends UnitTestSpec {
         case Right(MetricRow(countStore, params, metrics)) =>
           countStore mustBe new ResultCountStore(1, 0)
           params mustBe Map("p1" -> List("v1"))
-          val ndcgAt2: AggregateValue[Double] = metrics("NDCG@2").biValue.value2
-          val ndcgAt4: AggregateValue[Double] = metrics("NDCG@4").biValue.value2
-          val ndcgAt5: AggregateValue[Double] = metrics("NDCG@5").biValue.value2
+          val ndcgAt2: AggregateValue[Double] = metrics("NDCG@2").biValue.value2.asInstanceOf[AggregateValue[Double]]
+          val ndcgAt4: AggregateValue[Double] = metrics("NDCG@4").biValue.value2.asInstanceOf[AggregateValue[Double]]
+          val ndcgAt5: AggregateValue[Double] = metrics("NDCG@5").biValue.value2.asInstanceOf[AggregateValue[Double]]
           MathUtils.equalWithPrecision(0.9813, ndcgAt2.value, 0.0001f) mustBe true
           MathUtils.equalWithPrecision(0.9838, ndcgAt4.value, 0.0001f) mustBe true
           MathUtils.equalWithPrecision(0.9838, ndcgAt5.value, 0.0001f) mustBe true

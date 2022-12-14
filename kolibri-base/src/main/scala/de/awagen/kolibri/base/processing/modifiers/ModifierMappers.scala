@@ -92,7 +92,7 @@ object ModifierMappers {
 
     override def getModifiersForKey(key: String): Option[IndexedGenerator[Modifier[RequestTemplateBuilder]]] = {
       getValuesForKey(key).map(bodyValuesGen =>
-        bodyValuesGen.mapGen(value => BodyModifier(HttpEntity.Strict(contentType, ByteString(value)))))
+        bodyValuesGen.mapGen(value => BodyModifier(value, contentType)))
     }
   }
 

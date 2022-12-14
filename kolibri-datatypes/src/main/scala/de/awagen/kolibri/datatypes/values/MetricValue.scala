@@ -1,57 +1,113 @@
 /**
-  * Copyright 2021 Andreas Wagenmann
-  *
-  * Licensed under the Apache License, Version 2.0 (the "License");
-  * you may not use this file except in compliance with the License.
-  * You may obtain a copy of the License at
-  *
-  * http://www.apache.org/licenses/LICENSE-2.0
-  *
-  * Unless required by applicable law or agreed to in writing, software
-  * distributed under the License is distributed on an "AS IS" BASIS,
-  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  * See the License for the specific language governing permissions and
-  * limitations under the License.
-  */
+ * Copyright 2021 Andreas Wagenmann
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package de.awagen.kolibri.datatypes.values
 
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason
-import de.awagen.kolibri.datatypes.values.RunningValue.{calcErrorRunningValue, doubleAvgRunningValue}
+import de.awagen.kolibri.datatypes.values.RunningValues._
 
 
 object MetricValue {
 
-  def createAvgFailSample(metricName: String, failMap: Map[ComputeFailReason, Int]): MetricValue[Double] = {
-    MetricValue(name = metricName,
-      BiRunningValue(value1 = calcErrorRunningValue(1, failMap),
-        value2 = doubleAvgRunningValue(0.0, 0, 0.0)))
+  def createMetricValue[T](metricName: String,
+                           failCount: Int,
+                           failMap: Map[ComputeFailReason, Int],
+                           runningValue: RunningValue[T]): MetricValue[T] = {
+    MetricValue(
+      name = metricName,
+      BiRunningValue(value1 = calcErrorRunningValue(failCount, failMap), value2 = runningValue))
   }
 
-  def createAvgSuccessSample(metricName: String, value: Double, weight: Double): MetricValue[Double] = {
-    MetricValue(name = metricName,
-      BiRunningValue(value1 = calcErrorRunningValue(0, Map.empty),
-        value2 = doubleAvgRunningValue(weight, 1, value)))
+  def createSingleFailSample[T](metricName: String,
+                                failMap: Map[ComputeFailReason, Int],
+                                runningValue: RunningValue[T],
+                               ): MetricValue[T] = {
+    createMetricValue(metricName, 1, failMap, runningValue)
   }
 
-  def createEmptyAveragingMetricValue(name: String): MetricValue[Double] = {
-    MetricValue(name = name, BiRunningValue(value1 = calcErrorRunningValue(0, Map.empty),
-      value2 = doubleAvgRunningValue(0.0, 0, 0.0)))
+  def createNoFailSample[T](metricName: String, runningValue: RunningValue[T]): MetricValue[T] = {
+    createMetricValue(metricName, 0, Map.empty, runningValue)
+  }
+
+  def createMapValueCountFailSample[T](metricName: String, failMap: Map[ComputeFailReason, Int], runningValue: RunningValue[Map[T, Double]]): MetricValue[Map[T, Double]] = {
+    createSingleFailSample(metricName, failMap, runningValue)
+  }
+
+  def createMapSumValueSuccessSample[T](metricName: String, value: Map[T, Double], weight: Double): MetricValue[Map[T, Double]] = {
+    createNoFailSample(metricName, mapValueWeightedSumRunningValue(weight, 1, value))
+  }
+
+  def createNestedMapSumValueSuccessSample[U, V](weighted: Boolean)(metricName: String, value: Map[U, Map[V, Double]], weight: Double): MetricValue[Map[U, Map[V, Double]]] = {
+    val runningValue = if (weighted) nestedMapValueWeightedSumUpRunningValue(weight, 1, value) else nestedMapValueUnweightedSumUpRunningValue(weight, 1, value)
+    createNoFailSample(metricName, runningValue)
+  }
+
+  def createNestedMapSumValueFailSample[U, V](weighted: Boolean)(metricName: String, failMap: Map[ComputeFailReason, Int]): MetricValue[Map[U, Map[V, Double]]] = {
+    val runningValue: RunningValue[Map[U, Map[V, Double]]] = if (weighted) nestedMapValueWeightedSumUpRunningValue[U, V](0.0, 0, Map.empty) else nestedMapValueUnweightedSumUpRunningValue(0.0, 0, Map.empty)
+    createSingleFailSample(metricName, failMap, runningValue)
+  }
+
+  def createDoubleAvgFailSample(metricName: String, failMap: Map[ComputeFailReason, Int]): MetricValue[Double] = {
+    createSingleFailSample[Double](metricName, failMap, doubleAvgRunningValue(0.0, 0, 0.0))
+  }
+
+  def createDoubleAvgSuccessSample(metricName: String, value: Double, weight: Double): MetricValue[Double] = {
+    createNoFailSample(metricName, doubleAvgRunningValue(weight, 1, value))
+  }
+
+  def createDoubleEmptyAveragingMetricValue(name: String): MetricValue[Double] = {
+    createNoFailSample(name, doubleAvgRunningValue(0.0, 0, 0.0))
   }
 
 }
 
 /**
-  * Simple container keeping state with BiRunningValue that keeps track of occurring error types and the
-  * respective counts and some aggregated value type to keep track of the successful computations aggregated in the
-  * MetricValue
-  *
-  * @param name    - the name of the metric value
-  * @param biValue - BiRunningValue keeping track of error types, their occurrence counts, the actual value made of
-  *                successful computations. Note that BiRunningValue keeps track of how many samples went into either by
-  *                utilizing AggregateValue[Map[ComputeFailReason, Int]] and AggregateValue[A]. Thus note that the
-  *                sum of the counts in the error type map will always be >= the actual count of the sampels that went
-  *                into it
-  * @tparam A - type of the aggregated value made of successful computations
-  */
-case class MetricValue[A](name: String, biValue: BiRunningValue[Map[ComputeFailReason, Int], A])
+ * Simple container keeping state with BiRunningValue that keeps track of occurring error types and the
+ * respective counts and some aggregated value type to keep track of the successful computations aggregated in the
+ * MetricValue
+ *
+ * @param name                       - the name of the metric value
+ * @param biValue                    - BiRunningValue keeping track of error types, their occurrence counts, the actual value made of
+ *                                   successful computations. Note that BiRunningValue keeps track of how many samples went into either by
+ *                                   utilizing AggregateValue[Map[ComputeFailReason, Int]] and AggregateValue[A]. Thus note that the
+ *                                   sum of the counts in the error type map will always be >= the actual count of the sampels that went
+ *                                   into it
+ * @param aggregateValueInitSupplier -
+ * @tparam A - type of the aggregated value made of successful computations
+ */
+case class MetricValue[+A](name: String,
+                           biValue: BiRunningValue[Map[ComputeFailReason, Int], A]) {
+
+  override def equals(obj: Any): Boolean = {
+    if (!obj.isInstanceOf[MetricValue[A]]) {
+      false
+    }
+    else {
+      val other = obj.asInstanceOf[MetricValue[A]]
+      this.name == other.name && this.biValue == other.biValue
+    }
+  }
+
+  def emptyCopy(): MetricValue[A] = {
+    this.copy(
+      name = name,
+      biValue = BiRunningValue[Map[ComputeFailReason, Int], A](
+        value1 = calcErrorRunningValue(0, Map.empty),
+        value2 = biValue.value2.emptyCopy()
+      ))
+  }
+
+}

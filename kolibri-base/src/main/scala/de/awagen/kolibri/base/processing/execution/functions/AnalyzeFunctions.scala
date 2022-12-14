@@ -24,6 +24,7 @@ import de.awagen.kolibri.base.io.writer.Writers.Writer
 import de.awagen.kolibri.base.processing.execution.functions.FileUtils.regexDirectoryReader
 import de.awagen.kolibri.base.processing.failure.TaskFailType
 import de.awagen.kolibri.base.processing.failure.TaskFailType.TaskFailType
+import de.awagen.kolibri.datatypes.metrics.aggregation.writer.CSVParameterBasedMetricDocumentFormat
 import de.awagen.kolibri.datatypes.stores.PriorityStores._
 import de.awagen.kolibri.datatypes.stores.{MetricDocument, MetricRow}
 import de.awagen.kolibri.datatypes.tagging.Tags._
@@ -108,9 +109,13 @@ object AnalyzeFunctions {
     override def execute: Either[TaskFailType, ExecutionSummary[Seq[(String, Double)]]] = {
       val filteredFiles: Seq[String] = directoryReader.listResources(dir, _ => true)
       var queryVariancePairs: Seq[(String, Double)] = Seq.empty
+      val csvFormat: CSVParameterBasedMetricDocumentFormat = CSVParameterBasedMetricDocumentFormat("\t")
+
       filteredFiles.foreach(file => {
-        val document: MetricDocument[Tag] = FileUtils.fileToMetricDocument(file, fileReader)
-        val singleValues: Seq[Double] = document.rows.values.map(x => x.metrics(metricName).biValue.value2.value).toSeq
+        // TODO: make the file format selectable or define via file ending
+        val document: MetricDocument[Tag] = FileUtils.fileToMetricDocument(file, fileReader, csvFormat)
+        // TODO: fix, since not every metric is double by now
+        val singleValues: Seq[Double] = document.rows.values.map(x => x.metrics(metricName).biValue.value2.value).map(x => x.asInstanceOf[Double]).toSeq
         val mean = if (singleValues.isEmpty) 0 else singleValues.sum / singleValues.size
         val variance = if (singleValues.isEmpty) 0 else singleValues.map(x => math.pow(x - mean, 2.0)).sum / singleValues.size
         queryVariancePairs = queryVariancePairs :+ (queryFromFilename(file), variance)
@@ -142,15 +147,18 @@ object AnalyzeFunctions {
     lazy val persistenceModule: PersistenceModule = AppConfig.persistenceModule
     lazy val fileReader: Reader[String, Seq[String]] = persistenceModule.persistenceDIModule.reader
     lazy val fileWriter: Writer[String, String, _] = persistenceModule.persistenceDIModule.writer
+    val csvFormat: CSVParameterBasedMetricDocumentFormat = CSVParameterBasedMetricDocumentFormat("\t")
+
 
     override def execute: Either[TaskFailType.TaskFailType, ExecutionSummary[Map[String, Map[Map[String, Seq[String]], Seq[(String, String)]]]]] = {
       val result = KeepNBestAndKWorst(n_best, n_worst)
       val seq: Seq[Either[TaskFailType.TaskFailType, Seq[QueryParamValue]]] = compareFiles.map(file => {
-        val document: MetricDocument[Tag] = FileUtils.fileToMetricDocument(file, fileReader)
+        // TODO: make format selectable or detect via file ending
+        val document: MetricDocument[Tag] = FileUtils.fileToMetricDocument(file, fileReader, csvFormat)
         var currentValueOpt: Option[MetricValue[Double]] = None
         var compareRows: Seq[MetricRow] = Seq.empty
         document.rows.foreach({
-          case e if e._1 == currentParams => currentValueOpt = e._2.getMetricsValue(metricName)
+          case e if e._1 == currentParams => currentValueOpt = e._2.getMetricsValue(metricName).map(x => x.asInstanceOf[MetricValue[Double]])
           case e if compareParams.contains(e._1) => compareRows = compareRows :+ e._2
           case _ => // do nothing
         })
@@ -166,7 +174,7 @@ object AnalyzeFunctions {
           val settingsToDiff: Seq[QueryParamValue] = compareRows
             .filter(row => row.metrics.contains(metricName))
             .map(row => {
-              val value: MetricValue[Double] = row.metrics(metricName)
+              val value: MetricValue[Double] = row.metrics(metricName).asInstanceOf[MetricValue[Double]]
               val diffRelativeToCurrent = value.biValue.value2.value - currentValue.biValue.value2.value
               QueryParamValue(queryFromFilename.apply(file), row.params, diffRelativeToCurrent)
             })

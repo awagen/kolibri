@@ -35,16 +35,17 @@ import de.awagen.kolibri.base.usecase.searchopt.io.json.CalculationsJsonProtocol
 import de.awagen.kolibri.base.usecase.searchopt.io.json.JsonSelectorJsonProtocol._
 import de.awagen.kolibri.base.usecase.searchopt.io.json.ParsingConfigJsonProtocol._
 import de.awagen.kolibri.base.usecase.searchopt.io.json.{JsonSelectorJsonProtocol, ParsingConfigJsonProtocol}
-import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.Calculation
-import de.awagen.kolibri.base.usecase.searchopt.parse.JsonSelectors.JsValueSeqSelector
 import de.awagen.kolibri.base.usecase.searchopt.parse.JsonSelectors.JsonSelectorPathRegularExpressions.recursivePathKeyGroupingRegex
 import de.awagen.kolibri.base.usecase.searchopt.parse.ParsingConfig
 import de.awagen.kolibri.base.usecase.searchopt.parse.TypedJsonSelectors.NamedAndTypedSelector
+import de.awagen.kolibri.datatypes.io.json.EnumerationJsonProtocol.aggregateTypeFormat
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
 import de.awagen.kolibri.datatypes.types.JsonStructDefs._
 import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
+import de.awagen.kolibri.datatypes.values.Calculations.Calculation
+import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType.AggregationType
 import spray.json.{DefaultJsonProtocol, RootJsonFormat}
 
 
@@ -61,6 +62,7 @@ object FIELD_KEYS {
   val PARSING_CONFIG_FIELD = "parsingConfig"
   val EXCLUDE_PARAMS_COLUMNS_FIELD = "excludeParamColumns"
   val CALCULATIONS_FIELD = "calculations"
+  val METRIC_NAME_TO_AGGREGATION_TYPE_MAPPING_FIELD = "metricNameToAggregationTypeMapping"
   val TAGGING_CONFIGURATION_FIELD = "taggingConfiguration"
   val WRAP_UP_FUNCTION_FIELD = "wrapUpFunction"
   val ALLOWED_TIME_PER_ELEMENT_IN_MILLIS_FIELD = "allowedTimePerElementInMillis"
@@ -72,6 +74,7 @@ object FIELD_KEYS {
   val PRODUCT_ID_SELECTOR_FIELD = "productIdSelector"
   val OTHER_SELECTORS_FIELD = "otherSelectors"
   val OTHER_CALCULATIONS_FIELD = "otherCalculations"
+  val OTHER_METRIC_NAME_TO_AGGREGATION_TYPE_MAPPING_FIELD = "otherMetricNameToAggregationTypeMapping"
   val JUDGEMENT_FILE_PATH_FIELD = "judgementFilePath"
 
 }
@@ -92,7 +95,8 @@ object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSu
       batchByIndex: Int,
       parsingConfig: ParsingConfig,
       excludeParamColumns: Seq[String],
-      calculations: Seq[Calculation[WeaklyTypedMap[String], Double]],
+      calculations: Seq[Calculation[WeaklyTypedMap[String], Any]],
+      metricNameToAggregationTypeMapping: Map[String, AggregationType],
       taggingConfiguration: Option[BaseTaggingConfiguration[RequestTemplate, (Either[Throwable, WeaklyTypedMap[String]], RequestTemplate), MetricRow]],
       wrapUpFunction: Option[Execution[Any]],
       allowedTimePerElementInMillis: Int,
@@ -112,6 +116,7 @@ object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSu
         parsingConfig,
         excludeParamColumns,
         calculations,
+        metricNameToAggregationTypeMapping,
         taggingConfiguration,
         wrapUpFunction,
         allowedTimePerElementInMillis,
@@ -130,6 +135,7 @@ object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSu
     PARSING_CONFIG_FIELD,
     EXCLUDE_PARAMS_COLUMNS_FIELD,
     CALCULATIONS_FIELD,
+    METRIC_NAME_TO_AGGREGATION_TYPE_MAPPING_FIELD,
     TAGGING_CONFIGURATION_FIELD,
     WRAP_UP_FUNCTION_FIELD,
     ALLOWED_TIME_PER_ELEMENT_IN_MILLIS_FIELD,
@@ -227,12 +233,18 @@ object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSu
         FieldDef(
           StringConstantStructDef(CALCULATIONS_FIELD),
           GenericSeqStructDef(
-            FromMapCalculationsDoubleFormat.structDef
+            FromMapCalculationsFormat.structDef
           ),
           required = true,
           description = "Calculations to be executed. Here the fields extracted in the parsingConfig are referenced. " +
             "Allows computation of common information retrieval (IR) metrics such as NDCG, ERR, Precision, Recall and " +
             "further metrics (such as distributional)."
+        ),
+        FieldDef(
+          StringConstantStructDef(METRIC_NAME_TO_AGGREGATION_TYPE_MAPPING_FIELD),
+          MapStructDef(StringStructDef, aggregateTypeFormat.structDef),
+          required = true,
+          description = "Mapping of metric names to aggregation type."
         ),
         FieldDef(
           StringConstantStructDef(TAGGING_CONFIGURATION_FIELD),
@@ -293,7 +305,8 @@ object QueryBasedSearchEvaluationJsonProtocol extends DefaultJsonProtocol with S
       queryParameter: String,
       productIdSelector: String,
       otherSelectors: Seq[NamedAndTypedSelector[_]],
-      otherCalculations: Seq[Calculation[WeaklyTypedMap[String], Double]],
+      otherCalculations: Seq[Calculation[WeaklyTypedMap[String], Any]],
+      otherMetricNameToAggregationTypeMapping: Map[String, AggregationType],
       judgementFilePath: String,
       requestParameters: Seq[ValueSeqGenDefinition[_]],
       excludeParamColumns: Seq[String]
@@ -307,6 +320,7 @@ object QueryBasedSearchEvaluationJsonProtocol extends DefaultJsonProtocol with S
         productIdSelector,
         otherSelectors,
         otherCalculations,
+        otherMetricNameToAggregationTypeMapping,
         judgementFilePath,
         requestParameters,
         excludeParamColumns
@@ -319,6 +333,7 @@ object QueryBasedSearchEvaluationJsonProtocol extends DefaultJsonProtocol with S
     PRODUCT_ID_SELECTOR_FIELD,
     OTHER_SELECTORS_FIELD,
     OTHER_CALCULATIONS_FIELD,
+    OTHER_METRIC_NAME_TO_AGGREGATION_TYPE_MAPPING_FIELD,
     JUDGEMENT_FILE_PATH_FIELD,
     REQUEST_PARAMETERS_FIELD,
     EXCLUDE_PARAMS_COLUMNS_FIELD
@@ -377,13 +392,19 @@ object QueryBasedSearchEvaluationJsonProtocol extends DefaultJsonProtocol with S
         FieldDef(
           StringConstantStructDef(OTHER_CALCULATIONS_FIELD),
           GenericSeqStructDef(
-            FromMapCalculationsDoubleFormat.structDef
+            FromMapCalculationsFormat.structDef
           ),
           required = true,
           description = "Calculations to be executed. Here the fields extracted in the parsingConfig are referenced. " +
             "Note that common information retrieval metrics are already covered in the default settings," +
             "thus calculations configured here allow either addition of further ones or specification of custom " +
             "metrics based on data extracted within the otherSelectors attribute."
+        ),
+        FieldDef(
+          StringConstantStructDef(OTHER_METRIC_NAME_TO_AGGREGATION_TYPE_MAPPING_FIELD),
+          MapStructDef(StringStructDef, aggregateTypeFormat.structDef),
+          required = true,
+          description = "Mapping of metric names to aggregation type."
         ),
         FieldDef(
           StringConstantStructDef(JUDGEMENT_FILE_PATH_FIELD),

@@ -31,9 +31,10 @@ import de.awagen.kolibri.datatypes.tagging.TagType.AGGREGATION
 import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}
 import de.awagen.kolibri.datatypes.types.SerializableCallable.{SerializableFunction1, SerializableSupplier}
 import de.awagen.kolibri.datatypes.types.Types.WithCount
-import de.awagen.kolibri.datatypes.values.RunningValue.doubleAvgRunningValue
+import de.awagen.kolibri.datatypes.values.RunningValues.doubleAvgRunningValue
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
-import de.awagen.kolibri.datatypes.values.{AggregateValue, DataSample}
+import de.awagen.kolibri.datatypes.values.DataSample
+import de.awagen.kolibri.datatypes.values.aggregation.AggregateValue
 import org.slf4j.LoggerFactory
 
 import scala.collection.mutable

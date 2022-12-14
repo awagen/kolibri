@@ -36,13 +36,13 @@ import de.awagen.kolibri.base.config.AppProperties.config
 import de.awagen.kolibri.base.config.AppProperties.config.{kolibriDispatcherName, node_roles, useRequestEventShardingAndEndpoints}
 import de.awagen.kolibri.base.directives.RetrievalDirective.RetrievalDirective
 import de.awagen.kolibri.base.http.server.HttpServer
-import de.awagen.kolibri.base.http.server.routes.AnalysisRoutes.{getImproovingAndLoosing, getPartialResultsOverview, getResultBaseFolders, getSingleResult, getSingleResultFiltered, getValueVarianceFromDir}
+import de.awagen.kolibri.base.http.server.routes.AnalysisRoutes.{getImproovingAndLoosing, getPartialResultsOverview, getResultBaseFolders, getSingleJsonResult, getSingleCsvResultFiltered, getValueVarianceFromDir}
 import de.awagen.kolibri.base.http.server.routes.BaseRoutes
 import de.awagen.kolibri.base.http.server.routes.BaseRoutes._
 import de.awagen.kolibri.base.http.server.routes.DataRoutes._
 import de.awagen.kolibri.base.http.server.routes.JobDefRoutes.getSearchEvaluationEndpointAndJobDef
 import de.awagen.kolibri.base.http.server.routes.MetricRoutes.{getAvailableIRMetrics, getIRMetricJsonsFromReducedJsons}
-import de.awagen.kolibri.base.http.server.routes.ResourceRoutes.{getAvailableTemplatesByType, getJobTemplateByTypeAndIdentifier, getJobTemplateOverviewForType, getJobTemplateTypes, storeSearchEvaluationTemplate}
+import de.awagen.kolibri.base.http.server.routes.JobTemplateResourceRoutes.{getAvailableTemplatesByType, getJobTemplateByTypeAndIdentifier, getJobTemplateOverviewForType, getJobTemplateTypes, storeSearchEvaluationTemplate}
 import de.awagen.kolibri.base.http.server.routes.StatusRoutes.{finishedJobStates, getAllJobWorkerStates, getJobStatus, getJobWorkerStatus, getRunningJobIds, health, jobStates, nodeState}
 import de.awagen.kolibri.base.resources.RetrievalError
 import de.awagen.kolibri.base.usecase.statesharding.actors.EventAggregatingActor
@@ -165,8 +165,8 @@ object ClusterNode extends App {
         ~ getAllIndexedGeneratorInfosForFileData
         ~ getIndexedGeneratorInfoForValueSeqGenProviderSeqBody ~ getDataFilesByType
         ~ getValuesByTypeAndFile
-        ~ getResultBaseFolders ~ getPartialResultsOverview ~ getSingleResult
-        ~ getSingleResultFiltered ~ getImproovingAndLoosing ~ getValueVarianceFromDir
+        ~ getResultBaseFolders ~ getPartialResultsOverview ~ getSingleJsonResult
+        ~ getSingleCsvResultFiltered ~ getImproovingAndLoosing ~ getValueVarianceFromDir
         ~ getExampleQueriesForValueSeqGenProviderSequence
         ~ getAvailableIRMetrics ~ getIRMetricJsonsFromReducedJsons
         ~ getSearchEvaluationEndpointAndJobDef

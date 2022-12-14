@@ -70,7 +70,7 @@ class RequestTemplateBuilderModifiersSpec extends UnitTestSpec {
       // given
       val testJsonBody = """{"key": "value"}"""
       val body = HttpEntity.Strict(ContentTypes.`application/json`, ByteString(testJsonBody))
-      val modifier = BodyModifier(body)
+      val modifier = BodyModifier(testJsonBody, ContentTypes.`application/json`)
       // when, then
       modifier.apply(createRequestTemplateBuilder).build().body mustBe body
     }
@@ -79,7 +79,7 @@ class RequestTemplateBuilderModifiersSpec extends UnitTestSpec {
       // given
       val testJsonBody = """{"key": "value"}"""
       val body = HttpEntity.Strict(ContentTypes.`application/json`, ByteString(testJsonBody))
-      val bodyModifier = BodyModifier(body)
+      val bodyModifier = BodyModifier(testJsonBody, ContentTypes.`application/json`)
       val modifierReplace = HeaderModifier(Seq(RawHeader("h1", "v1"), RawHeader("h3", "v3")), replace = true)
       val contextModifier = ContextPathModifier("newPath")
       // when
@@ -88,6 +88,20 @@ class RequestTemplateBuilderModifiersSpec extends UnitTestSpec {
       modifiedBuilder.build().headers mustBe Seq(RawHeader("h1", "v1"), RawHeader("h3", "v3"))
       modifiedBuilder.build().body mustBe body
       modifiedBuilder.build().contextPath mustBe "/newPath"
+    }
+
+    "correctly apply BodyReplaceModifier on build irrespective of order of application of body and bodyReplace modifiers" in {
+      // given
+      val testJsonBodyInit = """{"key": "value", "key2": "$$value2$$"}"""
+      val testJsonBodyFinal = """{"key": "value", "key2": "yay"}"""
+      val body = HttpEntity.Strict(ContentTypes.`application/json`, ByteString(testJsonBodyFinal))
+      val modifier = BodyModifier(testJsonBodyInit, ContentTypes.`application/json`)
+      val modifier1 = BodyReplaceModifier(Map("$$value2$$" -> "yay"))
+      // when, then
+      val modifiedTemplateBuilder1 = modifier1.apply(modifier.apply(createRequestTemplateBuilder))
+      val modifiedTemplateBuilder2 = modifier.apply(modifier1.apply(createRequestTemplateBuilder))
+      modifiedTemplateBuilder1.build().body mustBe body
+      modifiedTemplateBuilder2.build().body mustBe body
     }
 
   }

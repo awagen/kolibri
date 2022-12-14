@@ -16,7 +16,7 @@
 
 package de.awagen.kolibri.base.processing.modifiers
 
-import akka.http.scaladsl.model.{HttpHeader, MessageEntity}
+import akka.http.scaladsl.model.{ContentType, ContentTypes, HttpHeader}
 import de.awagen.kolibri.base.http.client.request.RequestTemplateBuilder
 
 import scala.collection.immutable
@@ -71,10 +71,18 @@ object RequestTemplateBuilderModifiers {
     *
     * @param body
     */
-  case class BodyModifier(body: MessageEntity) extends Modifier[RequestTemplateBuilder] {
+  case class BodyModifier(bodyString: String, contentType: ContentType = ContentTypes.`application/json`) extends Modifier[RequestTemplateBuilder] {
 
     def apply(a: RequestTemplateBuilder): RequestTemplateBuilder = {
-      a.withBody(body)
+      a.withBody(bodyString, contentType)
+    }
+
+  }
+
+  case class BodyReplaceModifier(params: immutable.Map[String, String]) extends Modifier[RequestTemplateBuilder] {
+
+    def apply(a: RequestTemplateBuilder): RequestTemplateBuilder = {
+      a.addBodyReplaceValues(params)
     }
 
   }

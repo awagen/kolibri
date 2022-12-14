@@ -17,11 +17,18 @@
 package de.awagen.kolibri.datatypes.metrics.aggregation.writer
 
 import de.awagen.kolibri.datatypes.stores.MetricDocument
+import de.awagen.kolibri.datatypes.tagging.Tags.Tag
+import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType.AggregationType
 
 trait MetricDocumentFormat {
 
+  def identifier: String
+
   def metricDocumentToString(ma: MetricDocument[_]): String
 
+  def metricNameToTypeMappingFromContent(content: String): Map[String, AggregationType]
+
+  def contentToMetricDocumentAndMetricTypeMapping(content: String): MetricDocument[Tag]
 }
 
 

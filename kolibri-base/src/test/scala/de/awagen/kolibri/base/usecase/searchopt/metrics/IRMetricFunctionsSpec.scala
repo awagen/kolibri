@@ -18,9 +18,9 @@
 package de.awagen.kolibri.base.usecase.searchopt.metrics
 
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
-import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.ComputeResult
 import de.awagen.kolibri.base.usecase.searchopt.metrics.IRMetricFunctions.NO_JUDGEMENTS
 import de.awagen.kolibri.datatypes.utils.MathUtils
+import de.awagen.kolibri.datatypes.values.Calculations.ComputeResult
 
 class IRMetricFunctionsSpec extends UnitTestSpec {
 

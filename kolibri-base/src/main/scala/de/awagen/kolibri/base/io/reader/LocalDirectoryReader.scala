@@ -21,6 +21,7 @@ import de.awagen.kolibri.base.io.reader.LocalDirectoryReader.logger
 import org.slf4j.{Logger, LoggerFactory}
 
 import java.io.File
+import java.util.Objects
 
 object LocalDirectoryReader {
 
@@ -38,8 +39,17 @@ case class LocalDirectoryReader(baseDir: String,
     val fullDir = s"$normedBaseDir/$normedSubDir".stripSuffix("/")
     logger.debug(s"scanning files in directory $fullDir")
     val directory = new File(fullDir)
-    logger.debug(s"found files: ${directory.listFiles().mkString(",")}")
-    directory.listFiles()
+    if (Objects.isNull(directory)) {
+      logger.warn(s"directory '$fullDir' does not exist, returning empty resource list")
+      return Seq.empty
+    }
+    val fileList = directory.listFiles()
+    if (Objects.isNull(fileList)) {
+      logger.warn(s"directory '$fullDir' does not exist or does not contain files, returning empty resource list")
+      return Seq.empty
+    }
+    logger.debug(s"found files: ${fileList.mkString(",")}")
+    fileList
       .map(file => file.getAbsolutePath)
       .filter(filePath => baseFilenameFilter.apply(filePath))
       .filter(filePath => additionalFilenameFilter.apply(filePath))

@@ -22,11 +22,12 @@ import de.awagen.kolibri.base.actors.resources.{CPUBasedResourceChecker, Resourc
 import de.awagen.kolibri.base.cluster.ClusterStates.ClusterStatus
 import de.awagen.kolibri.base.config.EnvVariableKeys.{IS_SINGLENODE, NODE_ROLES, POD_IP, PROFILE}
 import de.awagen.kolibri.datatypes.types.JsonTypeCast.JsonTypeCast
-import de.awagen.kolibri.datatypes.metrics.aggregation.writer.{CSVParameterBasedMetricDocumentFormat, MetricDocumentFormat}
+import de.awagen.kolibri.datatypes.metrics.aggregation.writer.{CSVParameterBasedMetricDocumentFormat, JsonMetricDocumentFormat, MetricDocumentFormat}
 import de.awagen.kolibri.datatypes.types.JsonTypeCast
 import org.slf4j.{Logger, LoggerFactory}
 
 import java.util
+import java.util.Objects
 import scala.concurrent.duration._
 
 
@@ -122,8 +123,13 @@ object AppProperties {
 
     val waitForSynchronousTaskComplete: FiniteDuration = FiniteDuration(baseConfig.getInt("kolibri.job.tasks.waitForSynchronousTaskCompleteInMs"), MILLISECONDS)
 
-    val formatType: String = baseConfig.getString("kolibri.format.metricDocumentFormatType")
-    val metricDocumentFormat: MetricDocumentFormat = CSVParameterBasedMetricDocumentFormat(columnSeparator = "\t")
+    val formatTypes: Seq[String] = baseConfig.getString("kolibri.format.metricDocumentFormatTypes").split(",")
+      .map(x => x.trim.toLowerCase).filter(x => x.nonEmpty).toSeq
+    val metricDocumentFormats: Seq[MetricDocumentFormat] = formatTypes.map {
+      case "csv" => CSVParameterBasedMetricDocumentFormat(columnSeparator = "\t")
+      case "json" => new JsonMetricDocumentFormat()
+      case _ => null
+    }.filter(Objects.nonNull)
 
     val startClusterSingletonRouter: Boolean = baseConfig.getBoolean("kolibri.cluster.startClusterSingletonRouter")
 

@@ -18,15 +18,15 @@ package de.awagen.kolibri.datatypes.stores
 
 import de.awagen.kolibri.datatypes.values.MetricValue
 
-trait MetricRecord[A, B] {
+trait MetricRecord[A, +B] {
 
   def getMetricsValue(key: A): Option[MetricValue[B]]
 
-  def addMetricDontChangeCountStore(metric: MetricValue[B]): MetricRecord[A, B]
+  def addMetricDontChangeCountStore[C >: B](metric: MetricValue[C]): MetricRecord[A, B]
 
-  def addFullMetricsSampleAndIncreaseSampleCount(metrics: MetricValue[B]*): MetricRecord[A, B]
+  def addFullMetricsSampleAndIncreaseSampleCount[C >: B](metrics: MetricValue[C]*): MetricRecord[A, B]
 
-  def addRecordAndIncreaseSampleCount(record: MetricRecord[A, B]): MetricRecord[A, B]
+  def addRecordAndIncreaseSampleCount[C >: B](record: MetricRecord[A, C]): MetricRecord[A, B]
 
   def metricNames: Seq[A]
 

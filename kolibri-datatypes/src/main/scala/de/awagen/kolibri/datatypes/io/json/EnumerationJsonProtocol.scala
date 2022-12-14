@@ -19,9 +19,30 @@ package de.awagen.kolibri.datatypes.io.json
 import de.awagen.kolibri.datatypes.types.JsonStructDefs.StringChoiceStructDef
 import de.awagen.kolibri.datatypes.types.JsonTypeCast.{BOOLEAN, DOUBLE, FLOAT, INT, JsonTypeCast, SEQ_BOOLEAN, SEQ_DOUBLE, SEQ_FLOAT, SEQ_INT, SEQ_STRING, STRING}
 import de.awagen.kolibri.datatypes.types.{JsonStructDefs, JsonTypeCast, WithStructDef}
+import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType
+import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType.AggregationType
 import spray.json.{DefaultJsonProtocol, DeserializationException, JsString, JsValue, JsonFormat}
 
 object EnumerationJsonProtocol extends DefaultJsonProtocol {
+
+  implicit object aggregateTypeFormat extends EnumerationProtocol[AggregationType] with WithStructDef {
+    override def read(json: JsValue): AggregationType = {
+      json match {
+        case JsString(txt) => AggregationType.byName(txt)
+        case e => throw DeserializationException(s"Expected a value from AggregationType but got value $e")
+      }
+    }
+
+    override def structDef: JsonStructDefs.StructDef[_] = {
+      StringChoiceStructDef(Seq(
+        AggregationType.DOUBLE_AVG.toString,
+        AggregationType.MAP_UNWEIGHTED_SUM_VALUE.toString,
+        AggregationType.MAP_WEIGHTED_SUM_VALUE.toString,
+        AggregationType.NESTED_MAP_UNWEIGHTED_SUM_VALUE.toString,
+        AggregationType.NESTED_MAP_WEIGHTED_SUM_VALUE.toString
+      ))
+    }
+  }
 
   trait EnumerationProtocol[T] extends JsonFormat[T] {
     override def write(obj: T): JsValue = JsString(obj.toString)

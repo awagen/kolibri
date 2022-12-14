@@ -29,14 +29,18 @@ import de.awagen.kolibri.base.processing.modifiers.Modifier
 import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
 import de.awagen.kolibri.base.processing.tagging.TaggingConfigurations.TaggingConfiguration
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.ReservedStorageKeys.REQUEST_TEMPLATE_STORAGE_KEY
-import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.{Calculation, ResultRecord}
-import de.awagen.kolibri.base.usecase.searchopt.metrics.Functions.{resultRecordToMetricValue, throwableToMetricRowResponse}
+import de.awagen.kolibri.base.usecase.searchopt.metrics.MetricRowFunctions.throwableToMetricRowResponse
+import de.awagen.kolibri.datatypes.metrics.aggregation.writer.MetricDocumentFormatHelper.getMetricValueFromTypeAndSample
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.tagging.TagType
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
+import de.awagen.kolibri.datatypes.values.Calculations.{Calculation, ResultRecord}
 import de.awagen.kolibri.datatypes.values.MetricValue
+import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType.AggregationType
+import de.awagen.kolibri.datatypes.values.RunningValues.RunningValue
 
+import java.util.Objects
 import scala.concurrent.ExecutionContext
 import scala.util.Try
 
@@ -95,19 +99,28 @@ object Flows {
    * including the calculations to execute on the parsed data
    * @param processingMessage
    * @param calculations
+   * @param metricNameToAggregationTypeMapping
    * @param excludeParamsFromMetricRow
    * @param ec
    * @return
    */
   def metricsCalc(processingMessage: ProcessingMessage[(Either[Throwable, WeaklyTypedMap[String]], RequestTemplate)],
-                  calculations: Seq[Calculation[WeaklyTypedMap[String], Double]],
+                  calculations: Seq[Calculation[WeaklyTypedMap[String], Any]],
+                  metricNameToAggregationTypeMapping: Map[String, AggregationType],
                   excludeParamsFromMetricRow: Seq[String])(implicit ec: ExecutionContext): ProcessingMessage[MetricRow] = {
     val metricRowParams: Map[String, Seq[String]] = Map(processingMessage.data._2.parameters.toSeq.filter(x => !excludeParamsFromMetricRow.contains(x._1)): _*)
     processingMessage.data._1 match {
       case e@Left(_) =>
         // need to add paramNames here to set the fail reasons for each
         val allParamNames: Set[String] = calculations.flatMap(x => x.names).toSet
-        val metricRow = throwableToMetricRowResponse(e.value, allParamNames, metricRowParams)
+        // check if we know rhe right running value mapping, otherwise need to ignore the metric
+        val validParamNameEmptyRunningValueMap: Map[String, RunningValue[_]] = allParamNames.map(name => {
+          (name, metricNameToAggregationTypeMapping.get(name)
+            .map(aggType => aggType.emptyRunningValueSupplier.apply())
+            .orNull)
+        })
+          .filter(x => Objects.nonNull(x._2)).toMap
+        val metricRow = throwableToMetricRowResponse(e.value, validParamNameEmptyRunningValueMap, metricRowParams)
         val result: ProcessingMessage[MetricRow] = Corn(metricRow)
         val originalTags: Set[Tag] = processingMessage.getTagsForType(TagType.AGGREGATION)
         result.addTags(TagType.AGGREGATION, originalTags)
@@ -116,12 +129,19 @@ object Flows {
         // add query parameter
         e.value.put[RequestTemplate](REQUEST_TEMPLATE_STORAGE_KEY.name, processingMessage.data._2)
         // compute and add single results
-        val singleResults: Seq[MetricValue[Double]] = calculations
+        val singleResults: Seq[MetricValue[Any]] = calculations
           .flatMap(x => {
-            val values: Seq[ResultRecord[Double]] = x.calculation.apply(e.value)
+            // ResultRecord is only combination of name and Either[Seq[ComputeFailReason], T]
+            val values: Seq[ResultRecord[Any]] = x.calculation.apply(e.value)
+            // we use all result records for which we have a AggregationType mapping
+            // TODO: allow more than one aggregation type mapping per result record name
             values.map(value => {
-              resultRecordToMetricValue(value)
+              val metricAggregationType: Option[AggregationType] = metricNameToAggregationTypeMapping.get(value.name)
+              metricAggregationType.map(aggregationType => {
+                getMetricValueFromTypeAndSample(aggregationType, value)
+              }).orNull
             })
+              .filter(x => Objects.nonNull(x))
           })
         // add all in MetricRow
         var metricRow = MetricRow.emptyForParams(params = metricRowParams)
@@ -151,7 +171,8 @@ object Flows {
                          requestAndParsingFlow: Flow[ProcessingMessage[RequestTemplate], ProcessingMessage[(Either[Throwable, WeaklyTypedMap[String]], RequestTemplate)], NotUsed],
                          excludeParamsFromMetricRow: Seq[String],
                          taggingConfiguration: Option[TaggingConfiguration[RequestTemplate, (Either[Throwable, WeaklyTypedMap[String]], RequestTemplate), MetricRow]],
-                         calculations: Seq[Calculation[WeaklyTypedMap[String], Double]])
+                         calculations: Seq[Calculation[WeaklyTypedMap[String], Any]],
+                         metricNameToAggregationTypeMapping: Map[String, AggregationType])
                         (implicit as: ActorSystem, ec: ExecutionContext): Flow[RequestTemplateBuilderModifier, ProcessingMessage[MetricRow], NotUsed] = {
     val partialFlow: Flow[RequestTemplateBuilderModifier, ProcessingMessage[(Either[Throwable, WeaklyTypedMap[String]], RequestTemplate)], NotUsed] =
       modifiersToRequestTemplateMessageFlow(contextPath, fixedParams)
@@ -168,6 +189,7 @@ object Flows {
         partialFlow.via(Flow.fromFunction(processingMsg => metricsCalc(
           processingMessage = processingMsg,
           calculations,
+          metricNameToAggregationTypeMapping,
           excludeParamsFromMetricRow = excludeParamsFromMetricRow
         )))
       // tagging

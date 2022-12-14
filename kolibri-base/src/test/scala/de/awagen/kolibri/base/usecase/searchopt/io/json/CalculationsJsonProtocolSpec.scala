@@ -18,9 +18,9 @@
 package de.awagen.kolibri.base.usecase.searchopt.io.json
 
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
-import de.awagen.kolibri.base.usecase.searchopt.io.json.CalculationsJsonProtocol.FromMapCalculationsDoubleFormat
-import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.Calculation
+import de.awagen.kolibri.base.usecase.searchopt.io.json.CalculationsJsonProtocol.FromMapCalculationsFormat
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
+import de.awagen.kolibri.datatypes.values.Calculations.Calculation
 import spray.json._
 
 class CalculationsJsonProtocolSpec extends UnitTestSpec {
@@ -60,15 +60,15 @@ class CalculationsJsonProtocolSpec extends UnitTestSpec {
 
 
   "FromMapCalculationsDoubleFormat" must {
-    "correctly parse Calculation[WeaklyTypedMap[String], Double]" in {
-      val calc: Calculation[WeaklyTypedMap[String], Double] = IR_METRICS_CALCULATION.convertTo[Calculation[WeaklyTypedMap[String], Double]]
+    "correctly parse Calculation[WeaklyTypedMap[String], Any]" in {
+      val calc: Calculation[WeaklyTypedMap[String], Any] = IR_METRICS_CALCULATION.convertTo[Calculation[WeaklyTypedMap[String], Any]]
       (Set("DCG_10", "NDCG_10", "PRECISION_4", "ERR") diff calc.names).isEmpty mustBe true
     }
   }
 
   "FromMapCalculationSeqBooleanToDoubleFormat" must {
-    "correctly parse FromMapCalculation[Seq[Boolean], Double]" in {
-      val calc = FROM_MAP_SEQ_BOOLEAN_TO_DOUBLE_CALCULATION.convertTo[Calculation[WeaklyTypedMap[String], Double]]
+    "correctly parse FromMapCalculation[Seq[Boolean], Any]" in {
+      val calc = FROM_MAP_SEQ_BOOLEAN_TO_DOUBLE_CALCULATION.convertTo[Calculation[WeaklyTypedMap[String], Any]]
       calc.names mustBe Set("firstTrue")
     }
   }

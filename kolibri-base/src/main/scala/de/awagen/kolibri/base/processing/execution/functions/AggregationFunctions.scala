@@ -17,15 +17,15 @@
 
 package de.awagen.kolibri.base.processing.execution.functions
 
-import de.awagen.kolibri.base.config.AppConfig
 import de.awagen.kolibri.base.config.di.modules.persistence.PersistenceModule
+import de.awagen.kolibri.base.config.{AppConfig, AppProperties}
 import de.awagen.kolibri.base.io.reader.{DataOverviewReader, Reader}
 import de.awagen.kolibri.base.io.writer.Writers.Writer
 import de.awagen.kolibri.base.processing.execution.functions.FileUtils.regexDirectoryReader
 import de.awagen.kolibri.base.processing.failure.TaskFailType
 import de.awagen.kolibri.base.processing.failure.TaskFailType.TaskFailType
 import de.awagen.kolibri.base.provider.WeightProviders.WeightProvider
-import de.awagen.kolibri.datatypes.metrics.aggregation.writer.CSVParameterBasedMetricDocumentFormat
+import de.awagen.kolibri.datatypes.metrics.aggregation.writer.MetricDocumentFormat
 import de.awagen.kolibri.datatypes.stores.MetricDocument
 import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}
 import org.slf4j.{Logger, LoggerFactory}
@@ -76,7 +76,6 @@ object AggregationFunctions {
                                     sampleIdentifierToWeight: WeightProvider[String],
                                     outputFilename: String) extends Execution[Unit] {
     lazy val persistenceModule: PersistenceModule = AppConfig.persistenceModule
-    val csvFormat: CSVParameterBasedMetricDocumentFormat = CSVParameterBasedMetricDocumentFormat("\t")
 
     // dummy tag to aggregate under
     val aggregationIdentifier: Tag = StringTag("AGG")
@@ -89,20 +88,40 @@ object AggregationFunctions {
         // find all relevant files, parse them into MetricDocuments on ALL-tag,
         // aggregate all
         logger.info(s"files to aggregate: $files")
-        val overallDoc: MetricDocument[Tag] = MetricDocument.empty(aggregationIdentifier)
+        val formatIdToFormatMap: Map[String, MetricDocumentFormat] = AppProperties.config.metricDocumentFormats
+          .map(x => (x.identifier.toLowerCase, x)).toMap
+        var docPerFormatIdMap: Map[String, MetricDocument[Tag]] = Map.empty
         files.foreach(file => {
-          logger.info(s"adding file: $file")
-          val weight: Double = sampleIdentifierToWeight.apply(file.split("/").last)
-          val doc: MetricDocument[Tag] = FileUtils.fileToMetricDocument(file, fileReader).weighted(weight)
-          overallDoc.add(doc, ignoreIdDiff = true)
-          logger.info(s"done adding file: $file")
+          try {
+            logger.info(s"adding file: $file")
+            val weight: Double = sampleIdentifierToWeight.apply(file.split("/").last.split("-").head)
+            val formatId = file.split("\\.").last.toLowerCase
+            if (!docPerFormatIdMap.keySet.contains(formatId)) {
+              docPerFormatIdMap = docPerFormatIdMap + (formatId -> MetricDocument.empty(aggregationIdentifier))
+            }
+            formatIdToFormatMap.get(formatId).foreach(format => {
+              val doc: MetricDocument[Tag] = FileUtils.fileToMetricDocument(file, fileReader, format).weighted(weight)
+              docPerFormatIdMap(formatId).add(doc, ignoreIdDiff = true)
+              logger.info(s"done adding file for format '$formatId': $file")
+            })
+          }
+          catch {
+            case e: Exception =>
+              logger.warn(s"Exception on aggregating file '$file'", e)
+          }
         })
-        // now we have the overall document, now we need to write it to file
-        val relativeWritePath = s"${writeSubDir.stripSuffix("/")}/$outputFilename"
-        logger.info(s"writing aggregation to file: $relativeWritePath")
-        fileWriter.write(csvFormat.metricDocumentToString(overallDoc), relativeWritePath)
-        logger.info(s"done writing aggregation to file: $relativeWritePath")
-        Right(())
+        val result: Seq[Either[TaskFailType, Unit]] = docPerFormatIdMap.map(formatIdDocumentPair => {
+          // now we have the overall document, now we need to write it to file
+          val normedOutputFileName = if (outputFilename.endsWith(formatIdDocumentPair._1)) outputFilename else s"$outputFilename.${formatIdDocumentPair._1}"
+          val relativeWritePath = s"${writeSubDir.stripSuffix("/")}/$normedOutputFileName"
+          logger.info(s"writing aggregation to file: $relativeWritePath")
+          formatIdToFormatMap.get(formatIdDocumentPair._1).map(format => {
+            fileWriter.write(format.metricDocumentToString(formatIdDocumentPair._2), relativeWritePath)
+            logger.info(s"done writing aggregation for formatId '${formatIdDocumentPair._1}' to file: $relativeWritePath")
+            Right(())
+          }).getOrElse(Left(TaskFailType.FailedWrite))
+        }).toSeq
+        result.find(x => x.isLeft).getOrElse(Right(()))
       }
       catch {
         case e: Exception =>

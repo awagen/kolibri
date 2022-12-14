@@ -37,7 +37,7 @@ object WriterJsonProtocol extends DefaultJsonProtocol {
   val REGION_FIELD = "region"
   val CONTENT_TYPE_FIELD = "contentType"
   val WRITER_FIELD = "writer"
-  val FORMAT_FIELD = "format"
+  val FORMATS_FIELD = "formats"
   val SUBFOLDER_FIELD = "subFolder"
   val PATH_SEPARATOR_FIELD = "pathSeparator"
 
@@ -63,10 +63,10 @@ object WriterJsonProtocol extends DefaultJsonProtocol {
 
     override def read(json: JsValue): Writer[MetricDocument[Tag], Tag, Any] = json match {
       case spray.json.JsObject(fields) if fields.contains(WRITER_FIELD) &&
-        fields.contains(FORMAT_FIELD) && fields.contains(PATH_SEPARATOR_FIELD) =>
+        fields.contains(FORMATS_FIELD) && fields.contains(PATH_SEPARATOR_FIELD) =>
         BaseMetricDocumentWriter(
           fields(WRITER_FIELD).convertTo[FileWriter[String, Any]],
-          fields(FORMAT_FIELD).convertTo[MetricDocumentFormat],
+          fields(FORMATS_FIELD).convertTo[Seq[MetricDocumentFormat]],
           fields(SUBFOLDER_FIELD).convertTo[String],
           fields(PATH_SEPARATOR_FIELD).convertTo[String],
           x => x.toString)

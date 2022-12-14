@@ -284,6 +284,13 @@ class SerializationSpec extends KolibriTypedTestKitNoCluster(ConfigOverwrites.co
         |      "type": "IDENTITY"
         |    }
         |  ],
+        |  "metricNameToAggregationTypeMapping": {
+        |    "DCG_10": "DOUBLE_AVG",
+        |    "NDCG_10": "DOUBLE_AVG",
+        |    "PRECISION_k=4&t=0.1": "DOUBLE_AVG",
+        |    "RECALL_k=4&t=0.1": "DOUBLE_AVG",
+        |    "ERR_10": "DOUBLE_AVG"
+        |  },
         |  "allowedTimePerElementInMillis": 1000,
         |  "allowedTimePerBatchInSeconds": 6000,
         |  "allowedTimeForJobInSeconds": 720000,
@@ -528,6 +535,15 @@ class SerializationSpec extends KolibriTypedTestKitNoCluster(ConfigOverwrites.co
         |      "type": "TRUE_COUNT"
         |    }
         |  ],
+        |  "metricNameToAggregationTypeMapping": {
+        |    "DCG_10": "DOUBLE_AVG",
+        |    "NDCG_10": "DOUBLE_AVG",
+        |    "PRECISION_k=4&t=0.1": "DOUBLE_AVG",
+        |    "RECALL_k=4&t=0.1": "DOUBLE_AVG",
+        |    "ERR_10": "DOUBLE_AVG",
+        |    "FIRST_TRUE_BOOL": "DOUBLE_AVG",
+        |    "COUNT_TRUE_BOOL": "DOUBLE_AVG"
+        |  },
         |  "allowedTimePerElementInMillis": 1000,
         |  "allowedTimePerBatchInSeconds": 6000,
         |  "allowedTimeForJobInSeconds": 720000,

@@ -28,6 +28,7 @@ object Deciders {
   val allResumeDecider: Supervision.Decider = {
     e: Throwable =>
       logger.warn(s"throwable in stream execution: $e - resuming")
+      e.printStackTrace()
       Supervision.Resume
   }
 

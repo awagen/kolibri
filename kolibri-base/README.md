@@ -400,6 +400,31 @@ This avoids loggings flooding tests that pass, but get info
 for tests that fail.
 
 
+## JSON result format
+Values can be of any type, e.g normal numerical, arrays, maps, nested maps, and the like.
+Labels can be string or numerical.
+
+```json
+[
+  {
+    "type": "DOUBLE_AVG",
+    "labels": ["a", "b", "c", "d"],
+    "datasets": [
+      {
+        "name": "v1",
+        "data": [1.0, 2.0, 3.0, 4.5],
+        "success_samples": [1, 1, 1, 0],
+        "weighted_success_samples": [1, 1, 1, 0],
+        "fail_samples": [0, 0, 0, 1],
+        "weighted_fail_samples": [0, 0, 0, 1],
+        "fail_reasons": [{}, {}, {}, {"reason1":1}]
+      }
+    ]
+  }
+]
+```
+
+
 ## License
 
 The kolibri-base code is licensed under APL 2.0.

@@ -16,29 +16,43 @@
 
 package de.awagen.kolibri.datatypes.values
 
+import de.awagen.kolibri.datatypes.values.aggregation.AggregateValue
+
 
 /**
   * Running value of two distinct types, e.g can be used to record occurring errors and successful computation values
   * in a single record, e.g in case your computation returns Either[SomeFailType, SomeComputationValue] or similar
   * settings where two values are in some way connected. AggregateValue keeps the count of samples aggregated and
   * the current value of the aggregation
+ *
   * @param value1 - first aggregate value
   * @param value2 - second aggregate value
   * @tparam A - type of the aggregate for value1
   * @tparam B - type of the aggregate for value2
   */
-case class BiRunningValue[A, B](value1: AggregateValue[A], value2: AggregateValue[B]) {
-  def add(other: BiRunningValue[A, B]): BiRunningValue[A, B] = BiRunningValue(value1.add(other.value1), value2.add(other.value2))
+case class BiRunningValue[+A, +B](value1: AggregateValue[A], value2: AggregateValue[B]) {
 
-  def addFirst(other: AggregateValue[A]): BiRunningValue[A, B] = BiRunningValue(value1.add(other), value2)
+  override def equals(obj: Any): Boolean = {
+    if (!obj.isInstanceOf[BiRunningValue[A, B]]) {
+      false
+    }
+    else {
+      val other = obj.asInstanceOf[BiRunningValue[A, B]]
+      this.value1 == other.value1 && this.value2 == other.value2
+    }
+  }
 
-  def addFirst(other: DataPoint[A]): BiRunningValue[A, B] = BiRunningValue(value1.add(other), value2)
+  def add[C >: A, D >: B](other: BiRunningValue[C, D]): BiRunningValue[A, B] = BiRunningValue(value1.add(other.value1), value2.add(other.value2))
 
-  def addSecond(other: AggregateValue[B]): BiRunningValue[A, B] = BiRunningValue(value1, value2.add(other))
+  def addFirst[C >: A](other: AggregateValue[C]): BiRunningValue[A, B] = BiRunningValue(value1.add(other), value2)
 
-  def addSecond(other: DataPoint[B]): BiRunningValue[A, B] = BiRunningValue(value1, value2.add(other))
+  def addFirst[C >: A](other: DataPoint[C]): BiRunningValue[A, B] = BiRunningValue(value1.add(other), value2)
 
-  def addAll(others: BiRunningValue[A, B]*): BiRunningValue[A, B] = {
+  def addSecond[D >: B](other: AggregateValue[D]): BiRunningValue[A, B] = BiRunningValue(value1, value2.add(other))
+
+  def addSecond[D >: B](other: DataPoint[D]): BiRunningValue[A, B] = BiRunningValue(value1, value2.add(other))
+
+  def addAll[C >: A, D >: B](others: BiRunningValue[C, D]*): BiRunningValue[A, B] = {
     var newValue1: AggregateValue[A] = value1
     var newValue2: AggregateValue[B] = value2
     others.foreach(x => {
@@ -48,7 +62,7 @@ case class BiRunningValue[A, B](value1: AggregateValue[A], value2: AggregateValu
     BiRunningValue(newValue1, newValue2)
   }
 
-  def addEither(either: Either[DataPoint[A], DataPoint[B]]): BiRunningValue[A, B] = either match {
+  def addEither[C >: A, D >: B](either: Either[DataPoint[C], DataPoint[D]]): BiRunningValue[A, B] = either match {
     case Left(a) => addFirst(a)
     case Right(b) => addSecond(b)
   }

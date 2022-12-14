@@ -25,7 +25,6 @@ export const irMetricsReducedToFullJsonListUrl = `${kolibriBaseUrl}/${import.met
 export const resultExecutionIdsOverviewUrl = `${kolibriBaseUrl}/${import.meta.env.VITE_KOLIBRI_RESULT_IDS_OVERVIEW_PATH}`
 export const resultExecutionIdsSingleResultsOverviewUrl = `${kolibriBaseUrl}/${import.meta.env.VITE_KOLIBRI_RESULT_IDS_SINGLE_RESULT_OVERVIEW_PATH}`
 export const resultExecutionIdGetDataByIdUrl = `${kolibriBaseUrl}/${import.meta.env.VITE_KOLIBRI_RESULT_IDS_GET_DATA_PATH}`
-export const resultExecutionIdGetFilteredDataByIdUrl = `${kolibriBaseUrl}/${import.meta.env.VITE_KOLIBRI_RESULT_IDS_GET_FILTERED_DATA_PATH}`
 // urls to retrieve result analysis results
 export const resultAnalysisTopFlowUrl = `${kolibriBaseUrl}/${import.meta.env.VITE_KOLIBRI_RESULT_ANALYSIS_TOP_FLOP_PATH}`
 export const resultAnalysisVarianceUrl = `${kolibriBaseUrl}/${import.meta.env.VITE_KOLIBRI_RESULT_ANALYSIS_VARIANCE_PATH}`
