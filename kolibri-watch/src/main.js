@@ -96,6 +96,10 @@ export function createAppStore() {
                     availableMetricNames: [],
                     metricNameToDataType: {},
                     selectedMetricName: "",
+                    selectedHistogramLabelName: "",
+                    selectedHistogramValue: "",
+                    availableHistogramLabelNames: [],
+                    availableHistogramValues: [],
                     selectedData: []
                 },
 
@@ -283,6 +287,22 @@ export function createAppStore() {
              */
             updateSelectedMetricName(state, metricName) {
                 state.resultState.selectedMetricName = metricName
+            },
+
+            updateAvailableHistogramLabelNames(state, histogramLabelNames) {
+                state.resultState.availableHistogramLabelNames = histogramLabelNames
+            },
+
+            updateAvailableHistogramValues(state, histogramValues) {
+                state.resultState.availableHistogramValues = histogramValues
+            },
+
+            updateSelectedHistogramMetricLabel(state, label) {
+                state.resultState.selectedHistogramLabelName = label
+            },
+
+            updateSelectedHistogramValue(state, value) {
+                state.resultState.selectedHistogramValue = value
             },
 
             /**

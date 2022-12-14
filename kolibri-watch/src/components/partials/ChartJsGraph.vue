@@ -1,5 +1,7 @@
 <template>
 
+  <!-- TODO: enrich each chart besides the metricname with the name of the
+   experiment and filename -->
   <div class="chartContainer">
     <canvas :id="canvasId"></canvas>
   </div>
@@ -79,16 +81,7 @@ export default {
           colors: {
             enabled: false
           }
-        },
-        // scales: {
-        //   xAxes: {
-        //     ticks: {
-        //       autoSkip: false,
-        //       maxRotation: 90,
-        //       minRotation: 90
-        //     }
-        //   }
-        // }
+        }
       }
     };
 
@@ -118,16 +111,6 @@ export default {
         plugins: {
           colors: {
             enabled: false
-          }
-        },
-        indexAxis: 'x',
-        scales: {
-          xAxes: {
-            ticks: {
-              autoSkip: false,
-              maxRotation: 90,
-              minRotation: 90
-            }
           }
         }
       }
