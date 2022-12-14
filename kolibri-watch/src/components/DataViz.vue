@@ -448,6 +448,7 @@ export default {
 
         newData[toIndex].datasets = data2.datasets
         newData[toIndex].datasets.push(..._.cloneDeep(data1.datasets))
+        newData[toIndex].labels = newLabels
       }
 
       this.updateSelectedDataEvent(newData)
