@@ -434,9 +434,47 @@ export default {
         return;
       }
       let newData = _.cloneDeep(this.$store.state.resultState.selectedData)
-      newData[toIndex].datasets.push(..._.cloneDeep(data1.datasets))
+
+      if (["DOUBLE_AVG"].includes(data1.dataType)) {
+        newData[toIndex].datasets.push(..._.cloneDeep(data1.datasets))
+      }
+      if (["NESTED_MAP_UNWEIGHTED_SUM_VALUE", "NESTED_MAP_WEIGHTED_SUM_VALUE"].includes(data1.dataType)) {
+        let labels1 = data1.labels
+        let labels2 = data2.labels
+
+        // adjust indices
+        let newLabels = Array.from(new Set([...labels1, ...labels2])).sort((a, b) => a - b)
+        data1.datasets = data1.datasets.map(ds => this.extendDataSet(labels1, newLabels, ds))
+        data2.datasets = data2.datasets.map(ds => this.extendDataSet(labels2, newLabels, ds))
+
+        newData[toIndex].datasets = data2.datasets
+        newData[toIndex].datasets.push(..._.cloneDeep(data1.datasets))
+      }
+
       this.updateSelectedDataEvent(newData)
       this.deleteInputElement(startIndex)
+    },
+
+    /**
+     * Given original labels (e.g [3,4,5]) and new labels (e.g [0, 1, 2, 3]),
+     * add datapoints where an index did not appear in the original data and
+     * set their values to 0.0
+     * @param originalLabels - original array of labels, e.g [3,4,5]
+     * @param newLabels - new array of labels, e.g [0, 1, 2, 3]
+     * @param dataset - combination of label and data, e.g {label: "label", data: [0, 1, 3, 4]}
+     */
+    extendDataSet(originalLabels, newLabels, dataset) {
+      let newValues1 = newLabels.map(x => {
+        let label1Index = originalLabels.indexOf(x)
+        if (label1Index >= 0) {
+          return dataset.data[x]
+        }
+        return 0.0
+      })
+      return {
+        label: dataset.label,
+        data: newValues1
+      }
     },
 
     deleteInputElement(index) {
