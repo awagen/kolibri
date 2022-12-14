@@ -448,7 +448,7 @@ export default {
     },
 
     increaseDisplayKey() {
-      this.displayKey.value = this.displayKey.value + 1
+      this.displayKey = this.displayKey + 1
     },
 
     addGraph() {
