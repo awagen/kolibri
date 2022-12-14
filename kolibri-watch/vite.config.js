@@ -6,7 +6,7 @@ const path = require("path");
 export default defineConfig({
     plugins: [vue()],
     build: {
-        sourcemap: true
+        sourcemap: false
     },
     resolve: {
         alias: {
