@@ -9,7 +9,8 @@
           <label class="form-label" for="template-type-1">Select Execution / Experiment</label>
         </div>
         <div class="col-9 col-sm-12">
-          <select @change="experimentSelectEvent($event)" class="form-select k-value-selector" id="template-type-1">
+          <select v-model="this.$store.state.resultState.currentlySelectedExecutionID"
+              @change="experimentSelectEvent($event)" class="form-select k-value-selector" id="template-type-1">
             <option>Choose an option</option>
             <option v-for="executionId in this.$store.state.resultState.availableResultExecutionIDs">{{
                 executionId
@@ -23,7 +24,8 @@
           <label class="form-label" for="template-name-1">Select Result</label>
         </div>
         <div class="col-9 col-sm-12">
-          <select @change="resultSelectEvent($event, this.$store.state.resultState.currentlySelectedExecutionID)"
+          <select v-model="this.$store.state.resultState.currentlySelectedResultId"
+                  @change="resultSelectEvent($event, this.$store.state.resultState.currentlySelectedExecutionID)"
                   class="form-select k-field k-value-selector"
                   id="template-name-1">
             <option>Choose an option</option>
@@ -160,6 +162,7 @@ export default {
       let resultID = event.target.value
       let payload = {"executionId": executionId, "resultId": resultID}
       this.$store.commit("updateSingleResultState", payload)
+      this.$store.commit("updateSelectedResultId", resultID)
     },
 
     metricSelectEvent(event) {

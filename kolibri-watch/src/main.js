@@ -88,6 +88,7 @@ export function createAppStore() {
                     currentlySelectedExecutionID: "",
                     // single result identifier for the currently selected executionId
                     availableResultsForSelectedExecutionID: [],
+                    currentlySelectedResultId: "",
                     // for selected execution and result file name, represents the selected
                     // result
                     fullResultForExecutionIDAndResultID: {},
@@ -276,6 +277,10 @@ export function createAppStore() {
                         }))
                         state.resultState.metricNameToDataType = metricNameToDataTypeMap
                     })
+            },
+
+            updateSelectedResultId(state, resultId) {
+              state.resultState.currentlySelectedResultId = resultId
             },
 
             /**
