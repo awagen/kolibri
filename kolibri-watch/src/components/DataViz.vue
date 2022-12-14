@@ -99,7 +99,7 @@
       </div>
     </form>
 
-    <template :key="displayKey" v-for="(value, index) in this.$store.state.resultState.selectedData">
+    <template :key="displayKey + '-' + index" v-for="(value, index) in this.$store.state.resultState.selectedData">
       <form class="form-horizontal col-12 column">
         <div class="form-group">
           <div class="col-12 col-sm-12">
@@ -141,7 +141,6 @@ import {Colors} from "chart.js"
 Chart.register(...registerables);
 Chart.register(Colors);
 import _ from "lodash";
-import {preservingJsonFormat} from "@/utils/formatFunctions";
 
 export default {
 
@@ -464,17 +463,18 @@ export default {
      * @param dataset - combination of label and data, e.g {label: "label", data: [0, 1, 3, 4]}
      */
     extendDataSet(originalLabels, newLabels, dataset) {
-      let newValues1 = newLabels.map(x => {
-        let label1Index = originalLabels.indexOf(x)
+      let newValues1 = newLabels.map(label => {
+        let label1Index = originalLabels.indexOf(label)
         if (label1Index >= 0) {
-          return dataset.data[x]
+          return dataset.data[label1Index]
         }
         return 0.0
       })
-      return {
+      let newDataSet = {
         label: dataset.label,
         data: newValues1
       }
+      return newDataSet
     },
 
     deleteInputElement(index) {
