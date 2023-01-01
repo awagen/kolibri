@@ -1,0 +1,11 @@
+version: '3.5'
+
+services:
+
+  search-service:
+    image: kolibri-fleet:0.1.0
+    environment:
+      PORT: 80
+      NUM_CONNECTIONS: 100
+    ports:
+      - "80:80"
