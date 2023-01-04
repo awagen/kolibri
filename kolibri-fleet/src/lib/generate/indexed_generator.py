@@ -7,6 +7,22 @@ U = TypeVar('U')
 
 class IndexedGenerator(ABC, Generic[T]):
 
+    class ElementIterator(Iterator):
+
+        def __init__(self, generator: 'IndexedGenerator[T]'):
+            self.generator = generator
+            self.current_position = 0
+
+        def has_next(self):
+            return self.current_position < self.generator.size
+
+        def __next__(self):
+            if not self.has_next():
+                raise StopIteration
+            element = self.generator.get(self.current_position)
+            self.current_position += 1
+            return element
+
     @property
     @abstractmethod
     def size(self) -> int:
@@ -30,7 +46,7 @@ class IndexedGenerator(ABC, Generic[T]):
         Iterator over contained elements
         :return:
         """
-        pass
+        return IndexedGenerator.ElementIterator(self)
 
     @abstractmethod
     def get_part(self, start_index: int, end_index: int) -> 'IndexedGenerator[T]':
