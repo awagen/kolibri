@@ -40,7 +40,6 @@ class IndexedGenerator(ABC, Generic[T]):
         """
         pass
 
-    @abstractmethod
     def iterator(self) -> Iterator[T]:
         """
         Iterator over contained elements

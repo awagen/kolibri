@@ -1,6 +1,7 @@
 from typing import Dict, List, Callable
 
 from src.lib.http.client.request_template_builder import RequestTemplateBuilder
+from src.lib.utils.function_utils import FunctionUtils
 
 
 class RequestTemplateBuilderModifier:
@@ -31,16 +32,10 @@ class RequestTemplateBuilderModifier:
     def get_http_method_modifier(http_method: str) -> Callable[[RequestTemplateBuilder], RequestTemplateBuilder]:
         return lambda x: x.with_http_method(http_method)
 
-    @staticmethod
-    def combine_callables(callable1: Callable[[RequestTemplateBuilder], RequestTemplateBuilder],
-                          callable2: Callable[[RequestTemplateBuilder], RequestTemplateBuilder]) \
-            -> Callable[[RequestTemplateBuilder], RequestTemplateBuilder]:
-        return lambda x: callable2(callable1(x))
-
     def __init__(self, modifier: Callable[[RequestTemplateBuilder], RequestTemplateBuilder]):
         self.modifier = modifier
 
     def and_then(self, other_modifier: Callable[[RequestTemplateBuilder], RequestTemplateBuilder]) \
             -> 'RequestTemplateBuilderModifier':
-        return RequestTemplateBuilderModifier(RequestTemplateBuilderModifier
+        return RequestTemplateBuilderModifier(FunctionUtils
                                               .combine_callables(self.modifier, other_modifier))
