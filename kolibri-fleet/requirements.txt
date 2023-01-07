@@ -8,3 +8,4 @@ nest_asyncio==1.5.6
 pydantic==1.10.4
 python-dotenv==0.21.0
 PyYAML==6.0
+jsonpath-ng==1.5.3
