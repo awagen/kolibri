@@ -20,7 +20,7 @@ import jsonpath_ng
 from src.lib.utils.json_utils import JsonUtils
 
 
-class Selector:
+class JsonSelector:
 
     def __init__(self,
                  name: str,
@@ -29,7 +29,7 @@ class Selector:
         self.path = path
 
     @staticmethod
-    def selector_string_to_selector(name: str, selector_str: str) -> Optional['Selector']:
+    def selector_string_to_selector(name: str, selector_str: str) -> Optional['JsonSelector']:
         """
         Helper method to convert name and an arbitrary concatenation of
         single value ("\\ a") or recursive selectors ("\\\\ a"), where a is to
@@ -42,7 +42,7 @@ class Selector:
         """
         try:
             path: jsonpath_ng.JSONPath = JsonUtils.convert_string_to_json_path(selector_str)
-            return Selector(name, path) if path is not None else None
+            return JsonSelector(name, path) if path is not None else None
         except Exception as e:
             logging.error("Failed converting path '%s' to json path" % selector_str, e)
             return None

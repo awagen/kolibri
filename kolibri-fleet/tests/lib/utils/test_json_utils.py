@@ -75,3 +75,6 @@ class TestJsonUtils(unittest.TestCase):
         # then
         self.assertEqual(extracted_result, [10])
 
+
+if __name__ == '__main__':
+    unittest.main()
