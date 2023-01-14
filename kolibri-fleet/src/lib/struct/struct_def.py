@@ -89,16 +89,18 @@ class NestedStructDef(StructDef[Dict[str, T]]):
 
 class RegexStructDef(BaseStructDef[str]):
 
-    def __init__(self, regex: re.Pattern):
-        super().__init__(FunctionConversions.matches_regex(regex))
+    def __init__(self, regex: str):
         self.regex = regex
+        self.regex_pattern = re.compile(regex)
+        super().__init__(FunctionConversions.matches_regex(self.regex_pattern))
 
 
 class ListRegexStructDef(BaseStructDef[List[str]]):
 
-    def __init__(self, regex: re.Pattern):
-        super().__init__(FunctionConversions.all_match_regex(regex))
-        self.regex = regex
+    def __init__(self, regex: str):
+        self.regex: str = regex
+        self.regex_pattern: re.Pattern = re.compile(regex)
+        super().__init__(FunctionConversions.all_match_regex(self.regex_pattern))
 
 
 class ChoiceStructDef(BaseStructDef[T]):
@@ -152,7 +154,7 @@ class FloatStructDef(BaseStructDef[float]):
 class BooleanStructDef(BaseStructDef[bool]):
 
     def __init__(self):
-        super.__init__(lambda x: isinstance(x, bool))
+        super().__init__(lambda x: isinstance(x, bool))
 
 
 class ListIntStructDef(BaseStructDef[List[int]]):
