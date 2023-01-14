@@ -14,31 +14,13 @@
 
 import unittest
 
-from src.lib.utils.json_utils import JsonUtils
 import jsonpath_ng
-import json
+
+from src.lib.utils.json_utils import JsonUtils
+from tests.test_utils.test_data import TestData
 
 
 class TestJsonUtils(unittest.TestCase):
-
-    TEST_JSON = """
-    {
-        "int_value": 10,
-        "arr_value": [
-            {
-                "single_value": 4
-            },
-            {
-                "single_value": 3
-            },
-            {
-                "single_value": 2
-            }
-        ]
-    }
-    """
-
-    TEST_JSON_VALUE = json.loads(TEST_JSON)
 
     def test_next_selector_and_remaining_path(self):
         # given, when
@@ -62,7 +44,7 @@ class TestJsonUtils(unittest.TestCase):
     def test_correct_multi_value_extract(self):
         # given, when
         json_path = JsonUtils.convert_string_to_json_path("\\ arr_value \\\\ single_value")
-        result = json_path.find(TestJsonUtils.TEST_JSON_VALUE)
+        result = json_path.find(TestData.SELECTOR_TEST_JSON_VALUE_1)
         extracted_result = [match.value for match in result]
         # then
         self.assertEqual(extracted_result, [4, 3, 2])
@@ -70,7 +52,7 @@ class TestJsonUtils(unittest.TestCase):
     def test_correct_single_value_extract(self):
         # given, when
         json_path = JsonUtils.convert_string_to_json_path("\\ int_value")
-        result = json_path.find(TestJsonUtils.TEST_JSON_VALUE)
+        result = json_path.find(TestData.SELECTOR_TEST_JSON_VALUE_1)
         extracted_result = [match.value for match in result]
         # then
         self.assertEqual(extracted_result, [10])
