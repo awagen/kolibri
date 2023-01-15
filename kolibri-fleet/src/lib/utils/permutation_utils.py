@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, TypeVar
 from functools import reduce
+
+T = TypeVar('T')
 
 
 class PermutationUtils:
@@ -167,6 +169,13 @@ class PermutationUtils:
                                                                                nr_of_elements - 1)
         else:
             return []
+
+    @staticmethod
+    def value_indices_to_values(value_provider: list[IndexedGenerator[T]], value_indices: list[int]):
+        result = []
+        for index, value_index in enumerate(value_indices):
+            result.append(value_provider[index].get(value_index))
+        return result
 
     @staticmethod
     def element_product(elements: List[int], default_on_empty_input: int = 1) -> int:

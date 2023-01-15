@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from abc import ABC, abstractmethod
-from typing import TypeVar, Generic, Iterator, Optional, Callable
+from typing import TypeVar, Iterator, Optional, Callable, List, Generic
 
 T = TypeVar('T')
 U = TypeVar('U')
@@ -37,29 +37,26 @@ class IndexedGenerator(ABC, Generic[T]):
             self.current_position += 1
             return element
 
-    @property
-    @abstractmethod
-    def size(self) -> int:
-        pass
-
-    @abstractmethod
-    def partitions(self) -> 'IndexedGenerator[IndexedGenerator[T]]':
-        """
-        Partitions give a grouping of data belonging together, such that it can be partitioned by.
-        The default implementation below is that each single element in the generator forms a partitioning.
-        This has to be overwritten in case the above assumption does not hold, as is the case if several values form
-        a logical group to group by. In that case each element provided by this generator should be a generator
-        providing all values belonging to the respective partition / logical grouping
-        :return:
-        """
-        pass
-
     def iterator(self) -> Iterator[T]:
         """
         Iterator over contained elements
         :return:
         """
         return IndexedGenerator.ElementIterator(self)
+
+    @property
+    @abstractmethod
+    def size(self) -> int:
+        pass
+
+    @abstractmethod
+    def get(self, index: int) -> T | None:
+        """
+        Get the index-th element
+        :param index:
+        :return:
+        """
+        pass
 
     @abstractmethod
     def get_part(self, start_index: int, end_index: int) -> 'IndexedGenerator[T]':
@@ -68,15 +65,6 @@ class IndexedGenerator(ABC, Generic[T]):
         :param start_index: startIndex (inclusive)
         :param end_index: endIndex (exclusive)
         :return: generator generating the subpart of the generator as given by startIndex and endIndex
-        """
-        pass
-
-    @abstractmethod
-    def get(self, index: int) -> Optional[T]:
-        """
-        Get the index-th element
-        :param index:
-        :return:
         """
         pass
 
@@ -91,4 +79,32 @@ class IndexedGenerator(ABC, Generic[T]):
         pass
 
 
+class ByFunctionIndexedGenerator(IndexedGenerator[T]):
 
+    def __init__(self, nr_of_elements: int, generator_function: Callable[[int], T]):
+        self.nr_of_elements = nr_of_elements
+        self.generator_function = generator_function
+
+    @staticmethod
+    def create_from_list(data: List[T]):
+        return ByFunctionIndexedGenerator(len(data), lambda x: data[x])
+
+    @property
+    def size(self) -> int:
+        return self.nr_of_elements
+
+    def get_part(self, start_index: int, end_index: int) -> 'IndexedGenerator[T]':
+        assert(start_index > 0)
+        end = min(self.size, end_index)
+        new_size = end - start_index
+        return ByFunctionIndexedGenerator(new_size, lambda x: self.get(x + start_index))
+
+    def get(self, index: int) -> Optional[T]:
+        if index < self.size:
+            return self.generator_function(index)
+        return None
+
+    def map_gen(self, func: Callable[[T], U]) -> 'IndexedGenerator[U]':
+        def combined_callable() -> Callable[[int], U]:
+            return lambda x: func(self.generator_function(x))
+        return ByFunctionIndexedGenerator(self.size, combined_callable())
