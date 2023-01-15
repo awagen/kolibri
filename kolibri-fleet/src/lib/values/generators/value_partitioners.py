@@ -25,10 +25,10 @@ This has to be overwritten in case the above assumption does not hold, as is the
 a logical group to group by. In that case each element provided by this generator should be a generator
 providing all values belonging to the respective partition / logical grouping
 """
-ValuePartitioner = Callable[[list[IndexedGenerator[T]]], IndexedGenerator[IndexedGenerator[T]]]
+GeneratorPartitioner = Callable[[list[IndexedGenerator[T]]], IndexedGenerator[IndexedGenerator[T]]]
 
 
-class SingleValuePartitioners:
+class SingleGeneratorPartitioners:
     """
     Convenience functions for the creation of partitions for list of value providers,
     which means functions list[IndexedGenerator[T]] -> IndexedGenerator[IndexedGenerator[T]]
@@ -53,7 +53,7 @@ class SingleValuePartitioners:
         )
 
 
-class MultiValuePartitioners:
+class MultiGeneratorPartitioners:
     """
     Convenience functions for the creation of partitions for list of value providers,
     which means functions list[IndexedGenerator[T]] -> IndexedGenerator[IndexedGenerator[T]]
