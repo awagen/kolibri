@@ -87,6 +87,22 @@ object RequestTemplateBuilderModifiers {
 
   }
 
+  case class UrlParameterReplaceModifier(params: immutable.Map[String, String]) extends Modifier[RequestTemplateBuilder] {
+
+    def apply(a: RequestTemplateBuilder): RequestTemplateBuilder = {
+      a.addUrlParameterReplaceValues(params)
+    }
+
+  }
+
+  case class HeaderValueReplaceModifier(params: immutable.Map[String, String]) extends Modifier[RequestTemplateBuilder] {
+
+    def apply(a: RequestTemplateBuilder): RequestTemplateBuilder = {
+      a.addHeaderReplaceValues(params)
+    }
+
+  }
+
   /**
     * Modifier consisting of multiple other ones. Apply-call will apply all contained modifiers in sequence
     *

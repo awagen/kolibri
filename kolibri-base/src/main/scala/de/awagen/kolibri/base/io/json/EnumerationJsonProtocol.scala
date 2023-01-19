@@ -52,7 +52,9 @@ object EnumerationJsonProtocol extends DefaultJsonProtocol {
         ValueType.BODY.toString,
         ValueType.BODY_REPLACE.toString,
         ValueType.HEADER.toString,
+        ValueType.HEADER_REPLACE.toString,
         ValueType.URL_PARAMETER.toString,
+        ValueType.URL_PARAMETER_REPLACE.toString,
       ))
     }
   }

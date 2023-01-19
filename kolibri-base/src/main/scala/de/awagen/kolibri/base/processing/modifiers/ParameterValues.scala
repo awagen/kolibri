@@ -17,9 +17,8 @@
 
 package de.awagen.kolibri.base.processing.modifiers
 
+import akka.http.scaladsl.model.ContentTypes
 import akka.http.scaladsl.model.headers.RawHeader
-import akka.http.scaladsl.model.{ContentTypes, HttpEntity}
-import akka.util.ByteString
 import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ParameterValueMappingDefinition.getGeneratorsByValues
 import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.{CombinedModifier, RequestTemplateBuilderModifier}
 import de.awagen.kolibri.datatypes.collections.generators._
@@ -44,7 +43,10 @@ object ParameterValues {
             RequestTemplateBuilderModifiers.BodyModifier(value.value, ContentTypes.`application/json`)
           case ValueType.BODY_REPLACE =>
             RequestTemplateBuilderModifiers.BodyReplaceModifier(Map(value.name -> value.value))
-
+          case ValueType.HEADER_REPLACE =>
+            RequestTemplateBuilderModifiers.HeaderValueReplaceModifier(Map(value.name -> value.value))
+          case ValueType.URL_PARAMETER_REPLACE =>
+            RequestTemplateBuilderModifiers.UrlParameterReplaceModifier(Map(value.name -> value.value))
         }
       }
     }
@@ -58,7 +60,7 @@ object ParameterValues {
 
   object ValueType extends Enumeration with KolibriSerializable {
     type ValueType = Value
-    val URL_PARAMETER, HEADER, BODY, BODY_REPLACE = Value
+    val URL_PARAMETER, HEADER, BODY, BODY_REPLACE, URL_PARAMETER_REPLACE, HEADER_REPLACE = Value
   }
 
   sealed trait ValueSeqGenDefinition[+T] extends KolibriSerializable {

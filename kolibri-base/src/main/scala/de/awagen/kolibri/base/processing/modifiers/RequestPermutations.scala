@@ -20,8 +20,8 @@ package de.awagen.kolibri.base.processing.modifiers
 import akka.http.scaladsl.model.{ContentType, ContentTypes}
 import de.awagen.kolibri.base.http.client.request.RequestTemplateBuilder
 import de.awagen.kolibri.base.processing.modifiers.ModifierMappers.{BodyMapper, HeadersMapper, ParamsMapper}
-import de.awagen.kolibri.base.processing.modifiers.RequestModifiersUtils.{bodiesToBodyModifier, multiValuesToBodyReplaceModifiers, multiValuesToHeaderModifiers, multiValuesToRequestParamModifiers}
-import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.{BodyModifier, BodyReplaceModifier, CombinedModifier, HeaderModifier, RequestParameterModifier}
+import de.awagen.kolibri.base.processing.modifiers.RequestModifiersUtils.{bodiesToBodyModifier, multiValuesToBodyReplaceModifiers, multiValuesToHeaderModifiers, multiValuesToHeaderValueReplaceModifiers, multiValuesToRequestParamModifiers, multiValuesToUrlParameterReplaceModifiers}
+import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.{BodyModifier, BodyReplaceModifier, CombinedModifier, HeaderModifier, HeaderValueReplaceModifier, RequestParameterModifier, UrlParameterReplaceModifier}
 import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator, OneAfterAnotherIndexedGenerator, PermutatingIndexedGenerator}
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.multivalues.OrderedMultiValues
@@ -108,6 +108,8 @@ object RequestPermutations {
                                 headers: OrderedMultiValues,
                                 bodies: Seq[String],
                                 bodyReplacements: OrderedMultiValues,
+                                headerValueReplacements: OrderedMultiValues,
+                                urlParameterReplacements: OrderedMultiValues,
                                 bodyContentType: ContentType = ContentTypes.`application/json`) extends ModifierGeneratorProvider {
     val paramModifierGenerators: Seq[IndexedGenerator[RequestParameterModifier]] = multiValuesToRequestParamModifiers(params, replace = false)
       .filter(gen => gen.size > 0)
@@ -116,6 +118,12 @@ object RequestPermutations {
     val bodyModifierGenerator: Option[IndexedGenerator[BodyModifier]] = if (bodies.isEmpty) None else Some(bodiesToBodyModifier(bodies, bodyContentType))
     val bodyReplaceModifierGenerators: Seq[IndexedGenerator[BodyReplaceModifier]] = multiValuesToBodyReplaceModifiers(bodyReplacements)
       .filter(gen => gen.size > 0)
+    val urlParameterReplaceModifierGenerators: Seq[IndexedGenerator[UrlParameterReplaceModifier]] = multiValuesToUrlParameterReplaceModifiers(urlParameterReplacements)
+      .filter(gen => gen.size > 0)
+    val headerValuesReplaceModifierGenerators: Seq[IndexedGenerator[HeaderValueReplaceModifier]] = multiValuesToHeaderValueReplaceModifiers(headerValueReplacements)
+      .filter(gen => gen.size > 0)
+
+
 
     /**
      * First single-element generators are generated that refer to the single param
@@ -132,7 +140,8 @@ object RequestPermutations {
      */
     override def modifiers: Seq[IndexedGenerator[Modifier[RequestTemplateBuilder]]] = {
       val combined: Seq[IndexedGenerator[Modifier[RequestTemplateBuilder]]] =
-        paramModifierGenerators ++ headerModifierGenerators ++ bodyReplaceModifierGenerators
+        paramModifierGenerators ++ headerModifierGenerators ++ bodyReplaceModifierGenerators ++
+          urlParameterReplaceModifierGenerators ++ headerValuesReplaceModifierGenerators
       bodyModifierGenerator.map(x => combined :+ x).getOrElse(combined)
     }
   }

@@ -64,6 +64,8 @@ class RequestTemplate(val contextPath: String,
                       val headers: immutable.Seq[HttpHeader],
                       val body: MessageEntity,
                       val bodyReplaceParameters: immutable.Map[String, String],
+                      val urlParameterValueReplacementMap: immutable.Map[String, String],
+                      val headerValueReplacementMap: immutable.Map[String, String],
                       val httpMethod: HttpMethod,
                       val protocol: HttpProtocol = HttpProtocols.`HTTP/1.1`)
   extends HttpRequestProvider {

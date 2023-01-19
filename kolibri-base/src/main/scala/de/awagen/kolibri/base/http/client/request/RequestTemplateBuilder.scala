@@ -18,6 +18,7 @@
 package de.awagen.kolibri.base.http.client.request
 
 import akka.http.scaladsl.model._
+import akka.http.scaladsl.model.headers.RawHeader
 import de.awagen.kolibri.base.http.client.request.RequestTemplateBuilder.logger
 import de.awagen.kolibri.base.utils.IterableUtils
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
@@ -45,6 +46,8 @@ class RequestTemplateBuilder extends KolibriSerializable {
   // on the string value of the body on the build() call, without
   // changing the state of the builder itself
   private[request] var bodyValueReplacementMap: immutable.Map[String, String] = immutable.Map.empty
+  private[request] var urlParameterValueReplacementMap: immutable.Map[String, String] = immutable.Map.empty
+  private[request] var headerValueReplacementMap: immutable.Map[String, String] = immutable.Map.empty
   private[request] var httpMethod: HttpMethod = HttpMethods.GET
   private[request] var protocol: HttpProtocol = HttpProtocols.`HTTP/1.1`
 
@@ -74,6 +77,16 @@ class RequestTemplateBuilder extends KolibriSerializable {
     this
   }
 
+  def addHeaderReplaceValues(replaceMap: immutable.Map[String, String]): RequestTemplateBuilder = {
+    this.headerValueReplacementMap = this.headerValueReplacementMap ++ replaceMap
+    this
+  }
+
+  def addUrlParameterReplaceValues(replaceMap: immutable.Map[String, String]): RequestTemplateBuilder = {
+    this.urlParameterValueReplacementMap = this.urlParameterValueReplacementMap ++ replaceMap
+    this
+  }
+
   def withHttpMethod(method: HttpMethod): RequestTemplateBuilder = {
     this.httpMethod = method
     this
@@ -93,6 +106,8 @@ class RequestTemplateBuilder extends KolibriSerializable {
         headers == other.headers &&
         bodyString == other.bodyString &&
         bodyValueReplacementMap == other.bodyValueReplacementMap &&
+        urlParameterValueReplacementMap == other.urlParameterValueReplacementMap &&
+        headerValueReplacementMap == other.headerValueReplacementMap &&
         bodyContentType == other.bodyContentType &&
         httpMethod == other.httpMethod &&
         protocol == other.protocol
@@ -123,18 +138,62 @@ class RequestTemplateBuilder extends KolibriSerializable {
     }
   }
 
+  private[request] def applyReplacementsToHeadersAndReturnNewValue(): Seq[HttpHeader] = {
+    if (Objects.isNull(this.headers)) {
+      logger.warn(s"Could not apply replacement of header values" +
+        s" since header has not yet been set")
+      this.headers
+    }
+    else {
+      var newHeaders = this.headers
+      this.headerValueReplacementMap.foreach(paramNameAndValue => {
+        newHeaders = this.headers.map(header => {
+          RawHeader(header.name(), header.value().replace(paramNameAndValue._1, paramNameAndValue._2))
+        })
+      })
+      newHeaders
+    }
+  }
+
+  private[request] def applyReplacementsToUrlParametersAndReturnNewValue(): Map[String, Seq[String]] = {
+    if (Objects.isNull(this.parameters)) {
+      logger.warn(s"Could not apply replacement of url parameter values" +
+        s" since url parameter values has not yet been set")
+      this.parameters
+    }
+    else {
+      var newParameters = this.parameters
+      this.urlParameterValueReplacementMap.foreach(paramNameAndValue => {
+        newParameters = newParameters.map(keyValue => {
+          (keyValue._1, keyValue._2.map(value => value.replace(paramNameAndValue._1, paramNameAndValue._2)))
+        })
+      })
+      newParameters
+    }
+  }
+
   def build(): RequestTemplate = {
     var newBody = HttpEntity.Empty
     if (!Objects.isNull(this.bodyString) && this.bodyString.nonEmpty) {
       val newBodyValue = applyReplacementsToBodyAndReturnNewValue()
       newBody = HttpEntity(this.bodyContentType, newBodyValue.getBytes)
     }
+    var newParameters = Map.empty[String, Seq[String]]
+    if (!Objects.isNull(this.parameters)) {
+      newParameters = applyReplacementsToUrlParametersAndReturnNewValue()
+    }
+    var newHeaders = Seq.empty[HttpHeader]
+    if (!Objects.isNull(this.headers)) {
+      newHeaders = applyReplacementsToHeadersAndReturnNewValue()
+    }
     new RequestTemplate(
       contextPath = contextPath,
-      parameters = parameters,
-      headers = headers,
+      parameters = newParameters,
+      headers = newHeaders,
       body = newBody,
       bodyReplaceParameters = this.bodyValueReplacementMap,
+      urlParameterValueReplacementMap = this.urlParameterValueReplacementMap,
+      headerValueReplacementMap = this.headerValueReplacementMap,
       httpMethod = httpMethod,
       protocol = protocol
     )
