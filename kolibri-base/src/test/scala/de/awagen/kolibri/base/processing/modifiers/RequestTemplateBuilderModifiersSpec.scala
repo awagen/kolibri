@@ -19,7 +19,7 @@ package de.awagen.kolibri.base.processing.modifiers
 import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity}
 import akka.util.ByteString
-import de.awagen.kolibri.base.http.client.request.RequestTemplateBuilder
+import de.awagen.kolibri.base.http.client.request.{RequestTemplate, RequestTemplateBuilder}
 import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers._
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
 
@@ -102,6 +102,40 @@ class RequestTemplateBuilderModifiersSpec extends UnitTestSpec {
       val modifiedTemplateBuilder2 = modifier.apply(modifier1.apply(createRequestTemplateBuilder))
       modifiedTemplateBuilder1.build().body mustBe body
       modifiedTemplateBuilder2.build().body mustBe body
+    }
+
+    "correctly apply UrlParameterReplaceModifier" in {
+      // given
+      val templateBuilder = createRequestTemplateBuilder
+      templateBuilder.withParams(Map("p1" -> Seq("$$replace1", "$$replace2"), "p2" -> Seq("$$replace3")))
+      val urlParamReplaceModifier = UrlParameterReplaceModifier(Map(
+        "$$replace1" -> "val1",
+        "$$replace2" -> "val2",
+        "$$replace3" -> "val3"
+      ))
+      // when
+      val template: RequestTemplate = urlParamReplaceModifier.apply(templateBuilder).build()
+      // then
+      template.parameters mustBe Map("p1" -> Seq("val1", "val2"), "p2" -> Seq("val3"))
+    }
+
+    "correctly apply HeaderValueReplaceModifier" in {
+      // given
+      val templateBuilder = createRequestTemplateBuilder
+      val nestedHeaderValue = "{\"k1\": \"b\", \"k2\": \"$$replace2\"}"
+      val replacedNestedHeaderValue = "{\"k1\": \"b\", \"k2\": \"v2\"}"
+      templateBuilder.withHeaders(Seq(
+        RawHeader("h1", "$replace1"),
+        RawHeader("h2", nestedHeaderValue)
+      ))
+      val headerValueReplaceModifier = HeaderValueReplaceModifier(
+        Map("$replace1" -> "v1", "$$replace2" -> "v2")
+      )
+      // when
+      val template: RequestTemplate = headerValueReplaceModifier.apply(templateBuilder).build()
+      // then
+      template.getHeader("h1").get.value() mustBe "v1"
+      template.getHeader("h2").get.value() mustBe replacedNestedHeaderValue
     }
 
   }

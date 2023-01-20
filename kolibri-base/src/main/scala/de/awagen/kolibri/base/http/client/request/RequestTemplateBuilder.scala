@@ -147,7 +147,7 @@ class RequestTemplateBuilder extends KolibriSerializable {
     else {
       var newHeaders = this.headers
       this.headerValueReplacementMap.foreach(paramNameAndValue => {
-        newHeaders = this.headers.map(header => {
+        newHeaders = newHeaders.map(header => {
           RawHeader(header.name(), header.value().replace(paramNameAndValue._1, paramNameAndValue._2))
         })
       })
@@ -191,9 +191,9 @@ class RequestTemplateBuilder extends KolibriSerializable {
       parameters = newParameters,
       headers = newHeaders,
       body = newBody,
-      bodyReplaceParameters = this.bodyValueReplacementMap,
-      urlParameterValueReplacementMap = this.urlParameterValueReplacementMap,
-      headerValueReplacementMap = this.headerValueReplacementMap,
+      bodyReplacements = this.bodyValueReplacementMap,
+      urlParameterReplacements = this.urlParameterValueReplacementMap,
+      headerValueReplacements = this.headerValueReplacementMap,
       httpMethod = httpMethod,
       protocol = protocol
     )
