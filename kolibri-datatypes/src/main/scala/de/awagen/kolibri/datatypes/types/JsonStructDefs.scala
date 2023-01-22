@@ -32,7 +32,7 @@ import scala.util.matching.Regex
 
 object FieldDefinitions {
   /**
-   * Trait for definition of fields. Only value format mandatory since this covers single fields that come with
+   * Definition of fields. Only value format mandatory since this covers single fields that come with
    * nameFormat and multi-fields that contain multiple single field definitions that need to occur in a nested
    * structure (e.g JsObject)
    */
@@ -172,8 +172,25 @@ object JsonStructDefs {
    */
   trait StructDef[+T] {
 
+    /**
+     * Check whether the parsed value after cast (thus of type T)
+     * is valid according to constraints defined on the struct def.
+     * The argument type is any here to simplify variance constraints (covariance / contravariance)
+     * as posed by functions passed to case class constructor below.
+     * TODO: Yet thats suboptimal and should be revised.
+     * @param el
+     * @return
+     */
     def castValueIsValid(el: Any): Boolean
 
+    /**
+     * Cast JsValue (spray lib representation of json values) to the
+     * needed type. Cast function would be expected to convert to type T and then
+     * use castValueIsValid to check if the cast value is valid (if not, throws
+     * IllegalArgumentException)
+     * @param value
+     * @return
+     */
     def cast(value: JsValue): T
 
   }
@@ -361,7 +378,7 @@ object JsonStructDefs {
   case class NestedFieldSeqStructDef(fields: Seq[FieldDef], conditionalFieldsSeq: Seq[ConditionalFields]) extends NestedStructDef[Any] {
 
     private[types] def retrieveConditionalFields(conditionValues: Map[String, _]): Either[String, Seq[FieldDef]] = {
-      val conditionalFieldOptSeq = conditionalFieldsSeq.map(conditionalFields => {
+      val conditionalFieldOptSeq: Seq[Option[Seq[FieldDef]]] = conditionalFieldsSeq.map(conditionalFields => {
         conditionValues
           .get(conditionalFields.conditionFieldId)
           .map(key => conditionalFields.fieldsForConditionValue(key.asInstanceOf[String]))

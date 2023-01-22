@@ -34,14 +34,18 @@ object RequestTemplate {
             parameters: immutable.Map[String, Seq[String]],
             headers: immutable.Seq[HttpHeader],
             body: MessageEntity = HttpEntity.Empty,
-            bodyReplaceParameters: immutable.Map[String, String] = immutable.Map.empty,
+            bodyReplacements: immutable.Map[String, String] = immutable.Map.empty,
+            urlParameterReplacements: immutable.Map[String, String] = immutable.Map.empty,
+            headerValueReplacements: immutable.Map[String, String] = immutable.Map.empty,
             httpMethod: HttpMethod = HttpMethods.GET,
             protocol: HttpProtocol = HttpProtocols.`HTTP/2.0`): RequestTemplate = {
     new RequestTemplate(contextPath = contextPath,
       parameters = parameters,
       headers = headers,
       body = body,
-      bodyReplaceParameters = bodyReplaceParameters,
+      bodyReplacements = bodyReplacements,
+      urlParameterReplacements = urlParameterReplacements,
+      headerValueReplacements = headerValueReplacements,
       httpMethod = httpMethod,
       protocol = protocol)
   }
@@ -63,7 +67,9 @@ class RequestTemplate(val contextPath: String,
                       val parameters: immutable.Map[String, Seq[String]],
                       val headers: immutable.Seq[HttpHeader],
                       val body: MessageEntity,
-                      val bodyReplaceParameters: immutable.Map[String, String],
+                      val bodyReplacements: immutable.Map[String, String],
+                      val urlParameterReplacements: immutable.Map[String, String],
+                      val headerValueReplacements: immutable.Map[String, String],
                       val httpMethod: HttpMethod,
                       val protocol: HttpProtocol = HttpProtocols.`HTTP/1.1`)
   extends HttpRequestProvider {
@@ -112,7 +118,7 @@ class RequestTemplate(val contextPath: String,
       parameters.get(name)
     }
     else {
-      bodyReplaceParameters.get(name).map(x => Seq(x))
+      bodyReplacements.get(name).map(x => Seq(x))
     }
   }
 
@@ -124,15 +130,19 @@ class RequestTemplate(val contextPath: String,
            parameters: immutable.Map[String, Seq[String]] = parameters,
            headers: immutable.Seq[HttpHeader] = headers,
            body: MessageEntity = body,
-           bodyReplaceParameters: immutable.Map[String, String] = bodyReplaceParameters,
+           bodyReplacements: immutable.Map[String, String] = bodyReplacements,
+           urlParameterReplacements: immutable.Map[String, String] = urlParameterReplacements,
+           headerValueReplacements: immutable.Map[String, String] = headerValueReplacements,
            httpMethod: HttpMethod,
-           protocol: HttpProtocol = protocol) =
+           protocol: HttpProtocol = protocol): RequestTemplate =
     new RequestTemplate(
       contextPath,
       parameters,
       headers,
       body,
-      bodyReplaceParameters,
+      bodyReplacements,
+      urlParameterReplacements,
+      headerValueReplacements,
       httpMethod,
       protocol)
 

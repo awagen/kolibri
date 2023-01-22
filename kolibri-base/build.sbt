@@ -4,7 +4,6 @@ import sbt.url
 val sl4jApiVersion = "1.7.30"
 val scalaTestVersion = "3.2.2"
 val scalaMockVersion = "5.1.0"
-val kolibriDatatypesVersion = "0.1.0"
 val akkaVersion = "2.6.14"
 val akkaContribVersion = "2.5.31"
 val akkaHttpVersion = "10.2.1"
@@ -19,8 +18,6 @@ val kamonVersion = "2.2.0"
 val macwireVersion = "2.4.0"
 val scalacScoverageRuntimeVersion = "1.4.9"
 val testcontainersVersion = "1.16.3"
-
-version := "0.1.0"
 
 lazy val jvmOptions = Seq(
   "-Xms1G",
@@ -132,8 +129,6 @@ val additionalDependencies = Seq(
   "io.altoo" %% "akka-kryo-serialization" % kryoSerializationVersion,
   "com.amazonaws" % "aws-java-sdk" % awsSdkVersion,
   "com.google.cloud" % "google-cloud-storage" % googleCloudStorageClientVersion,
-  // kolibri datatypes
-  "de.awagen.kolibri" %% "kolibri-datatypes" % kolibriDatatypesVersion,
   "org.slf4j" % "slf4j-api" % sl4jApiVersion,
   "commons-io" % "commons-io" % apacheCommonsIOVersion,
   "io.kamon" %% "kamon-bundle" % kamonVersion,
@@ -148,6 +143,9 @@ val additionalDependencies = Seq(
 
 name := "kolibri-base"
 libraryDependencies ++= additionalDependencies
+// the syntax for adding the datatypes dependency is needed since version.value is not accessible in above dependency seq
+// definition due to "`value` can only be used within a task or setting macro, such as :=, +=, ++=, Def.task, or Def.setting."
+libraryDependencies := { libraryDependencies.value :+ ("de.awagen.kolibri" %% "kolibri-datatypes" % version.value) }
 resolvers ++= additionalResolvers
 mainClass in assembly := Some("de.awagen.kolibri.base.cluster.ClusterNode")
 

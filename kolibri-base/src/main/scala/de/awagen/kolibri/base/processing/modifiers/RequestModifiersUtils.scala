@@ -19,7 +19,7 @@ package de.awagen.kolibri.base.processing.modifiers
 
 import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.model.{ContentType, ContentTypes}
-import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.{BodyModifier, BodyReplaceModifier, HeaderModifier, RequestParameterModifier}
+import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.{BodyModifier, BodyReplaceModifier, HeaderModifier, HeaderValueReplaceModifier, RequestParameterModifier, UrlParameterReplaceModifier}
 import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator}
 import de.awagen.kolibri.datatypes.multivalues.OrderedMultiValues
 
@@ -57,6 +57,44 @@ object RequestModifiersUtils {
       .map(x => ByFunctionNrLimitedIndexedGenerator.createFromSeq(
         x.getAll.map(y =>
           BodyReplaceModifier(
+            params = immutable.Map(x.name -> y.toString)
+          )
+        )
+      ))
+  }
+
+  /**
+   * Transform OrderedMultiValues into multiple generators of RequestTemplateBuilder modifiers.
+   * Specifically HeaderValueReplaceModifier, replacing the values occurring in header values (any of the headers)
+   * with the mapped values when applied.
+   *
+   * @param multiValues - the distinct values to take into account. One generator per single value name.
+   * @return
+   */
+  def multiValuesToHeaderValueReplaceModifiers(multiValues: OrderedMultiValues): Seq[IndexedGenerator[HeaderValueReplaceModifier]] = {
+    multiValues.values
+      .map(x => ByFunctionNrLimitedIndexedGenerator.createFromSeq(
+        x.getAll.map(y =>
+          HeaderValueReplaceModifier(
+            params = immutable.Map(x.name -> y.toString)
+          )
+        )
+      ))
+  }
+
+  /**
+   * Transform OrderedMultiValues into multiple generators of RequestTemplateBuilder modifiers.
+   * Specifically UrlParameterReplaceModifier, replacing the values matching a key in any parameter value
+   * with the mapped values when applied.
+   *
+   * @param multiValues - the distinct values to take into account. One generator per single value name.
+   * @return
+   */
+  def multiValuesToUrlParameterReplaceModifiers(multiValues: OrderedMultiValues): Seq[IndexedGenerator[UrlParameterReplaceModifier]] = {
+    multiValues.values
+      .map(x => ByFunctionNrLimitedIndexedGenerator.createFromSeq(
+        x.getAll.map(y =>
+          UrlParameterReplaceModifier(
             params = immutable.Map(x.name -> y.toString)
           )
         )
