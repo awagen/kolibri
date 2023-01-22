@@ -102,6 +102,9 @@ object AnalysisRoutes extends DefaultJsonProtocol {
    * For a specific experimentId (e.g experiment folder name) retrieve
    * all partial result file names
    *
+   * TODO: this gives 405 if the execution path contains any "-", thus make
+   * sure to properly normalize the paths (e.g set "-" to "_" or the like)
+   *
    * @return
    */
   def getPartialResultsOverview(implicit system: ActorSystem): Route = {
