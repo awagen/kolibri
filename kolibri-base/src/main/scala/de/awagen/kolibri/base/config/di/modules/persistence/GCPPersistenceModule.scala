@@ -56,7 +56,7 @@ class GCPPersistenceModule extends PersistenceDIModule with tagging.Tag[GCP_MODU
     AppProperties.config.gcpGSBucketPath.get,
     AppProperties.config.gcpGSProjectID.get,
     directoryPathSeparator,
-    filterNone)
+    fileFilter)
 
   override def metricAggregationWriter(subFolder: String,
                                        tagToDataIdentifierFunc: Tags.Tag => String): Writers.Writer[MetricAggregation[Tags.Tag], Tags.Tag, Any] = Writer.gcpCsvMetricAggregationWriter(
