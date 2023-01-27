@@ -234,9 +234,9 @@ object JobMessages {
         "(ALL)"
       )
     )
-    val allowedTimePerElementInMillis: Int = 1000
-    val allowedTimePerBatchInSeconds: Int = 600
-    val allowedTimeForJobInSeconds: Int = 7200
+    val allowedTimePerElementInMillis: Int = AppProperties.config.allowedTimePerElementInMillis
+    val allowedTimePerBatchInSeconds: Int = AppProperties.config.allowedTimePerBatchInSeconds
+    val allowedTimeForJobInSeconds: Int = AppProperties.config.allowedTimePerJobInSeconds
     val expectResultsFromBatchCalculations: Boolean = false
   }
 }

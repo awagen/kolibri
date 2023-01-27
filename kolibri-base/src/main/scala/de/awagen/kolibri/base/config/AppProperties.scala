@@ -100,6 +100,10 @@ object AppProperties {
     val batchDistributionInterval: FiniteDuration = FiniteDuration(baseConfig.getInt("kolibri.job.batchDistributionIntervalInMs"), MILLISECONDS)
     val batchMaxTimeToACKInMs: FiniteDuration = FiniteDuration(baseConfig.getInt("kolibri.job.batchMaxTimeToACKInMs"), MILLISECONDS)
 
+    val allowedTimePerElementInMillis: Int = baseConfig.getInt("kolibri.job.allowedTimePerElementInMillis")
+    val allowedTimePerBatchInSeconds: Int = baseConfig.getInt("kolibri.job.allowedTimePerBatchInSeconds")
+    val allowedTimePerJobInSeconds: Int = baseConfig.getInt("kolibri.job.allowedTimePerJobInSeconds")
+
     val useAggregatorBackpressure: Boolean = baseConfig.getBoolean("kolibri.execution.useAggregatorBackpressure")
     val aggregatorResultReceiveParallelism: Int = baseConfig.getInt("kolibri.execution.aggregatorResultReceiveParallelism")
 
