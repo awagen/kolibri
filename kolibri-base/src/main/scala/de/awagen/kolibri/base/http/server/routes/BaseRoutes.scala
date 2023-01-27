@@ -280,9 +280,8 @@ object BaseRoutes {
         post {
           entity(as[Execution[Any]]) {
             execution =>
-              onSuccess(supervisorActor ? execution) {
-                e => complete(e.toString)
-              }
+              supervisorActor ! execution
+              complete(StatusCodes.Accepted, "Starting execution")
           }
         }
       })

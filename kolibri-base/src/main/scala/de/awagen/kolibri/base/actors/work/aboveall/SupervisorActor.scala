@@ -25,7 +25,7 @@ import de.awagen.kolibri.base.actors.work.manager.JobProcessingState.JobStatusIn
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.ProcessingMessage
 import de.awagen.kolibri.base.actors.work.worker.TaskExecutionWorkerActor
 import de.awagen.kolibri.base.config.AppProperties._
-import de.awagen.kolibri.base.config.AppProperties.config.kolibriDispatcherName
+import de.awagen.kolibri.base.config.AppProperties.config.{kolibriBlockingDispatcherName, kolibriDispatcherName}
 import de.awagen.kolibri.base.domain.jobdefinitions.Batch
 import de.awagen.kolibri.base.io.writer.Writers.Writer
 import de.awagen.kolibri.base.processing.JobMessages.{JobDefinition, SearchEvaluationDefinition}
@@ -37,7 +37,6 @@ import de.awagen.kolibri.base.processing.execution.functions.Execution
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnable
 import de.awagen.kolibri.base.processing.execution.task.Task
 import de.awagen.kolibri.base.processing.execution.task.utils.TaskUtils
-import de.awagen.kolibri.base.processing.failure.TaskFailType
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.mutable.stores.TypeTaggedMap
@@ -285,11 +284,12 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
         jobIdToActorRefAndExpectation(jobId) = (ActorSetup(actor, jobSender), expectation)
       }
     case execution: Execution[Any] =>
-      val replyTo: ActorRef = sender()
-      val responseFuture: Future[Either[TaskFailType.TaskFailType, Any]] = Future {
+      // use the executor for blocking ops for executions. They can contain any kind of aggregations and the like and thus
+      // take up time
+      implicit val ec: ExecutionContextExecutor = context.system.dispatchers.lookup(kolibriBlockingDispatcherName)
+      Future {
         execution.execute
       }
-      responseFuture.onComplete(x => replyTo ! x)
   }
 
   val stateKeepingReceive: Receive = {
