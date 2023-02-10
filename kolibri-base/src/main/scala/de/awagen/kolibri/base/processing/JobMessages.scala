@@ -46,6 +46,7 @@ import de.awagen.kolibri.base.usecase.searchopt.metrics.{IRMetricFunctions, Judg
 import de.awagen.kolibri.base.usecase.searchopt.parse.JsonSelectors.JsValueSeqSelector
 import de.awagen.kolibri.base.usecase.searchopt.parse.TypedJsonSelectors.{NamedAndTypedSelector, TypedJsonSeqSelector}
 import de.awagen.kolibri.base.usecase.searchopt.parse.{JsonSelectors, ParsingConfig}
+import de.awagen.kolibri.base.usecase.searchopt.provider.{BaseJudgementProvider, JudgementProvider}
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
@@ -144,15 +145,15 @@ object JobMessages {
     val kolibriJudgementsResourceKey = s"KOLIBRI_JUDGEMENTS-job=$jobName"
     val productIdsKey = "productIds"
     val requestTasks: Int = 4
-    val judgementSupplier: SerializableSupplier[Map[String, Double]] = new SerializableSupplier[Map[String, Double]] {
-      override def apply(): Map[String, Double] = {
-        filepathToJudgementProvider(judgementFilePath).allJudgements
+    val judgementSupplier: SerializableSupplier[JudgementProvider[Double]] = new SerializableSupplier[JudgementProvider[Double]] {
+      override def apply(): JudgementProvider[Double] = {
+        new BaseJudgementProvider(filepathToJudgementProvider(judgementFilePath).allJudgements)
       }
     }
     val resourceDirectives: Seq[ResourceDirective[_]] = Seq(
       GenericResourceDirective(
-        new Resource[Map[String, Double]](
-          ResourceType.MAP_STRING_TO_DOUBLE_VALUE,
+        new Resource[JudgementProvider[Double]](
+          ResourceType.JUDGEMENT_PROVIDER,
           kolibriJudgementsResourceKey
         ),
         judgementSupplier,
@@ -175,8 +176,8 @@ object JobMessages {
       JudgementsFromResourceIRMetricsCalculations(
         productIdsKey,
         queryParameter,
-        new Resource[Map[String, Double]](
-          ResourceType.MAP_STRING_TO_DOUBLE_VALUE,
+        new Resource[JudgementProvider[Double]](
+          ResourceType.JUDGEMENT_PROVIDER,
           kolibriJudgementsResourceKey
         ),
         MetricsCalculation(

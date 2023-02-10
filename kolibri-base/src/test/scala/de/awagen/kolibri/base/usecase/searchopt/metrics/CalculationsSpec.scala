@@ -34,6 +34,7 @@ import de.awagen.kolibri.base.usecase.searchopt.metrics.CalculationsTestHelper._
 import de.awagen.kolibri.base.usecase.searchopt.metrics.ComputeResultFunctions.{booleanPrecision, countValues, findFirstValue}
 import de.awagen.kolibri.base.usecase.searchopt.metrics.MetricRowFunctions.throwableToMetricRowResponse
 import de.awagen.kolibri.base.usecase.searchopt.metrics.PlainMetricValueFunctions._
+import de.awagen.kolibri.base.usecase.searchopt.provider.{BaseJudgementProvider, JudgementProvider}
 import de.awagen.kolibri.datatypes.mutable.stores.{BaseWeaklyTypedMap, WeaklyTypedMap}
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSupplier
@@ -80,14 +81,14 @@ class CalculationsSpec extends KolibriTestKitNoCluster
    * TODO: unify this with FlowSpec, where judgement resources are loaded the same way
    */
   def prepareJudgementResource(): Unit = {
-    val judgementSupplier = new SerializableSupplier[Map[String, Double]] {
-      override def apply(): Map[String, Double] = {
-        filepathToJudgementProvider("data/calculations_test_judgements.txt").allJudgements
+    val judgementSupplier = new SerializableSupplier[JudgementProvider[Double]] {
+      override def apply(): JudgementProvider[Double] = {
+        new BaseJudgementProvider(filepathToJudgementProvider("data/calculations_test_judgements.txt").allJudgements)
       }
     }
-    val judgementResourceDirective: ResourceDirectives.ResourceDirective[Map[String, Double]] = ResourceDirectives.getDirective(
+    val judgementResourceDirective: ResourceDirectives.ResourceDirective[JudgementProvider[Double]] = ResourceDirectives.getDirective(
       judgementSupplier,
-      Resource(ResourceType.MAP_STRING_TO_DOUBLE_VALUE, "judgements1")
+      Resource(ResourceType.JUDGEMENT_PROVIDER, "judgements1")
     )
     implicit val timeout: Timeout = 5 seconds
     val resourceAskMsg = ProcessResourceDirectives(Seq(judgementResourceDirective), "testJob1")
@@ -111,7 +112,7 @@ class CalculationsSpec extends KolibriTestKitNoCluster
       val calculation = JudgementsFromResourceIRMetricsCalculations(
         PRODUCT_IDS_KEY,
         "q",
-        Resource(ResourceType.MAP_STRING_TO_DOUBLE_VALUE, "judgements1"),
+        Resource(ResourceType.JUDGEMENT_PROVIDER, "judgements1"),
         MetricsCalculation(
           Seq(
             Metric(NDCG5_NAME, IRMetricFunctions.ndcgAtK(5)),

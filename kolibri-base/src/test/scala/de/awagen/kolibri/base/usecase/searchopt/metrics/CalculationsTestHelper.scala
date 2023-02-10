@@ -20,6 +20,7 @@ package de.awagen.kolibri.base.usecase.searchopt.metrics
 import de.awagen.kolibri.base.directives.{Resource, ResourceType}
 import de.awagen.kolibri.base.http.client.request.RequestTemplate
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.JudgementsFromResourceIRMetricsCalculations
+import de.awagen.kolibri.base.usecase.searchopt.provider.JudgementProvider
 
 object CalculationsTestHelper {
 
@@ -36,7 +37,7 @@ object CalculationsTestHelper {
     JudgementsFromResourceIRMetricsCalculations(
       PRODUCT_IDS_KEY,
       QUERY_PARAM,
-      Resource[Map[String, Double]](ResourceType.MAP_STRING_TO_DOUBLE_VALUE, judgementsResourceIdentifier),
+      Resource[JudgementProvider[Double]](ResourceType.JUDGEMENT_PROVIDER, judgementsResourceIdentifier),
       MetricsCalculation(
         metrics,
         JudgementHandlingStrategy.EXIST_RESULTS_AND_JUDGEMENTS_MISSING_AS_ZEROS

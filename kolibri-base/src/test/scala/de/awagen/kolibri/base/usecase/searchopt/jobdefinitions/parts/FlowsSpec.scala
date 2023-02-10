@@ -42,6 +42,7 @@ import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.Flows.{full
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.FromMapCalculation
 import de.awagen.kolibri.base.usecase.searchopt.metrics.CalculationsTestHelper._
 import de.awagen.kolibri.base.usecase.searchopt.metrics.{IRMetricFunctions, Metric}
+import de.awagen.kolibri.base.usecase.searchopt.provider.{BaseJudgementProvider, JudgementProvider}
 import de.awagen.kolibri.datatypes.mutable.stores.{BaseWeaklyTypedMap, WeaklyTypedMap}
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSupplier
@@ -81,14 +82,14 @@ class FlowsSpec extends KolibriTestKitNoCluster
   }
 
   def prepareJudgementResource(): Unit = {
-    val judgementSupplier = new SerializableSupplier[Map[String, Double]] {
-      override def apply(): Map[String, Double] = {
-        filepathToJudgementProvider("data/calculations_test_judgements.txt").allJudgements
+    val judgementSupplier = new SerializableSupplier[JudgementProvider[Double]] {
+      override def apply(): JudgementProvider[Double] = {
+        new BaseJudgementProvider(filepathToJudgementProvider("data/calculations_test_judgements.txt").allJudgements)
       }
     }
-    val judgementResourceDirective: ResourceDirectives.ResourceDirective[Map[String, Double]] = ResourceDirectives.getDirective(
+    val judgementResourceDirective: ResourceDirectives.ResourceDirective[JudgementProvider[Double]] = ResourceDirectives.getDirective(
       judgementSupplier,
-      Resource(ResourceType.MAP_STRING_TO_DOUBLE_VALUE, "test1")
+      Resource(ResourceType.JUDGEMENT_PROVIDER, "test1")
     )
     implicit val timeout: Timeout = 5 seconds
     val resourceAskMsg = ProcessResourceDirectives(Seq(judgementResourceDirective), "testJob1")

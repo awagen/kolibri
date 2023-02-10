@@ -18,13 +18,14 @@
 package de.awagen.kolibri.base.usecase.searchopt.io.json
 
 import de.awagen.kolibri.base.directives.Resource
-import de.awagen.kolibri.base.io.json.ResourceJsonProtocol.StructDefs.RESOURCE_MAP_STRING_DOUBLE_STRUCT_DEF
-import de.awagen.kolibri.base.io.json.ResourceJsonProtocol.resourceMapStringDoubleFormat
+import de.awagen.kolibri.base.io.json.ResourceJsonProtocol.StructDefs.RESOURCE_JUDGEMENT_PROVIDER_STRUCT_DEF
+import de.awagen.kolibri.base.io.json.ResourceJsonProtocol.resourceJudgementProviderFormat
 import de.awagen.kolibri.base.usecase.searchopt.io.json.CalculationName.{BINARY_PRECISION_FALSE_AS_YES, BINARY_PRECISION_TRUE_AS_YES, FALSE_COUNT, FIRST_FALSE, FIRST_TRUE, IDENTITY, IR_METRICS, STRING_SEQUENCE_VALUE_OCCURRENCE_HISTOGRAM, TRUE_COUNT}
 import de.awagen.kolibri.base.usecase.searchopt.io.json.MetricsCalculationJsonProtocol._
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations._
 import de.awagen.kolibri.base.usecase.searchopt.metrics.ComputeResultFunctions.{booleanPrecision, countValues, findFirstValue, stringSeqHistogram}
 import de.awagen.kolibri.base.usecase.searchopt.metrics.{ComputeResultFunctions, MetricsCalculation}
+import de.awagen.kolibri.base.usecase.searchopt.provider.JudgementProvider
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
 import de.awagen.kolibri.datatypes.types.JsonStructDefs._
@@ -56,7 +57,7 @@ object CalculationsJsonProtocol extends DefaultJsonProtocol {
           case IR_METRICS.name =>
             val queryParamName = fields(QUERY_PARAM_NAME_KEY).convertTo[String]
             val productIdsKey = fields(PRODUCT_IDS_KEY_KEY).convertTo[String]
-            val judgementsResource: Resource[Map[String, Double]] = fields(JUDGEMENT_RESOURCE_KEY).convertTo[Resource[Map[String, Double]]]
+            val judgementsResource: Resource[JudgementProvider[Double]] = fields(JUDGEMENT_RESOURCE_KEY).convertTo[Resource[JudgementProvider[Double]]]
             val metricsCalculation = fields(METRICS_CALCULATION_KEY).convertTo[MetricsCalculation]
             JudgementsFromResourceIRMetricsCalculations(
               productIdsKey,
@@ -135,7 +136,7 @@ object CalculationsJsonProtocol extends DefaultJsonProtocol {
               IR_METRICS.name -> Seq(
                 FieldDef(StringConstantStructDef(QUERY_PARAM_NAME_KEY), RegexStructDef("\\w+".r), required = true),
                 FieldDef(StringConstantStructDef(PRODUCT_IDS_KEY_KEY), RegexStructDef("\\w+".r), required = true),
-                FieldDef(StringConstantStructDef(JUDGEMENT_RESOURCE_KEY), RESOURCE_MAP_STRING_DOUBLE_STRUCT_DEF , required = true),
+                FieldDef(StringConstantStructDef(JUDGEMENT_RESOURCE_KEY), RESOURCE_JUDGEMENT_PROVIDER_STRUCT_DEF , required = true),
                 FieldDef(StringConstantStructDef(METRICS_CALCULATION_KEY), MetricsCalculationJsonProtocol.structDef , required = true)
               ),
               IDENTITY.name -> singleValueCalculationMandatoryFields,

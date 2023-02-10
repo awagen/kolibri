@@ -19,6 +19,7 @@ package de.awagen.kolibri.base.directives
 
 import de.awagen.kolibri.base.directives.ExpirePolicy.ExpirePolicy
 import de.awagen.kolibri.base.directives.ResourceType.ResourceType
+import de.awagen.kolibri.base.usecase.searchopt.provider.JudgementProvider
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.types.ClassTyped
@@ -30,17 +31,19 @@ import scala.collection.mutable
 object ResourceType extends Enumeration {
   type ResourceType[+T] = Val[T]
 
+  type JudgementProviderResourceType = Val[JudgementProvider[Double]]
   type MapStringDoubleResourceType = Val[Map[String, Double]]
   type MapStringGeneratorStringResourceType = Val[Map[String, IndexedGenerator[String]]]
   type GeneratorStringResourceType = Val[IndexedGenerator[String]]
 
   case class Val[+T](classTyped: ClassTyped[T]) extends super.Val
 
+  val JUDGEMENT_PROVIDER: JudgementProviderResourceType = Val(ClassTyped[JudgementProvider[Double]])
   val MAP_STRING_TO_DOUBLE_VALUE: MapStringDoubleResourceType = Val(ClassTyped[Map[String, Double]])
   val MAP_STRING_TO_STRING_VALUES: MapStringGeneratorStringResourceType = Val(ClassTyped[Map[String, IndexedGenerator[String]]])
   val STRING_VALUES: GeneratorStringResourceType = Val(ClassTyped[IndexedGenerator[String]])
 
-  def vals: Seq[Val[_]] = Seq(MAP_STRING_TO_DOUBLE_VALUE, MAP_STRING_TO_STRING_VALUES, STRING_VALUES)
+  def vals: Seq[Val[_]] = Seq(JUDGEMENT_PROVIDER, MAP_STRING_TO_DOUBLE_VALUE, MAP_STRING_TO_STRING_VALUES, STRING_VALUES)
 }
 
 object ExpirePolicy extends Enumeration {

@@ -18,7 +18,7 @@ package de.awagen.kolibri.base.io.json
 
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.ProcessingResult
 import de.awagen.kolibri.base.directives.ResourceType
-import de.awagen.kolibri.base.directives.ResourceType.{GeneratorStringResourceType, MAP_STRING_TO_DOUBLE_VALUE, MAP_STRING_TO_STRING_VALUES, MapStringDoubleResourceType, MapStringGeneratorStringResourceType, ResourceType, STRING_VALUES}
+import de.awagen.kolibri.base.directives.ResourceType.{GeneratorStringResourceType, JUDGEMENT_PROVIDER, JudgementProviderResourceType, MAP_STRING_TO_DOUBLE_VALUE, MAP_STRING_TO_STRING_VALUES, MapStringDoubleResourceType, MapStringGeneratorStringResourceType, ResourceType, STRING_VALUES}
 import de.awagen.kolibri.base.domain.TaskDataKeys
 import de.awagen.kolibri.base.domain.jobdefinitions.ProcessingActorProps.ProcessingActorProps
 import de.awagen.kolibri.base.domain.jobdefinitions.RunnableExpectationGenerators.ExpectationGenerators
@@ -29,6 +29,7 @@ import de.awagen.kolibri.base.http.server.routes.DataRoutes.DataFileType
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnableSinkType
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnableSinkType.ActorRunnableSinkType
 import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ValueType
+import de.awagen.kolibri.base.usecase.searchopt.provider.JudgementProvider
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.io.json.EnumerationJsonProtocol.EnumerationProtocol
 import de.awagen.kolibri.datatypes.stores.MetricRow
@@ -171,6 +172,20 @@ object EnumerationJsonProtocol extends DefaultJsonProtocol {
 
     override def structDef: JsonStructDefs.StructDef[_] = {
       StringChoiceStructDef(Seq(MAP_STRING_TO_DOUBLE_VALUE.toString()))
+    }
+  }
+
+  implicit object resourceTypeJudgementProviderFormat extends EnumerationProtocol[ResourceType[JudgementProvider[Double]]] with WithStructDef {
+    override def read(json: JsValue): ResourceType[JudgementProvider[Double]] = {
+      json match {
+        case JsString(txt) if ResourceType.withName(txt).isInstanceOf[JudgementProviderResourceType] =>
+          ResourceType.withName(txt).asInstanceOf[ResourceType[JudgementProvider[Double]]]
+        case e => throw DeserializationException(s"Expected a value from ResourceType[JudgementProvider[Double]] but got value $e")
+      }
+    }
+
+    override def structDef: JsonStructDefs.StructDef[_] = {
+      StringChoiceStructDef(Seq(JUDGEMENT_PROVIDER.toString()))
     }
   }
 

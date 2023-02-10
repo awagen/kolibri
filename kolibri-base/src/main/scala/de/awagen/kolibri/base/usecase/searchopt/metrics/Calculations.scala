@@ -27,6 +27,7 @@ import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.BooleanSeqT
 import de.awagen.kolibri.base.usecase.searchopt.metrics.ComputeFailReason.missingKeyFailReason
 import de.awagen.kolibri.base.usecase.searchopt.metrics.ComputeResultFunctions.{countValues, findFirstValue}
 import de.awagen.kolibri.base.usecase.searchopt.metrics.PlainMetricValueFunctions.{binarizeBooleanSeq, stringSequenceToPositionOccurrenceCountMap}
+import de.awagen.kolibri.base.usecase.searchopt.provider.JudgementProvider
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason
 import de.awagen.kolibri.datatypes.stores.MetricRow
@@ -76,7 +77,7 @@ object Calculations {
    * Similar to JudgementBasedMetricsCalculation, yet here this uses judgements as resource, e.g
    * the set of judgements need to be pre-loaded as node resource.
    * One purpose is to unify all calculation definitions purely based on either fields created by result parsing
-   * or from noad resources.
+   * or from node resources.
    * @param productIdsKey - the key value used to store the productIds in the WeaklyTypedMap[String]
    * @param queryParamName - name of the parameter used in requests as query parameter
    * @param judgementsResource - the resource identifier for the judgements map
@@ -84,7 +85,7 @@ object Calculations {
    */
   case class JudgementsFromResourceIRMetricsCalculations(productIdsKey: String,
                                                          queryParamName: String,
-                                                         judgementsResource: Resource[Map[String, Double]],
+                                                         judgementsResource: Resource[JudgementProvider[Double]],
                                                          metricsCalculation: MetricsCalculation) extends Calculation[WeaklyTypedMap[String], Any] {
     def calculationResultIdentifier: Set[String] = metricsCalculation.metrics.map(x => x.name).toSet
 
@@ -94,36 +95,22 @@ object Calculations {
       val requestTemplate: RequestTemplate = tMap.get[RequestTemplate](REQUEST_TEMPLATE_STORAGE_KEY.name).get
       val query: String = requestTemplate.getParameter(queryParamName).map(x => x.head).getOrElse("")
       val productOpt: Option[Seq[String]] = tMap.get[Seq[String]](productIdsKey)
-      val judgementsOrError: Either[RetrievalError[Map[String, Double]], Map[String, Double]] = ClusterNodeObj.getResource(RetrievalDirective.Retrieve(judgementsResource))
+      val judgementsOrError: Either[RetrievalError[JudgementProvider[Double]], JudgementProvider[Double]] = ClusterNodeObj.getResource(RetrievalDirective.Retrieve(judgementsResource))
       judgementsOrError match {
         case Left(error) =>
           metricsCalculation.metrics.map(x => ResultRecord(x.name, Left(Seq(ComputeFailReason.apply(error.cause.toString)))))
-        case Right(judgementsMap) =>
+        case Right(judgementProvider) =>
           val judgementsOptSeq: Seq[Option[Double]] = productOpt
             .map(products => {
-              products.map(product => {
-                val productQueryKey = createKey(query, product)
-                judgementsMap.get(productQueryKey)
-              })
+              judgementProvider.retrieveJudgements(query, products)
             })
             .getOrElse(Seq.empty)
+          // TODO: here we need to incorporate more information, e.g ideal dcg values and so on to produce
+          // correct values
           metricsCalculation.calculateAllAndReturnSingleResults(judgementsOptSeq)
       }
     }
   }
-
-  /**
-   * Query product delimiter needs to be the same as in the loading part, we
-   * refer here to the delimiter set in properties.
-   * Function creates query-product key to be used to request judgements from
-   * a judgement mapping
-   *
-   * @return
-   */
-  private[metrics] def createKey(searchTerm: String, productId: String): String = {
-    s"$searchTerm$judgementQueryAndProductDelimiter$productId"
-  }
-
 }
 
 object CalculationFunctions {
