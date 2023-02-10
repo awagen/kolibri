@@ -117,6 +117,14 @@ object AppProperties {
       }
     }
 
+    // some properties determining amount of additional judgement information is stored
+    // in judgement provider
+    val topKJudgementsPerQueryStorageSize: Int = baseConfig.getInt("kolibri.job.resources.judgements.topKJudgementsPerQueryStorageSize")
+    val maxPrecomputeIdealDcgKValue: Int = baseConfig.getInt("kolibri.job.resources.judgements.maxPrecomputeIdealDcgKValue")
+    val idealDcgPreComputeStartK: Int = baseConfig.getInt("kolibri.job.resources.judgements.idealDcgPreComputeStartK")
+    val idealDcgPreComputeStepSize: Int = baseConfig.getInt("kolibri.job.resources.judgements.idealDcgPreComputeStepSize")
+
+
     val clusterStatusCheckTimeout: FiniteDuration = FiniteDuration(baseConfig.getInt("kolibri.cluster.statusCheckTimeoutInMillis"), MILLISECONDS)
 
     val supervisorMaxNumOfRetries: Int = baseConfig.getInt("kolibri.supervisor.maxNumOfRetries")

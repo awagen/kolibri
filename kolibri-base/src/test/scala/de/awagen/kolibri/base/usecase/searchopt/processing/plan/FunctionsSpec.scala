@@ -27,6 +27,7 @@ import de.awagen.kolibri.datatypes.mutable.stores.{TypeTaggedMap, TypedMapStore}
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.stores.MetricRow.ResultCountStore
 import de.awagen.kolibri.datatypes.utils.MathUtils
+import de.awagen.kolibri.datatypes.values.Calculations.ComputeResult
 import de.awagen.kolibri.datatypes.values.aggregation.AggregateValue
 
 import scala.collection.mutable
@@ -67,6 +68,19 @@ class FunctionsSpec extends UnitTestSpec {
         })
         .filter(x => x._1._1 == searchTerm)
         .map(x => (x._1._2, x._2))
+
+      override def retrieveSortedJudgementsForTerm(searchTerm: String, k: Int): Seq[Double] = judgementMap.keys
+        .filter(key => key.startsWith(searchTerm))
+        .map(key => judgementMap(key))
+        .toSeq
+        .sorted
+        .reverse
+        .take(k)
+
+      override def getIdealDCGForTerm(searchTerm: String, k: Int): ComputeResult[Double] = {
+        IRMetricFunctions.dcgAtK(k)(retrieveSortedJudgementsForTerm(searchTerm, k))
+      }
+
     }
 
   }

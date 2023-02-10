@@ -22,13 +22,16 @@ import de.awagen.kolibri.base.processing.execution.task.{SimpleAsyncTask, Simple
 import de.awagen.kolibri.base.usecase.searchopt.domain.ExtTaskDataKeys
 import de.awagen.kolibri.base.usecase.searchopt.domain.ExtTaskDataKeys.{JUDGEMENTS, JUDGEMENTS_FAILED, JUDGEMENT_PROVIDER, JUDGEMENT_PROVIDER_FAILED, PRODUCT_ID_RESULT}
 import de.awagen.kolibri.base.usecase.searchopt.metrics.MetricsCalculation
-import de.awagen.kolibri.base.usecase.searchopt.provider.{JudgementProvider, JudgementProviderFactory}
+import de.awagen.kolibri.base.usecase.searchopt.provider.JudgementProvider
 import de.awagen.kolibri.datatypes.stores.MetricRow
-import scala.concurrent.ExecutionContext
+
+import scala.concurrent.{ExecutionContext, Future}
 
 
 /**
   * Given keys in TaskDataKeys, provide the Task sequence to be executed within the TaskExecution
+ *
+ * deprecated - the standard way to execute is the flow way, not the single Task composition
   */
 object PlanProvider {
 
@@ -79,17 +82,17 @@ object PlanProvider {
   /**
     * Async judgement provider retrieval task
     *
-    * @param judgementProviderFactory
+    * @param judgementSupplier
     * @param ec
     * @return
     */
-  def judgementProviderGetTask(judgementProviderFactory: JudgementProviderFactory[Double])
+  def judgementProviderGetTask(judgementSupplier: () => Future[JudgementProvider[Double]])
                               (implicit ec: ExecutionContext): SimpleAsyncTask[JudgementProvider[Double], JudgementProvider[Double]] = {
     SimpleAsyncTask[JudgementProvider[Double], JudgementProvider[Double]](
       prerequisites = Seq.empty,
       successKey = ExtTaskDataKeys.JUDGEMENT_PROVIDER,
       failKey = JUDGEMENT_PROVIDER_FAILED,
-      futureFunc = _ => judgementProviderFactory.getJudgements.future,
+      futureFunc = _ => judgementSupplier(),
       successHandler = (_, _) => (),
       failureHandler = _ => ())
   }
@@ -128,15 +131,18 @@ object PlanProvider {
     * based on initial data map containing only Seq of product ids (Seq[String])
     *
     * @param query
-    * @param judgementProviderFactory
+    * @param judgementProviderFutureSupplier
     * @param metricsCalculation
     * @param ec
     * @return
     */
-  def metricsCalcuationTaskSeq(query: String, params: Map[String, Seq[String]], judgementProviderFactory: JudgementProviderFactory[Double], metricsCalculation: MetricsCalculation)
+  def metricsCalcuationTaskSeq(query: String,
+                               params: Map[String, Seq[String]],
+                               judgementProviderFutureSupplier: () => Future[JudgementProvider[Double]],
+                               metricsCalculation: MetricsCalculation)
                               (implicit ec: ExecutionContext): Seq[Task[_]] = {
     Seq(
-      judgementProviderGetTask(judgementProviderFactory),
+      judgementProviderGetTask(judgementProviderFutureSupplier),
       judgementGenerationTask(query),
       judgementsToMetricsTask(params, metricsCalculation)
     )

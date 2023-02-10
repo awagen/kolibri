@@ -16,11 +16,25 @@
 
 package de.awagen.kolibri.base.usecase.searchopt.provider
 
+import de.awagen.kolibri.datatypes.values.Calculations.ComputeResult
+
 trait JudgementProvider[T] extends Serializable {
 
   def allJudgements: Map[String, T]
 
-  def retrieveJudgementsForTerm(searchTerm: String): Map[String, Double]
+  def retrieveJudgementsForTerm(searchTerm: String): Map[String, T]
+
+  /**
+   * Provide sorted (descending) list of judgements of length k (if less than k judgements available,
+   * return the available judgements)
+   */
+  def retrieveSortedJudgementsForTerm(searchTerm: String, k: Int): Seq[T]
+
+  /**
+   * To avoid repeated computation for ideal dcg values for a given k (number of results taken into account),
+   * precompute for a selection of k here per query.
+   */
+  def getIdealDCGForTerm(searchTerm: String, k: Int): ComputeResult[Double]
 
   def retrieveJudgement(searchTerm: String, productId: String): Option[T]
 
