@@ -29,6 +29,7 @@ import de.awagen.kolibri.base.domain.Connections.Connection
 import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions
 import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions.MapWithCount
 import de.awagen.kolibri.base.http.client.request.{RequestTemplate, RequestTemplateBuilder}
+import de.awagen.kolibri.base.io.json.MetricFunctionJsonProtocol.{MetricFunction, MetricType}
 import de.awagen.kolibri.base.io.writer.Writers.Writer
 import de.awagen.kolibri.base.processing.JobMessages.{QueryBasedSearchEvaluationDefinition, SearchEvaluationDefinition, TestPiCalculationDefinition}
 import de.awagen.kolibri.base.processing.execution.functions.AggregationFunctions.AggregateFromDirectoryByRegexWeighted
@@ -182,15 +183,15 @@ object JobMessages {
         ),
         MetricsCalculation(
           Seq(
-            Metric("NDCG@2", IRMetricFunctions.ndcgAtK(2)),
-            Metric("NDCG@4", IRMetricFunctions.ndcgAtK(4)),
-            Metric("NDCG@8", IRMetricFunctions.ndcgAtK(8)),
-            Metric("NDCG@12", IRMetricFunctions.ndcgAtK(12)),
-            Metric("NDCG@24", IRMetricFunctions.ndcgAtK(24)),
-            Metric("PRECISION@k=2,t=0.2", IRMetricFunctions.precisionAtK(2, 0.2)),
-            Metric("PRECISION@k=4,t=0.2", IRMetricFunctions.precisionAtK(4, 0.2)),
-            Metric("RECALL@k=2,t=0.2", IRMetricFunctions.recallAtK(2, 0.2)),
-            Metric("RECALL@k=4,t=0.2", IRMetricFunctions.recallAtK(4, 0.2))
+            Metric("NDCG@2", MetricFunction(MetricType.NDCG, 2, IRMetricFunctions.ndcgAtK(2))),
+            Metric("NDCG@4", MetricFunction(MetricType.NDCG, 4, IRMetricFunctions.ndcgAtK(4))),
+            Metric("NDCG@8", MetricFunction(MetricType.NDCG, 8, IRMetricFunctions.ndcgAtK(8))),
+            Metric("NDCG@12", MetricFunction(MetricType.NDCG, 12, IRMetricFunctions.ndcgAtK(12))),
+            Metric("NDCG@24", MetricFunction(MetricType.NDCG, 24, IRMetricFunctions.ndcgAtK(24))),
+            Metric("PRECISION@k=2,t=0.2", MetricFunction(MetricType.PRECISION, 2, IRMetricFunctions.precisionAtK(2, 0.2))),
+            Metric("PRECISION@k=4,t=0.2", MetricFunction(MetricType.PRECISION, 4, IRMetricFunctions.precisionAtK(4, 0.2))),
+            Metric("RECALL@k=2,t=0.2", MetricFunction(MetricType.RECALL, 2, IRMetricFunctions.recallAtK(2, 0.2))),
+            Metric("RECALL@k=4,t=0.2", MetricFunction(MetricType.RECALL, 2, IRMetricFunctions.recallAtK(4, 0.2)))
           ),
           JudgementHandlingStrategy.EXIST_RESULTS_AND_JUDGEMENTS_MISSING_AS_ZEROS
         )

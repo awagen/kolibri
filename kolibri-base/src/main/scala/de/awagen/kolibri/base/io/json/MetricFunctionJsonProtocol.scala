@@ -17,6 +17,7 @@
 
 package de.awagen.kolibri.base.io.json
 
+import de.awagen.kolibri.base.io.json.MetricFunctionJsonProtocol.MetricType.MetricType
 import de.awagen.kolibri.base.usecase.searchopt.metrics.IRMetricFunctions
 import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
 import de.awagen.kolibri.datatypes.types.JsonStructDefs._
@@ -27,7 +28,13 @@ import spray.json.{DefaultJsonProtocol, JsValue, JsonFormat, enrichAny}
 
 object MetricFunctionJsonProtocol extends DefaultJsonProtocol with WithStructDef {
 
-  type MetricFunction = SerializableFunction1[Seq[Double], ComputeResult[Double]]
+  case class MetricFunction(metricType: MetricType, k: Int, calc: SerializableFunction1[Seq[Double], ComputeResult[Double]])
+
+  object MetricType extends Enumeration {
+    type MetricType = Value
+
+    val NDCG, DCG, PRECISION, RECALL, ERR = Value
+  }
 
   val TYPE_VALUE_PRECISION = "PRECISION"
   val TYPE_VALUE_RECALL = "RECALL"
@@ -41,27 +48,47 @@ object MetricFunctionJsonProtocol extends DefaultJsonProtocol with WithStructDef
 
 
   implicit object MetricFunctionFormat extends JsonFormat[MetricFunction] {
-    override def read(json: JsValue): SerializableFunction1[Seq[Double], ComputeResult[Double]] = json match {
+    override def read(json: JsValue): MetricFunction = json match {
       case spray.json.JsObject(fields) =>
         val k: Int = fields(K_KEY).convertTo[Int]
         fields(TYPE_KEY).convertTo[String] match {
           case TYPE_VALUE_DCG =>
-            IRMetricFunctions.dcgAtK(k)
+            MetricFunction(
+              MetricType.DCG,
+              k,
+              IRMetricFunctions.dcgAtK(k)
+            )
           case TYPE_VALUE_NDCG =>
-            IRMetricFunctions.ndcgAtK(k)
+            MetricFunction(
+              MetricType.NDCG,
+              k,
+              IRMetricFunctions.ndcgAtK(k)
+            )
           case TYPE_VALUE_PRECISION =>
             val threshold = fields(THRESHOLD_KEY).convertTo[Double]
-            IRMetricFunctions.precisionAtK(k, threshold)
+            MetricFunction(
+              MetricType.PRECISION,
+              k,
+              IRMetricFunctions.precisionAtK(k, threshold)
+            )
           case TYPE_VALUE_RECALL =>
             val threshold = fields(THRESHOLD_KEY).convertTo[Double]
-            IRMetricFunctions.recallAtK(k, threshold)
+            MetricFunction(
+              MetricType.RECALL,
+              k,
+              IRMetricFunctions.recallAtK(k, threshold)
+            )
           case TYPE_VALUE_ERR =>
             val maxGrade = fields.get(MAX_GRADE_KEY).map(x => x.convertTo[Double]).getOrElse(3.0)
-            IRMetricFunctions.errAtK(k, maxGrade)
+            MetricFunction(
+              MetricType.ERR,
+              k,
+              IRMetricFunctions.errAtK(k, maxGrade)
+            )
         }
     }
 
-    override def write(obj: SerializableFunction1[Seq[Double], ComputeResult[Double]]): JsValue = """{}""".toJson
+    override def write(obj: MetricFunction): JsValue = """{}""".toJson
   }
 
   override def structDef: JsonStructDefs.StructDef[_] = {

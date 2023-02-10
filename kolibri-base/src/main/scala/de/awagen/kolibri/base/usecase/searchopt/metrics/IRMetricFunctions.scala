@@ -36,7 +36,7 @@ object IRMetricFunctions {
   def dcgAtK(k: Int): SerializableFunction1[Seq[Double], ComputeResult[Double]] = new SerializableFunction1[Seq[Double], ComputeResult[Double]] {
     override def apply(seq: Seq[Double]): ComputeResult[Double] = {
       seq match {
-        case _ if seq.isEmpty => Left(Seq(NO_JUDGEMENTS))
+        case _ if seq.isEmpty => Left(Seq(ComputeFailReason.NO_RESULTS))
         case _ if seq.size == 1 => Right(seq.head)
         case _ =>
           val elements: Seq[Double] = seq.slice(1, k)
@@ -50,7 +50,7 @@ object IRMetricFunctions {
   def ndcgAtK(k: Int): SerializableFunction1[Seq[Double], ComputeResult[Double]] = new SerializableFunction1[Seq[Double], ComputeResult[Double]] {
     override def apply(seq: Seq[Double]): ComputeResult[Double] = {
       seq match {
-        case e if e.isEmpty => Left(Seq(NO_JUDGEMENTS))
+        case e if e.isEmpty => Left(Seq(ComputeFailReason.NO_RESULTS))
         case e if e.size == 1 =>
           if (e.head > 0.0) Right(1) else Left(Seq(ZERO_DENOMINATOR))
         case _ =>
@@ -86,7 +86,7 @@ object IRMetricFunctions {
   def errAtK(n: Int, maxGrade: Double): SerializableFunction1[Seq[Double], ComputeResult[Double]] = new SerializableFunction1[Seq[Double], ComputeResult[Double]] {
     override def apply(seq: Seq[Double]): ComputeResult[Double] = {
       seq match {
-        case e if e.isEmpty => Left(Seq(NO_JUDGEMENTS))
+        case e if e.isEmpty => Left(Seq(ComputeFailReason.NO_RESULTS))
         case _ =>
           val norm: Double = Math.pow(2, maxGrade)
           val probabilityThatUserLikesHit: immutable.Seq[Double] = seq.slice(0, n).indices

@@ -19,6 +19,7 @@ package de.awagen.kolibri.base.usecase.searchopt.metrics
 
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
 import de.awagen.kolibri.base.usecase.searchopt.metrics.IRMetricFunctions.NO_JUDGEMENTS
+import de.awagen.kolibri.datatypes.reason.ComputeFailReason.NO_RESULTS
 import de.awagen.kolibri.datatypes.utils.MathUtils
 import de.awagen.kolibri.datatypes.values.Calculations.ComputeResult
 
@@ -41,7 +42,7 @@ class IRMetricFunctionsSpec extends UnitTestSpec {
         //given, when
         val score: ComputeResult[Double] = IRMetricFunctions.dcgAtK(10).apply(Seq())
         //then
-        score mustBe Left(Seq(NO_JUDGEMENTS))
+        score mustBe Left(Seq(NO_RESULTS))
       }
     }
 
@@ -58,7 +59,7 @@ class IRMetricFunctionsSpec extends UnitTestSpec {
         //given, when
         val score = IRMetricFunctions.ndcgAtK(10).apply(Seq())
         //then
-        score mustBe Left(Seq(NO_JUDGEMENTS))
+        score mustBe Left(Seq(NO_RESULTS))
       }
     }
 
@@ -123,7 +124,7 @@ class IRMetricFunctionsSpec extends UnitTestSpec {
           //given, when
           val score = IRMetricFunctions.errAtK(10, 3.0).apply(Seq())
           //then
-          score mustBe Left(Seq(NO_JUDGEMENTS))
+          score mustBe Left(Seq(NO_RESULTS))
         }
       }
     }

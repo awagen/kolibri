@@ -16,14 +16,10 @@
 
 package de.awagen.kolibri.base.usecase.searchopt.processing.plan
 
-import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{Corn, ProcessingMessage}
-import de.awagen.kolibri.base.domain.TaskDataKeys.{METRICS, METRICS_FAILED, METRICS_PM}
 import de.awagen.kolibri.base.processing.execution.task.{SimpleAsyncTask, SimpleSyncTask, SyncTask, Task}
 import de.awagen.kolibri.base.usecase.searchopt.domain.ExtTaskDataKeys
 import de.awagen.kolibri.base.usecase.searchopt.domain.ExtTaskDataKeys.{JUDGEMENTS, JUDGEMENTS_FAILED, JUDGEMENT_PROVIDER, JUDGEMENT_PROVIDER_FAILED, PRODUCT_ID_RESULT}
-import de.awagen.kolibri.base.usecase.searchopt.metrics.MetricsCalculation
 import de.awagen.kolibri.base.usecase.searchopt.provider.JudgementProvider
-import de.awagen.kolibri.datatypes.stores.MetricRow
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -31,7 +27,7 @@ import scala.concurrent.{ExecutionContext, Future}
 /**
   * Given keys in TaskDataKeys, provide the Task sequence to be executed within the TaskExecution
  *
- * deprecated - the standard way to execute is the flow way, not the single Task composition
+ * deprecated / incomplete due to calculation adjustments - the standard way to execute is the flow way, not the single Task composition
   */
 object PlanProvider {
 
@@ -48,36 +44,6 @@ object PlanProvider {
     JUDGEMENTS,
     JUDGEMENTS_FAILED,
     Functions.dataToJudgementsFunc(provider, query))
-
-  /**
-    * assuming judgements are set in data (TypeTaggedMap),
-    * calculate metrics given provided MetricsCalculation instance
-    *
-    * @param metricsCalculation
-    * @return
-    */
-  def metricsCalculationTask(params: Map[String, Seq[String]], metricsCalculation: MetricsCalculation): SyncTask[ProcessingMessage[MetricRow]] = SimpleSyncTask[ProcessingMessage[MetricRow]](
-    Seq(JUDGEMENTS),
-    METRICS_PM,
-    METRICS_FAILED,
-    Functions.judgementsToMetricsFunc(params, metricsCalculation).andThen({
-      case Left(e) => Left(e)
-      case Right(e) => Right(Corn(e))
-    })
-  )
-
-  /**
-    * short execution plan assuming already existing JudgementProvider
-    *
-    * @param provider
-    * @param metricsCalculation
-    * @param query
-    * @return
-    */
-  def resultEvaluationPlan(params: Map[String, Seq[String]], provider: JudgementProvider[Double], metricsCalculation: MetricsCalculation, query: String): Seq[SyncTask[_]] = Seq(
-    judgementGenerationTask(provider, query),
-    metricsCalculationTask(params, metricsCalculation)
-  )
 
   /**
     * Async judgement provider retrieval task
@@ -113,38 +79,20 @@ object PlanProvider {
   }
 
   /**
-    * given judgements and MetricsCalculation instance, syncronous task to generate metrics
-    *
-    * @param metricsCalculation
-    * @return
-    */
-  def judgementsToMetricsTask(params: Map[String, Seq[String]], metricsCalculation: MetricsCalculation): SimpleSyncTask[MetricRow] = {
-    SimpleSyncTask[MetricRow](
-      prerequisites = Seq(JUDGEMENTS),
-      successKey = METRICS,
-      failKey = METRICS_FAILED,
-      func = Functions.judgementsToMetricsFunc(params, metricsCalculation))
-  }
-
-  /**
     * Generate full sequence of judgement generation and metrics calculation
     * based on initial data map containing only Seq of product ids (Seq[String])
     *
     * @param query
     * @param judgementProviderFutureSupplier
-    * @param metricsCalculation
     * @param ec
     * @return
     */
-  def metricsCalcuationTaskSeq(query: String,
-                               params: Map[String, Seq[String]],
-                               judgementProviderFutureSupplier: () => Future[JudgementProvider[Double]],
-                               metricsCalculation: MetricsCalculation)
-                              (implicit ec: ExecutionContext): Seq[Task[_]] = {
+  def judgementGenerationTaskSeq(query: String,
+                                 judgementProviderFutureSupplier: () => Future[JudgementProvider[Double]])
+                                (implicit ec: ExecutionContext): Seq[Task[_]] = {
     Seq(
       judgementProviderGetTask(judgementProviderFutureSupplier),
-      judgementGenerationTask(query),
-      judgementsToMetricsTask(params, metricsCalculation)
+      judgementGenerationTask(query)
     )
   }
 

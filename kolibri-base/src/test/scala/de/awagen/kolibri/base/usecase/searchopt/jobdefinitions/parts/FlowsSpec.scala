@@ -34,6 +34,7 @@ import de.awagen.kolibri.base.config.AppConfig.filepathToJudgementProvider
 import de.awagen.kolibri.base.directives.{Resource, ResourceDirectives, ResourceType}
 import de.awagen.kolibri.base.domain.Connections.Connection
 import de.awagen.kolibri.base.http.client.request.{RequestTemplate, RequestTemplateBuilder}
+import de.awagen.kolibri.base.io.json.MetricFunctionJsonProtocol.{MetricFunction, MetricType}
 import de.awagen.kolibri.base.processing.modifiers.Modifier
 import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.RequestParameterModifier
 import de.awagen.kolibri.base.processing.tagging.TaggingConfigurations.TaggingConfiguration
@@ -182,9 +183,9 @@ class FlowsSpec extends KolibriTestKitNoCluster
       val calculation = getJudgementBasedMetricsCalculation(
         "test1",
         Seq(
-          Metric(NDCG5_NAME, IRMetricFunctions.ndcgAtK(5)),
-          Metric(NDCG10_NAME, IRMetricFunctions.ndcgAtK(10)),
-          Metric(NDCG2_NAME, IRMetricFunctions.ndcgAtK(2))
+          Metric(NDCG5_NAME, MetricFunction(MetricType.NDCG, 5, IRMetricFunctions.ndcgAtK(5))),
+          Metric(NDCG10_NAME, MetricFunction(MetricType.NDCG, 10, IRMetricFunctions.ndcgAtK(10))),
+          Metric(NDCG2_NAME, MetricFunction(MetricType.NDCG, 2, IRMetricFunctions.ndcgAtK(2)))
         )
       )
       // when
@@ -204,10 +205,14 @@ class FlowsSpec extends KolibriTestKitNoCluster
       )
       val result: MetricRow = calc.data
       // then
+      val idealJudgementOrder = Seq(0.4, 0.3, 0.2, 0.1)
+      val expectedValue: Double = IRMetricFunctions.dcgAtK(5).apply(Seq(0.1, 0.0, 0.4, 0.3)).getOrElse(-1.0) /
+        IRMetricFunctions.dcgAtK(5).apply(idealJudgementOrder).getOrElse(-1.0)
+
       result.metrics.keySet mustBe Set("metric1", NDCG5_NAME, NDCG10_NAME, NDCG2_NAME)
       result.metrics("metric1").biValue.value2.value mustBe 9
-      result.metrics(NDCG5_NAME).biValue.value2.value mustBe
-        IRMetricFunctions.ndcgAtK(5).apply(Seq(0.1, 0.0, 0.4, 0.3)).getOrElse(-1)
+      result.metrics(NDCG5_NAME).biValue.value2.value mustBe expectedValue
+
     }
 
     "correctly provide fullProcessingFlow" in {
@@ -227,9 +232,9 @@ class FlowsSpec extends KolibriTestKitNoCluster
       val irCalculation = getJudgementBasedMetricsCalculation(
         "test1",
         Seq(
-          Metric(NDCG5_NAME, IRMetricFunctions.ndcgAtK(5)),
-          Metric(NDCG10_NAME, IRMetricFunctions.ndcgAtK(10)),
-          Metric(NDCG2_NAME, IRMetricFunctions.ndcgAtK(2))
+          Metric(NDCG5_NAME, MetricFunction(MetricType.NDCG, 5, IRMetricFunctions.ndcgAtK(5))),
+          Metric(NDCG10_NAME, MetricFunction(MetricType.NDCG, 10, IRMetricFunctions.ndcgAtK(10))),
+          Metric(NDCG2_NAME, MetricFunction(MetricType.NDCG, 2, IRMetricFunctions.ndcgAtK(2)))
         )
       )
       // define calculations
@@ -274,14 +279,18 @@ class FlowsSpec extends KolibriTestKitNoCluster
       // then
       result.size mustBe 2
       result.head.metrics.keySet mustBe Set("metric1", NDCG5_NAME, NDCG10_NAME, NDCG2_NAME)
-      result.head.metrics(NDCG5_NAME).biValue.value2.value mustBe
-        IRMetricFunctions.ndcgAtK(5).apply(Seq(0.1, 0.0, 0.4, 0.3)).getOrElse(-1)
+
+      val idealDCG1: Double = IRMetricFunctions.dcgAtK(5).apply(Seq(0.4, 0.3, 0.2, 0.1)).getOrElse(-1.0)
+      val idealDCG2: Double = IRMetricFunctions.dcgAtK(5).apply(Seq(0.4, 0.2, 0.1, 0.0)).getOrElse(-1.0)
+      val currentDCG1: Double = IRMetricFunctions.dcgAtK(5).apply(Seq(0.1, 0.0, 0.4, 0.3)).getOrElse(-1)
+      val currentDCG2: Double = IRMetricFunctions.dcgAtK(5).apply(Seq(0.4, 0.0, 0.0, 0.1)).getOrElse(-1)
+
+      result.head.metrics(NDCG5_NAME).biValue.value2.value mustBe (currentDCG1 / idealDCG1)
       result.head.metrics("metric1").biValue.value2.value mustBe 9
       // we changed the query parameter via modifier going through flow,
       // thus the metric value changes since other judgements hold for
       // the other query. "metric1" remains the same
-      result(1).metrics(NDCG5_NAME).biValue.value2.value mustBe
-        IRMetricFunctions.ndcgAtK(5).apply(Seq(0.4, 0.0, 0.0, 0.1)).getOrElse(-1)
+      result(1).metrics(NDCG5_NAME).biValue.value2.value mustBe (currentDCG2 / idealDCG2)
       result(1).metrics("metric1").biValue.value2.value mustBe 9
     }
   }

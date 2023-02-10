@@ -16,9 +16,10 @@
 
 package de.awagen.kolibri.base.usecase.searchopt.provider
 
+import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.values.Calculations.ComputeResult
 
-trait JudgementProvider[T] extends Serializable {
+trait JudgementProvider[T] extends Serializable with KolibriSerializable {
 
   def allJudgements: Map[String, T]
 

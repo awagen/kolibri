@@ -27,6 +27,7 @@ import de.awagen.kolibri.base.actors.clusterinfo.ResourceToJobMappingClusterStat
 import de.awagen.kolibri.base.cluster.ClusterNodeObj
 import de.awagen.kolibri.base.config.AppConfig.filepathToJudgementProvider
 import de.awagen.kolibri.base.directives.{Resource, ResourceDirectives, ResourceType}
+import de.awagen.kolibri.base.io.json.MetricFunctionJsonProtocol.{MetricFunction, MetricType}
 import de.awagen.kolibri.base.resources.{ResourceAlreadyExists, ResourceOK}
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.ReservedStorageKeys._
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations._
@@ -115,9 +116,9 @@ class CalculationsSpec extends KolibriTestKitNoCluster
         Resource(ResourceType.JUDGEMENT_PROVIDER, "judgements1"),
         MetricsCalculation(
           Seq(
-            Metric(NDCG5_NAME, IRMetricFunctions.ndcgAtK(5)),
-            Metric(NDCG10_NAME, IRMetricFunctions.ndcgAtK(10)),
-            Metric(NDCG2_NAME, IRMetricFunctions.ndcgAtK(2))
+            Metric(NDCG5_NAME, MetricFunction(MetricType.NDCG, 5, IRMetricFunctions.ndcgAtK(5))),
+            Metric(NDCG10_NAME, MetricFunction(MetricType.NDCG, 10, IRMetricFunctions.ndcgAtK(10))),
+            Metric(NDCG2_NAME, MetricFunction(MetricType.NDCG, 2, IRMetricFunctions.ndcgAtK(2)))
           ),
           JudgementHandlingStrategy.EXIST_RESULTS_AND_JUDGEMENTS_MISSING_AS_ZEROS
         )

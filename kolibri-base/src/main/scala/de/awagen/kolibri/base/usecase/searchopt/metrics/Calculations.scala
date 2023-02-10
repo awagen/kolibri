@@ -18,18 +18,17 @@
 package de.awagen.kolibri.base.usecase.searchopt.metrics
 
 import de.awagen.kolibri.base.cluster.ClusterNodeObj
-import de.awagen.kolibri.base.config.AppProperties.config.judgementQueryAndProductDelimiter
 import de.awagen.kolibri.base.directives.{Resource, RetrievalDirective}
 import de.awagen.kolibri.base.http.client.request.RequestTemplate
 import de.awagen.kolibri.base.resources.RetrievalError
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.ReservedStorageKeys._
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.BooleanSeqToDoubleCalculation
-import de.awagen.kolibri.base.usecase.searchopt.metrics.ComputeFailReason.missingKeyFailReason
 import de.awagen.kolibri.base.usecase.searchopt.metrics.ComputeResultFunctions.{countValues, findFirstValue}
 import de.awagen.kolibri.base.usecase.searchopt.metrics.PlainMetricValueFunctions.{binarizeBooleanSeq, stringSequenceToPositionOccurrenceCountMap}
 import de.awagen.kolibri.base.usecase.searchopt.provider.JudgementProvider
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason
+import de.awagen.kolibri.datatypes.reason.ComputeFailReason.missingDataKeyFailReason
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 import de.awagen.kolibri.datatypes.values.Calculations.{Calculation, ComputeResult, ResultRecord}
@@ -68,7 +67,7 @@ object Calculations {
     override val calculation: SerializableFunction1[WeaklyTypedMap[String], Seq[ResultRecord[U]]] = tMap => {
       val data: Option[T] = tMap.get[T](dataKey)
       val result: ComputeResult[U] = data.map(value => function.apply(value))
-        .getOrElse(Left(Seq(missingKeyFailReason(dataKey))))
+        .getOrElse(Left(Seq(missingDataKeyFailReason(dataKey))))
       Seq(ResultRecord(names.head, result))
     }
   }
@@ -94,20 +93,13 @@ object Calculations {
     override val calculation: SerializableFunction1[WeaklyTypedMap[String], Seq[ResultRecord[Any]]] = tMap => {
       val requestTemplate: RequestTemplate = tMap.get[RequestTemplate](REQUEST_TEMPLATE_STORAGE_KEY.name).get
       val query: String = requestTemplate.getParameter(queryParamName).map(x => x.head).getOrElse("")
-      val productOpt: Option[Seq[String]] = tMap.get[Seq[String]](productIdsKey)
+      val productSequence: Seq[String] = tMap.get[Seq[String]](productIdsKey).getOrElse(Seq.empty)
       val judgementsOrError: Either[RetrievalError[JudgementProvider[Double]], JudgementProvider[Double]] = ClusterNodeObj.getResource(RetrievalDirective.Retrieve(judgementsResource))
       judgementsOrError match {
         case Left(error) =>
           metricsCalculation.metrics.map(x => ResultRecord(x.name, Left(Seq(ComputeFailReason.apply(error.cause.toString)))))
         case Right(judgementProvider) =>
-          val judgementsOptSeq: Seq[Option[Double]] = productOpt
-            .map(products => {
-              judgementProvider.retrieveJudgements(query, products)
-            })
-            .getOrElse(Seq.empty)
-          // TODO: here we need to incorporate more information, e.g ideal dcg values and so on to produce
-          // correct values
-          metricsCalculation.calculateAllAndReturnSingleResults(judgementsOptSeq)
+          metricsCalculation.calculateAllAndReturnSingleResults(query, productSequence, judgementProvider)
       }
     }
   }

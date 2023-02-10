@@ -24,6 +24,8 @@ object ComputeFailReason {
   val NO_RESULTS: ComputeFailReason = ComputeFailReason("NO_RESULTS")
   val FAILED_HISTOGRAM: ComputeFailReason = ComputeFailReason("FAILED_HISTOGRAM")
 
+  def missingDataKeyFailReason(key: String): ComputeFailReason = ComputeFailReason(s"MISSING_DATA_KEY-$key")
+
 }
 
 case class ComputeFailReason(description: String) extends KolibriSerializable
