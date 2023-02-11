@@ -29,7 +29,6 @@ import de.awagen.kolibri.base.directives.ResourceType.ResourceType
 import de.awagen.kolibri.base.directives.RetrievalDirective.RetrievalDirective
 import de.awagen.kolibri.base.directives.{Resource, ResourceType}
 import de.awagen.kolibri.base.resources._
-import de.awagen.kolibri.base.usecase.searchopt.provider.FileBasedJudgementRepository
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -113,9 +112,7 @@ case class ResourceToJobMappingClusterStateManagerActor(name: String,
       case ResourceType.MAP_STRING_TO_DOUBLE_VALUE =>
         keysForResourceRemoval.foreach(key => {
           log.info(s"Calling key remove on file-based judgement repository '${Resource(resourceType, key)}'")
-          // TODO: resourceStore should replace the direct call to FileBasedJudgementRepository below,
-          // but temporarily we keep it till we moved the logic
-          FileBasedJudgementRepository.remove(key)
+          resourceStore.removeResource(Resource(resourceType, key))
         })
       case _ => // do nothing
     }

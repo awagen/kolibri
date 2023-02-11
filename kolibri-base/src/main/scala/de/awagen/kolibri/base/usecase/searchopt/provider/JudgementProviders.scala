@@ -18,6 +18,7 @@
 package de.awagen.kolibri.base.usecase.searchopt.provider
 
 import de.awagen.kolibri.base.config.AppConfig.persistenceModule.persistenceDIModule
+import de.awagen.kolibri.base.config.AppProperties.config.topKJudgementsPerQueryStorageSize
 import de.awagen.kolibri.base.io.reader.{FileReaderUtils, Reader}
 import de.awagen.kolibri.base.usecase.searchopt.parse.TypedJsonSelectors.NamedAndTypedSelector
 import play.api.libs.json.Json
@@ -83,7 +84,8 @@ object FileBasedJudgementProvider {
         jsonQuerySelector,
         jsonProductsSelector,
         jsonJudgementsSelector,
-        queryProductDelimiter)
+        queryProductDelimiter),
+      queryProductDelimiter
     )
   }
 
@@ -141,7 +143,63 @@ object FileBasedJudgementProvider {
       x => s"${x(judgementFileFormatConfig.judgement_file_search_term_column)}$queryProductDelimiter${x(judgementFileFormatConfig.judgement_file_product_id_column)}",
       x => x(judgementFileFormatConfig.judgement_file_judgement_column).toDouble)
   }
+}
 
+
+class BaseJudgementProvider(judgementStorage: Map[String, Double],
+                                              queryProductDelimiter: String = "\u0000") extends JudgementProvider[Double] {
+
+  private val uniqueQueries: Set[String] = judgementStorage.keys.map(key => keyToSearchTermAndProductId(key)._1).toSet
+  // storing sorted list of judgements of given default size to reuse in calculations without resort
+  private val sortedJudgementsPerQueryStorage: Map[String, Seq[Double]] = uniqueQueries
+    .map(query => (query, composeSortedJudgementsForTerm(query, topKJudgementsPerQueryStorageSize)))
+    .toMap
+
+  override def retrieveJudgement(searchTerm: String, productId: String): Option[Double] = {
+    judgementStorage.get(createKey(searchTerm, productId))
+  }
+
+  /**
+   * Create a key made of two ids. E.g in case of judgement storage is used for id1= query, id2 = productId,
+   * in the case of ideal dcg values combines id1=query with id2=k-value
+   * @param id1 - first id
+   * @param id2 - second id
+   * @return combined identifier
+   */
+  private[provider] def createKey(id1: String, id2: String): String = {
+    s"$id1$queryProductDelimiter$id2"
+  }
+
+  private[provider] def keyToSearchTermAndProductId(key: String): (String, String) = {
+    val parts = key.split(queryProductDelimiter)
+    (parts.head, parts(1))
+  }
+
+  override def allJudgements: Map[String, Double] = collection.immutable.Map[String, Double]() ++ judgementStorage
+
+  override def retrieveJudgementsForTerm(searchTerm: String): Map[String, Double] = judgementStorage
+    .map(x => (keyToSearchTermAndProductId(x._1), x._2))
+    .filter(x => x._1._1 == searchTerm)
+    .map(x => (x._1._2, x._2))
+
+  /**
+   * Calculate sorted (descending) list of judgements of length k (or if less judgements available of size equal
+   * to number of judgements available)
+   */
+  private[provider] def composeSortedJudgementsForTerm(searchTerm: String, k: Int): Seq[Double] = judgementStorage.keys
+    .filter(key => key.startsWith(s"$searchTerm$queryProductDelimiter"))
+    .map(key => judgementStorage(key))
+    .toSeq
+    .sorted
+    .reverse
+    .take(k)
+
+  /**
+   * Provide sorted (descending) list of judgements of length k (or if less judgements available of size equal
+   * to number of judgements available)
+   */
+  override def retrieveSortedJudgementsForTerm(searchTerm: String, k: Int): Seq[Double] =
+    sortedJudgementsPerQueryStorage.get(searchTerm).map(list => list.take(k)).getOrElse(Seq.empty)
 
 }
 
@@ -157,31 +215,4 @@ private[provider] class FileBasedJudgementProvider(filepath: String,
                                                    fileReader: Reader[String, Seq[String]],
                                                    sourceToJudgementMappingFunc: Source => Map[String, Double],
                                                    queryProductDelimiter: String = "\u0000")
-  extends JudgementProvider[Double] {
-
-  private val judgementStorage: Map[String, Double] = readJudgementsFromFile(filepath)
-
-  private[provider] def readJudgementsFromFile(filepath: String): Map[String, Double] = {
-    sourceToJudgementMappingFunc.apply(fileReader.getSource(filepath))
-  }
-
-  override def retrieveJudgement(searchTerm: String, productId: String): Option[Double] = {
-    judgementStorage.get(createKey(searchTerm, productId))
-  }
-
-  private[provider] def createKey(searchTerm: String, productId: String): String = {
-    s"$searchTerm$queryProductDelimiter$productId"
-  }
-
-  private[provider] def keyToSearchTermAndProductId(key: String): (String, String) = {
-    val parts = key.split(queryProductDelimiter)
-    (parts.head, parts(1))
-  }
-
-  override def allJudgements: Map[String, Double] = collection.immutable.Map[String, Double]() ++ judgementStorage
-
-  override def retrieveJudgementsForTerm(searchTerm: String): Map[String, Double] = judgementStorage
-    .map(x => (keyToSearchTermAndProductId(x._1), x._2))
-    .filter(x => x._1._1 == searchTerm)
-    .map(x => (x._1._2, x._2))
-}
+  extends BaseJudgementProvider(sourceToJudgementMappingFunc.apply(fileReader.getSource(filepath)), queryProductDelimiter)

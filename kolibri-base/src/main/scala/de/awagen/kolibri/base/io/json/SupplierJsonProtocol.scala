@@ -20,16 +20,19 @@ package de.awagen.kolibri.base.io.json
 import de.awagen.kolibri.base.cluster.ClusterNodeObj
 import de.awagen.kolibri.base.config.AppConfig
 import de.awagen.kolibri.base.config.AppConfig.filepathToJudgementProvider
+import de.awagen.kolibri.base.config.AppProperties.config.judgementQueryAndProductDelimiter
 import de.awagen.kolibri.base.directives.RetrievalDirective.Retrieve
 import de.awagen.kolibri.base.directives.{Resource, ResourceType}
 import de.awagen.kolibri.base.io.json.OrderedValuesJsonProtocol.OrderedValuesStringFormat
 import de.awagen.kolibri.base.io.reader.FileReaderUtils
+import de.awagen.kolibri.base.usecase.searchopt.provider.JudgementProvider
 import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator}
 import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
 import de.awagen.kolibri.datatypes.types.JsonStructDefs._
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSupplier
 import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
 import de.awagen.kolibri.datatypes.values.OrderedValues
+import de.awagen.kolibri.base.usecase.searchopt.provider.BaseJudgementProvider
 import org.slf4j.{Logger, LoggerFactory}
 import spray.json._
 
@@ -201,6 +204,26 @@ object SupplierJsonProtocol extends DefaultJsonProtocol {
         )
       )
     )
+  }
+
+  /**
+   * Format for JudgementProvider[Double] that is utilizing the MapStringDoubleFormat to parse the
+   * definitions where to get the identifier to judgement value mappings from, then fills them into a judgement provider.
+   *
+   * Note that this can be reduced by changing the logic of the MapStringDoubleFormat below such that
+   * the provider will directly be returned, yet we keep it for now for generality of other types of Map[String, Double]
+   * values
+   */
+  implicit object JudgementProviderFormat extends JsonFormat[SerializableSupplier[JudgementProvider[Double]]] with WithStructDef {
+
+    override def read(json: JsValue): SerializableSupplier[JudgementProvider[Double]] =  {
+      val valueSupplier: SerializableSupplier[Map[String, Double]] = MapStringDoubleFormat.read(json)
+      () => new BaseJudgementProvider(valueSupplier.apply(), judgementQueryAndProductDelimiter)
+    }
+
+    override def write(obj: SerializableSupplier[JudgementProvider[Double]]): JsValue = """{}""".toJson
+
+    override def structDef: StructDef[_] = MapStringDoubleFormat.structDef
   }
 
   implicit object MapStringDoubleFormat extends JsonFormat[SerializableSupplier[Map[String, Double]]] with WithStructDef {

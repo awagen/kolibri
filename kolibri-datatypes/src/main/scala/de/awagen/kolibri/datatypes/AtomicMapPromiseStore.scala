@@ -29,8 +29,8 @@ import scala.concurrent.{ExecutionContext, Future, Promise}
   * actors on a single node try to request the ressource at once)
   * E.g used to load some data expensive to load within an object to have only one data-instance per node
  *
-  * @tparam U - the key used to identify a value
-  * @tparam V - the corresponding value
+  * @tparam U - type of the key used to identify a value
+  * @tparam V - type of the corresponding value
   */
 trait AtomicMapPromiseStore[U,V]  {
 
@@ -108,7 +108,9 @@ trait AtomicMapPromiseStore[U,V]  {
   }
 
   /**
-   * Function to generate value for a passed key.
+   * Function to generate value for a passed key. Note that ensuring thread-safety and only single executions
+   * is ensured in the above methods, so on extension only need to override this function with the plain
+   * generation of the value (e.g file / db access or the like)
    * @param key key value
    * @return generated value
    */

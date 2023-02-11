@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Andreas Wagenmann
+ * Copyright 2023 Andreas Wagenmann
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,12 +15,20 @@
  */
 
 
-package de.awagen.kolibri.base.usecase.searchopt.metrics
+package de.awagen.kolibri.base.utils
 
-import de.awagen.kolibri.datatypes.reason.ComputeFailReason
+import de.awagen.kolibri.base.usecase.searchopt.provider.JudgementInfo
 
-object ComputeFailReason {
+object JudgementInfoTestHelper {
 
-  def missingKeyFailReason(key: String): ComputeFailReason = de.awagen.kolibri.datatypes.reason.ComputeFailReason(s"MISSING_DATA_KEY-$key")
+  def judgementsToSuccessJudgementInfo(judgements: Seq[Double]): JudgementInfo = {
+    JudgementInfo(
+      "testQuery",
+      products = judgements.indices.map(index => s"p$index"),
+      judgements,
+      judgements.sorted.reverse,
+      Seq.empty
+    )
+  }
 
 }

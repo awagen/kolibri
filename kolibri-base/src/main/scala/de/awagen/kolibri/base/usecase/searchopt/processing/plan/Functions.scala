@@ -60,20 +60,4 @@ object Functions {
       else Right(judgementProviderOpt.get.retrieveJudgements(query, productResultsOpt.get))
   }
 
-  /**
-    * Assuming judgements are available in the typed map, calculate the specified metrics
-    * @param params
-    * @param metricsCalculation
-    * @return
-    */
-  def judgementsToMetricsFunc(params: immutable.Map[String, Seq[String]], metricsCalculation: MetricsCalculation): TypeTaggedMap => Either[TaskFailType, MetricRow] = {
-    data =>
-      val judgementsOpt: Option[Seq[Option[Double]]] = data.get(JUDGEMENTS)
-      if (judgementsOpt.isEmpty) Left(JudgementsMissing)
-      else {
-        val judgements: Seq[Option[Double]] = judgementsOpt.get
-        Right(metricsCalculation.calculateAllAndAddAllToMetricRow(params, judgements))
-      }
-  }
-
 }

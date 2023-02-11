@@ -18,17 +18,17 @@
 package de.awagen.kolibri.base.usecase.searchopt.metrics
 
 import de.awagen.kolibri.base.cluster.ClusterNodeObj
-import de.awagen.kolibri.base.config.AppProperties.config.judgementQueryAndProductDelimiter
 import de.awagen.kolibri.base.directives.{Resource, RetrievalDirective}
 import de.awagen.kolibri.base.http.client.request.RequestTemplate
 import de.awagen.kolibri.base.resources.RetrievalError
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.ReservedStorageKeys._
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.BooleanSeqToDoubleCalculation
-import de.awagen.kolibri.base.usecase.searchopt.metrics.ComputeFailReason.missingKeyFailReason
 import de.awagen.kolibri.base.usecase.searchopt.metrics.ComputeResultFunctions.{countValues, findFirstValue}
 import de.awagen.kolibri.base.usecase.searchopt.metrics.PlainMetricValueFunctions.{binarizeBooleanSeq, stringSequenceToPositionOccurrenceCountMap}
+import de.awagen.kolibri.base.usecase.searchopt.provider.JudgementProvider
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason
+import de.awagen.kolibri.datatypes.reason.ComputeFailReason.missingDataKeyFailReason
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 import de.awagen.kolibri.datatypes.values.Calculations.{Calculation, ComputeResult, ResultRecord}
@@ -67,7 +67,7 @@ object Calculations {
     override val calculation: SerializableFunction1[WeaklyTypedMap[String], Seq[ResultRecord[U]]] = tMap => {
       val data: Option[T] = tMap.get[T](dataKey)
       val result: ComputeResult[U] = data.map(value => function.apply(value))
-        .getOrElse(Left(Seq(missingKeyFailReason(dataKey))))
+        .getOrElse(Left(Seq(missingDataKeyFailReason(dataKey))))
       Seq(ResultRecord(names.head, result))
     }
   }
@@ -76,7 +76,7 @@ object Calculations {
    * Similar to JudgementBasedMetricsCalculation, yet here this uses judgements as resource, e.g
    * the set of judgements need to be pre-loaded as node resource.
    * One purpose is to unify all calculation definitions purely based on either fields created by result parsing
-   * or from noad resources.
+   * or from node resources.
    * @param productIdsKey - the key value used to store the productIds in the WeaklyTypedMap[String]
    * @param queryParamName - name of the parameter used in requests as query parameter
    * @param judgementsResource - the resource identifier for the judgements map
@@ -84,7 +84,7 @@ object Calculations {
    */
   case class JudgementsFromResourceIRMetricsCalculations(productIdsKey: String,
                                                          queryParamName: String,
-                                                         judgementsResource: Resource[Map[String, Double]],
+                                                         judgementsResource: Resource[JudgementProvider[Double]],
                                                          metricsCalculation: MetricsCalculation) extends Calculation[WeaklyTypedMap[String], Any] {
     def calculationResultIdentifier: Set[String] = metricsCalculation.metrics.map(x => x.name).toSet
 
@@ -93,37 +93,16 @@ object Calculations {
     override val calculation: SerializableFunction1[WeaklyTypedMap[String], Seq[ResultRecord[Any]]] = tMap => {
       val requestTemplate: RequestTemplate = tMap.get[RequestTemplate](REQUEST_TEMPLATE_STORAGE_KEY.name).get
       val query: String = requestTemplate.getParameter(queryParamName).map(x => x.head).getOrElse("")
-      val productOpt: Option[Seq[String]] = tMap.get[Seq[String]](productIdsKey)
-      val judgementsOrError: Either[RetrievalError[Map[String, Double]], Map[String, Double]] = ClusterNodeObj.getResource(RetrievalDirective.Retrieve(judgementsResource))
+      val productSequence: Seq[String] = tMap.get[Seq[String]](productIdsKey).getOrElse(Seq.empty)
+      val judgementsOrError: Either[RetrievalError[JudgementProvider[Double]], JudgementProvider[Double]] = ClusterNodeObj.getResource(RetrievalDirective.Retrieve(judgementsResource))
       judgementsOrError match {
         case Left(error) =>
           metricsCalculation.metrics.map(x => ResultRecord(x.name, Left(Seq(ComputeFailReason.apply(error.cause.toString)))))
-        case Right(judgementsMap) =>
-          val judgementsOptSeq: Seq[Option[Double]] = productOpt
-            .map(products => {
-              products.map(product => {
-                val productQueryKey = createKey(query, product)
-                judgementsMap.get(productQueryKey)
-              })
-            })
-            .getOrElse(Seq.empty)
-          metricsCalculation.calculateAllAndReturnSingleResults(judgementsOptSeq)
+        case Right(judgementProvider) =>
+          metricsCalculation.calculateAllAndReturnSingleResults(query, productSequence, judgementProvider)
       }
     }
   }
-
-  /**
-   * Query product delimiter needs to be the same as in the loading part, we
-   * refer here to the delimiter set in properties.
-   * Function creates query-product key to be used to request judgements from
-   * a judgement mapping
-   *
-   * @return
-   */
-  private[metrics] def createKey(searchTerm: String, productId: String): String = {
-    s"$searchTerm$judgementQueryAndProductDelimiter$productId"
-  }
-
 }
 
 object CalculationFunctions {
@@ -173,8 +152,8 @@ object ComputeResultFunctions {
 
   def booleanPrecision(useTrue: Boolean, k: Int): SerializableFunction1[Seq[Boolean], ComputeResult[Double]] = new SerializableFunction1[Seq[Boolean], ComputeResult[Double]] {
     override def apply(msg: Seq[Boolean]): ComputeResult[Double] = {
-      val binarizedSeq = binarizeBooleanSeq(!useTrue, msg)
-      IRMetricFunctions.precisionAtK(k, 0.9).apply(binarizedSeq)
+      val binarizedSeq: Seq[Double] = binarizeBooleanSeq(!useTrue, msg)
+      IRMetricFunctions.precisionAtKFromJudgementSeq(binarizedSeq, k, 0.9)
     }
   }
 }

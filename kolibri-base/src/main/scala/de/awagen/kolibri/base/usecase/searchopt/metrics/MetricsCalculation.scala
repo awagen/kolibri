@@ -18,14 +18,18 @@ package de.awagen.kolibri.base.usecase.searchopt.metrics
 
 import de.awagen.kolibri.base.usecase.searchopt.metrics.JudgementValidation.JudgementValidation
 import de.awagen.kolibri.base.usecase.searchopt.metrics.MetricsCalculation.calculationResultToMetricValue
+import de.awagen.kolibri.base.usecase.searchopt.provider.{JudgementInfo, JudgementProvider}
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.values.Calculations.{ComputeResult, ResultRecord}
 import de.awagen.kolibri.datatypes.values.{MetricValue, RunningValues}
+import org.slf4j.LoggerFactory
 
 import scala.collection.immutable
 
 
 object MetricsCalculation {
+
+  private[metrics] val logger = LoggerFactory.getLogger(MetricsCalculation.getClass)
 
   def calculationResultToMetricValue(name: String, calculationResult: ComputeResult[Double]): MetricValue[Double] = {
     calculationResult match {
@@ -40,34 +44,63 @@ object MetricsCalculation {
 
 case class MetricsCalculation(metrics: Seq[Metric], judgementHandling: JudgementHandlingStrategy) {
 
-  def validateAndReturnFailedJudgements(judgements: Seq[Option[Double]]): Seq[JudgementValidation] = {
-    judgementHandling.validateAndReturnFailed(judgements)
-  }
+  val AVAILABLE_JUDGEMENT_METRICS_SUB_RESULT_SIZES: Seq[Int] = Seq(2, 4, 8, 12, 24)
 
-  def calculateAndReturnCalculationResult(metric: Metric, values: Seq[Option[Double]]): ResultRecord[Double] = {
-    val failedValidations: Seq[JudgementValidation] = validateAndReturnFailedJudgements(values)
+  /**
+   * Calculation of a single metric.
+   * @param metric - definition of metric computation such as DCG, NDCG, ERR, PRECISION, RECALL
+   * @param query - query for which to compute the metric
+   * @param products - the sequence of retrieved product identifiers, which should be the same
+   *                 as used in the judgements data
+   * @param judgementProvider - provider of judgements (for specific query - product(s) and overall
+   *                          best sorting as per judgement data.
+   * @return ResultRecord[Double] of the computation
+   */
+  private[metrics] def calculateSingleMetric(metric: Metric,
+                                             query: String,
+                                             products: Seq[String],
+                                             judgementProvider: JudgementProvider[Double]): ResultRecord[Double] = {
+    val judgementInfo = JudgementInfo.create(query, products, judgementProvider, judgementHandling)
 
+    val failedValidations: Seq[JudgementValidation] = judgementInfo.failedJudgementValidations
     if (failedValidations.nonEmpty) {
       ResultRecord(metric.name, Left(failedValidations.map(x => x.reason)))
     }
     else {
-      val preparedValues: Seq[Double] = judgementHandling.extractValues(values)
-      ResultRecord(metric.name, metric.function.apply(preparedValues))
+      val result: ComputeResult[Double] = metric.function.calc.apply(judgementInfo)
+      ResultRecord(metric.name, result)
     }
   }
 
-  def calculateMetric(metric: Metric, values: Seq[Option[Double]]): MetricValue[Double] = {
-    val result: ResultRecord[Double] = calculateAndReturnCalculationResult(metric, values)
-    calculationResultToMetricValue(metric.name, result.value)
+  /**
+   * Create for each k value a metric with name J@K and value equal to the count of available metrics
+   * in the subsequence of first k elements.
+   *
+   * @param judgementsOptSeq - judgement values. If None then no judgement could be found for that position
+   * @return
+   */
+  private[metrics] def calculateJudgementMetrics(judgementsOptSeq: Seq[Option[Double]]): Seq[ResultRecord[Double]] = {
+    AVAILABLE_JUDGEMENT_METRICS_SUB_RESULT_SIZES.map(
+      k => ResultRecord(s"J@$k", Right(judgementsOptSeq.take(k).count(opt => opt.nonEmpty)))
+    )
   }
 
-  def calculateAllAndReturnSingleResults(values: Seq[Option[Double]]): Seq[ResultRecord[Double]] = {
-    metrics.map(x => calculateAndReturnCalculationResult(x, values))
+  def calculateAllAndReturnSingleResults(query: String, products: Seq[String], judgementProvider: JudgementProvider[Double]): Seq[ResultRecord[Double]] = {
+    // calculate metrics regarding availability of judgements
+    val judgementsOptSeq: Seq[Option[Double]] = judgementProvider.retrieveJudgements(query, products)
+    val judgementMetrics: Seq[ResultRecord[Double]] = calculateJudgementMetrics(judgementsOptSeq)
+    // calculate the actual metrics
+    val resultMetrics: Seq[ResultRecord[Double]] = metrics.map(x => calculateSingleMetric(x, query, products, judgementProvider))
+    judgementMetrics ++ resultMetrics
   }
 
-  def calculateAllAndAddAllToMetricRow(params: immutable.Map[String, Seq[String]], values: Seq[Option[Double]]): MetricRow = {
+  def calculateAllAndAddAllToMetricRow(params: immutable.Map[String, Seq[String]],
+                                       query: String,
+                                       products: Seq[String],
+                                       judgementProvider: JudgementProvider[Double]): MetricRow = {
     val metricRow = MetricRow.emptyForParams(params = params)
-    val allMetrics: Seq[MetricValue[Double]] = metrics.map(x => calculateMetric(x, values))
+    val allMetrics: Seq[MetricValue[Double]] = calculateAllAndReturnSingleResults(query, products, judgementProvider)
+      .map(record => calculationResultToMetricValue(record.name, record.value))
     metricRow.addFullMetricsSampleAndIncreaseSampleCount(allMetrics: _*)
   }
 

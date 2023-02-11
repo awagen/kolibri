@@ -29,6 +29,7 @@ import de.awagen.kolibri.base.domain.Connections.Connection
 import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions
 import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions.MapWithCount
 import de.awagen.kolibri.base.http.client.request.{RequestTemplate, RequestTemplateBuilder}
+import de.awagen.kolibri.base.io.json.MetricFunctionJsonProtocol.{MetricFunction, MetricType}
 import de.awagen.kolibri.base.io.writer.Writers.Writer
 import de.awagen.kolibri.base.processing.JobMessages.{QueryBasedSearchEvaluationDefinition, SearchEvaluationDefinition, TestPiCalculationDefinition}
 import de.awagen.kolibri.base.processing.execution.functions.AggregationFunctions.AggregateFromDirectoryByRegexWeighted
@@ -46,6 +47,7 @@ import de.awagen.kolibri.base.usecase.searchopt.metrics.{IRMetricFunctions, Judg
 import de.awagen.kolibri.base.usecase.searchopt.parse.JsonSelectors.JsValueSeqSelector
 import de.awagen.kolibri.base.usecase.searchopt.parse.TypedJsonSelectors.{NamedAndTypedSelector, TypedJsonSeqSelector}
 import de.awagen.kolibri.base.usecase.searchopt.parse.{JsonSelectors, ParsingConfig}
+import de.awagen.kolibri.base.usecase.searchopt.provider.{BaseJudgementProvider, JudgementProvider}
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
@@ -144,15 +146,15 @@ object JobMessages {
     val kolibriJudgementsResourceKey = s"KOLIBRI_JUDGEMENTS-job=$jobName"
     val productIdsKey = "productIds"
     val requestTasks: Int = 4
-    val judgementSupplier: SerializableSupplier[Map[String, Double]] = new SerializableSupplier[Map[String, Double]] {
-      override def apply(): Map[String, Double] = {
-        filepathToJudgementProvider(judgementFilePath).allJudgements
+    val judgementSupplier: SerializableSupplier[JudgementProvider[Double]] = new SerializableSupplier[JudgementProvider[Double]] {
+      override def apply(): JudgementProvider[Double] = {
+        new BaseJudgementProvider(filepathToJudgementProvider(judgementFilePath).allJudgements)
       }
     }
     val resourceDirectives: Seq[ResourceDirective[_]] = Seq(
       GenericResourceDirective(
-        new Resource[Map[String, Double]](
-          ResourceType.MAP_STRING_TO_DOUBLE_VALUE,
+        new Resource[JudgementProvider[Double]](
+          ResourceType.JUDGEMENT_PROVIDER,
           kolibriJudgementsResourceKey
         ),
         judgementSupplier,
@@ -175,21 +177,21 @@ object JobMessages {
       JudgementsFromResourceIRMetricsCalculations(
         productIdsKey,
         queryParameter,
-        new Resource[Map[String, Double]](
-          ResourceType.MAP_STRING_TO_DOUBLE_VALUE,
+        new Resource[JudgementProvider[Double]](
+          ResourceType.JUDGEMENT_PROVIDER,
           kolibriJudgementsResourceKey
         ),
         MetricsCalculation(
           Seq(
-            Metric("NDCG@2", IRMetricFunctions.ndcgAtK(2)),
-            Metric("NDCG@4", IRMetricFunctions.ndcgAtK(4)),
-            Metric("NDCG@8", IRMetricFunctions.ndcgAtK(8)),
-            Metric("NDCG@12", IRMetricFunctions.ndcgAtK(12)),
-            Metric("NDCG@24", IRMetricFunctions.ndcgAtK(24)),
-            Metric("PRECISION@k=2,t=0.2", IRMetricFunctions.precisionAtK(2, 0.2)),
-            Metric("PRECISION@k=4,t=0.2", IRMetricFunctions.precisionAtK(4, 0.2)),
-            Metric("RECALL@k=2,t=0.2", IRMetricFunctions.recallAtK(2, 0.2)),
-            Metric("RECALL@k=4,t=0.2", IRMetricFunctions.recallAtK(4, 0.2))
+            Metric("NDCG@2", MetricFunction(MetricType.NDCG, 2, IRMetricFunctions.ndcgAtK(2))),
+            Metric("NDCG@4", MetricFunction(MetricType.NDCG, 4, IRMetricFunctions.ndcgAtK(4))),
+            Metric("NDCG@8", MetricFunction(MetricType.NDCG, 8, IRMetricFunctions.ndcgAtK(8))),
+            Metric("NDCG@12", MetricFunction(MetricType.NDCG, 12, IRMetricFunctions.ndcgAtK(12))),
+            Metric("NDCG@24", MetricFunction(MetricType.NDCG, 24, IRMetricFunctions.ndcgAtK(24))),
+            Metric("PRECISION@k=2,t=0.2", MetricFunction(MetricType.PRECISION, 2, IRMetricFunctions.precisionAtK(2, 0.2))),
+            Metric("PRECISION@k=4,t=0.2", MetricFunction(MetricType.PRECISION, 4, IRMetricFunctions.precisionAtK(4, 0.2))),
+            Metric("RECALL@k=2,t=0.2", MetricFunction(MetricType.RECALL, 2, IRMetricFunctions.recallAtK(2, 0.2))),
+            Metric("RECALL@k=4,t=0.2", MetricFunction(MetricType.RECALL, 2, IRMetricFunctions.recallAtK(4, 0.2)))
           ),
           JudgementHandlingStrategy.EXIST_RESULTS_AND_JUDGEMENTS_MISSING_AS_ZEROS
         )

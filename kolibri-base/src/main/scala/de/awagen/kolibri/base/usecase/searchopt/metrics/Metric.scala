@@ -16,11 +16,11 @@
 
 package de.awagen.kolibri.base.usecase.searchopt.metrics
 
-import de.awagen.kolibri.base.io.json.MetricFunctionJsonProtocol.MetricFunction
 import de.awagen.kolibri.base.io.json.MetricFunctionJsonProtocol
+import de.awagen.kolibri.base.io.json.MetricFunctionJsonProtocol.MetricFunction
 import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
-import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
 import de.awagen.kolibri.datatypes.types.JsonStructDefs.{NestedFieldSeqStructDef, RegexStructDef, StringConstantStructDef}
+import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
 
 object Metric extends WithStructDef {
 

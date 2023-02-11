@@ -27,6 +27,7 @@ import de.awagen.kolibri.base.actors.clusterinfo.ResourceToJobMappingClusterStat
 import de.awagen.kolibri.base.cluster.ClusterNodeObj
 import de.awagen.kolibri.base.config.AppConfig.filepathToJudgementProvider
 import de.awagen.kolibri.base.directives.{Resource, ResourceDirectives, ResourceType}
+import de.awagen.kolibri.base.io.json.MetricFunctionJsonProtocol.{MetricFunction, MetricType}
 import de.awagen.kolibri.base.resources.{ResourceAlreadyExists, ResourceOK}
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.ReservedStorageKeys._
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations._
@@ -34,6 +35,8 @@ import de.awagen.kolibri.base.usecase.searchopt.metrics.CalculationsTestHelper._
 import de.awagen.kolibri.base.usecase.searchopt.metrics.ComputeResultFunctions.{booleanPrecision, countValues, findFirstValue}
 import de.awagen.kolibri.base.usecase.searchopt.metrics.MetricRowFunctions.throwableToMetricRowResponse
 import de.awagen.kolibri.base.usecase.searchopt.metrics.PlainMetricValueFunctions._
+import de.awagen.kolibri.base.usecase.searchopt.provider.{BaseJudgementProvider, JudgementProvider}
+import de.awagen.kolibri.base.utils.JudgementInfoTestHelper._
 import de.awagen.kolibri.datatypes.mutable.stores.{BaseWeaklyTypedMap, WeaklyTypedMap}
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSupplier
@@ -80,14 +83,14 @@ class CalculationsSpec extends KolibriTestKitNoCluster
    * TODO: unify this with FlowSpec, where judgement resources are loaded the same way
    */
   def prepareJudgementResource(): Unit = {
-    val judgementSupplier = new SerializableSupplier[Map[String, Double]] {
-      override def apply(): Map[String, Double] = {
-        filepathToJudgementProvider("data/calculations_test_judgements.txt").allJudgements
+    val judgementSupplier = new SerializableSupplier[JudgementProvider[Double]] {
+      override def apply(): JudgementProvider[Double] = {
+        new BaseJudgementProvider(filepathToJudgementProvider("data/calculations_test_judgements.txt").allJudgements)
       }
     }
-    val judgementResourceDirective: ResourceDirectives.ResourceDirective[Map[String, Double]] = ResourceDirectives.getDirective(
+    val judgementResourceDirective: ResourceDirectives.ResourceDirective[JudgementProvider[Double]] = ResourceDirectives.getDirective(
       judgementSupplier,
-      Resource(ResourceType.MAP_STRING_TO_DOUBLE_VALUE, "judgements1")
+      Resource(ResourceType.JUDGEMENT_PROVIDER, "judgements1")
     )
     implicit val timeout: Timeout = 5 seconds
     val resourceAskMsg = ProcessResourceDirectives(Seq(judgementResourceDirective), "testJob1")
@@ -111,12 +114,12 @@ class CalculationsSpec extends KolibriTestKitNoCluster
       val calculation = JudgementsFromResourceIRMetricsCalculations(
         PRODUCT_IDS_KEY,
         "q",
-        Resource(ResourceType.MAP_STRING_TO_DOUBLE_VALUE, "judgements1"),
+        Resource(ResourceType.JUDGEMENT_PROVIDER, "judgements1"),
         MetricsCalculation(
           Seq(
-            Metric(NDCG5_NAME, IRMetricFunctions.ndcgAtK(5)),
-            Metric(NDCG10_NAME, IRMetricFunctions.ndcgAtK(10)),
-            Metric(NDCG2_NAME, IRMetricFunctions.ndcgAtK(2))
+            Metric(NDCG5_NAME, MetricFunction(MetricType.NDCG, 5, IRMetricFunctions.ndcgAtK(5))),
+            Metric(NDCG10_NAME, MetricFunction(MetricType.NDCG, 10, IRMetricFunctions.ndcgAtK(10))),
+            Metric(NDCG2_NAME, MetricFunction(MetricType.NDCG, 2, IRMetricFunctions.ndcgAtK(2)))
           ),
           JudgementHandlingStrategy.EXIST_RESULTS_AND_JUDGEMENTS_MISSING_AS_ZEROS
         )
@@ -133,8 +136,10 @@ class CalculationsSpec extends KolibriTestKitNoCluster
       val ndcg5Result: ComputeResult[_] = calcResult.find(x => x.name == NDCG5_NAME).get.value
       val ndcg10Result: ComputeResult[_] = calcResult.find(x => x.name == NDCG10_NAME).get.value
       val ndcg2Result: ComputeResult[_] = calcResult.find(x => x.name == NDCG2_NAME).get.value
-      val expectedNDCG2Result: ComputeResult[Double] = IRMetricFunctions.ndcgAtK(2).apply(Seq(0.10, 0.4, 0.3, 0.2, 0.0))
-      val expectedNDCG5Result: ComputeResult[Double] = IRMetricFunctions.ndcgAtK(5).apply(Seq(0.10, 0.4, 0.3, 0.2, 0.0))
+      val expectedNDCG2Result: ComputeResult[Double] = IRMetricFunctions.ndcgAtK(2).apply(
+        judgementsToSuccessJudgementInfo(Seq(0.10, 0.4, 0.3, 0.2, 0.0)))
+      val expectedNDCG5Result: ComputeResult[Double] = IRMetricFunctions.ndcgAtK(5).apply(
+        judgementsToSuccessJudgementInfo(Seq(0.10, 0.4, 0.3, 0.2, 0.0)))
       // then
       MathUtils.equalWithPrecision[Double](
         ndcg2Result.getOrElse[Any](-10).asInstanceOf[Double],

@@ -18,18 +18,22 @@ package de.awagen.kolibri.base.usecase.searchopt.io.json
 
 import de.awagen.kolibri.base.io.json.MetricJsonProtocol._
 import de.awagen.kolibri.base.usecase.searchopt.io.json.JudgementHandlingStrategyJsonProtocol._
-import de.awagen.kolibri.base.usecase.searchopt.metrics.{Metric, MetricsCalculation}
+import de.awagen.kolibri.base.usecase.searchopt.metrics.{JudgementHandlingStrategy, Metric, MetricsCalculation}
 import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
-import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
 import de.awagen.kolibri.datatypes.types.JsonStructDefs.{GenericSeqStructDef, NestedFieldSeqStructDef, StringConstantStructDef}
+import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
 import spray.json.{DefaultJsonProtocol, RootJsonFormat}
 
 object MetricsCalculationJsonProtocol extends DefaultJsonProtocol with WithStructDef {
 
-  implicit val metricsCalculationFormat: RootJsonFormat[MetricsCalculation] = jsonFormat2(MetricsCalculation.apply)
-
   val METRICS_KEY = "metrics"
   val JUDGEMENT_HANDLING_KEY = "judgementHandling"
+
+  implicit val metricsCalculationFormat: RootJsonFormat[MetricsCalculation] = jsonFormat(
+    (metrics: Seq[Metric], judgementHandling: JudgementHandlingStrategy) => MetricsCalculation.apply(metrics, judgementHandling),
+    METRICS_KEY,
+    JUDGEMENT_HANDLING_KEY
+  )
 
   override def structDef: JsonStructDefs.StructDef[_] =
     NestedFieldSeqStructDef(
