@@ -16,11 +16,9 @@
 
 package de.awagen.kolibri.base.usecase.searchopt.metrics
 
-import de.awagen.kolibri.base.io.json.MetricFunctionJsonProtocol.MetricType
 import de.awagen.kolibri.base.usecase.searchopt.metrics.JudgementValidation.JudgementValidation
 import de.awagen.kolibri.base.usecase.searchopt.metrics.MetricsCalculation.calculationResultToMetricValue
-import de.awagen.kolibri.base.usecase.searchopt.provider.JudgementProvider
-import de.awagen.kolibri.datatypes.reason.ComputeFailReason
+import de.awagen.kolibri.base.usecase.searchopt.provider.{JudgementInfo, JudgementProvider}
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.values.Calculations.{ComputeResult, ResultRecord}
 import de.awagen.kolibri.datatypes.values.{MetricValue, RunningValues}
@@ -48,49 +46,28 @@ case class MetricsCalculation(metrics: Seq[Metric], judgementHandling: Judgement
 
   val AVAILABLE_JUDGEMENT_METRICS_SUB_RESULT_SIZES: Seq[Int] = Seq(2, 4, 8, 12, 24)
 
-  private[metrics] def validateAndReturnFailedJudgements(judgements: Seq[Option[Double]]): Seq[JudgementValidation] = {
-    judgementHandling.validateAndReturnFailed(judgements)
-  }
-
+  /**
+   * Calculation of a single metric.
+   * @param metric - definition of metric computation such as DCG, NDCG, ERR, PRECISION, RECALL
+   * @param query - query for which to compute the metric
+   * @param products - the sequence of retrieved product identifiers, which should be the same
+   *                 as used in the judgements data
+   * @param judgementProvider - provider of judgements (for specific query - product(s) and overall
+   *                          best sorting as per judgement data.
+   * @return ResultRecord[Double] of the computation
+   */
   private[metrics] def calculateSingleMetric(metric: Metric,
                                              query: String,
                                              products: Seq[String],
                                              judgementProvider: JudgementProvider[Double]): ResultRecord[Double] = {
-    val values = judgementProvider.retrieveJudgements(query, products)
-    val failedValidations: Seq[JudgementValidation] = validateAndReturnFailedJudgements(values)
+    val judgementInfo = JudgementInfo.create(query, products, judgementProvider, judgementHandling)
+
+    val failedValidations: Seq[JudgementValidation] = judgementInfo.failedJudgementValidations
     if (failedValidations.nonEmpty) {
       ResultRecord(metric.name, Left(failedValidations.map(x => x.reason)))
     }
     else {
-      val preparedValues: Seq[Double] = judgementHandling.extractValues(values)
-      val result: ComputeResult[Double] = metric.function.metricType match {
-        // To have a constant normalization factor independent of the
-        // retrieved result, we retrieve the ideal dcg for the query and
-        // then calculate the dcg for the current result. Then NDCG is calculated
-        // from both values (the standalone ndcg metric would just look at the
-        // retrieved / passed current result and compare with the ideal sorting
-        // of that sequence, thus we are handling this separately here)
-        case MetricType.NDCG =>
-          val idealDCG: ComputeResult[Double] = judgementProvider.getIdealDCGForTerm(query, metric.function.k) match {
-            case Left(_) =>
-              MetricsCalculation.logger.debug(s"Trying to retrieve ideal dcg from judgement provider failed, need to calculate")
-              val topKJudgements = judgementProvider.retrieveSortedJudgementsForTerm(query, metric.function.k)
-              IRMetricFunctions.dcgAtK(metric.function.k)(topKJudgements)
-            case e@Right(_) =>
-              e
-          }
-          val currentDCG: ComputeResult[Double] = IRMetricFunctions.dcgAtK(metric.function.k).apply(preparedValues)
-          (idealDCG, currentDCG) match {
-            case (Right(ideal), Right(current)) =>
-              if (ideal == 0.0) Left(Seq(ComputeFailReason("IdealDCG was 0.0")))
-              else Right(current / ideal)
-            case (a1, a2) =>
-              val combinedFailReasons: Set[ComputeFailReason] = (a1.swap.getOrElse(Seq.empty) ++ a2.swap.getOrElse(Seq.empty)).toSet
-              Left(combinedFailReasons.toSeq)
-          }
-        case _ =>
-          metric.function.calc.apply(preparedValues)
-      }
+      val result: ComputeResult[Double] = metric.function.calc.apply(judgementInfo)
       ResultRecord(metric.name, result)
     }
   }

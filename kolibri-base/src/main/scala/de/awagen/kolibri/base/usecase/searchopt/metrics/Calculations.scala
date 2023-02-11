@@ -152,8 +152,8 @@ object ComputeResultFunctions {
 
   def booleanPrecision(useTrue: Boolean, k: Int): SerializableFunction1[Seq[Boolean], ComputeResult[Double]] = new SerializableFunction1[Seq[Boolean], ComputeResult[Double]] {
     override def apply(msg: Seq[Boolean]): ComputeResult[Double] = {
-      val binarizedSeq = binarizeBooleanSeq(!useTrue, msg)
-      IRMetricFunctions.precisionAtK(k, 0.9).apply(binarizedSeq)
+      val binarizedSeq: Seq[Double] = binarizeBooleanSeq(!useTrue, msg)
+      IRMetricFunctions.precisionAtKFromJudgementSeq(binarizedSeq, k, 0.9)
     }
   }
 }

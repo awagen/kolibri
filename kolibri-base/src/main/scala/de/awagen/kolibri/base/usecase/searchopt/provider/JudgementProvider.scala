@@ -17,12 +17,21 @@
 package de.awagen.kolibri.base.usecase.searchopt.provider
 
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
-import de.awagen.kolibri.datatypes.values.Calculations.ComputeResult
+
 
 trait JudgementProvider[T] extends Serializable with KolibriSerializable {
 
+  /**
+   * @return Map of all key - judgementValue mappings. Note that the key is a composition of the term and entity
+   *         identifier, which is a detail of the specific implementation.
+   */
   def allJudgements: Map[String, T]
 
+  /**
+   * @param searchTerm - term for which to retrieve all judgements.
+   * @return Map of all key - judgementValue mappings for the passed query. Note that the key is a composition of the
+   *         term and entity identifier, which is a detail of the specific implementation.
+   */
   def retrieveJudgementsForTerm(searchTerm: String): Map[String, T]
 
   /**
@@ -32,17 +41,25 @@ trait JudgementProvider[T] extends Serializable with KolibriSerializable {
   def retrieveSortedJudgementsForTerm(searchTerm: String, k: Int): Seq[T]
 
   /**
-   * To avoid repeated computation for ideal dcg values for a given k (number of results taken into account),
-   * precompute for a selection of k here per query.
+   * Retrieve single judgement value
+   * @param searchTerm - query for which judgement shall be retrieved
+   * @param productId - product if for which judgement shall be retrieved
+   * @return nonEmpty value if known, empty if unknown
    */
-  def getIdealDCGForTerm(searchTerm: String, k: Int): ComputeResult[Double]
-
   def retrieveJudgement(searchTerm: String, productId: String): Option[T]
 
+  /**
+   * Retrieve judgements for a given term and all passed productIds
+   */
   def retrieveJudgements(searchTerm: String, productIds: Seq[String]): Seq[Option[T]] = {
     productIds.map(x => retrieveJudgement(searchTerm, x))
   }
 
+  /**
+   * For a given term and list of product ids, return the key-value mapping for containing only the known values.
+   * If any of the passed productIds has no known value for the given term, no entry will appear in the map for
+   * this productId.
+   */
   def retrieveTermToJudgementMap(searchTerm: String, productIds: Seq[String]): Map[String, T] = {
     productIds.map(x => x -> retrieveJudgement(searchTerm, x)).filter(x => x._2.nonEmpty).map(x => x._1 -> x._2.get).toMap
   }

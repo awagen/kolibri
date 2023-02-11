@@ -18,13 +18,9 @@
 package de.awagen.kolibri.base.usecase.searchopt.provider
 
 import de.awagen.kolibri.base.config.AppConfig.persistenceModule.persistenceDIModule
-import de.awagen.kolibri.base.config.AppProperties.config.{idealDcgPreComputeStartK, idealDcgPreComputeStepSize, maxPrecomputeIdealDcgKValue, topKJudgementsPerQueryStorageSize}
+import de.awagen.kolibri.base.config.AppProperties.config.topKJudgementsPerQueryStorageSize
 import de.awagen.kolibri.base.io.reader.{FileReaderUtils, Reader}
-import de.awagen.kolibri.base.usecase.searchopt.metrics.IRMetricFunctions
 import de.awagen.kolibri.base.usecase.searchopt.parse.TypedJsonSelectors.NamedAndTypedSelector
-import de.awagen.kolibri.datatypes.reason.ComputeFailReason
-import de.awagen.kolibri.datatypes.values.Calculations.ComputeResult
-import org.slf4j.{Logger, LoggerFactory}
 import play.api.libs.json.Json
 
 import scala.io.Source
@@ -158,12 +154,6 @@ class BaseJudgementProvider(judgementStorage: Map[String, Double],
   private val sortedJudgementsPerQueryStorage: Map[String, Seq[Double]] = uniqueQueries
     .map(query => (query, composeSortedJudgementsForTerm(query, topKJudgementsPerQueryStorageSize)))
     .toMap
-  // storing prepared list of ideal dcg values per query in steps of two till max value
-  private val idealDcgPerQueryAndKStorage: Map[String, ComputeResult[Double]] = uniqueQueries
-    .flatMap(query => {
-      Range(idealDcgPreComputeStartK, maxPrecomputeIdealDcgKValue , idealDcgPreComputeStepSize).inclusive
-        .map(k => (createKey(query, k.toString), composeIdealDCGForTerm(query, k)))
-    }).toMap
 
   override def retrieveJudgement(searchTerm: String, productId: String): Option[Double] = {
     judgementStorage.get(createKey(searchTerm, productId))
@@ -205,34 +195,11 @@ class BaseJudgementProvider(judgementStorage: Map[String, Double],
     .take(k)
 
   /**
-   * To avoid repeated computation for ideal dcg values for a given k (number of results taken into account),
-   * precompute for a selection of k here per query.
-   */
-  private[provider] def composeIdealDCGForTerm(searchTerm: String, k: Int): ComputeResult[Double] = {
-    IRMetricFunctions.dcgAtK(k)(retrieveSortedJudgementsForTerm(searchTerm, k))
-  }
-
-  /**
    * Provide sorted (descending) list of judgements of length k (or if less judgements available of size equal
    * to number of judgements available)
    */
   override def retrieveSortedJudgementsForTerm(searchTerm: String, k: Int): Seq[Double] =
     sortedJudgementsPerQueryStorage.get(searchTerm).map(list => list.take(k)).getOrElse(Seq.empty)
-
-  /**
-   * Provide precomputed outcome of calculation of ideal dcg values for distinct values of k.
-   * Note that the k-values for which data is precomputed / available depends on the config
-   * parameters above.
-   * @param searchTerm - search term for which to provide the result
-   * @param k - k value (number of results taken into account) when calculating the ideal dcg
-   * @return - the result of the compute. Is either Double for the metrics or a Seq of ComputeFailReason instances
-   */
-  override def getIdealDCGForTerm(searchTerm: String, k: Int): ComputeResult[Double] = {
-    val idealDCGKey = createKey(searchTerm, k.toString)
-    idealDcgPerQueryAndKStorage
-      .getOrElse(idealDCGKey,
-        Left(Seq(ComputeFailReason(s"No ideal dcg available for term '$searchTerm' and k = $k"))))
-  }
 
 }
 

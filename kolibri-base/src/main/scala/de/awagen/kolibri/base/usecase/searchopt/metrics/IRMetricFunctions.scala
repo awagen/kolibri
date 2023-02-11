@@ -16,6 +16,7 @@
 
 package de.awagen.kolibri.base.usecase.searchopt.metrics
 
+import de.awagen.kolibri.base.usecase.searchopt.provider.JudgementInfo
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 import de.awagen.kolibri.datatypes.values.Calculations.ComputeResult
@@ -33,7 +34,7 @@ object IRMetricFunctions {
   val NO_JUDGEMENTS: ComputeFailReason = ComputeFailReason("NO_JUDGEMENTS")
   val ZERO_DENOMINATOR: ComputeFailReason = ComputeFailReason("ZERO_DENOMINATOR")
 
-  def dcgAtK(k: Int): SerializableFunction1[Seq[Double], ComputeResult[Double]] = new SerializableFunction1[Seq[Double], ComputeResult[Double]] {
+  private[metrics] def dcgAtKFromJudgementSeq(k: Int): SerializableFunction1[Seq[Double], ComputeResult[Double]] = new SerializableFunction1[Seq[Double], ComputeResult[Double]] {
     override def apply(seq: Seq[Double]): ComputeResult[Double] = {
       seq match {
         case _ if seq.isEmpty => Left(Seq(ComputeFailReason.NO_RESULTS))
@@ -47,44 +48,62 @@ object IRMetricFunctions {
     }
   }
 
-  def ndcgAtK(k: Int): SerializableFunction1[Seq[Double], ComputeResult[Double]] = new SerializableFunction1[Seq[Double], ComputeResult[Double]] {
-    override def apply(seq: Seq[Double]): ComputeResult[Double] = {
+  def dcgAtK(k: Int): SerializableFunction1[JudgementInfo, ComputeResult[Double]] = new SerializableFunction1[JudgementInfo, ComputeResult[Double]] {
+    override def apply(info: JudgementInfo): ComputeResult[Double] = {
+      dcgAtKFromJudgementSeq(k)(info.currentJudgements)
+    }
+  }
+
+  private[metrics] def getNDCGFromIdealAndCurrentDCGComputeResults(idealDCGResult: ComputeResult[Double],
+                                                                   currentDCGResult: ComputeResult[Double]): ComputeResult[Double] = {
+    (idealDCGResult, currentDCGResult) match {
+      case (Right(ideal), Right(current)) =>
+        if (ideal == 0.0) Left(Seq(ZERO_DENOMINATOR))
+        else Right(current / ideal)
+      case (a1, a2) =>
+        val combinedFailReasons: Set[ComputeFailReason] = (a1.swap.getOrElse(Seq.empty) ++ a2.swap.getOrElse(Seq.empty)).toSet
+        Left(combinedFailReasons.toSeq)
+    }
+  }
+
+  def ndcgAtK(k: Int): SerializableFunction1[JudgementInfo, ComputeResult[Double]] = new SerializableFunction1[JudgementInfo, ComputeResult[Double]] {
+    override def apply(info: JudgementInfo): ComputeResult[Double] = {
+      val seq = info.currentJudgements
       seq match {
         case e if e.isEmpty => Left(Seq(ComputeFailReason.NO_RESULTS))
         case e if e.size == 1 =>
           if (e.head > 0.0) Right(1) else Left(Seq(ZERO_DENOMINATOR))
         case _ =>
-          val idealScore = dcgAtK(k).apply(seq.sortWith(_ > _))
-          val currentScore = dcgAtK(k).apply(seq)
-          (currentScore, idealScore) match {
-            case (_, Right(s2)) if s2 == 0 => Left(Seq(ZERO_DENOMINATOR))
-            case (Right(s1), Right(s2)) if s2 > 0 => Right(s1 / s2)
-            case (Left(r1), Left(r2)) => Left(r1 ++ r2)
-            case (Left(r1), _) => Left(r1)
-            case (_, Left(r2)) => Left(r2)
-          }
+          val currentDCG = dcgAtKFromJudgementSeq(k)(seq)
+          val idealDCG = dcgAtKFromJudgementSeq(k)(info.idealJudgements)
+          getNDCGFromIdealAndCurrentDCGComputeResults(idealDCG, currentDCG)
       }
     }
   }
 
-  def precisionAtK(n: Int, threshold: Double): SerializableFunction1[Seq[Double], ComputeResult[Double]] = new SerializableFunction1[Seq[Double], ComputeResult[Double]] {
-    override def apply(seq: Seq[Double]): ComputeResult[Double] = {
-      val allN = seq.slice(0, n)
-      if (allN.nonEmpty) Right(allN.count(x => x >= threshold).toDouble / allN.size) else Left(Seq(NO_JUDGEMENTS))
+  def precisionAtKFromJudgementSeq(seq: Seq[Double], n: Int, threshold: Double): ComputeResult[Double] = {
+    val allN = seq.slice(0, n)
+    if (allN.nonEmpty) Right(allN.count(x => x >= threshold).toDouble / allN.size) else Left(Seq(NO_JUDGEMENTS))
+  }
+
+  def precisionAtK(n: Int, threshold: Double): SerializableFunction1[JudgementInfo, ComputeResult[Double]] = new SerializableFunction1[JudgementInfo, ComputeResult[Double]] {
+    override def apply(info: JudgementInfo): ComputeResult[Double] = {
+      val seq = info.currentJudgements
+      precisionAtKFromJudgementSeq(seq, n, threshold)
     }
   }
 
-  def recallAtK(n: Int, threshold: Double): SerializableFunction1[Seq[Double], ComputeResult[Double]] = new SerializableFunction1[Seq[Double], ComputeResult[Double]] {
-    override def apply(seq: Seq[Double]): ComputeResult[Double] = {
-      val maxNumOverThreshold = math.min(seq.count(x => x >= threshold), n)
-      val allN = seq.slice(0, n)
-      val overThresholdInFirstN = allN.count(x => x >= threshold)
-      if (allN.nonEmpty) Right(overThresholdInFirstN.doubleValue / maxNumOverThreshold) else Left(Seq(NO_JUDGEMENTS))
+  def recallAtK(n: Int, threshold: Double): SerializableFunction1[JudgementInfo, ComputeResult[Double]] = new SerializableFunction1[JudgementInfo, ComputeResult[Double]] {
+    override def apply(info: JudgementInfo): ComputeResult[Double] = {
+      val currentOverThreshold: Int = info.getCurrentSortOverThresholdCountForK(threshold, n)
+      val maxOverThreshold: Int = info.getIdealSortOverThresholdCountForK(threshold, n)
+      if (maxOverThreshold == 0) Left(Seq(ZERO_DENOMINATOR)) else Right(currentOverThreshold.doubleValue / maxOverThreshold.doubleValue)
     }
   }
 
-  def errAtK(n: Int, maxGrade: Double): SerializableFunction1[Seq[Double], ComputeResult[Double]] = new SerializableFunction1[Seq[Double], ComputeResult[Double]] {
-    override def apply(seq: Seq[Double]): ComputeResult[Double] = {
+  def errAtK(n: Int, maxGrade: Double): SerializableFunction1[JudgementInfo, ComputeResult[Double]] = new SerializableFunction1[JudgementInfo, ComputeResult[Double]] {
+    override def apply(info: JudgementInfo): ComputeResult[Double] = {
+      val seq = info.currentJudgements
       seq match {
         case e if e.isEmpty => Left(Seq(ComputeFailReason.NO_RESULTS))
         case _ =>

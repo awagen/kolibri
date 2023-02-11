@@ -44,6 +44,7 @@ import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.FromMapCalc
 import de.awagen.kolibri.base.usecase.searchopt.metrics.CalculationsTestHelper._
 import de.awagen.kolibri.base.usecase.searchopt.metrics.{IRMetricFunctions, Metric}
 import de.awagen.kolibri.base.usecase.searchopt.provider.{BaseJudgementProvider, JudgementProvider}
+import de.awagen.kolibri.base.utils.JudgementInfoTestHelper._
 import de.awagen.kolibri.datatypes.mutable.stores.{BaseWeaklyTypedMap, WeaklyTypedMap}
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSupplier
@@ -206,8 +207,9 @@ class FlowsSpec extends KolibriTestKitNoCluster
       val result: MetricRow = calc.data
       // then
       val idealJudgementOrder = Seq(0.4, 0.3, 0.2, 0.1)
-      val expectedValue: Double = IRMetricFunctions.dcgAtK(5).apply(Seq(0.1, 0.0, 0.4, 0.3)).getOrElse(-1.0) /
-        IRMetricFunctions.dcgAtK(5).apply(idealJudgementOrder).getOrElse(-1.0)
+      val expectedValue: Double = IRMetricFunctions.dcgAtK(5)
+        .apply(judgementsToSuccessJudgementInfo(Seq(0.1, 0.0, 0.4, 0.3))).getOrElse(-1.0) /
+        IRMetricFunctions.dcgAtK(5).apply(judgementsToSuccessJudgementInfo(idealJudgementOrder)).getOrElse(-1.0)
 
       result.metrics.keySet mustBe Set("metric1", NDCG5_NAME, NDCG10_NAME, NDCG2_NAME)
       result.metrics("metric1").biValue.value2.value mustBe 9
@@ -280,10 +282,14 @@ class FlowsSpec extends KolibriTestKitNoCluster
       result.size mustBe 2
       result.head.metrics.keySet mustBe Set("metric1", NDCG5_NAME, NDCG10_NAME, NDCG2_NAME)
 
-      val idealDCG1: Double = IRMetricFunctions.dcgAtK(5).apply(Seq(0.4, 0.3, 0.2, 0.1)).getOrElse(-1.0)
-      val idealDCG2: Double = IRMetricFunctions.dcgAtK(5).apply(Seq(0.4, 0.2, 0.1, 0.0)).getOrElse(-1.0)
-      val currentDCG1: Double = IRMetricFunctions.dcgAtK(5).apply(Seq(0.1, 0.0, 0.4, 0.3)).getOrElse(-1)
-      val currentDCG2: Double = IRMetricFunctions.dcgAtK(5).apply(Seq(0.4, 0.0, 0.0, 0.1)).getOrElse(-1)
+      val idealDCG1: Double = IRMetricFunctions.dcgAtK(5).apply(
+        judgementsToSuccessJudgementInfo(Seq(0.4, 0.3, 0.2, 0.1))).getOrElse(-1.0)
+      val idealDCG2: Double = IRMetricFunctions.dcgAtK(5).apply(
+        judgementsToSuccessJudgementInfo(Seq(0.4, 0.2, 0.1, 0.0))).getOrElse(-1.0)
+      val currentDCG1: Double = IRMetricFunctions.dcgAtK(5).apply(
+        judgementsToSuccessJudgementInfo(Seq(0.1, 0.0, 0.4, 0.3))).getOrElse(-1)
+      val currentDCG2: Double = IRMetricFunctions.dcgAtK(5).apply(
+        judgementsToSuccessJudgementInfo(Seq(0.4, 0.0, 0.0, 0.1))).getOrElse(-1)
 
       result.head.metrics(NDCG5_NAME).biValue.value2.value mustBe (currentDCG1 / idealDCG1)
       result.head.metrics("metric1").biValue.value2.value mustBe 9

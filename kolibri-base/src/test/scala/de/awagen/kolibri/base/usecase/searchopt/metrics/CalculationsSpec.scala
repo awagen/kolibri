@@ -36,6 +36,7 @@ import de.awagen.kolibri.base.usecase.searchopt.metrics.ComputeResultFunctions.{
 import de.awagen.kolibri.base.usecase.searchopt.metrics.MetricRowFunctions.throwableToMetricRowResponse
 import de.awagen.kolibri.base.usecase.searchopt.metrics.PlainMetricValueFunctions._
 import de.awagen.kolibri.base.usecase.searchopt.provider.{BaseJudgementProvider, JudgementProvider}
+import de.awagen.kolibri.base.utils.JudgementInfoTestHelper._
 import de.awagen.kolibri.datatypes.mutable.stores.{BaseWeaklyTypedMap, WeaklyTypedMap}
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSupplier
@@ -135,8 +136,10 @@ class CalculationsSpec extends KolibriTestKitNoCluster
       val ndcg5Result: ComputeResult[_] = calcResult.find(x => x.name == NDCG5_NAME).get.value
       val ndcg10Result: ComputeResult[_] = calcResult.find(x => x.name == NDCG10_NAME).get.value
       val ndcg2Result: ComputeResult[_] = calcResult.find(x => x.name == NDCG2_NAME).get.value
-      val expectedNDCG2Result: ComputeResult[Double] = IRMetricFunctions.ndcgAtK(2).apply(Seq(0.10, 0.4, 0.3, 0.2, 0.0))
-      val expectedNDCG5Result: ComputeResult[Double] = IRMetricFunctions.ndcgAtK(5).apply(Seq(0.10, 0.4, 0.3, 0.2, 0.0))
+      val expectedNDCG2Result: ComputeResult[Double] = IRMetricFunctions.ndcgAtK(2).apply(
+        judgementsToSuccessJudgementInfo(Seq(0.10, 0.4, 0.3, 0.2, 0.0)))
+      val expectedNDCG5Result: ComputeResult[Double] = IRMetricFunctions.ndcgAtK(5).apply(
+        judgementsToSuccessJudgementInfo(Seq(0.10, 0.4, 0.3, 0.2, 0.0)))
       // then
       MathUtils.equalWithPrecision[Double](
         ndcg2Result.getOrElse[Any](-10).asInstanceOf[Double],

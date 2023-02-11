@@ -19,6 +19,7 @@ package de.awagen.kolibri.base.usecase.searchopt.metrics
 
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
 import de.awagen.kolibri.base.usecase.searchopt.metrics.IRMetricFunctions.NO_JUDGEMENTS
+import de.awagen.kolibri.base.utils.JudgementInfoTestHelper.judgementsToSuccessJudgementInfo
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason.NO_RESULTS
 import de.awagen.kolibri.datatypes.utils.MathUtils
 import de.awagen.kolibri.datatypes.values.Calculations.ComputeResult
@@ -28,11 +29,13 @@ class IRMetricFunctionsSpec extends UnitTestSpec {
   "IRMetricFunctions" should {
 
     val sample1: Seq[Double] = Seq(0.8, 0.0, 0.9, 0.5)
+    val sample1JudgementInfo = judgementsToSuccessJudgementInfo(sample1)
+    val emptyJudgementInfo = judgementsToSuccessJudgementInfo(Seq.empty)
 
     "DcgAtK" must {
       "correctly calculate" in {
         //given, when
-        val score = IRMetricFunctions.dcgAtK(10).apply(sample1).right.get
+        val score = IRMetricFunctions.dcgAtK(10).apply(sample1JudgementInfo).right.get
         val expectedScore = 0.8 + 0.9 / Math.log(4) + 0.5 / Math.log(5)
         //then
         MathUtils.equalWithPrecision(score, expectedScore, 0.00001) mustBe true
@@ -40,7 +43,9 @@ class IRMetricFunctionsSpec extends UnitTestSpec {
 
       "return None for no element" in {
         //given, when
-        val score: ComputeResult[Double] = IRMetricFunctions.dcgAtK(10).apply(Seq())
+        val score: ComputeResult[Double] = IRMetricFunctions.dcgAtK(10).apply(
+          emptyJudgementInfo
+        )
         //then
         score mustBe Left(Seq(NO_RESULTS))
       }
@@ -49,7 +54,7 @@ class IRMetricFunctionsSpec extends UnitTestSpec {
     "NdcgAtK" must {
       "correctly calculate" in {
         //given, when
-        val score = IRMetricFunctions.ndcgAtK(10).apply(sample1).right.get
+        val score = IRMetricFunctions.ndcgAtK(10).apply(sample1JudgementInfo).right.get
         val expectedScore = (0.8 + 0.9 / Math.log(4) + 0.5 / Math.log(5)) / (0.9 + 0.8 / Math.log(3) + 0.5 / Math.log(4))
         //then
         MathUtils.equalWithPrecision(score, expectedScore, 0.00001) mustBe true
@@ -57,7 +62,7 @@ class IRMetricFunctionsSpec extends UnitTestSpec {
 
       "return None for no element" in {
         //given, when
-        val score = IRMetricFunctions.ndcgAtK(10).apply(Seq())
+        val score = IRMetricFunctions.ndcgAtK(10).apply(emptyJudgementInfo)
         //then
         score mustBe Left(Seq(NO_RESULTS))
       }
@@ -66,8 +71,8 @@ class IRMetricFunctionsSpec extends UnitTestSpec {
     "PrecisionAtK" must {
       "correcty caculate" in {
         //given, when
-        val score1 = IRMetricFunctions.precisionAtK(10, 0.5).apply(sample1).right.get
-        val score2 = IRMetricFunctions.precisionAtK(10, 0.6).apply(sample1).right.get
+        val score1 = IRMetricFunctions.precisionAtK(10, 0.5).apply(sample1JudgementInfo).right.get
+        val score2 = IRMetricFunctions.precisionAtK(10, 0.6).apply(sample1JudgementInfo).right.get
         //then
         MathUtils.equalWithPrecision(score1, 3.0 / 4, 0.001) mustBe true
         MathUtils.equalWithPrecision(score2, 1.0 / 2, 0.001) mustBe true
@@ -75,18 +80,20 @@ class IRMetricFunctionsSpec extends UnitTestSpec {
 
       "return None for no element" in {
         //given, when
-        val score = IRMetricFunctions.precisionAtK(10, 0.5).apply(Seq())
+        val score = IRMetricFunctions.precisionAtK(10, 0.5).apply(emptyJudgementInfo)
         //then
         score mustBe Left(Seq(NO_JUDGEMENTS))
       }
 
       "RecallAtK" must {
-        "correcty caculate" in {
+        "correctly calculate" in {
           //given, when
-          val score1 = IRMetricFunctions.recallAtK(10, 0.5).apply(sample1).right.get
-          val score2 = IRMetricFunctions.recallAtK(10, 0.6).apply(sample1).right.get
-          val score3 = IRMetricFunctions.recallAtK(3, 0.6).apply(Seq(0.8, 0.0, 0.9, 0.5)).right.get
-          val score4 = IRMetricFunctions.recallAtK(2, 0.6).apply(Seq(0.8, 0.0, 0.9, 0.5)).right.get
+          val score1 = IRMetricFunctions.recallAtK(10, 0.5).apply(sample1JudgementInfo).right.get
+          val score2 = IRMetricFunctions.recallAtK(10, 0.6).apply(sample1JudgementInfo).right.get
+          val score3 = IRMetricFunctions.recallAtK(3, 0.6).apply(
+            judgementsToSuccessJudgementInfo(Seq(0.8, 0.0, 0.9, 0.5))).right.get
+          val score4 = IRMetricFunctions.recallAtK(2, 0.6).apply(
+            judgementsToSuccessJudgementInfo(Seq(0.8, 0.0, 0.9, 0.5))).right.get
           //then
           MathUtils.equalWithPrecision(score1, 1.0, 0.001) mustBe true
           MathUtils.equalWithPrecision(score2, 1.0, 0.001) mustBe true
@@ -96,7 +103,7 @@ class IRMetricFunctionsSpec extends UnitTestSpec {
 
         "return None for no element" in {
           //given, when
-          val score = IRMetricFunctions.precisionAtK(10, 0.5).apply(Seq())
+          val score = IRMetricFunctions.precisionAtK(10, 0.5).apply(emptyJudgementInfo)
           //then
           score mustBe Left(Seq(NO_JUDGEMENTS))
         }
@@ -105,7 +112,7 @@ class IRMetricFunctionsSpec extends UnitTestSpec {
       "ERR_3" must {
         "correctly calculate" in {
           //given, when
-          val score = IRMetricFunctions.errAtK(10, 3.0).apply(sample1).right.get
+          val score = IRMetricFunctions.errAtK(10, 3.0).apply(sample1JudgementInfo).right.get
           val probs = Seq((Math.pow(2, 0.8 * 3.0) - 1) / 8.0, 0.0, (Math.pow(2, 0.9 * 3.0) - 1) / 8.0, (Math.pow(2, 0.5 * 3.0) - 1) / 8.0)
           var expectedScore = 0.0
           var remainingProbability = 1.0
@@ -122,7 +129,7 @@ class IRMetricFunctionsSpec extends UnitTestSpec {
 
         "return None for no element" in {
           //given, when
-          val score = IRMetricFunctions.errAtK(10, 3.0).apply(Seq())
+          val score = IRMetricFunctions.errAtK(10, 3.0).apply(emptyJudgementInfo)
           //then
           score mustBe Left(Seq(NO_RESULTS))
         }

@@ -20,16 +20,11 @@ package de.awagen.kolibri.base.usecase.searchopt.processing.plan
 import de.awagen.kolibri.base.io.json.MetricFunctionJsonProtocol.{MetricFunction, MetricType}
 import de.awagen.kolibri.base.processing.failure.TaskFailType
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
-import de.awagen.kolibri.base.usecase.searchopt.domain.ExtTaskDataKeys.{JUDGEMENTS, JUDGEMENT_PROVIDER, PRODUCT_ID_RESULT}
-import de.awagen.kolibri.base.usecase.searchopt.domain.ExtTaskFailType.{JudgementProviderMissing, JudgementsMissing, ProductIdsMissing}
+import de.awagen.kolibri.base.usecase.searchopt.domain.ExtTaskDataKeys.{JUDGEMENT_PROVIDER, PRODUCT_ID_RESULT}
+import de.awagen.kolibri.base.usecase.searchopt.domain.ExtTaskFailType.{JudgementProviderMissing, ProductIdsMissing}
 import de.awagen.kolibri.base.usecase.searchopt.metrics.{IRMetricFunctions, JudgementHandlingStrategy, Metric, MetricsCalculation}
 import de.awagen.kolibri.base.usecase.searchopt.provider.JudgementProvider
 import de.awagen.kolibri.datatypes.mutable.stores.{TypeTaggedMap, TypedMapStore}
-import de.awagen.kolibri.datatypes.stores.MetricRow
-import de.awagen.kolibri.datatypes.stores.MetricRow.ResultCountStore
-import de.awagen.kolibri.datatypes.utils.MathUtils
-import de.awagen.kolibri.datatypes.values.Calculations.ComputeResult
-import de.awagen.kolibri.datatypes.values.aggregation.AggregateValue
 
 import scala.collection.mutable
 
@@ -77,10 +72,6 @@ class FunctionsSpec extends UnitTestSpec {
         .sorted
         .reverse
         .take(k)
-
-      override def getIdealDCGForTerm(searchTerm: String, k: Int): ComputeResult[Double] = {
-        IRMetricFunctions.dcgAtK(k)(retrieveSortedJudgementsForTerm(searchTerm, k))
-      }
 
     }
 

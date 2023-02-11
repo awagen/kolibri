@@ -19,6 +19,7 @@ package de.awagen.kolibri.base.io.json
 
 import de.awagen.kolibri.base.io.json.MetricFunctionJsonProtocol.MetricType.MetricType
 import de.awagen.kolibri.base.usecase.searchopt.metrics.IRMetricFunctions
+import de.awagen.kolibri.base.usecase.searchopt.provider.JudgementInfo
 import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
 import de.awagen.kolibri.datatypes.types.JsonStructDefs._
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
@@ -28,7 +29,7 @@ import spray.json.{DefaultJsonProtocol, JsValue, JsonFormat, enrichAny}
 
 object MetricFunctionJsonProtocol extends DefaultJsonProtocol with WithStructDef {
 
-  case class MetricFunction(metricType: MetricType, k: Int, calc: SerializableFunction1[Seq[Double], ComputeResult[Double]])
+  case class MetricFunction(metricType: MetricType, k: Int, calc: SerializableFunction1[JudgementInfo, ComputeResult[Double]])
 
   object MetricType extends Enumeration {
     type MetricType = Value
