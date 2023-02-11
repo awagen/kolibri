@@ -31,6 +31,8 @@ import scala.collection.immutable
 
 object MetricsCalculation {
 
+  private[metrics] val logger = LoggerFactory.getLogger(MetricsCalculation.getClass)
+
   def calculationResultToMetricValue(name: String, calculationResult: ComputeResult[Double]): MetricValue[Double] = {
     calculationResult match {
       case Right(score) =>
@@ -45,7 +47,6 @@ object MetricsCalculation {
 case class MetricsCalculation(metrics: Seq[Metric], judgementHandling: JudgementHandlingStrategy) {
 
   val AVAILABLE_JUDGEMENT_METRICS_SUB_RESULT_SIZES: Seq[Int] = Seq(2, 4, 8, 12, 24)
-  private[this] val logger = LoggerFactory.getLogger(MetricsCalculation.getClass)
 
   private[metrics] def validateAndReturnFailedJudgements(judgements: Seq[Option[Double]]): Seq[JudgementValidation] = {
     judgementHandling.validateAndReturnFailed(judgements)
@@ -71,8 +72,8 @@ case class MetricsCalculation(metrics: Seq[Metric], judgementHandling: Judgement
         // of that sequence, thus we are handling this separately here)
         case MetricType.NDCG =>
           val idealDCG: ComputeResult[Double] = judgementProvider.getIdealDCGForTerm(query, metric.function.k) match {
-            case Left(err) =>
-              logger.warn("Trying to retrieve ideal dcg from judgement provider failed, need to calculate", err)
+            case Left(_) =>
+              MetricsCalculation.logger.debug(s"Trying to retrieve ideal dcg from judgement provider failed, need to calculate")
               val topKJudgements = judgementProvider.retrieveSortedJudgementsForTerm(query, metric.function.k)
               IRMetricFunctions.dcgAtK(metric.function.k)(topKJudgements)
             case e@Right(_) =>

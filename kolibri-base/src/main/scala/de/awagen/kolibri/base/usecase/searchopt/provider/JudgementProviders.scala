@@ -24,6 +24,7 @@ import de.awagen.kolibri.base.usecase.searchopt.metrics.IRMetricFunctions
 import de.awagen.kolibri.base.usecase.searchopt.parse.TypedJsonSelectors.NamedAndTypedSelector
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason
 import de.awagen.kolibri.datatypes.values.Calculations.ComputeResult
+import org.slf4j.{Logger, LoggerFactory}
 import play.api.libs.json.Json
 
 import scala.io.Source
@@ -160,9 +161,8 @@ class BaseJudgementProvider(judgementStorage: Map[String, Double],
   // storing prepared list of ideal dcg values per query in steps of two till max value
   private val idealDcgPerQueryAndKStorage: Map[String, ComputeResult[Double]] = uniqueQueries
     .flatMap(query => {
-      Range(idealDcgPreComputeStartK, maxPrecomputeIdealDcgKValue, idealDcgPreComputeStepSize)
-        .map(k => (k, composeIdealDCGForTerm(query, k)))
-        .map(tuple => (createKey(query, tuple._1.toString), tuple._2))
+      Range(idealDcgPreComputeStartK, maxPrecomputeIdealDcgKValue , idealDcgPreComputeStepSize).inclusive
+        .map(k => (createKey(query, k.toString), composeIdealDCGForTerm(query, k)))
     }).toMap
 
   override def retrieveJudgement(searchTerm: String, productId: String): Option[Double] = {
@@ -202,6 +202,7 @@ class BaseJudgementProvider(judgementStorage: Map[String, Double],
     .toSeq
     .sorted
     .reverse
+    .take(k)
 
   /**
    * To avoid repeated computation for ideal dcg values for a given k (number of results taken into account),
@@ -227,8 +228,9 @@ class BaseJudgementProvider(judgementStorage: Map[String, Double],
    * @return - the result of the compute. Is either Double for the metrics or a Seq of ComputeFailReason instances
    */
   override def getIdealDCGForTerm(searchTerm: String, k: Int): ComputeResult[Double] = {
+    val idealDCGKey = createKey(searchTerm, k.toString)
     idealDcgPerQueryAndKStorage
-      .getOrElse(createKey(searchTerm, k.toString),
+      .getOrElse(idealDCGKey,
         Left(Seq(ComputeFailReason(s"No ideal dcg available for term '$searchTerm' and k = $k"))))
   }
 
