@@ -106,6 +106,8 @@ class RunnableExecutionActor[U <: WithCount](maxBatchDuration: FiniteDuration,
   var sendResultsBack: Boolean = true
   var batchStateUpdate: StateUpdateWithoutData = _
 
+  // TODO: make the intervals configurable. We dont need batch updates
+  // every 2 seconds
   val statusUpdateCancellable: Cancellable = context.system.scheduler.scheduleAtFixedRate(
     initialDelay = 2 seconds,
     interval = 2 seconds)(() => {
@@ -168,6 +170,7 @@ class RunnableExecutionActor[U <: WithCount](maxBatchDuration: FiniteDuration,
       runningJobId = runnable.jobId
       runningJobBatchNr = runnable.batchNr
       elementsToProcessCount = runnable.supplier.size
+      // TODO - place watch on actor and stop sending any asks when actor terminates
       aggregatingActor = context.actorOf(AggregatingActor.props(
         runnable.aggregatorConfig,
         () => runnable.expectationGenerator.apply(runnable.supplier.size),
