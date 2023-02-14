@@ -117,6 +117,8 @@ object AppProperties {
       }
     }
 
+    // max time allowed for resource directive to be processed
+    val maxResourceDirectiveLoadTimeInMinutes: Int = baseConfig.getInt("kolibri.job.resources.directives.maxLoadTimeInMinutes")
     // some properties determining amount of additional judgement information is stored
     // in judgement provider
     val topKJudgementsPerQueryStorageSize: Int = baseConfig.getInt("kolibri.job.resources.judgements.topKJudgementsPerQueryStorageSize")

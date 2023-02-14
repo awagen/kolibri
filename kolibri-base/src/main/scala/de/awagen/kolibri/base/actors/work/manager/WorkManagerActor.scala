@@ -31,6 +31,7 @@ import de.awagen.kolibri.base.actors.work.worker.TaskExecutionWorkerActor.Proces
 import de.awagen.kolibri.base.actors.work.worker.TaskWorkerActor.ProcessTasks
 import de.awagen.kolibri.base.actors.work.worker.{RunnableExecutionActor, TaskExecutionWorkerActor, TaskWorkerActor}
 import de.awagen.kolibri.base.cluster.ClusterNode
+import de.awagen.kolibri.base.config.AppProperties
 import de.awagen.kolibri.base.config.AppProperties.config
 import de.awagen.kolibri.base.config.AppProperties.config.kolibriDispatcherName
 import de.awagen.kolibri.base.io.writer.Writers
@@ -182,7 +183,7 @@ class WorkManagerActor() extends Actor with ActorLogging with KolibriSerializabl
       log.info("received SearchEvaluation msg")
       // make sure resource directives are processed before job is started
       log.info("loading needed resources")
-      implicit val timeout: Timeout = Timeout(5 minutes)
+      implicit val timeout: Timeout = FiniteDuration(AppProperties.config.maxResourceDirectiveLoadTimeInMinutes, MINUTES)
       val resultFuture: Future[Any] = ClusterNode.getSystemSetup.localResourceManagerActor ? ProcessResourceDirectives(e.msg.resourceDirectives, e.jobName)
       resultFuture.onComplete({
         case Success(value) =>

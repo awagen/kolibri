@@ -108,14 +108,6 @@ case class ResourceToJobMappingClusterStateManagerActor(name: String,
     resourceIdToJobMapping.setMappingForResourceType(resourceType, value)
     val updatedKeysForResourceType = resourceIdToJobMapping.getMappingForResourceType(resourceType).keySet
     val keysForResourceRemoval: Set[String] = keysForResourceType.diff(updatedKeysForResourceType)
-    resourceType match {
-      case ResourceType.MAP_STRING_TO_DOUBLE_VALUE =>
-        keysForResourceRemoval.foreach(key => {
-          log.info(s"Calling key remove on file-based judgement repository '${Resource(resourceType, key)}'")
-          resourceStore.removeResource(Resource(resourceType, key))
-        })
-      case _ => // do nothing
-    }
     keysForResourceRemoval.foreach(key => {
       log.info(s"Calling key remove on resource '${Resource(resourceType, key)}'")
       resourceStore.removeResource(Resource(resourceType, key))

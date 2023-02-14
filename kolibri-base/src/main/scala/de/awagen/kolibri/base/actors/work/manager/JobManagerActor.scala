@@ -33,6 +33,7 @@ import de.awagen.kolibri.base.actors.work.manager.WorkManagerActor.JobBatchMsg
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages._
 import de.awagen.kolibri.base.actors.work.worker.RunnableExecutionActor.BatchProcessStateResult
 import de.awagen.kolibri.base.cluster.ClusterNode
+import de.awagen.kolibri.base.config.AppProperties
 import de.awagen.kolibri.base.config.AppProperties._
 import de.awagen.kolibri.base.config.AppProperties.config.kolibriDispatcherName
 import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions.MapWithCount
@@ -57,8 +58,8 @@ import org.slf4j.{Logger, LoggerFactory}
 
 import java.text.SimpleDateFormat
 import java.time.{Instant, ZoneId, ZonedDateTime}
-import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.concurrent.duration._
+import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.util.{Failure, Success}
 
 
@@ -300,7 +301,8 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
         })
       // send request to initialize the per-node resource directives
       val directives = searchJobMsg.resourceDirectives
-      implicit val timeout: Timeout = FiniteDuration(5, MINUTES)
+      log.info(s"processing resource directives for job '${searchJobMsg.jobName}', this might take a few moments")
+      implicit val timeout: Timeout = FiniteDuration(AppProperties.config.maxResourceDirectiveLoadTimeInMinutes, MINUTES)
       val resultFuture: Future[Any] = ClusterNode.getSystemSetup.localResourceManagerActor ? ProcessResourceDirectives(directives, searchJobMsg.jobName)
       resultFuture.onComplete({
         case Success(value) =>
@@ -318,7 +320,6 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
       })
     case CheckedResourceDirectivesAndReadyForProcessing(searchJobMsg: SearchEvaluationDefinition) =>
       wrapUpFunction = searchJobMsg.wrapUpFunction
-      implicit val timeout: Timeout = Timeout(10 minutes)
       val jobMsg: SupervisorActor.ProcessActorRunnableJobCmd[RequestTemplateBuilderModifier, MetricRow, MetricRow, MetricAggregation[Tag]] = searchJobMsg.toRunnable
       val jobToProcess = ByFunctionNrLimitedIndexedGenerator(
         jobMsg.processElements.size,
