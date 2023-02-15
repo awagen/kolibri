@@ -19,7 +19,7 @@ package de.awagen.kolibri.base.io.json
 
 import de.awagen.kolibri.base.directives.{Resource, ResourceType}
 import de.awagen.kolibri.base.directives.ResourceDirectives.{ResourceDirective, getDirective}
-import de.awagen.kolibri.base.directives.ResourceType.{MAP_STRING_TO_DOUBLE_VALUE, MAP_STRING_TO_STRING_VALUES, STRING_VALUES}
+import de.awagen.kolibri.base.directives.ResourceType.{JUDGEMENT_PROVIDER, MAP_STRING_TO_DOUBLE_VALUE, MAP_STRING_TO_STRING_VALUES, STRING_VALUES}
 import de.awagen.kolibri.base.io.json.ResourceJsonProtocol.StructDefs.{RESOURCE_JUDGEMENT_PROVIDER_STRUCT_DEF, RESOURCE_MAP_STRING_DOUBLE_STRUCT_DEF, RESOURCE_MAP_STRING_STRING_VALUES_STRUCT_DEF, RESOURCE_STRING_VALUES_STRUCT_DEF}
 import de.awagen.kolibri.base.io.json.ResourceJsonProtocol.{resourceJudgementProviderFormat, resourceMapStringDoubleFormat, resourceMapStringStringValuesFormat, resourceStringValuesFormat}
 import de.awagen.kolibri.base.io.json.SupplierJsonProtocol.{GeneratorStringFormat, JudgementProviderFormat, MapStringDoubleFormat, MapStringToGeneratorStringFormat}
@@ -70,6 +70,7 @@ object ResourceDirectiveJsonProtocol {
       ),
       Seq(
         ConditionalFields(TYPE_KEY, Map(
+          JUDGEMENT_PROVIDER.toString() -> Seq(FieldDef(StringConstantStructDef(VALUES_KEY), JudgementProviderResourceDirectiveFormat.structDef, required = true)),
           STRING_VALUES.toString() -> Seq(FieldDef(StringConstantStructDef(VALUES_KEY), GeneratorStringResourceDirectiveFormat.structDef, required = true)),
           MAP_STRING_TO_DOUBLE_VALUE.toString() -> Seq(FieldDef(StringConstantStructDef(VALUES_KEY), MapStringDoubleResourceDirectiveFormat.structDef, required = true)),
           MAP_STRING_TO_STRING_VALUES.toString() -> Seq(FieldDef(StringConstantStructDef(VALUES_KEY), MapStringGeneratorStringResourceDirectiveFormat.structDef, required = true))
