@@ -1,18 +1,18 @@
 /**
-  * Copyright 2021 Andreas Wagenmann
-  *
-  * Licensed under the Apache License, Version 2.0 (the "License");
-  * you may not use this file except in compliance with the License.
-  * You may obtain a copy of the License at
-  *
-  * http://www.apache.org/licenses/LICENSE-2.0
-  *
-  * Unless required by applicable law or agreed to in writing, software
-  * distributed under the License is distributed on an "AS IS" BASIS,
-  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  * See the License for the specific language governing permissions and
-  * limitations under the License.
-  */
+ * Copyright 2021 Andreas Wagenmann
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 
 package de.awagen.kolibri.base.usecase.searchopt.processing.plan
@@ -41,40 +41,31 @@ class FunctionsSpec extends UnitTestSpec {
       judgementHandling = JudgementHandlingStrategy.EXIST_RESULTS_AND_JUDGEMENTS_MISSING_AS_ZEROS
     )
 
-    val exampleMap: Map[String, Double] = Map(
-      "q1-p1" -> 0.1,
-      "q1-p2" -> 0.2,
-      "q1-p3" -> 0.3,
-      "q2-p1" -> 0.1,
-      "q2-p3" -> 0.4
+    val exampleMap: Map[String, Map[String, Double]] = Map(
+      "q1" -> Map(
+        "p1" -> 0.1,
+        "p2" -> 0.2,
+        "p3" -> 0.3
+      ),
+      "q2" -> Map(
+        "p1" -> 0.1,
+        "p3" -> 0.4
+      )
     )
 
-    def judgementProvider(judgementMap: Map[String, Double]): JudgementProvider[Double] = new JudgementProvider[Double] {
-      override def allJudgements: Map[String, Double] = judgementMap
+    def judgementProvider(judgementMap: Map[String, Map[String, Double]]): JudgementProvider[Double] = new JudgementProvider[Double] {
 
       override def retrieveJudgement(searchTerm: String, productId: String): Option[Double] = {
-        val key = s"$searchTerm-$productId"
-        allJudgements.get(key)
+        judgementMap.get(searchTerm).flatMap(x => x.get(productId))
       }
 
-      override def retrieveJudgementsForTerm(searchTerm: String): Map[String, Double] = allJudgements
-        .map(x => {
-          val split = x._1.split("-")
-          ((split(0), split(1)), x._2)
-        })
-        .filter(x => x._1._1 == searchTerm)
-        .map(x => (x._1._2, x._2))
+      override def retrieveJudgementsForTerm(searchTerm: String): Map[String, Double] =
+        judgementMap.getOrElse(searchTerm, Map.empty)
 
-      override def retrieveSortedJudgementsForTerm(searchTerm: String, k: Int): Seq[Double] = judgementMap.keys
-        .filter(key => key.startsWith(searchTerm))
-        .map(key => judgementMap(key))
-        .toSeq
-        .sorted
-        .reverse
-        .take(k)
-
+      override def retrieveSortedJudgementsForTerm(searchTerm: String, k: Int): Seq[Double] = {
+        judgementMap.get(searchTerm).map(x => x.values.toSeq.sorted.reverse.take(k)).getOrElse(Seq.empty)
+      }
     }
-
   }
 
   "Functions" must {
@@ -112,7 +103,5 @@ class FunctionsSpec extends UnitTestSpec {
       resultNoProducts mustBe Left(ProductIdsMissing)
       resultNoJudgements mustBe Left(JudgementProviderMissing)
     }
-
   }
-
 }

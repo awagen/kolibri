@@ -38,16 +38,18 @@ class JudgementProvidersSpec extends UnitTestSpec {
         jsonProductsSelector,
         jsonJudgementsSelector,
         queryProductDelimiter)
-      // when
-      val judgements: Map[String, Double] = judgementProvider.allJudgements
-      // then
-      judgements mustBe Map(
-        "q1-a" -> 0.43,
-        "q1-b" -> 0.55,
-        "q1-c" -> 0.22,
-        "q2-aa" -> 0.30,
-        "q2-bb" -> 0.11,
-        "q3-cc" -> 0.10
+      // when, then
+      judgementProvider.retrieveJudgementsForTerm("q1") mustBe Map(
+        "a" -> 0.43,
+        "b" -> 0.55,
+        "c" -> 0.22
+      )
+      judgementProvider.retrieveJudgementsForTerm("q2") mustBe Map(
+        "aa" -> 0.30,
+        "bb" -> 0.11
+      )
+      judgementProvider.retrieveJudgementsForTerm("q3") mustBe Map(
+        "cc" -> 0.10
       )
     }
 

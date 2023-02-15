@@ -20,9 +20,10 @@ package de.awagen.kolibri.base.io.json
 import de.awagen.kolibri.base.directives.{Resource, ResourceType}
 import de.awagen.kolibri.base.directives.ResourceDirectives.{ResourceDirective, getDirective}
 import de.awagen.kolibri.base.directives.ResourceType.{MAP_STRING_TO_DOUBLE_VALUE, MAP_STRING_TO_STRING_VALUES, STRING_VALUES}
-import de.awagen.kolibri.base.io.json.ResourceJsonProtocol.StructDefs.{RESOURCE_MAP_STRING_DOUBLE_STRUCT_DEF, RESOURCE_MAP_STRING_STRING_VALUES_STRUCT_DEF, RESOURCE_STRING_VALUES_STRUCT_DEF}
-import de.awagen.kolibri.base.io.json.ResourceJsonProtocol.{resourceMapStringDoubleFormat, resourceMapStringStringValuesFormat, resourceStringValuesFormat}
-import de.awagen.kolibri.base.io.json.SupplierJsonProtocol.{GeneratorStringFormat, MapStringDoubleFormat, MapStringToGeneratorStringFormat}
+import de.awagen.kolibri.base.io.json.ResourceJsonProtocol.StructDefs.{RESOURCE_JUDGEMENT_PROVIDER_STRUCT_DEF, RESOURCE_MAP_STRING_DOUBLE_STRUCT_DEF, RESOURCE_MAP_STRING_STRING_VALUES_STRUCT_DEF, RESOURCE_STRING_VALUES_STRUCT_DEF}
+import de.awagen.kolibri.base.io.json.ResourceJsonProtocol.{resourceJudgementProviderFormat, resourceMapStringDoubleFormat, resourceMapStringStringValuesFormat, resourceStringValuesFormat}
+import de.awagen.kolibri.base.io.json.SupplierJsonProtocol.{GeneratorStringFormat, JudgementProviderFormat, MapStringDoubleFormat, MapStringToGeneratorStringFormat}
+import de.awagen.kolibri.base.usecase.searchopt.provider.JudgementProvider
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
 import de.awagen.kolibri.datatypes.types.JsonStructDefs._
@@ -52,6 +53,7 @@ object ResourceDirectiveJsonProtocol {
         case "STRING_VALUES" => GeneratorStringResourceDirectiveFormat.read(fields(VALUES_KEY))
         case "MAP_STRING_TO_DOUBLE_VALUE" => MapStringDoubleResourceDirectiveFormat.read(fields(VALUES_KEY))
         case "MAP_STRING_TO_STRING_VALUES" => MapStringGeneratorStringResourceDirectiveFormat.read(fields(VALUES_KEY))
+        case "JUDGEMENT_PROVIDER" => JudgementProviderResourceDirectiveFormat.read(fields(VALUES_KEY))
       }
     }
 
@@ -73,6 +75,33 @@ object ResourceDirectiveJsonProtocol {
           MAP_STRING_TO_STRING_VALUES.toString() -> Seq(FieldDef(StringConstantStructDef(VALUES_KEY), MapStringGeneratorStringResourceDirectiveFormat.structDef, required = true))
         ))
       )
+    )
+  }
+
+  implicit object JudgementProviderResourceDirectiveFormat extends JsonFormat[ResourceDirective[JudgementProvider[Double]]] with WithStructDef {
+    override def read(json: JsValue): ResourceDirective[JudgementProvider[Double]] = json match {
+      case spray.json.JsObject(fields) =>
+        val resource = fields(RESOURCE_KEY).convertTo[Resource[JudgementProvider[Double]]]
+        val supplier = fields(SUPPLIER_KEY).convertTo[SerializableSupplier[JudgementProvider[Double]]]
+        getDirective(supplier, resource)
+    }
+
+    override def write(obj: ResourceDirective[JudgementProvider[Double]]): JsValue = """{}""".toJson
+
+    override def structDef: JsonStructDefs.StructDef[_] = NestedFieldSeqStructDef(
+      Seq(
+        FieldDef(
+          StringConstantStructDef(RESOURCE_KEY),
+          RESOURCE_JUDGEMENT_PROVIDER_STRUCT_DEF,
+          required = true
+        ),
+        FieldDef(
+          StringConstantStructDef(SUPPLIER_KEY),
+          SupplierJsonProtocol.JudgementProviderFormat.structDef,
+          required = true
+        )
+      ),
+      Seq.empty
     )
   }
 

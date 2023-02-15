@@ -241,24 +241,33 @@ object SupplierJsonProtocol extends DefaultJsonProtocol {
 
     override def write(obj: SerializableSupplier[JudgementProvider[Double]]): JsValue = """{}""".toJson
 
-    /**
-     * Right now same as for MapStringDoubleFormat. Specific one will be defined when the need arises.
-     */
-    override def structDef: StructDef[_] = MapStringDoubleFormat.structDef
+    override def structDef: StructDef[_] = NestedFieldSeqStructDef(
+      Seq(
+        FieldDef(
+          StringConstantStructDef(TYPE_KEY),
+          StringChoiceStructDef(Seq(
+            JUDGEMENTS_FROM_FILE_TYPE,
+            VALUES_FROM_NODE_STORAGE_TYPE
+          )),
+          required = true)
+      ),
+      Seq(
+        ConditionalFields(TYPE_KEY, Map(
+          JUDGEMENTS_FROM_FILE_TYPE -> Seq(
+            FieldDef(StringConstantStructDef(FILE_KEY), RegexStructDef("\\w+".r), required = true)
+          ),
+          VALUES_FROM_NODE_STORAGE_TYPE -> Seq(
+            FieldDef(StringConstantStructDef(IDENTIFIER_KEY), RegexStructDef("\\w+".r), required = true)
+          )
+        ))
+      )
+    )
   }
 
   implicit object MapStringDoubleFormat extends JsonFormat[SerializableSupplier[Map[String, Double]]] with WithStructDef {
-    val JUDGEMENTS_FROM_FILE_TYPE = "JUDGEMENTS_FROM_FILE"
 
     override def read(json: JsValue): SerializableSupplier[Map[String, Double]] = json match {
       case spray.json.JsObject(fields) => fields(TYPE_KEY).convertTo[String] match {
-        case JUDGEMENTS_FROM_FILE_TYPE =>
-          val file: String = fields(FILE_KEY).convertTo[String]
-          new SerializableSupplier[Map[String, Double]] {
-            override def apply(): Map[String, Double] = {
-              filepathToJudgementProvider(file).allJudgements
-            }
-          }
         case VALUES_FROM_NODE_STORAGE_TYPE =>
           val identifier: String = fields(IDENTIFIER_KEY).convertTo[String]
           val resource: Resource[Map[String, Double]] = Resource(ResourceType.MAP_STRING_TO_DOUBLE_VALUE, identifier)
@@ -276,16 +285,12 @@ object SupplierJsonProtocol extends DefaultJsonProtocol {
         FieldDef(
           StringConstantStructDef(TYPE_KEY),
           StringChoiceStructDef(Seq(
-            JUDGEMENTS_FROM_FILE_TYPE,
             VALUES_FROM_NODE_STORAGE_TYPE
           )),
           required = true)
       ),
       Seq(
         ConditionalFields(TYPE_KEY, Map(
-          JUDGEMENTS_FROM_FILE_TYPE -> Seq(
-            FieldDef(StringConstantStructDef(FILE_KEY), RegexStructDef("\\w+".r), required = true)
-          ),
           VALUES_FROM_NODE_STORAGE_TYPE -> Seq(
             FieldDef(StringConstantStructDef(IDENTIFIER_KEY), RegexStructDef("\\w+".r), required = true)
           )

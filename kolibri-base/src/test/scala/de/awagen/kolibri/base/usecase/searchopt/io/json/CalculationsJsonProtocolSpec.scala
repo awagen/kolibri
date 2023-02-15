@@ -32,7 +32,7 @@ class CalculationsJsonProtocolSpec extends UnitTestSpec {
       |"queryParamName": "q",
       |"productIdsKey": "productIds",
       |"judgementsResource": {
-      | "resourceType": "MAP_STRING_TO_DOUBLE_VALUE",
+      | "resourceType": "JUDGEMENT_PROVIDER",
       | "identifier": "ident1"
       |},
       |"metricsCalculation": {

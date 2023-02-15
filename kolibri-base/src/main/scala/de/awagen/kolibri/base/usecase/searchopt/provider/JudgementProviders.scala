@@ -57,8 +57,7 @@ object FileBasedJudgementProvider {
     new FileBasedJudgementProvider(filepath,
       persistenceDIModule.reader,
       csvSourceToJudgementMapping(
-        judgementFileFormatConfig = judgementFileFormatConfig,
-        queryProductDelimiter = queryProductDelimiter
+        judgementFileFormatConfig = judgementFileFormatConfig
       ),
       queryProductDelimiter = queryProductDelimiter
     )
@@ -85,8 +84,7 @@ object FileBasedJudgementProvider {
       jsonLineSourceToJudgementMapping(
         jsonQuerySelector,
         jsonProductsSelector,
-        jsonJudgementsSelector,
-        queryProductDelimiter),
+        jsonJudgementsSelector),
       queryProductDelimiter
     )
   }
@@ -98,7 +96,8 @@ object FileBasedJudgementProvider {
     }
   }
 
-  case class JudgementData(judgements: Map[String, Double], idealSortingPerQuery: Map[String, Seq[Double]])
+  case class JudgementData(judgementsPerQuery: Map[String, Map[String, Double]],
+                           idealSortingPerQuery: Map[String, Seq[Double]])
 
   /**
    * This assumes that the judgement file contains one json per line.
@@ -116,7 +115,7 @@ object FileBasedJudgementProvider {
                                                          jsonJudgementsSelector: NamedAndTypedSelector[Seq[Any]],
                                                          queryProductDelimiter: String = "\u0000"): Source => JudgementData = {
     source => {
-      val judgementMap: mutable.Map[String, Double] = mutable.Map.empty
+      val judgementMap: mutable.Map[String, Map[String, Double]] = mutable.Map.empty
       val queryToIdealJudgementSortingMap: mutable.Map[String, Seq[Double]] = mutable.Map.empty
       source.getLines()
         .map(line => line.trim)
@@ -127,9 +126,8 @@ object FileBasedJudgementProvider {
           val products: Seq[String] = jsonProductsSelector.select(jsValue).asInstanceOf[Seq[String]]
           val judgements: Seq[Double] = jsonJudgementsSelector.select(jsValue).map(x => convertStringOrDoubleAnyToDouble(x))
           val descendingJudgements: Seq[Double] = judgements.sorted.reverse.take(AppProperties.config.topKJudgementsPerQueryStorageSize)
-          val keys: Seq[String] = products.map(product => s"$query$queryProductDelimiter$product")
-          val keyToJudgementPairsForQuery: Seq[(String, Double)] = keys zip judgements
-          judgementMap.addAll(keyToJudgementPairsForQuery)
+          val productToJudgementPairsForQuery: Seq[(String, Double)] = products zip judgements
+          judgementMap(query) = productToJudgementPairsForQuery.toMap
           queryToIdealJudgementSortingMap.addOne((query, descendingJudgements))
         })
       JudgementData(judgementMap.toMap, queryToIdealJudgementSortingMap.toMap)
@@ -144,10 +142,9 @@ object FileBasedJudgementProvider {
    * @param queryProductDelimiter     - the delimiter used to create the query - product - keys
    * @return
    */
-  private[provider] def csvSourceToJudgementMapping(judgementFileFormatConfig: JudgementFileCSVFormatConfig = defaultJudgementFileFormatConfig,
-                                                    queryProductDelimiter: String = "\u0000"): Source => JudgementData = {
+  private[provider] def csvSourceToJudgementMapping(judgementFileFormatConfig: JudgementFileCSVFormatConfig = defaultJudgementFileFormatConfig): Source => JudgementData = {
     source => {
-      val judgementMap: mutable.Map[String, Double] = mutable.Map.empty
+      val judgementMap: mutable.Map[String, Map[String, Double]] = mutable.Map.empty
       val queryToUnorderedJudgements: mutable.Map[String, Seq[Double]] = mutable.Map.empty
       source.getLines()
         .filter(f => f.trim.nonEmpty && !f.startsWith("#"))
@@ -157,7 +154,7 @@ object FileBasedJudgementProvider {
           val query: String = columnValues(judgementFileFormatConfig.judgement_file_search_term_column)
           val judgement: Double = columnValues(judgementFileFormatConfig.judgement_file_judgement_column).toDouble
           val productId: String = columnValues(judgementFileFormatConfig.judgement_file_product_id_column)
-          judgementMap.addOne((s"$query$queryProductDelimiter$productId", judgement))
+          judgementMap(query) = judgementMap.getOrElse(query, Map.empty) + (productId -> judgement)
           queryToUnorderedJudgements(query) = queryToUnorderedJudgements.getOrElse(query, Seq.empty) :+ judgement
         })
       val queryToSortedJudgementsMap = queryToUnorderedJudgements.map(x => {
@@ -173,7 +170,7 @@ class BaseJudgementProvider(judgementData: JudgementData,
                             queryProductDelimiter: String = "\u0000") extends JudgementProvider[Double] {
 
   override def retrieveJudgement(searchTerm: String, productId: String): Option[Double] = {
-    judgementData.judgements.get(createKey(searchTerm, productId))
+    judgementData.judgementsPerQuery.get(searchTerm).flatMap(x => x.get(productId))
   }
 
   /**
@@ -193,24 +190,9 @@ class BaseJudgementProvider(judgementData: JudgementData,
     (parts.head, parts(1))
   }
 
-  override def allJudgements: Map[String, Double] = collection.immutable.Map[String, Double]() ++ judgementData.judgements
-
-  override def retrieveJudgementsForTerm(searchTerm: String): Map[String, Double] = judgementData.judgements
-    .map(x => (keyToSearchTermAndProductId(x._1), x._2))
-    .filter(x => x._1._1 == searchTerm)
-    .map(x => (x._1._2, x._2))
-
-  /**
-   * Calculate sorted (descending) list of judgements of length k (or if less judgements available of size equal
-   * to number of judgements available)
-   */
-  private[provider] def composeSortedJudgementsForTerm(searchTerm: String, k: Int): Seq[Double] = judgementData.judgements.keys
-    .filter(key => key.startsWith(s"$searchTerm$queryProductDelimiter"))
-    .map(key => judgementData.judgements(key))
-    .toSeq
-    .sorted
-    .reverse
-    .take(k)
+  override def retrieveJudgementsForTerm(searchTerm: String): Map[String, Double] = {
+    judgementData.judgementsPerQuery.getOrElse(searchTerm, Map.empty)
+  }
 
   /**
    * Provide sorted (descending) list of judgements of length k (or if less judgements available of size equal

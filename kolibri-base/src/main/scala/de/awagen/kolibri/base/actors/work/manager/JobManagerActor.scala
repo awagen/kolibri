@@ -385,7 +385,6 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
       jobProcessingState.addToRunningTaskCount(count)
       fillUpFreeSlots()
     case e: AggregationState[U] =>
-      jobProcessingState.addBatchFailedACK(e.batchNr)
       jobProcessingState.removeBatchWaitingForACK(e.batchNr)
       runningBatchesState -= e.batchNr
       log.debug("received aggregation (batch finished) - jobId: {}, batchNr: {} ", e.jobID, e.batchNr)
