@@ -57,7 +57,7 @@ case class LocalStateDistributorActor() extends Actor with ActorLogging {
   }
 
 
-  override def receive: Receive = ddReceive.orElse[Any, Unit](msg => msg match {
+  override def receive: Receive = ddReceive.orElse[Any, Unit] {
     case e: BatchProcessStateResult =>
       if (batchStatusActor.isEmpty) log.info("No batch state actor ref, can not send batch status update")
       batchStatusActor.foreach(x => x.forward(e))
@@ -67,5 +67,5 @@ case class LocalStateDistributorActor() extends Actor with ActorLogging {
     case e: WorkerStatusResponse =>
       if (batchStatusActor.isEmpty) log.info("No batch state actor ref, can not send worker status update")
       batchStatusActor.foreach(x => x.forward(e))
-  })
+  }
 }

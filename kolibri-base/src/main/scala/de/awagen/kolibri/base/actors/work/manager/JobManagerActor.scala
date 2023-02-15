@@ -152,8 +152,8 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
   // schedule sending regular status updates to local state distributor which takes care
   // of distributing the updates to right actor in cluster
   val jobStatusUpdateCancellable: Cancellable = context.system.scheduler.scheduleAtFixedRate(
-    initialDelay = 2 seconds,
-    interval = 2 seconds)(() => {
+    initialDelay = FiniteDuration(config.batchStateUpdateInitialDelayInSeconds, SECONDS),
+    interval = FiniteDuration(config.batchStateUpdateIntervalInSeconds, SECONDS))(() => {
     if (!jobProcessingState.isJobToProcessSet) {
       ClusterNode.getSystemSetup.localStateDistributorActor ! emptyJobStatusInfo
     }
@@ -302,7 +302,7 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
       // send request to initialize the per-node resource directives
       val directives = searchJobMsg.resourceDirectives
       log.info(s"processing resource directives for job '${searchJobMsg.jobName}', this might take a few moments")
-      implicit val timeout: Timeout = FiniteDuration(AppProperties.config.maxResourceDirectiveLoadTimeInMinutes, MINUTES)
+      implicit val timeout: Timeout = FiniteDuration(config.maxResourceDirectiveLoadTimeInMinutes, MINUTES)
       val resultFuture: Future[Any] = ClusterNode.getSystemSetup.localResourceManagerActor ? ProcessResourceDirectives(directives, searchJobMsg.jobName)
       resultFuture.onComplete({
         case Success(value) =>
