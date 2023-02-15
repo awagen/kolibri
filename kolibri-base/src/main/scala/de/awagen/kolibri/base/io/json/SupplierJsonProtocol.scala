@@ -20,7 +20,6 @@ package de.awagen.kolibri.base.io.json
 import de.awagen.kolibri.base.cluster.ClusterNodeObj
 import de.awagen.kolibri.base.config.AppConfig
 import de.awagen.kolibri.base.config.AppConfig.filepathToJudgementProvider
-import de.awagen.kolibri.base.config.AppProperties.config.judgementQueryAndProductDelimiter
 import de.awagen.kolibri.base.directives.RetrievalDirective.Retrieve
 import de.awagen.kolibri.base.directives.{Resource, ResourceType}
 import de.awagen.kolibri.base.io.json.OrderedValuesJsonProtocol.OrderedValuesStringFormat
@@ -32,7 +31,6 @@ import de.awagen.kolibri.datatypes.types.JsonStructDefs._
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSupplier
 import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
 import de.awagen.kolibri.datatypes.values.OrderedValues
-import de.awagen.kolibri.base.usecase.searchopt.provider.BaseJudgementProvider
 import org.slf4j.{Logger, LoggerFactory}
 import spray.json._
 
@@ -206,6 +204,14 @@ object SupplierJsonProtocol extends DefaultJsonProtocol {
     )
   }
 
+  private[json] def getResource[T](resource: Resource[T]): T = {
+    ClusterNodeObj.getResource(Retrieve(resource)) match {
+      case Left(retrievalError) =>
+        throw new RuntimeException(s"failed on execution of RetrievalDirective '${retrievalError.directive}', cause: '${retrievalError.cause}'")
+      case Right(value) => value
+    }
+  }
+
   /**
    * Format for JudgementProvider[Double] that is utilizing the MapStringDoubleFormat to parse the
    * definitions where to get the identifier to judgement value mappings from, then fills them into a judgement provider.
@@ -215,14 +221,29 @@ object SupplierJsonProtocol extends DefaultJsonProtocol {
    * values
    */
   implicit object JudgementProviderFormat extends JsonFormat[SerializableSupplier[JudgementProvider[Double]]] with WithStructDef {
+    val JUDGEMENTS_FROM_FILE_TYPE = "JUDGEMENTS_FROM_FILE"
 
-    override def read(json: JsValue): SerializableSupplier[JudgementProvider[Double]] =  {
-      val valueSupplier: SerializableSupplier[Map[String, Double]] = MapStringDoubleFormat.read(json)
-      () => new BaseJudgementProvider(valueSupplier.apply(), judgementQueryAndProductDelimiter)
+    override def read(json: JsValue): SerializableSupplier[JudgementProvider[Double]] = json match {
+      case spray.json.JsObject(fields) => fields(TYPE_KEY).convertTo[String] match {
+        case JUDGEMENTS_FROM_FILE_TYPE =>
+          val file: String = fields(FILE_KEY).convertTo[String]
+          new SerializableSupplier[JudgementProvider[Double]] {
+            override def apply(): JudgementProvider[Double] = filepathToJudgementProvider(file)
+          }
+        case VALUES_FROM_NODE_STORAGE_TYPE =>
+          val identifier: String = fields(IDENTIFIER_KEY).convertTo[String]
+          val resource: Resource[JudgementProvider[Double]] = Resource(ResourceType.JUDGEMENT_PROVIDER, identifier)
+          new SerializableSupplier[JudgementProvider[Double]] {
+            override def apply(): JudgementProvider[Double] = getResource(resource)
+          }
+      }
     }
 
     override def write(obj: SerializableSupplier[JudgementProvider[Double]]): JsValue = """{}""".toJson
 
+    /**
+     * Right now same as for MapStringDoubleFormat. Specific one will be defined when the need arises.
+     */
     override def structDef: StructDef[_] = MapStringDoubleFormat.structDef
   }
 
@@ -242,13 +263,7 @@ object SupplierJsonProtocol extends DefaultJsonProtocol {
           val identifier: String = fields(IDENTIFIER_KEY).convertTo[String]
           val resource: Resource[Map[String, Double]] = Resource(ResourceType.MAP_STRING_TO_DOUBLE_VALUE, identifier)
           new SerializableSupplier[Map[String, Double]] {
-            override def apply(): Map[String, Double] = {
-              ClusterNodeObj.getResource(Retrieve(resource)) match {
-                case Left(retrievalError) =>
-                  throw new RuntimeException(s"failed on execution of RetrievalDirective '${retrievalError.directive}', cause: '${retrievalError.cause}'")
-                case Right(value) => value
-              }
-            }
+            override def apply(): Map[String, Double] = getResource(resource)
           }
       }
 

@@ -148,7 +148,7 @@ object JobMessages {
     val requestTasks: Int = 4
     val judgementSupplier: SerializableSupplier[JudgementProvider[Double]] = new SerializableSupplier[JudgementProvider[Double]] {
       override def apply(): JudgementProvider[Double] = {
-        new BaseJudgementProvider(filepathToJudgementProvider(judgementFilePath).allJudgements)
+        filepathToJudgementProvider(judgementFilePath)
       }
     }
     val resourceDirectives: Seq[ResourceDirective[_]] = Seq(

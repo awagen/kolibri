@@ -85,7 +85,7 @@ class CalculationsSpec extends KolibriTestKitNoCluster
   def prepareJudgementResource(): Unit = {
     val judgementSupplier = new SerializableSupplier[JudgementProvider[Double]] {
       override def apply(): JudgementProvider[Double] = {
-        new BaseJudgementProvider(filepathToJudgementProvider("data/calculations_test_judgements.txt").allJudgements)
+        filepathToJudgementProvider("data/calculations_test_judgements.txt")
       }
     }
     val judgementResourceDirective: ResourceDirectives.ResourceDirective[JudgementProvider[Double]] = ResourceDirectives.getDirective(
