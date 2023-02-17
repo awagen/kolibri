@@ -17,10 +17,11 @@
 package de.awagen.kolibri.base.usecase.searchopt.metrics
 
 import de.awagen.kolibri.base.usecase.searchopt.metrics.JudgementValidation.JudgementValidation
-import de.awagen.kolibri.base.usecase.searchopt.metrics.MetricsCalculation.calculationResultToMetricValue
+import de.awagen.kolibri.base.usecase.searchopt.metrics.MetricsCalculation.{calculateJudgementMetrics, calculationResultToMetricValue}
 import de.awagen.kolibri.base.usecase.searchopt.provider.{JudgementInfo, JudgementProvider}
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.values.Calculations.{ComputeResult, ResultRecord}
+import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType
 import de.awagen.kolibri.datatypes.values.{MetricValue, RunningValues}
 import org.slf4j.LoggerFactory
 
@@ -31,6 +32,28 @@ object MetricsCalculation {
 
   private[metrics] val logger = LoggerFactory.getLogger(MetricsCalculation.getClass)
 
+  val AVAILABLE_JUDGEMENT_METRICS_SUB_RESULT_SIZES: Seq[Int] = Seq(2, 4, 8, 12, 24)
+  val AVAILABLE_JUDGEMENT_METRICS: Seq[String] = AVAILABLE_JUDGEMENT_METRICS_SUB_RESULT_SIZES.map(k => s"J@$k")
+  val AVAILABLE_JUDGEMENT_METRICS_NAME_TO_TYPE_MAPPING: Map[String, AggregationType.Val[Double]] =
+    AVAILABLE_JUDGEMENT_METRICS.map(metricName => (metricName, AggregationType.DOUBLE_AVG)).toMap
+
+  /**
+   * Create for each k value a metric with name J@K and value equal to the count of available metrics
+   * in the subsequence of first k elements.
+   *
+   * @param judgementsOptSeq - judgement values. If None then no judgement could be found for that position
+   * @return
+   */
+  private[metrics] def calculateJudgementMetrics(judgementsOptSeq: Seq[Option[Double]]): Seq[ResultRecord[Double]] = {
+    AVAILABLE_JUDGEMENT_METRICS_SUB_RESULT_SIZES.indices.map(
+      index => {
+        val k = AVAILABLE_JUDGEMENT_METRICS_SUB_RESULT_SIZES(index)
+        val metricName = AVAILABLE_JUDGEMENT_METRICS(index)
+        ResultRecord(metricName, Right(judgementsOptSeq.take(k).count(opt => opt.nonEmpty)))
+      }
+    )
+  }
+
   def calculationResultToMetricValue(name: String, calculationResult: ComputeResult[Double]): MetricValue[Double] = {
     calculationResult match {
       case Right(score) =>
@@ -39,12 +62,10 @@ object MetricsCalculation {
         MetricValue.createDoubleAvgFailSample(metricName = name, RunningValues.mapFromFailReasons(failReasons))
     }
   }
-
 }
 
-case class MetricsCalculation(metrics: Seq[Metric], judgementHandling: JudgementHandlingStrategy) {
 
-  val AVAILABLE_JUDGEMENT_METRICS_SUB_RESULT_SIZES: Seq[Int] = Seq(2, 4, 8, 12, 24)
+  case class MetricsCalculation(metrics: Seq[Metric], judgementHandling: JudgementHandlingStrategy) {
 
   /**
    * Calculation of a single metric.
@@ -70,19 +91,6 @@ case class MetricsCalculation(metrics: Seq[Metric], judgementHandling: Judgement
       val result: ComputeResult[Double] = metric.function.calc.apply(judgementInfo)
       ResultRecord(metric.name, result)
     }
-  }
-
-  /**
-   * Create for each k value a metric with name J@K and value equal to the count of available metrics
-   * in the subsequence of first k elements.
-   *
-   * @param judgementsOptSeq - judgement values. If None then no judgement could be found for that position
-   * @return
-   */
-  private[metrics] def calculateJudgementMetrics(judgementsOptSeq: Seq[Option[Double]]): Seq[ResultRecord[Double]] = {
-    AVAILABLE_JUDGEMENT_METRICS_SUB_RESULT_SIZES.map(
-      k => ResultRecord(s"J@$k", Right(judgementsOptSeq.take(k).count(opt => opt.nonEmpty)))
-    )
   }
 
   def calculateAllAndReturnSingleResults(query: String, products: Seq[String], judgementProvider: JudgementProvider[Double]): Seq[ResultRecord[Double]] = {
