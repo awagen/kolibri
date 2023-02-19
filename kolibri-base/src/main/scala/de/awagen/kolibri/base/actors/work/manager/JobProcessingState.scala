@@ -93,6 +93,13 @@ case class JobProcessingState[U](jobId: String) {
     executionStartZonedDateTime = currentTimeZonedInstance()
   }
 
+  def expectationState: String = {
+    executionConsumer.expectation.statusDesc
+  }
+
+  def batchDistributorHasCompleted: Boolean = batchDistributor.hasCompleted
+  def executionExpectationMapIsEmpty: Boolean = executionExpectationMap.keys.isEmpty
+
   def isJobToProcessSet: Boolean = Objects.nonNull(jobToProcess)
 
   def numBatches: Int = if (isJobToProcessSet) jobToProcess.size else 0

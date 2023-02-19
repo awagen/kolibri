@@ -21,7 +21,6 @@ import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Cancellable, Pois
 import akka.cluster.ddata.Replicator.UpdateSuccess
 import akka.pattern.ask
 import akka.util.Timeout
-import de.awagen.kolibri.base.actors.clusterinfo.BatchStateActor.WorkerStatusResponse
 import de.awagen.kolibri.base.actors.clusterinfo.DDResourceStateUtils
 import de.awagen.kolibri.base.actors.clusterinfo.ResourceToJobMappingClusterStateManagerActor.{CheckedResourceDirectivesAndReadyForProcessing, ProcessResourceDirectives, ProcessedResourceDirectives, RemoveValueFromAllMappings}
 import de.awagen.kolibri.base.actors.resources.BatchFreeSlotResourceCheckingActor.AddToRunningBaselineCount
@@ -33,7 +32,6 @@ import de.awagen.kolibri.base.actors.work.manager.WorkManagerActor.JobBatchMsg
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages._
 import de.awagen.kolibri.base.actors.work.worker.RunnableExecutionActor.BatchProcessStateResult
 import de.awagen.kolibri.base.cluster.ClusterNode
-import de.awagen.kolibri.base.config.AppProperties
 import de.awagen.kolibri.base.config.AppProperties._
 import de.awagen.kolibri.base.config.AppProperties.config.kolibriDispatcherName
 import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions.MapWithCount
@@ -160,18 +158,36 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
     else {
       ClusterNode.getSystemSetup.localStateDistributorActor ! jobProcessingState.jobStatusInfo(ProcessingResult.RUNNING)
     }
-    ClusterNode.getSystemSetup.localResourceManagerActor ! WorkerStatusResponse(runningBatchesState.values.toSeq)
   })
+
+  val checkForCompletionCancellable: Cancellable = context.system.scheduler.scheduleAtFixedRate(
+    initialDelay = FiniteDuration(30, SECONDS),
+    interval = FiniteDuration(30, SECONDS))(() => {
+      checkForCompletionAndWrapUpIfDone()
+    })
+
+  def checkForCompletionAndWrapUpIfDone(): Boolean = {
+    log.debug(s"execution expectation for job '$jobId': ${jobProcessingState.expectationState}")
+    log.debug(s"batchDistributorHasCompleted: ${jobProcessingState.batchDistributorHasCompleted}")
+    log.debug(s"executionExpectationMapIsEmpty: ${jobProcessingState.executionExpectationMapIsEmpty}")
+    if (jobProcessingState.completed) {
+      wrapUp()
+      true
+    }
+    else false
+  }
 
   def acceptResultMsg(msg: AggregationState[U]): Unit = {
     log.debug(s"received aggregation state: $msg")
+    // NOTE: the accept call does seem to always update the state immediately, which could lead to the doneAndWrappedUp
+    // call to not yet opt for the wrap-up. Thus find above additionally a schedule calling the
+    // checkForCompletionAndWrapUpIfDone in intervals irrespective of receiving any aggregation state
     jobProcessingState.accept(msg)
-    if (jobProcessingState.completed) {
-      wrapUp()
-    }
-    else {
-      fillUpFreeSlots()
-    }
+    log.info(s"msg receive: expectationState: ${jobProcessingState.expectationState}")
+    log.info(s"msg receive: batchDistributorHasCompleted: ${jobProcessingState.batchDistributorHasCompleted}")
+    log.info(s"msg receive: executionExpectationMapIsEmpty: ${jobProcessingState.executionExpectationMapIsEmpty}")
+    val doneAndWrappedUp: Boolean = checkForCompletionAndWrapUpIfDone()
+    if (!doneAndWrappedUp) fillUpFreeSlots()
   }
 
   def fillUpFreeSlots(): Unit = {
@@ -190,6 +206,7 @@ class JobManagerActor[T, U <: WithCount](val jobId: String,
   override def postStop(): Unit = {
     scheduleCancellables.foreach(x => x.cancel())
     jobStatusUpdateCancellable.cancel()
+    checkForCompletionCancellable.cancel()
     // tell local resource manager that global resource data needs an update
     DDResourceStateUtils.DD_RESOURCETYPE_TO_KEY_MAPPING.values.foreach(value => {
       ClusterNode.getSystemSetup.localResourceManagerActor ! RemoveValueFromAllMappings(value, jobId)
