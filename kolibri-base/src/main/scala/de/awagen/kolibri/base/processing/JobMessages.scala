@@ -30,7 +30,7 @@ import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions
 import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions.MapWithCount
 import de.awagen.kolibri.base.http.client.request.{RequestTemplate, RequestTemplateBuilder}
 import de.awagen.kolibri.base.io.json.MetricFunctionJsonProtocol.{MetricFunction, MetricType}
-import de.awagen.kolibri.base.io.writer.Writers.Writer
+import de.awagen.kolibri.storage.io.writer.Writers.Writer
 import de.awagen.kolibri.base.processing.JobMessages.{QueryBasedSearchEvaluationDefinition, SearchEvaluationDefinition, TestPiCalculationDefinition}
 import de.awagen.kolibri.base.processing.execution.functions.AggregationFunctions.AggregateFromDirectoryByRegexWeighted
 import de.awagen.kolibri.base.processing.execution.functions.Execution

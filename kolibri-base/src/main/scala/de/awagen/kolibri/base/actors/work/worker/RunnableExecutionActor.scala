@@ -29,7 +29,7 @@ import de.awagen.kolibri.base.config.AppProperties
 import de.awagen.kolibri.base.config.AppProperties.config
 import de.awagen.kolibri.base.config.AppProperties.config.kolibriDispatcherName
 import de.awagen.kolibri.base.config.EnvVariableKeys.{CLUSTER_NODE_HOST, POD_IP}
-import de.awagen.kolibri.base.io.writer.Writers.Writer
+import de.awagen.kolibri.storage.io.writer.Writers.Writer
 import de.awagen.kolibri.base.processing.decider.Deciders.allResumeDecider
 import de.awagen.kolibri.base.processing.execution.expectation._
 import de.awagen.kolibri.base.processing.execution.job.ActorRunnable.JobActorConfig

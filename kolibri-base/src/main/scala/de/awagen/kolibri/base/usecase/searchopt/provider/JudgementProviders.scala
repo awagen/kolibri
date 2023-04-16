@@ -19,7 +19,7 @@ package de.awagen.kolibri.base.usecase.searchopt.provider
 
 import de.awagen.kolibri.base.config.AppConfig.persistenceModule.persistenceDIModule
 import de.awagen.kolibri.base.config.AppProperties
-import de.awagen.kolibri.base.io.reader.Reader
+import de.awagen.kolibri.storage.io.reader.Reader
 import de.awagen.kolibri.base.usecase.searchopt.parse.TypedJsonSelectors.NamedAndTypedSelector
 import de.awagen.kolibri.base.usecase.searchopt.provider.FileBasedJudgementProvider.JudgementData
 import play.api.libs.json.Json

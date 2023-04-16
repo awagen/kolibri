@@ -18,9 +18,9 @@
 package de.awagen.kolibri.base.io.json
 
 import com.amazonaws.regions.Regions
-import de.awagen.kolibri.base.io.writer.Writers.{FileWriter, Writer}
-import de.awagen.kolibri.base.io.writer.aggregation.{BaseMetricAggregationWriter, BaseMetricDocumentWriter}
-import de.awagen.kolibri.base.io.writer.base.{AwsS3FileWriter, LocalDirectoryFileWriter}
+import de.awagen.kolibri.storage.io.writer.Writers.{FileWriter, Writer}
+import de.awagen.kolibri.storage.io.writer.aggregation.{BaseMetricAggregationWriter, BaseMetricDocumentWriter}
+import de.awagen.kolibri.storage.io.writer.base.{AwsS3FileWriter, LocalDirectoryFileWriter}
 import de.awagen.kolibri.datatypes.io.json.MetricDocumentFormatJsonProtocol._
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
 import de.awagen.kolibri.datatypes.metrics.aggregation.writer.MetricDocumentFormat

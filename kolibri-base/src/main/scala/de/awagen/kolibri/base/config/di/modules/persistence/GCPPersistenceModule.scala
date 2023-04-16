@@ -21,9 +21,9 @@ import com.softwaremill.tagging
 import de.awagen.kolibri.base.config.AppProperties
 import de.awagen.kolibri.base.config.AppProperties.config.directoryPathSeparator
 import de.awagen.kolibri.base.config.di.modules.Modules.{GCP_MODULE, PersistenceDIModule}
-import de.awagen.kolibri.base.io.reader.{DataOverviewReader, GcpGSDirectoryReader, GcpGSFileReader, Reader}
-import de.awagen.kolibri.base.io.writer.Writers
-import de.awagen.kolibri.base.io.writer.base.GcpGSFileWriter
+import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, GcpGSDirectoryReader, GcpGSFileReader, Reader}
+import de.awagen.kolibri.storage.io.writer.Writers
+import de.awagen.kolibri.storage.io.writer.base.GcpGSFileWriter
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.Writer
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
 import de.awagen.kolibri.datatypes.tagging.Tags

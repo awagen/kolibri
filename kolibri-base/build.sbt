@@ -11,9 +11,6 @@ val akkaManagementVersion = "1.0.8"
 val shapelessVersion = "2.3.3"
 val logbackVersion = "1.2.3"
 val kryoSerializationVersion = "2.2.0"
-val awsSdkVersion = "1.11.713"
-val googleCloudStorageClientVersion = "2.1.1"
-val apacheCommonsIOVersion = "2.8.0"
 val kamonVersion = "2.2.0"
 val macwireVersion = "2.4.0"
 val scalacScoverageRuntimeVersion = "1.4.9"
@@ -127,10 +124,7 @@ val additionalDependencies = Seq(
   "ch.qos.logback" % "logback-classic" % logbackVersion,
   "com.chuusai" %% "shapeless" % shapelessVersion,
   "io.altoo" %% "akka-kryo-serialization" % kryoSerializationVersion,
-  "com.amazonaws" % "aws-java-sdk" % awsSdkVersion,
-  "com.google.cloud" % "google-cloud-storage" % googleCloudStorageClientVersion,
   "org.slf4j" % "slf4j-api" % sl4jApiVersion,
-  "commons-io" % "commons-io" % apacheCommonsIOVersion,
   "io.kamon" %% "kamon-bundle" % kamonVersion,
   "io.kamon" %% "kamon-prometheus" % kamonVersion,
   "com.softwaremill.macwire" %% "macros" % macwireVersion,
@@ -145,7 +139,7 @@ name := "kolibri-base"
 libraryDependencies ++= additionalDependencies
 // the syntax for adding the datatypes dependency is needed since version.value is not accessible in above dependency seq
 // definition due to "`value` can only be used within a task or setting macro, such as :=, +=, ++=, Def.task, or Def.setting."
-libraryDependencies := { libraryDependencies.value :+ ("de.awagen.kolibri" %% "kolibri-datatypes" % version.value) }
+libraryDependencies := { libraryDependencies.value :+ ("de.awagen.kolibri" %% "kolibri-storage" % version.value) }
 resolvers ++= additionalResolvers
 mainClass in assembly := Some("de.awagen.kolibri.base.cluster.ClusterNode")
 

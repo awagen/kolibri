@@ -17,7 +17,7 @@
 package de.awagen.kolibri.base.io.json
 
 import de.awagen.kolibri.base.io.json.ReaderJsonProtocol._
-import de.awagen.kolibri.base.io.reader.{Reader, LocalResourceFileReader}
+import de.awagen.kolibri.storage.io.reader.{Reader, LocalResourceFileReader}
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
 import spray.json._
 

@@ -20,9 +20,9 @@ package de.awagen.kolibri.base.config.di.modules.persistence
 import com.softwaremill.tagging
 import de.awagen.kolibri.base.config.AppProperties._
 import de.awagen.kolibri.base.config.di.modules.Modules.{PersistenceDIModule, RESOURCE_MODULE}
-import de.awagen.kolibri.base.io.reader.{DataOverviewReader, LocalResourceDirectoryReader, LocalResourceFileReader, Reader}
-import de.awagen.kolibri.base.io.writer.Writers
-import de.awagen.kolibri.base.io.writer.Writers.FileWriter
+import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, LocalResourceDirectoryReader, LocalResourceFileReader, Reader}
+import de.awagen.kolibri.storage.io.writer.Writers
+import de.awagen.kolibri.storage.io.writer.Writers.FileWriter
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
 import de.awagen.kolibri.datatypes.tagging.Tags
 

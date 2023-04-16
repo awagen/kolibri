@@ -18,7 +18,7 @@
 package de.awagen.kolibri.base.io.json
 
 import de.awagen.kolibri.base.config.AppConfig
-import de.awagen.kolibri.base.io.reader.Reader
+import de.awagen.kolibri.storage.io.reader.Reader
 import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator}
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSupplier
 import spray.json.{DefaultJsonProtocol, DeserializationException, JsValue, JsonFormat, JsonReader, enrichAny}

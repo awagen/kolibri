@@ -18,7 +18,7 @@
 package de.awagen.kolibri.base.utils
 
 import de.awagen.kolibri.base.config.AppConfig
-import de.awagen.kolibri.base.io.reader.FileReaderUtils
+import de.awagen.kolibri.storage.io.reader.FileReaderUtils
 import de.awagen.kolibri.datatypes.values.{DistinctValues, OrderedValues}
 import org.slf4j.{Logger, LoggerFactory}
 import spray.json._

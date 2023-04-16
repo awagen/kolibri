@@ -17,7 +17,7 @@
 package de.awagen.kolibri.base.io.json
 
 import com.amazonaws.regions.Regions
-import de.awagen.kolibri.base.io.reader.{AwsS3FileReader, Reader, LocalResourceFileReader}
+import de.awagen.kolibri.storage.io.reader.{AwsS3FileReader, Reader, LocalResourceFileReader}
 import spray.json.{DefaultJsonProtocol, DeserializationException, JsObject, JsString, JsValue, JsonFormat}
 
 object ReaderJsonProtocol extends DefaultJsonProtocol {

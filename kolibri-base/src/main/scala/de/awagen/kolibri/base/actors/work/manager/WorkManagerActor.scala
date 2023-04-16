@@ -34,7 +34,7 @@ import de.awagen.kolibri.base.cluster.ClusterNode
 import de.awagen.kolibri.base.config.AppProperties
 import de.awagen.kolibri.base.config.AppProperties.config
 import de.awagen.kolibri.base.config.AppProperties.config.kolibriDispatcherName
-import de.awagen.kolibri.base.io.writer.Writers
+import de.awagen.kolibri.storage.io.writer.Writers
 import de.awagen.kolibri.base.processing.JobMessages.{SearchEvaluationDefinition, TestPiCalculationDefinition}
 import de.awagen.kolibri.base.processing.JobMessagesImplicits._
 import de.awagen.kolibri.base.processing.execution.TaskExecution

@@ -18,7 +18,7 @@
 package de.awagen.kolibri.base.io.json
 
 import com.amazonaws.regions.Regions
-import de.awagen.kolibri.base.io.reader.{AwsS3DirectoryReader, DataOverviewReader, LocalDirectoryReader, LocalResourceDirectoryReader}
+import de.awagen.kolibri.storage.io.reader.{AwsS3DirectoryReader, DataOverviewReader, LocalDirectoryReader, LocalResourceDirectoryReader}
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 import spray.json.{DefaultJsonProtocol, JsValue, JsonFormat, enrichAny}
 

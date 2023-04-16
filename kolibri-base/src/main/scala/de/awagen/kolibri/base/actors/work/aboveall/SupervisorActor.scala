@@ -27,7 +27,7 @@ import de.awagen.kolibri.base.actors.work.worker.TaskExecutionWorkerActor
 import de.awagen.kolibri.base.config.AppProperties._
 import de.awagen.kolibri.base.config.AppProperties.config.{kolibriBlockingDispatcherName, kolibriDispatcherName}
 import de.awagen.kolibri.base.domain.jobdefinitions.Batch
-import de.awagen.kolibri.base.io.writer.Writers.Writer
+import de.awagen.kolibri.storage.io.writer.Writers.Writer
 import de.awagen.kolibri.base.processing.JobMessages.{JobDefinition, SearchEvaluationDefinition}
 import de.awagen.kolibri.base.processing.JobMessagesImplicits.SearchEvaluationImplicits
 import de.awagen.kolibri.base.processing.classifier.Mapper.FilteringMapper

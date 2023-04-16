@@ -22,8 +22,8 @@ import de.awagen.kolibri.base.config.AppProperties
 import de.awagen.kolibri.base.config.AppProperties.config.directoryPathSeparator
 import de.awagen.kolibri.base.config.di.modules.Modules.PersistenceDIModule
 import de.awagen.kolibri.base.config.di.modules.persistence.PersistenceModule.logger
-import de.awagen.kolibri.base.io.writer.Writers.Writer
-import de.awagen.kolibri.base.io.writer.aggregation.BaseMetricDocumentWriter
+import de.awagen.kolibri.storage.io.writer.Writers.Writer
+import de.awagen.kolibri.storage.io.writer.aggregation.BaseMetricDocumentWriter
 import de.awagen.kolibri.datatypes.stores.MetricDocument
 import de.awagen.kolibri.datatypes.tagging.Tags
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1

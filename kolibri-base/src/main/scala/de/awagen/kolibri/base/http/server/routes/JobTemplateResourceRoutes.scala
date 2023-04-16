@@ -25,9 +25,9 @@ import de.awagen.kolibri.base.config.AppConfig.persistenceModule
 import de.awagen.kolibri.base.config.AppProperties
 import de.awagen.kolibri.base.http.server.routes.StatusRoutes.corsHandler
 import de.awagen.kolibri.base.io.json.QueryBasedSearchEvaluationJsonProtocol.queryBasedSearchEvaluationFormat
-import de.awagen.kolibri.base.io.reader.ReaderUtils.safeContentRead
-import de.awagen.kolibri.base.io.reader.{DataOverviewReader, Reader}
-import de.awagen.kolibri.base.io.writer.Writers
+import de.awagen.kolibri.storage.io.reader.ReaderUtils.safeContentRead
+import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, Reader}
+import de.awagen.kolibri.storage.io.writer.Writers
 import de.awagen.kolibri.base.processing.JobMessages.{QueryBasedSearchEvaluationDefinition, SearchEvaluationDefinition}
 import org.slf4j.{Logger, LoggerFactory}
 import spray.json.DefaultJsonProtocol.{StringJsonFormat, immSeqFormat, jsonFormat3, mapFormat}
@@ -217,7 +217,7 @@ object JobTemplateResourceRoutes {
       val jobTemplates: Seq[TemplateInfo] = getAvailableJobTemplatesForType(templateType)
         .map(path => {
           val relativePath = s"$jobTemplatePath/$templateType/$path"
-          val content: String = safeContentRead(relativePath, "{}", logOnFail = true)
+          val content: String = safeContentRead(contentReader, relativePath, "{}", logOnFail = true)
           TemplateInfo(templateType, path, content)
         })
       (templateType, jobTemplates)
@@ -248,9 +248,9 @@ object JobTemplateResourceRoutes {
               val filepath = s"$jobTemplatePath/$typeName/$identifier"
               val infoFilepath = s"$jobTemplatePath/$typeName/$contentInfoFileName"
               // pick the content
-              val content: String = safeContentRead(filepath, "{}", logOnFail = true)
+              val content: String = safeContentRead(contentReader, filepath, "{}", logOnFail = true)
               // pick the information corresponding to the job definition fields
-              val contentFieldInfo = safeContentRead(infoFilepath, "{}", logOnFail = false)
+              val contentFieldInfo = safeContentRead(contentReader, infoFilepath, "{}", logOnFail = false)
               if (content.trim.isEmpty) complete(StatusCodes.NotFound)
               val contentAndInfo: String = s"""{"$RESPONSE_TEMPLATE_KEY": $content, "$RESPONSE_TEMPLATE_INFO_KEY": $contentFieldInfo}"""
               complete(StatusCodes.OK, contentAndInfo)

@@ -18,7 +18,7 @@
 package de.awagen.kolibri.base.processing.consume
 
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationStateWithData, AggregationStateWithoutData, ProcessingMessage}
-import de.awagen.kolibri.base.io.writer.Writers.Writer
+import de.awagen.kolibri.storage.io.writer.Writers.Writer
 import de.awagen.kolibri.base.processing.execution.expectation.ExecutionExpectation
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}

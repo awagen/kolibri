@@ -22,8 +22,8 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.stream.scaladsl.Flow
 import de.awagen.kolibri.base.domain.Connections.Host
-import de.awagen.kolibri.base.io.reader.{DataOverviewReader, Reader}
-import de.awagen.kolibri.base.io.writer.Writers.Writer
+import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, Reader}
+import de.awagen.kolibri.storage.io.writer.Writers.Writer
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
 import de.awagen.kolibri.datatypes.tagging.Tags
 

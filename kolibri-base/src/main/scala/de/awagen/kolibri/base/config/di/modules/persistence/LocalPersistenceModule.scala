@@ -21,9 +21,9 @@ import com.softwaremill.tagging
 import de.awagen.kolibri.base.config.AppProperties
 import de.awagen.kolibri.base.config.AppProperties.config.localPersistenceWriteResultsSubPath
 import de.awagen.kolibri.base.config.di.modules.Modules.{LOCAL_MODULE, PersistenceDIModule}
-import de.awagen.kolibri.base.io.reader.{DataOverviewReader, LocalDirectoryReader, LocalResourceFileReader, Reader}
-import de.awagen.kolibri.base.io.writer.Writers.{FileWriter, Writer}
-import de.awagen.kolibri.base.io.writer.base.LocalDirectoryFileWriter
+import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, LocalDirectoryReader, LocalResourceFileReader, Reader}
+import de.awagen.kolibri.storage.io.writer.Writers.{FileWriter, Writer}
+import de.awagen.kolibri.storage.io.writer.base.LocalDirectoryFileWriter
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.Writer
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
 import de.awagen.kolibri.datatypes.tagging.Tags

@@ -21,7 +21,7 @@ import de.awagen.kolibri.base.actors.work.manager.JobManagerActor.{Batch, curren
 import de.awagen.kolibri.base.actors.work.manager.JobProcessingState.JobStatusInfo
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages._
 import de.awagen.kolibri.base.config.AppProperties.config
-import de.awagen.kolibri.base.io.writer.Writers.Writer
+import de.awagen.kolibri.storage.io.writer.Writers.Writer
 import de.awagen.kolibri.base.processing.consume.Consumers.{ExecutionConsumer, getExpectingAggregatingWritingExecutionConsumer}
 import de.awagen.kolibri.base.processing.distribution.Distributors.getRetryingDistributor
 import de.awagen.kolibri.base.processing.distribution.{DistributionStates, Distributor}

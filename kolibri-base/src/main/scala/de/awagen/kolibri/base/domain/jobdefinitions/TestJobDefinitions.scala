@@ -21,7 +21,7 @@ import akka.stream.scaladsl.Flow
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{Corn, ProcessingMessage}
 import de.awagen.kolibri.base.domain.jobdefinitions.provider.data.BatchGenerators.IntNumberBatchGenerator
-import de.awagen.kolibri.base.io.writer.base.LocalDirectoryFileWriter
+import de.awagen.kolibri.storage.io.writer.base.LocalDirectoryFileWriter
 import de.awagen.kolibri.base.processing.classifier.Mapper.AcceptAllAsIdentityMapper
 import de.awagen.kolibri.base.processing.execution.expectation.Expectation.SuccessAndErrorCounts
 import de.awagen.kolibri.base.processing.execution.expectation._

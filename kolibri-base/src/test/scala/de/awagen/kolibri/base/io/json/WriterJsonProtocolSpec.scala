@@ -17,8 +17,8 @@
 
 package de.awagen.kolibri.base.io.json
 
-import de.awagen.kolibri.base.io.writer.Writers.FileWriter
-import de.awagen.kolibri.base.io.writer.base.LocalDirectoryFileWriter
+import de.awagen.kolibri.storage.io.writer.Writers.FileWriter
+import de.awagen.kolibri.storage.io.writer.base.LocalDirectoryFileWriter
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
 import spray.json._
 

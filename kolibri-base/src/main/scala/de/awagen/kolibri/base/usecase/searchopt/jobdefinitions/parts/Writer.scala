@@ -19,9 +19,9 @@ package de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts
 
 import com.amazonaws.regions.Regions
 import de.awagen.kolibri.base.config.AppProperties
-import de.awagen.kolibri.base.io.writer.Writers.{FileWriter, Writer}
-import de.awagen.kolibri.base.io.writer.aggregation.{BaseMetricAggregationWriter, BaseMetricDocumentWriter}
-import de.awagen.kolibri.base.io.writer.base.{AwsS3FileWriter, GcpGSFileWriter, LocalDirectoryFileWriter}
+import de.awagen.kolibri.storage.io.writer.Writers.{FileWriter, Writer}
+import de.awagen.kolibri.storage.io.writer.aggregation.{BaseMetricAggregationWriter, BaseMetricDocumentWriter}
+import de.awagen.kolibri.storage.io.writer.base.{AwsS3FileWriter, GcpGSFileWriter, LocalDirectoryFileWriter}
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
 import de.awagen.kolibri.datatypes.stores.MetricDocument
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag

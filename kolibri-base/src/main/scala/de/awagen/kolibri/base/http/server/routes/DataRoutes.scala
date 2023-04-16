@@ -28,10 +28,10 @@ import de.awagen.kolibri.base.http.client.request.{RequestTemplate, RequestTempl
 import de.awagen.kolibri.base.http.server.routes.StatusRoutes.corsHandler
 import de.awagen.kolibri.base.io.json.EnumerationJsonProtocol.dataFileTypeFormat
 import de.awagen.kolibri.base.io.json.ParameterValuesJsonProtocol.{FormatOps, ValueSeqGenDefinitionFormat}
-import de.awagen.kolibri.base.io.reader.FileReaderUtils.JsValueOps._
-import de.awagen.kolibri.base.io.reader.FileReaderUtils._
-import de.awagen.kolibri.base.io.reader.ReaderUtils.safeContentRead
-import de.awagen.kolibri.base.io.reader.{DataOverviewReader, FileReaderUtils, Reader}
+import de.awagen.kolibri.storage.io.reader.FileReaderUtils.JsValueOps._
+import de.awagen.kolibri.storage.io.reader.FileReaderUtils._
+import de.awagen.kolibri.storage.io.reader.ReaderUtils.safeContentRead
+import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, FileReaderUtils, Reader}
 import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ParameterValuesImplicits.ParameterValueSeqToRequestBuilderModifier
 import de.awagen.kolibri.base.processing.modifiers.ParameterValues._
 import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.{CombinedModifier, RequestTemplateBuilderModifier}
@@ -214,7 +214,7 @@ object DataRoutes extends DefaultJsonProtocol {
   private[routes] def getResourceInfoForType(dataType: DataFileType.Val, identifier: String): JsValue = {
     val fullPath = s"$inputDataPath/${dataType.subFolder}/$identifier"
     logger.debug(s"trying to read file: $fullPath")
-    val content: String = safeContentRead(fullPath, "", logOnFail = true)
+    val content: String = safeContentRead(contentReader, fullPath, "", logOnFail = true)
     logger.debug(s"content: $content")
     dataType.contentToData.apply(content)
   }

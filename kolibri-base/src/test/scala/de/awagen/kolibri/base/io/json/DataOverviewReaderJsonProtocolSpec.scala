@@ -20,7 +20,7 @@ package de.awagen.kolibri.base.io.json
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
 import spray.json._
 import DataOverviewReaderJsonProtocol._
-import de.awagen.kolibri.base.io.reader.{AwsS3DirectoryReader, DataOverviewReader, LocalDirectoryReader, LocalResourceDirectoryReader}
+import de.awagen.kolibri.storage.io.reader.{AwsS3DirectoryReader, DataOverviewReader, LocalDirectoryReader, LocalResourceDirectoryReader}
 
 class DataOverviewReaderJsonProtocolSpec extends UnitTestSpec {
 

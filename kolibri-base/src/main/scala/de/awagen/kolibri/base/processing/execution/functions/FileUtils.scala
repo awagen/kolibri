@@ -18,7 +18,7 @@
 package de.awagen.kolibri.base.processing.execution.functions
 
 import de.awagen.kolibri.base.config.AppConfig.persistenceModule.persistenceDIModule
-import de.awagen.kolibri.base.io.reader.{DataOverviewReader, Reader}
+import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, Reader}
 import de.awagen.kolibri.datatypes.metrics.aggregation.writer.MetricDocumentFormat
 import de.awagen.kolibri.datatypes.stores.MetricDocument
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag

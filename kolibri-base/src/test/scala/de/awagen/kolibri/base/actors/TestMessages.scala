@@ -24,7 +24,7 @@ import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{Corn, Proce
 import de.awagen.kolibri.base.domain.jobdefinitions.Batch
 import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions.MapWithCount
 import de.awagen.kolibri.base.domain.jobdefinitions.TestJobDefinitions.Implicits._
-import de.awagen.kolibri.base.io.writer.Writers.Writer
+import de.awagen.kolibri.storage.io.writer.Writers.Writer
 import de.awagen.kolibri.base.processing.TestTaskHelper.{concatIdsTask, productIdResult, reverseIdsTaskPM, reversedIdKeyPM}
 import de.awagen.kolibri.base.processing.classifier.Mapper.AcceptAllAsIdentityMapper
 import de.awagen.kolibri.base.processing.consume.AggregatorConfigurations.AggregatorConfig

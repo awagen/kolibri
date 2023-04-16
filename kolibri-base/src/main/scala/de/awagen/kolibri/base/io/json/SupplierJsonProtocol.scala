@@ -23,7 +23,7 @@ import de.awagen.kolibri.base.config.AppConfig.filepathToJudgementProvider
 import de.awagen.kolibri.base.directives.RetrievalDirective.Retrieve
 import de.awagen.kolibri.base.directives.{Resource, ResourceType}
 import de.awagen.kolibri.base.io.json.OrderedValuesJsonProtocol.OrderedValuesStringFormat
-import de.awagen.kolibri.base.io.reader.FileReaderUtils
+import de.awagen.kolibri.storage.io.reader.FileReaderUtils
 import de.awagen.kolibri.base.usecase.searchopt.provider.JudgementProvider
 import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator}
 import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
@@ -358,7 +358,9 @@ object SupplierJsonProtocol extends DefaultJsonProtocol {
           val filesSuffix: String = fields(FILES_SUFFIX_KEY).convertTo[String]
           new SerializableSupplier[Map[String, IndexedGenerator[String]]] {
             override def apply(): Map[String, IndexedGenerator[String]] = {
-              FileReaderUtils.extractFilePrefixToLineValuesMapping(directory, filesSuffix, "/")
+              val reader = AppConfig.persistenceModule.persistenceDIModule.reader
+              val directoryReader = AppConfig.persistenceModule.persistenceDIModule.dataOverviewReader(x => x.endsWith(filesSuffix))
+              FileReaderUtils.extractFilePrefixToLineValuesMapping(reader, directoryReader, directory, filesSuffix, "/")
                 .map(x => (x._1, ByFunctionNrLimitedIndexedGenerator.createFromSeq(x._2)))
             }
           }

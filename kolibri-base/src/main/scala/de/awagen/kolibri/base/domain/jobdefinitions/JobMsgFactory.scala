@@ -21,7 +21,7 @@ import akka.actor.Props
 import akka.stream.scaladsl.Flow
 import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.{ProcessActorRunnableJobCmd, ProcessActorRunnableTaskJobCmd}
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.ProcessingMessage
-import de.awagen.kolibri.base.io.writer.Writers.Writer
+import de.awagen.kolibri.storage.io.writer.Writers.Writer
 import de.awagen.kolibri.base.processing.classifier.Mapper.FilteringMapper
 import de.awagen.kolibri.base.processing.consume.AggregatorConfigurations.AggregatorConfig
 import de.awagen.kolibri.base.processing.execution.expectation.ExecutionExpectation

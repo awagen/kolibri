@@ -19,8 +19,8 @@ package de.awagen.kolibri.base.processing.execution.functions
 
 import de.awagen.kolibri.base.config.AppConfig
 import de.awagen.kolibri.base.config.di.modules.persistence.PersistenceModule
-import de.awagen.kolibri.base.io.reader.{DataOverviewReader, Reader}
-import de.awagen.kolibri.base.io.writer.Writers.Writer
+import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, Reader}
+import de.awagen.kolibri.storage.io.writer.Writers.Writer
 import de.awagen.kolibri.base.processing.execution.functions.FileUtils.regexDirectoryReader
 import de.awagen.kolibri.base.processing.failure.TaskFailType
 import de.awagen.kolibri.base.processing.failure.TaskFailType.TaskFailType

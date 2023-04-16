@@ -25,7 +25,7 @@ import de.awagen.kolibri.base.config.AppConfig.persistenceModule
 import de.awagen.kolibri.base.config.AppProperties
 import de.awagen.kolibri.base.http.server.routes.StatusRoutes.corsHandler
 import de.awagen.kolibri.base.io.json.ExecutionJsonProtocol._
-import de.awagen.kolibri.base.io.reader.{DataOverviewReader, Reader}
+import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, Reader}
 import de.awagen.kolibri.base.processing.execution.functions.AnalyzeFunctions.{ExecutionSummary, GetImprovingAndLoosingFromDirPerRegex, GetValueVarianceFromDirPerRegex}
 import de.awagen.kolibri.base.processing.execution.functions.Execution
 import de.awagen.kolibri.base.processing.failure.TaskFailType

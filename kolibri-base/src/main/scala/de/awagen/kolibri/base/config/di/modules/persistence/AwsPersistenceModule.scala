@@ -21,9 +21,9 @@ import com.softwaremill.tagging
 import de.awagen.kolibri.base.config.AppProperties
 import de.awagen.kolibri.base.config.AppProperties.config.{csvColumnSeparator, directoryPathSeparator}
 import de.awagen.kolibri.base.config.di.modules.Modules.{AWS_MODULE, PersistenceDIModule}
-import de.awagen.kolibri.base.io.reader.{AwsS3DirectoryReader, AwsS3FileReader, DataOverviewReader, Reader}
-import de.awagen.kolibri.base.io.writer.Writers.{FileWriter, Writer}
-import de.awagen.kolibri.base.io.writer.base.AwsS3FileWriter
+import de.awagen.kolibri.storage.io.reader.{AwsS3DirectoryReader, AwsS3FileReader, DataOverviewReader, Reader}
+import de.awagen.kolibri.storage.io.writer.Writers.{FileWriter, Writer}
+import de.awagen.kolibri.storage.io.writer.base.AwsS3FileWriter
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.Writer
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
 import de.awagen.kolibri.datatypes.tagging.Tags
