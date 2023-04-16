@@ -25,6 +25,7 @@ import de.awagen.kolibri.base.actors.work.worker.JobPartIdentifiers.BaseJobPartI
 import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationState, AggregationStateWithoutData}
 import de.awagen.kolibri.base.actors.work.worker.RunnableExecutionActor.{BatchProcessState, BatchProcessStateResult, ReportBatchState, RunnableHousekeeping}
 import de.awagen.kolibri.base.cluster.ClusterNode
+import de.awagen.kolibri.base.config.AppProperties
 import de.awagen.kolibri.base.config.AppProperties.config
 import de.awagen.kolibri.base.config.AppProperties.config.kolibriDispatcherName
 import de.awagen.kolibri.base.config.EnvVariableKeys.{CLUSTER_NODE_HOST, POD_IP}
@@ -107,8 +108,8 @@ class RunnableExecutionActor[U <: WithCount](maxBatchDuration: FiniteDuration,
   var batchStateUpdate: StateUpdateWithoutData = _
 
   val statusUpdateCancellable: Cancellable = context.system.scheduler.scheduleAtFixedRate(
-    initialDelay = 2 seconds,
-    interval = 2 seconds)(() => {
+    initialDelay = FiniteDuration(AppProperties.config.batchStateUpdateInitialDelayInSeconds, SECONDS),
+    interval = FiniteDuration(AppProperties.config.batchStateUpdateIntervalInSeconds, SECONDS))(() => {
     ClusterNode.getSystemSetup.localStateDistributorActor ! BatchProcessStateResult(runningJobId, runningJobBatchNr, Right(batchProcessState()))
   })
 
@@ -168,6 +169,7 @@ class RunnableExecutionActor[U <: WithCount](maxBatchDuration: FiniteDuration,
       runningJobId = runnable.jobId
       runningJobBatchNr = runnable.batchNr
       elementsToProcessCount = runnable.supplier.size
+      // TODO - place watch on actor and stop sending any asks when actor terminates
       aggregatingActor = context.actorOf(AggregatingActor.props(
         runnable.aggregatorConfig,
         () => runnable.expectationGenerator.apply(runnable.supplier.size),

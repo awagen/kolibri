@@ -135,10 +135,10 @@ class SerializationSpec extends KolibriTypedTestKitNoCluster(ConfigOverwrites.co
         |  ],
         |  "resourceDirectives": [
         |    {
-        |      "type": "MAP_STRING_TO_DOUBLE_VALUE",
+        |      "type": "JUDGEMENT_PROVIDER",
         |      "values": {
         |        "resource": {
-        |          "resourceType": "MAP_STRING_TO_DOUBLE_VALUE",
+        |          "resourceType": "JUDGEMENT_PROVIDER",
         |          "identifier": "ident1"
         |        },
         |        "supplier": {
@@ -258,7 +258,7 @@ class SerializationSpec extends KolibriTypedTestKitNoCluster(ConfigOverwrites.co
         |      "queryParamName": "q",
         |      "productIdsKey": "productIds",
         |      "judgementsResource": {
-        |        "resourceType": "MAP_STRING_TO_DOUBLE_VALUE",
+        |        "resourceType": "JUDGEMENT_PROVIDER",
         |        "identifier": "ident1"
         |      },
         |      "metricsCalculation": {
@@ -338,10 +338,10 @@ class SerializationSpec extends KolibriTypedTestKitNoCluster(ConfigOverwrites.co
         |  ],
         |  "resourceDirectives": [
         |    {
-        |      "type": "MAP_STRING_TO_DOUBLE_VALUE",
+        |      "type": "JUDGEMENT_PROVIDER",
         |      "values": {
         |        "resource": {
-        |          "resourceType": "MAP_STRING_TO_DOUBLE_VALUE",
+        |          "resourceType": "JUDGEMENT_PROVIDER",
         |          "identifier": "ident1"
         |        },
         |        "supplier": {
@@ -504,7 +504,7 @@ class SerializationSpec extends KolibriTypedTestKitNoCluster(ConfigOverwrites.co
         |      "queryParamName": "q",
         |      "productIdsKey": "productIds",
         |      "judgementsResource": {
-        |        "resourceType": "MAP_STRING_TO_DOUBLE_VALUE",
+        |        "resourceType": "JUDGEMENT_PROVIDER",
         |        "identifier": "ident1"
         |      },
         |      "metricsCalculation": {

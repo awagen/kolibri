@@ -24,6 +24,9 @@ import de.awagen.kolibri.base.actors.clusterinfo.BatchStateActor.WorkerStatusRes
 import de.awagen.kolibri.base.actors.work.manager.JobProcessingState.JobStatusInfo
 import de.awagen.kolibri.base.actors.work.worker.RunnableExecutionActor.BatchProcessStateResult
 import de.awagen.kolibri.base.cluster.ClusterNode
+import de.awagen.kolibri.base.config.AppProperties.config.kolibriDispatcherName
+
+import scala.concurrent.ExecutionContextExecutor
 
 
 object LocalStateDistributorActor {
@@ -37,6 +40,8 @@ object LocalStateDistributorActor {
  * status messages to the right place
  */
 case class LocalStateDistributorActor() extends Actor with ActorLogging {
+
+  implicit val ec: ExecutionContextExecutor = context.system.dispatchers.lookup(kolibriDispatcherName)
 
   var batchStatusActor: Option[ActorRef] = None
 
@@ -57,7 +62,7 @@ case class LocalStateDistributorActor() extends Actor with ActorLogging {
   }
 
 
-  override def receive: Receive = ddReceive.orElse[Any, Unit](msg => msg match {
+  override def receive: Receive = ddReceive.orElse[Any, Unit] {
     case e: BatchProcessStateResult =>
       if (batchStatusActor.isEmpty) log.info("No batch state actor ref, can not send batch status update")
       batchStatusActor.foreach(x => x.forward(e))
@@ -67,5 +72,5 @@ case class LocalStateDistributorActor() extends Actor with ActorLogging {
     case e: WorkerStatusResponse =>
       if (batchStatusActor.isEmpty) log.info("No batch state actor ref, can not send worker status update")
       batchStatusActor.foreach(x => x.forward(e))
-  })
+  }
 }

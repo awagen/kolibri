@@ -51,7 +51,6 @@ object JudgementInfo {
     // ideal values are all given since they are picked from the existing judgement values
     // we will still
     val idealJudgements: Seq[Double] = judgementProvider.retrieveSortedJudgementsForTerm(query, products.size)
-
     // now apply imputation according to the passed JudgementHandlingStrategy
     val preparedCurrentJudgements = judgementHandling.extractValues(currentJudgements)
     // here we adjust the ideal sorting by the fact that the extraction of values above might set values != 0.0

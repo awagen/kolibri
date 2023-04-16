@@ -43,6 +43,7 @@ import de.awagen.kolibri.base.provider.WeightProviders
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.SearchJobDefinitions
 import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.Aggregators.{fullJobToSingleTagAggregatorSupplier, singleBatchAggregatorSupplier}
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.JudgementsFromResourceIRMetricsCalculations
+import de.awagen.kolibri.base.usecase.searchopt.metrics.MetricsCalculation.AVAILABLE_JUDGEMENT_METRICS_NAME_TO_TYPE_MAPPING
 import de.awagen.kolibri.base.usecase.searchopt.metrics.{IRMetricFunctions, JudgementHandlingStrategy, Metric, MetricsCalculation}
 import de.awagen.kolibri.base.usecase.searchopt.parse.JsonSelectors.JsValueSeqSelector
 import de.awagen.kolibri.base.usecase.searchopt.parse.TypedJsonSelectors.{NamedAndTypedSelector, TypedJsonSeqSelector}
@@ -100,7 +101,7 @@ object JobMessages {
                                         parsingConfig: ParsingConfig,
                                         excludeParamColumns: Seq[String],
                                         calculations: Seq[Calculation[WeaklyTypedMap[String], Any]],
-                                        metricNameToAggregationTypeMapping: Map[String, AggregationType],
+                                        var metricNameToAggregationTypeMapping: Map[String, AggregationType],
                                         taggingConfiguration: Option[BaseTaggingConfiguration[RequestTemplate, (Either[Throwable, WeaklyTypedMap[String]], RequestTemplate), MetricRow]],
                                         wrapUpFunction: Option[Execution[Any]],
                                         allowedTimePerElementInMillis: Int = 1000,
@@ -111,6 +112,9 @@ object JobMessages {
     import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ParameterValuesImplicits._
 
     val excludeParamsFromMetricRow: Seq[String] = (fixedParams.keys.toSet ++ excludeParamColumns.toSet).toSeq
+
+    metricNameToAggregationTypeMapping = metricNameToAggregationTypeMapping ++
+      MetricsCalculation.AVAILABLE_JUDGEMENT_METRICS_NAME_TO_TYPE_MAPPING
 
     def requestTemplateModifiers: Seq[IndexedGenerator[Modifier[RequestTemplateBuilder]]] =
       requestParameters.map(x => x.toState).map(x => x.toSeqGenerator).map(x => x.mapGen(y => y.toModifier))
@@ -148,7 +152,7 @@ object JobMessages {
     val requestTasks: Int = 4
     val judgementSupplier: SerializableSupplier[JudgementProvider[Double]] = new SerializableSupplier[JudgementProvider[Double]] {
       override def apply(): JudgementProvider[Double] = {
-        new BaseJudgementProvider(filepathToJudgementProvider(judgementFilePath).allJudgements)
+        filepathToJudgementProvider(judgementFilePath)
       }
     }
     val resourceDirectives: Seq[ResourceDirective[_]] = Seq(
@@ -197,7 +201,7 @@ object JobMessages {
         )
       )
     ) ++ otherCalculations
-    val defaultAggregatorMappings = Map(
+    val defaultAggregatorMappings: Map[String, AggregationType.Val[Double]] = Map(
       "NDCG@2" -> AggregationType.DOUBLE_AVG,
       "NDCG@4" -> AggregationType.DOUBLE_AVG,
       "NDCG@8" -> AggregationType.DOUBLE_AVG,
@@ -207,7 +211,7 @@ object JobMessages {
       "PRECISION@k=4,t=0.2" -> AggregationType.DOUBLE_AVG,
       "RECALL@k=2,t=0.2" -> AggregationType.DOUBLE_AVG,
       "RECALL@k=4,t=0.2" -> AggregationType.DOUBLE_AVG
-    )
+    ) ++ AVAILABLE_JUDGEMENT_METRICS_NAME_TO_TYPE_MAPPING
     val metricNameToAggregationTypeMapping: Map[String, AggregationType] = MapUtils.combineMaps(defaultAggregatorMappings, otherMetricNameToAggregationTypeMapping, (x: AggregationType, y: AggregationType) => y)
 
     val filterFunc: SerializableFunction1[Tag, Boolean] = new SerializableFunction1[Tag, Boolean] {

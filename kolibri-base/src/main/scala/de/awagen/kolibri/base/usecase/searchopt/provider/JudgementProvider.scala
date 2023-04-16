@@ -22,12 +22,6 @@ import de.awagen.kolibri.datatypes.io.KolibriSerializable
 trait JudgementProvider[T] extends Serializable with KolibriSerializable {
 
   /**
-   * @return Map of all key - judgementValue mappings. Note that the key is a composition of the term and entity
-   *         identifier, which is a detail of the specific implementation.
-   */
-  def allJudgements: Map[String, T]
-
-  /**
    * @param searchTerm - term for which to retrieve all judgements.
    * @return Map of all key - judgementValue mappings for the passed query. Note that the key is a composition of the
    *         term and entity identifier, which is a detail of the specific implementation.
