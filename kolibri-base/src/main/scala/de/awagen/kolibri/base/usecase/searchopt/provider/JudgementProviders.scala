@@ -17,11 +17,9 @@
 
 package de.awagen.kolibri.base.usecase.searchopt.provider
 
-import de.awagen.kolibri.base.config.AppConfig.persistenceModule.persistenceDIModule
-import de.awagen.kolibri.base.config.AppProperties
-import de.awagen.kolibri.storage.io.reader.Reader
 import de.awagen.kolibri.base.usecase.searchopt.parse.TypedJsonSelectors.NamedAndTypedSelector
 import de.awagen.kolibri.base.usecase.searchopt.provider.FileBasedJudgementProvider.JudgementData
+import de.awagen.kolibri.storage.io.reader.Reader
 import play.api.libs.json.Json
 
 import scala.collection.mutable
@@ -51,11 +49,12 @@ object FileBasedJudgementProvider {
    * @param queryProductDelimiter     - separator of query and productId to use when creating the key to store the judgement under
    * @return
    */
-  def createCSVBasedProvider(filepath: String,
+  def createCSVBasedProvider(fileReader: Reader[String, Seq[String]],
+                             filepath: String,
                              judgementFileFormatConfig: JudgementFileCSVFormatConfig = defaultJudgementFileFormatConfig,
                              queryProductDelimiter: String = "\u0000"): FileBasedJudgementProvider = {
     new FileBasedJudgementProvider(filepath,
-      persistenceDIModule.reader,
+      fileReader,
       csvSourceToJudgementMapping(
         judgementFileFormatConfig = judgementFileFormatConfig
       ),
@@ -73,14 +72,15 @@ object FileBasedJudgementProvider {
    * @param queryProductDelimiter  - separator of query and productId to use when creating the key to store the judgement under
    * @return
    */
-  def createJsonLineBasedProvider(filepath: String,
+  def createJsonLineBasedProvider(fileReader: Reader[String, Seq[String]],
+                                  filepath: String,
                                   jsonQuerySelector: NamedAndTypedSelector[Option[Any]],
                                   jsonProductsSelector: NamedAndTypedSelector[Seq[Any]],
                                   jsonJudgementsSelector: NamedAndTypedSelector[Seq[Any]],
                                   queryProductDelimiter: String = "\u0000"): FileBasedJudgementProvider = {
     new FileBasedJudgementProvider(
       filepath,
-      persistenceDIModule.reader,
+      fileReader,
       jsonLineSourceToJudgementMapping(
         jsonQuerySelector,
         jsonProductsSelector,
@@ -113,7 +113,8 @@ object FileBasedJudgementProvider {
   private[provider] def jsonLineSourceToJudgementMapping(jsonQuerySelector: NamedAndTypedSelector[Option[Any]],
                                                          jsonProductsSelector: NamedAndTypedSelector[Seq[Any]],
                                                          jsonJudgementsSelector: NamedAndTypedSelector[Seq[Any]],
-                                                         queryProductDelimiter: String = "\u0000"): Source => JudgementData = {
+                                                         queryProductDelimiter: String = "\u0000",
+                                                         topKJudgementsPerQueryStorageSize: Int = 100): Source => JudgementData = {
     source => {
       val judgementMap: mutable.Map[String, Map[String, Double]] = mutable.Map.empty
       val queryToIdealJudgementSortingMap: mutable.Map[String, Seq[Double]] = mutable.Map.empty
@@ -125,7 +126,7 @@ object FileBasedJudgementProvider {
           val query: String = jsonQuerySelector.select(jsValue).getOrElse("").asInstanceOf[String]
           val products: Seq[String] = jsonProductsSelector.select(jsValue).asInstanceOf[Seq[String]]
           val judgements: Seq[Double] = jsonJudgementsSelector.select(jsValue).map(x => convertStringOrDoubleAnyToDouble(x))
-          val descendingJudgements: Seq[Double] = judgements.sorted.reverse.take(AppProperties.config.topKJudgementsPerQueryStorageSize)
+          val descendingJudgements: Seq[Double] = judgements.sorted.reverse.take(topKJudgementsPerQueryStorageSize)
           val productToJudgementPairsForQuery: Seq[(String, Double)] = products zip judgements
           judgementMap(query) = productToJudgementPairsForQuery.toMap
           queryToIdealJudgementSortingMap.addOne((query, descendingJudgements))
@@ -142,7 +143,8 @@ object FileBasedJudgementProvider {
    * @param queryProductDelimiter     - the delimiter used to create the query - product - keys
    * @return
    */
-  private[provider] def csvSourceToJudgementMapping(judgementFileFormatConfig: JudgementFileCSVFormatConfig = defaultJudgementFileFormatConfig): Source => JudgementData = {
+  private[provider] def csvSourceToJudgementMapping(judgementFileFormatConfig: JudgementFileCSVFormatConfig = defaultJudgementFileFormatConfig,
+                                                    topKJudgementsPerQueryStorageSize: Int = 100): Source => JudgementData = {
     source => {
       val judgementMap: mutable.Map[String, Map[String, Double]] = mutable.Map.empty
       val queryToUnorderedJudgements: mutable.Map[String, Seq[Double]] = mutable.Map.empty
@@ -158,7 +160,7 @@ object FileBasedJudgementProvider {
           queryToUnorderedJudgements(query) = queryToUnorderedJudgements.getOrElse(query, Seq.empty) :+ judgement
         })
       val queryToSortedJudgementsMap = queryToUnorderedJudgements.map(x => {
-        (x._1, x._2.sorted.reverse.take(AppProperties.config.topKJudgementsPerQueryStorageSize))
+        (x._1, x._2.sorted.reverse.take(topKJudgementsPerQueryStorageSize))
       }).toMap
       JudgementData(judgementMap.toMap, queryToSortedJudgementsMap)
     }

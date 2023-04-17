@@ -16,13 +16,11 @@
 
 package de.awagen.kolibri.base.processing
 
-import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{Corn, ProcessingMessage}
 import de.awagen.kolibri.base.domain.TaskDataKeys.Val
-import de.awagen.kolibri.base.processing.execution.task.{SimpleAsyncTask, SimpleSyncTask}
+import de.awagen.kolibri.base.processing.ProcessingMessages.{Corn, ProcessingMessage}
+import de.awagen.kolibri.base.processing.execution.task.SimpleSyncTask
 import de.awagen.kolibri.base.processing.failure.TaskFailType.{FailedByException, TaskFailType}
 import de.awagen.kolibri.datatypes.mutable.stores.TypeTaggedMap
-
-import scala.concurrent.{ExecutionContext, Future}
 
 
 object TestTaskHelper {
@@ -52,14 +50,6 @@ object TestTaskHelper {
   def reverseIdsTask: SimpleSyncTask[String] = SimpleSyncTask[String](Seq(concatIdKey), reversedIdKey, taskFailTypeKey, reverseIdsFunc)
 
   def reverseIdsTaskPM: SimpleSyncTask[ProcessingMessage[String]] = SimpleSyncTask[ProcessingMessage[String]](Seq(concatIdKey), reversedIdKeyPM, taskFailTypeKey, reverseIdsFuncPM)
-
-  def asyncReverseIdsTask(implicit ec: ExecutionContext): SimpleAsyncTask[ProcessingMessage[String], ProcessingMessage[String]] = SimpleAsyncTask(
-    Seq(concatIdKey),
-    reversedIdKeyPM,
-    taskFailTypeKey,
-    x => Future {
-      Corn(reverseIdsValueFunc.apply(x))
-    }, (_, _) => (), _ => ())
 
   def reverseIdSeqTask: SimpleSyncTask[Seq[String]] = execution.task
     .SimpleSyncTask[Seq[String]](Seq(productIdResult), reversedIdSeqKey, taskFailTypeKey, reverseIdSeqFunc)

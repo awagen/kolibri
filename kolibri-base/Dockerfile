@@ -13,4 +13,4 @@ EXPOSE ${HTTP_SERVER_PORT}
 EXPOSE ${MANAGEMENT_PORT}
 EXPOSE ${CLUSTER_NODE_PORT}
 
-ENTRYPOINT java ${JVM_OPTS} -Dapplication.home="/app" -cp app.jar de.awagen.kolibri.base.cluster.ClusterNode true
+ENTRYPOINT java ${JVM_OPTS} -Dapplication.home="/app" -cp app.jar de.awagen.kolibri.fleet.akka.cluster.ClusterNode true

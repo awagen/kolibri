@@ -17,8 +17,8 @@
 
 package de.awagen.kolibri.base.io.json
 
-import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.ProcessingMessage
 import de.awagen.kolibri.base.http.client.request.RequestTemplate
+import de.awagen.kolibri.base.processing.ProcessingMessages.ProcessingMessage
 import de.awagen.kolibri.base.processing.tagging.TaggingConfigurations
 import de.awagen.kolibri.base.processing.tagging.TaggingConfigurations._
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
@@ -26,7 +26,7 @@ import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.tagging.TagType.AGGREGATION
 import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}
 import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
-import de.awagen.kolibri.datatypes.types.JsonStructDefs.{BooleanStructDef, ConditionalFields, NestedFieldSeqStructDef, RegexStructDef, StringChoiceStructDef, StringConstantStructDef}
+import de.awagen.kolibri.datatypes.types.JsonStructDefs._
 import de.awagen.kolibri.datatypes.types.SerializableCallable.{SerializableConsumer, SerializableFunction1}
 import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
 import spray.json.{DefaultJsonProtocol, JsValue, JsonFormat, RootJsonFormat, enrichAny}

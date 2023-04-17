@@ -17,10 +17,10 @@
 
 package de.awagen.kolibri.base.io.json
 
-import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.Corn
 import de.awagen.kolibri.base.http.client.request.RequestTemplate
 import de.awagen.kolibri.base.io.json.TaggingConfigurationsJsonProtocol.{MapKeyTaggerFuncFormat, MetricRowTaggerFuncFormat, RequestTemplateTaggerFuncFormat, taggingConfigurationJsonFormat}
-import de.awagen.kolibri.base.processing.tagging.TaggingConfigurations.{BaseTaggingConfiguration, TaggedMetricRowStore, TaggedRequestTemplateStore, EitherThrowableOrTaggedWeaklyTypedMapStore, TaggingConfiguration}
+import de.awagen.kolibri.base.processing.ProcessingMessages.Corn
+import de.awagen.kolibri.base.processing.tagging.TaggingConfigurations._
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
 import de.awagen.kolibri.datatypes.mutable.stores.{BaseWeaklyTypedMap, WeaklyTypedMap}
 import de.awagen.kolibri.datatypes.stores.MetricRow

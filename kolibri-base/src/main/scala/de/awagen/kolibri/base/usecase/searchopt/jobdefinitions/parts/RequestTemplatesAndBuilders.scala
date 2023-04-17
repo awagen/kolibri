@@ -17,9 +17,8 @@
 
 package de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts
 
-import akka.http.scaladsl.model.{HttpMethods, HttpProtocols}
-import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.ProcessingMessage
 import de.awagen.kolibri.base.http.client.request.{RequestTemplate, RequestTemplateBuilder}
+import de.awagen.kolibri.base.processing.ProcessingMessages.ProcessingMessage
 import de.awagen.kolibri.datatypes.tagging.{TagType, Tags}
 import de.awagen.kolibri.datatypes.types.SerializableCallable.{SerializableFunction1, SerializableSupplier}
 
@@ -40,8 +39,8 @@ object RequestTemplatesAndBuilders {
     override def apply(): RequestTemplateBuilder = {
       new RequestTemplateBuilder()
         .withContextPath(contextPath)
-        .withProtocol(HttpProtocols.`HTTP/1.1`)
-        .withHttpMethod(HttpMethods.GET)
+        .withProtocol("HTTP/1.1")
+        .withHttpMethod("GET")
         .withParams(fixedParams)
     }
   }

@@ -106,12 +106,12 @@ class ModifierMappersSpec extends UnitTestSpec {
       // given, when
       val templates: Seq[RequestTemplate] = applyModifiersOnEmptyTemplateBuilderAndReturn(headersMapper)
       // then
-      templates.head.headers.find(header => header.name() == "header1").get.value() mustBe "headerValue1_1"
-      templates.head.headers.find(header => header.name() == "header2").get.value() mustBe "headerValue1_2"
-      templates.head.headers.find(header => header.name() == "header3").get.value() mustBe "headerValue1_3"
-      templates(1).headers.find(header => header.name() == "header1").get.value() mustBe "headerValue2_1"
-      templates(1).headers.find(header => header.name() == "header2").get.value() mustBe "headerValue2_2"
-      templates(1).headers.find(header => header.name() == "header3").get.value() mustBe "headerValue2_3"
+      templates.head.headers.find(header => header._1 == "header1").get._2 mustBe "headerValue1_1"
+      templates.head.headers.find(header => header._1 == "header2").get._2 mustBe "headerValue1_2"
+      templates.head.headers.find(header => header._1 == "header3").get._2 mustBe "headerValue1_3"
+      templates(1).headers.find(header => header._1 == "header1").get._2 mustBe "headerValue2_1"
+      templates(1).headers.find(header => header._1 == "header2").get._2 mustBe "headerValue2_2"
+      templates(1).headers.find(header => header._1 == "header3").get._2 mustBe "headerValue2_3"
     }
 
     "correctly apply BodiesMapper" in {
@@ -124,14 +124,14 @@ class ModifierMappersSpec extends UnitTestSpec {
         .iterator.map(x => x.build()).toSeq
       // then
       appliedModifiers1.map(x => x.body) mustBe Seq(
-        HttpEntity.Strict(ContentTypes.`application/json`, ByteString("""{"name": "body1"}""")),
-        HttpEntity.Strict(ContentTypes.`application/json`, ByteString("""{"name": "body2"}""")),
-        HttpEntity.Strict(ContentTypes.`application/json`, ByteString("""{"name": "body3"}"""))
+        """{"name": "body1"}""",
+        """{"name": "body2"}""",
+        """{"name": "body3"}"""
       )
       appliedModifiers2.map(x => x.body) mustBe Seq(
-        HttpEntity.Strict(ContentTypes.`application/json`, ByteString("""{"name": "yay1"}""")),
-        HttpEntity.Strict(ContentTypes.`application/json`, ByteString("""{"name": "yay2"}""")),
-        HttpEntity.Strict(ContentTypes.`application/json`, ByteString("""{"name": "yay3"}"""))
+        """{"name": "yay1"}""",
+        """{"name": "yay2"}""",
+        """{"name": "yay3"}"""
       )
     }
 

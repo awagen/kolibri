@@ -17,10 +17,7 @@
 
 package de.awagen.kolibri.base.processing.execution.expectation
 
-import de.awagen.kolibri.base.actors.work.aboveall.SupervisorActor.FinishedJobEvent
-import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationStateWithData, AggregationStateWithoutData, ProcessingResult}
-import de.awagen.kolibri.base.processing.execution.expectation.Expectation.SuccessAndErrorCounts
-import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
+import de.awagen.kolibri.base.processing.ProcessingMessages.{AggregationStateWithData, AggregationStateWithoutData}
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.concurrent.duration.FiniteDuration
@@ -30,32 +27,6 @@ object ExecutionExpectations {
   private val log: Logger = LoggerFactory.getLogger(this.getClass)
 
   val FINISH_RESPONSE_KEY: String = "finishResponse"
-
-  // we only expect one FinishedJobEvent per job
-  // StopExpectation met if an FinishedJobEvent has FAILURE result type, ignores all other messages
-  // except FinishedJobEvent; also sets a TimeoutExpectation to abort
-  // jobs on exceeding it
-  def finishedJobExecutionExpectation(allowedDuration: FiniteDuration): ExecutionExpectation = {
-    BaseExecutionExpectation(
-      fulfillAllForSuccess = Seq(ClassifyingCountExpectation(Map(FINISH_RESPONSE_KEY -> {
-        case e: FinishedJobEvent if e.jobStatusInfo.resultSummary.result == ProcessingResult.SUCCESS => true
-        case _ => false
-      }), Map(FINISH_RESPONSE_KEY -> 1))),
-      fulfillAnyForFail = Seq(
-        StopExpectation(
-          overallElementCount = 1,
-          errorClassifier = {
-            case e: FinishedJobEvent if e.jobStatusInfo.resultSummary.result == ProcessingResult.SUCCESS => SuccessAndErrorCounts(1, 0)
-            case e: FinishedJobEvent if e.jobStatusInfo.resultSummary.result == ProcessingResult.FAILURE => SuccessAndErrorCounts(0, 1)
-            case _ => SuccessAndErrorCounts(0, 0)
-          },
-          overallCountToFailCountFailCriterion = new SerializableFunction1[(Int, Int), Boolean] {
-            override def apply(v1: (Int, Int)): Boolean = v1._2 > 0
-          }),
-        TimeExpectation(allowedDuration))
-    )
-  }
-
 
   /**
     *

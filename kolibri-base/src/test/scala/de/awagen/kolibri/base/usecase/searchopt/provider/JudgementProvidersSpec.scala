@@ -21,8 +21,11 @@ import de.awagen.kolibri.base.testclasses.UnitTestSpec
 import de.awagen.kolibri.base.usecase.searchopt.parse.JsonSelectors.{PlainAndRecursiveSelector, PlainPathSelector}
 import de.awagen.kolibri.base.usecase.searchopt.parse.TypedJsonSelectors.{NamedAndTypedSelector, TypedJsonSeqSelector, TypedJsonSingleValueSelector}
 import de.awagen.kolibri.datatypes.types.JsonTypeCast
+import de.awagen.kolibri.storage.io.reader.LocalResourceFileReader
 
 class JudgementProvidersSpec extends UnitTestSpec {
+
+  val localResourceFileReader: LocalResourceFileReader = LocalResourceFileReader("", None, fromClassPath = true)
 
   "FileBasedJudgementProvider" must {
 
@@ -33,6 +36,7 @@ class JudgementProvidersSpec extends UnitTestSpec {
       val jsonJudgementsSelector: NamedAndTypedSelector[Seq[Any]] = TypedJsonSeqSelector(name = "judgements", selector = PlainAndRecursiveSelector(recursiveSelectorKey = "score", plainSelectorKeys = "products"), castType = JsonTypeCast.DOUBLE)
       val queryProductDelimiter: String = "-"
       val judgementProvider = FileBasedJudgementProvider.createJsonLineBasedProvider(
+        localResourceFileReader,
         "data/json_lines_judgements.txt",
         jsonQuerySelector,
         jsonProductsSelector,

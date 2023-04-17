@@ -17,7 +17,7 @@
 
 package de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts
 
-import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.ProcessingMessage
+import de.awagen.kolibri.base.processing.ProcessingMessages.ProcessingMessage
 import de.awagen.kolibri.datatypes.functions.GeneralSerializableFunctions.identity
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
 import de.awagen.kolibri.datatypes.stores.MetricRow

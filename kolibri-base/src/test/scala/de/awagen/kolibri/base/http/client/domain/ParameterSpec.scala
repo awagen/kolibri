@@ -16,6 +16,7 @@
 
 package de.awagen.kolibri.base.http.client.domain
 
+import de.awagen.kolibri.base.http.client.request.Parameter
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
 
 class ParameterSpec extends UnitTestSpec {

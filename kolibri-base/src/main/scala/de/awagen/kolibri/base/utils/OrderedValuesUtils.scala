@@ -17,9 +17,8 @@
 
 package de.awagen.kolibri.base.utils
 
-import de.awagen.kolibri.base.config.AppConfig
-import de.awagen.kolibri.storage.io.reader.FileReaderUtils
 import de.awagen.kolibri.datatypes.values.{DistinctValues, OrderedValues}
+import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, FileReaderUtils, Reader}
 import org.slf4j.{Logger, LoggerFactory}
 import spray.json._
 
@@ -32,23 +31,22 @@ object OrderedValuesUtils extends DefaultJsonProtocol {
     logger.debug(s"found ${values.size} values for param $name, values: $values")
   }
 
-  def loadLinesFromFile(file: String, valuesName: String): OrderedValues[String] = {
-    val fileReader = AppConfig.persistenceModule.persistenceDIModule.reader
-    val values = FileReaderUtils.loadLinesFromFile(file, fileReader)
+  def loadLinesFromFile(reader: Reader[String, Seq[String]], file: String, valuesName: String): OrderedValues[String] = {
+    val values = FileReaderUtils.loadLinesFromFile(file, reader)
     DistinctValues(valuesName, values)
   }
 
   /**
    * Given a mapping of parameter name to filename, read all lines in file as values of the corresponding
    * mapped parameter name. Generates OrderedValues for each parameter and collects in Seq.
+   *
    * @param mapping - key: parameter name, value: file to extract the values from (one value per line)
    * @return - Sequence of created OrderedValues
    */
-  def paramNameToFileMappingToOrderedValues(mapping: Map[String, String]): Seq[OrderedValues[String]] = {
-    val fileReader = AppConfig.persistenceModule.persistenceDIModule.reader
+  def paramNameToFileMappingToOrderedValues(reader: Reader[String, Seq[String]], mapping: Map[String, String]): Seq[OrderedValues[String]] = {
     mapping.map(x => {
       val name: String = x._1
-      val values: Seq[String] = fileReader.read(x._2).map(x => x.trim).filter(x => x.nonEmpty)
+      val values: Seq[String] = reader.read(x._2).map(x => x.trim).filter(x => x.nonEmpty)
       logValues(values, name)
       DistinctValues[String](name, values)
     }).toSeq
@@ -56,7 +54,8 @@ object OrderedValuesUtils extends DefaultJsonProtocol {
 
   /**
    * Takes map with key=parameterName, value=Seq of values and for each key creates OrderedValues of it.
-   * @param mapping: key: parameterName, value: Seq of values
+   *
+   * @param mapping : key: parameterName, value: Seq of values
    * @return Seq containing all OrderedValues corresponding to the key / values mapping passed
    */
   def paramNameToValuesMappingToOrderedValues(mapping: Map[String, Seq[String]]): Seq[OrderedValues[String]] = {
@@ -71,14 +70,15 @@ object OrderedValuesUtils extends DefaultJsonProtocol {
   /**
    * Given a directory and filesSuffix and name of the value, extracts all filenames and strips the suffix,
    * then uses the filenames without the suffix as values for the value named by valueName.
-   * @param directory: directory to extract the filenames without suffix
-   * @param filesSuffix: the suffix used to filter files and to strip off the filename
-   * @param valueName: the name of the parameter for which to use the filtered/prepared filenames as values
+   *
+   * @param directory   : directory to extract the filenames without suffix
+   * @param filesSuffix : the suffix used to filter files and to strip off the filename
+   * @param valueName   : the name of the parameter for which to use the filtered/prepared filenames as values
    * @return: OrderedValues with name given by valueName and values given by the filenames in given directory matching
-   * the suffix (values with stripped off suffix are used in the returned OrderedValues).
+   *          the suffix (values with stripped off suffix are used in the returned OrderedValues).
    */
-  def folderToFilenamesOrderedValues(directory: String, filesSuffix: String, valueName: String): OrderedValues[String] = {
-    val directoryReader = AppConfig.persistenceModule.persistenceDIModule.dataOverviewReader(x => x.endsWith(filesSuffix))
+  def folderToFilenamesOrderedValues(filterConditionToDataOverviewReader: (String => Boolean) => DataOverviewReader, directory: String, filesSuffix: String, valueName: String): OrderedValues[String] = {
+    val directoryReader = filterConditionToDataOverviewReader(x => x.endsWith(filesSuffix))
     val keys: Seq[String] = directoryReader.listResources(directory, _ => true)
       .map(file => file.split(DIRECTORY_SEPARATOR).last.stripSuffix(filesSuffix))
     DistinctValues[String](valueName, keys)
@@ -87,21 +87,22 @@ object OrderedValuesUtils extends DefaultJsonProtocol {
   /**
    * Given a csv file, columnSeparator, key and value columns, extract the key value mapping per row.
    * Creates OrderedValues off those 1:1 mappings (here its assumed each key has only one value).
-   * @param file: csv file
-   * @param columnSeparator: column separator used in the file
-   * @param keyColumn: 0-based index of the column used to extract the keys
-   * @param valueColumn: 0-based index of the column used to extract the values
-   * @param valueName: value name used as name in the OrderedValues
+   *
+   * @param file            : csv file
+   * @param columnSeparator : column separator used in the file
+   * @param keyColumn       : 0-based index of the column used to extract the keys
+   * @param valueColumn     : 0-based index of the column used to extract the values
+   * @param valueName       : value name used as name in the OrderedValues
    * @return OrderedValues with only single element (can pick head of the corresponding Seq), giving 1:1 mappings
    *         as given in the csv files (in case a key has multiple mappings, would only pick last)
    */
-  def mappingsFromCsvFile(file: String,
+  def mappingsFromCsvFile(reader: Reader[String, Seq[String]],
+                          file: String,
                           columnSeparator: String,
                           keyColumn: Int,
                           valueColumn: Int,
                           valueName: String): OrderedValues[Map[String, String]] = {
-    val fileReader = AppConfig.persistenceModule.persistenceDIModule.reader
-    val mappings: Map[String, String] = fileReader.read(file)
+    val mappings: Map[String, String] = reader.read(file)
       .map(x => x.trim.split(columnSeparator))
       .filter(x => x.length >= math.max(keyColumn, valueColumn))
       .map(x => (x(valueColumn), x(keyColumn)))
@@ -113,15 +114,15 @@ object OrderedValuesUtils extends DefaultJsonProtocol {
    * Similar to mappingsFromCsvFile, yet instead of using key and value indices, here names are used and its assumed
    * that the first line of the csv has the column names as columns such that the passed key and value names can be
    * mapped to it. Note that this variant takes key:value mappings of 1:N into account, e.g allows multiple values per key.
-   * @param file: csv file
-   * @param columnSeparator: column separator used in the csv file
-   * @param keyName: name of the key column
-   * @param valueName: name of the value column
+   *
+   * @param file            : csv file
+   * @param columnSeparator : column separator used in the csv file
+   * @param keyName         : name of the key column
+   * @param valueName       : name of the value column
    * @return
    */
-  def fromCsvFileByColumnNames(file: String, columnSeparator: String, keyName: String, valueName: String): OrderedValues[Map[String, Seq[String]]] = {
-    val fileReader = AppConfig.persistenceModule.persistenceDIModule.reader
-    val lines: Seq[String] = fileReader.read(file)
+  def fromCsvFileByColumnNames(reader: Reader[String, Seq[String]], file: String, columnSeparator: String, keyName: String, valueName: String): OrderedValues[Map[String, Seq[String]]] = {
+    val lines: Seq[String] = reader.read(file)
     val headerColumns: Seq[String] = lines.head.split(columnSeparator)
       .map(x => x.trim)
       .toSeq
@@ -145,13 +146,13 @@ object OrderedValuesUtils extends DefaultJsonProtocol {
 
   /**
    * Reads mappings from json, assuming 1:1 key-value mappings and a reasonable string representation of the values
-   * @param file: file to read data from. Data is assumed to be a json.
-   * @param valueName: name of the values to extract
+   *
+   * @param file      : file to read data from. Data is assumed to be a json.
+   * @param valueName : name of the values to extract
    * @return
    */
-  def fromJsonFileMappingToOrderedValues(file: String, valueName: String): DistinctValues[Map[String, String]] = {
-    val fileReader = AppConfig.persistenceModule.persistenceDIModule.reader
-    val jsValue: JsValue = fileReader.getSource(file).mkString("\n").parseJson
+  def fromJsonFileMappingToOrderedValues(reader: Reader[String, Seq[String]], file: String, valueName: String): DistinctValues[Map[String, String]] = {
+    val jsValue: JsValue = reader.getSource(file).mkString("\n").parseJson
     val mapping: Map[String, String] = jsValue.convertTo[Map[String, JsValue]].view.mapValues(x => x.toString()).toMap
     DistinctValues[Map[String, String]](valueName, Seq(mapping))
   }

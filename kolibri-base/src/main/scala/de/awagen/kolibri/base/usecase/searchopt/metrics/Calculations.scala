@@ -17,15 +17,9 @@
 
 package de.awagen.kolibri.base.usecase.searchopt.metrics
 
-import de.awagen.kolibri.base.cluster.ClusterNodeObj
-import de.awagen.kolibri.base.directives.{Resource, RetrievalDirective}
-import de.awagen.kolibri.base.http.client.request.RequestTemplate
-import de.awagen.kolibri.base.resources.RetrievalError
-import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.ReservedStorageKeys._
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.BooleanSeqToDoubleCalculation
 import de.awagen.kolibri.base.usecase.searchopt.metrics.ComputeResultFunctions.{countValues, findFirstValue}
 import de.awagen.kolibri.base.usecase.searchopt.metrics.PlainMetricValueFunctions.{binarizeBooleanSeq, stringSequenceToPositionOccurrenceCountMap}
-import de.awagen.kolibri.base.usecase.searchopt.provider.JudgementProvider
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason.missingDataKeyFailReason
@@ -69,38 +63,6 @@ object Calculations {
       val result: ComputeResult[U] = data.map(value => function.apply(value))
         .getOrElse(Left(Seq(missingDataKeyFailReason(dataKey))))
       Seq(ResultRecord(names.head, result))
-    }
-  }
-
-  /**
-   * Similar to JudgementBasedMetricsCalculation, yet here this uses judgements as resource, e.g
-   * the set of judgements need to be pre-loaded as node resource.
-   * One purpose is to unify all calculation definitions purely based on either fields created by result parsing
-   * or from node resources.
-   * @param productIdsKey - the key value used to store the productIds in the WeaklyTypedMap[String]
-   * @param queryParamName - name of the parameter used in requests as query parameter
-   * @param judgementsResource - the resource identifier for the judgements map
-   * @param metricsCalculation - definition of which metrics to calculate
-   */
-  case class JudgementsFromResourceIRMetricsCalculations(productIdsKey: String,
-                                                         queryParamName: String,
-                                                         judgementsResource: Resource[JudgementProvider[Double]],
-                                                         metricsCalculation: MetricsCalculation) extends Calculation[WeaklyTypedMap[String], Any] {
-    def calculationResultIdentifier: Set[String] = metricsCalculation.metrics.map(x => x.name).toSet
-
-    override val names: Set[String] = metricsCalculation.metrics.map(metric => metric.name).toSet
-
-    override val calculation: SerializableFunction1[WeaklyTypedMap[String], Seq[ResultRecord[Any]]] = tMap => {
-      val requestTemplate: RequestTemplate = tMap.get[RequestTemplate](REQUEST_TEMPLATE_STORAGE_KEY.name).get
-      val query: String = requestTemplate.getParameter(queryParamName).map(x => x.head).getOrElse("")
-      val productSequence: Seq[String] = tMap.get[Seq[String]](productIdsKey).getOrElse(Seq.empty)
-      val judgementsOrError: Either[RetrievalError[JudgementProvider[Double]], JudgementProvider[Double]] = ClusterNodeObj.getResource(RetrievalDirective.Retrieve(judgementsResource))
-      judgementsOrError match {
-        case Left(error) =>
-          metricsCalculation.metrics.map(x => ResultRecord(x.name, Left(Seq(ComputeFailReason.apply(error.cause.toString)))))
-        case Right(judgementProvider) =>
-          metricsCalculation.calculateAllAndReturnSingleResults(query, productSequence, judgementProvider)
-      }
     }
   }
 }

@@ -46,6 +46,8 @@ libraryDependencies ++= Seq(
   "io.spray" %% "spray-json" % sprayVersion
 )
 
+libraryDependencies := { libraryDependencies.value :+ ("de.awagen.kolibri" %% "kolibri-base" % version.value) }
+
 // ---- start settings for publishing to mvn central
 // (needs to fully be in build.sbt of sub-project, also the non-project-specific parts)
 organization := "de.awagen.kolibri"

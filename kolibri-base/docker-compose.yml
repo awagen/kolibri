@@ -78,7 +78,7 @@ services:
       MAX_NR_BATCH_RETRIES: 2
       BATCH_MAX_TIME_TO_ACK_IN_MS: 1000
       PERSISTENCE_MODE: 'CLASS'
-      PERSISTENCE_MODULE_CLASS: 'de.awagen.kolibri.base.config.di.modules.persistence.LocalPersistenceModule'
+      PERSISTENCE_MODULE_CLASS: 'de.awagen.kolibri.fleet.akka.config.di.modules.persistence.LocalPersistenceModule'
       AWS_PROFILE: 'developer'
       AWS_S3_BUCKET: 'kolibri-dev'
       AWS_S3_PATH: 'metric_test'
@@ -169,7 +169,7 @@ services:
       MAX_NR_BATCH_RETRIES: 2
       BATCH_MAX_TIME_TO_ACK_IN_MS: 1000
       PERSISTENCE_MODE: 'CLASS'
-      PERSISTENCE_MODULE_CLASS: 'de.awagen.kolibri.base.config.di.modules.persistence.LocalPersistenceModule'
+      PERSISTENCE_MODULE_CLASS: 'de.awagen.kolibri.fleet.akka.config.di.modules.persistence.LocalPersistenceModule'
       AWS_PROFILE: 'developer'
       AWS_S3_BUCKET: 'kolibri-dev'
       AWS_S3_PATH: 'metric_test'

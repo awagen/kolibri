@@ -16,7 +16,7 @@
 
 package de.awagen.kolibri.base.domain
 
-import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.ProcessingMessage
+import de.awagen.kolibri.base.processing.ProcessingMessages.ProcessingMessage
 import de.awagen.kolibri.base.processing.failure.TaskFailType.TaskFailType
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.types.ClassTyped

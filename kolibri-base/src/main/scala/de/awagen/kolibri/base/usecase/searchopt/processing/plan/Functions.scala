@@ -17,14 +17,10 @@
 package de.awagen.kolibri.base.usecase.searchopt.processing.plan
 
 import de.awagen.kolibri.base.processing.failure.TaskFailType.TaskFailType
-import de.awagen.kolibri.base.usecase.searchopt.domain.ExtTaskDataKeys.{JUDGEMENTS, JUDGEMENT_PROVIDER, PRODUCT_ID_RESULT}
-import de.awagen.kolibri.base.usecase.searchopt.metrics.MetricsCalculation
-import de.awagen.kolibri.base.usecase.searchopt.domain.ExtTaskFailType.{JudgementProviderMissing, JudgementsMissing, ProductIdsMissing}
+import de.awagen.kolibri.base.usecase.searchopt.domain.ExtTaskDataKeys.{JUDGEMENT_PROVIDER, PRODUCT_ID_RESULT}
+import de.awagen.kolibri.base.usecase.searchopt.domain.ExtTaskFailType.{JudgementProviderMissing, ProductIdsMissing}
 import de.awagen.kolibri.base.usecase.searchopt.provider.JudgementProvider
 import de.awagen.kolibri.datatypes.mutable.stores.TypeTaggedMap
-import de.awagen.kolibri.datatypes.stores.MetricRow
-
-import scala.collection.immutable
 
 
 /**

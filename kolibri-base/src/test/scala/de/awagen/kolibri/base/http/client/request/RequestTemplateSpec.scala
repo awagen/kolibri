@@ -16,17 +16,14 @@
 
 package de.awagen.kolibri.base.http.client.request
 
-import akka.http.scaladsl.model.{HttpMethods, HttpRequest}
-import akka.http.scaladsl.model.headers.RawHeader
-import de.awagen.kolibri.base.actors.tracking.RequestTrackingActor._
 import de.awagen.kolibri.base.testclasses.UnitTestSpec
 
 
 class RequestTemplateSpec extends UnitTestSpec {
 
 
-  private[this] def getContext: RequestTemplate = {
-    RequestTemplate(contextPath = "testpath", parameters = Map("debug" -> Seq("false"), "echoParams" -> Seq("none")), headers = Seq.empty, body = "", httpMethod = HttpMethods.GET)
+  private[this] def getTemplate: RequestTemplate = {
+    RequestTemplate(contextPath = "testpath", parameters = Map("debug" -> Seq("false"), "echoParams" -> Seq("none")), headers = Seq.empty, body = "", httpMethod = "GET")
   }
 
 
@@ -34,26 +31,13 @@ class RequestTemplateSpec extends UnitTestSpec {
 
     "correctly build query string with context path and encode parameters" in {
       //given
-      val context = getContext
+      val template = getTemplate
       //when
-      val query: String = context.getRequest.uri.toString()
+      val query: String = template.query
       //then
       query mustBe "/testpath?debug=false&echoParams=none"
     }
-    //
-    "correctly set headers required for identifying request for tracking and set start time" +
-      "just when the request is requested from context" in {
-      //given
-      val context = getContext
-      // when
-      val currentTimeInMs = System.currentTimeMillis()
-      Thread.sleep(200)
-      val request: HttpRequest = context.getRequest
-      //then
-      val startTimeValue = request.headers.filter(x => x.name() == PROJECT_HEADER_PREFIX + "START").toList.head.value().toLong
-      startTimeValue - currentTimeInMs >= 200 mustBe true
-      request.headers.contains(RawHeader(PROJECT_HEADER_PREFIX + "HASH", request.hashCode().toString))
-    }
+
   }
 
 }

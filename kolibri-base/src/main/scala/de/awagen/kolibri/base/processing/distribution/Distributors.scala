@@ -17,10 +17,12 @@
 
 package de.awagen.kolibri.base.processing.distribution
 
-import de.awagen.kolibri.base.actors.work.manager.JobManagerActor.Batch
+import de.awagen.kolibri.base.traits.Traits.WithBatchNr
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 
 object Distributors {
+
+  type Batch = Any with WithBatchNr
 
   /**
     * Distributor distributing the single batches on nodes. Needs updates on batches considered to be failed

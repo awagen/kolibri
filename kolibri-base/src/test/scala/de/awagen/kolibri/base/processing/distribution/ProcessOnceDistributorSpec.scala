@@ -16,7 +16,7 @@
 
 package de.awagen.kolibri.base.processing.distribution
 
-import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.AggregationStateWithData
+import de.awagen.kolibri.base.processing.ProcessingMessages.AggregationStateWithData
 import de.awagen.kolibri.base.processing.distribution.DistributionStates.{AllProvidedWaitingForResults, Completed, Pausing}
 import de.awagen.kolibri.base.processing.execution.expectation.BaseExecutionExpectation
 import de.awagen.kolibri.base.testclasses.UnitTestSpec

@@ -6,6 +6,18 @@ val scalaTestVersion = "3.2.2"
 val playVersion = "2.9.1"
 val playLogbackVersion = "2.8.2"
 val sprayVersion = "1.3.5"
+val scalaMockVersion = "5.1.0"
+val akkaVersion = "2.6.14"
+val akkaContribVersion = "2.5.31"
+val akkaHttpVersion = "10.2.1"
+val akkaManagementVersion = "1.0.8"
+val shapelessVersion = "2.3.3"
+val logbackVersion = "1.2.3"
+val kryoSerializationVersion = "2.2.0"
+val kamonVersion = "2.2.0"
+val macwireVersion = "2.4.0"
+val scalacScoverageRuntimeVersion = "1.4.9"
+val testcontainersVersion = "1.16.3"
 
 // scoverage plugin setting to exclude classes from coverage report
 coverageExcludedPackages := ""
@@ -43,8 +55,60 @@ libraryDependencies ++= Seq(
   "com.typesafe.play" %% "play-json" % playVersion,
   // logback
   "com.typesafe.play" %% "play-logback" % playLogbackVersion,
-  "io.spray" %% "spray-json" % sprayVersion
+  "io.spray" %% "spray-json" % sprayVersion,
+
+  //akka-management there to host HTTP endpoints used during bootstrap process
+  "com.lightbend.akka.management" %% "akka-management" % akkaManagementVersion,
+  //helps forming (or joining to) a cluster using akka discovery to discover peer nodes
+  "com.lightbend.akka.management" %% "akka-management-cluster-bootstrap" % akkaManagementVersion,
+  //akka-management-cluster-http is extension to akka-management and allows interaction with cluster through HTTP interface
+  //thus it is not necessary but might be conveniant
+  // (https://doc.akka.io/docs/akka-management/current/cluster-http-management.html)
+  "com.lightbend.akka.management" %% "akka-management-cluster-http" % akkaManagementVersion,
+  // tag-based aws discovery
+  "com.lightbend.akka.discovery" %% "akka-discovery-aws-api" % akkaManagementVersion,
+  // k8s discovery
+  "com.lightbend.akka.discovery" %% "akka-discovery-kubernetes-api" % akkaManagementVersion,
+  // to discover other members of the cluster
+  "com.typesafe.akka" %% "akka-discovery" % akkaVersion,
+  "com.typesafe.akka" %% "akka-cluster" % akkaVersion,
+  "com.typesafe.akka" %% "akka-cluster-metrics" % akkaVersion,
+  "com.typesafe.akka" %% "akka-cluster-tools" % akkaVersion, // needed to use cluster singleton (https://doc.akka.io/docs/akka/2.5/cluster-singleton.html?language=scala)
+  "com.typesafe.akka" %% "akka-contrib" % akkaContribVersion,
+  "com.typesafe.akka" %% "akka-distributed-data" % akkaVersion,
+  "com.typesafe.akka" %% "akka-persistence" % akkaVersion,
+  "com.typesafe.akka" %% "akka-cluster-sharding-typed" % akkaVersion,
+  "com.typesafe.akka" %% "akka-protobuf" % akkaVersion,
+  "com.typesafe.akka" %% "akka-actor-typed" % akkaVersion,
+  "com.typesafe.akka" %% "akka-cluster-typed" % akkaVersion,
+  "com.typesafe.akka" %% "akka-serialization-jackson" % akkaVersion,
+  "com.typesafe.akka" %% "akka-pki" % akkaVersion,
+  "com.typesafe.akka" %% "akka-coordination" % akkaVersion,
+  "com.typesafe.akka" %% "akka-remote" % akkaVersion,
+  "com.typesafe.akka" %% "akka-protobuf-v3" % akkaVersion,
+  "com.typesafe.akka" %% "akka-testkit" % akkaVersion,
+  //scala test framework (scalactic is recommended but not required)(http://www.scalatest.org/install)
+  "org.scalactic" %% "scalactic" % scalaTestVersion % "test,it",
+  "org.scalatest" %% "scalatest" % scalaTestVersion % "test,it",
+  "com.typesafe.akka" %% "akka-http" % akkaHttpVersion,
+  "com.typesafe.akka" %% "akka-http-spray-json" % akkaHttpVersion,
+  "com.typesafe.akka" %% "akka-http2-support" % akkaHttpVersion,
+  "com.typesafe.akka" %% "akka-stream" % akkaVersion,
+  "com.typesafe.akka" %% "akka-stream-testkit" % akkaVersion % "test,it",
+  "com.typesafe.akka" %% "akka-actor-testkit-typed" % akkaVersion % "test",
+  "com.typesafe.akka" %% "akka-slf4j" % akkaVersion,
+  "ch.qos.logback" % "logback-classic" % logbackVersion,
+  "com.chuusai" %% "shapeless" % shapelessVersion,
+  "io.altoo" %% "akka-kryo-serialization" % kryoSerializationVersion,
+  "org.slf4j" % "slf4j-api" % sl4jApiVersion,
+  "io.kamon" %% "kamon-bundle" % kamonVersion,
+  "io.kamon" %% "kamon-prometheus" % kamonVersion,
+  "com.softwaremill.macwire" %% "macros" % macwireVersion,
+  "com.softwaremill.macwire" %% "util" % macwireVersion,
+  "org.scalamock" %% "scalamock" % scalaMockVersion % Test
 )
+
+libraryDependencies := { libraryDependencies.value :+ ("de.awagen.kolibri" %% "kolibri-base" % version.value) }
 
 // ---- start settings for publishing to mvn central
 // (needs to fully be in build.sbt of sub-project, also the non-project-specific parts)

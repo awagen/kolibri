@@ -17,8 +17,6 @@
 
 package de.awagen.kolibri.base.http.client.request
 
-import akka.http.scaladsl.model._
-import akka.http.scaladsl.model.headers.RawHeader
 import de.awagen.kolibri.base.http.client.request.RequestTemplateBuilder.logger
 import de.awagen.kolibri.base.utils.IterableUtils
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
@@ -38,8 +36,8 @@ class RequestTemplateBuilder extends KolibriSerializable {
 
   private[request] var contextPath: String = ""
   private[request] var parameters: Map[String, Seq[String]] = Map.empty
-  private[request] var headers: Seq[HttpHeader] = Seq.empty
-  private[request] var bodyContentType: ContentType = ContentTypes.`application/json`
+  private[request] var headers: Seq[(String, String)] = Seq.empty
+  private[request] var bodyContentType: String = "application/json"
   private[request] var bodyString: String = ""
   // string replacements on the set body value,
   // those are only set in the pre-build phase and only applied
@@ -48,8 +46,8 @@ class RequestTemplateBuilder extends KolibriSerializable {
   private[request] var bodyValueReplacementMap: immutable.Map[String, String] = immutable.Map.empty
   private[request] var urlParameterValueReplacementMap: immutable.Map[String, String] = immutable.Map.empty
   private[request] var headerValueReplacementMap: immutable.Map[String, String] = immutable.Map.empty
-  private[request] var httpMethod: HttpMethod = HttpMethods.GET
-  private[request] var protocol: HttpProtocol = HttpProtocols.`HTTP/1.1`
+  private[request] var httpMethod: String = "GET"
+  private[request] var protocol: String = "HTTP/1.1"
 
   def withContextPath(path: String): RequestTemplateBuilder = {
     this.contextPath = if (path.startsWith("/")) path else s"/$path"
@@ -61,12 +59,12 @@ class RequestTemplateBuilder extends KolibriSerializable {
     this
   }
 
-  def withHeaders(headers: Seq[HttpHeader], replace: Boolean = false): RequestTemplateBuilder = {
+  def withHeaders(headers: Seq[(String, String)], replace: Boolean = false): RequestTemplateBuilder = {
     this.headers = if (replace) headers else (Set(this.headers: _*) ++ Set(headers: _*)).toSeq
     this
   }
 
-  def withBody(bodyString: String, contentType: ContentType = ContentTypes.`application/json`): RequestTemplateBuilder = {
+  def withBody(bodyString: String, contentType: String = "application/json"): RequestTemplateBuilder = {
     this.bodyContentType = contentType
     this.bodyString = bodyString
     this
@@ -87,12 +85,12 @@ class RequestTemplateBuilder extends KolibriSerializable {
     this
   }
 
-  def withHttpMethod(method: HttpMethod): RequestTemplateBuilder = {
+  def withHttpMethod(method: String): RequestTemplateBuilder = {
     this.httpMethod = method
     this
   }
 
-  def withProtocol(protocol: HttpProtocol): RequestTemplateBuilder = {
+  def withProtocol(protocol: String): RequestTemplateBuilder = {
     this.protocol = protocol
     this
   }
@@ -138,7 +136,7 @@ class RequestTemplateBuilder extends KolibriSerializable {
     }
   }
 
-  private[request] def applyReplacementsToHeadersAndReturnNewValue(): Seq[HttpHeader] = {
+  private[request] def applyReplacementsToHeadersAndReturnNewValue(): Seq[(String, String)] = {
     if (Objects.isNull(this.headers)) {
       logger.warn(s"Could not apply replacement of header values" +
         s" since header has not yet been set")
@@ -148,7 +146,7 @@ class RequestTemplateBuilder extends KolibriSerializable {
       var newHeaders = this.headers
       this.headerValueReplacementMap.foreach(paramNameAndValue => {
         newHeaders = newHeaders.map(header => {
-          RawHeader(header.name(), header.value().replace(paramNameAndValue._1, paramNameAndValue._2))
+          (header._1, header._2.replace(paramNameAndValue._1, paramNameAndValue._2))
         })
       })
       newHeaders
@@ -173,16 +171,15 @@ class RequestTemplateBuilder extends KolibriSerializable {
   }
 
   def build(): RequestTemplate = {
-    var newBody = HttpEntity.Empty
+    var newBody = ""
     if (!Objects.isNull(this.bodyString) && this.bodyString.nonEmpty) {
-      val newBodyValue = applyReplacementsToBodyAndReturnNewValue()
-      newBody = HttpEntity(this.bodyContentType, newBodyValue.getBytes)
+      newBody = applyReplacementsToBodyAndReturnNewValue()
     }
     var newParameters = Map.empty[String, Seq[String]]
     if (!Objects.isNull(this.parameters)) {
       newParameters = applyReplacementsToUrlParametersAndReturnNewValue()
     }
-    var newHeaders = Seq.empty[HttpHeader]
+    var newHeaders = Seq.empty[(String, String)]
     if (!Objects.isNull(this.headers)) {
       newHeaders = applyReplacementsToHeadersAndReturnNewValue()
     }
@@ -195,7 +192,8 @@ class RequestTemplateBuilder extends KolibriSerializable {
       urlParameterReplacements = this.urlParameterValueReplacementMap,
       headerValueReplacements = this.headerValueReplacementMap,
       httpMethod = httpMethod,
-      protocol = protocol
+      protocol = protocol,
+      bodyContentType = this.bodyContentType
     )
   }
 

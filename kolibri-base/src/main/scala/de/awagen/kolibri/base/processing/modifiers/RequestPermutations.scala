@@ -17,11 +17,10 @@
 
 package de.awagen.kolibri.base.processing.modifiers
 
-import akka.http.scaladsl.model.{ContentType, ContentTypes}
 import de.awagen.kolibri.base.http.client.request.RequestTemplateBuilder
 import de.awagen.kolibri.base.processing.modifiers.ModifierMappers.{BodyMapper, HeadersMapper, ParamsMapper}
-import de.awagen.kolibri.base.processing.modifiers.RequestModifiersUtils.{bodiesToBodyModifier, multiValuesToBodyReplaceModifiers, multiValuesToHeaderModifiers, multiValuesToHeaderValueReplaceModifiers, multiValuesToRequestParamModifiers, multiValuesToUrlParameterReplaceModifiers}
-import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.{BodyModifier, BodyReplaceModifier, CombinedModifier, HeaderModifier, HeaderValueReplaceModifier, RequestParameterModifier, UrlParameterReplaceModifier}
+import de.awagen.kolibri.base.processing.modifiers.RequestModifiersUtils._
+import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers._
 import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator, OneAfterAnotherIndexedGenerator, PermutatingIndexedGenerator}
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.multivalues.OrderedMultiValues
@@ -110,7 +109,7 @@ object RequestPermutations {
                                 bodyReplacements: OrderedMultiValues,
                                 headerValueReplacements: OrderedMultiValues,
                                 urlParameterReplacements: OrderedMultiValues,
-                                bodyContentType: ContentType = ContentTypes.`application/json`) extends ModifierGeneratorProvider {
+                                bodyContentType: String = "application/json") extends ModifierGeneratorProvider {
     val paramModifierGenerators: Seq[IndexedGenerator[RequestParameterModifier]] = multiValuesToRequestParamModifiers(params, replace = false)
       .filter(gen => gen.size > 0)
     val headerModifierGenerators: Seq[IndexedGenerator[HeaderModifier]] = multiValuesToHeaderModifiers(headers, replace = false)

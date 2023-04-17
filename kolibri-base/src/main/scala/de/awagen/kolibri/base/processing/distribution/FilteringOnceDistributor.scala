@@ -16,11 +16,11 @@
 
 package de.awagen.kolibri.base.processing.distribution
 
-import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.AggregationState
+import de.awagen.kolibri.base.processing.ProcessingMessages.AggregationState
+import de.awagen.kolibri.base.processing.distribution.FilteringOnceDistributor.logger
 import de.awagen.kolibri.base.traits.Traits.WithBatchNr
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import org.slf4j.{Logger, LoggerFactory}
-import de.awagen.kolibri.base.processing.distribution.FilteringOnceDistributor.logger
 
 object FilteringOnceDistributor {
 

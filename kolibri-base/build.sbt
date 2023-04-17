@@ -141,7 +141,7 @@ libraryDependencies ++= additionalDependencies
 // definition due to "`value` can only be used within a task or setting macro, such as :=, +=, ++=, Def.task, or Def.setting."
 libraryDependencies := { libraryDependencies.value :+ ("de.awagen.kolibri" %% "kolibri-storage" % version.value) }
 resolvers ++= additionalResolvers
-mainClass in assembly := Some("de.awagen.kolibri.base.cluster.ClusterNode")
+mainClass in assembly := Some("de.awagen.kolibri.fleet.akka.cluster.ClusterNode")
 
 // ---- start settings for publishing to mvn central
 // (needs to fully be in build.sbt of sub-project, also the non-project-specific parts)

@@ -47,10 +47,10 @@ class RequestPermutationsSpec extends UnitTestSpec {
       results.size mustBe 2
       results.head.getParameter("p1").get mustBe Seq("v1")
       results(1).getParameter("pp1").get mustBe Seq("vv1")
-      results.head.headers.find(x => x.name() == "p1").get.value() mustBe "v1"
-      results(1).headers.find(x => x.name() == "pp1").get.value() mustBe "vv1"
-      results.head.body mustBe HttpEntity.Strict(ContentTypes.`application/json`, ByteString("""{"a": "A"}"""))
-      results(1).body mustBe HttpEntity.Strict(ContentTypes.`application/json`, ByteString("""{"b": "B"}"""))
+      results.head.headers.find(x => x._1 == "p1").get._2 mustBe "v1"
+      results(1).headers.find(x => x._1 == "pp1").get._2 mustBe "vv1"
+      results.head.body mustBe """{"a": "A"}"""
+      results(1).body mustBe """{"b": "B"}"""
     }
   }
 

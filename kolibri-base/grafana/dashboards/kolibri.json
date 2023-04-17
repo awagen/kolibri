@@ -687,7 +687,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "histogram_quantile(0.99, sum(rate(akka_actor_processing_time_seconds_bucket{class=\"de.awagen.kolibri.base.actors.work.manager.JobManagerActor\"}[2m])) by (le, class)) * 1000",
+          "expr": "histogram_quantile(0.99, sum(rate(akka_actor_processing_time_seconds_bucket{class=\"de.awagen.kolibri.fleet.akka.actors.work.manager.JobManagerActor\"}[2m])) by (le, class)) * 1000",
           "hide": false,
           "interval": "",
           "legendFormat": "p99 - {{class}}",
@@ -695,7 +695,7 @@
         },
         {
           "exemplar": true,
-          "expr": "histogram_quantile(0.95, sum(rate(akka_actor_processing_time_seconds_bucket{class=\"de.awagen.kolibri.base.actors.work.manager.JobManagerActor\"}[2m])) by (le, class)) * 1000",
+          "expr": "histogram_quantile(0.95, sum(rate(akka_actor_processing_time_seconds_bucket{class=\"de.awagen.kolibri.fleet.akka.actors.work.manager.JobManagerActor\"}[2m])) by (le, class)) * 1000",
           "hide": false,
           "interval": "",
           "legendFormat": "p95 - {{class}}",
@@ -703,7 +703,7 @@
         },
         {
           "exemplar": true,
-          "expr": "histogram_quantile(0.90, sum(rate(akka_actor_processing_time_seconds_bucket{class=\"de.awagen.kolibri.base.actors.work.manager.JobManagerActor\"}[2m])) by (le, class)) * 1000",
+          "expr": "histogram_quantile(0.90, sum(rate(akka_actor_processing_time_seconds_bucket{class=\"de.awagen.kolibri.fleet.akka.actors.work.manager.JobManagerActor\"}[2m])) by (le, class)) * 1000",
           "hide": false,
           "interval": "",
           "legendFormat": "p90 - {{class}}",
@@ -785,7 +785,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "histogram_quantile(0.99, sum(rate(akka_actor_processing_time_seconds_bucket{class=\"de.awagen.kolibri.base.actors.work.worker.RunnableExecutionActor\"}[2m])) by (le, class)) * 1000",
+          "expr": "histogram_quantile(0.99, sum(rate(akka_actor_processing_time_seconds_bucket{class=\"de.awagen.kolibri.fleet.akka.actors.work.worker.RunnableExecutionActor\"}[2m])) by (le, class)) * 1000",
           "hide": false,
           "interval": "",
           "legendFormat": "p99 - {{class}}",
@@ -793,7 +793,7 @@
         },
         {
           "exemplar": true,
-          "expr": "histogram_quantile(0.95, sum(rate(akka_actor_processing_time_seconds_bucket{class=\"de.awagen.kolibri.base.actors.work.worker.RunnableExecutionActor\"}[2m])) by (le, class)) * 1000",
+          "expr": "histogram_quantile(0.95, sum(rate(akka_actor_processing_time_seconds_bucket{class=\"de.awagen.kolibri.fleet.akka.actors.work.worker.RunnableExecutionActor\"}[2m])) by (le, class)) * 1000",
           "hide": false,
           "interval": "",
           "legendFormat": "p95 - {{class}}",
@@ -801,7 +801,7 @@
         },
         {
           "exemplar": true,
-          "expr": "histogram_quantile(0.90, sum(rate(akka_actor_processing_time_seconds_bucket{class=\"de.awagen.kolibri.base.actors.work.worker.RunnableExecutionActor\"}[2m])) by (le, class)) * 1000",
+          "expr": "histogram_quantile(0.90, sum(rate(akka_actor_processing_time_seconds_bucket{class=\"de.awagen.kolibri.fleet.akka.actors.work.worker.RunnableExecutionActor\"}[2m])) by (le, class)) * 1000",
           "hide": false,
           "interval": "",
           "legendFormat": "p90 - {{class}}",
@@ -883,7 +883,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "histogram_quantile(0.99, sum(rate(akka_actor_processing_time_seconds_bucket{class=\"de.awagen.kolibri.base.actors.work.worker.AggregatingActor\"}[2m])) by (le, class)) * 1000",
+          "expr": "histogram_quantile(0.99, sum(rate(akka_actor_processing_time_seconds_bucket{class=\"de.awagen.kolibri.fleet.akka.actors.work.worker.AggregatingActor\"}[2m])) by (le, class)) * 1000",
           "hide": false,
           "interval": "",
           "legendFormat": "p99 - {{class}}",
@@ -891,7 +891,7 @@
         },
         {
           "exemplar": true,
-          "expr": "histogram_quantile(0.95, sum(rate(akka_actor_processing_time_seconds_bucket{class=\"de.awagen.kolibri.base.actors.work.worker.AggregatingActor\"}[2m])) by (le, class)) * 1000",
+          "expr": "histogram_quantile(0.95, sum(rate(akka_actor_processing_time_seconds_bucket{class=\"de.awagen.kolibri.fleet.akka.actors.work.worker.AggregatingActor\"}[2m])) by (le, class)) * 1000",
           "hide": false,
           "interval": "",
           "legendFormat": "p95 - {{class}}",
@@ -899,7 +899,7 @@
         },
         {
           "exemplar": true,
-          "expr": "histogram_quantile(0.90, sum(rate(akka_actor_processing_time_seconds_bucket{class=\"de.awagen.kolibri.base.actors.work.worker.AggregatingActor\"}[2m])) by (le, class)) * 1000",
+          "expr": "histogram_quantile(0.90, sum(rate(akka_actor_processing_time_seconds_bucket{class=\"de.awagen.kolibri.fleet.akka.actors.work.worker.AggregatingActor\"}[2m])) by (le, class)) * 1000",
           "hide": false,
           "interval": "",
           "legendFormat": "p90 - {{class}}",

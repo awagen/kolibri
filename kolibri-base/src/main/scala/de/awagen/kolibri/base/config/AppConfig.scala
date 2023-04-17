@@ -17,63 +17,6 @@
 
 package de.awagen.kolibri.base.config
 
-import com.softwaremill.macwire.wire
-import de.awagen.kolibri.base.config.AppProperties.config._
-import de.awagen.kolibri.base.config.di.modules.connections.HttpModule
-import de.awagen.kolibri.base.config.di.modules.persistence.PersistenceModule
-import de.awagen.kolibri.base.usecase.searchopt.parse.JsonSelectors.{PlainAndRecursiveSelector, PlainPathSelector}
-import de.awagen.kolibri.base.usecase.searchopt.parse.TypedJsonSelectors.{NamedAndTypedSelector, TypedJsonSeqSelector, TypedJsonSingleValueSelector}
-import de.awagen.kolibri.base.usecase.searchopt.provider.FileBasedJudgementProvider.JudgementFileCSVFormatConfig
-import de.awagen.kolibri.base.usecase.searchopt.provider.{FileBasedJudgementProvider, JudgementProvider}
-import de.awagen.kolibri.datatypes.types.JsonTypeCast
-import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
-
 object AppConfig {
-
-  val persistenceModule: PersistenceModule = wire[PersistenceModule]
-
-  val httpModule: HttpModule = wire[HttpModule]
-
-  val judgementFileFormatConfig: JudgementFileCSVFormatConfig = JudgementFileCSVFormatConfig(
-    judgement_list_delimiter = judgementCSVFileColumnDelimiter,
-    judgement_file_columns = judgementCSVFileIgnoreLessThanColumns,
-    judgement_file_judgement_column = judgementCSVFileJudgementColumn,
-    judgement_file_search_term_column = judgementCSVFileSearchTermColumn,
-    judgement_file_product_id_column = judgementCSVFileProductIdColumn
-  )
-
-  val filepathToJudgementProvider: SerializableFunction1[String, JudgementProvider[Double]] = new SerializableFunction1[String, JudgementProvider[Double]] {
-
-    override def apply(filepath: String): JudgementProvider[Double] = {
-      judgementSourceType match {
-        case "CSV" =>
-          FileBasedJudgementProvider.createCSVBasedProvider(
-            filepath,
-            judgementFileFormatConfig)
-        case "JSON_LINES" =>
-          val jsonQuerySelector: NamedAndTypedSelector[Option[Any]] = TypedJsonSingleValueSelector(
-            name = "query",
-            selector = PlainPathSelector(judgementJsonLinesPlainQueryPath),
-            castType = JsonTypeCast.STRING
-          )
-          val jsonProductsSelector: TypedJsonSeqSelector = TypedJsonSeqSelector(name = "products", selector = PlainAndRecursiveSelector(recursiveSelectorKey = judgementJsonLinesPlainProductIdSelector, plainSelectorKeys = judgementJsonLinesPlainProductsPath: _*), castType = JsonTypeCast.STRING)
-          val jsonJudgementsSelector: TypedJsonSeqSelector = TypedJsonSeqSelector(
-            name = "judgements",
-            selector = PlainAndRecursiveSelector(
-              recursiveSelectorKey = judgementJsonLinesPlainJudgementSelector,
-              plainSelectorKeys = judgementJsonLinesPlainProductsPath: _*
-            ),
-            castType = judgementJsonLinesJudgementValueTypeCast
-          )
-          val queryProductDelimiter: String = judgementQueryAndProductDelimiter
-          FileBasedJudgementProvider.createJsonLineBasedProvider(
-            filepath,
-            jsonQuerySelector,
-            jsonProductsSelector,
-            jsonJudgementsSelector,
-            queryProductDelimiter)
-      }
-    }
-  }
 
 }

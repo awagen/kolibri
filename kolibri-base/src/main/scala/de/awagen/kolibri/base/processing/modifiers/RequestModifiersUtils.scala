@@ -17,9 +17,7 @@
 
 package de.awagen.kolibri.base.processing.modifiers
 
-import akka.http.scaladsl.model.headers.RawHeader
-import akka.http.scaladsl.model.{ContentType, ContentTypes}
-import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.{BodyModifier, BodyReplaceModifier, HeaderModifier, HeaderValueReplaceModifier, RequestParameterModifier, UrlParameterReplaceModifier}
+import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers._
 import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator}
 import de.awagen.kolibri.datatypes.multivalues.OrderedMultiValues
 
@@ -113,7 +111,7 @@ object RequestModifiersUtils {
       .map(x => ByFunctionNrLimitedIndexedGenerator.createFromSeq(
         x.getAll.map(y =>
           HeaderModifier(
-            headers = Seq(RawHeader(x.name, y.toString)),
+            headers = Seq((x.name, y.toString)),
             replace = replace
           )
         )
@@ -127,7 +125,7 @@ object RequestModifiersUtils {
    * @param bodies : Seq of the distinct body values
    * @return
    */
-  def bodiesToBodyModifier(bodies: Seq[String], contentType: ContentType = ContentTypes.`application/json`): IndexedGenerator[BodyModifier] = {
+  def bodiesToBodyModifier(bodies: Seq[String], contentType: String = "application/json"): IndexedGenerator[BodyModifier] = {
     ByFunctionNrLimitedIndexedGenerator.createFromSeq(bodies).mapGen(bodyValue => {
       BodyModifier(bodyValue, contentType)
     })

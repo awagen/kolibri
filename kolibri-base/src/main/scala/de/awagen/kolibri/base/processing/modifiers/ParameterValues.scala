@@ -38,9 +38,9 @@ object ParameterValues {
           case ValueType.URL_PARAMETER =>
             RequestTemplateBuilderModifiers.RequestParameterModifier(Map(value.name -> Seq(value.value)), replace = false)
           case ValueType.HEADER =>
-            RequestTemplateBuilderModifiers.HeaderModifier(Seq(RawHeader(value.name, value.value)), replace = false)
+            RequestTemplateBuilderModifiers.HeaderModifier(Seq((value.name, value.value)), replace = false)
           case ValueType.BODY =>
-            RequestTemplateBuilderModifiers.BodyModifier(value.value, ContentTypes.`application/json`)
+            RequestTemplateBuilderModifiers.BodyModifier(value.value, "application/json")
           case ValueType.BODY_REPLACE =>
             RequestTemplateBuilderModifiers.BodyReplaceModifier(Map(value.name -> value.value))
           case ValueType.HEADER_REPLACE =>

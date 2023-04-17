@@ -16,7 +16,6 @@
 
 package de.awagen.kolibri.base.utils
 
-import akka.http.scaladsl.model.HttpMethods
 import de.awagen.kolibri.base.http.client.request.RequestTemplate
 import de.awagen.kolibri.datatypes.types.ClassTyped
 
@@ -25,7 +24,7 @@ import scala.reflect.runtime.universe._
 object TestHelper {
 
   def createRequestTemplateWithParams(parameters: Map[String, Seq[String]]): RequestTemplate = {
-    RequestTemplate("testpath", parameters, headers = Seq.empty, body = "", httpMethod = HttpMethods.GET)
+    RequestTemplate("testpath", parameters, headers = Seq.empty, body = "", httpMethod = "GET")
   }
 
   case class TestTypedClass[T: TypeTag](name: String) extends ClassTyped[T]

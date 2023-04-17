@@ -1,27 +1,22 @@
 /**
-  * Copyright 2021 Andreas Wagenmann
-  *
-  * Licensed under the Apache License, Version 2.0 (the "License");
-  * you may not use this file except in compliance with the License.
-  * You may obtain a copy of the License at
-  *
-  * http://www.apache.org/licenses/LICENSE-2.0
-  *
-  * Unless required by applicable law or agreed to in writing, software
-  * distributed under the License is distributed on an "AS IS" BASIS,
-  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  * See the License for the specific language governing permissions and
-  * limitations under the License.
-  */
+ * Copyright 2021 Andreas Wagenmann
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 
 package de.awagen.kolibri.base.processing.execution.functions
 
-import de.awagen.kolibri.base.config.AppConfig
-import de.awagen.kolibri.base.config.di.modules.persistence.PersistenceModule
-import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, Reader}
-import de.awagen.kolibri.storage.io.writer.Writers.Writer
-import de.awagen.kolibri.base.processing.execution.functions.FileUtils.regexDirectoryReader
 import de.awagen.kolibri.base.processing.failure.TaskFailType
 import de.awagen.kolibri.base.processing.failure.TaskFailType.TaskFailType
 import de.awagen.kolibri.datatypes.metrics.aggregation.writer.CSVParameterBasedMetricDocumentFormat
@@ -29,6 +24,8 @@ import de.awagen.kolibri.datatypes.stores.PriorityStores._
 import de.awagen.kolibri.datatypes.stores.{MetricDocument, MetricRow}
 import de.awagen.kolibri.datatypes.tagging.Tags._
 import de.awagen.kolibri.datatypes.values.MetricValue
+import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, Reader}
+import de.awagen.kolibri.storage.io.writer.Writers.Writer
 
 import scala.collection.{immutable, mutable}
 import scala.util.matching.Regex
@@ -63,7 +60,10 @@ object AnalyzeFunctions {
   case class ExecutionSummary[+T](result: T, failed: Int, success: Int, failTypeCounts: Map[TaskFailType, Int])
 
 
-  case class GetImprovingAndLoosingFromDirPerRegex(dir: String,
+  case class GetImprovingAndLoosingFromDirPerRegex(directoryReaderFunc: Regex => DataOverviewReader,
+                                                   fileReader: Reader[String, Seq[String]],
+                                                   fileWriter: Writer[String, String, _],
+                                                   dir: String,
                                                    fileRegex: Regex,
                                                    currentParams: Map[String, Seq[String]],
                                                    compareParams: Seq[Map[String, Seq[String]]],
@@ -71,11 +71,13 @@ object AnalyzeFunctions {
                                                    queryFromFilename: String => String,
                                                    n_best: Int,
                                                    n_worst: Int) extends Execution[ExecutionSummary[Map[String, Map[Map[String, Seq[String]], Seq[(String, String)]]]]] {
-    lazy val directoryReader: DataOverviewReader = regexDirectoryReader(fileRegex)
+    lazy val directoryReader: DataOverviewReader = directoryReaderFunc(fileRegex)
 
     override def execute: Either[TaskFailType.TaskFailType, ExecutionSummary[Map[String, Map[Map[String, Seq[String]], Seq[(String, String)]]]]] = {
       val filteredFiles = directoryReader.listResources(dir, _ => true)
       val execution = GetImprovingAndLoosing(
+        fileReader,
+        fileWriter,
         filteredFiles,
         currentParams,
         compareParams,
@@ -89,22 +91,22 @@ object AnalyzeFunctions {
   }
 
   /**
-    * Execution to compute the variance for a given metric per single result file (single query results)
-    * and return queries and the calculated variance sorted ascending by
-    * variance
-    *
-    * @param dir               - the result (sub)folder
-    * @param fileRegex         - the regex to determine which result files to take into account
-    * @param metricName        - metric name to calculate variance by
-    * @param queryFromFilename - function to determine the query from the filename
-    */
-  case class GetValueVarianceFromDirPerRegex(dir: String,
+   * Execution to compute the variance for a given metric per single result file (single query results)
+   * and return queries and the calculated variance sorted ascending by
+   * variance
+   *
+   * @param dir               - the result (sub)folder
+   * @param fileRegex         - the regex to determine which result files to take into account
+   * @param metricName        - metric name to calculate variance by
+   * @param queryFromFilename - function to determine the query from the filename
+   */
+  case class GetValueVarianceFromDirPerRegex(directoryReaderFunc: Regex => DataOverviewReader,
+                                             fileReader: Reader[String, Seq[String]],
+                                             dir: String,
                                              fileRegex: Regex,
                                              metricName: String,
                                              queryFromFilename: String => String) extends Execution[ExecutionSummary[Seq[(String, Double)]]] {
-    lazy val directoryReader: DataOverviewReader = regexDirectoryReader(fileRegex)
-    lazy val persistenceModule: PersistenceModule = AppConfig.persistenceModule
-    lazy val fileReader: Reader[String, Seq[String]] = persistenceModule.persistenceDIModule.reader
+    lazy val directoryReader: DataOverviewReader = directoryReaderFunc(fileRegex)
 
     override def execute: Either[TaskFailType, ExecutionSummary[Seq[(String, Double)]]] = {
       val filteredFiles: Seq[String] = directoryReader.listResources(dir, _ => true)
@@ -129,6 +131,7 @@ object AnalyzeFunctions {
    * the values corresponding to current parameters.
    * Result has HIGHEST_RESULT_KEY and LOWEST_RESULT_KEY and for each a mapping parameterMap (of compareParams) ->
    * (query, double (formatted string)) tuples
+   *
    * @param compareFiles
    * @param currentParams
    * @param compareParams
@@ -137,18 +140,17 @@ object AnalyzeFunctions {
    * @param n_best
    * @param n_worst
    */
-  case class GetImprovingAndLoosing(compareFiles: Seq[String],
+  case class GetImprovingAndLoosing(fileReader: Reader[String, Seq[String]],
+                                    fileWriter: Writer[String, String, _],
+                                    compareFiles: Seq[String],
                                     currentParams: Map[String, Seq[String]],
                                     compareParams: Seq[Map[String, Seq[String]]],
                                     metricName: String,
                                     queryFromFilename: String => String,
                                     n_best: Int,
                                     n_worst: Int) extends Execution[ExecutionSummary[Map[String, Map[Map[String, Seq[String]], Seq[(String, String)]]]]] {
-    lazy val persistenceModule: PersistenceModule = AppConfig.persistenceModule
-    lazy val fileReader: Reader[String, Seq[String]] = persistenceModule.persistenceDIModule.reader
-    lazy val fileWriter: Writer[String, String, _] = persistenceModule.persistenceDIModule.writer
-    val csvFormat: CSVParameterBasedMetricDocumentFormat = CSVParameterBasedMetricDocumentFormat("\t")
 
+    val csvFormat: CSVParameterBasedMetricDocumentFormat = CSVParameterBasedMetricDocumentFormat("\t")
 
     override def execute: Either[TaskFailType.TaskFailType, ExecutionSummary[Map[String, Map[Map[String, Seq[String]], Seq[(String, String)]]]]] = {
       val result = KeepNBestAndKWorst(n_best, n_worst)

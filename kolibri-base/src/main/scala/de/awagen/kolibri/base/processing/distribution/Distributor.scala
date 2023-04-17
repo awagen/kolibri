@@ -17,7 +17,7 @@
 
 package de.awagen.kolibri.base.processing.distribution
 
-import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.AggregationState
+import de.awagen.kolibri.base.processing.ProcessingMessages.AggregationState
 import de.awagen.kolibri.base.processing.distribution.DistributionStates.DistributionState
 
 trait Distributor[T, U] {

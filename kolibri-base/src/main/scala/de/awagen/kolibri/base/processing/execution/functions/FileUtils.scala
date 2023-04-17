@@ -17,14 +17,10 @@
 
 package de.awagen.kolibri.base.processing.execution.functions
 
-import de.awagen.kolibri.base.config.AppConfig.persistenceModule.persistenceDIModule
-import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, Reader}
 import de.awagen.kolibri.datatypes.metrics.aggregation.writer.MetricDocumentFormat
 import de.awagen.kolibri.datatypes.stores.MetricDocument
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
-import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
-
-import scala.util.matching.Regex
+import de.awagen.kolibri.storage.io.reader.Reader
 
 object FileUtils {
 
@@ -41,11 +37,5 @@ object FileUtils {
     val allLines: Seq[String] = fileReader.getSource(file).getLines().toSeq
     format.contentToMetricDocumentAndMetricTypeMapping(allLines.mkString("\n"))
   }
-
-  def regexDirectoryReader(regex: Regex): DataOverviewReader = persistenceDIModule.dataOverviewReader(
-    new SerializableFunction1[String, Boolean] {
-      override def apply(v1: String): Boolean = regex.matches(v1)
-    }
-  )
 
 }

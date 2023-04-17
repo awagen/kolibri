@@ -17,9 +17,6 @@
 
 package de.awagen.kolibri.base.processing.modifiers
 
-import akka.http.scaladsl.model.headers.RawHeader
-import akka.http.scaladsl.model.{ContentType, ContentTypes, HttpEntity}
-import akka.util.ByteString
 import de.awagen.kolibri.base.http.client.request.RequestTemplateBuilder
 import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.{BodyModifier, CombinedModifier, HeaderModifier, RequestParameterModifier}
 import de.awagen.kolibri.datatypes.collections.generators.{IndexedGenerator, PermutatingIndexedGenerator}
@@ -74,7 +71,7 @@ object ModifierMappers {
       val modifierGenerators: Seq[IndexedGenerator[HeaderModifier]] = getValuesForKey(key).map(headerKeyValueMapping =>
         headerKeyValueMapping.map(headerNameAndValue => {
           val headerName = headerNameAndValue._1
-          headerNameAndValue._2.mapGen(headerValue => HeaderModifier(Seq(RawHeader(headerName, headerValue)), replace))
+          headerNameAndValue._2.mapGen(headerValue => HeaderModifier(Seq((headerName, headerValue)), replace))
         })).getOrElse(Seq.empty).toSeq
       if (modifierGenerators.isEmpty) None
       else Some(PermutatingIndexedGenerator(modifierGenerators).mapGen(headerSeq => CombinedModifier(headerSeq)))
@@ -88,7 +85,7 @@ object ModifierMappers {
   }
 
   trait BodyMapper extends ModifierMapper[IndexedGenerator[String]] {
-    val contentType: ContentType
+    val contentType: String
 
     override def getModifiersForKey(key: String): Option[IndexedGenerator[Modifier[RequestTemplateBuilder]]] = {
       getValuesForKey(key).map(bodyValuesGen =>
@@ -125,7 +122,7 @@ object ModifierMappers {
     override def keys: Set[String] = map.keySet
   }
 
-  case class BaseBodyMapper(map: Map[String, IndexedGenerator[String]], contentType: ContentType = ContentTypes.`application/json`) extends BodyMapper {
+  case class BaseBodyMapper(map: Map[String, IndexedGenerator[String]], contentType: String = "application/json") extends BodyMapper {
     override def getValuesForKey(key: String): Option[IndexedGenerator[String]] = map.get(key)
 
     override def keys: Set[String] = map.keySet

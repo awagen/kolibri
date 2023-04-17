@@ -16,7 +16,7 @@
 
 package de.awagen.kolibri.base.domain.jobdefinitions
 
-import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages
+import de.awagen.kolibri.base.processing.ProcessingMessages
 import de.awagen.kolibri.base.processing.execution.expectation.Expectation.SuccessAndErrorCounts
 import de.awagen.kolibri.base.processing.execution.expectation._
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1

@@ -17,7 +17,7 @@
 
 package de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts
 
-import de.awagen.kolibri.base.actors.work.worker.ProcessingMessages.{AggregationStateWithData, AggregationStateWithoutData, Corn}
+import de.awagen.kolibri.base.processing.ProcessingMessages.{AggregationStateWithData, AggregationStateWithoutData, Corn}
 import de.awagen.kolibri.base.processing.execution.expectation.Expectation.SuccessAndErrorCounts
 import de.awagen.kolibri.base.processing.execution.expectation._
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
