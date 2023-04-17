@@ -23,6 +23,7 @@ import de.awagen.kolibri.base.provider.WeightProviders.WeightProvider
 import de.awagen.kolibri.datatypes.metrics.aggregation.writer.MetricDocumentFormat
 import de.awagen.kolibri.datatypes.stores.MetricDocument
 import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}
+import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, Reader}
 import de.awagen.kolibri.storage.io.writer.Writers.Writer
 import org.slf4j.{Logger, LoggerFactory}
@@ -44,7 +45,7 @@ object AggregationFunctions {
    * @param sampleIdentifierToWeight
    * @param outputFilename - the output filename (might contain additional path prefix relative to directorySubDir)
    */
-  case class AggregateFromDirectoryByRegexWeighted(directoryReaderFunc: Regex => DataOverviewReader,
+  case class AggregateFromDirectoryByRegexWeighted(directoryReaderFunc: SerializableFunction1[Regex, DataOverviewReader],
                                                    fileReader: Reader[String, Seq[String]],
                                                    fileWriter: Writer[String, String, _],
                                                    formatIdToFormatMap: Map[String, MetricDocumentFormat],
@@ -53,8 +54,6 @@ object AggregationFunctions {
                                                    filterRegex: Regex,
                                                    sampleIdentifierToWeight: WeightProvider[String],
                                                    outputFilename: String) extends Execution[Unit] {
-
-//    lazy val directoryReader: DataOverviewReader = regexDirectoryReader(filterRegex)
 
     override def execute: Either[TaskFailType, Unit] = {
       val filteredFiles: Seq[String] = directoryReaderFunc(filterRegex).listResources(readSubDir, _ => true)
@@ -81,9 +80,6 @@ object AggregationFunctions {
                                     outputFilename: String) extends Execution[Unit] {
     // dummy tag to aggregate under
     val aggregationIdentifier: Tag = StringTag("AGG")
-
-    //    lazy val fileReader: Reader[String, Seq[String]] = persistenceModule.persistenceDIModule.reader
-    //    lazy val fileWriter: Writer[String, String, _] = persistenceModule.persistenceDIModule.writer
 
     override def execute: Either[TaskFailType, Unit] = {
       try {

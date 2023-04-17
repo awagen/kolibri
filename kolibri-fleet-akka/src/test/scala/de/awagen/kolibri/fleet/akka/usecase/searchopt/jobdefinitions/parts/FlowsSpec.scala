@@ -35,7 +35,6 @@ import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifie
 import de.awagen.kolibri.base.processing.tagging.TaggingConfigurations.TaggingConfiguration
 import de.awagen.kolibri.base.resources.{ResourceAlreadyExists, ResourceOK}
 import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.FromMapCalculation
-import de.awagen.kolibri.fleet.akka.usecase.searchopt.metrics.CalculationsTestHelper._
 import de.awagen.kolibri.base.usecase.searchopt.metrics.{IRMetricFunctions, Metric}
 import de.awagen.kolibri.base.usecase.searchopt.provider.JudgementProvider
 import de.awagen.kolibri.datatypes.mutable.stores.{BaseWeaklyTypedMap, WeaklyTypedMap}
@@ -47,8 +46,8 @@ import de.awagen.kolibri.fleet.akka.actors.clusterinfo.ResourceToJobMappingClust
 import de.awagen.kolibri.fleet.akka.actors.clusterinfo.ResourceToJobMappingClusterStateManagerActor.{ProcessResourceDirectives, ProcessedResourceDirectives}
 import de.awagen.kolibri.fleet.akka.cluster.ClusterNodeObj
 import de.awagen.kolibri.fleet.akka.config.AppConfig.filepathToJudgementProvider
-import de.awagen.kolibri.fleet.akka.http.client.request.RequestTemplateImplicits.RequestTemplateToAkkaHttpRequest
 import de.awagen.kolibri.fleet.akka.usecase.searchopt.jobdefinitions.parts.Flows.{fullProcessingFlow, metricsCalc, processingMsgToRequestTuple}
+import de.awagen.kolibri.fleet.akka.usecase.searchopt.metrics.CalculationsTestHelper._
 import de.awagen.kolibri.fleet.akka.utils.JudgementInfoTestHelper.judgementsToSuccessJudgementInfo
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.must.Matchers
@@ -164,10 +163,6 @@ class FlowsSpec extends KolibriTestKitNoCluster
       result(1)._2.data.parameters mustBe params
       result.head._2.data.contextPath mustBe "path1"
       result(1)._2.data.contextPath mustBe "path2"
-      // TODO: timestamp is now deliberately different on each toHttpRequest call, thus commenting out.
-      // check the assumption and either use the equality check or remove comment
-//      result.head._1 mustBe result.head._2.data.toHttpRequest
-//      result(1)._1 mustBe result(1)._2.data.toHttpRequest
     }
 
     "correctly provide metricsCalc" in {

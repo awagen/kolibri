@@ -1,3 +1,20 @@
+/**
+ * Copyright 2021 Andreas Wagenmann
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
 package de.awagen.kolibri.fleet.akka.io.json
 
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
@@ -9,9 +26,11 @@ import de.awagen.kolibri.base.processing.execution.functions.Execution
 import de.awagen.kolibri.base.provider.WeightProviders.WeightProvider
 import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
 import de.awagen.kolibri.datatypes.types.JsonStructDefs._
+import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
 import de.awagen.kolibri.fleet.akka.config.{AppConfig, AppProperties}
 import de.awagen.kolibri.fleet.akka.io.json.SupplierJsonProtocol.StringSeqMappingFormat
+import de.awagen.kolibri.storage.io.reader.DataOverviewReader
 import spray.json.{DefaultJsonProtocol, JsValue, RootJsonFormat, enrichAny}
 
 import scala.util.matching.Regex
@@ -43,6 +62,11 @@ object ExecutionJsonProtocol extends DefaultJsonProtocol with SprayJsonSupport {
 
   val MISSING_VALUE_VALUE = "MISSING_VALUE"
 
+  val regexToFilteringDirectoryReaderFunction = new SerializableFunction1[Regex, DataOverviewReader] {
+    override def apply(regex: Regex): DataOverviewReader = AppConfig.persistenceModule.persistenceDIModule
+      .dataOverviewReader(x => regex.matches(x))
+  }
+
   implicit object ExecutionFormat extends RootJsonFormat[Execution[Any]] with WithStructDef {
     override def read(json: JsValue): Execution[Any] = json match {
       case spray.json.JsObject(fields) => fields(TYPE_KEY).convertTo[String] match {
@@ -53,7 +77,7 @@ object ExecutionJsonProtocol extends DefaultJsonProtocol with SprayJsonSupport {
           val writeSubDir: String = fields(WRITE_SUBDIR_KEY).convertTo[String]
           val weightProvider: WeightProvider[String] = fields(WEIGHT_PROVIDER_KEY).convertTo[WeightProvider[String]]
           AggregateFromDirectoryByRegexWeighted(
-            regex => AppConfig.persistenceModule.persistenceDIModule.dataOverviewReader(x => regex.matches(x)),
+            regexToFilteringDirectoryReaderFunction,
             AppConfig.persistenceModule.persistenceDIModule.reader,
             AppConfig.persistenceModule.persistenceDIModule.writer,
             AppProperties.config.metricDocumentFormatsMap,
@@ -104,7 +128,7 @@ object ExecutionJsonProtocol extends DefaultJsonProtocol with SprayJsonSupport {
           val n_best: Int = fields(N_BEST_KEY).convertTo[Int]
           val n_worst: Int = fields(N_WORST_KEY).convertTo[Int]
           GetImprovingAndLoosingFromDirPerRegex(
-            regex => AppConfig.persistenceModule.persistenceDIModule.dataOverviewReader(x => regex.matches(x)),
+            regexToFilteringDirectoryReaderFunction,
             AppConfig.persistenceModule.persistenceDIModule.reader,
             AppConfig.persistenceModule.persistenceDIModule.writer,
             directory,
@@ -145,7 +169,7 @@ object ExecutionJsonProtocol extends DefaultJsonProtocol with SprayJsonSupport {
           val queryFromFileName: String => String = x => RegexUtils.findParamValueInString(param = queryParamName,
             string = x, defaultValue = MISSING_VALUE_VALUE)
           GetValueVarianceFromDirPerRegex(
-            regex => AppConfig.persistenceModule.persistenceDIModule.dataOverviewReader(x => regex.matches(x)),
+            regexToFilteringDirectoryReaderFunction,
             AppConfig.persistenceModule.persistenceDIModule.reader,
             directory,
             regex,

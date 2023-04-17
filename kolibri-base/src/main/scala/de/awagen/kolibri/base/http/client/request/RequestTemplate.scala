@@ -17,8 +17,8 @@
 package de.awagen.kolibri.base.http.client.request
 
 import de.awagen.kolibri.base.http.client.request.RequestTemplate.PROJECT_HEADER_PREFIX
+import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.utils.ParameterUtils
-import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.immutable
 
@@ -69,7 +69,7 @@ class RequestTemplate(val contextPath: String,
                       val headerValueReplacements: immutable.Map[String, String],
                       val httpMethod: String = "GET",
                       val protocol: String = "HTTP/1.1",
-                      val bodyContentType: String = "application/json") {
+                      val bodyContentType: String = "application/json") extends KolibriSerializable {
 
   val fullQueryString: String = ParameterUtils.queryStringFromParameterNamesAndValues(parameters)
   val buffer: StringBuffer = new StringBuffer("")

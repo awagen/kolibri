@@ -208,7 +208,7 @@ object TestData {
       |    {
       |      "type": "STANDALONE",
       |      "values": {
-      |        "name": "seomValuesParam1",
+      |        "name": "someValuesParam1",
       |        "values_type": "URL_PARAMETER",
       |        "values": {
       |          "type": "FROM_ORDERED_VALUES_TYPE",
@@ -643,6 +643,13 @@ class SerializationSpec extends KolibriTypedTestKitNoCluster(ConfigOverwrites.co
       serializeAndBack(parsed)
     }
 
+    "parsed search evaluation definition must be serializable" in {
+      // given
+      val parsed =TestData.jobSample.parseJson.convertTo[SearchEvaluationDefinition]
+      // when, then
+      serializeAndBack(parsed)
+    }
+
     "serialization across actors" in {
       // given
       val parsed: ValueSeqGenDefinition[_] = TestData.mappingSample.parseJson.convertTo[ValueSeqGenDefinition[_]]
@@ -659,16 +666,15 @@ class SerializationSpec extends KolibriTypedTestKitNoCluster(ConfigOverwrites.co
       value.mappedValues.size mustBe castParsed.mappedValues.size
     }
 
-    // TODO: fix
-//    "serialization of job message across actors" in {
-//      val parsed: SearchEvaluationDefinition = TestData.jobSample.parseJson.convertTo[SearchEvaluationDefinition]
-//      val senderActor: ActorRef[Actors.MirrorActor.Sent] = testKit.spawn(Actors.MirrorActor(), "mirror1")
-//      val testProbe = testKit.createTestProbe[Actors.MirrorActor.Received]()
-//      senderActor ! Actors.MirrorActor.Sent(parsed, testProbe.ref)
-//      val msg: Actors.MirrorActor.Received = testProbe.expectMessageType[Actors.MirrorActor.Received]
-//      val value = msg.obj.asInstanceOf[SearchEvaluationDefinition]
-//      value.jobName mustBe parsed.jobName
-//    }
+    "serialization of job message across actors" in {
+      val parsed: SearchEvaluationDefinition = TestData.jobSample.parseJson.convertTo[SearchEvaluationDefinition]
+      val senderActor: ActorRef[Actors.MirrorActor.Sent] = testKit.spawn(Actors.MirrorActor(), "mirror1")
+      val testProbe = testKit.createTestProbe[Actors.MirrorActor.Received]()
+      senderActor ! Actors.MirrorActor.Sent(parsed, testProbe.ref)
+      val msg: Actors.MirrorActor.Received = testProbe.expectMessageType[Actors.MirrorActor.Received]
+      val value = msg.obj.asInstanceOf[SearchEvaluationDefinition]
+      value.jobName mustBe parsed.jobName
+    }
 
     "serialize job message with file loads and node storage retrieval" in {
       TestData.otherJobSample.parseJson.convertTo[SearchEvaluationDefinition]
