@@ -19,6 +19,21 @@ val macwireVersion = "2.4.0"
 val scalacScoverageRuntimeVersion = "1.4.9"
 val testcontainersVersion = "1.16.3"
 
+lazy val jvmOptions = Seq(
+  "-Xms1G",
+  "-Xmx4G",
+  "-Xss1M",
+  "-XX:+CMSClassUnloadingEnabled"
+)
+// set javaOptions
+javaOptions in Runtime ++= jvmOptions
+javaOptions in Test ++= jvmOptions
+javaOptions in IntegrationTest ++= jvmOptions
+
+// defining fixed env vars for test scope
+envVars in Test := Map("PROFILE" -> "test")
+envVars in IntegrationTest := Map("PROFILE" -> "test")
+
 // scoverage plugin setting to exclude classes from coverage report
 coverageExcludedPackages := ""
 
@@ -38,6 +53,11 @@ assemblyMergeStrategy in assembly := {
   case reference if reference.contains("reference.conf") =>
     // Keep the content for all reference.conf files
     MergeStrategy.concat
+  case x if x.endsWith(".proto") =>
+    MergeStrategy.first
+  // same class conflicts (too general but resolving for now)
+  case x if x.endsWith(".class") =>
+    MergeStrategy.first
   case x =>
     // For all the other files, use the default sbt-assembly merge strategy
     val oldStrategy = (assemblyMergeStrategy in assembly).value
@@ -45,6 +65,14 @@ assemblyMergeStrategy in assembly := {
 }
 
 name := "kolibri-fleet-akka"
+
+resolvers ++= Seq(
+    ("scalaz-bintray" at "https://dl.bintray.com/scalaz/releases").withAllowInsecureProtocol(false),
+    ("Akka Snapshot Repository" at "https://repo.akka.io/snapshots/").withAllowInsecureProtocol(false),
+    Resolver.sonatypeRepo("releases"),
+    Resolver.sonatypeRepo("snapshots"),
+    Resolver.bintrayIvyRepo("kamon-io", "sbt-plugins"))
+
 libraryDependencies ++= Seq(
   "org.slf4j" % "slf4j-api" % sl4jApiVersion,
   //scala test framework (http://www.scalatest.org/install)
