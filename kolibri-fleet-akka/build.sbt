@@ -41,6 +41,12 @@ test in assembly := {} //causes no tests to be executed when calling "sbt assemb
 assemblyJarName in assembly := s"kolibri-fleet-akka.${version.value}.jar" //jar name
 //sbt-assembly settings. If it should only hold for specific subproject build, place the 'assemblyMergeStrategy in assembly' within subproject settings
 assemblyMergeStrategy in assembly := {
+  // picking last to make sure the application configs and logback config of kolibri-fleet-akka are picked up instead
+  // from a dependency
+  case x if "application.*\\.conf".r.findFirstMatchIn(x.split("/").last).nonEmpty =>
+    MergeStrategy.last
+  case x if x.endsWith("logback.xml") =>
+    MergeStrategy.last
   case "module-info.class" => MergeStrategy.discard
   case PathList("META-INF", xs@_*) => MergeStrategy.discard
   case manifest if manifest.contains("MANIFEST.MF") =>
