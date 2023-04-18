@@ -16,16 +16,12 @@
 
 package de.awagen.kolibri.base.config
 
-import com.amazonaws.regions.Regions
 import com.typesafe.config.{Config, ConfigFactory}
 import de.awagen.kolibri.base.config.EnvVariableKeys.PROFILE
-import de.awagen.kolibri.datatypes.metrics.aggregation.writer.{CSVParameterBasedMetricDocumentFormat, JsonMetricDocumentFormat, MetricDocumentFormat}
 import de.awagen.kolibri.datatypes.types.JsonTypeCast
 import de.awagen.kolibri.datatypes.types.JsonTypeCast.JsonTypeCast
 import org.slf4j.{Logger, LoggerFactory}
 
-import java.util
-import java.util.Objects
 import scala.concurrent.duration._
 
 
