@@ -14,9 +14,8 @@
   * limitations under the License.
   */
 
-package de.awagen.kolibri.fleet.akka.execution.task
+package de.awagen.kolibri.base.processing.execution.task
 
-import de.awagen.kolibri.base.processing.execution.task.Task
 import de.awagen.kolibri.base.processing.execution.task.TaskStates.{Done, Running, TaskState}
 import de.awagen.kolibri.base.processing.failure.TaskFailType.{FailedByException, MissingPrerequisites}
 import de.awagen.kolibri.datatypes.mutable.stores.TypeTaggedMap

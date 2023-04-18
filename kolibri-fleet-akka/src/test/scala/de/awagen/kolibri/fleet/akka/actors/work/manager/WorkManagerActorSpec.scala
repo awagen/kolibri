@@ -20,6 +20,7 @@ import akka.actor.{ActorRef, Props}
 import akka.testkit.{TestKit, TestProbe}
 import de.awagen.kolibri.base.processing.JobPartIdentifiers.BaseJobPartIdentifier
 import de.awagen.kolibri.base.processing.ProcessingMessages.{AggregationStateWithData, Corn}
+import de.awagen.kolibri.base.processing.execution.SimpleTaskExecution
 import de.awagen.kolibri.base.processing.execution.task.Task
 import de.awagen.kolibri.datatypes.mutable.stores.{TypeTaggedMap, TypedMapStore}
 import de.awagen.kolibri.datatypes.tagging.TagType.AGGREGATION
@@ -29,11 +30,10 @@ import de.awagen.kolibri.datatypes.tagging.TypeTaggedMapImplicits._
 import de.awagen.kolibri.fleet.akka.actors.work.manager.JobManagerActor.ACK
 import de.awagen.kolibri.fleet.akka.actors.work.manager.WorkManagerActor.{TaskExecutionWithTypedResult, TasksWithTypedResult}
 import de.awagen.kolibri.fleet.akka.actors.{KolibriTestKitNoCluster, TestMessages}
-import de.awagen.kolibri.fleet.akka.execution
+import de.awagen.kolibri.fleet.akka.execution.TestTaskHelper._
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
-import de.awagen.kolibri.fleet.akka.execution.TestTaskHelper._
 
 import scala.concurrent.duration._
 
@@ -98,7 +98,7 @@ class WorkManagerActorSpec extends KolibriTestKitNoCluster
       data.addTag(AGGREGATION, StringTag("ALL"))
       data.put(productIdResult, Seq("p3", "p4", "p21"))
       val tasks: Seq[Task[_]] = Seq(concatIdsTask, reverseIdsTaskPM)
-      val taskExecution = execution.SimpleTaskExecution(
+      val taskExecution = SimpleTaskExecution(
         resultKey = reversedIdKeyPM,
         currentData = data.toTaggedWithTypeMap,
         tasks = tasks

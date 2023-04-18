@@ -15,14 +15,15 @@
  */
 
 
-package de.awagen.kolibri.fleet.akka.execution.task
+package de.awagen.kolibri.base.processing.execution.task
 
 import de.awagen.kolibri.base.processing.failure.TaskFailType.TaskFailType
 import de.awagen.kolibri.datatypes.mutable.stores.TypeTaggedMap
 import de.awagen.kolibri.datatypes.types.ClassTyped
 
 import scala.concurrent.Future
-import scala.reflect.runtime.universe.TypeTag
+import scala.reflect.runtime.universe._
+
 
 case class SimpleAsyncTask[T: TypeTag, U <: T](prerequisites: Seq[ClassTyped[Any]],
                                                successKey: ClassTyped[T],

@@ -21,6 +21,7 @@ import akka.pattern.ask
 import akka.util.Timeout
 import de.awagen.kolibri.base.processing.JobPartIdentifiers.JobPartIdentifier
 import de.awagen.kolibri.base.processing.ProcessingMessages.ProcessingMessage
+import de.awagen.kolibri.base.processing.execution.TaskExecution
 import de.awagen.kolibri.base.processing.execution.task.Task
 import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
 import de.awagen.kolibri.base.resources.{ResourceAlreadyExists, ResourceOK}
@@ -46,7 +47,6 @@ import de.awagen.kolibri.fleet.akka.cluster.ClusterNode
 import de.awagen.kolibri.fleet.akka.config.AppProperties
 import de.awagen.kolibri.fleet.akka.config.AppProperties.config
 import de.awagen.kolibri.fleet.akka.config.AppProperties.config.kolibriDispatcherName
-import de.awagen.kolibri.fleet.akka.execution.TaskExecution
 import de.awagen.kolibri.fleet.akka.execution.job.ActorRunnable
 import de.awagen.kolibri.fleet.akka.processing.JobMessages.{SearchEvaluationDefinition, TestPiCalculationDefinition}
 import de.awagen.kolibri.fleet.akka.processing.JobMessagesImplicits.{SearchEvaluationImplicits, TestPiCalcToRunnable}

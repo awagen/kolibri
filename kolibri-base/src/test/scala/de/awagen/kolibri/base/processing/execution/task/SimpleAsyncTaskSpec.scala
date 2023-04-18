@@ -14,15 +14,14 @@
   * limitations under the License.
   */
 
-package de.awagen.kolibri.fleet.akka.execution.task
+package de.awagen.kolibri.base.processing.execution.task
 
+import de.awagen.kolibri.base.processing.TestTaskHelper.productIdResult
 import de.awagen.kolibri.base.processing.execution.task.TaskStates.{Running, TaskState}
 import de.awagen.kolibri.base.processing.failure.TaskFailType.TaskFailType
+import de.awagen.kolibri.base.testclasses.UnitTestSpec
 import de.awagen.kolibri.datatypes.mutable.stores.{TypeTaggedMap, TypedMapStore}
 import de.awagen.kolibri.datatypes.types.ClassTyped
-import de.awagen.kolibri.fleet.akka.execution.TestTaskHelper._
-import de.awagen.kolibri.fleet.akka.testclasses.UnitTestSpec
-
 
 import scala.collection.mutable
 import scala.concurrent.duration._

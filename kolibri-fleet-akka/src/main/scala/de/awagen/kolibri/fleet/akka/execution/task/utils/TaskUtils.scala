@@ -18,10 +18,12 @@ package de.awagen.kolibri.fleet.akka.execution.task.utils
 
 import akka.actor.Props
 import akka.stream.scaladsl.Flow
+import de.awagen.kolibri.base.processing
 import de.awagen.kolibri.base.processing.JobPartIdentifiers.BaseJobPartIdentifier
 import de.awagen.kolibri.base.processing.ProcessingMessages.{Corn, ProcessingMessage}
 import de.awagen.kolibri.base.processing.classifier.Mapper.AcceptAllAsIdentityMapper
 import de.awagen.kolibri.base.processing.consume.AggregatorConfigurations.AggregatorConfig
+import de.awagen.kolibri.base.processing.execution.SimpleTaskExecution
 import de.awagen.kolibri.base.processing.execution.expectation.Expectation.SuccessAndErrorCounts
 import de.awagen.kolibri.base.processing.execution.expectation.{BaseExecutionExpectation, ClassifyingCountExpectation, StopExpectation, TimeExpectation}
 import de.awagen.kolibri.base.processing.execution.task.Task
@@ -31,8 +33,6 @@ import de.awagen.kolibri.datatypes.types.Types.WithCount
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 import de.awagen.kolibri.fleet.akka.actors.work.aboveall.SupervisorActor.BatchTypeTaggedMapGenerator
 import de.awagen.kolibri.fleet.akka.actors.work.worker.TaskExecutionWorkerActor.ProcessTaskExecution
-import de.awagen.kolibri.fleet.akka.execution
-import de.awagen.kolibri.fleet.akka.execution.SimpleTaskExecution
 import de.awagen.kolibri.fleet.akka.execution.job.{ActorRunnable, ActorRunnableSinkType}
 
 import java.util.concurrent.atomic.AtomicInteger
@@ -50,7 +50,7 @@ object TaskUtils {
                                            timeoutPerElement: FiniteDuration,
                                            sendResultsBack: Boolean): IndexedGenerator[ActorRunnable[SimpleTaskExecution[Any], Any, Any, U]] = {
     val executionIterable: IndexedGenerator[IndexedGenerator[SimpleTaskExecution[Any]]] =
-      mapGenerator.mapGen(x => x.data.mapGen(y => execution.SimpleTaskExecution(resultKey, y, tasks)))
+      mapGenerator.mapGen(x => x.data.mapGen(y => processing.execution.SimpleTaskExecution(resultKey, y, tasks)))
     val atomicInt = new AtomicInteger(0)
     executionIterable.mapGen(x => {
       val batchNr = atomicInt.addAndGet(1)

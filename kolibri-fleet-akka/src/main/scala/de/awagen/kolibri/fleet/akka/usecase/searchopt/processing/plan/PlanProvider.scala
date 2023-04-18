@@ -17,12 +17,12 @@
 
 package de.awagen.kolibri.fleet.akka.usecase.searchopt.processing.plan
 
-import de.awagen.kolibri.base.processing.execution.task.{SimpleSyncTask, SyncTask, Task}
+import de.awagen.kolibri.base.processing.execution.task
+import de.awagen.kolibri.base.processing.execution.task.{SimpleAsyncTask, SimpleSyncTask, SyncTask, Task}
 import de.awagen.kolibri.base.usecase.searchopt.domain.ExtTaskDataKeys
 import de.awagen.kolibri.base.usecase.searchopt.domain.ExtTaskDataKeys.{JUDGEMENTS, JUDGEMENTS_FAILED, JUDGEMENT_PROVIDER, JUDGEMENT_PROVIDER_FAILED, PRODUCT_ID_RESULT}
 import de.awagen.kolibri.base.usecase.searchopt.processing.plan.Functions
 import de.awagen.kolibri.base.usecase.searchopt.provider.JudgementProvider
-import de.awagen.kolibri.fleet.akka.execution.task.SimpleAsyncTask
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -56,7 +56,7 @@ object PlanProvider {
    */
   def judgementProviderGetTask(judgementSupplier: () => Future[JudgementProvider[Double]])
                               (implicit ec: ExecutionContext): SimpleAsyncTask[JudgementProvider[Double], JudgementProvider[Double]] = {
-    SimpleAsyncTask[JudgementProvider[Double], JudgementProvider[Double]](
+    task.SimpleAsyncTask[JudgementProvider[Double], JudgementProvider[Double]](
       prerequisites = Seq.empty,
       successKey = ExtTaskDataKeys.JUDGEMENT_PROVIDER,
       failKey = JUDGEMENT_PROVIDER_FAILED,

@@ -18,9 +18,11 @@ package de.awagen.kolibri.fleet.akka.actors.work.worker
 
 import akka.actor.ActorRef
 import akka.testkit.{ImplicitSender, TestKit}
+import de.awagen.kolibri.base.processing
 import de.awagen.kolibri.base.processing.JobPartIdentifiers.BaseJobPartIdentifier
 import de.awagen.kolibri.base.processing.ProcessingMessages.Corn
 import de.awagen.kolibri.base.processing.execution.task.Task
+import de.awagen.kolibri.base.processing.execution.{SimpleTaskExecution, TaskExecution}
 import de.awagen.kolibri.datatypes.mutable.stores.{TypeTaggedMap, TypedMapStore}
 import de.awagen.kolibri.datatypes.tagging.TagType.AGGREGATION
 import de.awagen.kolibri.datatypes.tagging.TaggedWithType
@@ -28,12 +30,10 @@ import de.awagen.kolibri.datatypes.tagging.Tags.StringTag
 import de.awagen.kolibri.datatypes.tagging.TypeTaggedMapImplicits._
 import de.awagen.kolibri.fleet.akka.actors.KolibriTestKitNoCluster
 import de.awagen.kolibri.fleet.akka.actors.work.worker.TaskExecutionWorkerActor.ProcessTaskExecution
-import de.awagen.kolibri.fleet.akka.execution
-import de.awagen.kolibri.fleet.akka.execution.{SimpleTaskExecution, TaskExecution}
+import de.awagen.kolibri.fleet.akka.execution.TestTaskHelper._
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
-import de.awagen.kolibri.fleet.akka.execution.TestTaskHelper._
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
@@ -60,7 +60,7 @@ class TaskExecutionWorkerActorSpec extends KolibriTestKitNoCluster
       data.addTag(AGGREGATION, StringTag("ALL"))
       data.put(productIdResult, Seq("p3", "p4", "p21"))
       val tasks: Seq[Task[_]] = Seq(concatIdsTask, reverseIdsTaskPM)
-      val taskExecution: TaskExecution[String] = SimpleTaskExecution(
+      val taskExecution: TaskExecution[String] = processing.execution.SimpleTaskExecution(
         resultKey = reversedIdKeyPM,
         data,
         tasks
@@ -85,7 +85,7 @@ class TaskExecutionWorkerActorSpec extends KolibriTestKitNoCluster
       data.addTag(AGGREGATION, StringTag("ALL"))
       data.put(productIdResult, Seq("p3", "p4", "p21"))
       val tasks: Seq[Task[_]] = Seq(concatIdsTask, asyncReverseIdsTask)
-      val taskExecution: TaskExecution[String] = execution.SimpleTaskExecution(
+      val taskExecution: TaskExecution[String] = SimpleTaskExecution(
         resultKey = reversedIdKeyPM,
         data.toTaggedWithTypeMap,
         tasks

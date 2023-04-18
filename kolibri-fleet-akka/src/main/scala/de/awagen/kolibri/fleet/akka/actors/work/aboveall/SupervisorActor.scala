@@ -21,6 +21,7 @@ import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, ActorSystem, Can
 import de.awagen.kolibri.base.domain.jobdefinitions.Batch
 import de.awagen.kolibri.base.processing.ProcessingMessages.ProcessingMessage
 import de.awagen.kolibri.base.processing.classifier.Mapper.FilteringMapper
+import de.awagen.kolibri.base.processing.execution.SimpleTaskExecution
 import de.awagen.kolibri.base.processing.execution.expectation._
 import de.awagen.kolibri.base.processing.execution.functions.Execution
 import de.awagen.kolibri.base.processing.execution.task.Task
@@ -40,7 +41,6 @@ import de.awagen.kolibri.fleet.akka.actors.work.manager.JobProcessingState.JobSt
 import de.awagen.kolibri.fleet.akka.actors.work.worker.TaskExecutionWorkerActor
 import de.awagen.kolibri.fleet.akka.config.AppProperties._
 import de.awagen.kolibri.fleet.akka.config.AppProperties.config.{kolibriBlockingDispatcherName, kolibriDispatcherName}
-import de.awagen.kolibri.fleet.akka.execution.SimpleTaskExecution
 import de.awagen.kolibri.fleet.akka.execution.expectation.ExecutionExpectations.finishedJobExecutionExpectation
 import de.awagen.kolibri.fleet.akka.execution.job.ActorRunnable
 import de.awagen.kolibri.fleet.akka.execution.task.utils.TaskUtils

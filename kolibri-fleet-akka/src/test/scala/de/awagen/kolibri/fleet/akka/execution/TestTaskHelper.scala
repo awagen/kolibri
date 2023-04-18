@@ -19,10 +19,10 @@ package de.awagen.kolibri.fleet.akka.execution
 import de.awagen.kolibri.base.domain.TaskDataKeys.Val
 import de.awagen.kolibri.base.processing.ProcessingMessages.{Corn, ProcessingMessage}
 import de.awagen.kolibri.base.processing.execution
-import de.awagen.kolibri.base.processing.execution.task.SimpleSyncTask
+import de.awagen.kolibri.base.processing.execution.task
+import de.awagen.kolibri.base.processing.execution.task.{SimpleAsyncTask, SimpleSyncTask}
 import de.awagen.kolibri.base.processing.failure.TaskFailType.{FailedByException, TaskFailType}
 import de.awagen.kolibri.datatypes.mutable.stores.TypeTaggedMap
-import de.awagen.kolibri.fleet.akka.execution.task.SimpleAsyncTask
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -63,7 +63,7 @@ object TestTaskHelper {
 
   def failTask: SimpleSyncTask[Unit] = execution.task.SimpleSyncTask[Unit](Seq.empty, failTaskKey, taskFailTypeKey, failFunc)
 
-  def asyncReverseIdsTask(implicit ec: ExecutionContext): SimpleAsyncTask[ProcessingMessage[String], ProcessingMessage[String]] = SimpleAsyncTask(
+  def asyncReverseIdsTask(implicit ec: ExecutionContext): SimpleAsyncTask[ProcessingMessage[String], ProcessingMessage[String]] = task.SimpleAsyncTask(
     Seq(concatIdKey),
     reversedIdKeyPM,
     taskFailTypeKey,

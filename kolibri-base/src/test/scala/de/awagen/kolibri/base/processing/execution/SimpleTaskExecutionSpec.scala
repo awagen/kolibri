@@ -14,14 +14,15 @@
   * limitations under the License.
   */
 
-package de.awagen.kolibri.fleet.akka.execution
+package de.awagen.kolibri.base.processing.execution
 
+import de.awagen.kolibri.base.processing.TestTaskHelper._
+import de.awagen.kolibri.base.processing.execution
 import de.awagen.kolibri.base.processing.execution.task.{SimpleSyncTask, SyncTask}
+import de.awagen.kolibri.base.testclasses.UnitTestSpec
 import de.awagen.kolibri.datatypes.mutable.stores.TypedMapStore
 import de.awagen.kolibri.datatypes.tagging.TypeTaggedMapImplicits._
 import de.awagen.kolibri.datatypes.types.ClassTyped
-import de.awagen.kolibri.fleet.akka.testclasses.UnitTestSpec
-import de.awagen.kolibri.fleet.akka.execution.TestTaskHelper._
 
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext
@@ -34,7 +35,7 @@ class SimpleTaskExecutionSpec extends UnitTestSpec {
   def prepareTaskExecution(tasks: Seq[SyncTask[_]], productSeq: Seq[String]): SimpleTaskExecution[String] = {
     val map = TypedMapStore(mutable.Map.empty[ClassTyped[Any], Any])
     map.put(productIdResult, productSeq)
-    SimpleTaskExecution(reversedIdKeyPM, map.toTaggedWithTypeMap, tasks)
+    execution.SimpleTaskExecution(reversedIdKeyPM, map.toTaggedWithTypeMap, tasks)
   }
 
   "SimpleTaskExecution" should {
