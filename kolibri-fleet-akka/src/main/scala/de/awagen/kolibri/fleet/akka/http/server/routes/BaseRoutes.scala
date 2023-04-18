@@ -26,12 +26,12 @@ import akka.pattern.ask
 import akka.stream.scaladsl.Source
 import akka.util.{ByteString, Timeout}
 import de.awagen.kolibri.base.processing.execution.functions.Execution
+import de.awagen.kolibri.base.status.ClusterStates.ClusterStatus
 import de.awagen.kolibri.base.usecase.searchopt.provider.JudgementProvider
 import de.awagen.kolibri.fleet.akka.actors.clusterinfo.ClusterMetricsListenerActor
 import de.awagen.kolibri.fleet.akka.actors.clusterinfo.ClusterMetricsListenerActor.{MetricsProvided, ProvideMetrics}
 import de.awagen.kolibri.fleet.akka.actors.work.aboveall.SupervisorActor
 import de.awagen.kolibri.fleet.akka.actors.work.aboveall.SupervisorActor._
-import de.awagen.kolibri.base.status.ClusterStates.ClusterStatus
 import de.awagen.kolibri.fleet.akka.config.AppConfig
 import de.awagen.kolibri.fleet.akka.config.AppProperties.config.{analyzeTimeout, internalJobStatusRequestTimeout, kolibriDispatcherName}
 import de.awagen.kolibri.fleet.akka.http.server.routes.JobTemplateResourceRoutes.TemplateTypeValidationAndExecutionInfo
@@ -274,7 +274,9 @@ object BaseRoutes {
   def startExecution(implicit system: ActorSystem): Route = {
     implicit val timeout: Timeout = Timeout(analyzeTimeout)
     implicit val ec: ExecutionContextExecutor = system.dispatchers.lookup(kolibriDispatcherName)
+    import AppConfig.JsonFormats.executionFormat
     import de.awagen.kolibri.fleet.akka.io.json.ExecutionJsonProtocol._
+
     corsHandler(
       path("execution") {
         post {

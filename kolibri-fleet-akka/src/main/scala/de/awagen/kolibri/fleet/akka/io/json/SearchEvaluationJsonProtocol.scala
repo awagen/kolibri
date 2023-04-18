@@ -41,7 +41,7 @@ import de.awagen.kolibri.datatypes.types.JsonStructDefs._
 import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
 import de.awagen.kolibri.datatypes.values.Calculations.Calculation
 import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType.AggregationType
-import de.awagen.kolibri.fleet.akka.io.json.ExecutionJsonProtocol._
+import de.awagen.kolibri.fleet.akka.config.AppConfig
 import de.awagen.kolibri.fleet.akka.io.json.FIELD_KEYS._
 import de.awagen.kolibri.fleet.akka.io.json.ParameterValuesJsonProtocol._
 import de.awagen.kolibri.fleet.akka.io.json.ResourceDirectiveJsonProtocol.GenericResourceDirectiveFormat
@@ -82,7 +82,7 @@ object FIELD_KEYS {
 
 object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSupport with WithStructDef {
 
-
+  import AppConfig.JsonFormats.executionFormat
 
   implicit val searchEvaluationFormat: RootJsonFormat[SearchEvaluationDefinition] = jsonFormat(
     (

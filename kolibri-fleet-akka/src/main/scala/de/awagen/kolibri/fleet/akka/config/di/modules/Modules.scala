@@ -29,6 +29,7 @@ import de.awagen.kolibri.datatypes.tagging.Tags
 
 import scala.concurrent.Future
 import scala.util.Try
+import scala.util.matching.Regex
 
 object Modules {
 
@@ -55,6 +56,14 @@ object Modules {
     def reader: Reader[String, Seq[String]]
 
     def dataOverviewReader(dataIdentifierFilter: String => Boolean): DataOverviewReader
+
+    def dataOverviewReaderWithRegexFilter(regex: Regex): DataOverviewReader = {
+      dataOverviewReader(filename => regex.matches(filename))
+    }
+
+    def dataOverviewReaderUnfiltered: DataOverviewReader = {
+      dataOverviewReader(_ => true)
+    }
 
     def metricAggregationWriter(subFolder: String,
                                 tagToDataIdentifierFunc: Tags.Tag => String): Writer[MetricAggregation[Tags.Tag], Tags.Tag, Any]

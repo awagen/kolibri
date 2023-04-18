@@ -18,6 +18,7 @@
 package de.awagen.kolibri.fleet.akka.config
 
 import com.softwaremill.macwire.wire
+import de.awagen.kolibri.base.processing.execution.functions.Execution
 import de.awagen.kolibri.fleet.akka.config.AppProperties.config._
 import de.awagen.kolibri.fleet.akka.config.di.modules.connections.HttpModule
 import de.awagen.kolibri.fleet.akka.config.di.modules.persistence.PersistenceModule
@@ -27,8 +28,21 @@ import de.awagen.kolibri.base.usecase.searchopt.provider.FileBasedJudgementProvi
 import de.awagen.kolibri.base.usecase.searchopt.provider.{FileBasedJudgementProvider, JudgementProvider}
 import de.awagen.kolibri.datatypes.types.JsonTypeCast
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
+import de.awagen.kolibri.fleet.akka.io.json.ExecutionJsonProtocol.ExecutionFormat
+import spray.json.RootJsonFormat
 
 object AppConfig {
+
+  object JsonFormats {
+
+    implicit val executionFormat: RootJsonFormat[Execution[Any]] = ExecutionFormat(
+      persistenceModule.persistenceDIModule.reader,
+      persistenceModule.persistenceDIModule.writer,
+      AppProperties.config.metricDocumentFormatsMap,
+      regex => persistenceModule.persistenceDIModule.dataOverviewReaderWithRegexFilter(regex)
+    )
+
+  }
 
   val persistenceModule: PersistenceModule = wire[PersistenceModule]
 

@@ -19,18 +19,19 @@ package de.awagen.kolibri.fleet.akka.io.json
 
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import de.awagen.kolibri.base.format.RegexUtils
-import WeightProviderJsonProtocol.StringWeightProviderFormat
 import de.awagen.kolibri.base.processing.execution.functions.AggregationFunctions.{AggregateFilesWeighted, AggregateFromDirectoryByRegexWeighted, DoNothing, MultiExecution}
 import de.awagen.kolibri.base.processing.execution.functions.AnalyzeFunctions.{GetImprovingAndLoosing, GetImprovingAndLoosingFromDirPerRegex, GetValueVarianceFromDirPerRegex}
 import de.awagen.kolibri.base.processing.execution.functions.Execution
 import de.awagen.kolibri.base.provider.WeightProviders.WeightProvider
+import de.awagen.kolibri.datatypes.metrics.aggregation.writer.MetricDocumentFormat
 import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
 import de.awagen.kolibri.datatypes.types.JsonStructDefs._
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
-import de.awagen.kolibri.fleet.akka.config.{AppConfig, AppProperties}
 import de.awagen.kolibri.fleet.akka.io.json.SupplierJsonProtocol.StringSeqMappingFormat
-import de.awagen.kolibri.storage.io.reader.DataOverviewReader
+import de.awagen.kolibri.fleet.akka.io.json.WeightProviderJsonProtocol.StringWeightProviderFormat
+import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, Reader}
+import de.awagen.kolibri.storage.io.writer.Writers.Writer
 import spray.json.{DefaultJsonProtocol, JsValue, RootJsonFormat, enrichAny}
 
 import scala.util.matching.Regex
@@ -62,125 +63,7 @@ object ExecutionJsonProtocol extends DefaultJsonProtocol with SprayJsonSupport {
 
   val MISSING_VALUE_VALUE = "MISSING_VALUE"
 
-  val regexToFilteringDirectoryReaderFunction = new SerializableFunction1[Regex, DataOverviewReader] {
-    override def apply(regex: Regex): DataOverviewReader = AppConfig.persistenceModule.persistenceDIModule
-      .dataOverviewReader(x => regex.matches(x))
-  }
-
-  implicit object ExecutionFormat extends RootJsonFormat[Execution[Any]] with WithStructDef {
-    override def read(json: JsValue): Execution[Any] = json match {
-      case spray.json.JsObject(fields) => fields(TYPE_KEY).convertTo[String] match {
-        case AGGREGATE_FROM_DIR_BY_REGEX_TYPE =>
-          val regex: Regex = fields(REGEX_KEY).convertTo[String].r
-          val outputFilename: String = fields(OUTPUT_FILENAME_KEY).convertTo[String]
-          val readSubDir: String = fields(READ_SUBDIR_KEY).convertTo[String]
-          val writeSubDir: String = fields(WRITE_SUBDIR_KEY).convertTo[String]
-          val weightProvider: WeightProvider[String] = fields(WEIGHT_PROVIDER_KEY).convertTo[WeightProvider[String]]
-          AggregateFromDirectoryByRegexWeighted(
-            regexToFilteringDirectoryReaderFunction,
-            AppConfig.persistenceModule.persistenceDIModule.reader,
-            AppConfig.persistenceModule.persistenceDIModule.writer,
-            AppProperties.config.metricDocumentFormatsMap,
-            readSubDir,
-            writeSubDir,
-            regex,
-            weightProvider,
-            outputFilename
-          )
-        case AGGREGATE_FILES_TYPE =>
-          val files: Seq[String] = fields(FILES_KEY).convertTo[Seq[String]]
-          val outputFilename: String = fields(OUTPUT_FILENAME_KEY).convertTo[String]
-          val writeSubDir: String = fields(WRITE_SUBDIR_KEY).convertTo[String]
-          val weightProvider: WeightProvider[String] = fields(WEIGHT_PROVIDER_KEY).convertTo[WeightProvider[String]]
-          AggregateFilesWeighted(
-            AppConfig.persistenceModule.persistenceDIModule.reader,
-            AppConfig.persistenceModule.persistenceDIModule.writer,
-            AppProperties.config.metricDocumentFormatsMap,
-            writeSubDir,
-            files,
-            weightProvider,
-            outputFilename
-          )
-        case AGGREGATE_GROUPS_TYPE =>
-          val groupNameToIdentifierMap: Map[String, Seq[String]] = fields(GROUP_SUPPLIER_KEY).convertTo[() => Map[String, Seq[String]]].apply()
-          val readSubDir: String = fields(READ_SUBDIR_KEY).convertTo[String]
-          val writeSubDir: String = fields(WRITE_SUBDIR_KEY).convertTo[String]
-          val weightProvider: WeightProvider[String] = fields(WEIGHT_PROVIDER_KEY).convertTo[WeightProvider[String]]
-          val executions: Seq[Execution[Any]] = groupNameToIdentifierMap.map(x => {
-            AggregateFilesWeighted(
-              AppConfig.persistenceModule.persistenceDIModule.reader,
-              AppConfig.persistenceModule.persistenceDIModule.writer,
-              AppProperties.config.metricDocumentFormatsMap,
-              writeSubDir,
-              x._2.map(x => s"${readSubDir.stripSuffix("/")}/$x"),
-              weightProvider,
-              x._1
-            )
-          }).toSeq
-          MultiExecution(executions)
-        case ANALYZE_BEST_WORST_REGEX_TYPE =>
-          val directory: String = fields(DIRECTORY_KEY).convertTo[String]
-          val regex: Regex = fields(REGEX_KEY).convertTo[String].r
-          val currentParams: Map[String, Seq[String]] = fields(CURRENT_PARAMS_KEY).convertTo[Map[String, Seq[String]]]
-          val compareParams: Seq[Map[String, Seq[String]]] = fields(COMPARE_PARAMS_KEY).convertTo[Seq[Map[String, Seq[String]]]]
-          val metricName: String = fields(METRIC_NAME_KEY).convertTo[String]
-          val queryParamName: String = fields(QUERY_PARAM_NAME_KEY).convertTo[String]
-          val n_best: Int = fields(N_BEST_KEY).convertTo[Int]
-          val n_worst: Int = fields(N_WORST_KEY).convertTo[Int]
-          GetImprovingAndLoosingFromDirPerRegex(
-            regexToFilteringDirectoryReaderFunction,
-            AppConfig.persistenceModule.persistenceDIModule.reader,
-            AppConfig.persistenceModule.persistenceDIModule.writer,
-            directory,
-            regex,
-            currentParams,
-            compareParams,
-            metricName,
-            queryFromFilename = x => RegexUtils.findParamValueInString(param = queryParamName,
-              string = x, defaultValue = MISSING_VALUE_VALUE),
-            n_best,
-            n_worst
-          )
-        case ANALYZE_BEST_WORST_FILES_TYPE =>
-          val files: Seq[String] = fields(FILES_KEY).convertTo[Seq[String]]
-          val currentParams: Map[String, Seq[String]] = fields(CURRENT_PARAMS_KEY).convertTo[Map[String, Seq[String]]]
-          val compareParams: Seq[Map[String, Seq[String]]] = fields(COMPARE_PARAMS_KEY).convertTo[Seq[Map[String, Seq[String]]]]
-          val metricName: String = fields(METRIC_NAME_KEY).convertTo[String]
-          val queryParamName: String = fields(QUERY_PARAM_NAME_KEY).convertTo[String]
-          val n_best: Int = fields(N_BEST_KEY).convertTo[Int]
-          val n_worst: Int = fields(N_WORST_KEY).convertTo[Int]
-          GetImprovingAndLoosing(
-            AppConfig.persistenceModule.persistenceDIModule.reader,
-            AppConfig.persistenceModule.persistenceDIModule.writer,
-            files,
-            currentParams,
-            compareParams,
-            metricName,
-            queryFromFilename = x => RegexUtils.findParamValueInString(param = queryParamName,
-              string = x, defaultValue = MISSING_VALUE_VALUE),
-            n_best,
-            n_worst
-          )
-        case ANALYZE_QUERY_METRIC_VARIANCE_TYPE =>
-          val directory: String = fields(DIRECTORY_KEY).convertTo[String]
-          val regex: Regex = fields(REGEX_KEY).convertTo[String].r
-          val metricName: String = fields(METRIC_NAME_KEY).convertTo[String]
-          val queryParamName: String = fields(QUERY_PARAM_NAME_KEY).convertTo[String]
-          val queryFromFileName: String => String = x => RegexUtils.findParamValueInString(param = queryParamName,
-            string = x, defaultValue = MISSING_VALUE_VALUE)
-          GetValueVarianceFromDirPerRegex(
-            regexToFilteringDirectoryReaderFunction,
-            AppConfig.persistenceModule.persistenceDIModule.reader,
-            directory,
-            regex,
-            metricName,
-            queryFromFileName)
-        case DO_NOTHING_TYPE => DoNothing()
-      }
-    }
-
-    // TODO
-    override def write(obj: Execution[Any]): JsValue = """{}""".toJson
+  object ExecutionFormat extends WithStructDef {
 
     override def structDef: JsonStructDefs.StructDef[_] = {
       NestedFieldSeqStructDef(
@@ -388,6 +271,126 @@ object ExecutionJsonProtocol extends DefaultJsonProtocol with SprayJsonSupport {
         )
       )
     }
+
+  }
+
+  case class ExecutionFormat(reader: Reader[String, Seq[String]],
+                             writer: Writer[String, String, _],
+                             metricDocumentFormatsMap: Map[String, MetricDocumentFormat],
+                             regexToDataOverviewReader: SerializableFunction1[Regex, DataOverviewReader]) extends RootJsonFormat[Execution[Any]] {
+    override def read(json: JsValue): Execution[Any] = json match {
+      case spray.json.JsObject(fields) => fields(TYPE_KEY).convertTo[String] match {
+        case AGGREGATE_FROM_DIR_BY_REGEX_TYPE =>
+          val regex: Regex = fields(REGEX_KEY).convertTo[String].r
+          val outputFilename: String = fields(OUTPUT_FILENAME_KEY).convertTo[String]
+          val readSubDir: String = fields(READ_SUBDIR_KEY).convertTo[String]
+          val writeSubDir: String = fields(WRITE_SUBDIR_KEY).convertTo[String]
+          val weightProvider: WeightProvider[String] = fields(WEIGHT_PROVIDER_KEY).convertTo[WeightProvider[String]]
+          AggregateFromDirectoryByRegexWeighted(
+            regexToDataOverviewReader,
+            reader,
+            writer,
+            metricDocumentFormatsMap,
+            readSubDir,
+            writeSubDir,
+            regex,
+            weightProvider,
+            outputFilename
+          )
+        case AGGREGATE_FILES_TYPE =>
+          val files: Seq[String] = fields(FILES_KEY).convertTo[Seq[String]]
+          val outputFilename: String = fields(OUTPUT_FILENAME_KEY).convertTo[String]
+          val writeSubDir: String = fields(WRITE_SUBDIR_KEY).convertTo[String]
+          val weightProvider: WeightProvider[String] = fields(WEIGHT_PROVIDER_KEY).convertTo[WeightProvider[String]]
+          AggregateFilesWeighted(
+            reader,
+            writer,
+            metricDocumentFormatsMap,
+            writeSubDir,
+            files,
+            weightProvider,
+            outputFilename
+          )
+        case AGGREGATE_GROUPS_TYPE =>
+          val groupNameToIdentifierMap: Map[String, Seq[String]] = fields(GROUP_SUPPLIER_KEY).convertTo[() => Map[String, Seq[String]]].apply()
+          val readSubDir: String = fields(READ_SUBDIR_KEY).convertTo[String]
+          val writeSubDir: String = fields(WRITE_SUBDIR_KEY).convertTo[String]
+          val weightProvider: WeightProvider[String] = fields(WEIGHT_PROVIDER_KEY).convertTo[WeightProvider[String]]
+          val executions: Seq[Execution[Any]] = groupNameToIdentifierMap.map(x => {
+            AggregateFilesWeighted(
+              reader,
+              writer,
+              metricDocumentFormatsMap,
+              writeSubDir,
+              x._2.map(x => s"${readSubDir.stripSuffix("/")}/$x"),
+              weightProvider,
+              x._1
+            )
+          }).toSeq
+          MultiExecution(executions)
+        case ANALYZE_BEST_WORST_REGEX_TYPE =>
+          val directory: String = fields(DIRECTORY_KEY).convertTo[String]
+          val regex: Regex = fields(REGEX_KEY).convertTo[String].r
+          val currentParams: Map[String, Seq[String]] = fields(CURRENT_PARAMS_KEY).convertTo[Map[String, Seq[String]]]
+          val compareParams: Seq[Map[String, Seq[String]]] = fields(COMPARE_PARAMS_KEY).convertTo[Seq[Map[String, Seq[String]]]]
+          val metricName: String = fields(METRIC_NAME_KEY).convertTo[String]
+          val queryParamName: String = fields(QUERY_PARAM_NAME_KEY).convertTo[String]
+          val n_best: Int = fields(N_BEST_KEY).convertTo[Int]
+          val n_worst: Int = fields(N_WORST_KEY).convertTo[Int]
+          GetImprovingAndLoosingFromDirPerRegex(
+            regexToDataOverviewReader,
+            reader,
+            writer,
+            directory,
+            regex,
+            currentParams,
+            compareParams,
+            metricName,
+            queryFromFilename = x => RegexUtils.findParamValueInString(param = queryParamName,
+              string = x, defaultValue = MISSING_VALUE_VALUE),
+            n_best,
+            n_worst
+          )
+        case ANALYZE_BEST_WORST_FILES_TYPE =>
+          val files: Seq[String] = fields(FILES_KEY).convertTo[Seq[String]]
+          val currentParams: Map[String, Seq[String]] = fields(CURRENT_PARAMS_KEY).convertTo[Map[String, Seq[String]]]
+          val compareParams: Seq[Map[String, Seq[String]]] = fields(COMPARE_PARAMS_KEY).convertTo[Seq[Map[String, Seq[String]]]]
+          val metricName: String = fields(METRIC_NAME_KEY).convertTo[String]
+          val queryParamName: String = fields(QUERY_PARAM_NAME_KEY).convertTo[String]
+          val n_best: Int = fields(N_BEST_KEY).convertTo[Int]
+          val n_worst: Int = fields(N_WORST_KEY).convertTo[Int]
+          GetImprovingAndLoosing(
+            reader,
+            writer,
+            files,
+            currentParams,
+            compareParams,
+            metricName,
+            queryFromFilename = x => RegexUtils.findParamValueInString(param = queryParamName,
+              string = x, defaultValue = MISSING_VALUE_VALUE),
+            n_best,
+            n_worst
+          )
+        case ANALYZE_QUERY_METRIC_VARIANCE_TYPE =>
+          val directory: String = fields(DIRECTORY_KEY).convertTo[String]
+          val regex: Regex = fields(REGEX_KEY).convertTo[String].r
+          val metricName: String = fields(METRIC_NAME_KEY).convertTo[String]
+          val queryParamName: String = fields(QUERY_PARAM_NAME_KEY).convertTo[String]
+          val queryFromFileName: String => String = x => RegexUtils.findParamValueInString(param = queryParamName,
+            string = x, defaultValue = MISSING_VALUE_VALUE)
+          GetValueVarianceFromDirPerRegex(
+            regexToDataOverviewReader,
+            reader,
+            directory,
+            regex,
+            metricName,
+            queryFromFileName)
+        case DO_NOTHING_TYPE => DoNothing()
+      }
+    }
+
+    // TODO
+    override def write(obj: Execution[Any]): JsValue = """{}""".toJson
   }
 
 }

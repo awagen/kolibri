@@ -21,15 +21,14 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{PathMatcher0, PathMatcher1, Route}
-import de.awagen.kolibri.fleet.akka.config.AppConfig.persistenceModule
-import de.awagen.kolibri.fleet.akka.config.AppProperties
-import de.awagen.kolibri.fleet.akka.http.server.routes.StatusRoutes.corsHandler
-import de.awagen.kolibri.fleet.akka.io.json.ExecutionJsonProtocol._
-import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, Reader}
 import de.awagen.kolibri.base.processing.execution.functions.AnalyzeFunctions.{ExecutionSummary, GetImprovingAndLoosingFromDirPerRegex, GetValueVarianceFromDirPerRegex}
 import de.awagen.kolibri.base.processing.execution.functions.Execution
 import de.awagen.kolibri.base.processing.failure.TaskFailType
 import de.awagen.kolibri.datatypes.stores.PriorityStores.{BasePriorityStore, PriorityStore}
+import de.awagen.kolibri.fleet.akka.config.AppConfig.persistenceModule
+import de.awagen.kolibri.fleet.akka.config.{AppConfig, AppProperties}
+import de.awagen.kolibri.fleet.akka.http.server.routes.StatusRoutes.corsHandler
+import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, Reader}
 import org.slf4j.{Logger, LoggerFactory}
 import spray.json._
 
@@ -37,10 +36,14 @@ object AnalysisRoutes extends DefaultJsonProtocol {
 
   private[this] val logger: Logger = LoggerFactory.getLogger(this.getClass)
   private[this] val directoryOverviewReader: DataOverviewReader = persistenceModule.persistenceDIModule
-    .dataOverviewReader(_ => true)
+    .dataOverviewReaderUnfiltered
   private[this] val contentReader: Reader[String, Seq[String]] = persistenceModule.persistenceDIModule.reader
   private[this] val outputResultsPath: String = AppProperties.config.outputResultsPath.get
     .stripSuffix("/")
+
+  import AppConfig.JsonFormats.executionFormat
+  import de.awagen.kolibri.fleet.akka.io.json.ExecutionJsonProtocol._
+
   private[this] val RESULT_PREFIX = "results"
   private[this] val ANALYZE_PREFIX = "analyze"
   private[this] val EXECUTIONS_PATH = "executions"
