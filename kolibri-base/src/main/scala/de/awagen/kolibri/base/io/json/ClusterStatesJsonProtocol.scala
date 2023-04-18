@@ -15,10 +15,10 @@
  */
 
 
-package de.awagen.kolibri.fleet.akka.io.json
+package de.awagen.kolibri.base.io.json
 
-import de.awagen.kolibri.fleet.akka.cluster.ClusterStates.ClusterStatus
-import de.awagen.kolibri.fleet.akka.cluster.ClusterStates.ClusterStatusImplicits.{capInfoFormat, cpuInfoFormat, heapInfoFormat}
+import de.awagen.kolibri.base.status.ClusterStates.ClusterStatus
+import de.awagen.kolibri.base.status.ClusterStates.ClusterStatusImplicits.{capInfoFormat, cpuInfoFormat, heapInfoFormat}
 import spray.json.{DefaultJsonProtocol, RootJsonFormat}
 
 object ClusterStatesJsonProtocol extends DefaultJsonProtocol {

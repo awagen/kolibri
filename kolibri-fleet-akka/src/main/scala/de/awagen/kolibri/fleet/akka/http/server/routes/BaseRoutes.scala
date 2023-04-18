@@ -31,7 +31,7 @@ import de.awagen.kolibri.fleet.akka.actors.clusterinfo.ClusterMetricsListenerAct
 import de.awagen.kolibri.fleet.akka.actors.clusterinfo.ClusterMetricsListenerActor.{MetricsProvided, ProvideMetrics}
 import de.awagen.kolibri.fleet.akka.actors.work.aboveall.SupervisorActor
 import de.awagen.kolibri.fleet.akka.actors.work.aboveall.SupervisorActor._
-import de.awagen.kolibri.fleet.akka.cluster.ClusterStates.ClusterStatus
+import de.awagen.kolibri.base.status.ClusterStates.ClusterStatus
 import de.awagen.kolibri.fleet.akka.config.AppConfig
 import de.awagen.kolibri.fleet.akka.config.AppProperties.config.{analyzeTimeout, internalJobStatusRequestTimeout, kolibriDispatcherName}
 import de.awagen.kolibri.fleet.akka.http.server.routes.JobTemplateResourceRoutes.TemplateTypeValidationAndExecutionInfo
@@ -119,7 +119,7 @@ object BaseRoutes {
     implicit val timeout: Timeout = 10.seconds
     import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
     import akka.http.scaladsl.server.Directives._
-    import de.awagen.kolibri.fleet.akka.cluster.ClusterStates.ClusterStatusImplicits._
+    import de.awagen.kolibri.base.status.ClusterStates.ClusterStatusImplicits._
     import spray.json.DefaultJsonProtocol._
     corsHandler(
       path("clusterstatus") {

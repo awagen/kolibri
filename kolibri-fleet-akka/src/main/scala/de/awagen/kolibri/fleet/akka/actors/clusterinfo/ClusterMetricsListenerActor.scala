@@ -22,7 +22,7 @@ import akka.cluster.metrics.StandardMetrics.{Cpu, HeapMemory}
 import akka.cluster.metrics._
 import akka.cluster.{Cluster, MemberStatus}
 import de.awagen.kolibri.fleet.akka.actors.clusterinfo.ClusterMetricsListenerActor.{LogMetrics, MetricsProvided, ProvideMetrics}
-import de.awagen.kolibri.fleet.akka.cluster.ClusterStates.{CapacityInfo, ClusterStatus, CpuInfo, HeapInfo}
+import de.awagen.kolibri.base.status.ClusterStates.{CapacityInfo, ClusterStatus, CpuInfo, HeapInfo}
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 
 
@@ -170,7 +170,7 @@ class ClusterMetricsListenerActor extends Actor with ActorLogging {
 
   def logMetrics(): Unit = {
     println(s"### CLUSTER METRICS ${self.path.name} ###")
-    import de.awagen.kolibri.fleet.akka.cluster.ClusterStates.ClusterStatusImplicits.clusterStatusFormat
+    import de.awagen.kolibri.base.status.ClusterStates.ClusterStatusImplicits.clusterStatusFormat
     import spray.json.DefaultJsonProtocol._
     import spray.json._
 
