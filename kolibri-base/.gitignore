@@ -14,9 +14,6 @@ tmp
 /.settings
 public
 *.log
-prometheus/data
-grafana/*
-!grafana/dashboards/
 kolibri-test/
 /.bsp
 /.scannerwork

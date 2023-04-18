@@ -17,8 +17,6 @@
 
 package de.awagen.kolibri.base.processing.modifiers
 
-import akka.http.scaladsl.model.{ContentTypes, HttpEntity}
-import akka.util.ByteString
 import de.awagen.kolibri.base.http.client.request.{RequestTemplate, RequestTemplateBuilder}
 import de.awagen.kolibri.base.processing.modifiers.ModifierMappers.{BaseBodyMapper, BaseHeadersMapper, BaseParamsMapper}
 import de.awagen.kolibri.base.processing.modifiers.RequestPermutations.MappingModifier

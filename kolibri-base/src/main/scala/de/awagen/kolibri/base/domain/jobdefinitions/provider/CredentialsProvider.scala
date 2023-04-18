@@ -16,18 +16,22 @@
 
 package de.awagen.kolibri.base.domain.jobdefinitions.provider
 
-import akka.http.scaladsl.model.headers
-import akka.http.scaladsl.model.headers.{Authorization, BasicHttpCredentials}
+import java.nio.charset.StandardCharsets
+import java.util.Base64
 
 case class Credentials(username: String, password: String)
 
 trait CredentialsProvider {
 
+  val AUTH_HEADER_KEY = "Authorization"
+
   def getCredentials: Credentials
 
-  def getBasicAuthHttpHeader: Authorization = {
+  def getBasicAuthHttpHeader: (String, String) = {
     val credentials = getCredentials
-    headers.Authorization(BasicHttpCredentials(credentials.username, credentials.password))
+    val authString = Base64.getEncoder
+      .encodeToString(s"${credentials.username}:${credentials.password}".getBytes(StandardCharsets.UTF_8))
+    (AUTH_HEADER_KEY, s"Basic $authString")
   }
 }
 

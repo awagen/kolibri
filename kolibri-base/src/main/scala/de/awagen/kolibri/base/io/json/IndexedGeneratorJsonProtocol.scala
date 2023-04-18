@@ -17,13 +17,12 @@
 
 package de.awagen.kolibri.base.io.json
 
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator}
 import de.awagen.kolibri.datatypes.io.json.OrderedMultiValuesJsonProtocol._
 import de.awagen.kolibri.datatypes.multivalues.OrderedMultiValues
 import spray.json.{DefaultJsonProtocol, DeserializationException, JsValue, RootJsonFormat, enrichAny}
 
-object IndexedGeneratorJsonProtocol extends DefaultJsonProtocol with SprayJsonSupport {
+object IndexedGeneratorJsonProtocol extends DefaultJsonProtocol {
 
   val BY_MULTIVALUES_TYPE = "BY_MULTIVALUES"
   val BY_MAPSEQ_TYPE = "BY_MAPSEQ"

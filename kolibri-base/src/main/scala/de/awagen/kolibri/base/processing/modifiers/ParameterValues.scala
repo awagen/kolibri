@@ -17,8 +17,6 @@
 
 package de.awagen.kolibri.base.processing.modifiers
 
-import akka.http.scaladsl.model.ContentTypes
-import akka.http.scaladsl.model.headers.RawHeader
 import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ParameterValueMappingDefinition.getGeneratorsByValues
 import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.{CombinedModifier, RequestTemplateBuilderModifier}
 import de.awagen.kolibri.datatypes.collections.generators._

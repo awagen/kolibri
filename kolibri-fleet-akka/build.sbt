@@ -20,9 +20,6 @@ val scalacScoverageRuntimeVersion = "1.4.9"
 val testcontainersVersion = "1.16.3"
 
 lazy val jvmOptions = Seq(
-  "-Xms1G",
-  "-Xmx4G",
-  "-Xss1M",
   "-XX:+CMSClassUnloadingEnabled"
 )
 // set javaOptions
@@ -35,7 +32,10 @@ envVars in Test := Map("PROFILE" -> "test")
 envVars in IntegrationTest := Map("PROFILE" -> "test")
 
 // scoverage plugin setting to exclude classes from coverage report
-coverageExcludedPackages := ""
+coverageExcludedPackages := "de\\.awagen\\.kolibri\\.fleet\\.akka\\.config\\..*;" +
+  ".*\\.ClusterNode;" +
+  ".*\\.ClusterStates;" +
+  "de\\.awagen\\.kolibri\\.fleet\\.akka\\.actors\\.flows\\.FlowAttributes;"
 
 test in assembly := {} //causes no tests to be executed when calling "sbt assembly" (without this setting executes all)
 assemblyJarName in assembly := s"kolibri-fleet-akka.${version.value}.jar" //jar name
@@ -53,6 +53,9 @@ assemblyMergeStrategy in assembly := {
   case reference if reference.contains("reference.conf") =>
     // Keep the content for all reference.conf files
     MergeStrategy.concat
+  //HttpRequest.class included since assembly plugin exited due to conflict on akka-http-core library, but was same version (maybe conflict between test and runtime?)
+  case x if x.endsWith("HttpRequest.class") =>
+    MergeStrategy.first
   case x if x.endsWith(".proto") =>
     MergeStrategy.first
   // same class conflicts (too general but resolving for now)
@@ -84,7 +87,6 @@ libraryDependencies ++= Seq(
   // logback
   "com.typesafe.play" %% "play-logback" % playLogbackVersion,
   "io.spray" %% "spray-json" % sprayVersion,
-
   //akka-management there to host HTTP endpoints used during bootstrap process
   "com.lightbend.akka.management" %% "akka-management" % akkaManagementVersion,
   //helps forming (or joining to) a cluster using akka discovery to discover peer nodes
@@ -128,7 +130,6 @@ libraryDependencies ++= Seq(
   "ch.qos.logback" % "logback-classic" % logbackVersion,
   "com.chuusai" %% "shapeless" % shapelessVersion,
   "io.altoo" %% "akka-kryo-serialization" % kryoSerializationVersion,
-  "org.slf4j" % "slf4j-api" % sl4jApiVersion,
   "io.kamon" %% "kamon-bundle" % kamonVersion,
   "io.kamon" %% "kamon-prometheus" % kamonVersion,
   "com.softwaremill.macwire" %% "macros" % macwireVersion,
@@ -137,6 +138,7 @@ libraryDependencies ++= Seq(
 )
 
 libraryDependencies := { libraryDependencies.value :+ ("de.awagen.kolibri" %% "kolibri-base" % version.value) }
+mainClass in assembly := Some("de.awagen.kolibri.fleet.akka.cluster.ClusterNode")
 
 // ---- start settings for publishing to mvn central
 // (needs to fully be in build.sbt of sub-project, also the non-project-specific parts)
