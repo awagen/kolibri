@@ -17,7 +17,7 @@
 package de.awagen.kolibri.fleet.akka.io.json
 
 import de.awagen.kolibri.base.processing.modifiers.ParameterValues._
-import de.awagen.kolibri.fleet.akka.io.json.ParameterValuesJsonProtocol.{MappedParameterValuesFormat, ParameterValueMappingConfigFormat, ParameterValuesConfigFormat, ValueSeqGenDefinitionFormat}
+import de.awagen.kolibri.fleet.akka.config.AppConfig.JsonFormats.parameterValueJsonProtocol.{MappedParameterValuesFormat, ParameterValueMappingConfigFormat, ParameterValuesConfigFormat, ValueSeqGenDefinitionFormat}
 import de.awagen.kolibri.fleet.akka.testclasses.UnitTestSpec
 import spray.json._
 
