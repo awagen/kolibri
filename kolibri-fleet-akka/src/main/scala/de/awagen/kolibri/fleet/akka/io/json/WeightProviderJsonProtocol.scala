@@ -22,7 +22,7 @@ import de.awagen.kolibri.base.provider.WeightProviders.{ConstantWeightProvider, 
 import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
 import de.awagen.kolibri.datatypes.types.JsonStructDefs._
 import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
-import de.awagen.kolibri.fleet.akka.config.AppConfig
+import de.awagen.kolibri.storage.io.reader.Reader
 import spray.json.{DefaultJsonProtocol, JsValue, RootJsonFormat, enrichAny}
 
 object WeightProviderJsonProtocol extends DefaultJsonProtocol with SprayJsonSupport {
@@ -40,14 +40,14 @@ object WeightProviderJsonProtocol extends DefaultJsonProtocol with SprayJsonSupp
   val PARAM_WEIGHT_COLUMN = "weightColumn"
   val PARAM_DEFAULT_VALUE = "defaultValue"
 
-  implicit object StringWeightProviderFormat extends RootJsonFormat[WeightProvider[String]] with WithStructDef {
+  case class StringWeightProviderFormat(reader: Reader[String, Seq[String]]) extends RootJsonFormat[WeightProvider[String]] {
     override def read(json: JsValue): WeightProvider[String] = json match {
       case spray.json.JsObject(fields) => fields(PARAM_TYPE).convertTo[String] match {
         case TYPE_CONSTANT =>
           ConstantWeightProvider(fields(PARAM_WEIGHT).convertTo[Double])
         case TYPE_FROM_PER_QUERY_FILE =>
           FileBasedStringIdentifierWeightProvider(
-            AppConfig.persistenceModule.persistenceDIModule.reader,
+            reader,
             fields(PARAM_FILEPATH).convertTo[String],
             x => x.stripPrefix(fields(PARAM_REMOVE_PREFIX).convertTo[String])
               .stripSuffix(fields(PARAM_REMOVE_SUFFIX).convertTo[String]),
@@ -56,11 +56,16 @@ object WeightProviderJsonProtocol extends DefaultJsonProtocol with SprayJsonSupp
             fields(PARAM_WEIGHT_COLUMN).convertTo[Int],
             fields(PARAM_DEFAULT_VALUE).convertTo[Double]
           )
+        case _ =>
+          throw new IllegalArgumentException(s"Could not parse WeightProvider from value: ${json}")
       }
     }
 
     override def write(obj: WeightProvider[String]): JsValue = """{}""".toJson
 
+  }
+
+  object StringWeightProviderFormat extends WithStructDef {
     override def structDef: JsonStructDefs.StructDef[_] = {
       NestedFieldSeqStructDef(
         Seq(

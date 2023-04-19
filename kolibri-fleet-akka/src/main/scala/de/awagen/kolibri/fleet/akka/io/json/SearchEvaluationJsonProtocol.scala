@@ -41,13 +41,12 @@ import de.awagen.kolibri.datatypes.types.JsonStructDefs._
 import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
 import de.awagen.kolibri.datatypes.values.Calculations.Calculation
 import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType.AggregationType
-import de.awagen.kolibri.fleet.akka.config.AppConfig
 import de.awagen.kolibri.fleet.akka.io.json.FIELD_KEYS._
 import de.awagen.kolibri.fleet.akka.io.json.ParameterValuesJsonProtocol._
 import de.awagen.kolibri.fleet.akka.io.json.ResourceDirectiveJsonProtocol.GenericResourceDirectiveFormat
 import de.awagen.kolibri.fleet.akka.processing.JobMessages.{QueryBasedSearchEvaluationDefinition, SearchEvaluationDefinition}
 import de.awagen.kolibri.fleet.akka.usecase.searchopt.io.json.CalculationsJsonProtocol._
-import spray.json.{DefaultJsonProtocol, RootJsonFormat}
+import spray.json.{DefaultJsonProtocol, JsValue, RootJsonFormat}
 
 
 object FIELD_KEYS {
@@ -82,68 +81,73 @@ object FIELD_KEYS {
 
 object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSupport with WithStructDef {
 
-  import AppConfig.JsonFormats.executionFormat
+  case class SearchEvaluationFormat(executionFormat: RootJsonFormat[Execution[Any]]) extends RootJsonFormat[SearchEvaluationDefinition] {
+    implicit val ef: RootJsonFormat[Execution[Any]] = executionFormat
+    val format: RootJsonFormat[SearchEvaluationDefinition] = jsonFormat(
+      (
+        jobName: String,
+        requestTasks: Int,
+        fixedParams: Map[String, Seq[String]],
+        contextPath: String,
+        connections: Seq[Connection],
+        resourceDirectives: Seq[ResourceDirective[_]],
+        requestParameters: Seq[ValueSeqGenDefinition[_]],
+        batchByIndex: Int,
+        parsingConfig: ParsingConfig,
+        excludeParamColumns: Seq[String],
+        calculations: Seq[Calculation[WeaklyTypedMap[String], Any]],
+        metricNameToAggregationTypeMapping: Map[String, AggregationType],
+        taggingConfiguration: Option[BaseTaggingConfiguration[RequestTemplate, (Either[Throwable, WeaklyTypedMap[String]], RequestTemplate), MetricRow]],
+        wrapUpFunction: Option[Execution[Any]],
+        allowedTimePerElementInMillis: Int,
+        allowedTimePerBatchInSeconds: Int,
+        allowedTimeForJobInSeconds: Int,
+        expectResultsFromBatchCalculations: Boolean
+      ) =>
+        SearchEvaluationDefinition.apply(
+          jobName,
+          requestTasks,
+          fixedParams,
+          contextPath,
+          connections,
+          resourceDirectives,
+          requestParameters,
+          batchByIndex,
+          parsingConfig,
+          excludeParamColumns,
+          calculations,
+          metricNameToAggregationTypeMapping,
+          taggingConfiguration,
+          wrapUpFunction,
+          allowedTimePerElementInMillis,
+          allowedTimePerBatchInSeconds,
+          allowedTimeForJobInSeconds,
+          expectResultsFromBatchCalculations
+        ),
+      JOB_NAME_FIELD,
+      REQUEST_TASKS_FIELD,
+      FIXED_PARAMS_FIELD,
+      CONTEXT_PATH_FIELD,
+      CONNECTIONS_FIELD,
+      RESOURCE_DIRECTIVES_FIELD,
+      REQUEST_PARAMETERS_FIELD,
+      BATCH_BY_INDEX_FIELD,
+      PARSING_CONFIG_FIELD,
+      EXCLUDE_PARAMS_COLUMNS_FIELD,
+      CALCULATIONS_FIELD,
+      METRIC_NAME_TO_AGGREGATION_TYPE_MAPPING_FIELD,
+      TAGGING_CONFIGURATION_FIELD,
+      WRAP_UP_FUNCTION_FIELD,
+      ALLOWED_TIME_PER_ELEMENT_IN_MILLIS_FIELD,
+      ALLOWED_TIME_PER_BATCH_IN_SECONDS_FIELD,
+      ALLOWED_TIME_FOR_JOB_IN_SECONDS_FIELD,
+      EXPECT_RESULTS_FROM_BATCH_CALCULATIONS_FIELD
+    )
 
-  implicit val searchEvaluationFormat: RootJsonFormat[SearchEvaluationDefinition] = jsonFormat(
-    (
-      jobName: String,
-      requestTasks: Int,
-      fixedParams: Map[String, Seq[String]],
-      contextPath: String,
-      connections: Seq[Connection],
-      resourceDirectives: Seq[ResourceDirective[_]],
-      requestParameters: Seq[ValueSeqGenDefinition[_]],
-      batchByIndex: Int,
-      parsingConfig: ParsingConfig,
-      excludeParamColumns: Seq[String],
-      calculations: Seq[Calculation[WeaklyTypedMap[String], Any]],
-      metricNameToAggregationTypeMapping: Map[String, AggregationType],
-      taggingConfiguration: Option[BaseTaggingConfiguration[RequestTemplate, (Either[Throwable, WeaklyTypedMap[String]], RequestTemplate), MetricRow]],
-      wrapUpFunction: Option[Execution[Any]],
-      allowedTimePerElementInMillis: Int,
-      allowedTimePerBatchInSeconds: Int,
-      allowedTimeForJobInSeconds: Int,
-      expectResultsFromBatchCalculations: Boolean
-    ) =>
-      SearchEvaluationDefinition.apply(
-        jobName,
-        requestTasks,
-        fixedParams,
-        contextPath,
-        connections,
-        resourceDirectives,
-        requestParameters,
-        batchByIndex,
-        parsingConfig,
-        excludeParamColumns,
-        calculations,
-        metricNameToAggregationTypeMapping,
-        taggingConfiguration,
-        wrapUpFunction,
-        allowedTimePerElementInMillis,
-        allowedTimePerBatchInSeconds,
-        allowedTimeForJobInSeconds,
-        expectResultsFromBatchCalculations
-      ),
-    JOB_NAME_FIELD,
-    REQUEST_TASKS_FIELD,
-    FIXED_PARAMS_FIELD,
-    CONTEXT_PATH_FIELD,
-    CONNECTIONS_FIELD,
-    RESOURCE_DIRECTIVES_FIELD,
-    REQUEST_PARAMETERS_FIELD,
-    BATCH_BY_INDEX_FIELD,
-    PARSING_CONFIG_FIELD,
-    EXCLUDE_PARAMS_COLUMNS_FIELD,
-    CALCULATIONS_FIELD,
-    METRIC_NAME_TO_AGGREGATION_TYPE_MAPPING_FIELD,
-    TAGGING_CONFIGURATION_FIELD,
-    WRAP_UP_FUNCTION_FIELD,
-    ALLOWED_TIME_PER_ELEMENT_IN_MILLIS_FIELD,
-    ALLOWED_TIME_PER_BATCH_IN_SECONDS_FIELD,
-    ALLOWED_TIME_FOR_JOB_IN_SECONDS_FIELD,
-    EXPECT_RESULTS_FROM_BATCH_CALCULATIONS_FIELD
-  )
+    override def write(obj: SearchEvaluationDefinition): JsValue = format.write(obj)
+
+    override def read(json: JsValue): SearchEvaluationDefinition = format.read(json)
+  }
 
   override def structDef: JsonStructDefs.StructDef[_] = {
     NestedFieldSeqStructDef(
@@ -293,6 +297,7 @@ object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSu
       Seq.empty
     )
   }
+
 }
 
 object QueryBasedSearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSupport with WithStructDef {

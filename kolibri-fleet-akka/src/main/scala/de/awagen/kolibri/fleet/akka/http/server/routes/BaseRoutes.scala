@@ -41,8 +41,7 @@ import de.awagen.kolibri.fleet.akka.processing.JobMessages.{QueryBasedSearchEval
 import de.awagen.kolibri.fleet.akka.processing.JobMessagesImplicits.QueryBasedSearchEvaluationImplicits
 import de.awagen.kolibri.fleet.akka.usecase.searchopt.jobdefinitions.SearchJobDefinitions
 import org.slf4j.{Logger, LoggerFactory}
-import spray.json.DefaultJsonProtocol.{DoubleJsonFormat, StringJsonFormat, mapFormat}
-import spray.json.enrichAny
+import spray.json.{RootJsonFormat, enrichAny}
 
 import java.util.Objects
 import scala.concurrent.ExecutionContextExecutor
@@ -53,6 +52,9 @@ import scala.util.Random
   * route examples: https://doc.akka.io/docs/akka-http/current/introduction.html#using-akka-http
   */
 object BaseRoutes {
+
+  implicit val sf: RootJsonFormat[SearchEvaluationDefinition] = AppConfig.JsonFormats.searchEvaluationJsonFormat
+  import de.awagen.kolibri.fleet.akka.io.json.SearchEvaluationJsonProtocol._
 
   private[this] val logger: Logger = LoggerFactory.getLogger(BaseRoutes.getClass)
 
@@ -196,7 +198,6 @@ object BaseRoutes {
 
   def startSearchEval(implicit system: ActorSystem): Route = {
     implicit val ec: ExecutionContextExecutor = system.dispatchers.lookup(kolibriDispatcherName)
-    import de.awagen.kolibri.fleet.akka.io.json.SearchEvaluationJsonProtocol._
     corsHandler(
       path("search_eval") {
         post {
@@ -211,7 +212,6 @@ object BaseRoutes {
 
   def startSearchEvalNoSerialize(implicit system: ActorSystem): Route = {
     implicit val ec: ExecutionContextExecutor = system.dispatchers.lookup(kolibriDispatcherName)
-    import de.awagen.kolibri.fleet.akka.io.json.SearchEvaluationJsonProtocol._
     corsHandler(
       path("search_eval_no_ser") {
         post {
@@ -305,6 +305,7 @@ object BaseRoutes {
   }
 
   def getAllJudgements(implicit system: ActorSystem): Route = {
+    import spray.json.DefaultJsonProtocol._
     corsHandler(
       path("allJudgements") {
         get {

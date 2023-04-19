@@ -26,8 +26,8 @@ import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIn
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSupplier
 import de.awagen.kolibri.fleet.akka.actors.KolibriTypedTestKitNoCluster
+import de.awagen.kolibri.fleet.akka.config.AppConfig
 import de.awagen.kolibri.fleet.akka.io.json.ParameterValuesJsonProtocol.ValueSeqGenDefinitionFormat
-import de.awagen.kolibri.fleet.akka.io.json.SearchEvaluationJsonProtocol.searchEvaluationFormat
 import de.awagen.kolibri.fleet.akka.processing.JobMessages.SearchEvaluationDefinition
 import spray.json._
 
@@ -587,6 +587,8 @@ object Actors {
 class SerializationSpec extends KolibriTypedTestKitNoCluster(ConfigOverwrites.configSettings) {
 
   override val invokeBeforeAllAndAfterAllEvenIfNoTestsAreExpected = true
+
+  implicit val evalFormat = AppConfig.JsonFormats.searchEvaluationJsonFormat
 
   def serializeAndBack(original: AnyRef): AnyRef = {
     // Get the Serialization Extension

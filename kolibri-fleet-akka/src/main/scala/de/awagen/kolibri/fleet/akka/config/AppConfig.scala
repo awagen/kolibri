@@ -19,28 +19,40 @@ package de.awagen.kolibri.fleet.akka.config
 
 import com.softwaremill.macwire.wire
 import de.awagen.kolibri.base.processing.execution.functions.Execution
-import de.awagen.kolibri.fleet.akka.config.AppProperties.config._
-import de.awagen.kolibri.fleet.akka.config.di.modules.connections.HttpModule
-import de.awagen.kolibri.fleet.akka.config.di.modules.persistence.PersistenceModule
+import de.awagen.kolibri.base.provider.WeightProviders.WeightProvider
 import de.awagen.kolibri.base.usecase.searchopt.parse.JsonSelectors.{PlainAndRecursiveSelector, PlainPathSelector}
 import de.awagen.kolibri.base.usecase.searchopt.parse.TypedJsonSelectors.{NamedAndTypedSelector, TypedJsonSeqSelector, TypedJsonSingleValueSelector}
 import de.awagen.kolibri.base.usecase.searchopt.provider.FileBasedJudgementProvider.JudgementFileCSVFormatConfig
 import de.awagen.kolibri.base.usecase.searchopt.provider.{FileBasedJudgementProvider, JudgementProvider}
 import de.awagen.kolibri.datatypes.types.JsonTypeCast
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
+import de.awagen.kolibri.fleet.akka.config.AppProperties.config._
+import de.awagen.kolibri.fleet.akka.config.di.modules.connections.HttpModule
+import de.awagen.kolibri.fleet.akka.config.di.modules.persistence.PersistenceModule
 import de.awagen.kolibri.fleet.akka.io.json.ExecutionJsonProtocol.ExecutionFormat
+import de.awagen.kolibri.fleet.akka.io.json.SearchEvaluationJsonProtocol
+import de.awagen.kolibri.fleet.akka.io.json.WeightProviderJsonProtocol.StringWeightProviderFormat
+import de.awagen.kolibri.fleet.akka.processing.JobMessages.SearchEvaluationDefinition
 import spray.json.RootJsonFormat
 
 object AppConfig {
 
   object JsonFormats {
 
+    implicit val weightProviderFormat: RootJsonFormat[WeightProvider[String]] = StringWeightProviderFormat(
+      persistenceModule.persistenceDIModule.reader
+    )
+
     implicit val executionFormat: RootJsonFormat[Execution[Any]] = ExecutionFormat(
       persistenceModule.persistenceDIModule.reader,
       persistenceModule.persistenceDIModule.writer,
       AppProperties.config.metricDocumentFormatsMap,
-      regex => persistenceModule.persistenceDIModule.dataOverviewReaderWithRegexFilter(regex)
+      regex => persistenceModule.persistenceDIModule.dataOverviewReaderWithRegexFilter(regex),
+      weightProviderFormat
     )
+
+    implicit val searchEvaluationJsonFormat: RootJsonFormat[SearchEvaluationDefinition] =
+      SearchEvaluationJsonProtocol.SearchEvaluationFormat(executionFormat)
 
   }
 

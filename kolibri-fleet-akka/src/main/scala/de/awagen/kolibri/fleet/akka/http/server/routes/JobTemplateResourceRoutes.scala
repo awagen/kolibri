@@ -25,16 +25,15 @@ import de.awagen.kolibri.fleet.akka.config.AppConfig.persistenceModule
 import de.awagen.kolibri.fleet.akka.config.AppProperties
 import de.awagen.kolibri.fleet.akka.http.server.routes.StatusRoutes.corsHandler
 import de.awagen.kolibri.fleet.akka.io.json.QueryBasedSearchEvaluationJsonProtocol.queryBasedSearchEvaluationFormat
+import de.awagen.kolibri.fleet.akka.processing.JobMessages.{QueryBasedSearchEvaluationDefinition, SearchEvaluationDefinition}
 import de.awagen.kolibri.storage.io.reader.ReaderUtils.safeContentRead
 import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, Reader}
 import de.awagen.kolibri.storage.io.writer.Writers
-import de.awagen.kolibri.fleet.akka.processing.JobMessages.{QueryBasedSearchEvaluationDefinition, SearchEvaluationDefinition}
 import org.slf4j.{Logger, LoggerFactory}
 import spray.json.DefaultJsonProtocol.{StringJsonFormat, immSeqFormat, jsonFormat3, mapFormat}
 import spray.json.{JsValue, JsonReader, RootJsonFormat, enrichAny}
 
 import scala.reflect.runtime.universe._
-import scala.reflect.runtime.universe.typeOf
 
 
 // TODO: unify with JobDefRoutes. Refers especially to the type checking below before a
@@ -46,10 +45,9 @@ object JobTemplateResourceRoutes {
     * Also brings the path against which the template can be send as body to cause its actual execution.
     */
   object TemplateTypeValidationAndExecutionInfo extends Enumeration {
-
-    import de.awagen.kolibri.fleet.akka.io.json.SearchEvaluationJsonProtocol._
-
     type TemplateTypeValidationAndExecutionInfo = Val[_]
+
+    import de.awagen.kolibri.fleet.akka.config.AppConfig.JsonFormats.searchEvaluationJsonFormat
 
     sealed case class Val[+T: TypeTag](requestPath: String)(implicit jsonReader: JsonReader[T]) extends super.Val {
 

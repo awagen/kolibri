@@ -29,10 +29,9 @@ import de.awagen.kolibri.datatypes.types.JsonStructDefs._
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
 import de.awagen.kolibri.fleet.akka.io.json.SupplierJsonProtocol.StringSeqMappingFormat
-import de.awagen.kolibri.fleet.akka.io.json.WeightProviderJsonProtocol.StringWeightProviderFormat
 import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, Reader}
 import de.awagen.kolibri.storage.io.writer.Writers.Writer
-import spray.json.{DefaultJsonProtocol, JsValue, RootJsonFormat, enrichAny}
+import spray.json.{DefaultJsonProtocol, JsValue, JsonFormat, RootJsonFormat, enrichAny}
 
 import scala.util.matching.Regex
 
@@ -277,7 +276,10 @@ object ExecutionJsonProtocol extends DefaultJsonProtocol with SprayJsonSupport {
   case class ExecutionFormat(reader: Reader[String, Seq[String]],
                              writer: Writer[String, String, _],
                              metricDocumentFormatsMap: Map[String, MetricDocumentFormat],
-                             regexToDataOverviewReader: SerializableFunction1[Regex, DataOverviewReader]) extends RootJsonFormat[Execution[Any]] {
+                             regexToDataOverviewReader: SerializableFunction1[Regex, DataOverviewReader],
+                             weightFormat: JsonFormat[WeightProvider[String]]) extends RootJsonFormat[Execution[Any]] {
+    implicit val wf: JsonFormat[WeightProvider[String]] = weightFormat
+
     override def read(json: JsValue): Execution[Any] = json match {
       case spray.json.JsObject(fields) => fields(TYPE_KEY).convertTo[String] match {
         case AGGREGATE_FROM_DIR_BY_REGEX_TYPE =>
