@@ -18,11 +18,11 @@ package de.awagen.kolibri.fleet.akka.actors.work.worker
 
 import akka.actor.ActorRef
 import akka.testkit.{ImplicitSender, TestKit}
-import de.awagen.kolibri.base.domain.TaskDataKeys
-import de.awagen.kolibri.base.processing.JobPartIdentifiers.BaseJobPartIdentifier
-import de.awagen.kolibri.base.processing.ProcessingMessages.{Corn, ProcessingMessage}
+import de.awagen.kolibri.definitions.domain.TaskDataKeys
+import de.awagen.kolibri.definitions.processing.JobPartIdentifiers.BaseJobPartIdentifier
+import de.awagen.kolibri.definitions.processing.ProcessingMessages.{Corn, ProcessingMessage}
 import de.awagen.kolibri.fleet.akka.execution.TestTaskHelper._
-import de.awagen.kolibri.base.processing.execution.task.Task
+import de.awagen.kolibri.definitions.processing.execution.task.Task
 import de.awagen.kolibri.datatypes.mutable.stores.{TypeTaggedMap, TypedMapStore}
 import de.awagen.kolibri.datatypes.tagging.TagType.AGGREGATION
 import de.awagen.kolibri.datatypes.tagging.TaggedWithType

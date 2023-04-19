@@ -19,8 +19,8 @@ package de.awagen.kolibri.fleet.akka.http.client.request
 
 import akka.http.scaladsl.model.HttpRequest
 import akka.http.scaladsl.model.headers.RawHeader
-import de.awagen.kolibri.base.http.client.request.RequestTemplate
-import de.awagen.kolibri.base.http.client.request.RequestTemplate.PROJECT_HEADER_PREFIX
+import de.awagen.kolibri.definitions.http.client.request.RequestTemplate
+import de.awagen.kolibri.definitions.http.client.request.RequestTemplate.PROJECT_HEADER_PREFIX
 import de.awagen.kolibri.fleet.akka.http.client.request.RequestTemplateImplicits.RequestTemplateToAkkaHttpRequest
 import de.awagen.kolibri.fleet.akka.testclasses.UnitTestSpec
 

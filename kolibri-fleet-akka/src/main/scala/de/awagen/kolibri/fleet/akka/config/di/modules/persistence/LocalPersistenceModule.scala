@@ -24,7 +24,7 @@ import de.awagen.kolibri.fleet.akka.config.di.modules.Modules.{LOCAL_MODULE, Per
 import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, LocalDirectoryReader, LocalResourceFileReader, Reader}
 import de.awagen.kolibri.storage.io.writer.Writers.{FileWriter, Writer}
 import de.awagen.kolibri.storage.io.writer.base.LocalDirectoryFileWriter
-import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.Writer
+import de.awagen.kolibri.definitions.usecase.searchopt.jobdefinitions.parts.Writer
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
 import de.awagen.kolibri.datatypes.tagging.Tags
 

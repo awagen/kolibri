@@ -24,11 +24,11 @@ import akka.cluster.ddata.{Key, ORMap, ORSet}
 import de.awagen.kolibri.fleet.akka.actors.clusterinfo.ResourceToJobMappingClusterStateManagerActor._
 import de.awagen.kolibri.fleet.akka.cluster.ClusterNode
 import de.awagen.kolibri.fleet.akka.config.AppProperties.config.kolibriDispatcherName
-import de.awagen.kolibri.base.directives.ResourceDirectives.ResourceDirective
-import de.awagen.kolibri.base.directives.ResourceType.ResourceType
-import de.awagen.kolibri.base.directives.RetrievalDirective.RetrievalDirective
-import de.awagen.kolibri.base.directives.{Resource, ResourceType}
-import de.awagen.kolibri.base.resources._
+import de.awagen.kolibri.definitions.directives.ResourceDirectives.ResourceDirective
+import de.awagen.kolibri.definitions.directives.ResourceType.ResourceType
+import de.awagen.kolibri.definitions.directives.RetrievalDirective.RetrievalDirective
+import de.awagen.kolibri.definitions.directives.{Resource, ResourceType}
+import de.awagen.kolibri.definitions.resources._
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import org.slf4j.{Logger, LoggerFactory}
 

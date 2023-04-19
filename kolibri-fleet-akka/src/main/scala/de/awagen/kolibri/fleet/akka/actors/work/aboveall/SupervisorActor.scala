@@ -18,13 +18,13 @@ package de.awagen.kolibri.fleet.akka.actors.work.aboveall
 
 import akka.actor.SupervisorStrategy.Stop
 import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, ActorSystem, Cancellable, OneForOneStrategy, PoisonPill, Props, Terminated}
-import de.awagen.kolibri.base.domain.jobdefinitions.Batch
-import de.awagen.kolibri.base.processing.ProcessingMessages.{JobStatusInfo, ProcessingMessage}
-import de.awagen.kolibri.base.processing.classifier.Mapper.FilteringMapper
-import de.awagen.kolibri.base.processing.execution.SimpleTaskExecution
-import de.awagen.kolibri.base.processing.execution.expectation._
-import de.awagen.kolibri.base.processing.execution.functions.Execution
-import de.awagen.kolibri.base.processing.execution.task.Task
+import de.awagen.kolibri.definitions.domain.jobdefinitions.Batch
+import de.awagen.kolibri.definitions.processing.ProcessingMessages.{JobStatusInfo, ProcessingMessage}
+import de.awagen.kolibri.definitions.processing.classifier.Mapper.FilteringMapper
+import de.awagen.kolibri.definitions.processing.execution.SimpleTaskExecution
+import de.awagen.kolibri.definitions.processing.execution.expectation._
+import de.awagen.kolibri.definitions.processing.execution.functions.Execution
+import de.awagen.kolibri.definitions.processing.execution.task.Task
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.mutable.stores.TypeTaggedMap

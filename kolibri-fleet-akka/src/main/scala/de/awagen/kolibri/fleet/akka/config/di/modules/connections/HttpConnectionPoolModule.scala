@@ -26,7 +26,7 @@ import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.stream.scaladsl.Flow
 import com.softwaremill.tagging
 import de.awagen.kolibri.fleet.akka.config.AppProperties
-import de.awagen.kolibri.base.domain.Connections.Host
+import de.awagen.kolibri.definitions.domain.Connections.Host
 import de.awagen.kolibri.fleet.akka.config.di.modules.Modules.{GENERAL_MODULE, HttpConnectionPoolDIModule}
 import javax.net.ssl.{SSLContext, SSLEngine, TrustManager, X509TrustManager}
 

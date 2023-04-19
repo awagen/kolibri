@@ -19,7 +19,7 @@ package de.awagen.kolibri.fleet.akka.actors.routing
 import akka.actor.{ActorRef, Props}
 import akka.cluster.singleton.{ClusterSingletonProxy, ClusterSingletonProxySettings}
 import com.typesafe.config.{Config, ConfigFactory}
-import de.awagen.kolibri.base.processing.ProcessingMessages.Corn
+import de.awagen.kolibri.definitions.processing.ProcessingMessages.Corn
 import de.awagen.kolibri.fleet.akka.actors.KolibriTestKit
 import de.awagen.kolibri.fleet.akka.actors.testactors.TestTransformActor
 import de.awagen.kolibri.fleet.akka.cluster.ClusterSingletonUtils

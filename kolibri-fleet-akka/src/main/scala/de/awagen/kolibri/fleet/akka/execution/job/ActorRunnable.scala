@@ -20,10 +20,10 @@ import akka.actor.{ActorContext, ActorRef, ActorSystem, Props}
 import akka.stream._
 import akka.stream.scaladsl.{Flow, Keep, RunnableGraph, Sink, Source}
 import akka.{Done, NotUsed}
-import de.awagen.kolibri.base.processing.ProcessingMessages.ProcessingMessage
-import de.awagen.kolibri.base.processing.consume.AggregatorConfigurations.AggregatorConfig
-import de.awagen.kolibri.base.processing.execution.expectation.ExecutionExpectation
-import de.awagen.kolibri.base.traits.Traits.WithBatchNr
+import de.awagen.kolibri.definitions.processing.ProcessingMessages.ProcessingMessage
+import de.awagen.kolibri.definitions.processing.consume.AggregatorConfigurations.AggregatorConfig
+import de.awagen.kolibri.definitions.processing.execution.expectation.ExecutionExpectation
+import de.awagen.kolibri.definitions.traits.Traits.WithBatchNr
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.types.Types.WithCount

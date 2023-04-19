@@ -18,22 +18,22 @@
 package de.awagen.kolibri.fleet.akka.io.json
 
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
-import de.awagen.kolibri.base.directives.ResourceDirectives.ResourceDirective
-import de.awagen.kolibri.base.domain.Connections.Connection
-import de.awagen.kolibri.base.http.client.request.RequestTemplate
-import de.awagen.kolibri.base.io.json.ConnectionJsonProtocol._
-import de.awagen.kolibri.base.io.json.ResourceDirectiveJsonProtocol.GenericResourceDirectiveFormatStruct
-import de.awagen.kolibri.base.io.json.TaggingConfigurationsJsonProtocol._
-import de.awagen.kolibri.base.io.json.{ConnectionJsonProtocol, ExecutionJsonProtocol, ParameterValuesJsonProtocol, ResourceDirectiveJsonProtocol}
-import de.awagen.kolibri.base.processing.execution.functions.Execution
-import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ValueSeqGenDefinition
-import de.awagen.kolibri.base.processing.tagging.TaggingConfigurations.BaseTaggingConfiguration
-import de.awagen.kolibri.base.usecase.searchopt.io.json.JsonSelectorJsonProtocol._
-import de.awagen.kolibri.base.usecase.searchopt.io.json.ParsingConfigJsonProtocol._
-import de.awagen.kolibri.base.usecase.searchopt.io.json.{JsonSelectorJsonProtocol, ParsingConfigJsonProtocol}
-import de.awagen.kolibri.base.usecase.searchopt.parse.JsonSelectors.JsonSelectorPathRegularExpressions.recursivePathKeyGroupingRegex
-import de.awagen.kolibri.base.usecase.searchopt.parse.ParsingConfig
-import de.awagen.kolibri.base.usecase.searchopt.parse.TypedJsonSelectors.NamedAndTypedSelector
+import de.awagen.kolibri.definitions.directives.ResourceDirectives.ResourceDirective
+import de.awagen.kolibri.definitions.domain.Connections.Connection
+import de.awagen.kolibri.definitions.http.client.request.RequestTemplate
+import de.awagen.kolibri.definitions.io.json.ConnectionJsonProtocol._
+import de.awagen.kolibri.definitions.io.json.ResourceDirectiveJsonProtocol.GenericResourceDirectiveFormatStruct
+import de.awagen.kolibri.definitions.io.json.TaggingConfigurationsJsonProtocol._
+import de.awagen.kolibri.definitions.io.json.{ConnectionJsonProtocol, ExecutionJsonProtocol, ParameterValuesJsonProtocol, ResourceDirectiveJsonProtocol}
+import de.awagen.kolibri.definitions.processing.execution.functions.Execution
+import de.awagen.kolibri.definitions.processing.modifiers.ParameterValues.ValueSeqGenDefinition
+import de.awagen.kolibri.definitions.processing.tagging.TaggingConfigurations.BaseTaggingConfiguration
+import de.awagen.kolibri.definitions.usecase.searchopt.io.json.JsonSelectorJsonProtocol._
+import de.awagen.kolibri.definitions.usecase.searchopt.io.json.ParsingConfigJsonProtocol._
+import de.awagen.kolibri.definitions.usecase.searchopt.io.json.{JsonSelectorJsonProtocol, ParsingConfigJsonProtocol}
+import de.awagen.kolibri.definitions.usecase.searchopt.parse.JsonSelectors.JsonSelectorPathRegularExpressions.recursivePathKeyGroupingRegex
+import de.awagen.kolibri.definitions.usecase.searchopt.parse.ParsingConfig
+import de.awagen.kolibri.definitions.usecase.searchopt.parse.TypedJsonSelectors.NamedAndTypedSelector
 import de.awagen.kolibri.datatypes.io.json.EnumerationJsonProtocol.aggregateTypeFormat
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.datatypes.stores.MetricRow

@@ -22,10 +22,10 @@ import akka.http.scaladsl.model.HttpEntity
 import akka.stream.scaladsl.{Flow, Sink, Source}
 import akka.stream.{FlowShape, Graph}
 import akka.testkit.{ImplicitSender, TestKit}
-import de.awagen.kolibri.base.domain.Connections.Connection
-import de.awagen.kolibri.base.http.client.request.RequestTemplate
-import de.awagen.kolibri.base.processing.ProcessingMessages
-import de.awagen.kolibri.base.processing.ProcessingMessages.{Corn, ProcessingMessage}
+import de.awagen.kolibri.definitions.domain.Connections.Connection
+import de.awagen.kolibri.definitions.http.client.request.RequestTemplate
+import de.awagen.kolibri.definitions.processing.ProcessingMessages
+import de.awagen.kolibri.definitions.processing.ProcessingMessages.{Corn, ProcessingMessage}
 import de.awagen.kolibri.fleet.akka.actors.KolibriTestKitNoCluster
 import de.awagen.kolibri.fleet.akka.usecase.searchopt.http.client.flows.FlowTestHelper._
 import org.scalamock.scalatest.MockFactory

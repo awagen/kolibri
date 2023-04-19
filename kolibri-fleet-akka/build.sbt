@@ -143,7 +143,7 @@ libraryDependencies ++= Seq(
   "org.scalamock" %% "scalamock" % scalaMockVersion % Test
 )
 
-libraryDependencies := { libraryDependencies.value :+ ("de.awagen.kolibri" %% "kolibri-base" % version.value) }
+libraryDependencies := { libraryDependencies.value :+ ("de.awagen.kolibri" %% "kolibri-definitions" % version.value) }
 mainClass in assembly := Some("de.awagen.kolibri.fleet.akka.cluster.ClusterNode")
 
 // ---- start settings for publishing to mvn central

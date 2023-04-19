@@ -43,7 +43,7 @@ Finished job history:
 
 ## Subproject Handling
 - executing sbt commands on single projects: include the project sub-path
-in the command, such as ```sbt kolibri-base/compile```
+in the command, such as ```sbt kolibri-definitions/compile```
 - execute according to dependencies as defined in the root build.sbt, such as
 compile in needed order ```sbt compile```
 

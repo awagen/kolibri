@@ -19,7 +19,7 @@ package de.awagen.kolibri.fleet.akka.http.client.request
 
 import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.model._
-import de.awagen.kolibri.base.http.client.request.RequestTemplate
+import de.awagen.kolibri.definitions.http.client.request.RequestTemplate
 
 object RequestTemplateImplicits {
 

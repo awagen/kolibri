@@ -24,7 +24,7 @@ import de.awagen.kolibri.fleet.akka.config.di.modules.Modules.{GCP_MODULE, Persi
 import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, GcpGSDirectoryReader, GcpGSFileReader, Reader}
 import de.awagen.kolibri.storage.io.writer.Writers
 import de.awagen.kolibri.storage.io.writer.base.GcpGSFileWriter
-import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.Writer
+import de.awagen.kolibri.definitions.usecase.searchopt.jobdefinitions.parts.Writer
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
 import de.awagen.kolibri.datatypes.tagging.Tags
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1

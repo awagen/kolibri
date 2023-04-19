@@ -19,7 +19,7 @@ package de.awagen.kolibri.fleet.akka.config
 import com.amazonaws.regions.Regions
 import com.typesafe.config.{Config, ConfigFactory}
 import de.awagen.kolibri.fleet.akka.actors.resources.{CPUBasedResourceChecker, ResourceChecker}
-import de.awagen.kolibri.base.status.ClusterStates.ClusterStatus
+import de.awagen.kolibri.definitions.status.ClusterStates.ClusterStatus
 import de.awagen.kolibri.fleet.akka.config.EnvVariableKeys.{IS_SINGLENODE, NODE_ROLES, POD_IP, PROFILE}
 import de.awagen.kolibri.datatypes.types.JsonTypeCast.JsonTypeCast
 import de.awagen.kolibri.datatypes.metrics.aggregation.writer.{CSVParameterBasedMetricDocumentFormat, JsonMetricDocumentFormat, MetricDocumentFormat}

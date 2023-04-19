@@ -18,12 +18,12 @@
 package de.awagen.kolibri.fleet.akka.jobdefinitions
 
 import akka.stream.scaladsl.Flow
-import de.awagen.kolibri.base.domain.jobdefinitions.Batch
-import de.awagen.kolibri.base.domain.jobdefinitions.provider.data.BatchGenerators.IntNumberBatchGenerator
-import de.awagen.kolibri.base.processing.ProcessingMessages.{Corn, ProcessingMessage}
-import de.awagen.kolibri.base.processing.classifier.Mapper.AcceptAllAsIdentityMapper
-import de.awagen.kolibri.base.processing.execution.expectation.Expectation.SuccessAndErrorCounts
-import de.awagen.kolibri.base.processing.execution.expectation._
+import de.awagen.kolibri.definitions.domain.jobdefinitions.Batch
+import de.awagen.kolibri.definitions.domain.jobdefinitions.provider.data.BatchGenerators.IntNumberBatchGenerator
+import de.awagen.kolibri.definitions.processing.ProcessingMessages.{Corn, ProcessingMessage}
+import de.awagen.kolibri.definitions.processing.classifier.Mapper.AcceptAllAsIdentityMapper
+import de.awagen.kolibri.definitions.processing.execution.expectation.Expectation.SuccessAndErrorCounts
+import de.awagen.kolibri.definitions.processing.execution.expectation._
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.tagging.TagType.AGGREGATION
 import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}

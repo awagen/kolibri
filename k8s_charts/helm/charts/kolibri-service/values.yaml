@@ -8,7 +8,7 @@ replicaCount: 1
 image:
   # workaround to enable local images for kind cluster,
   # e.g using local repo localhost:5000
-  repository: localhost:5000/kolibri-base
+  repository: localhost:5000/kolibri-fleet-akka
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   #tag: ""
@@ -196,7 +196,7 @@ ingress:
   enabled: false
   annotations: {}
   hosts:
-    - host: kolibri-base.local
+    - host: kolibri-fleet-akka.local
       paths:
         - path: /
           backend:

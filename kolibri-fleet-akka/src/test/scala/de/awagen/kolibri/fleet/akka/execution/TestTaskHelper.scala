@@ -16,12 +16,12 @@
 
 package de.awagen.kolibri.fleet.akka.execution
 
-import de.awagen.kolibri.base.domain.TaskDataKeys.Val
-import de.awagen.kolibri.base.processing.ProcessingMessages.{Corn, ProcessingMessage}
-import de.awagen.kolibri.base.processing.execution
-import de.awagen.kolibri.base.processing.execution.task
-import de.awagen.kolibri.base.processing.execution.task.{SimpleAsyncTask, SimpleSyncTask}
-import de.awagen.kolibri.base.processing.failure.TaskFailType.{FailedByException, TaskFailType}
+import de.awagen.kolibri.definitions.domain.TaskDataKeys.Val
+import de.awagen.kolibri.definitions.processing.ProcessingMessages.{Corn, ProcessingMessage}
+import de.awagen.kolibri.definitions.processing.execution
+import de.awagen.kolibri.definitions.processing.execution.task
+import de.awagen.kolibri.definitions.processing.execution.task.{SimpleAsyncTask, SimpleSyncTask}
+import de.awagen.kolibri.definitions.processing.failure.TaskFailType.{FailedByException, TaskFailType}
 import de.awagen.kolibri.datatypes.mutable.stores.TypeTaggedMap
 
 import scala.concurrent.{ExecutionContext, Future}

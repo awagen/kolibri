@@ -18,14 +18,14 @@
 package de.awagen.kolibri.fleet.akka.actors.work.worker
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Cancellable, PoisonPill, Props}
-import de.awagen.kolibri.base.processing.JobPartIdentifiers
+import de.awagen.kolibri.definitions.processing.JobPartIdentifiers
 import de.awagen.kolibri.fleet.akka.actors.work.worker.AggregatingActor._
-import de.awagen.kolibri.base.processing.ProcessingMessages._
+import de.awagen.kolibri.definitions.processing.ProcessingMessages._
 import de.awagen.kolibri.fleet.akka.config.AppProperties.config
 import de.awagen.kolibri.fleet.akka.config.AppProperties.config.{kolibriDispatcherName, useAggregatorBackpressure}
 import de.awagen.kolibri.storage.io.writer.Writers.Writer
-import de.awagen.kolibri.base.processing.consume.AggregatorConfigurations.AggregatorConfig
-import de.awagen.kolibri.base.processing.execution.expectation.ExecutionExpectation
+import de.awagen.kolibri.definitions.processing.consume.AggregatorConfigurations.AggregatorConfig
+import de.awagen.kolibri.definitions.processing.execution.expectation.ExecutionExpectation
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}
 import de.awagen.kolibri.datatypes.types.Types.WithCount

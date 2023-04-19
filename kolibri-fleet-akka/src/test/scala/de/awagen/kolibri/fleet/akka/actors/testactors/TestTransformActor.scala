@@ -17,7 +17,7 @@
 package de.awagen.kolibri.fleet.akka.actors.testactors
 
 import akka.actor.{Actor, ActorLogging}
-import de.awagen.kolibri.base.processing.ProcessingMessages.Corn
+import de.awagen.kolibri.definitions.processing.ProcessingMessages.Corn
 
 // TestActor receiving messages, adding 1 and sending reponse back to sender
 case class TestTransformActor[T](transformFunc: Corn[Int] => T) extends Actor with ActorLogging {

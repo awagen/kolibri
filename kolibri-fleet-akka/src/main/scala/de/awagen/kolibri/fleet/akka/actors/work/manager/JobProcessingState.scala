@@ -17,12 +17,12 @@
 
 package de.awagen.kolibri.fleet.akka.actors.work.manager
 
-import de.awagen.kolibri.base.processing.ProcessingMessages._
-import de.awagen.kolibri.base.processing.consume.Consumers.{ExecutionConsumer, getExpectingAggregatingWritingExecutionConsumer}
-import de.awagen.kolibri.base.processing.distribution.Distributors.{Batch, getRetryingDistributor}
-import de.awagen.kolibri.base.processing.distribution.{DistributionStates, Distributor}
-import de.awagen.kolibri.base.processing.execution.expectation.ExecutionExpectations.jobExecutionExpectation
-import de.awagen.kolibri.base.processing.execution.expectation._
+import de.awagen.kolibri.definitions.processing.ProcessingMessages._
+import de.awagen.kolibri.definitions.processing.consume.Consumers.{ExecutionConsumer, getExpectingAggregatingWritingExecutionConsumer}
+import de.awagen.kolibri.definitions.processing.distribution.Distributors.{Batch, getRetryingDistributor}
+import de.awagen.kolibri.definitions.processing.distribution.{DistributionStates, Distributor}
+import de.awagen.kolibri.definitions.processing.execution.expectation.ExecutionExpectations.jobExecutionExpectation
+import de.awagen.kolibri.definitions.processing.execution.expectation._
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator

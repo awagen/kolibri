@@ -17,16 +17,16 @@
 
 package de.awagen.kolibri.fleet.akka.usecase.searchopt.io.json
 
-import de.awagen.kolibri.base.directives.Resource
-import de.awagen.kolibri.base.io.json.ResourceJsonProtocol.StructDefs.RESOURCE_JUDGEMENT_PROVIDER_STRUCT_DEF
-import de.awagen.kolibri.base.io.json.ResourceJsonProtocol.resourceJudgementProviderFormat
-import de.awagen.kolibri.base.usecase.searchopt.io.json.CalculationName.{BINARY_PRECISION_FALSE_AS_YES, BINARY_PRECISION_TRUE_AS_YES, FALSE_COUNT, FIRST_FALSE, FIRST_TRUE, IDENTITY, IR_METRICS, STRING_SEQUENCE_VALUE_OCCURRENCE_HISTOGRAM, TRUE_COUNT}
-import de.awagen.kolibri.base.usecase.searchopt.io.json.MetricsCalculationJsonProtocol
-import de.awagen.kolibri.base.usecase.searchopt.io.json.MetricsCalculationJsonProtocol.metricsCalculationFormat
-import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations.FromMapCalculation
-import de.awagen.kolibri.base.usecase.searchopt.metrics.ComputeResultFunctions.{booleanPrecision, countValues, findFirstValue, stringSeqHistogram}
-import de.awagen.kolibri.base.usecase.searchopt.metrics.{ComputeResultFunctions, MetricsCalculation}
-import de.awagen.kolibri.base.usecase.searchopt.provider.JudgementProvider
+import de.awagen.kolibri.definitions.directives.Resource
+import de.awagen.kolibri.definitions.io.json.ResourceJsonProtocol.StructDefs.RESOURCE_JUDGEMENT_PROVIDER_STRUCT_DEF
+import de.awagen.kolibri.definitions.io.json.ResourceJsonProtocol.resourceJudgementProviderFormat
+import de.awagen.kolibri.definitions.usecase.searchopt.io.json.CalculationName.{BINARY_PRECISION_FALSE_AS_YES, BINARY_PRECISION_TRUE_AS_YES, FALSE_COUNT, FIRST_FALSE, FIRST_TRUE, IDENTITY, IR_METRICS, STRING_SEQUENCE_VALUE_OCCURRENCE_HISTOGRAM, TRUE_COUNT}
+import de.awagen.kolibri.definitions.usecase.searchopt.io.json.MetricsCalculationJsonProtocol
+import de.awagen.kolibri.definitions.usecase.searchopt.io.json.MetricsCalculationJsonProtocol.metricsCalculationFormat
+import de.awagen.kolibri.definitions.usecase.searchopt.metrics.Calculations.FromMapCalculation
+import de.awagen.kolibri.definitions.usecase.searchopt.metrics.ComputeResultFunctions.{booleanPrecision, countValues, findFirstValue, stringSeqHistogram}
+import de.awagen.kolibri.definitions.usecase.searchopt.metrics.{ComputeResultFunctions, MetricsCalculation}
+import de.awagen.kolibri.definitions.usecase.searchopt.provider.JudgementProvider
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
 import de.awagen.kolibri.datatypes.types.JsonStructDefs._

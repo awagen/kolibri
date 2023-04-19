@@ -20,10 +20,10 @@ import akka.actor.{ActorRef, Props}
 import akka.serialization.{SerializationExtension, Serializers}
 import akka.stream.scaladsl.Flow
 import akka.testkit.{ImplicitSender, TestKit}
-import de.awagen.kolibri.base.processing.ProcessingMessages.{Corn, ProcessingMessage}
-import de.awagen.kolibri.base.processing.classifier.Mapper.AcceptAllAsIdentityMapper
-import de.awagen.kolibri.base.processing.consume.AggregatorConfigurations.AggregatorConfig
-import de.awagen.kolibri.base.processing.execution.expectation.{BaseExecutionExpectation, ExecutionExpectation}
+import de.awagen.kolibri.definitions.processing.ProcessingMessages.{Corn, ProcessingMessage}
+import de.awagen.kolibri.definitions.processing.classifier.Mapper.AcceptAllAsIdentityMapper
+import de.awagen.kolibri.definitions.processing.consume.AggregatorConfigurations.AggregatorConfig
+import de.awagen.kolibri.definitions.processing.execution.expectation.{BaseExecutionExpectation, ExecutionExpectation}
 import de.awagen.kolibri.datatypes.collections.generators.ByFunctionNrLimitedIndexedGenerator
 import de.awagen.kolibri.datatypes.types.SerializableCallable.{SerializableFunction1, SerializableSupplier}
 import de.awagen.kolibri.datatypes.types.Types.WithCount

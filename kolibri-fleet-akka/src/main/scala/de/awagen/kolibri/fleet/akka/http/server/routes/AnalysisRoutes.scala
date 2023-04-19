@@ -22,9 +22,9 @@ import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{PathMatcher0, PathMatcher1, Route}
-import de.awagen.kolibri.base.processing.execution.functions.AnalyzeFunctions.{ExecutionSummary, GetImprovingAndLoosingFromDirPerRegex, GetValueVarianceFromDirPerRegex}
-import de.awagen.kolibri.base.processing.execution.functions.Execution
-import de.awagen.kolibri.base.processing.failure.TaskFailType
+import de.awagen.kolibri.definitions.processing.execution.functions.AnalyzeFunctions.{ExecutionSummary, GetImprovingAndLoosingFromDirPerRegex, GetValueVarianceFromDirPerRegex}
+import de.awagen.kolibri.definitions.processing.execution.functions.Execution
+import de.awagen.kolibri.definitions.processing.failure.TaskFailType
 import de.awagen.kolibri.datatypes.stores.PriorityStores.{BasePriorityStore, PriorityStore}
 import de.awagen.kolibri.fleet.akka.config.AppConfig.persistenceModule
 import de.awagen.kolibri.fleet.akka.config.{AppConfig, AppProperties}

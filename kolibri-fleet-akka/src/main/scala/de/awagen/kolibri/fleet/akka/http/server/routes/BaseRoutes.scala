@@ -25,9 +25,9 @@ import akka.http.scaladsl.server.Route
 import akka.pattern.ask
 import akka.stream.scaladsl.Source
 import akka.util.{ByteString, Timeout}
-import de.awagen.kolibri.base.processing.execution.functions.Execution
-import de.awagen.kolibri.base.status.ClusterStates.ClusterStatus
-import de.awagen.kolibri.base.usecase.searchopt.provider.JudgementProvider
+import de.awagen.kolibri.definitions.processing.execution.functions.Execution
+import de.awagen.kolibri.definitions.status.ClusterStates.ClusterStatus
+import de.awagen.kolibri.definitions.usecase.searchopt.provider.JudgementProvider
 import de.awagen.kolibri.fleet.akka.actors.clusterinfo.ClusterMetricsListenerActor
 import de.awagen.kolibri.fleet.akka.actors.clusterinfo.ClusterMetricsListenerActor.{MetricsProvided, ProvideMetrics}
 import de.awagen.kolibri.fleet.akka.actors.work.aboveall.SupervisorActor
@@ -122,7 +122,7 @@ object BaseRoutes {
     implicit val timeout: Timeout = 10.seconds
     import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
     import akka.http.scaladsl.server.Directives._
-    import de.awagen.kolibri.base.status.ClusterStates.ClusterStatusImplicits._
+    import de.awagen.kolibri.definitions.status.ClusterStates.ClusterStatusImplicits._
     import spray.json.DefaultJsonProtocol._
     corsHandler(
       path("clusterstatus") {
@@ -276,7 +276,7 @@ object BaseRoutes {
     implicit val timeout: Timeout = Timeout(analyzeTimeout)
     implicit val ec: ExecutionContextExecutor = system.dispatchers.lookup(kolibriDispatcherName)
     import AppConfig.JsonFormats.executionFormat
-    import de.awagen.kolibri.base.io.json.ExecutionJsonProtocol._
+    import de.awagen.kolibri.definitions.io.json.ExecutionJsonProtocol._
 
     corsHandler(
       path("execution") {

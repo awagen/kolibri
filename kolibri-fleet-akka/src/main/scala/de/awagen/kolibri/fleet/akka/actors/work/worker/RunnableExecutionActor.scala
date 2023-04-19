@@ -20,9 +20,9 @@ import akka.Done
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Cancellable, PoisonPill, Props}
 import akka.stream.scaladsl.{RunnableGraph, SourceQueueWithComplete}
 import akka.stream.{ActorAttributes, UniqueKillSwitch}
-import de.awagen.kolibri.base.processing.JobPartIdentifiers.BaseJobPartIdentifier
-import de.awagen.kolibri.base.processing.ProcessingMessages.{AggregationState, AggregationStateWithoutData}
-import de.awagen.kolibri.base.processing.execution.expectation._
+import de.awagen.kolibri.definitions.processing.JobPartIdentifiers.BaseJobPartIdentifier
+import de.awagen.kolibri.definitions.processing.ProcessingMessages.{AggregationState, AggregationStateWithoutData}
+import de.awagen.kolibri.definitions.processing.execution.expectation._
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag

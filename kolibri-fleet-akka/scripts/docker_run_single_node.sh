@@ -18,4 +18,4 @@ sudo docker run \
 -e KOLIBRI_USER='kolibri_local' \
 -e KOLIBRI_USER_ID=$UID \
 -d \
-kolibri-base:0.1.0-alpha2
+kolibri-fleet-akka:0.1.0-alpha2

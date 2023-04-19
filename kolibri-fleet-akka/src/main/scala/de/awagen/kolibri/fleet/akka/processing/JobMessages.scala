@@ -17,24 +17,24 @@
 
 package de.awagen.kolibri.fleet.akka.processing
 
-import de.awagen.kolibri.base.directives.ResourceDirectives.{GenericResourceDirective, ResourceDirective}
-import de.awagen.kolibri.base.directives.{ExpirePolicy, Resource, ResourceType, WithResources}
-import de.awagen.kolibri.base.domain.Connections.Connection
-import de.awagen.kolibri.base.http.client.request.{RequestTemplate, RequestTemplateBuilder}
-import de.awagen.kolibri.base.io.json.MetricFunctionJsonProtocol.{MetricFunction, MetricType}
-import de.awagen.kolibri.base.processing.execution.functions.AggregationFunctions.AggregateFromDirectoryByRegexWeighted
-import de.awagen.kolibri.base.processing.execution.functions.Execution
-import de.awagen.kolibri.base.processing.modifiers.Modifier
-import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ValueSeqGenDefinition
-import de.awagen.kolibri.base.processing.tagging.TaggingConfigurations
-import de.awagen.kolibri.base.processing.tagging.TaggingConfigurations.{BaseTaggingConfiguration, EitherThrowableOrTaggedWeaklyTypedMapStore, TaggedMetricRowStore, TaggedRequestTemplateStore}
-import de.awagen.kolibri.base.provider.WeightProviders
-import de.awagen.kolibri.base.usecase.searchopt.metrics.MetricsCalculation.AVAILABLE_JUDGEMENT_METRICS_NAME_TO_TYPE_MAPPING
-import de.awagen.kolibri.base.usecase.searchopt.metrics.{IRMetricFunctions, JudgementHandlingStrategy, Metric, MetricsCalculation}
-import de.awagen.kolibri.base.usecase.searchopt.parse.JsonSelectors.JsValueSeqSelector
-import de.awagen.kolibri.base.usecase.searchopt.parse.TypedJsonSelectors.{NamedAndTypedSelector, TypedJsonSeqSelector}
-import de.awagen.kolibri.base.usecase.searchopt.parse.{JsonSelectors, ParsingConfig}
-import de.awagen.kolibri.base.usecase.searchopt.provider.JudgementProvider
+import de.awagen.kolibri.definitions.directives.ResourceDirectives.{GenericResourceDirective, ResourceDirective}
+import de.awagen.kolibri.definitions.directives.{ExpirePolicy, Resource, ResourceType, WithResources}
+import de.awagen.kolibri.definitions.domain.Connections.Connection
+import de.awagen.kolibri.definitions.http.client.request.{RequestTemplate, RequestTemplateBuilder}
+import de.awagen.kolibri.definitions.io.json.MetricFunctionJsonProtocol.{MetricFunction, MetricType}
+import de.awagen.kolibri.definitions.processing.execution.functions.AggregationFunctions.AggregateFromDirectoryByRegexWeighted
+import de.awagen.kolibri.definitions.processing.execution.functions.Execution
+import de.awagen.kolibri.definitions.processing.modifiers.Modifier
+import de.awagen.kolibri.definitions.processing.modifiers.ParameterValues.ValueSeqGenDefinition
+import de.awagen.kolibri.definitions.processing.tagging.TaggingConfigurations
+import de.awagen.kolibri.definitions.processing.tagging.TaggingConfigurations.{BaseTaggingConfiguration, EitherThrowableOrTaggedWeaklyTypedMapStore, TaggedMetricRowStore, TaggedRequestTemplateStore}
+import de.awagen.kolibri.definitions.provider.WeightProviders
+import de.awagen.kolibri.definitions.usecase.searchopt.metrics.MetricsCalculation.AVAILABLE_JUDGEMENT_METRICS_NAME_TO_TYPE_MAPPING
+import de.awagen.kolibri.definitions.usecase.searchopt.metrics.{IRMetricFunctions, JudgementHandlingStrategy, Metric, MetricsCalculation}
+import de.awagen.kolibri.definitions.usecase.searchopt.parse.JsonSelectors.JsValueSeqSelector
+import de.awagen.kolibri.definitions.usecase.searchopt.parse.TypedJsonSelectors.{NamedAndTypedSelector, TypedJsonSeqSelector}
+import de.awagen.kolibri.definitions.usecase.searchopt.parse.{JsonSelectors, ParsingConfig}
+import de.awagen.kolibri.definitions.usecase.searchopt.provider.JudgementProvider
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
@@ -91,7 +91,7 @@ object JobMessages {
                                         allowedTimeForJobInSeconds: Int = 7200,
                                         expectResultsFromBatchCalculations: Boolean = true) extends JobDefinition with WithResources {
 
-    import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ParameterValuesImplicits._
+    import de.awagen.kolibri.definitions.processing.modifiers.ParameterValues.ParameterValuesImplicits._
 
     val excludeParamsFromMetricRow: Seq[String] = (fixedParams.keys.toSet ++ excludeParamColumns.toSet).toSeq
 

@@ -18,16 +18,16 @@
 package de.awagen.kolibri.fleet.akka.config
 
 import com.softwaremill.macwire.wire
-import de.awagen.kolibri.base.io.json
-import de.awagen.kolibri.base.io.json.ExecutionJsonProtocol.ExecutionFormat
-import de.awagen.kolibri.base.io.json.{IndexedGeneratorJsonProtocol, MappingSupplierJsonProtocol, ModifierGeneratorProviderJsonProtocol, ModifierMappersJsonProtocol, OrderedMultiValuesJsonProtocol, OrderedValuesJsonProtocol, ParameterValuesJsonProtocol, ResourceDirectiveJsonProtocol, SeqModifierGeneratorJsonProtocol, SupplierJsonProtocol}
-import de.awagen.kolibri.base.io.json.WeightProviderJsonProtocol.StringWeightProviderFormat
-import de.awagen.kolibri.base.processing.execution.functions.Execution
-import de.awagen.kolibri.base.provider.WeightProviders.WeightProvider
-import de.awagen.kolibri.base.usecase.searchopt.parse.JsonSelectors.{PlainAndRecursiveSelector, PlainPathSelector}
-import de.awagen.kolibri.base.usecase.searchopt.parse.TypedJsonSelectors.{NamedAndTypedSelector, TypedJsonSeqSelector, TypedJsonSingleValueSelector}
-import de.awagen.kolibri.base.usecase.searchopt.provider.FileBasedJudgementProvider.JudgementFileCSVFormatConfig
-import de.awagen.kolibri.base.usecase.searchopt.provider.{FileBasedJudgementProvider, JudgementProvider}
+import de.awagen.kolibri.definitions.io.json
+import de.awagen.kolibri.definitions.io.json.ExecutionJsonProtocol.ExecutionFormat
+import de.awagen.kolibri.definitions.io.json.{IndexedGeneratorJsonProtocol, MappingSupplierJsonProtocol, ModifierGeneratorProviderJsonProtocol, ModifierMappersJsonProtocol, OrderedMultiValuesJsonProtocol, OrderedValuesJsonProtocol, ParameterValuesJsonProtocol, ResourceDirectiveJsonProtocol, SeqModifierGeneratorJsonProtocol, SupplierJsonProtocol}
+import de.awagen.kolibri.definitions.io.json.WeightProviderJsonProtocol.StringWeightProviderFormat
+import de.awagen.kolibri.definitions.processing.execution.functions.Execution
+import de.awagen.kolibri.definitions.provider.WeightProviders.WeightProvider
+import de.awagen.kolibri.definitions.usecase.searchopt.parse.JsonSelectors.{PlainAndRecursiveSelector, PlainPathSelector}
+import de.awagen.kolibri.definitions.usecase.searchopt.parse.TypedJsonSelectors.{NamedAndTypedSelector, TypedJsonSeqSelector, TypedJsonSingleValueSelector}
+import de.awagen.kolibri.definitions.usecase.searchopt.provider.FileBasedJudgementProvider.JudgementFileCSVFormatConfig
+import de.awagen.kolibri.definitions.usecase.searchopt.provider.{FileBasedJudgementProvider, JudgementProvider}
 import de.awagen.kolibri.datatypes.types.JsonTypeCast
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 import de.awagen.kolibri.fleet.akka.cluster.ClusterNodeObj

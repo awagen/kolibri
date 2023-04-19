@@ -21,11 +21,11 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives.{as, complete, entity, get, parameters, path, pathPrefix, post}
 import akka.http.scaladsl.server.Route
-import de.awagen.kolibri.base.http.client.request.{RequestTemplate, RequestTemplateBuilder}
-import de.awagen.kolibri.base.io.json.ParameterValuesJsonProtocol.FormatOps
-import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ParameterValuesImplicits.ParameterValueSeqToRequestBuilderModifier
-import de.awagen.kolibri.base.processing.modifiers.ParameterValues._
-import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.{CombinedModifier, RequestTemplateBuilderModifier}
+import de.awagen.kolibri.definitions.http.client.request.{RequestTemplate, RequestTemplateBuilder}
+import de.awagen.kolibri.definitions.io.json.ParameterValuesJsonProtocol.FormatOps
+import de.awagen.kolibri.definitions.processing.modifiers.ParameterValues.ParameterValuesImplicits.ParameterValueSeqToRequestBuilderModifier
+import de.awagen.kolibri.definitions.processing.modifiers.ParameterValues._
+import de.awagen.kolibri.definitions.processing.modifiers.RequestTemplateBuilderModifiers.{CombinedModifier, RequestTemplateBuilderModifier}
 import de.awagen.kolibri.datatypes.collections.generators.{IndexedGenerator, PermutatingIndexedGenerator}
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.fleet.akka.config.AppConfig.persistenceModule

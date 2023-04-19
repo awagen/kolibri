@@ -23,10 +23,10 @@ import akka.http.scaladsl.model._
 import akka.stream.Materializer
 import akka.stream.scaladsl.Flow
 import akka.util.ByteString
-import de.awagen.kolibri.base.domain.Connections.Connection
-import de.awagen.kolibri.base.http.client.request.RequestTemplate
-import de.awagen.kolibri.base.processing.ProcessingMessages
-import de.awagen.kolibri.base.processing.ProcessingMessages.{Corn, ProcessingMessage}
+import de.awagen.kolibri.definitions.domain.Connections.Connection
+import de.awagen.kolibri.definitions.http.client.request.RequestTemplate
+import de.awagen.kolibri.definitions.processing.ProcessingMessages
+import de.awagen.kolibri.definitions.processing.ProcessingMessages.{Corn, ProcessingMessage}
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.concurrent.ExecutionContext.global

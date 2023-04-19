@@ -29,9 +29,9 @@ import de.awagen.kolibri.fleet.akka.actors.work.worker.RunnableExecutionActor.{B
 import de.awagen.kolibri.fleet.akka.cluster.ClusterNode
 import de.awagen.kolibri.fleet.akka.config.AppProperties.config.{internalJobStatusRequestTimeout, kolibriDispatcherName}
 import de.awagen.kolibri.fleet.akka.http.server.routes.BaseRoutes.{clusterMetricsListenerActor, supervisorActor}
-import de.awagen.kolibri.base.io.json.ClusterStatesJsonProtocol._
-import de.awagen.kolibri.base.processing.ProcessingMessages.JobStatusInfo
-import de.awagen.kolibri.base.io.json.JobStateJsonProtocol.jobStatusFormat
+import de.awagen.kolibri.definitions.io.json.ClusterStatesJsonProtocol._
+import de.awagen.kolibri.definitions.processing.ProcessingMessages.JobStatusInfo
+import de.awagen.kolibri.definitions.io.json.JobStateJsonProtocol.jobStatusFormat
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.concurrent.{ExecutionContextExecutor, Future}

@@ -23,10 +23,10 @@ import akka.pattern.ask
 import akka.stream.ActorAttributes
 import akka.stream.scaladsl.Flow
 import akka.util.Timeout
-import de.awagen.kolibri.base.processing.ProcessingMessages.{AggregationStateWithData, BadCorn, ProcessingMessage}
-import de.awagen.kolibri.base.processing.consume.AggregatorConfigurations.AggregatorConfig
-import de.awagen.kolibri.base.processing.execution.expectation.ExecutionExpectation
-import de.awagen.kolibri.base.processing.failure.TaskFailType
+import de.awagen.kolibri.definitions.processing.ProcessingMessages.{AggregationStateWithData, BadCorn, ProcessingMessage}
+import de.awagen.kolibri.definitions.processing.consume.AggregatorConfigurations.AggregatorConfig
+import de.awagen.kolibri.definitions.processing.execution.expectation.ExecutionExpectation
+import de.awagen.kolibri.definitions.processing.failure.TaskFailType
 import de.awagen.kolibri.datatypes.types.Types.WithCount
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 import de.awagen.kolibri.fleet.akka.actors.decider.Deciders.allResumeDecider

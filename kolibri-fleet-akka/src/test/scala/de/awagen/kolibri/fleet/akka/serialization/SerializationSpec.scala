@@ -20,8 +20,8 @@ package de.awagen.kolibri.fleet.akka.serialization
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
 import akka.serialization.{SerializationExtension, Serializers}
-import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ValueType.URL_PARAMETER
-import de.awagen.kolibri.base.processing.modifiers.ParameterValues._
+import de.awagen.kolibri.definitions.processing.modifiers.ParameterValues.ValueType.URL_PARAMETER
+import de.awagen.kolibri.definitions.processing.modifiers.ParameterValues._
 import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator}
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSupplier

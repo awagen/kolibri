@@ -18,13 +18,13 @@ package de.awagen.kolibri.fleet.akka.actors
 
 import akka.actor.Props
 import akka.stream.scaladsl.Flow
-import de.awagen.kolibri.base.domain.jobdefinitions.Batch
-import de.awagen.kolibri.base.processing.ProcessingMessages.{Corn, ProcessingMessage}
-import de.awagen.kolibri.base.processing.classifier.Mapper.AcceptAllAsIdentityMapper
-import de.awagen.kolibri.base.processing.consume.AggregatorConfigurations.AggregatorConfig
-import de.awagen.kolibri.base.processing.execution.expectation.Expectation.SuccessAndErrorCounts
-import de.awagen.kolibri.base.processing.execution.expectation.{BaseExecutionExpectation, ReceiveCountExpectation, StopExpectation, TimeExpectation}
-import de.awagen.kolibri.base.processing.execution.task.Task
+import de.awagen.kolibri.definitions.domain.jobdefinitions.Batch
+import de.awagen.kolibri.definitions.processing.ProcessingMessages.{Corn, ProcessingMessage}
+import de.awagen.kolibri.definitions.processing.classifier.Mapper.AcceptAllAsIdentityMapper
+import de.awagen.kolibri.definitions.processing.consume.AggregatorConfigurations.AggregatorConfig
+import de.awagen.kolibri.definitions.processing.execution.expectation.Expectation.SuccessAndErrorCounts
+import de.awagen.kolibri.definitions.processing.execution.expectation.{BaseExecutionExpectation, ReceiveCountExpectation, StopExpectation, TimeExpectation}
+import de.awagen.kolibri.definitions.processing.execution.task.Task
 import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator}
 import de.awagen.kolibri.datatypes.mutable.stores.{TypeTaggedMap, TypedMapStore}
 import de.awagen.kolibri.datatypes.tagging.TagType.AGGREGATION

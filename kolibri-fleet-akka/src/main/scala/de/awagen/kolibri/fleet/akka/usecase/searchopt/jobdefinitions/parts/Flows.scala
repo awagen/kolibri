@@ -21,15 +21,15 @@ import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.stream.scaladsl.Flow
-import de.awagen.kolibri.base.domain.Connections.{Connection, Host}
-import de.awagen.kolibri.base.http.client.request.{RequestTemplate, RequestTemplateBuilder}
-import de.awagen.kolibri.base.processing.ProcessingMessages.{Corn, ProcessingMessage}
-import de.awagen.kolibri.base.processing.modifiers.Modifier
-import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
-import de.awagen.kolibri.base.processing.tagging.TaggingConfigurations.TaggingConfiguration
-import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.RequestTemplatesAndBuilders
-import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.ReservedStorageKeys.REQUEST_TEMPLATE_STORAGE_KEY
-import de.awagen.kolibri.base.usecase.searchopt.metrics.MetricRowFunctions.throwableToMetricRowResponse
+import de.awagen.kolibri.definitions.domain.Connections.{Connection, Host}
+import de.awagen.kolibri.definitions.http.client.request.{RequestTemplate, RequestTemplateBuilder}
+import de.awagen.kolibri.definitions.processing.ProcessingMessages.{Corn, ProcessingMessage}
+import de.awagen.kolibri.definitions.processing.modifiers.Modifier
+import de.awagen.kolibri.definitions.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
+import de.awagen.kolibri.definitions.processing.tagging.TaggingConfigurations.TaggingConfiguration
+import de.awagen.kolibri.definitions.usecase.searchopt.jobdefinitions.parts.RequestTemplatesAndBuilders
+import de.awagen.kolibri.definitions.usecase.searchopt.jobdefinitions.parts.ReservedStorageKeys.REQUEST_TEMPLATE_STORAGE_KEY
+import de.awagen.kolibri.definitions.usecase.searchopt.metrics.MetricRowFunctions.throwableToMetricRowResponse
 import de.awagen.kolibri.datatypes.metrics.aggregation.writer.MetricDocumentFormatHelper.getMetricValueFromTypeAndSample
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.datatypes.stores.MetricRow

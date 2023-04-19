@@ -17,10 +17,10 @@
 
 package de.awagen.kolibri.fleet.akka.usecase.searchopt.metrics
 
-import de.awagen.kolibri.base.directives.{Resource, ResourceType}
-import de.awagen.kolibri.base.http.client.request.RequestTemplate
-import de.awagen.kolibri.base.usecase.searchopt.metrics.{JudgementHandlingStrategy, Metric, MetricsCalculation}
-import de.awagen.kolibri.base.usecase.searchopt.provider.JudgementProvider
+import de.awagen.kolibri.definitions.directives.{Resource, ResourceType}
+import de.awagen.kolibri.definitions.http.client.request.RequestTemplate
+import de.awagen.kolibri.definitions.usecase.searchopt.metrics.{JudgementHandlingStrategy, Metric, MetricsCalculation}
+import de.awagen.kolibri.definitions.usecase.searchopt.provider.JudgementProvider
 import de.awagen.kolibri.fleet.akka.usecase.searchopt.metrics.Calculations.JudgementsFromResourceIRMetricsCalculations
 
 object CalculationsTestHelper {

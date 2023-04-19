@@ -19,13 +19,13 @@ package de.awagen.kolibri.fleet.akka.actors.work.manager
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Cancellable, Props, Terminated}
 import akka.pattern.ask
 import akka.util.Timeout
-import de.awagen.kolibri.base.processing.JobPartIdentifiers.JobPartIdentifier
-import de.awagen.kolibri.base.processing.ProcessingMessages.ProcessingMessage
-import de.awagen.kolibri.base.processing.execution.TaskExecution
-import de.awagen.kolibri.base.processing.execution.task.Task
-import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
-import de.awagen.kolibri.base.resources.{ResourceAlreadyExists, ResourceOK}
-import de.awagen.kolibri.base.traits.Traits.WithBatchNr
+import de.awagen.kolibri.definitions.processing.JobPartIdentifiers.JobPartIdentifier
+import de.awagen.kolibri.definitions.processing.ProcessingMessages.ProcessingMessage
+import de.awagen.kolibri.definitions.processing.execution.TaskExecution
+import de.awagen.kolibri.definitions.processing.execution.task.Task
+import de.awagen.kolibri.definitions.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
+import de.awagen.kolibri.definitions.resources.{ResourceAlreadyExists, ResourceOK}
+import de.awagen.kolibri.definitions.traits.Traits.WithBatchNr
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation

@@ -18,7 +18,7 @@ package de.awagen.kolibri.fleet.akka.actors.flows
 
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.stream.scaladsl.Flow
-import de.awagen.kolibri.base.http.client.request.RequestTemplate
+import de.awagen.kolibri.definitions.http.client.request.RequestTemplate
 
 import scala.util.{Failure, Try}
 

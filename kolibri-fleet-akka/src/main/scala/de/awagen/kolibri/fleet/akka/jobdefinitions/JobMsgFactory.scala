@@ -20,12 +20,12 @@ package de.awagen.kolibri.fleet.akka.jobdefinitions
 import akka.NotUsed
 import akka.actor.Props
 import akka.stream.scaladsl.Flow
-import de.awagen.kolibri.base.domain.jobdefinitions.{Batch, TaskDefinitions}
-import de.awagen.kolibri.base.processing.ProcessingMessages.ProcessingMessage
-import de.awagen.kolibri.base.processing.classifier.Mapper.FilteringMapper
-import de.awagen.kolibri.base.processing.consume.AggregatorConfigurations.AggregatorConfig
-import de.awagen.kolibri.base.processing.execution.expectation.ExecutionExpectation
-import de.awagen.kolibri.base.processing.execution.task.Task
+import de.awagen.kolibri.definitions.domain.jobdefinitions.{Batch, TaskDefinitions}
+import de.awagen.kolibri.definitions.processing.ProcessingMessages.ProcessingMessage
+import de.awagen.kolibri.definitions.processing.classifier.Mapper.FilteringMapper
+import de.awagen.kolibri.definitions.processing.consume.AggregatorConfigurations.AggregatorConfig
+import de.awagen.kolibri.definitions.processing.execution.expectation.ExecutionExpectation
+import de.awagen.kolibri.definitions.processing.execution.task.Task
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.mutable.stores.TypeTaggedMap
 import de.awagen.kolibri.datatypes.tagging.TaggedWithType

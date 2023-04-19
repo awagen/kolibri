@@ -22,9 +22,9 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse, Uri}
 import akka.stream._
 import akka.stream.scaladsl.{Balance, Flow, GraphDSL, Merge}
-import de.awagen.kolibri.base.domain.Connections.Connection
-import de.awagen.kolibri.base.http.client.request.RequestTemplate
-import de.awagen.kolibri.base.processing.ProcessingMessages.{Corn, ProcessingMessage}
+import de.awagen.kolibri.definitions.domain.Connections.Connection
+import de.awagen.kolibri.definitions.http.client.request.RequestTemplate
+import de.awagen.kolibri.definitions.processing.ProcessingMessages.{Corn, ProcessingMessage}
 import de.awagen.kolibri.datatypes.tagging.TagType
 import de.awagen.kolibri.datatypes.tagging.TagType.AGGREGATION
 import de.awagen.kolibri.fleet.akka.actors.decider.Deciders.allResumeDecider

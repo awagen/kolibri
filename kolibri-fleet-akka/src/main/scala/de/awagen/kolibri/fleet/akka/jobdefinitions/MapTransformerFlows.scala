@@ -19,7 +19,7 @@ package de.awagen.kolibri.fleet.akka.jobdefinitions
 
 import akka.NotUsed
 import akka.stream.scaladsl.Flow
-import de.awagen.kolibri.base.processing.ProcessingMessages.{Corn, ProcessingMessage}
+import de.awagen.kolibri.definitions.processing.ProcessingMessages.{Corn, ProcessingMessage}
 import de.awagen.kolibri.datatypes.tagging.MapImplicits.MutableTaggedMap
 
 object MapTransformerFlows extends Enumeration {

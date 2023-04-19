@@ -17,10 +17,10 @@
 
 package de.awagen.kolibri.fleet.akka.execution.expectation
 
-import de.awagen.kolibri.base.processing.ProcessingMessages.ProcessingResult
-import de.awagen.kolibri.base.processing.execution.expectation.ExecutionExpectations.FINISH_RESPONSE_KEY
-import de.awagen.kolibri.base.processing.execution.expectation.Expectation.SuccessAndErrorCounts
-import de.awagen.kolibri.base.processing.execution.expectation._
+import de.awagen.kolibri.definitions.processing.ProcessingMessages.ProcessingResult
+import de.awagen.kolibri.definitions.processing.execution.expectation.ExecutionExpectations.FINISH_RESPONSE_KEY
+import de.awagen.kolibri.definitions.processing.execution.expectation.Expectation.SuccessAndErrorCounts
+import de.awagen.kolibri.definitions.processing.execution.expectation._
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 import de.awagen.kolibri.fleet.akka.actors.work.aboveall.SupervisorActor.FinishedJobEvent
 

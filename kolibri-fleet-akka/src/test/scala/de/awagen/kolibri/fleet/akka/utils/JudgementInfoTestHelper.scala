@@ -17,7 +17,7 @@
 
 package de.awagen.kolibri.fleet.akka.utils
 
-import de.awagen.kolibri.base.usecase.searchopt.provider.JudgementInfo
+import de.awagen.kolibri.definitions.usecase.searchopt.provider.JudgementInfo
 
 object JudgementInfoTestHelper {
 

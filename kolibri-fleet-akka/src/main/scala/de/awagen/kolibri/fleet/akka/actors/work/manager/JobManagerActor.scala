@@ -21,12 +21,12 @@ import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Cancellable, Pois
 import akka.cluster.ddata.Replicator.UpdateSuccess
 import akka.pattern.ask
 import akka.util.Timeout
-import de.awagen.kolibri.base.processing.ProcessingMessages._
-import de.awagen.kolibri.base.processing.distribution.DistributionStates
-import de.awagen.kolibri.base.processing.distribution.Distributors.Batch
-import de.awagen.kolibri.base.processing.execution.functions.Execution
-import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
-import de.awagen.kolibri.base.resources.{ResourceAlreadyExists, ResourceOK}
+import de.awagen.kolibri.definitions.processing.ProcessingMessages._
+import de.awagen.kolibri.definitions.processing.distribution.DistributionStates
+import de.awagen.kolibri.definitions.processing.distribution.Distributors.Batch
+import de.awagen.kolibri.definitions.processing.execution.functions.Execution
+import de.awagen.kolibri.definitions.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
+import de.awagen.kolibri.definitions.resources.{ResourceAlreadyExists, ResourceOK}
 import de.awagen.kolibri.datatypes.collections.generators.ByFunctionNrLimitedIndexedGenerator
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation

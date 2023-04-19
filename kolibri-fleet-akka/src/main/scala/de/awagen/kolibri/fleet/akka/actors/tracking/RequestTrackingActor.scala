@@ -18,7 +18,7 @@ package de.awagen.kolibri.fleet.akka.actors.tracking
 
 import akka.actor.{Actor, ActorLogging, Props}
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
-import de.awagen.kolibri.base.tracking.RequestTrackingContext
+import de.awagen.kolibri.definitions.tracking.RequestTrackingContext
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 //import javax.inject.Singleton
 

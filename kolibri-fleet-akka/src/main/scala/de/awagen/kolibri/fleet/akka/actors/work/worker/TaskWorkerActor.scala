@@ -17,13 +17,13 @@
 package de.awagen.kolibri.fleet.akka.actors.work.worker
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, PoisonPill, Props}
-import de.awagen.kolibri.base.processing.JobPartIdentifiers.JobPartIdentifier
-import de.awagen.kolibri.base.processing.ProcessingMessages.{BadCorn, ProcessingMessage}
+import de.awagen.kolibri.definitions.processing.JobPartIdentifiers.JobPartIdentifier
+import de.awagen.kolibri.definitions.processing.ProcessingMessages.{BadCorn, ProcessingMessage}
 import de.awagen.kolibri.fleet.akka.actors.work.worker.TaskWorkerActor._
 import de.awagen.kolibri.fleet.akka.config.AppProperties.config.kolibriDispatcherName
-import de.awagen.kolibri.base.processing.execution.task.Task
-import de.awagen.kolibri.base.processing.execution.task.TaskStates.{Done, Running, TaskState}
-import de.awagen.kolibri.base.processing.failure.TaskFailType.{FailedByException, MissingResultKey, TaskFailType}
+import de.awagen.kolibri.definitions.processing.execution.task.Task
+import de.awagen.kolibri.definitions.processing.execution.task.TaskStates.{Done, Running, TaskState}
+import de.awagen.kolibri.definitions.processing.failure.TaskFailType.{FailedByException, MissingResultKey, TaskFailType}
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.mutable.stores.TypeTaggedMap
 import de.awagen.kolibri.datatypes.tagging.TagType._

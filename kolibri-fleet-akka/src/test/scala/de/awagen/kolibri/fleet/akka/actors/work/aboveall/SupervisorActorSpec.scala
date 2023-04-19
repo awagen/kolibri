@@ -17,7 +17,7 @@
 package de.awagen.kolibri.fleet.akka.actors.work.aboveall
 
 import akka.actor.ActorRef
-import de.awagen.kolibri.base.processing.ProcessingMessages.{ProcessingResult, ResultSummary}
+import de.awagen.kolibri.definitions.processing.ProcessingMessages.{ProcessingResult, ResultSummary}
 import de.awagen.kolibri.datatypes.types.Types.WithCount
 import de.awagen.kolibri.fleet.akka.actors.KolibriTestKit
 import de.awagen.kolibri.fleet.akka.actors.TestMessages.{generateProcessActorRunnableJobCmd, generateProcessActorRunnableTaskJobCmd}

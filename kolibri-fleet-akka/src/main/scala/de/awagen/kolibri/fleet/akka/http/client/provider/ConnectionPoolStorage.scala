@@ -20,8 +20,8 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.stream.scaladsl.Flow
-import de.awagen.kolibri.base.domain.Connections.Host
-import de.awagen.kolibri.base.http.client.request.RequestTemplate
+import de.awagen.kolibri.definitions.domain.Connections.Host
+import de.awagen.kolibri.definitions.http.client.request.RequestTemplate
 import de.awagen.kolibri.datatypes.ConcurrentUpdateMapOps
 import de.awagen.kolibri.datatypes.values.DataPoint
 import de.awagen.kolibri.fleet.akka.config.AppConfig.httpModule

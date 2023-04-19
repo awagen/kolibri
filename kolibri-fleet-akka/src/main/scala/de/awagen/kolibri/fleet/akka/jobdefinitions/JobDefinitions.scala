@@ -17,12 +17,12 @@
 
 package de.awagen.kolibri.fleet.akka.jobdefinitions
 
-import de.awagen.kolibri.base.domain.TaskDataKeys
-import de.awagen.kolibri.base.domain.jobdefinitions.provider.data.BatchGenerators.{OrderedMultiValuesBatchGenerator, OrderedMultiValuesTypedTagBatchGenerator}
-import de.awagen.kolibri.base.domain.jobdefinitions.provider.data.DataProviders.OrderedMultiValuesProvider
-import de.awagen.kolibri.base.domain.jobdefinitions.{Batch, RunnableExpectationGenerators, TaskDefinitions}
-import de.awagen.kolibri.base.processing.ProcessingMessages.ProcessingMessage
-import de.awagen.kolibri.base.processing.classifier.Mapper.FilteringMapper
+import de.awagen.kolibri.definitions.domain.TaskDataKeys
+import de.awagen.kolibri.definitions.domain.jobdefinitions.provider.data.BatchGenerators.{OrderedMultiValuesBatchGenerator, OrderedMultiValuesTypedTagBatchGenerator}
+import de.awagen.kolibri.definitions.domain.jobdefinitions.provider.data.DataProviders.OrderedMultiValuesProvider
+import de.awagen.kolibri.definitions.domain.jobdefinitions.{Batch, RunnableExpectationGenerators, TaskDefinitions}
+import de.awagen.kolibri.definitions.processing.ProcessingMessages.ProcessingMessage
+import de.awagen.kolibri.definitions.processing.classifier.Mapper.FilteringMapper
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
 import de.awagen.kolibri.datatypes.multivalues.OrderedMultiValues

@@ -21,8 +21,8 @@ import akka.actor.ActorRef
 import akka.cluster.ddata.Replicator.Update
 import akka.cluster.ddata._
 import akka.cluster.ddata.typed.scaladsl.Replicator.WriteLocal
-import de.awagen.kolibri.base.directives.{Resource, ResourceType}
-import de.awagen.kolibri.base.directives.ResourceType.ResourceType
+import de.awagen.kolibri.definitions.directives.{Resource, ResourceType}
+import de.awagen.kolibri.definitions.directives.ResourceType.ResourceType
 import org.slf4j.{Logger, LoggerFactory}
 
 object DDResourceStateUtils {

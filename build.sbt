@@ -45,14 +45,14 @@ ThisBuild / evictionWarningOptions in update := EvictionWarningOptions.default
 // otherwise changes from projects referenced in dependsOn here dont seem to be picked up from local
 // but need local jar publishing
 lazy val root = (project in file("."))
-  .aggregate(`kolibri-datatypes`, `kolibri-storage`, `kolibri-base`, `kolibri-fleet-akka`, `kolibri-fleet-zio`)
+  .aggregate(`kolibri-datatypes`, `kolibri-storage`, `kolibri-definitions`, `kolibri-fleet-akka`, `kolibri-fleet-zio`)
   .settings(update / aggregate := false)
 lazy val `kolibri-datatypes` = (project in file("kolibri-datatypes"))
   .enablePlugins(JvmPlugin)
 lazy val `kolibri-storage` = (project in file("kolibri-storage"))
   .dependsOn(`kolibri-datatypes` % "compile->compile")
   .enablePlugins(JvmPlugin)
-lazy val `kolibri-base` = (project in file("kolibri-base"))
+lazy val `kolibri-definitions` = (project in file("kolibri-definitions"))
   // storage already includes datatypes, thus only adding storage
   // dependency here
   .dependsOn(`kolibri-storage` % "compile->compile")
@@ -63,7 +63,7 @@ lazy val `kolibri-base` = (project in file("kolibri-base"))
     Defaults.itSettings
   )
 lazy val `kolibri-fleet-akka` = (project in file("kolibri-fleet-akka"))
-  .dependsOn(`kolibri-base` % "compile->compile")
+  .dependsOn(`kolibri-definitions` % "compile->compile")
   .enablePlugins(JvmPlugin)
   // extending Test config here to have access to test classpath
   .configs(IntegrationTest.extend(Test))
@@ -71,7 +71,7 @@ lazy val `kolibri-fleet-akka` = (project in file("kolibri-fleet-akka"))
     Defaults.itSettings
   )
 lazy val `kolibri-fleet-zio` = (project in file("kolibri-fleet-zio"))
-  .dependsOn(`kolibri-base` % "compile->compile")
+  .dependsOn(`kolibri-definitions` % "compile->compile")
   .enablePlugins(JvmPlugin)
   // extending Test config here to have access to test classpath
   .configs(IntegrationTest.extend(Test))

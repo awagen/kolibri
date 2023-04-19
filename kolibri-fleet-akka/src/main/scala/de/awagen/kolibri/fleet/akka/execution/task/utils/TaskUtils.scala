@@ -18,15 +18,15 @@ package de.awagen.kolibri.fleet.akka.execution.task.utils
 
 import akka.actor.Props
 import akka.stream.scaladsl.Flow
-import de.awagen.kolibri.base.processing
-import de.awagen.kolibri.base.processing.JobPartIdentifiers.BaseJobPartIdentifier
-import de.awagen.kolibri.base.processing.ProcessingMessages.{Corn, ProcessingMessage}
-import de.awagen.kolibri.base.processing.classifier.Mapper.AcceptAllAsIdentityMapper
-import de.awagen.kolibri.base.processing.consume.AggregatorConfigurations.AggregatorConfig
-import de.awagen.kolibri.base.processing.execution.SimpleTaskExecution
-import de.awagen.kolibri.base.processing.execution.expectation.Expectation.SuccessAndErrorCounts
-import de.awagen.kolibri.base.processing.execution.expectation.{BaseExecutionExpectation, ClassifyingCountExpectation, StopExpectation, TimeExpectation}
-import de.awagen.kolibri.base.processing.execution.task.Task
+import de.awagen.kolibri.definitions.processing
+import de.awagen.kolibri.definitions.processing.JobPartIdentifiers.BaseJobPartIdentifier
+import de.awagen.kolibri.definitions.processing.ProcessingMessages.{Corn, ProcessingMessage}
+import de.awagen.kolibri.definitions.processing.classifier.Mapper.AcceptAllAsIdentityMapper
+import de.awagen.kolibri.definitions.processing.consume.AggregatorConfigurations.AggregatorConfig
+import de.awagen.kolibri.definitions.processing.execution.SimpleTaskExecution
+import de.awagen.kolibri.definitions.processing.execution.expectation.Expectation.SuccessAndErrorCounts
+import de.awagen.kolibri.definitions.processing.execution.expectation.{BaseExecutionExpectation, ClassifyingCountExpectation, StopExpectation, TimeExpectation}
+import de.awagen.kolibri.definitions.processing.execution.task.Task
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.types.ClassTyped
 import de.awagen.kolibri.datatypes.types.Types.WithCount

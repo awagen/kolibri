@@ -17,12 +17,12 @@
 
 package de.awagen.kolibri.fleet.akka.usecase.searchopt.metrics
 
-import de.awagen.kolibri.base.directives.{Resource, RetrievalDirective}
-import de.awagen.kolibri.base.http.client.request.RequestTemplate
-import de.awagen.kolibri.base.resources.RetrievalError
-import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.ReservedStorageKeys.REQUEST_TEMPLATE_STORAGE_KEY
-import de.awagen.kolibri.base.usecase.searchopt.metrics.MetricsCalculation
-import de.awagen.kolibri.base.usecase.searchopt.provider.JudgementProvider
+import de.awagen.kolibri.definitions.directives.{Resource, RetrievalDirective}
+import de.awagen.kolibri.definitions.http.client.request.RequestTemplate
+import de.awagen.kolibri.definitions.resources.RetrievalError
+import de.awagen.kolibri.definitions.usecase.searchopt.jobdefinitions.parts.ReservedStorageKeys.REQUEST_TEMPLATE_STORAGE_KEY
+import de.awagen.kolibri.definitions.usecase.searchopt.metrics.MetricsCalculation
+import de.awagen.kolibri.definitions.usecase.searchopt.provider.JudgementProvider
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1

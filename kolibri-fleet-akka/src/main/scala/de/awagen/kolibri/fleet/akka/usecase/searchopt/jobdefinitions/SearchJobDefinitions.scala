@@ -20,19 +20,19 @@ package de.awagen.kolibri.fleet.akka.usecase.searchopt.jobdefinitions
 import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.stream.scaladsl.Flow
-import de.awagen.kolibri.base.http.client.request.RequestTemplateBuilder
+import de.awagen.kolibri.definitions.http.client.request.RequestTemplateBuilder
 import de.awagen.kolibri.fleet.akka.processing.JobMessages.SearchEvaluationDefinition
-import de.awagen.kolibri.base.processing.ProcessingMessages
-import de.awagen.kolibri.base.processing.ProcessingMessages.{AggregationStateWithData, AggregationStateWithoutData, Corn, ProcessingMessage}
-import de.awagen.kolibri.base.processing.classifier.Mapper.AcceptAllAsIdentityMapper
-import de.awagen.kolibri.base.processing.execution.expectation.ExecutionExpectation
-import de.awagen.kolibri.base.processing.execution.expectation.Expectation.SuccessAndErrorCounts
-import de.awagen.kolibri.base.processing.modifiers.Modifier
-import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
-import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.Aggregators.{fullJobToSingleTagAggregatorSupplier, singleBatchAggregatorSupplier}
-import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.BatchGenerators.batchByGeneratorAtIndex
-import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.Expectations.expectationPerBatchSupplier
-import de.awagen.kolibri.base.usecase.searchopt.parse.ParsingConfig
+import de.awagen.kolibri.definitions.processing.ProcessingMessages
+import de.awagen.kolibri.definitions.processing.ProcessingMessages.{AggregationStateWithData, AggregationStateWithoutData, Corn, ProcessingMessage}
+import de.awagen.kolibri.definitions.processing.classifier.Mapper.AcceptAllAsIdentityMapper
+import de.awagen.kolibri.definitions.processing.execution.expectation.ExecutionExpectation
+import de.awagen.kolibri.definitions.processing.execution.expectation.Expectation.SuccessAndErrorCounts
+import de.awagen.kolibri.definitions.processing.modifiers.Modifier
+import de.awagen.kolibri.definitions.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
+import de.awagen.kolibri.definitions.usecase.searchopt.jobdefinitions.parts.Aggregators.{fullJobToSingleTagAggregatorSupplier, singleBatchAggregatorSupplier}
+import de.awagen.kolibri.definitions.usecase.searchopt.jobdefinitions.parts.BatchGenerators.batchByGeneratorAtIndex
+import de.awagen.kolibri.definitions.usecase.searchopt.jobdefinitions.parts.Expectations.expectationPerBatchSupplier
+import de.awagen.kolibri.definitions.usecase.searchopt.parse.ParsingConfig
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
 import de.awagen.kolibri.datatypes.mutable.stores.{BaseWeaklyTypedMap, WeaklyTypedMap}

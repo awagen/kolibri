@@ -20,7 +20,7 @@ package de.awagen.kolibri.fleet.akka.actors.clusterinfo
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import akka.cluster.ddata.Replicator._
 import akka.cluster.ddata.{Key, ORSet}
-import de.awagen.kolibri.base.processing.ProcessingMessages.JobStatusInfo
+import de.awagen.kolibri.definitions.processing.ProcessingMessages.JobStatusInfo
 import de.awagen.kolibri.fleet.akka.actors.clusterinfo.BatchStateActor.WorkerStatusResponse
 import de.awagen.kolibri.fleet.akka.actors.work.worker.RunnableExecutionActor.BatchProcessStateResult
 import de.awagen.kolibri.fleet.akka.cluster.ClusterNode

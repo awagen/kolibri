@@ -18,7 +18,7 @@
 package de.awagen.kolibri.fleet.akka.actors.clusterinfo
 
 import akka.actor.{Actor, ActorLogging, ActorSystem, Cancellable, Props}
-import de.awagen.kolibri.base.processing.ProcessingMessages.JobStatusInfo
+import de.awagen.kolibri.definitions.processing.ProcessingMessages.JobStatusInfo
 import de.awagen.kolibri.fleet.akka.actors.clusterinfo.BatchStateActor._
 import de.awagen.kolibri.fleet.akka.actors.work.aboveall.SupervisorActor.GetJobWorkerStatus
 import de.awagen.kolibri.fleet.akka.actors.work.manager.JobProcessingState.emptyJobStatusInfo

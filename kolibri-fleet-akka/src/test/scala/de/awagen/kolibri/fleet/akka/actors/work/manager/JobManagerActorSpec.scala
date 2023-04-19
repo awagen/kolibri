@@ -18,7 +18,7 @@ package de.awagen.kolibri.fleet.akka.actors.work.manager
 
 import akka.actor.ActorRef
 import akka.testkit.TestProbe
-import de.awagen.kolibri.base.processing.ProcessingMessages.{ProcessingMessage, ProcessingResult, ResultSummary}
+import de.awagen.kolibri.definitions.processing.ProcessingMessages.{ProcessingMessage, ProcessingResult, ResultSummary}
 import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator}
 import de.awagen.kolibri.datatypes.tagging.TagType.AGGREGATION
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag

@@ -11,14 +11,14 @@ relative_script_path=$(dirname "$0")
 cd $relative_script_path
 
 # pull the images
-docker pull awagen/kolibri-base:$KOLIBRI_BASE_VERSION
+docker pull awagen/kolibri-fleet-akka:$KOLIBRI_BASE_VERSION
 docker pull awagen/kolibri-watch:$KOLIBRI_WATCH_VERSION
 docker pull awagen/response-juggler:$RESPONSE_JUGGLER_VERSION
 # tag the images and push to local kind repo
-docker tag awagen/kolibri-base:$KOLIBRI_BASE_VERSION localhost:5000/kolibri-base:$KOLIBRI_BASE_VERSION
+docker tag awagen/kolibri-fleet-akka:$KOLIBRI_BASE_VERSION localhost:5000/kolibri-fleet-akka:$KOLIBRI_BASE_VERSION
 docker tag awagen/kolibri-watch:$KOLIBRI_WATCH_VERSION localhost:5000/kolibri-watch:$KOLIBRI_WATCH_VERSION
 docker tag awagen/response-juggler:$RESPONSE_JUGGLER_VERSION localhost:5000/response-juggler:$RESPONSE_JUGGLER_VERSION
-docker push localhost:5000/kolibri-base:$KOLIBRI_BASE_VERSION
+docker push localhost:5000/kolibri-fleet-akka:$KOLIBRI_BASE_VERSION
 docker push localhost:5000/kolibri-watch:$KOLIBRI_WATCH_VERSION
 docker push localhost:5000/response-juggler:$RESPONSE_JUGGLER_VERSION
 # install services

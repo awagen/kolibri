@@ -21,16 +21,16 @@ import akka.actor.ActorRef
 import akka.pattern.ask
 import akka.testkit.TestKit
 import akka.util.Timeout
-import de.awagen.kolibri.base.directives.{Resource, ResourceDirectives, ResourceType}
-import de.awagen.kolibri.base.io.json.MetricFunctionJsonProtocol.{MetricFunction, MetricType}
-import de.awagen.kolibri.base.resources.{ResourceAlreadyExists, ResourceOK}
-import de.awagen.kolibri.base.usecase.searchopt.jobdefinitions.parts.ReservedStorageKeys._
-import de.awagen.kolibri.base.usecase.searchopt.metrics.Calculations._
-import de.awagen.kolibri.base.usecase.searchopt.metrics.ComputeResultFunctions.{booleanPrecision, countValues, findFirstValue}
-import de.awagen.kolibri.base.usecase.searchopt.metrics.MetricRowFunctions.throwableToMetricRowResponse
-import de.awagen.kolibri.base.usecase.searchopt.metrics.PlainMetricValueFunctions._
-import de.awagen.kolibri.base.usecase.searchopt.metrics.{IRMetricFunctions, JudgementHandlingStrategy, Metric, MetricsCalculation}
-import de.awagen.kolibri.base.usecase.searchopt.provider.JudgementProvider
+import de.awagen.kolibri.definitions.directives.{Resource, ResourceDirectives, ResourceType}
+import de.awagen.kolibri.definitions.io.json.MetricFunctionJsonProtocol.{MetricFunction, MetricType}
+import de.awagen.kolibri.definitions.resources.{ResourceAlreadyExists, ResourceOK}
+import de.awagen.kolibri.definitions.usecase.searchopt.jobdefinitions.parts.ReservedStorageKeys._
+import de.awagen.kolibri.definitions.usecase.searchopt.metrics.Calculations._
+import de.awagen.kolibri.definitions.usecase.searchopt.metrics.ComputeResultFunctions.{booleanPrecision, countValues, findFirstValue}
+import de.awagen.kolibri.definitions.usecase.searchopt.metrics.MetricRowFunctions.throwableToMetricRowResponse
+import de.awagen.kolibri.definitions.usecase.searchopt.metrics.PlainMetricValueFunctions._
+import de.awagen.kolibri.definitions.usecase.searchopt.metrics.{IRMetricFunctions, JudgementHandlingStrategy, Metric, MetricsCalculation}
+import de.awagen.kolibri.definitions.usecase.searchopt.provider.JudgementProvider
 import de.awagen.kolibri.datatypes.mutable.stores.{BaseWeaklyTypedMap, WeaklyTypedMap}
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSupplier
