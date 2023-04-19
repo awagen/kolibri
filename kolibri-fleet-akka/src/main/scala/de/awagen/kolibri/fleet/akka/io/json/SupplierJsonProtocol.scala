@@ -15,32 +15,31 @@
  */
 
 
-
 package de.awagen.kolibri.fleet.akka.io.json
 
 import de.awagen.kolibri.base.directives.RetrievalDirective.Retrieve
 import de.awagen.kolibri.base.directives.{Resource, ResourceType}
-import OrderedValuesJsonProtocol.OrderedValuesStringFormat
 import de.awagen.kolibri.base.usecase.searchopt.provider.JudgementProvider
 import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator}
 import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
 import de.awagen.kolibri.datatypes.types.JsonStructDefs._
-import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSupplier
+import de.awagen.kolibri.datatypes.types.SerializableCallable.{SerializableFunction1, SerializableSupplier}
 import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
 import de.awagen.kolibri.datatypes.values.OrderedValues
 import de.awagen.kolibri.fleet.akka.cluster.ClusterNodeObj
-import de.awagen.kolibri.fleet.akka.config.AppConfig
 import de.awagen.kolibri.fleet.akka.config.AppConfig.filepathToJudgementProvider
-import de.awagen.kolibri.storage.io.reader.FileReaderUtils
+import de.awagen.kolibri.fleet.akka.io.json.OrderedValuesJsonProtocol.OrderedValuesStringFormat
+import de.awagen.kolibri.fleet.akka.io.json.SupplierJsonProtocol.JudgementProviderFormatStruct.JUDGEMENTS_FROM_FILE_TYPE
+import de.awagen.kolibri.fleet.akka.io.json.SupplierJsonProtocol._
+import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, FileReaderUtils, Reader}
 import org.slf4j.{Logger, LoggerFactory}
-import spray.json.{DefaultJsonProtocol, DeserializationException, JsString, JsValue, JsonFormat}
 import spray.json._
 
 import scala.io.Source
 
 object SupplierJsonProtocol extends DefaultJsonProtocol {
 
-  private[this] val logger: Logger = LoggerFactory.getLogger(this.getClass)
+  private val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
   val TYPE_KEY = "type"
   val VALUE_KEY = "value"
@@ -71,26 +70,7 @@ object SupplierJsonProtocol extends DefaultJsonProtocol {
     case e => e.toString()
   }
 
-  implicit object StringSeqMappingFormat extends JsonFormat[() => Map[String, Seq[String]]] with WithStructDef {
-    override def read(json: JsValue): () => Map[String, Seq[String]] = json match {
-      case spray.json.JsObject(fields) => fields(TYPE_KEY).convertTo[String] match {
-        case FROM_JSON_TYPE =>
-          new SerializableSupplier[Map[String, Seq[String]]]() {
-            override def apply(): Map[String, Seq[String]] = fields(VALUE_KEY).convertTo[Map[String, Seq[String]]]
-          }
-        case FROM_JSON_FILE_TYPE =>
-          val file = fields(FILE_KEY).convertTo[String]
-          val persistenceModule = AppConfig.persistenceModule
-          val source: Source = persistenceModule.persistenceDIModule.reader.getSource(file)
-          val mapping = source.getLines().mkString("\n").parseJson.convertTo[Map[String, Seq[String]]]
-          new SerializableSupplier[Map[String, Seq[String]]]() {
-            override def apply(): Map[String, Seq[String]] = mapping
-          }
-      }
-      case e => throw DeserializationException(s"Expected a valid value vor () => Map[String, Seq[String]] but got value $e")
-    }
-
-    override def write(obj: () => Map[String, Seq[String]]): JsValue = """{}""".toJson
+  object StringSeqMappingFormatStruct extends WithStructDef {
 
     override def structDef: JsonStructDefs.StructDef[_] = {
       NestedFieldSeqStructDef(
@@ -127,42 +107,10 @@ object SupplierJsonProtocol extends DefaultJsonProtocol {
         )
       )
     }
+
   }
 
-  /**
-   * Json protocol for retrieval of suppliers of IndexedGenerator[String]
-   */
-  implicit object GeneratorStringFormat extends JsonFormat[SerializableSupplier[IndexedGenerator[String]]] with WithStructDef {
-    override def read(json: JsValue): SerializableSupplier[IndexedGenerator[String]] = json match {
-      case spray.json.JsObject(fields) if fields.contains(TYPE_KEY) => fields(TYPE_KEY).convertTo[String] match {
-        case FROM_ORDERED_VALUES_TYPE =>
-          new SerializableSupplier[IndexedGenerator[String]] {
-            override def apply(): IndexedGenerator[String] = {
-              val values = fields(VALUES_KEY).convertTo[OrderedValues[String]]
-              ByFunctionNrLimitedIndexedGenerator.createFromSeq(values.getAll)
-            }
-          }
-        case PARAMETER_VALUES_TYPE =>
-          val values = fields(VALUES_KEY).convertTo[Seq[String]]
-          new SerializableSupplier[IndexedGenerator[String]] {
-            override def apply(): IndexedGenerator[String] = ByFunctionNrLimitedIndexedGenerator.createFromSeq(values)
-          }
-        case VALUES_FROM_NODE_STORAGE_TYPE =>
-          val identifier: String = fields(IDENTIFIER_KEY).convertTo[String]
-          val resource: Resource[IndexedGenerator[String]] = Resource(ResourceType.STRING_VALUES, identifier)
-          new SerializableSupplier[IndexedGenerator[String]] {
-            override def apply(): IndexedGenerator[String] = {
-              ClusterNodeObj.getResource(Retrieve(resource)) match {
-                case Left(retrievalError) =>
-                  throw new RuntimeException(s"failed on execution of RetrievalDirective '${retrievalError.directive}', cause: '${retrievalError.cause}'")
-                case Right(value) => value
-              }
-            }
-          }
-      }
-    }
-
-    override def write(obj: SerializableSupplier[IndexedGenerator[String]]): JsValue = """{}""".toJson
+  object GeneratorStringFormatStruct extends WithStructDef {
 
     override def structDef: StructDef[_] = NestedFieldSeqStructDef(
       Seq(
@@ -204,203 +152,10 @@ object SupplierJsonProtocol extends DefaultJsonProtocol {
         )
       )
     )
+
   }
 
-  private[json] def getResource[T](resource: Resource[T]): T = {
-    ClusterNodeObj.getResource(Retrieve(resource)) match {
-      case Left(retrievalError) =>
-        throw new RuntimeException(s"failed on execution of RetrievalDirective '${retrievalError.directive}', cause: '${retrievalError.cause}'")
-      case Right(value) => value
-    }
-  }
-
-  /**
-   * Format for JudgementProvider[Double] that is utilizing the MapStringDoubleFormat to parse the
-   * definitions where to get the identifier to judgement value mappings from, then fills them into a judgement provider.
-   *
-   * Note that this can be reduced by changing the logic of the MapStringDoubleFormat below such that
-   * the provider will directly be returned, yet we keep it for now for generality of other types of Map[String, Double]
-   * values
-   */
-  implicit object JudgementProviderFormat extends JsonFormat[SerializableSupplier[JudgementProvider[Double]]] with WithStructDef {
-    val JUDGEMENTS_FROM_FILE_TYPE = "JUDGEMENTS_FROM_FILE"
-
-    override def read(json: JsValue): SerializableSupplier[JudgementProvider[Double]] = json match {
-      case spray.json.JsObject(fields) => fields(TYPE_KEY).convertTo[String] match {
-        case JUDGEMENTS_FROM_FILE_TYPE =>
-          val file: String = fields(FILE_KEY).convertTo[String]
-          new SerializableSupplier[JudgementProvider[Double]] {
-            override def apply(): JudgementProvider[Double] = filepathToJudgementProvider(file)
-          }
-        case VALUES_FROM_NODE_STORAGE_TYPE =>
-          val identifier: String = fields(IDENTIFIER_KEY).convertTo[String]
-          val resource: Resource[JudgementProvider[Double]] = Resource(ResourceType.JUDGEMENT_PROVIDER, identifier)
-          new SerializableSupplier[JudgementProvider[Double]] {
-            override def apply(): JudgementProvider[Double] = getResource(resource)
-          }
-      }
-    }
-
-    override def write(obj: SerializableSupplier[JudgementProvider[Double]]): JsValue = """{}""".toJson
-
-    override def structDef: StructDef[_] = NestedFieldSeqStructDef(
-      Seq(
-        FieldDef(
-          StringConstantStructDef(TYPE_KEY),
-          StringChoiceStructDef(Seq(
-            JUDGEMENTS_FROM_FILE_TYPE,
-            VALUES_FROM_NODE_STORAGE_TYPE
-          )),
-          required = true)
-      ),
-      Seq(
-        ConditionalFields(TYPE_KEY, Map(
-          JUDGEMENTS_FROM_FILE_TYPE -> Seq(
-            FieldDef(StringConstantStructDef(FILE_KEY), RegexStructDef("\\w+".r), required = true)
-          ),
-          VALUES_FROM_NODE_STORAGE_TYPE -> Seq(
-            FieldDef(StringConstantStructDef(IDENTIFIER_KEY), RegexStructDef("\\w+".r), required = true)
-          )
-        ))
-      )
-    )
-  }
-
-  implicit object MapStringDoubleFormat extends JsonFormat[SerializableSupplier[Map[String, Double]]] with WithStructDef {
-
-    override def read(json: JsValue): SerializableSupplier[Map[String, Double]] = json match {
-      case spray.json.JsObject(fields) => fields(TYPE_KEY).convertTo[String] match {
-        case VALUES_FROM_NODE_STORAGE_TYPE =>
-          val identifier: String = fields(IDENTIFIER_KEY).convertTo[String]
-          val resource: Resource[Map[String, Double]] = Resource(ResourceType.MAP_STRING_TO_DOUBLE_VALUE, identifier)
-          new SerializableSupplier[Map[String, Double]] {
-            override def apply(): Map[String, Double] = getResource(resource)
-          }
-      }
-
-    }
-
-    override def write(obj: SerializableSupplier[Map[String, Double]]): JsValue = """{}""".toJson
-
-    override def structDef: StructDef[_] = NestedFieldSeqStructDef(
-      Seq(
-        FieldDef(
-          StringConstantStructDef(TYPE_KEY),
-          StringChoiceStructDef(Seq(
-            VALUES_FROM_NODE_STORAGE_TYPE
-          )),
-          required = true)
-      ),
-      Seq(
-        ConditionalFields(TYPE_KEY, Map(
-          VALUES_FROM_NODE_STORAGE_TYPE -> Seq(
-            FieldDef(StringConstantStructDef(IDENTIFIER_KEY), RegexStructDef("\\w+".r), required = true)
-          )
-        ))
-      )
-    )
-  }
-
-  /**
-   * Format for suppliers of mappings, defined by the values (Seq[String]) that hold for a given key
-   */
-  implicit object MapStringToGeneratorStringFormat extends JsonFormat[SerializableSupplier[Map[String, IndexedGenerator[String]]]] with WithStructDef {
-    override def read(json: JsValue): SerializableSupplier[Map[String, IndexedGenerator[String]]] = json match {
-      case spray.json.JsObject(fields) => fields(TYPE_KEY).convertTo[String] match {
-        // this case assumes passing of the key values to valid values for the parameter
-        case JSON_VALUES_MAPPING_TYPE =>
-          val mappings = fields(VALUES_KEY).convertTo[Map[String, Seq[String]]]
-          new SerializableSupplier[Map[String, IndexedGenerator[String]]] {
-            override def apply(): Map[String, IndexedGenerator[String]] = {
-              mappings.map(x => (x._1, ByFunctionNrLimitedIndexedGenerator.createFromSeq(x._2)))
-            }
-          }
-        // this case assumes a json for the values key, containing mapping
-        // of key values to files containing the valid values for the key
-        case JSON_VALUES_FILES_MAPPING_TYPE =>
-          val fileMappings = fields(VALUES_KEY).convertTo[Map[String, String]]
-          new SerializableSupplier[Map[String, IndexedGenerator[String]]] {
-            override def apply(): Map[String, IndexedGenerator[String]] = {
-              fileMappings.map(x => {
-                (x._1, ByFunctionNrLimitedIndexedGenerator.createFromSeq(FileReaderUtils.loadLinesFromFile(x._2, AppConfig.persistenceModule.persistenceDIModule.reader)))
-              })
-            }
-          }
-        // assumes a json with full key value mappings under the values key
-        case JSON_SINGLE_MAPPINGS_TYPE =>
-          val mappingsJsonFile = fields(VALUES_KEY).convertTo[String]
-          new SerializableSupplier[Map[String, IndexedGenerator[String]]] {
-            override def apply(): Map[String, IndexedGenerator[String]] = {
-              val fileReader = AppConfig.persistenceModule.persistenceDIModule.reader
-              FileReaderUtils.readJsonMapping(mappingsJsonFile, fileReader, x => jsValueStringConversion(x))
-                .map(x => (x._1, Seq(x._2)))
-                .map(x => (x._1, ByFunctionNrLimitedIndexedGenerator.createFromSeq(x._2)))
-            }
-          }
-        case JSON_ARRAY_MAPPINGS_TYPE =>
-          try {
-            val mappingsJsonFile = fields(VALUES_KEY).convertTo[String]
-            new SerializableSupplier[Map[String, IndexedGenerator[String]]] {
-              val fileReader = AppConfig.persistenceModule.persistenceDIModule.reader
-
-              override def apply(): Map[String, IndexedGenerator[String]] = {
-                FileReaderUtils.readJsonMapping(mappingsJsonFile, fileReader, x => x.convertTo[Seq[JsValue]].map(x => jsValueStringConversion(x)))
-                  .map(x => (x._1, ByFunctionNrLimitedIndexedGenerator.createFromSeq(x._2)))
-              }
-            }
-          }
-          catch {
-            case e: Throwable => logger.error("failed reading json file of format 'JSON_ARRAY_MAPPINGS_TYPE'", e)
-              throw e
-          }
-        // reading file prefixes in folder, and creating mapping for each where prefix is key and values are the values
-        // given in the file, one value per line
-        case FILE_PREFIX_TO_FILE_LINES_MAPPING_TYPE =>
-          val directory = fields(DIRECTORY_KEY).convertTo[String]
-          val filesSuffix: String = fields(FILES_SUFFIX_KEY).convertTo[String]
-          new SerializableSupplier[Map[String, IndexedGenerator[String]]] {
-            override def apply(): Map[String, IndexedGenerator[String]] = {
-              val reader = AppConfig.persistenceModule.persistenceDIModule.reader
-              val directoryReader = AppConfig.persistenceModule.persistenceDIModule.dataOverviewReader(x => x.endsWith(filesSuffix))
-              FileReaderUtils.extractFilePrefixToLineValuesMapping(reader, directoryReader, directory, filesSuffix, "/")
-                .map(x => (x._1, ByFunctionNrLimitedIndexedGenerator.createFromSeq(x._2)))
-            }
-          }
-        // picking mappings from csv with a key column and a value column. If multiple distinct values are contained
-        // for a key, they will be preserved as distinct values in the generator per key value
-        case CSV_MAPPINGS_TYPE =>
-          val fileReader = AppConfig.persistenceModule.persistenceDIModule.reader
-          val mappingsCsvFile = fields(VALUES_KEY).convertTo[String]
-          val columnDelimiter = fields(COLUMN_DELIMITER_KEY).convertTo[String]
-          val keyColumnIndex = fields(KEY_COLUMN_INDEX_KEY).convertTo[Int]
-          val valueColumnIndex = fields(VALUE_COLUMN_INDEX_KEY).convertTo[Int]
-          val keyValuesMapping = FileReaderUtils.multiMappingFromCSVFile[String](
-            source = fileReader.getSource(mappingsCsvFile),
-            columnDelimiter = columnDelimiter,
-            filterLessColumnsThan = math.max(keyColumnIndex, valueColumnIndex) + 1,
-            valsToKey = x => x(keyColumnIndex),
-            columnsToValue = x => x(valueColumnIndex))
-          new SerializableSupplier[Map[String, IndexedGenerator[String]]] {
-            override def apply(): Map[String, IndexedGenerator[String]] = {
-              keyValuesMapping.map(x => (x._1, ByFunctionNrLimitedIndexedGenerator.createFromSeq(x._2.toSeq)))
-            }
-          }
-        case VALUES_FROM_NODE_STORAGE_TYPE =>
-          val identifier: String = fields(IDENTIFIER_KEY).convertTo[String]
-          val resource: Resource[Map[String, IndexedGenerator[String]]] = Resource(ResourceType.MAP_STRING_TO_STRING_VALUES, identifier)
-          new SerializableSupplier[Map[String, IndexedGenerator[String]]] {
-            override def apply(): Map[String, IndexedGenerator[String]] = {
-              ClusterNodeObj.getResource(Retrieve(resource)) match {
-                case Left(retrievalError) =>
-                  throw new RuntimeException(s"failed on execution of RetrievalDirective '${retrievalError.directive}', cause: '${retrievalError.cause}'")
-                case Right(value) => value
-              }
-            }
-          }
-      }
-    }
-
-    override def write(obj: SerializableSupplier[Map[String, IndexedGenerator[String]]]): JsValue = """{}""".toJson
+  object MapStringToGeneratorStringFormatStruct extends WithStructDef {
 
     override def structDef: JsonStructDefs.StructDef[_] = {
       NestedFieldSeqStructDef(
@@ -500,6 +255,273 @@ object SupplierJsonProtocol extends DefaultJsonProtocol {
         )
       )
     }
+
+    object MapStringDoubleFormatStruct extends WithStructDef {
+      override def structDef: StructDef[_] = NestedFieldSeqStructDef(
+        Seq(
+          FieldDef(
+            StringConstantStructDef(TYPE_KEY),
+            StringChoiceStructDef(Seq(
+              VALUES_FROM_NODE_STORAGE_TYPE
+            )),
+            required = true)
+        ),
+        Seq(
+          ConditionalFields(TYPE_KEY, Map(
+            VALUES_FROM_NODE_STORAGE_TYPE -> Seq(
+              FieldDef(StringConstantStructDef(IDENTIFIER_KEY), RegexStructDef("\\w+".r), required = true)
+            )
+          ))
+        )
+      )
+    }
+
+  }
+
+  object JudgementProviderFormatStruct extends WithStructDef {
+    val JUDGEMENTS_FROM_FILE_TYPE = "JUDGEMENTS_FROM_FILE"
+
+    override def structDef: StructDef[_] = NestedFieldSeqStructDef(
+      Seq(
+        FieldDef(
+          StringConstantStructDef(TYPE_KEY),
+          StringChoiceStructDef(Seq(
+            JUDGEMENTS_FROM_FILE_TYPE,
+            VALUES_FROM_NODE_STORAGE_TYPE
+          )),
+          required = true)
+      ),
+      Seq(
+        ConditionalFields(TYPE_KEY, Map(
+          JUDGEMENTS_FROM_FILE_TYPE -> Seq(
+            FieldDef(StringConstantStructDef(FILE_KEY), RegexStructDef("\\w+".r), required = true)
+          ),
+          VALUES_FROM_NODE_STORAGE_TYPE -> Seq(
+            FieldDef(StringConstantStructDef(IDENTIFIER_KEY), RegexStructDef("\\w+".r), required = true)
+          )
+        ))
+      )
+    )
+
+  }
+
+}
+
+case class SupplierJsonProtocol(reader: Reader[String, Seq[String]],
+                                suffixDirectoryReaderFunc: SerializableFunction1[String, DataOverviewReader]) {
+
+  implicit object StringSeqMappingFormat extends JsonFormat[() => Map[String, Seq[String]]] {
+    override def read(json: JsValue): () => Map[String, Seq[String]] = json match {
+      case spray.json.JsObject(fields) => fields(TYPE_KEY).convertTo[String] match {
+        case FROM_JSON_TYPE =>
+          new SerializableSupplier[Map[String, Seq[String]]]() {
+            override def apply(): Map[String, Seq[String]] = fields(VALUE_KEY).convertTo[Map[String, Seq[String]]]
+          }
+        case FROM_JSON_FILE_TYPE =>
+          val file = fields(FILE_KEY).convertTo[String]
+          val source: Source = reader.getSource(file)
+          val mapping = source.getLines().mkString("\n").parseJson.convertTo[Map[String, Seq[String]]]
+          new SerializableSupplier[Map[String, Seq[String]]]() {
+            override def apply(): Map[String, Seq[String]] = mapping
+          }
+      }
+      case e => throw DeserializationException(s"Expected a valid value vor () => Map[String, Seq[String]] but got value $e")
+    }
+
+    override def write(obj: () => Map[String, Seq[String]]): JsValue = """{}""".toJson
+
+
+  }
+
+  /**
+   * Json protocol for retrieval of suppliers of IndexedGenerator[String]
+   */
+  implicit object GeneratorStringFormat extends JsonFormat[SerializableSupplier[IndexedGenerator[String]]] {
+    override def read(json: JsValue): SerializableSupplier[IndexedGenerator[String]] = json match {
+      case spray.json.JsObject(fields) if fields.contains(TYPE_KEY) => fields(TYPE_KEY).convertTo[String] match {
+        case FROM_ORDERED_VALUES_TYPE =>
+          new SerializableSupplier[IndexedGenerator[String]] {
+            override def apply(): IndexedGenerator[String] = {
+              val values = fields(VALUES_KEY).convertTo[OrderedValues[String]]
+              ByFunctionNrLimitedIndexedGenerator.createFromSeq(values.getAll)
+            }
+          }
+        case PARAMETER_VALUES_TYPE =>
+          val values = fields(VALUES_KEY).convertTo[Seq[String]]
+          new SerializableSupplier[IndexedGenerator[String]] {
+            override def apply(): IndexedGenerator[String] = ByFunctionNrLimitedIndexedGenerator.createFromSeq(values)
+          }
+        case VALUES_FROM_NODE_STORAGE_TYPE =>
+          val identifier: String = fields(IDENTIFIER_KEY).convertTo[String]
+          val resource: Resource[IndexedGenerator[String]] = Resource(ResourceType.STRING_VALUES, identifier)
+          new SerializableSupplier[IndexedGenerator[String]] {
+            override def apply(): IndexedGenerator[String] = {
+              ClusterNodeObj.getResource(Retrieve(resource)) match {
+                case Left(retrievalError) =>
+                  throw new RuntimeException(s"failed on execution of RetrievalDirective '${retrievalError.directive}', cause: '${retrievalError.cause}'")
+                case Right(value) => value
+              }
+            }
+          }
+      }
+    }
+
+    override def write(obj: SerializableSupplier[IndexedGenerator[String]]): JsValue = """{}""".toJson
+
+  }
+
+  private[json] def getResource[T](resource: Resource[T]): T = {
+    ClusterNodeObj.getResource(Retrieve(resource)) match {
+      case Left(retrievalError) =>
+        throw new RuntimeException(s"failed on execution of RetrievalDirective '${retrievalError.directive}', cause: '${retrievalError.cause}'")
+      case Right(value) => value
+    }
+  }
+
+  /**
+   * Format for JudgementProvider[Double] that is utilizing the MapStringDoubleFormat to parse the
+   * definitions where to get the identifier to judgement value mappings from, then fills them into a judgement provider.
+   *
+   * Note that this can be reduced by changing the logic of the MapStringDoubleFormat below such that
+   * the provider will directly be returned, yet we keep it for now for generality of other types of Map[String, Double]
+   * values
+   */
+  implicit object JudgementProviderFormat extends JsonFormat[SerializableSupplier[JudgementProvider[Double]]] {
+
+    override def read(json: JsValue): SerializableSupplier[JudgementProvider[Double]] = json match {
+      case spray.json.JsObject(fields) => fields(TYPE_KEY).convertTo[String] match {
+        case JUDGEMENTS_FROM_FILE_TYPE =>
+          val file: String = fields(FILE_KEY).convertTo[String]
+          new SerializableSupplier[JudgementProvider[Double]] {
+            override def apply(): JudgementProvider[Double] = filepathToJudgementProvider(file)
+          }
+        case VALUES_FROM_NODE_STORAGE_TYPE =>
+          val identifier: String = fields(IDENTIFIER_KEY).convertTo[String]
+          val resource: Resource[JudgementProvider[Double]] = Resource(ResourceType.JUDGEMENT_PROVIDER, identifier)
+          new SerializableSupplier[JudgementProvider[Double]] {
+            override def apply(): JudgementProvider[Double] = getResource(resource)
+          }
+      }
+    }
+
+    override def write(obj: SerializableSupplier[JudgementProvider[Double]]): JsValue = """{}""".toJson
+
+  }
+
+  implicit object MapStringDoubleFormat extends JsonFormat[SerializableSupplier[Map[String, Double]]] {
+
+    override def read(json: JsValue): SerializableSupplier[Map[String, Double]] = json match {
+      case spray.json.JsObject(fields) => fields(TYPE_KEY).convertTo[String] match {
+        case VALUES_FROM_NODE_STORAGE_TYPE =>
+          val identifier: String = fields(IDENTIFIER_KEY).convertTo[String]
+          val resource: Resource[Map[String, Double]] = Resource(ResourceType.MAP_STRING_TO_DOUBLE_VALUE, identifier)
+          new SerializableSupplier[Map[String, Double]] {
+            override def apply(): Map[String, Double] = getResource(resource)
+          }
+      }
+
+    }
+
+    override def write(obj: SerializableSupplier[Map[String, Double]]): JsValue = """{}""".toJson
+
+  }
+
+  /**
+   * Format for suppliers of mappings, defined by the values (Seq[String]) that hold for a given key
+   */
+  implicit object MapStringToGeneratorStringFormat extends JsonFormat[SerializableSupplier[Map[String, IndexedGenerator[String]]]] {
+    override def read(json: JsValue): SerializableSupplier[Map[String, IndexedGenerator[String]]] = json match {
+      case spray.json.JsObject(fields) => fields(TYPE_KEY).convertTo[String] match {
+        // this case assumes passing of the key values to valid values for the parameter
+        case JSON_VALUES_MAPPING_TYPE =>
+          val mappings = fields(VALUES_KEY).convertTo[Map[String, Seq[String]]]
+          new SerializableSupplier[Map[String, IndexedGenerator[String]]] {
+            override def apply(): Map[String, IndexedGenerator[String]] = {
+              mappings.map(x => (x._1, ByFunctionNrLimitedIndexedGenerator.createFromSeq(x._2)))
+            }
+          }
+        // this case assumes a json for the values key, containing mapping
+        // of key values to files containing the valid values for the key
+        case JSON_VALUES_FILES_MAPPING_TYPE =>
+          val fileMappings = fields(VALUES_KEY).convertTo[Map[String, String]]
+          new SerializableSupplier[Map[String, IndexedGenerator[String]]] {
+            override def apply(): Map[String, IndexedGenerator[String]] = {
+              fileMappings.map(x => {
+                (x._1, ByFunctionNrLimitedIndexedGenerator.createFromSeq(FileReaderUtils.loadLinesFromFile(x._2, reader)))
+              })
+            }
+          }
+        // assumes a json with full key value mappings under the values key
+        case JSON_SINGLE_MAPPINGS_TYPE =>
+          val mappingsJsonFile = fields(VALUES_KEY).convertTo[String]
+          new SerializableSupplier[Map[String, IndexedGenerator[String]]] {
+            override def apply(): Map[String, IndexedGenerator[String]] = {
+              FileReaderUtils.readJsonMapping(mappingsJsonFile, reader, x => jsValueStringConversion(x))
+                .map(x => (x._1, Seq(x._2)))
+                .map(x => (x._1, ByFunctionNrLimitedIndexedGenerator.createFromSeq(x._2)))
+            }
+          }
+        case JSON_ARRAY_MAPPINGS_TYPE =>
+          try {
+            val mappingsJsonFile = fields(VALUES_KEY).convertTo[String]
+            new SerializableSupplier[Map[String, IndexedGenerator[String]]] {
+              override def apply(): Map[String, IndexedGenerator[String]] = {
+                FileReaderUtils.readJsonMapping(mappingsJsonFile, reader, x => x.convertTo[Seq[JsValue]].map(x => jsValueStringConversion(x)))
+                  .map(x => (x._1, ByFunctionNrLimitedIndexedGenerator.createFromSeq(x._2)))
+              }
+            }
+          }
+          catch {
+            case e: Throwable => SupplierJsonProtocol.logger.error("failed reading json file of format 'JSON_ARRAY_MAPPINGS_TYPE'", e)
+              throw e
+          }
+        // reading file prefixes in folder, and creating mapping for each where prefix is key and values are the values
+        // given in the file, one value per line
+        case FILE_PREFIX_TO_FILE_LINES_MAPPING_TYPE =>
+          val directory = fields(DIRECTORY_KEY).convertTo[String]
+          val filesSuffix: String = fields(FILES_SUFFIX_KEY).convertTo[String]
+          new SerializableSupplier[Map[String, IndexedGenerator[String]]] {
+            override def apply(): Map[String, IndexedGenerator[String]] = {
+              val directoryReader = suffixDirectoryReaderFunc(filesSuffix)
+              FileReaderUtils.extractFilePrefixToLineValuesMapping(reader, directoryReader, directory, filesSuffix, "/")
+                .map(x => (x._1, ByFunctionNrLimitedIndexedGenerator.createFromSeq(x._2)))
+            }
+          }
+        // picking mappings from csv with a key column and a value column. If multiple distinct values are contained
+        // for a key, they will be preserved as distinct values in the generator per key value
+        case CSV_MAPPINGS_TYPE =>
+          val mappingsCsvFile = fields(VALUES_KEY).convertTo[String]
+          val columnDelimiter = fields(COLUMN_DELIMITER_KEY).convertTo[String]
+          val keyColumnIndex = fields(KEY_COLUMN_INDEX_KEY).convertTo[Int]
+          val valueColumnIndex = fields(VALUE_COLUMN_INDEX_KEY).convertTo[Int]
+          val keyValuesMapping = FileReaderUtils.multiMappingFromCSVFile[String](
+            source = reader.getSource(mappingsCsvFile),
+            columnDelimiter = columnDelimiter,
+            filterLessColumnsThan = math.max(keyColumnIndex, valueColumnIndex) + 1,
+            valsToKey = x => x(keyColumnIndex),
+            columnsToValue = x => x(valueColumnIndex))
+          new SerializableSupplier[Map[String, IndexedGenerator[String]]] {
+            override def apply(): Map[String, IndexedGenerator[String]] = {
+              keyValuesMapping.map(x => (x._1, ByFunctionNrLimitedIndexedGenerator.createFromSeq(x._2.toSeq)))
+            }
+          }
+        case VALUES_FROM_NODE_STORAGE_TYPE =>
+          val identifier: String = fields(IDENTIFIER_KEY).convertTo[String]
+          val resource: Resource[Map[String, IndexedGenerator[String]]] = Resource(ResourceType.MAP_STRING_TO_STRING_VALUES, identifier)
+          new SerializableSupplier[Map[String, IndexedGenerator[String]]] {
+            override def apply(): Map[String, IndexedGenerator[String]] = {
+              ClusterNodeObj.getResource(Retrieve(resource)) match {
+                case Left(retrievalError) =>
+                  throw new RuntimeException(s"failed on execution of RetrievalDirective '${retrievalError.directive}', cause: '${retrievalError.cause}'")
+                case Right(value) => value
+              }
+            }
+          }
+      }
+    }
+
+    override def write(obj: SerializableSupplier[Map[String, IndexedGenerator[String]]]): JsValue = """{}""".toJson
+
   }
 
 

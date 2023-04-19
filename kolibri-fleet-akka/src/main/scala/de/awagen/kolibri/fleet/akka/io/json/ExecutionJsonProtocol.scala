@@ -26,9 +26,8 @@ import de.awagen.kolibri.base.provider.WeightProviders.WeightProvider
 import de.awagen.kolibri.datatypes.metrics.aggregation.writer.MetricDocumentFormat
 import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
 import de.awagen.kolibri.datatypes.types.JsonStructDefs._
-import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
+import de.awagen.kolibri.datatypes.types.SerializableCallable.{SerializableFunction1, SerializableSupplier}
 import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
-import de.awagen.kolibri.fleet.akka.io.json.SupplierJsonProtocol.StringSeqMappingFormat
 import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, Reader}
 import de.awagen.kolibri.storage.io.writer.Writers.Writer
 import spray.json.{DefaultJsonProtocol, JsValue, JsonFormat, RootJsonFormat, enrichAny}
@@ -138,7 +137,7 @@ object ExecutionJsonProtocol extends DefaultJsonProtocol with SprayJsonSupport {
               AGGREGATE_GROUPS_TYPE -> Seq(
                 FieldDef(
                   StringConstantStructDef(GROUP_SUPPLIER_KEY),
-                  SupplierJsonProtocol.StringSeqMappingFormat.structDef,
+                  SupplierJsonProtocol.StringSeqMappingFormatStruct.structDef,
                   required = true
                 ),
                 FieldDef(
@@ -277,8 +276,11 @@ object ExecutionJsonProtocol extends DefaultJsonProtocol with SprayJsonSupport {
                              writer: Writer[String, String, _],
                              metricDocumentFormatsMap: Map[String, MetricDocumentFormat],
                              regexToDataOverviewReader: SerializableFunction1[Regex, DataOverviewReader],
-                             weightFormat: JsonFormat[WeightProvider[String]]) extends RootJsonFormat[Execution[Any]] {
+                             weightFormat: JsonFormat[WeightProvider[String]],
+                             supplierJsonProtocol: SupplierJsonProtocol) extends RootJsonFormat[Execution[Any]] {
     implicit val wf: JsonFormat[WeightProvider[String]] = weightFormat
+    implicit val mappingSupplierFormat: JsonFormat[SerializableSupplier[Map[String, Double]]] = supplierJsonProtocol.MapStringDoubleFormat
+    implicit val stringSeqMappingFormat: JsonFormat[() => Map[String, Seq[String]]] = supplierJsonProtocol.StringSeqMappingFormat
 
     override def read(json: JsValue): Execution[Any] = json match {
       case spray.json.JsObject(fields) => fields(TYPE_KEY).convertTo[String] match {

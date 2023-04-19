@@ -42,11 +42,10 @@ import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
 import de.awagen.kolibri.datatypes.values.Calculations.Calculation
 import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType.AggregationType
 import de.awagen.kolibri.fleet.akka.io.json.FIELD_KEYS._
-import de.awagen.kolibri.fleet.akka.io.json.ParameterValuesJsonProtocol._
-import de.awagen.kolibri.fleet.akka.io.json.ResourceDirectiveJsonProtocol.GenericResourceDirectiveFormat
+import de.awagen.kolibri.fleet.akka.io.json.ResourceDirectiveJsonProtocol.GenericResourceDirectiveFormatStruct
 import de.awagen.kolibri.fleet.akka.processing.JobMessages.{QueryBasedSearchEvaluationDefinition, SearchEvaluationDefinition}
 import de.awagen.kolibri.fleet.akka.usecase.searchopt.io.json.CalculationsJsonProtocol._
-import spray.json.{DefaultJsonProtocol, JsValue, RootJsonFormat}
+import spray.json.{DefaultJsonProtocol, JsValue, JsonFormat, RootJsonFormat}
 
 
 object FIELD_KEYS {
@@ -81,8 +80,12 @@ object FIELD_KEYS {
 
 object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSupport with WithStructDef {
 
-  case class SearchEvaluationFormat(executionFormat: RootJsonFormat[Execution[Any]]) extends RootJsonFormat[SearchEvaluationDefinition] {
+  case class SearchEvaluationFormat(executionFormat: RootJsonFormat[Execution[Any]],
+                                    resourceDirectiveJsonProtocol: ResourceDirectiveJsonProtocol,
+                                    parameterValuesJsonProtocol: ParameterValuesJsonProtocol) extends RootJsonFormat[SearchEvaluationDefinition] {
     implicit val ef: RootJsonFormat[Execution[Any]] = executionFormat
+    implicit val genericResourceDirectiveFormat: JsonFormat[ResourceDirective[_]] = resourceDirectiveJsonProtocol.GenericResourceDirectiveFormat
+    implicit val valueSeqGenDefinitionFormat: JsonFormat[ValueSeqGenDefinition[_]] = parameterValuesJsonProtocol.ValueSeqGenDefinitionFormat
     val format: RootJsonFormat[SearchEvaluationDefinition] = jsonFormat(
       (
         jobName: String,
@@ -193,14 +196,14 @@ object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSu
         ),
         FieldDef(
           StringConstantStructDef(RESOURCE_DIRECTIVES_FIELD),
-          GenericSeqStructDef(GenericResourceDirectiveFormat.structDef),
+          GenericSeqStructDef(GenericResourceDirectiveFormatStruct.structDef),
           required = true,
           description = "Specifies which resources shall be loaded in the single node's global state (such as judgements for calculation of IR metrics). " +
             "The resources can be referenced in the single calculation definitions."
         ),
         FieldDef(
           StringConstantStructDef(REQUEST_PARAMETERS_FIELD),
-          GenericSeqStructDef(ParameterValuesJsonProtocol.ValueSeqGenDefinitionFormat.structDef),
+          GenericSeqStructDef(ParameterValuesJsonProtocol.ValueSeqGenDefinitionFormatStruct.structDef),
           required = true,
           description = "Allows specification of combinations of url parameters, headers and bodies. " +
             "Note that standalone values are permutated with every other values, while mappings allow the mapping " +
@@ -302,48 +305,55 @@ object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSu
 
 object QueryBasedSearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSupport with WithStructDef {
 
-  implicit val queryBasedSearchEvaluationFormat: RootJsonFormat[QueryBasedSearchEvaluationDefinition] = jsonFormat(
-    (
-      jobName: String,
-      connections: Seq[Connection],
-      fixedParams: Map[String, Seq[String]],
-      contextPath: String,
-      queryParameter: String,
-      productIdSelector: String,
-      otherSelectors: Seq[NamedAndTypedSelector[_]],
-      otherCalculations: Seq[Calculation[WeaklyTypedMap[String], Any]],
-      otherMetricNameToAggregationTypeMapping: Map[String, AggregationType],
-      judgementFilePath: String,
-      requestParameters: Seq[ValueSeqGenDefinition[_]],
-      excludeParamColumns: Seq[String]
-    ) =>
-      QueryBasedSearchEvaluationDefinition.apply(
-        jobName,
-        connections,
-        fixedParams,
-        contextPath,
-        queryParameter,
-        productIdSelector,
-        otherSelectors,
-        otherCalculations,
-        otherMetricNameToAggregationTypeMapping,
-        judgementFilePath,
-        requestParameters,
-        excludeParamColumns
-      ),
-    JOB_NAME_FIELD,
-    CONNECTIONS_FIELD,
-    FIXED_PARAMS_FIELD,
-    CONTEXT_PATH_FIELD,
-    QUERY_PARAMETER_FIELD,
-    PRODUCT_ID_SELECTOR_FIELD,
-    OTHER_SELECTORS_FIELD,
-    OTHER_CALCULATIONS_FIELD,
-    OTHER_METRIC_NAME_TO_AGGREGATION_TYPE_MAPPING_FIELD,
-    JUDGEMENT_FILE_PATH_FIELD,
-    REQUEST_PARAMETERS_FIELD,
-    EXCLUDE_PARAMS_COLUMNS_FIELD
-  )
+  case class QueryBasedSearchEvaluationFormat(parameterValuesJsonProtocol: ParameterValuesJsonProtocol) extends RootJsonFormat[QueryBasedSearchEvaluationDefinition] {
+    implicit val valueSeqGenFormat: JsonFormat[ValueSeqGenDefinition[_]] = parameterValuesJsonProtocol.ValueSeqGenDefinitionFormat
+    val format: RootJsonFormat[QueryBasedSearchEvaluationDefinition] = jsonFormat(
+      (
+        jobName: String,
+        connections: Seq[Connection],
+        fixedParams: Map[String, Seq[String]],
+        contextPath: String,
+        queryParameter: String,
+        productIdSelector: String,
+        otherSelectors: Seq[NamedAndTypedSelector[_]],
+        otherCalculations: Seq[Calculation[WeaklyTypedMap[String], Any]],
+        otherMetricNameToAggregationTypeMapping: Map[String, AggregationType],
+        judgementFilePath: String,
+        requestParameters: Seq[ValueSeqGenDefinition[_]],
+        excludeParamColumns: Seq[String]
+      ) =>
+        QueryBasedSearchEvaluationDefinition.apply(
+          jobName,
+          connections,
+          fixedParams,
+          contextPath,
+          queryParameter,
+          productIdSelector,
+          otherSelectors,
+          otherCalculations,
+          otherMetricNameToAggregationTypeMapping,
+          judgementFilePath,
+          requestParameters,
+          excludeParamColumns
+        ),
+      JOB_NAME_FIELD,
+      CONNECTIONS_FIELD,
+      FIXED_PARAMS_FIELD,
+      CONTEXT_PATH_FIELD,
+      QUERY_PARAMETER_FIELD,
+      PRODUCT_ID_SELECTOR_FIELD,
+      OTHER_SELECTORS_FIELD,
+      OTHER_CALCULATIONS_FIELD,
+      OTHER_METRIC_NAME_TO_AGGREGATION_TYPE_MAPPING_FIELD,
+      JUDGEMENT_FILE_PATH_FIELD,
+      REQUEST_PARAMETERS_FIELD,
+      EXCLUDE_PARAMS_COLUMNS_FIELD
+    )
+
+    override def write(obj: QueryBasedSearchEvaluationDefinition): JsValue = format.write(obj)
+
+    override def read(json: JsValue): QueryBasedSearchEvaluationDefinition = format.read(json)
+  }
 
   override def structDef: JsonStructDefs.StructDef[_] = {
     NestedFieldSeqStructDef(
@@ -421,7 +431,7 @@ object QueryBasedSearchEvaluationJsonProtocol extends DefaultJsonProtocol with S
         ),
         FieldDef(
           StringConstantStructDef(REQUEST_PARAMETERS_FIELD),
-          GenericSeqStructDef(ParameterValuesJsonProtocol.ValueSeqGenDefinitionFormat.structDef),
+          GenericSeqStructDef(ParameterValuesJsonProtocol.ValueSeqGenDefinitionFormatStruct.structDef),
           required = true,
           description = "Allows specification of combinations of url parameters, headers and bodies. " +
             "Note that standalone values are permutated with every other values, while mappings allow the mapping " +

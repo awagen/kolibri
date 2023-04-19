@@ -28,10 +28,11 @@ import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
 import de.awagen.kolibri.datatypes.types.JsonStructDefs._
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSupplier
 import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
-import de.awagen.kolibri.fleet.akka.io.json.SupplierJsonProtocol.{GeneratorStringFormat, JudgementProviderFormat, MapStringDoubleFormat, MapStringToGeneratorStringFormat}
+import de.awagen.kolibri.fleet.akka.io.json.ResourceDirectiveJsonProtocol._
+import de.awagen.kolibri.fleet.akka.io.json.SupplierJsonProtocol.MapStringToGeneratorStringFormatStruct.MapStringDoubleFormatStruct
+import de.awagen.kolibri.fleet.akka.io.json.SupplierJsonProtocol.{GeneratorStringFormatStruct, JudgementProviderFormatStruct, MapStringToGeneratorStringFormatStruct}
 import spray.json.DefaultJsonProtocol.StringJsonFormat
-import spray.json.{JsValue, JsonFormat}
-import spray.json.enrichAny
+import spray.json.{JsValue, JsonFormat, enrichAny}
 
 object ResourceDirectiveJsonProtocol {
 
@@ -47,7 +48,108 @@ object ResourceDirectiveJsonProtocol {
   val VALUE_COLUMN_INDEX_KEY = "valueColumnIndex"
   val KEY_TO_VALUE_FILE_MAP_KEY = "keyToValueFileMap"
 
-  implicit object GenericResourceDirectiveFormat extends JsonFormat[ResourceDirective[_]] with WithStructDef {
+  object JudgementProviderResourceDirectiveFormatStruct extends WithStructDef {
+    override def structDef: JsonStructDefs.StructDef[_] = NestedFieldSeqStructDef(
+      Seq(
+        FieldDef(
+          StringConstantStructDef(RESOURCE_KEY),
+          RESOURCE_JUDGEMENT_PROVIDER_STRUCT_DEF,
+          required = true
+        ),
+        FieldDef(
+          StringConstantStructDef(SUPPLIER_KEY),
+          JudgementProviderFormatStruct.structDef,
+          required = true
+        )
+      ),
+      Seq.empty
+    )
+  }
+
+  object MapStringDoubleResourceDirectiveFormatStruct extends WithStructDef {
+    override def structDef: JsonStructDefs.StructDef[_] = NestedFieldSeqStructDef(
+      Seq(
+        FieldDef(
+          StringConstantStructDef(RESOURCE_KEY),
+          RESOURCE_MAP_STRING_DOUBLE_STRUCT_DEF,
+          required = true
+        ),
+        FieldDef(
+          StringConstantStructDef(SUPPLIER_KEY),
+          MapStringDoubleFormatStruct.structDef,
+          required = true
+        )
+      ),
+      Seq.empty
+    )
+  }
+
+  object MapStringGeneratorStringResourceDirectiveFormatStruct extends WithStructDef {
+    override def structDef: JsonStructDefs.StructDef[_] = NestedFieldSeqStructDef(
+      Seq(
+        FieldDef(
+          StringConstantStructDef(RESOURCE_KEY),
+          RESOURCE_MAP_STRING_STRING_VALUES_STRUCT_DEF,
+          required = true
+        ),
+        FieldDef(
+          StringConstantStructDef(SUPPLIER_KEY),
+          MapStringToGeneratorStringFormatStruct.structDef,
+          required = true
+        )
+      ),
+      Seq.empty
+    )
+  }
+
+  object GeneratorStringResourceDirectiveFormatStruct extends WithStructDef {
+    override def structDef: JsonStructDefs.StructDef[_] = NestedFieldSeqStructDef(
+      Seq(
+        FieldDef(
+          StringConstantStructDef(RESOURCE_KEY),
+          RESOURCE_STRING_VALUES_STRUCT_DEF,
+          required = true
+        ),
+        FieldDef(
+          StringConstantStructDef(SUPPLIER_KEY),
+          GeneratorStringFormatStruct.structDef,
+          required = true
+        )
+      ),
+      Seq.empty
+    )
+  }
+
+  object GenericResourceDirectiveFormatStruct extends WithStructDef {
+    override def structDef: StructDef[_] = NestedFieldSeqStructDef(
+      Seq(
+        FieldDef(
+          StringConstantStructDef(TYPE_KEY),
+          StringChoiceStructDef(
+            ResourceType.vals.map(x => x.toString())
+          ),
+          required = true)
+      ),
+      Seq(
+        ConditionalFields(TYPE_KEY, Map(
+          JUDGEMENT_PROVIDER.toString() -> Seq(FieldDef(StringConstantStructDef(VALUES_KEY), JudgementProviderResourceDirectiveFormatStruct.structDef, required = true)),
+          STRING_VALUES.toString() -> Seq(FieldDef(StringConstantStructDef(VALUES_KEY), GeneratorStringResourceDirectiveFormatStruct.structDef, required = true)),
+          MAP_STRING_TO_DOUBLE_VALUE.toString() -> Seq(FieldDef(StringConstantStructDef(VALUES_KEY), MapStringDoubleResourceDirectiveFormatStruct.structDef, required = true)),
+          MAP_STRING_TO_STRING_VALUES.toString() -> Seq(FieldDef(StringConstantStructDef(VALUES_KEY), MapStringGeneratorStringResourceDirectiveFormatStruct.structDef, required = true))
+        ))
+      )
+    )
+  }
+
+}
+
+case class ResourceDirectiveJsonProtocol(supplierJsonProtocol: SupplierJsonProtocol) {
+  implicit val generatorStringFormat: JsonFormat[SerializableSupplier[IndexedGenerator[String]]] = supplierJsonProtocol.GeneratorStringFormat
+  implicit val judgementProviderFormat: JsonFormat[SerializableSupplier[JudgementProvider[Double]]] = supplierJsonProtocol.JudgementProviderFormat
+  implicit val mapStringDoubleFormat: JsonFormat[SerializableSupplier[Map[String, Double]]] = supplierJsonProtocol.MapStringDoubleFormat
+  implicit val mapStringToGeneratorStringFormat: JsonFormat[SerializableSupplier[Map[String, IndexedGenerator[String]]]] = supplierJsonProtocol.MapStringToGeneratorStringFormat
+
+  implicit object GenericResourceDirectiveFormat extends JsonFormat[ResourceDirective[_]] {
 
     override def read(json: JsValue): ResourceDirective[_] = json match {
       case spray.json.JsObject(fields) if fields.contains(TYPE_KEY) => fields(TYPE_KEY).convertTo[String] match {
@@ -60,27 +162,9 @@ object ResourceDirectiveJsonProtocol {
 
     override def write(obj: ResourceDirective[_]): JsValue = """{}""".toJson
 
-    override def structDef: StructDef[_] = NestedFieldSeqStructDef(
-      Seq(
-        FieldDef(
-          StringConstantStructDef(TYPE_KEY),
-          StringChoiceStructDef(
-            ResourceType.vals.map(x => x.toString())
-          ),
-          required = true)
-      ),
-      Seq(
-        ConditionalFields(TYPE_KEY, Map(
-          JUDGEMENT_PROVIDER.toString() -> Seq(FieldDef(StringConstantStructDef(VALUES_KEY), JudgementProviderResourceDirectiveFormat.structDef, required = true)),
-          STRING_VALUES.toString() -> Seq(FieldDef(StringConstantStructDef(VALUES_KEY), GeneratorStringResourceDirectiveFormat.structDef, required = true)),
-          MAP_STRING_TO_DOUBLE_VALUE.toString() -> Seq(FieldDef(StringConstantStructDef(VALUES_KEY), MapStringDoubleResourceDirectiveFormat.structDef, required = true)),
-          MAP_STRING_TO_STRING_VALUES.toString() -> Seq(FieldDef(StringConstantStructDef(VALUES_KEY), MapStringGeneratorStringResourceDirectiveFormat.structDef, required = true))
-        ))
-      )
-    )
   }
 
-  implicit object JudgementProviderResourceDirectiveFormat extends JsonFormat[ResourceDirective[JudgementProvider[Double]]] with WithStructDef {
+  implicit object JudgementProviderResourceDirectiveFormat extends JsonFormat[ResourceDirective[JudgementProvider[Double]]] {
     override def read(json: JsValue): ResourceDirective[JudgementProvider[Double]] = json match {
       case spray.json.JsObject(fields) =>
         val resource = fields(RESOURCE_KEY).convertTo[Resource[JudgementProvider[Double]]]
@@ -90,24 +174,9 @@ object ResourceDirectiveJsonProtocol {
 
     override def write(obj: ResourceDirective[JudgementProvider[Double]]): JsValue = """{}""".toJson
 
-    override def structDef: JsonStructDefs.StructDef[_] = NestedFieldSeqStructDef(
-      Seq(
-        FieldDef(
-          StringConstantStructDef(RESOURCE_KEY),
-          RESOURCE_JUDGEMENT_PROVIDER_STRUCT_DEF,
-          required = true
-        ),
-        FieldDef(
-          StringConstantStructDef(SUPPLIER_KEY),
-          SupplierJsonProtocol.JudgementProviderFormat.structDef,
-          required = true
-        )
-      ),
-      Seq.empty
-    )
   }
 
-  implicit object MapStringDoubleResourceDirectiveFormat extends JsonFormat[ResourceDirective[Map[String, Double]]] with WithStructDef {
+  implicit object MapStringDoubleResourceDirectiveFormat extends JsonFormat[ResourceDirective[Map[String, Double]]] {
     override def read(json: JsValue): ResourceDirective[Map[String, Double]] = json match {
       case spray.json.JsObject(fields) =>
         val resource = fields(RESOURCE_KEY).convertTo[Resource[Map[String, Double]]]
@@ -117,24 +186,9 @@ object ResourceDirectiveJsonProtocol {
 
     override def write(obj: ResourceDirective[Map[String, Double]]): JsValue = """{}""".toJson
 
-    override def structDef: JsonStructDefs.StructDef[_] = NestedFieldSeqStructDef(
-      Seq(
-        FieldDef(
-          StringConstantStructDef(RESOURCE_KEY),
-          RESOURCE_MAP_STRING_DOUBLE_STRUCT_DEF,
-          required = true
-        ),
-        FieldDef(
-          StringConstantStructDef(SUPPLIER_KEY),
-          SupplierJsonProtocol.MapStringDoubleFormat.structDef,
-          required = true
-        )
-      ),
-      Seq.empty
-    )
   }
 
-  implicit object MapStringGeneratorStringResourceDirectiveFormat extends JsonFormat[ResourceDirective[Map[String, IndexedGenerator[String]]]] with WithStructDef {
+  implicit object MapStringGeneratorStringResourceDirectiveFormat extends JsonFormat[ResourceDirective[Map[String, IndexedGenerator[String]]]] {
 
     override def read(json: JsValue): ResourceDirective[Map[String, IndexedGenerator[String]]] = json match {
       case spray.json.JsObject(fields) =>
@@ -145,24 +199,9 @@ object ResourceDirectiveJsonProtocol {
 
     override def write(obj: ResourceDirective[Map[String, IndexedGenerator[String]]]): JsValue = """{}""".toJson
 
-    override def structDef: JsonStructDefs.StructDef[_] = NestedFieldSeqStructDef(
-      Seq(
-        FieldDef(
-          StringConstantStructDef(RESOURCE_KEY),
-          RESOURCE_MAP_STRING_STRING_VALUES_STRUCT_DEF,
-          required = true
-        ),
-        FieldDef(
-          StringConstantStructDef(SUPPLIER_KEY),
-          SupplierJsonProtocol.MapStringToGeneratorStringFormat.structDef,
-          required = true
-        )
-      ),
-      Seq.empty
-    )
   }
 
-  implicit object GeneratorStringResourceDirectiveFormat extends JsonFormat[ResourceDirective[IndexedGenerator[String]]] with WithStructDef {
+  implicit object GeneratorStringResourceDirectiveFormat extends JsonFormat[ResourceDirective[IndexedGenerator[String]]] {
 
     override def read(json: JsValue): ResourceDirective[IndexedGenerator[String]] = json match {
       case spray.json.JsObject(fields) =>
@@ -173,21 +212,6 @@ object ResourceDirectiveJsonProtocol {
 
     override def write(obj: ResourceDirective[IndexedGenerator[String]]): JsValue = """{}""".toJson
 
-    override def structDef: JsonStructDefs.StructDef[_] = NestedFieldSeqStructDef(
-      Seq(
-        FieldDef(
-          StringConstantStructDef(RESOURCE_KEY),
-          RESOURCE_STRING_VALUES_STRUCT_DEF,
-          required = true
-        ),
-        FieldDef(
-          StringConstantStructDef(SUPPLIER_KEY),
-          SupplierJsonProtocol.GeneratorStringFormat.structDef,
-          required = true
-        )
-      ),
-      Seq.empty
-    )
   }
 
 }

@@ -30,8 +30,8 @@ import de.awagen.kolibri.fleet.akka.config.AppProperties.config._
 import de.awagen.kolibri.fleet.akka.config.di.modules.connections.HttpModule
 import de.awagen.kolibri.fleet.akka.config.di.modules.persistence.PersistenceModule
 import de.awagen.kolibri.fleet.akka.io.json.ExecutionJsonProtocol.ExecutionFormat
-import de.awagen.kolibri.fleet.akka.io.json.SearchEvaluationJsonProtocol
 import de.awagen.kolibri.fleet.akka.io.json.WeightProviderJsonProtocol.StringWeightProviderFormat
+import de.awagen.kolibri.fleet.akka.io.json.{ParameterValuesJsonProtocol, ResourceDirectiveJsonProtocol, SearchEvaluationJsonProtocol, SupplierJsonProtocol}
 import de.awagen.kolibri.fleet.akka.processing.JobMessages.SearchEvaluationDefinition
 import spray.json.RootJsonFormat
 
@@ -43,17 +43,32 @@ object AppConfig {
       persistenceModule.persistenceDIModule.reader
     )
 
+    implicit val supplierJsonProtocol: SupplierJsonProtocol = SupplierJsonProtocol(
+      persistenceModule.persistenceDIModule.reader,
+      suffix => persistenceModule.persistenceDIModule.dataOverviewReader(x => x.endsWith(suffix))
+    )
+
     implicit val executionFormat: RootJsonFormat[Execution[Any]] = ExecutionFormat(
       persistenceModule.persistenceDIModule.reader,
       persistenceModule.persistenceDIModule.writer,
       AppProperties.config.metricDocumentFormatsMap,
       regex => persistenceModule.persistenceDIModule.dataOverviewReaderWithRegexFilter(regex),
-      weightProviderFormat
+      weightProviderFormat,
+      supplierJsonProtocol
     )
 
-    implicit val searchEvaluationJsonFormat: RootJsonFormat[SearchEvaluationDefinition] =
-      SearchEvaluationJsonProtocol.SearchEvaluationFormat(executionFormat)
+    implicit val parameterValueJsonProtocol: ParameterValuesJsonProtocol = ParameterValuesJsonProtocol(
+      supplierJsonProtocol
+    )
 
+    implicit val resourceDirectiveJsonProtocol: ResourceDirectiveJsonProtocol = ResourceDirectiveJsonProtocol(supplierJsonProtocol)
+
+    implicit val searchEvaluationJsonFormat: RootJsonFormat[SearchEvaluationDefinition] =
+      SearchEvaluationJsonProtocol.SearchEvaluationFormat(
+        executionFormat,
+        resourceDirectiveJsonProtocol,
+        parameterValueJsonProtocol
+      )
   }
 
   val persistenceModule: PersistenceModule = wire[PersistenceModule]

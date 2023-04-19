@@ -25,10 +25,11 @@ import de.awagen.kolibri.datatypes.types.JsonStructDefs._
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSupplier
 import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
 import de.awagen.kolibri.fleet.akka.io.json.OrderedValuesJsonProtocol.VALUES_KEY
-import de.awagen.kolibri.fleet.akka.io.json.SupplierJsonProtocol.{GeneratorStringFormat, MapStringToGeneratorStringFormat}
+import de.awagen.kolibri.fleet.akka.io.json.ParameterValuesJsonProtocol._
+import de.awagen.kolibri.fleet.akka.io.json.SupplierJsonProtocol.{GeneratorStringFormatStruct, MapStringToGeneratorStringFormatStruct}
 import spray.json.{DefaultJsonProtocol, JsValue, JsonFormat, RootJsonFormat, enrichAny}
 
-object ParameterValuesJsonProtocol extends DefaultJsonProtocol {
+object ParameterValuesJsonProtocol {
 
   object FormatOps {
 
@@ -82,20 +83,79 @@ object ParameterValuesJsonProtocol extends DefaultJsonProtocol {
   val STANDALONE_TYPE = "STANDALONE"
   val MAPPING_TYPE = "MAPPING"
 
-
-  /**
-   * Reusing below formats for the general trait ValuesSeqGenProvider
-   */
-  implicit object ValueSeqGenDefinitionFormat extends JsonFormat[ValueSeqGenDefinition[_]] with WithStructDef {
-    override def read(json: JsValue): ValueSeqGenDefinition[_] = json match {
-      case spray.json.JsObject(fields) if fields.contains(TYPE_KEY) => fields(TYPE_KEY).convertTo[String] match {
-        case STANDALONE_TYPE => ParameterValuesConfigFormat.read(fields(VALUES_KEY))
-        case MAPPING_TYPE => ParameterValueMappingConfigFormat.read(fields(VALUES_KEY))
-      }
+  object ParameterValuesConfigFormatStruct extends WithStructDef {
+    override def structDef: JsonStructDefs.StructDef[_] = {
+      NestedFieldSeqStructDef(
+        Seq(
+          FieldDef(
+            StringConstantStructDef(NAME_KEY),
+            StringStructDef,
+            required = true
+          ),
+          FieldDef(
+            StringConstantStructDef(VALUES_TYPE_KEY),
+            valueTypeFormat.structDef,
+            required = true
+          ),
+          FieldDef(
+            StringConstantStructDef(VALUES_KEY),
+            GeneratorStringFormatStruct.structDef,
+            required = true
+          )
+        ),
+        Seq.empty
+      )
     }
+  }
 
-    override def write(obj: ValueSeqGenDefinition[_]): JsValue = """{}""".toJson
+  object MappedParameterValuesFormatStruct extends WithStructDef {
+    override def structDef: JsonStructDefs.StructDef[_] = {
+      NestedFieldSeqStructDef(
+        Seq(
+          FieldDef(
+            StringConstantStructDef(NAME_KEY),
+            StringStructDef,
+            required = true
+          ),
+          FieldDef(
+            StringConstantStructDef(VALUES_TYPE_KEY),
+            valueTypeFormat.structDef,
+            required = true
+          ),
+          FieldDef(
+            StringConstantStructDef(VALUES_KEY),
+            MapStringToGeneratorStringFormatStruct.structDef,
+            required = true
+          )
+        ),
+        Seq.empty
+      )
+    }
+  }
 
+  object ParameterValueMappingConfigFormatStruct extends WithStructDef {
+    override def structDef: JsonStructDefs.StructDef[_] = {
+      NestedFieldSeqStructDef(
+        Seq(
+          FieldDef(StringConstantStructDef(KEY_VALUES_KEY), ParameterValuesConfigFormatStruct.structDef, required = true),
+          FieldDef(
+            StringConstantStructDef(MAPPED_VALUES_KEY),
+            GenericSeqStructDef(MappedParameterValuesFormatStruct.structDef),
+            required = true
+          ),
+          FieldDef(
+            StringConstantStructDef(KEY_MAPPING_ASSIGNMENTS_KEY),
+            GenericSeqStructDef(IntSeqStructDef),
+            required = true
+          )
+        ),
+        Seq.empty
+      )
+    }
+  }
+
+
+  object ValueSeqGenDefinitionFormatStruct extends WithStructDef {
     override def structDef: JsonStructDefs.StructDef[_] = {
       NestedFieldSeqStructDef(
         Seq(
@@ -113,14 +173,14 @@ object ParameterValuesJsonProtocol extends DefaultJsonProtocol {
             STANDALONE_TYPE -> Seq(
               FieldDef(
                 StringConstantStructDef(VALUES_KEY),
-                ParameterValuesConfigFormat.structDef,
+                ParameterValuesConfigFormatStruct.structDef,
                 required = true
               )
             ),
             MAPPING_TYPE -> Seq(
               FieldDef(
                 StringConstantStructDef(VALUES_KEY),
-                ParameterValueMappingConfigFormat.structDef,
+                ParameterValueMappingConfigFormatStruct.structDef,
                 required = true)
             )
           ))
@@ -128,6 +188,29 @@ object ParameterValuesJsonProtocol extends DefaultJsonProtocol {
       )
 
     }
+  }
+
+}
+
+case class ParameterValuesJsonProtocol(supplierJsonProtocol: SupplierJsonProtocol) extends DefaultJsonProtocol {
+  val generatorStringFormat: JsonFormat[SerializableSupplier[IndexedGenerator[String]]] =
+    supplierJsonProtocol.GeneratorStringFormat
+  val mapStringToGeneratorStringFormat: JsonFormat[SerializableSupplier[Map[String, IndexedGenerator[String]]]] =
+    supplierJsonProtocol.MapStringToGeneratorStringFormat
+
+  /**
+   * Reusing below formats for the general trait ValuesSeqGenProvider
+   */
+  implicit object ValueSeqGenDefinitionFormat extends JsonFormat[ValueSeqGenDefinition[_]] {
+    override def read(json: JsValue): ValueSeqGenDefinition[_] = json match {
+      case spray.json.JsObject(fields) if fields.contains(TYPE_KEY) => fields(TYPE_KEY).convertTo[String] match {
+        case STANDALONE_TYPE => ParameterValuesConfigFormat.read(fields(VALUES_KEY))
+        case MAPPING_TYPE => ParameterValueMappingConfigFormat.read(fields(VALUES_KEY))
+      }
+    }
+
+    override def write(obj: ValueSeqGenDefinition[_]): JsValue = """{}""".toJson
+
   }
 
   /**
@@ -142,13 +225,13 @@ object ParameterValuesJsonProtocol extends DefaultJsonProtocol {
   /**
    * Format for creation of ParameterValues (Seq of values for single type and name)
    */
-  implicit object ParameterValuesConfigFormat extends JsonFormat[ParameterValuesDefinition] with WithStructDef {
+  implicit object ParameterValuesConfigFormat extends JsonFormat[ParameterValuesDefinition] {
     override def read(json: JsValue): ParameterValuesDefinition = {
       json match {
         case spray.json.JsObject(fields) =>
           val name = fields(NAME_KEY).convertTo[String]
           val parameterValuesType = fields(VALUES_TYPE_KEY).convertTo[ValueType.Value]
-          val valueSupplier: SerializableSupplier[IndexedGenerator[String]] = GeneratorStringFormat.read(fields(VALUES_KEY))
+          val valueSupplier: SerializableSupplier[IndexedGenerator[String]] = generatorStringFormat.read(fields(VALUES_KEY))
           ParameterValuesDefinition(
             name,
             parameterValuesType,
@@ -159,68 +242,24 @@ object ParameterValuesJsonProtocol extends DefaultJsonProtocol {
 
     override def write(obj: ParameterValuesDefinition): JsValue = """{}""".toJson
 
-    override def structDef: JsonStructDefs.StructDef[_] = {
-      NestedFieldSeqStructDef(
-        Seq(
-          FieldDef(
-            StringConstantStructDef(NAME_KEY),
-            StringStructDef,
-            required = true
-          ),
-          FieldDef(
-            StringConstantStructDef(VALUES_TYPE_KEY),
-            valueTypeFormat.structDef,
-            required = true
-          ),
-          FieldDef(
-            StringConstantStructDef(VALUES_KEY),
-            GeneratorStringFormat.structDef,
-            required = true
-          )
-        ),
-        Seq.empty
-      )
-    }
   }
 
   /**
    * Format for mappings, defined by the values (Seq[String]) that hold for a given
    * key
    */
-  implicit object MappedParameterValuesFormat extends JsonFormat[MappedParameterValues] with WithStructDef {
+  implicit object MappedParameterValuesFormat extends JsonFormat[MappedParameterValues] {
     override def read(json: JsValue): MappedParameterValues = json match {
       case spray.json.JsObject(fields) =>
         val name = fields(NAME_KEY).convertTo[String]
         val valueType = fields(VALUES_TYPE_KEY).convertTo[ValueType.Value]
         val values = fields(VALUES_KEY)
-        val mappings = MapStringToGeneratorStringFormat.read(values)
+        val mappings = mapStringToGeneratorStringFormat.read(values)
         MappedParameterValues(name, valueType, mappings)
     }
 
     override def write(obj: MappedParameterValues): JsValue = """{}""".toJson
 
-    override def structDef: JsonStructDefs.StructDef[_] = {
-      NestedFieldSeqStructDef(
-        Seq(
-          FieldDef(
-            StringConstantStructDef(NAME_KEY),
-            StringStructDef,
-            required = true
-          ),
-          FieldDef(
-            StringConstantStructDef(VALUES_TYPE_KEY),
-            valueTypeFormat.structDef,
-            required = true
-          ),
-          FieldDef(
-            StringConstantStructDef(VALUES_KEY),
-            MapStringToGeneratorStringFormat.structDef,
-            required = true
-          )
-        ),
-        Seq.empty
-      )
-    }
   }
 
   /**
@@ -232,7 +271,7 @@ object ParameterValuesJsonProtocol extends DefaultJsonProtocol {
    * userId, in which case userId would be used as key generator and queries would be
    * represented by a mapping
    */
-  implicit object ParameterValueMappingConfigFormat extends JsonFormat[ParameterValueMappingDefinition] with WithStructDef {
+  implicit object ParameterValueMappingConfigFormat extends JsonFormat[ParameterValueMappingDefinition] {
     override def read(json: JsValue): ParameterValueMappingDefinition = json match {
       case spray.json.JsObject(fields) => {
         val keyValues = fields(KEY_VALUES_KEY).convertTo[ParameterValuesDefinition]
@@ -244,24 +283,6 @@ object ParameterValuesJsonProtocol extends DefaultJsonProtocol {
 
     override def write(obj: ParameterValueMappingDefinition): JsValue = """{}""".toJson
 
-    override def structDef: JsonStructDefs.StructDef[_] = {
-      NestedFieldSeqStructDef(
-        Seq(
-          FieldDef(StringConstantStructDef(KEY_VALUES_KEY), ParameterValuesConfigFormat.structDef, required = true),
-          FieldDef(
-            StringConstantStructDef(MAPPED_VALUES_KEY),
-            GenericSeqStructDef(MappedParameterValuesFormat.structDef),
-            required = true
-          ),
-          FieldDef(
-            StringConstantStructDef(KEY_MAPPING_ASSIGNMENTS_KEY),
-            GenericSeqStructDef(IntSeqStructDef),
-            required = true
-          )
-        ),
-        Seq.empty
-      )
-    }
   }
 
 }
