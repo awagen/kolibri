@@ -15,16 +15,16 @@
  */
 
 
-package de.awagen.kolibri.fleet.akka.io.json
+package de.awagen.kolibri.base.io.json
 
 import de.awagen.kolibri.base.utils.OrderedValuesUtils.fromCsvFileByColumnNames
 import de.awagen.kolibri.datatypes.multivalues.{GridOrderedMultiValues, OrderedMultiValues}
 import de.awagen.kolibri.datatypes.values.OrderedValues
-import de.awagen.kolibri.fleet.akka.config.AppConfig
-import de.awagen.kolibri.fleet.akka.io.json.OrderedValuesJsonProtocol.{OrderedValuesMapFormat, OrderedValuesStringFormat, SeqOrderedValuesFormat}
+import de.awagen.kolibri.storage.io.reader.Reader
+import spray.json.DefaultJsonProtocol.StringJsonFormat
 import spray.json.{DefaultJsonProtocol, DeserializationException, JsValue, JsonFormat, enrichAny}
 
-object OrderedMultiValuesJsonProtocol extends DefaultJsonProtocol {
+object OrderedMultiValuesJsonProtocol {
 
   val FROM_FILES_LINES_TYPE = "FROM_FILES_LINES_TYPE"
   val FROM_VALUES_TYPE = "FROM_VALUES_TYPE"
@@ -37,6 +37,13 @@ object OrderedMultiValuesJsonProtocol extends DefaultJsonProtocol {
   val FILE_KEY = "file"
   val COLUMN_SEPARATOR_KEY = "columnSeparator"
   val KEY_NAME_KEY = "keyName"
+}
+
+case class OrderedMultiValuesJsonProtocol(reader: Reader[String, Seq[String]],
+                                          orderedValuesJsonProtocol: OrderedValuesJsonProtocol) {
+
+  import OrderedMultiValuesJsonProtocol._
+  import orderedValuesJsonProtocol.{OrderedValuesStringFormat, OrderedValuesMapFormat,SeqOrderedValuesFormat}
 
   implicit object OrderedMultiValuesAnyFormat extends JsonFormat[OrderedMultiValues] {
     override def read(json: JsValue): OrderedMultiValues = {
@@ -71,7 +78,7 @@ object OrderedMultiValuesJsonProtocol extends DefaultJsonProtocol {
               val keyName: String = fields(KEY_NAME_KEY).convertTo[String]
               val valueName: String = fields(NAME_KEY).convertTo[String]
               val values = fromCsvFileByColumnNames(
-                AppConfig.persistenceModule.persistenceDIModule.reader,
+                reader,
                 file,
                 columnSeparator,
                 keyName,

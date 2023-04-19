@@ -15,9 +15,8 @@
  */
 
 
-package de.awagen.kolibri.fleet.akka.io.json
+package de.awagen.kolibri.base.io.json
 
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import de.awagen.kolibri.base.format.RegexUtils
 import de.awagen.kolibri.base.processing.execution.functions.AggregationFunctions.{AggregateFilesWeighted, AggregateFromDirectoryByRegexWeighted, DoNothing, MultiExecution}
 import de.awagen.kolibri.base.processing.execution.functions.AnalyzeFunctions.{GetImprovingAndLoosing, GetImprovingAndLoosingFromDirPerRegex, GetValueVarianceFromDirPerRegex}
@@ -34,7 +33,7 @@ import spray.json.{DefaultJsonProtocol, JsValue, JsonFormat, RootJsonFormat, enr
 
 import scala.util.matching.Regex
 
-object ExecutionJsonProtocol extends DefaultJsonProtocol with SprayJsonSupport {
+object ExecutionJsonProtocol extends DefaultJsonProtocol {
 
   val TYPE_KEY = "type"
   val REGEX_KEY = "regex"

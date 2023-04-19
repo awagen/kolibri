@@ -15,14 +15,27 @@
   */
 
 
-package de.awagen.kolibri.fleet.akka.io.json
+package de.awagen.kolibri.base.io.json
 
+import de.awagen.kolibri.base.testclasses.UnitTestSpec
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
-import de.awagen.kolibri.fleet.akka.io.json.MappingSupplierJsonProtocol._
-import de.awagen.kolibri.fleet.akka.testclasses.UnitTestSpec
+import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, LocalResourceDirectoryReader, LocalResourceFileReader, Reader}
 import spray.json._
 
 class MappingSupplierJsonProtocolSpec extends UnitTestSpec {
+
+  val localResourceReader: Reader[String, Seq[String]] = LocalResourceFileReader("/", None, fromClassPath = true)
+  val localDataOverviewReader: DataOverviewReader = LocalResourceDirectoryReader("/")
+  val generatorJsonProtocol: IndexedGeneratorJsonProtocol = IndexedGeneratorJsonProtocol(
+    suffix => LocalResourceDirectoryReader("/", x => x.endsWith(suffix))
+  )
+  implicit val mappingSupplierJsonProtocol: MappingSupplierJsonProtocol = MappingSupplierJsonProtocol(
+    localResourceReader,
+    suffix => LocalResourceDirectoryReader("/", x => x.endsWith(suffix)),
+    generatorJsonProtocol
+  )
+
+  import mappingSupplierJsonProtocol._
 
   "MappingSupplierJsonProtocol" must {
 

@@ -21,10 +21,15 @@ import de.awagen.kolibri.base.http.client.request.RequestTemplateBuilder
 import de.awagen.kolibri.base.processing.modifiers.Modifier
 import de.awagen.kolibri.base.processing.modifiers.RequestPermutations.{MappingModifier, RequestPermutation}
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
-import de.awagen.kolibri.fleet.akka.io.json.ModifierGeneratorProviderJsonProtocol.{MappingModifierJsonProtocol, requestPermutationFormat}
-import spray.json.{DefaultJsonProtocol, DeserializationException, JsValue, JsonFormat, enrichAny}
+import spray.json.DefaultJsonProtocol.StringJsonFormat
+import spray.json.{DeserializationException, JsValue, JsonFormat, enrichAny}
 
-object SeqModifierGeneratorJsonProtocol extends DefaultJsonProtocol {
+object SeqModifierGeneratorJsonProtocol {
+}
+
+case class SeqModifierGeneratorJsonProtocol(modifierGeneratorProviderJsonProtocol: ModifierGeneratorProviderJsonProtocol) {
+
+  import modifierGeneratorProviderJsonProtocol._
 
   implicit object SeqModifierGeneratorFormat extends JsonFormat[Seq[IndexedGenerator[Modifier[RequestTemplateBuilder]]]] {
     override def read(json: JsValue): Seq[IndexedGenerator[Modifier[RequestTemplateBuilder]]] = json match {

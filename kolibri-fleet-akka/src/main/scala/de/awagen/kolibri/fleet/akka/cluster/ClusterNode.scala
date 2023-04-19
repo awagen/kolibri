@@ -27,6 +27,7 @@ import akka.http.scaladsl.server.Route
 import akka.management.cluster.bootstrap.ClusterBootstrap
 import akka.management.scaladsl.AkkaManagement
 import akka.stream.Materializer
+import de.awagen.kolibri.base.directives.ResourceProvider
 import de.awagen.kolibri.fleet.akka.actors.clusterinfo.DDResourceStateUtils.DD_BATCH_STATUS_ACTOR_REF_KEY
 import de.awagen.kolibri.fleet.akka.actors.clusterinfo.{BatchStateActor, LocalStateDistributorActor, ResourceToJobMappingClusterStateManagerActor}
 import de.awagen.kolibri.fleet.akka.actors.routing.RoutingActor
@@ -36,7 +37,7 @@ import de.awagen.kolibri.fleet.akka.config.AppProperties.config
 import de.awagen.kolibri.fleet.akka.config.AppProperties.config.{kolibriDispatcherName, node_roles, useRequestEventShardingAndEndpoints}
 import de.awagen.kolibri.base.directives.RetrievalDirective.RetrievalDirective
 import de.awagen.kolibri.fleet.akka.http.server.HttpServer
-import de.awagen.kolibri.fleet.akka.http.server.routes.AnalysisRoutes.{getImproovingAndLoosing, getPartialResultsOverview, getResultBaseFolders, getSingleJsonResult, getSingleCsvResultFiltered, getValueVarianceFromDir}
+import de.awagen.kolibri.fleet.akka.http.server.routes.AnalysisRoutes.{getImproovingAndLoosing, getPartialResultsOverview, getResultBaseFolders, getSingleCsvResultFiltered, getSingleJsonResult, getValueVarianceFromDir}
 import de.awagen.kolibri.fleet.akka.http.server.routes.BaseRoutes
 import de.awagen.kolibri.fleet.akka.http.server.routes.BaseRoutes._
 import de.awagen.kolibri.fleet.akka.http.server.routes.DataRoutes._
@@ -55,7 +56,7 @@ import java.util.Objects
 import scala.concurrent.ExecutionContextExecutor
 import scala.util.{Failure, Success}
 
-object ClusterNodeObj {
+object ClusterNodeObj extends ResourceProvider {
 
   val LOCAL_RESOURCES_ACTOR_NAME = "localResources"
 

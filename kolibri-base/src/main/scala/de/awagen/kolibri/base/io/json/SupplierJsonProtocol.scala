@@ -15,10 +15,12 @@
  */
 
 
-package de.awagen.kolibri.fleet.akka.io.json
+package de.awagen.kolibri.base.io.json
 
 import de.awagen.kolibri.base.directives.RetrievalDirective.Retrieve
-import de.awagen.kolibri.base.directives.{Resource, ResourceType}
+import de.awagen.kolibri.base.directives.{Resource, ResourceProvider, ResourceType}
+import de.awagen.kolibri.base.io.json.OrderedValuesJsonProtocol.OrderedValuesStringFormatStruct
+import de.awagen.kolibri.base.io.json.SupplierJsonProtocol.JudgementProviderFormatStruct.JUDGEMENTS_FROM_FILE_TYPE
 import de.awagen.kolibri.base.usecase.searchopt.provider.JudgementProvider
 import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator}
 import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
@@ -26,10 +28,6 @@ import de.awagen.kolibri.datatypes.types.JsonStructDefs._
 import de.awagen.kolibri.datatypes.types.SerializableCallable.{SerializableFunction1, SerializableSupplier}
 import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
 import de.awagen.kolibri.datatypes.values.OrderedValues
-import de.awagen.kolibri.fleet.akka.cluster.ClusterNodeObj
-import de.awagen.kolibri.fleet.akka.config.AppConfig.filepathToJudgementProvider
-import de.awagen.kolibri.fleet.akka.io.json.OrderedValuesJsonProtocol.OrderedValuesStringFormat
-import de.awagen.kolibri.fleet.akka.io.json.SupplierJsonProtocol.JudgementProviderFormatStruct.JUDGEMENTS_FROM_FILE_TYPE
 import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, FileReaderUtils, Reader}
 import org.slf4j.{Logger, LoggerFactory}
 import spray.json._
@@ -129,7 +127,7 @@ object SupplierJsonProtocol extends DefaultJsonProtocol {
             FROM_ORDERED_VALUES_TYPE -> Seq(
               FieldDef(
                 StringConstantStructDef(VALUES_KEY),
-                OrderedValuesStringFormat.structDef,
+                OrderedValuesStringFormatStruct.structDef,
                 required = true
               )
             ),
@@ -307,9 +305,13 @@ object SupplierJsonProtocol extends DefaultJsonProtocol {
 }
 
 case class SupplierJsonProtocol(reader: Reader[String, Seq[String]],
-                                suffixDirectoryReaderFunc: SerializableFunction1[String, DataOverviewReader]) {
+                                suffixDirectoryReaderFunc: SerializableFunction1[String, DataOverviewReader],
+                                orderedValuesJsonProtocol: OrderedValuesJsonProtocol,
+                                filepathTojudgementProviderFunc: SerializableFunction1[String, JudgementProvider[Double]],
+                                resourceProvider: ResourceProvider) {
 
-  import de.awagen.kolibri.fleet.akka.io.json.SupplierJsonProtocol._
+  import SupplierJsonProtocol._
+  import orderedValuesJsonProtocol._
 
   implicit object StringSeqMappingFormat extends JsonFormat[() => Map[String, Seq[String]]] {
     override def read(json: JsValue): () => Map[String, Seq[String]] = json match {
@@ -357,7 +359,7 @@ case class SupplierJsonProtocol(reader: Reader[String, Seq[String]],
           val resource: Resource[IndexedGenerator[String]] = Resource(ResourceType.STRING_VALUES, identifier)
           new SerializableSupplier[IndexedGenerator[String]] {
             override def apply(): IndexedGenerator[String] = {
-              ClusterNodeObj.getResource(Retrieve(resource)) match {
+              resourceProvider.getResource(Retrieve(resource)) match {
                 case Left(retrievalError) =>
                   throw new RuntimeException(s"failed on execution of RetrievalDirective '${retrievalError.directive}', cause: '${retrievalError.cause}'")
                 case Right(value) => value
@@ -372,7 +374,7 @@ case class SupplierJsonProtocol(reader: Reader[String, Seq[String]],
   }
 
   private[json] def getResource[T](resource: Resource[T]): T = {
-    ClusterNodeObj.getResource(Retrieve(resource)) match {
+    resourceProvider.getResource(Retrieve(resource)) match {
       case Left(retrievalError) =>
         throw new RuntimeException(s"failed on execution of RetrievalDirective '${retrievalError.directive}', cause: '${retrievalError.cause}'")
       case Right(value) => value
@@ -394,7 +396,7 @@ case class SupplierJsonProtocol(reader: Reader[String, Seq[String]],
         case JUDGEMENTS_FROM_FILE_TYPE =>
           val file: String = fields(FILE_KEY).convertTo[String]
           new SerializableSupplier[JudgementProvider[Double]] {
-            override def apply(): JudgementProvider[Double] = filepathToJudgementProvider(file)
+            override def apply(): JudgementProvider[Double] = filepathTojudgementProviderFunc(file)
           }
         case VALUES_FROM_NODE_STORAGE_TYPE =>
           val identifier: String = fields(IDENTIFIER_KEY).convertTo[String]
@@ -511,7 +513,7 @@ case class SupplierJsonProtocol(reader: Reader[String, Seq[String]],
           val resource: Resource[Map[String, IndexedGenerator[String]]] = Resource(ResourceType.MAP_STRING_TO_STRING_VALUES, identifier)
           new SerializableSupplier[Map[String, IndexedGenerator[String]]] {
             override def apply(): Map[String, IndexedGenerator[String]] = {
-              ClusterNodeObj.getResource(Retrieve(resource)) match {
+              resourceProvider.getResource(Retrieve(resource)) match {
                 case Left(retrievalError) =>
                   throw new RuntimeException(s"failed on execution of RetrievalDirective '${retrievalError.directive}', cause: '${retrievalError.cause}'")
                 case Right(value) => value

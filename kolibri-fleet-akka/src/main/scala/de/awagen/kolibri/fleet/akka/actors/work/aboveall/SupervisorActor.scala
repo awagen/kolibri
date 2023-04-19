@@ -19,7 +19,7 @@ package de.awagen.kolibri.fleet.akka.actors.work.aboveall
 import akka.actor.SupervisorStrategy.Stop
 import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, ActorSystem, Cancellable, OneForOneStrategy, PoisonPill, Props, Terminated}
 import de.awagen.kolibri.base.domain.jobdefinitions.Batch
-import de.awagen.kolibri.base.processing.ProcessingMessages.ProcessingMessage
+import de.awagen.kolibri.base.processing.ProcessingMessages.{JobStatusInfo, ProcessingMessage}
 import de.awagen.kolibri.base.processing.classifier.Mapper.FilteringMapper
 import de.awagen.kolibri.base.processing.execution.SimpleTaskExecution
 import de.awagen.kolibri.base.processing.execution.expectation._
@@ -37,7 +37,6 @@ import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 import de.awagen.kolibri.fleet.akka.actors.work.aboveall.SupervisorActor._
 import de.awagen.kolibri.fleet.akka.actors.work.manager.JobManagerActor
 import de.awagen.kolibri.fleet.akka.actors.work.manager.JobManagerActor._
-import de.awagen.kolibri.fleet.akka.actors.work.manager.JobProcessingState.JobStatusInfo
 import de.awagen.kolibri.fleet.akka.actors.work.worker.TaskExecutionWorkerActor
 import de.awagen.kolibri.fleet.akka.config.AppProperties._
 import de.awagen.kolibri.fleet.akka.config.AppProperties.config.{kolibriBlockingDispatcherName, kolibriDispatcherName}

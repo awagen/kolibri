@@ -15,9 +15,8 @@
  */
 
 
-package de.awagen.kolibri.fleet.akka.io.json
+package de.awagen.kolibri.base.io.json
 
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import de.awagen.kolibri.base.provider.WeightProviders.{ConstantWeightProvider, FileBasedStringIdentifierWeightProvider, WeightProvider}
 import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
 import de.awagen.kolibri.datatypes.types.JsonStructDefs._
@@ -25,7 +24,7 @@ import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
 import de.awagen.kolibri.storage.io.reader.Reader
 import spray.json.{DefaultJsonProtocol, JsValue, RootJsonFormat, enrichAny}
 
-object WeightProviderJsonProtocol extends DefaultJsonProtocol with SprayJsonSupport {
+object WeightProviderJsonProtocol extends DefaultJsonProtocol {
 
   val TYPE_CONSTANT = "CONSTANT"
   val TYPE_FROM_PER_QUERY_FILE = "FROM_PER_QUERY_FILE"

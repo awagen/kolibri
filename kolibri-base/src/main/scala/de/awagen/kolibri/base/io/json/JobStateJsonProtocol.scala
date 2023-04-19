@@ -15,11 +15,10 @@
  */
 
 
-package de.awagen.kolibri.fleet.akka.io.json
+package de.awagen.kolibri.base.io.json
 
 import de.awagen.kolibri.base.io.json.EnumerationJsonProtocol.processingResultFormat
-import de.awagen.kolibri.base.processing.ProcessingMessages.ResultSummary
-import de.awagen.kolibri.fleet.akka.actors.work.manager.JobProcessingState.JobStatusInfo
+import de.awagen.kolibri.base.processing.ProcessingMessages.{JobStatusInfo, ResultSummary}
 import spray.json.{DefaultJsonProtocol, RootJsonFormat}
 
 object JobStateJsonProtocol extends DefaultJsonProtocol {

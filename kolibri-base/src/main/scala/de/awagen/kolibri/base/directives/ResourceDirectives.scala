@@ -19,6 +19,8 @@ package de.awagen.kolibri.base.directives
 
 import de.awagen.kolibri.base.directives.ExpirePolicy.ExpirePolicy
 import de.awagen.kolibri.base.directives.ResourceType.ResourceType
+import de.awagen.kolibri.base.directives.RetrievalDirective.RetrievalDirective
+import de.awagen.kolibri.base.resources.RetrievalError
 import de.awagen.kolibri.base.usecase.searchopt.provider.JudgementProvider
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
@@ -64,6 +66,12 @@ trait WithResources extends KolibriSerializable {
   def addResource(resource: Resource[_]): Unit = {
     resourceSet += resource
   }
+
+}
+
+trait ResourceProvider {
+
+  def getResource[T](directive: RetrievalDirective[T]): Either[RetrievalError[T], T]
 
 }
 

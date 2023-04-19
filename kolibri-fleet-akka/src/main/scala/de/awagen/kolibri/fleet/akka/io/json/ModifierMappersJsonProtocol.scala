@@ -17,19 +17,27 @@
 
 package de.awagen.kolibri.fleet.akka.io.json
 
+import de.awagen.kolibri.base.io.json.{IndexedGeneratorJsonProtocol, MappingSupplierJsonProtocol}
 import de.awagen.kolibri.base.processing.modifiers.ModifierMappers._
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
-import de.awagen.kolibri.fleet.akka.io.json.IndexedGeneratorJsonProtocol.StringIndexedGeneratorFormat
-import de.awagen.kolibri.fleet.akka.io.json.MappingSupplierJsonProtocol.{MappedParamMapJsonProtocol, MappedSingleValueMapJsonProtocol}
-import spray.json.{DefaultJsonProtocol, DeserializationException, JsValue, JsonFormat, enrichAny}
+import spray.json._
+
 
 /**
  * Json read/write protocols to write/read ModifierMappers to/from json definition
  */
-object ModifierMappersJsonProtocol extends DefaultJsonProtocol {
+object ModifierMappersJsonProtocol {
 
   val REPLACE_KEY: String = "replace"
   val VALUES_KEY: String = "values"
+}
+
+case class ModifierMappersJsonProtocol(generatorJsonProtocol: IndexedGeneratorJsonProtocol,
+                                       mappingSupplierJsonProtocol: MappingSupplierJsonProtocol) {
+  import spray.json.DefaultJsonProtocol.{StringJsonFormat, BooleanJsonFormat, mapFormat}
+  import ModifierMappersJsonProtocol._
+  import generatorJsonProtocol._
+  import mappingSupplierJsonProtocol._
 
   implicit object ParamsMapperJsonProtocol extends JsonFormat[ParamsMapper] {
     override def read(json: JsValue): ParamsMapper = json match {

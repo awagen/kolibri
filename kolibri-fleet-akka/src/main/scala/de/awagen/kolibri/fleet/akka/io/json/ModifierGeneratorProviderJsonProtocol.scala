@@ -17,16 +17,23 @@
 
 package de.awagen.kolibri.fleet.akka.io.json
 
+import de.awagen.kolibri.base.io.json.{IndexedGeneratorJsonProtocol, OrderedMultiValuesJsonProtocol}
 import de.awagen.kolibri.base.processing.modifiers.ModifierMappers.{BodyMapper, HeadersMapper, ParamsMapper}
 import de.awagen.kolibri.base.processing.modifiers.RequestPermutations.{MappingModifier, ModifierGeneratorProvider, RequestPermutation}
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.multivalues.{GridOrderedMultiValues, OrderedMultiValues}
-import de.awagen.kolibri.fleet.akka.io.json.IndexedGeneratorJsonProtocol.StringIndexedGeneratorFormat
-import de.awagen.kolibri.fleet.akka.io.json.ModifierMappersJsonProtocol.{BodyMapperJsonProtocol, HeaderMapperJsonProtocol, ParamsMapperJsonProtocol}
-import de.awagen.kolibri.fleet.akka.io.json.OrderedMultiValuesJsonProtocol.OrderedMultiValuesAnyFormat
-import spray.json.{DefaultJsonProtocol, DeserializationException, JsValue, JsonFormat, RootJsonFormat, enrichAny}
+import spray.json.{DeserializationException, JsValue, JsonFormat, RootJsonFormat, enrichAny}
 
-object ModifierGeneratorProviderJsonProtocol extends DefaultJsonProtocol {
+object ModifierGeneratorProviderJsonProtocol {
+}
+
+case class ModifierGeneratorProviderJsonProtocol(generatorJsonProtocol: IndexedGeneratorJsonProtocol,
+                                                 multiValuesProtocol: OrderedMultiValuesJsonProtocol,
+                                                 modifierMappersJsonProtocol: ModifierMappersJsonProtocol) {
+
+  import generatorJsonProtocol._
+  import modifierMappersJsonProtocol._
+  import multiValuesProtocol._
 
   implicit object MappingModifierJsonProtocol extends JsonFormat[MappingModifier] {
     override def read(json: JsValue): MappingModifier = json match {

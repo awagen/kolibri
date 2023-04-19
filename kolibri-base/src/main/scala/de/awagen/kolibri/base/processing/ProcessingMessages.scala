@@ -138,6 +138,12 @@ object ProcessingMessages {
     )
   }
 
+  case class JobStatusInfo(jobId: String,
+                           jobType: String,
+                           startTime: String,
+                           endTime: Option[String],
+                           resultSummary: ResultSummary) extends KolibriSerializable
+
   /**
    * Enum for distinct processing states
    */

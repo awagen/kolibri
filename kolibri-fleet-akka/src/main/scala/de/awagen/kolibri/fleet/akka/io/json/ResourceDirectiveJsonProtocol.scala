@@ -22,6 +22,9 @@ import de.awagen.kolibri.base.directives.ResourceType.{JUDGEMENT_PROVIDER, MAP_S
 import de.awagen.kolibri.base.directives.{Resource, ResourceType}
 import de.awagen.kolibri.base.io.json.ResourceJsonProtocol.StructDefs.{RESOURCE_JUDGEMENT_PROVIDER_STRUCT_DEF, RESOURCE_MAP_STRING_DOUBLE_STRUCT_DEF, RESOURCE_MAP_STRING_STRING_VALUES_STRUCT_DEF, RESOURCE_STRING_VALUES_STRUCT_DEF}
 import de.awagen.kolibri.base.io.json.ResourceJsonProtocol.{resourceJudgementProviderFormat, resourceMapStringDoubleFormat, resourceMapStringStringValuesFormat, resourceStringValuesFormat}
+import de.awagen.kolibri.base.io.json.SupplierJsonProtocol
+import de.awagen.kolibri.base.io.json.SupplierJsonProtocol.MapStringToGeneratorStringFormatStruct.MapStringDoubleFormatStruct
+import de.awagen.kolibri.base.io.json.SupplierJsonProtocol.{GeneratorStringFormatStruct, JudgementProviderFormatStruct, MapStringToGeneratorStringFormatStruct}
 import de.awagen.kolibri.base.usecase.searchopt.provider.JudgementProvider
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
@@ -29,8 +32,6 @@ import de.awagen.kolibri.datatypes.types.JsonStructDefs._
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSupplier
 import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
 import de.awagen.kolibri.fleet.akka.io.json.ResourceDirectiveJsonProtocol._
-import de.awagen.kolibri.fleet.akka.io.json.SupplierJsonProtocol.MapStringToGeneratorStringFormatStruct.MapStringDoubleFormatStruct
-import de.awagen.kolibri.fleet.akka.io.json.SupplierJsonProtocol.{GeneratorStringFormatStruct, JudgementProviderFormatStruct, MapStringToGeneratorStringFormatStruct}
 import spray.json.DefaultJsonProtocol.StringJsonFormat
 import spray.json.{JsValue, JsonFormat, enrichAny}
 

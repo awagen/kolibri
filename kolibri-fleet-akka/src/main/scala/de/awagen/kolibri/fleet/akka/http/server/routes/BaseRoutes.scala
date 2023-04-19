@@ -276,7 +276,7 @@ object BaseRoutes {
     implicit val timeout: Timeout = Timeout(analyzeTimeout)
     implicit val ec: ExecutionContextExecutor = system.dispatchers.lookup(kolibriDispatcherName)
     import AppConfig.JsonFormats.executionFormat
-    import de.awagen.kolibri.fleet.akka.io.json.ExecutionJsonProtocol._
+    import de.awagen.kolibri.base.io.json.ExecutionJsonProtocol._
 
     corsHandler(
       path("execution") {

@@ -21,7 +21,7 @@ import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import de.awagen.kolibri.base.directives.ResourceDirectives.ResourceDirective
 import de.awagen.kolibri.base.domain.Connections.Connection
 import de.awagen.kolibri.base.http.client.request.RequestTemplate
-import de.awagen.kolibri.base.io.json.ConnectionJsonProtocol
+import de.awagen.kolibri.base.io.json.{ConnectionJsonProtocol, ExecutionJsonProtocol}
 import de.awagen.kolibri.base.io.json.ConnectionJsonProtocol._
 import de.awagen.kolibri.base.io.json.TaggingConfigurationsJsonProtocol._
 import de.awagen.kolibri.base.processing.execution.functions.Execution

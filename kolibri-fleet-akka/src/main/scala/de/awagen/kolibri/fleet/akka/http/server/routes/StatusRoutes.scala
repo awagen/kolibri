@@ -25,13 +25,13 @@ import akka.util.Timeout
 import de.awagen.kolibri.fleet.akka.actors.clusterinfo.BatchStateActor.{apply => _, unapply => _, _}
 import de.awagen.kolibri.fleet.akka.actors.clusterinfo.ClusterMetricsListenerActor.{MetricsProvided, ProvideMetrics}
 import de.awagen.kolibri.fleet.akka.actors.work.aboveall.SupervisorActor._
-import de.awagen.kolibri.fleet.akka.actors.work.manager.JobProcessingState.JobStatusInfo
 import de.awagen.kolibri.fleet.akka.actors.work.worker.RunnableExecutionActor.{BatchProcessState, BatchProcessStateResult}
 import de.awagen.kolibri.fleet.akka.cluster.ClusterNode
 import de.awagen.kolibri.fleet.akka.config.AppProperties.config.{internalJobStatusRequestTimeout, kolibriDispatcherName}
 import de.awagen.kolibri.fleet.akka.http.server.routes.BaseRoutes.{clusterMetricsListenerActor, supervisorActor}
 import de.awagen.kolibri.base.io.json.ClusterStatesJsonProtocol._
-import de.awagen.kolibri.fleet.akka.io.json.JobStateJsonProtocol.jobStatusFormat
+import de.awagen.kolibri.base.processing.ProcessingMessages.JobStatusInfo
+import de.awagen.kolibri.base.io.json.JobStateJsonProtocol.jobStatusFormat
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.concurrent.{ExecutionContextExecutor, Future}

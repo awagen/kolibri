@@ -15,14 +15,14 @@
  */
 
 
-package de.awagen.kolibri.fleet.akka.io.json
+package de.awagen.kolibri.base.io.json
 
 import de.awagen.kolibri.base.utils.OrderedValuesUtils.{folderToFilenamesOrderedValues, fromCsvFileByColumnNames, fromJsonFileMappingToOrderedValues, loadLinesFromFile, mappingsFromCsvFile, paramNameToFileMappingToOrderedValues, paramNameToValuesMappingToOrderedValues}
 import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
 import de.awagen.kolibri.datatypes.types.JsonStructDefs._
 import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
 import de.awagen.kolibri.datatypes.values.{DistinctValues, OrderedValues, RangeValues}
-import de.awagen.kolibri.fleet.akka.config.AppConfig
+import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, Reader}
 import spray.json.{DefaultJsonProtocol, JsValue, JsonFormat, enrichAny}
 
 object OrderedValuesJsonProtocol extends DefaultJsonProtocol {
@@ -48,42 +48,7 @@ object OrderedValuesJsonProtocol extends DefaultJsonProtocol {
   val END_VALUE_KEY = "end"
   val STEP_SIZE_KEY = "stepSize"
 
-
-  implicit object OrderedValuesStringFormat extends JsonFormat[OrderedValues[String]] with WithStructDef {
-    override def read(json: JsValue): OrderedValues[String] = json match {
-      case spray.json.JsObject(fields) => fields(TYPE_KEY).convertTo[String] match {
-        case FROM_FILENAME_KEYS_TYPE =>
-          // reading values from filename prefix
-          val directory: String = fields(DIRECTORY_KEY).convertTo[String]
-          val filesSuffix: String = fields(FILES_SUFFIX_KEY).convertTo[String]
-          val valueName = fields(NAME_KEY).convertTo[String]
-          folderToFilenamesOrderedValues(
-            cond => AppConfig.persistenceModule.persistenceDIModule.dataOverviewReader(cond),
-            directory,
-            filesSuffix,
-            valueName
-          )
-        case FROM_FILES_LINES_TYPE =>
-          val file: String = fields(FILE_KEY).convertTo[String]
-          val valueName = fields(NAME_KEY).convertTo[String]
-          loadLinesFromFile(AppConfig.persistenceModule.persistenceDIModule.reader, file, valueName)
-        case FROM_VALUES_TYPE =>
-          val name = fields(NAME_KEY).convertTo[String]
-          val values = fields(VALUES_KEY).convertTo[Seq[String]]
-          DistinctValues(name, values)
-        case FROM_RANGE_TYPE =>
-          val name = fields(NAME_KEY).convertTo[String]
-          val start = fields(START_VALUE_KEY).convertTo[Double]
-          val end = fields(END_VALUE_KEY).convertTo[Double]
-          val stepSize = fields(STEP_SIZE_KEY).convertTo[Double]
-          // TODO: change this to avoid having to generate the full range
-          // right now its just a quick workaround
-          DistinctValues(name, RangeValues(name, start, end, stepSize).getAll.map(x => String.format("%.4f", x)))
-      }
-    }
-
-    override def write(obj: OrderedValues[String]): JsValue = """{}""".toJson
-
+  object OrderedValuesStringFormatStruct extends WithStructDef {
     override def structDef: JsonStructDefs.StructDef[_] = {
       NestedFieldSeqStructDef(
         Seq(
@@ -124,23 +89,7 @@ object OrderedValuesJsonProtocol extends DefaultJsonProtocol {
     }
   }
 
-  implicit object SeqOrderedValuesFormat extends JsonFormat[Seq[OrderedValues[String]]] with WithStructDef {
-    override def read(json: JsValue): Seq[OrderedValues[String]] = json match {
-      case spray.json.JsObject(fields) => fields(TYPE_KEY).convertTo[String] match {
-        case FROM_FILES_LINES_TYPE =>
-          val paramNameToFile = fields(VALUES_KEY).convertTo[Map[String, String]]
-          paramNameToFileMappingToOrderedValues(
-            AppConfig.persistenceModule.persistenceDIModule.reader,
-            paramNameToFile)
-        case FROM_VALUES_TYPE =>
-          // values by passing name to values mappings
-          val paramNameToValues = fields(VALUES_KEY).convertTo[Map[String, Seq[String]]]
-          paramNameToValuesMappingToOrderedValues(paramNameToValues)
-      }
-    }
-
-    override def write(obj: Seq[OrderedValues[String]]): JsValue = """{}""".toJson
-
+  object SeqOrderedValuesFormatStruct extends WithStructDef {
     override def structDef: JsonStructDefs.StructDef[_] = {
       NestedFieldSeqStructDef(
         Seq(
@@ -169,38 +118,7 @@ object OrderedValuesJsonProtocol extends DefaultJsonProtocol {
     }
   }
 
-  implicit object OrderedValuesMapFormat extends JsonFormat[OrderedValues[Map[String, String]]] with WithStructDef {
-    override def read(json: JsValue): OrderedValues[Map[String, String]] = json match {
-      case spray.json.JsObject(fields) => fields(TYPE_KEY).convertTo[String] match {
-        case FROM_CSV_FILE_TYPE =>
-          // reading mappings from csv file
-          val file: String = fields(FILE_KEY).convertTo[String]
-          val columnSeparator: String = fields(COLUMN_SEPARATOR_KEY).convertTo[String]
-          val keyColumn: Int = fields(KEY_COLUMN_KEY).convertTo[Int]
-          val valueColumn: Int = fields(VALUE_COLUMN_KEY).convertTo[Int]
-          val valueName = fields(NAME_KEY).convertTo[String]
-          mappingsFromCsvFile(
-            AppConfig.persistenceModule.persistenceDIModule.reader,
-            file,
-            columnSeparator,
-            keyColumn,
-            valueColumn,
-            valueName
-          )
-        case FROM_JSON_FILE_MAPPING_TYPE =>
-          // reading mappings from json file
-          val file: String = fields(FILE_KEY).convertTo[String]
-          val valueName = fields(NAME_KEY).convertTo[String]
-          fromJsonFileMappingToOrderedValues(
-            AppConfig.persistenceModule.persistenceDIModule.reader,
-            file,
-            valueName
-          )
-      }
-    }
-
-    override def write(obj: OrderedValues[Map[String, String]]): JsValue = """{}""".toJson
-
+  object OrderedValuesMapFormatStruct extends WithStructDef {
     override def structDef: JsonStructDefs.StructDef[_] = {
       NestedFieldSeqStructDef(
         Seq(
@@ -233,26 +151,7 @@ object OrderedValuesJsonProtocol extends DefaultJsonProtocol {
     }
   }
 
-  implicit object OrderedValuesMultiMapFormat extends JsonFormat[OrderedValues[Map[String, Seq[String]]]] with WithStructDef {
-    override def read(json: JsValue): OrderedValues[Map[String, Seq[String]]] = json match {
-      case spray.json.JsObject(fields) => fields(TYPE_KEY).convertTo[String] match {
-        case FROM_CSV_WITH_KEY_AND_VALUE_NAMES_FROM_HEADERS_TYPE =>
-          val file: String = fields(FILE_KEY).convertTo[String]
-          val columnSeparator: String = fields(COLUMN_SEPARATOR_KEY).convertTo[String]
-          val keyName: String = fields(KEY_NAME_KEY).convertTo[String]
-          val valueName: String = fields(NAME_KEY).convertTo[String]
-          fromCsvFileByColumnNames(
-            AppConfig.persistenceModule.persistenceDIModule.reader,
-            file,
-            columnSeparator,
-            keyName,
-            valueName
-          )
-      }
-    }
-
-    override def write(obj: OrderedValues[Map[String, Seq[String]]]): JsValue = """{}""".toJson
-
+  object OrderedValuesMultiMapFormatStruct extends WithStructDef {
     override def structDef: JsonStructDefs.StructDef[_] = {
       NestedFieldSeqStructDef(
         Seq(
@@ -276,6 +175,124 @@ object OrderedValuesJsonProtocol extends DefaultJsonProtocol {
         )
       )
     }
+  }
+
+}
+
+case class OrderedValuesJsonProtocol(reader: Reader[String, Seq[String]],
+                                     condToOverviewReader: (String => Boolean) => DataOverviewReader) {
+
+  import OrderedValuesJsonProtocol._
+
+  implicit object OrderedValuesStringFormat extends JsonFormat[OrderedValues[String]] {
+    override def read(json: JsValue): OrderedValues[String] = json match {
+      case spray.json.JsObject(fields) => fields(TYPE_KEY).convertTo[String] match {
+        case FROM_FILENAME_KEYS_TYPE =>
+          // reading values from filename prefix
+          val directory: String = fields(DIRECTORY_KEY).convertTo[String]
+          val filesSuffix: String = fields(FILES_SUFFIX_KEY).convertTo[String]
+          val valueName = fields(NAME_KEY).convertTo[String]
+          folderToFilenamesOrderedValues(
+            condToOverviewReader,
+            directory,
+            filesSuffix,
+            valueName
+          )
+        case FROM_FILES_LINES_TYPE =>
+          val file: String = fields(FILE_KEY).convertTo[String]
+          val valueName = fields(NAME_KEY).convertTo[String]
+          loadLinesFromFile(reader, file, valueName)
+        case FROM_VALUES_TYPE =>
+          val name = fields(NAME_KEY).convertTo[String]
+          val values = fields(VALUES_KEY).convertTo[Seq[String]]
+          DistinctValues(name, values)
+        case FROM_RANGE_TYPE =>
+          val name = fields(NAME_KEY).convertTo[String]
+          val start = fields(START_VALUE_KEY).convertTo[Double]
+          val end = fields(END_VALUE_KEY).convertTo[Double]
+          val stepSize = fields(STEP_SIZE_KEY).convertTo[Double]
+          // TODO: change this to avoid having to generate the full range
+          // right now its just a quick workaround
+          DistinctValues(name, RangeValues(name, start, end, stepSize).getAll.map(x => String.format("%.4f", x)))
+      }
+    }
+
+    override def write(obj: OrderedValues[String]): JsValue = """{}""".toJson
+
+  }
+
+  implicit object SeqOrderedValuesFormat extends JsonFormat[Seq[OrderedValues[String]]] {
+    override def read(json: JsValue): Seq[OrderedValues[String]] = json match {
+      case spray.json.JsObject(fields) => fields(TYPE_KEY).convertTo[String] match {
+        case FROM_FILES_LINES_TYPE =>
+          val paramNameToFile = fields(VALUES_KEY).convertTo[Map[String, String]]
+          paramNameToFileMappingToOrderedValues(
+            reader,
+            paramNameToFile)
+        case FROM_VALUES_TYPE =>
+          // values by passing name to values mappings
+          val paramNameToValues = fields(VALUES_KEY).convertTo[Map[String, Seq[String]]]
+          paramNameToValuesMappingToOrderedValues(paramNameToValues)
+      }
+    }
+
+    override def write(obj: Seq[OrderedValues[String]]): JsValue = """{}""".toJson
+  }
+
+  implicit object OrderedValuesMapFormat extends JsonFormat[OrderedValues[Map[String, String]]] {
+    override def read(json: JsValue): OrderedValues[Map[String, String]] = json match {
+      case spray.json.JsObject(fields) => fields(TYPE_KEY).convertTo[String] match {
+        case FROM_CSV_FILE_TYPE =>
+          // reading mappings from csv file
+          val file: String = fields(FILE_KEY).convertTo[String]
+          val columnSeparator: String = fields(COLUMN_SEPARATOR_KEY).convertTo[String]
+          val keyColumn: Int = fields(KEY_COLUMN_KEY).convertTo[Int]
+          val valueColumn: Int = fields(VALUE_COLUMN_KEY).convertTo[Int]
+          val valueName = fields(NAME_KEY).convertTo[String]
+          mappingsFromCsvFile(
+            reader,
+            file,
+            columnSeparator,
+            keyColumn,
+            valueColumn,
+            valueName
+          )
+        case FROM_JSON_FILE_MAPPING_TYPE =>
+          // reading mappings from json file
+          val file: String = fields(FILE_KEY).convertTo[String]
+          val valueName = fields(NAME_KEY).convertTo[String]
+          fromJsonFileMappingToOrderedValues(
+            reader,
+            file,
+            valueName
+          )
+      }
+    }
+
+    override def write(obj: OrderedValues[Map[String, String]]): JsValue = """{}""".toJson
+
+  }
+
+  implicit object OrderedValuesMultiMapFormat extends JsonFormat[OrderedValues[Map[String, Seq[String]]]] {
+    override def read(json: JsValue): OrderedValues[Map[String, Seq[String]]] = json match {
+      case spray.json.JsObject(fields) => fields(TYPE_KEY).convertTo[String] match {
+        case FROM_CSV_WITH_KEY_AND_VALUE_NAMES_FROM_HEADERS_TYPE =>
+          val file: String = fields(FILE_KEY).convertTo[String]
+          val columnSeparator: String = fields(COLUMN_SEPARATOR_KEY).convertTo[String]
+          val keyName: String = fields(KEY_NAME_KEY).convertTo[String]
+          val valueName: String = fields(NAME_KEY).convertTo[String]
+          fromCsvFileByColumnNames(
+            reader,
+            file,
+            columnSeparator,
+            keyName,
+            valueName
+          )
+      }
+    }
+
+    override def write(obj: OrderedValues[Map[String, Seq[String]]]): JsValue = """{}""".toJson
+
   }
 
 }

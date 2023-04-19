@@ -18,15 +18,15 @@
 package de.awagen.kolibri.fleet.akka.io.json
 
 import de.awagen.kolibri.base.io.json.EnumerationJsonProtocol.valueTypeFormat
+import de.awagen.kolibri.base.io.json.SupplierJsonProtocol
+import de.awagen.kolibri.base.io.json.SupplierJsonProtocol.{GeneratorStringFormatStruct, MapStringToGeneratorStringFormatStruct}
 import de.awagen.kolibri.base.processing.modifiers.ParameterValues._
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
 import de.awagen.kolibri.datatypes.types.JsonStructDefs._
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSupplier
 import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
-import de.awagen.kolibri.fleet.akka.io.json.OrderedValuesJsonProtocol.VALUES_KEY
 import de.awagen.kolibri.fleet.akka.io.json.ParameterValuesJsonProtocol._
-import de.awagen.kolibri.fleet.akka.io.json.SupplierJsonProtocol.{GeneratorStringFormatStruct, MapStringToGeneratorStringFormatStruct}
 import spray.json.{DefaultJsonProtocol, JsValue, JsonFormat, RootJsonFormat, enrichAny}
 
 object ParameterValuesJsonProtocol {
@@ -73,6 +73,7 @@ object ParameterValuesJsonProtocol {
   }
 
 
+  val VALUES_KEY = "values"
   val TYPE_KEY = "type"
   val VALUES_TYPE_KEY = "values_type"
   val KEY_VALUES_KEY = "key_values"

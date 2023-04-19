@@ -15,13 +15,10 @@
   */
 
 
-package de.awagen.kolibri.fleet.akka.io.json
+package de.awagen.kolibri.base.io.json
 
-import de.awagen.kolibri.base.io.json.IndexedGeneratorJsonProtocol.{MapIndexedGeneratorFormat, SeqMapIndexedGeneratorFormat}
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.io.json.OrderedValuesJsonProtocol.DISTINCT_VALUES_TYPE
-import de.awagen.kolibri.fleet.akka.io.json.IndexedGeneratorJsonProtocol._
-import de.awagen.kolibri.fleet.akka.testclasses.UnitTestSpec
 import spray.json.{JsValue, _}
 
 class IndexedGeneratorJsonProtocolSpec extends UnitTestSpec {

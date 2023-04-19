@@ -17,20 +17,18 @@
 
 package de.awagen.kolibri.fleet.akka.actors.work.manager
 
-import de.awagen.kolibri.fleet.akka.actors.work.manager.JobManagerActor.currentTimeZonedInstance
-import de.awagen.kolibri.fleet.akka.actors.work.manager.JobProcessingState.JobStatusInfo
 import de.awagen.kolibri.base.processing.ProcessingMessages._
-import de.awagen.kolibri.fleet.akka.config.AppProperties.config
-import de.awagen.kolibri.storage.io.writer.Writers.Writer
 import de.awagen.kolibri.base.processing.consume.Consumers.{ExecutionConsumer, getExpectingAggregatingWritingExecutionConsumer}
 import de.awagen.kolibri.base.processing.distribution.Distributors.{Batch, getRetryingDistributor}
 import de.awagen.kolibri.base.processing.distribution.{DistributionStates, Distributor}
 import de.awagen.kolibri.base.processing.execution.expectation.ExecutionExpectations.jobExecutionExpectation
 import de.awagen.kolibri.base.processing.execution.expectation._
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
-import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
+import de.awagen.kolibri.fleet.akka.actors.work.manager.JobManagerActor.currentTimeZonedInstance
+import de.awagen.kolibri.fleet.akka.config.AppProperties.config
+import de.awagen.kolibri.storage.io.writer.Writers.Writer
 import org.slf4j.{Logger, LoggerFactory}
 
 import java.time.ZonedDateTime
@@ -44,12 +42,6 @@ object JobProcessingState {
   def emptyJobStatusInfo: JobStatusInfo = JobStatusInfo(
     jobId = "", jobType = "", startTime = "", endTime = Some(""), resultSummary = unknownJobResultSummary
   )
-
-  case class JobStatusInfo(jobId: String,
-                           jobType: String,
-                           startTime: String,
-                           endTime: Option[String],
-                           resultSummary: ResultSummary) extends KolibriSerializable
 
 }
 

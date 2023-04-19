@@ -18,6 +18,10 @@
 package de.awagen.kolibri.fleet.akka.config
 
 import com.softwaremill.macwire.wire
+import de.awagen.kolibri.base.io.json
+import de.awagen.kolibri.base.io.json.ExecutionJsonProtocol.ExecutionFormat
+import de.awagen.kolibri.base.io.json.{IndexedGeneratorJsonProtocol, MappingSupplierJsonProtocol, OrderedMultiValuesJsonProtocol, OrderedValuesJsonProtocol, SupplierJsonProtocol}
+import de.awagen.kolibri.base.io.json.WeightProviderJsonProtocol.StringWeightProviderFormat
 import de.awagen.kolibri.base.processing.execution.functions.Execution
 import de.awagen.kolibri.base.provider.WeightProviders.WeightProvider
 import de.awagen.kolibri.base.usecase.searchopt.parse.JsonSelectors.{PlainAndRecursiveSelector, PlainPathSelector}
@@ -26,13 +30,12 @@ import de.awagen.kolibri.base.usecase.searchopt.provider.FileBasedJudgementProvi
 import de.awagen.kolibri.base.usecase.searchopt.provider.{FileBasedJudgementProvider, JudgementProvider}
 import de.awagen.kolibri.datatypes.types.JsonTypeCast
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
+import de.awagen.kolibri.fleet.akka.cluster.ClusterNodeObj
 import de.awagen.kolibri.fleet.akka.config.AppProperties.config._
 import de.awagen.kolibri.fleet.akka.config.di.modules.connections.HttpModule
 import de.awagen.kolibri.fleet.akka.config.di.modules.persistence.PersistenceModule
-import de.awagen.kolibri.fleet.akka.io.json.ExecutionJsonProtocol.ExecutionFormat
 import de.awagen.kolibri.fleet.akka.io.json.QueryBasedSearchEvaluationJsonProtocol.QueryBasedSearchEvaluationFormat
-import de.awagen.kolibri.fleet.akka.io.json.WeightProviderJsonProtocol.StringWeightProviderFormat
-import de.awagen.kolibri.fleet.akka.io.json.{ParameterValuesJsonProtocol, QueryBasedSearchEvaluationJsonProtocol, ResourceDirectiveJsonProtocol, SearchEvaluationJsonProtocol, SupplierJsonProtocol}
+import de.awagen.kolibri.fleet.akka.io.json._
 import de.awagen.kolibri.fleet.akka.processing.JobMessages.SearchEvaluationDefinition
 import spray.json.RootJsonFormat
 
@@ -44,9 +47,22 @@ object AppConfig {
       persistenceModule.persistenceDIModule.reader
     )
 
-    implicit val supplierJsonProtocol: SupplierJsonProtocol = SupplierJsonProtocol(
+    implicit val orderedValuesJsonProtocol: OrderedValuesJsonProtocol = OrderedValuesJsonProtocol(
       persistenceModule.persistenceDIModule.reader,
-      suffix => persistenceModule.persistenceDIModule.dataOverviewReader(x => x.endsWith(suffix))
+      cond => persistenceModule.persistenceDIModule.dataOverviewReader(cond)
+    )
+
+    implicit val orderedMultiValuesJsonProtocol: OrderedMultiValuesJsonProtocol = OrderedMultiValuesJsonProtocol(
+      persistenceModule.persistenceDIModule.reader,
+      orderedValuesJsonProtocol
+    )
+
+    implicit val supplierJsonProtocol: SupplierJsonProtocol = json.SupplierJsonProtocol(
+      persistenceModule.persistenceDIModule.reader,
+      suffix => persistenceModule.persistenceDIModule.dataOverviewReader(x => x.endsWith(suffix)),
+      orderedValuesJsonProtocol,
+      AppConfig.filepathToJudgementProvider,
+      ClusterNodeObj
     )
 
     implicit val executionFormat: RootJsonFormat[Execution[Any]] = ExecutionFormat(
@@ -62,6 +78,10 @@ object AppConfig {
       supplierJsonProtocol
     )
 
+    implicit val queryBasedSearchEvaluationFormat: QueryBasedSearchEvaluationFormat = QueryBasedSearchEvaluationFormat(
+      parameterValueJsonProtocol
+    )
+
     implicit val resourceDirectiveJsonProtocol: ResourceDirectiveJsonProtocol = ResourceDirectiveJsonProtocol(supplierJsonProtocol)
 
     implicit val searchEvaluationJsonFormat: RootJsonFormat[SearchEvaluationDefinition] =
@@ -71,9 +91,29 @@ object AppConfig {
         parameterValueJsonProtocol
       )
 
-    implicit val queryBasedSearchEvaluationFormat = QueryBasedSearchEvaluationFormat(
-      parameterValueJsonProtocol
+    implicit val generatorJsonProtocol: IndexedGeneratorJsonProtocol = IndexedGeneratorJsonProtocol(
+      suffix => AppConfig.persistenceModule.persistenceDIModule.dataOverviewReader(x => x.endsWith(suffix))
     )
+
+    implicit val mappingSupplierJsonProtocol: MappingSupplierJsonProtocol = MappingSupplierJsonProtocol(
+      persistenceModule.persistenceDIModule.reader,
+      suffix => AppConfig.persistenceModule.persistenceDIModule.dataOverviewReader(x => x.endsWith(suffix)),
+      generatorJsonProtocol
+    )
+
+    implicit val modifierMappersJsonProtocol: ModifierMappersJsonProtocol = ModifierMappersJsonProtocol(
+      generatorJsonProtocol,
+      mappingSupplierJsonProtocol
+    )
+
+    implicit val modifierGeneratorProviderJsonProtocol: ModifierGeneratorProviderJsonProtocol = ModifierGeneratorProviderJsonProtocol(generatorJsonProtocol,
+      orderedMultiValuesJsonProtocol,
+      modifierMappersJsonProtocol)
+
+    implicit val seqModifierGeneratorJsonProtocol: SeqModifierGeneratorJsonProtocol = SeqModifierGeneratorJsonProtocol(
+      modifierGeneratorProviderJsonProtocol
+    )
+
   }
 
   val persistenceModule: PersistenceModule = wire[PersistenceModule]

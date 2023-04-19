@@ -42,7 +42,7 @@ object AnalysisRoutes extends DefaultJsonProtocol {
     .stripSuffix("/")
 
   import AppConfig.JsonFormats.executionFormat
-  import de.awagen.kolibri.fleet.akka.io.json.ExecutionJsonProtocol._
+  import de.awagen.kolibri.base.io.json.ExecutionJsonProtocol._
 
   private[this] val RESULT_PREFIX = "results"
   private[this] val ANALYZE_PREFIX = "analyze"
