@@ -29,11 +29,11 @@ import de.awagen.kolibri.base.processing.modifiers.RequestTemplateBuilderModifie
 import de.awagen.kolibri.datatypes.collections.generators.{IndexedGenerator, PermutatingIndexedGenerator}
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.fleet.akka.config.AppConfig.persistenceModule
-import de.awagen.kolibri.fleet.akka.config.AppProperties
+import de.awagen.kolibri.fleet.akka.config.{AppConfig, AppProperties}
 import de.awagen.kolibri.fleet.akka.config.AppProperties.config.kolibriDispatcherName
 import de.awagen.kolibri.fleet.akka.http.server.routes.StatusRoutes.corsHandler
 import de.awagen.kolibri.fleet.akka.io.json.EnumerationJsonProtocol.dataFileTypeFormat
-import de.awagen.kolibri.fleet.akka.io.json.ParameterValuesJsonProtocol.{FormatOps, ValueSeqGenDefinitionFormat}
+import de.awagen.kolibri.fleet.akka.io.json.ParameterValuesJsonProtocol.FormatOps
 import de.awagen.kolibri.storage.io.reader.FileReaderUtils.JsValueOps._
 import de.awagen.kolibri.storage.io.reader.FileReaderUtils._
 import de.awagen.kolibri.storage.io.reader.ReaderUtils.safeContentRead
@@ -314,6 +314,7 @@ object DataRoutes extends DefaultJsonProtocol {
    */
   def getIndexedGeneratorInfoForValueSeqGenProviderSeqBody(implicit system: ActorSystem): Route = {
     implicit val ec: ExecutionContextExecutor = system.dispatchers.lookup(kolibriDispatcherName)
+    implicit val valueSeqFormat: JsonFormat[ValueSeqGenDefinition[_]] = AppConfig.JsonFormats.parameterValueJsonProtocol.ValueSeqGenDefinitionFormat
     corsHandler(
       pathPrefix(GENERATOR_PATH_PREFIX) {
         path(INFO_PATH) {
@@ -340,7 +341,7 @@ object DataRoutes extends DefaultJsonProtocol {
 
   def getExampleQueriesForValueSeqGenProviderSequence(implicit system: ActorSystem): Route = {
     implicit val ec: ExecutionContextExecutor = system.dispatchers.lookup(kolibriDispatcherName)
-
+    implicit val valueSeqFormat: JsonFormat[ValueSeqGenDefinition[_]] = AppConfig.JsonFormats.parameterValueJsonProtocol.ValueSeqGenDefinitionFormat
     corsHandler(
       pathPrefix(GENERATOR_PATH_PREFIX) {
         path(REQUEST_SAMPLE_PATH) {

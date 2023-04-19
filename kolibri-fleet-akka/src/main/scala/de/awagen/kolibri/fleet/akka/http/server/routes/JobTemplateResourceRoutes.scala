@@ -24,7 +24,6 @@ import akka.http.scaladsl.server.Route
 import de.awagen.kolibri.fleet.akka.config.AppConfig.persistenceModule
 import de.awagen.kolibri.fleet.akka.config.AppProperties
 import de.awagen.kolibri.fleet.akka.http.server.routes.StatusRoutes.corsHandler
-import de.awagen.kolibri.fleet.akka.io.json.QueryBasedSearchEvaluationJsonProtocol.queryBasedSearchEvaluationFormat
 import de.awagen.kolibri.fleet.akka.processing.JobMessages.{QueryBasedSearchEvaluationDefinition, SearchEvaluationDefinition}
 import de.awagen.kolibri.storage.io.reader.ReaderUtils.safeContentRead
 import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, Reader}
@@ -47,7 +46,7 @@ object JobTemplateResourceRoutes {
   object TemplateTypeValidationAndExecutionInfo extends Enumeration {
     type TemplateTypeValidationAndExecutionInfo = Val[_]
 
-    import de.awagen.kolibri.fleet.akka.config.AppConfig.JsonFormats.searchEvaluationJsonFormat
+    import de.awagen.kolibri.fleet.akka.config.AppConfig.JsonFormats.{queryBasedSearchEvaluationFormat, searchEvaluationJsonFormat}
 
     sealed case class Val[+T: TypeTag](requestPath: String)(implicit jsonReader: JsonReader[T]) extends super.Val {
 

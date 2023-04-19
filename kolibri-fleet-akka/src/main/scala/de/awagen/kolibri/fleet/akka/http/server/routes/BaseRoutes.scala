@@ -54,6 +54,7 @@ import scala.util.Random
 object BaseRoutes {
 
   implicit val sf: RootJsonFormat[SearchEvaluationDefinition] = AppConfig.JsonFormats.searchEvaluationJsonFormat
+  implicit val qsf: RootJsonFormat[QueryBasedSearchEvaluationDefinition] = AppConfig.JsonFormats.queryBasedSearchEvaluationFormat
   import de.awagen.kolibri.fleet.akka.io.json.SearchEvaluationJsonProtocol._
 
   private[this] val logger: Logger = LoggerFactory.getLogger(BaseRoutes.getClass)

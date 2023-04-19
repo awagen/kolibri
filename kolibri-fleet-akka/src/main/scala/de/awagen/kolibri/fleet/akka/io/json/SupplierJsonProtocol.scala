@@ -30,7 +30,6 @@ import de.awagen.kolibri.fleet.akka.cluster.ClusterNodeObj
 import de.awagen.kolibri.fleet.akka.config.AppConfig.filepathToJudgementProvider
 import de.awagen.kolibri.fleet.akka.io.json.OrderedValuesJsonProtocol.OrderedValuesStringFormat
 import de.awagen.kolibri.fleet.akka.io.json.SupplierJsonProtocol.JudgementProviderFormatStruct.JUDGEMENTS_FROM_FILE_TYPE
-import de.awagen.kolibri.fleet.akka.io.json.SupplierJsonProtocol._
 import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, FileReaderUtils, Reader}
 import org.slf4j.{Logger, LoggerFactory}
 import spray.json._
@@ -309,6 +308,8 @@ object SupplierJsonProtocol extends DefaultJsonProtocol {
 
 case class SupplierJsonProtocol(reader: Reader[String, Seq[String]],
                                 suffixDirectoryReaderFunc: SerializableFunction1[String, DataOverviewReader]) {
+
+  import de.awagen.kolibri.fleet.akka.io.json.SupplierJsonProtocol._
 
   implicit object StringSeqMappingFormat extends JsonFormat[() => Map[String, Seq[String]]] {
     override def read(json: JsValue): () => Map[String, Seq[String]] = json match {

@@ -30,8 +30,9 @@ import de.awagen.kolibri.fleet.akka.config.AppProperties.config._
 import de.awagen.kolibri.fleet.akka.config.di.modules.connections.HttpModule
 import de.awagen.kolibri.fleet.akka.config.di.modules.persistence.PersistenceModule
 import de.awagen.kolibri.fleet.akka.io.json.ExecutionJsonProtocol.ExecutionFormat
+import de.awagen.kolibri.fleet.akka.io.json.QueryBasedSearchEvaluationJsonProtocol.QueryBasedSearchEvaluationFormat
 import de.awagen.kolibri.fleet.akka.io.json.WeightProviderJsonProtocol.StringWeightProviderFormat
-import de.awagen.kolibri.fleet.akka.io.json.{ParameterValuesJsonProtocol, ResourceDirectiveJsonProtocol, SearchEvaluationJsonProtocol, SupplierJsonProtocol}
+import de.awagen.kolibri.fleet.akka.io.json.{ParameterValuesJsonProtocol, QueryBasedSearchEvaluationJsonProtocol, ResourceDirectiveJsonProtocol, SearchEvaluationJsonProtocol, SupplierJsonProtocol}
 import de.awagen.kolibri.fleet.akka.processing.JobMessages.SearchEvaluationDefinition
 import spray.json.RootJsonFormat
 
@@ -69,6 +70,10 @@ object AppConfig {
         resourceDirectiveJsonProtocol,
         parameterValueJsonProtocol
       )
+
+    implicit val queryBasedSearchEvaluationFormat = QueryBasedSearchEvaluationFormat(
+      parameterValueJsonProtocol
+    )
   }
 
   val persistenceModule: PersistenceModule = wire[PersistenceModule]
