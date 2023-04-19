@@ -15,21 +15,20 @@
  */
 
 
-package de.awagen.kolibri.fleet.akka.io.json
+package de.awagen.kolibri.base.io.json
 
-import de.awagen.kolibri.base.io.json.{IndexedGeneratorJsonProtocol, OrderedMultiValuesJsonProtocol}
 import de.awagen.kolibri.base.processing.modifiers.ModifierMappers.{BodyMapper, HeadersMapper, ParamsMapper}
 import de.awagen.kolibri.base.processing.modifiers.RequestPermutations.{MappingModifier, ModifierGeneratorProvider, RequestPermutation}
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.multivalues.{GridOrderedMultiValues, OrderedMultiValues}
-import spray.json.{DeserializationException, JsValue, JsonFormat, RootJsonFormat, enrichAny}
+import spray.json.{DefaultJsonProtocol, DeserializationException, JsValue, JsonFormat, RootJsonFormat, enrichAny}
 
 object ModifierGeneratorProviderJsonProtocol {
 }
 
 case class ModifierGeneratorProviderJsonProtocol(generatorJsonProtocol: IndexedGeneratorJsonProtocol,
                                                  multiValuesProtocol: OrderedMultiValuesJsonProtocol,
-                                                 modifierMappersJsonProtocol: ModifierMappersJsonProtocol) {
+                                                 modifierMappersJsonProtocol: ModifierMappersJsonProtocol) extends DefaultJsonProtocol {
 
   import generatorJsonProtocol._
   import modifierMappersJsonProtocol._

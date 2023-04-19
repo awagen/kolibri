@@ -14,14 +14,15 @@
  * limitations under the License.
  */
 
-package de.awagen.kolibri.fleet.akka.io.json
+package de.awagen.kolibri.base.io.json
 
 import de.awagen.kolibri.base.processing.modifiers.ParameterValues._
-import de.awagen.kolibri.fleet.akka.config.AppConfig.JsonFormats.parameterValueJsonProtocol.{MappedParameterValuesFormat, ParameterValueMappingConfigFormat, ParameterValuesConfigFormat, ValueSeqGenDefinitionFormat}
-import de.awagen.kolibri.fleet.akka.testclasses.UnitTestSpec
+import de.awagen.kolibri.base.testclasses.UnitTestSpec
 import spray.json._
 
 class ParameterValuesDefinitionJsonProtocolSpec extends UnitTestSpec {
+
+  import JsonProtocolTestHelper.parameterValuesJsonProtocol._
 
   object ParameterValuesJsonDefinitions {
     val parameterValuesFromOrderedValuesJson: String =

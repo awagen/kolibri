@@ -18,6 +18,7 @@
 package de.awagen.kolibri.fleet.akka.http.server.routes
 
 import akka.actor.ActorSystem
+import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{PathMatcher0, PathMatcher1, Route}
@@ -32,7 +33,7 @@ import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, Reader}
 import org.slf4j.{Logger, LoggerFactory}
 import spray.json._
 
-object AnalysisRoutes extends DefaultJsonProtocol {
+object AnalysisRoutes extends DefaultJsonProtocol with SprayJsonSupport {
 
   private[this] val logger: Logger = LoggerFactory.getLogger(this.getClass)
   private[this] val directoryOverviewReader: DataOverviewReader = persistenceModule.persistenceDIModule
@@ -42,7 +43,6 @@ object AnalysisRoutes extends DefaultJsonProtocol {
     .stripSuffix("/")
 
   import AppConfig.JsonFormats.executionFormat
-  import de.awagen.kolibri.base.io.json.ExecutionJsonProtocol._
 
   private[this] val RESULT_PREFIX = "results"
   private[this] val ANALYZE_PREFIX = "analyze"

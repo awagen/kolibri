@@ -15,16 +15,17 @@
   */
 
 
-package de.awagen.kolibri.fleet.akka.io.json
+package de.awagen.kolibri.base.io.json
 
 import de.awagen.kolibri.base.http.client.request.RequestTemplateBuilder
 import de.awagen.kolibri.base.processing.modifiers.Modifier
 import de.awagen.kolibri.base.processing.modifiers.RequestPermutations.MappingModifier
-import de.awagen.kolibri.fleet.akka.io.json.ModifierGeneratorProviderJsonProtocol._
-import de.awagen.kolibri.fleet.akka.testclasses.UnitTestSpec
+import de.awagen.kolibri.base.testclasses.UnitTestSpec
 import spray.json._
 
 class ModifierGeneratorProviderJsonProtocolSpec extends UnitTestSpec {
+
+  import JsonProtocolTestHelper.modifierGeneratorJsonProtocol._
 
   // here we get one key that has a match in all mappings and one that only occurs in one,
   // resulting in 10 overall permutations

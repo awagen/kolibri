@@ -21,9 +21,10 @@ import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import de.awagen.kolibri.base.directives.ResourceDirectives.ResourceDirective
 import de.awagen.kolibri.base.domain.Connections.Connection
 import de.awagen.kolibri.base.http.client.request.RequestTemplate
-import de.awagen.kolibri.base.io.json.{ConnectionJsonProtocol, ExecutionJsonProtocol}
 import de.awagen.kolibri.base.io.json.ConnectionJsonProtocol._
+import de.awagen.kolibri.base.io.json.ResourceDirectiveJsonProtocol.GenericResourceDirectiveFormatStruct
 import de.awagen.kolibri.base.io.json.TaggingConfigurationsJsonProtocol._
+import de.awagen.kolibri.base.io.json.{ConnectionJsonProtocol, ExecutionJsonProtocol, ParameterValuesJsonProtocol, ResourceDirectiveJsonProtocol}
 import de.awagen.kolibri.base.processing.execution.functions.Execution
 import de.awagen.kolibri.base.processing.modifiers.ParameterValues.ValueSeqGenDefinition
 import de.awagen.kolibri.base.processing.tagging.TaggingConfigurations.BaseTaggingConfiguration
@@ -42,7 +43,6 @@ import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
 import de.awagen.kolibri.datatypes.values.Calculations.Calculation
 import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType.AggregationType
 import de.awagen.kolibri.fleet.akka.io.json.FIELD_KEYS._
-import de.awagen.kolibri.fleet.akka.io.json.ResourceDirectiveJsonProtocol.GenericResourceDirectiveFormatStruct
 import de.awagen.kolibri.fleet.akka.processing.JobMessages.{QueryBasedSearchEvaluationDefinition, SearchEvaluationDefinition}
 import de.awagen.kolibri.fleet.akka.usecase.searchopt.io.json.CalculationsJsonProtocol._
 import spray.json.{DefaultJsonProtocol, JsValue, JsonFormat, RootJsonFormat}

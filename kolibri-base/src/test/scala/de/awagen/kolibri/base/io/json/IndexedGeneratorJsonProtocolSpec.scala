@@ -17,11 +17,14 @@
 
 package de.awagen.kolibri.base.io.json
 
+import de.awagen.kolibri.base.testclasses.UnitTestSpec
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.io.json.OrderedValuesJsonProtocol.DISTINCT_VALUES_TYPE
 import spray.json.{JsValue, _}
 
 class IndexedGeneratorJsonProtocolSpec extends UnitTestSpec {
+
+  import JsonProtocolTestHelper.generatorJsonProtocol._
 
   val seqValueMapGeneratorFromMultiValues: JsValue =
     s"""

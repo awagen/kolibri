@@ -15,19 +15,19 @@
  */
 
 
-package de.awagen.kolibri.fleet.akka.io.json
+package de.awagen.kolibri.base.io.json
 
 import de.awagen.kolibri.base.http.client.request.RequestTemplateBuilder
 import de.awagen.kolibri.base.processing.modifiers.Modifier
 import de.awagen.kolibri.base.processing.modifiers.RequestPermutations.{MappingModifier, RequestPermutation}
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
-import spray.json.DefaultJsonProtocol.StringJsonFormat
-import spray.json.{DeserializationException, JsValue, JsonFormat, enrichAny}
+import spray.json.{DefaultJsonProtocol, DeserializationException, JsValue, JsonFormat, enrichAny}
 
 object SeqModifierGeneratorJsonProtocol {
 }
 
-case class SeqModifierGeneratorJsonProtocol(modifierGeneratorProviderJsonProtocol: ModifierGeneratorProviderJsonProtocol) {
+case class SeqModifierGeneratorJsonProtocol(modifierGeneratorProviderJsonProtocol: ModifierGeneratorProviderJsonProtocol)
+ extends DefaultJsonProtocol {
 
   import modifierGeneratorProviderJsonProtocol._
 

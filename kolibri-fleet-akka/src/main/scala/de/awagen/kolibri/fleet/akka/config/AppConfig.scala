@@ -20,7 +20,7 @@ package de.awagen.kolibri.fleet.akka.config
 import com.softwaremill.macwire.wire
 import de.awagen.kolibri.base.io.json
 import de.awagen.kolibri.base.io.json.ExecutionJsonProtocol.ExecutionFormat
-import de.awagen.kolibri.base.io.json.{IndexedGeneratorJsonProtocol, MappingSupplierJsonProtocol, OrderedMultiValuesJsonProtocol, OrderedValuesJsonProtocol, SupplierJsonProtocol}
+import de.awagen.kolibri.base.io.json.{IndexedGeneratorJsonProtocol, MappingSupplierJsonProtocol, ModifierGeneratorProviderJsonProtocol, ModifierMappersJsonProtocol, OrderedMultiValuesJsonProtocol, OrderedValuesJsonProtocol, ParameterValuesJsonProtocol, ResourceDirectiveJsonProtocol, SeqModifierGeneratorJsonProtocol, SupplierJsonProtocol}
 import de.awagen.kolibri.base.io.json.WeightProviderJsonProtocol.StringWeightProviderFormat
 import de.awagen.kolibri.base.processing.execution.functions.Execution
 import de.awagen.kolibri.base.provider.WeightProviders.WeightProvider
@@ -37,11 +37,26 @@ import de.awagen.kolibri.fleet.akka.config.di.modules.persistence.PersistenceMod
 import de.awagen.kolibri.fleet.akka.io.json.QueryBasedSearchEvaluationJsonProtocol.QueryBasedSearchEvaluationFormat
 import de.awagen.kolibri.fleet.akka.io.json._
 import de.awagen.kolibri.fleet.akka.processing.JobMessages.SearchEvaluationDefinition
+import de.awagen.kolibri.storage.io.reader.DataOverviewReader
 import spray.json.RootJsonFormat
+
+import scala.util.matching.Regex
 
 object AppConfig {
 
   object JsonFormats {
+
+    val dataOverviewReaderWithRegexFilterFunc: SerializableFunction1[Regex, DataOverviewReader] = new SerializableFunction1[Regex, DataOverviewReader] {
+      override def apply(regex: Regex): DataOverviewReader = persistenceModule.persistenceDIModule.dataOverviewReaderWithRegexFilter(regex)
+    }
+
+    val dataOverviewReaderWithSuffixFilterFunc: SerializableFunction1[String, DataOverviewReader] = new SerializableFunction1[String, DataOverviewReader] {
+      override def apply(suffix: String): DataOverviewReader = persistenceModule.persistenceDIModule.dataOverviewReader(x => x.endsWith(suffix))
+    }
+
+    val dataOverviewReaderWithConditionFunc: SerializableFunction1[String => Boolean, DataOverviewReader] = new SerializableFunction1[String => Boolean, DataOverviewReader] {
+      override def apply(filter: String => Boolean): DataOverviewReader = persistenceModule.persistenceDIModule.dataOverviewReader(filter)
+    }
 
     implicit val weightProviderFormat: RootJsonFormat[WeightProvider[String]] = StringWeightProviderFormat(
       persistenceModule.persistenceDIModule.reader
@@ -49,7 +64,7 @@ object AppConfig {
 
     implicit val orderedValuesJsonProtocol: OrderedValuesJsonProtocol = OrderedValuesJsonProtocol(
       persistenceModule.persistenceDIModule.reader,
-      cond => persistenceModule.persistenceDIModule.dataOverviewReader(cond)
+      dataOverviewReaderWithConditionFunc
     )
 
     implicit val orderedMultiValuesJsonProtocol: OrderedMultiValuesJsonProtocol = OrderedMultiValuesJsonProtocol(
@@ -59,7 +74,7 @@ object AppConfig {
 
     implicit val supplierJsonProtocol: SupplierJsonProtocol = json.SupplierJsonProtocol(
       persistenceModule.persistenceDIModule.reader,
-      suffix => persistenceModule.persistenceDIModule.dataOverviewReader(x => x.endsWith(suffix)),
+      dataOverviewReaderWithSuffixFilterFunc,
       orderedValuesJsonProtocol,
       AppConfig.filepathToJudgementProvider,
       ClusterNodeObj
@@ -69,7 +84,7 @@ object AppConfig {
       persistenceModule.persistenceDIModule.reader,
       persistenceModule.persistenceDIModule.writer,
       AppProperties.config.metricDocumentFormatsMap,
-      regex => persistenceModule.persistenceDIModule.dataOverviewReaderWithRegexFilter(regex),
+      dataOverviewReaderWithRegexFilterFunc,
       weightProviderFormat,
       supplierJsonProtocol
     )
@@ -92,12 +107,12 @@ object AppConfig {
       )
 
     implicit val generatorJsonProtocol: IndexedGeneratorJsonProtocol = IndexedGeneratorJsonProtocol(
-      suffix => AppConfig.persistenceModule.persistenceDIModule.dataOverviewReader(x => x.endsWith(suffix))
+      dataOverviewReaderWithSuffixFilterFunc
     )
 
     implicit val mappingSupplierJsonProtocol: MappingSupplierJsonProtocol = MappingSupplierJsonProtocol(
       persistenceModule.persistenceDIModule.reader,
-      suffix => AppConfig.persistenceModule.persistenceDIModule.dataOverviewReader(x => x.endsWith(suffix)),
+      dataOverviewReaderWithSuffixFilterFunc,
       generatorJsonProtocol
     )
 

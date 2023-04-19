@@ -276,7 +276,7 @@ object ExecutionJsonProtocol extends DefaultJsonProtocol {
                              metricDocumentFormatsMap: Map[String, MetricDocumentFormat],
                              regexToDataOverviewReader: SerializableFunction1[Regex, DataOverviewReader],
                              weightFormat: JsonFormat[WeightProvider[String]],
-                             supplierJsonProtocol: SupplierJsonProtocol) extends RootJsonFormat[Execution[Any]] {
+                             supplierJsonProtocol: SupplierJsonProtocol) extends RootJsonFormat[Execution[Any]] with DefaultJsonProtocol {
     implicit val wf: JsonFormat[WeightProvider[String]] = weightFormat
     implicit val mappingSupplierFormat: JsonFormat[SerializableSupplier[Map[String, Double]]] = supplierJsonProtocol.MapStringDoubleFormat
     implicit val stringSeqMappingFormat: JsonFormat[() => Map[String, Seq[String]]] = supplierJsonProtocol.StringSeqMappingFormat

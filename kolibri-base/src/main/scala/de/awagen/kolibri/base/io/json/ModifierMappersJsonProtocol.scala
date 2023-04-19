@@ -15,9 +15,8 @@
  */
 
 
-package de.awagen.kolibri.fleet.akka.io.json
+package de.awagen.kolibri.base.io.json
 
-import de.awagen.kolibri.base.io.json.{IndexedGeneratorJsonProtocol, MappingSupplierJsonProtocol}
 import de.awagen.kolibri.base.processing.modifiers.ModifierMappers._
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import spray.json._
@@ -33,8 +32,7 @@ object ModifierMappersJsonProtocol {
 }
 
 case class ModifierMappersJsonProtocol(generatorJsonProtocol: IndexedGeneratorJsonProtocol,
-                                       mappingSupplierJsonProtocol: MappingSupplierJsonProtocol) {
-  import spray.json.DefaultJsonProtocol.{StringJsonFormat, BooleanJsonFormat, mapFormat}
+                                       mappingSupplierJsonProtocol: MappingSupplierJsonProtocol) extends DefaultJsonProtocol {
   import ModifierMappersJsonProtocol._
   import generatorJsonProtocol._
   import mappingSupplierJsonProtocol._

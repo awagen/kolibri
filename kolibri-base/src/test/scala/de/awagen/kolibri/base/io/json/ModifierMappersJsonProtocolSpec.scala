@@ -15,15 +15,16 @@
   */
 
 
-package de.awagen.kolibri.fleet.akka.io.json
+package de.awagen.kolibri.base.io.json
 
 import de.awagen.kolibri.base.processing.modifiers.ModifierMappers.{BodyMapper, HeadersMapper, ParamsMapper}
-import de.awagen.kolibri.fleet.akka.io.json.ModifierMappersJsonProtocol.{BodyMapperJsonProtocol, HeaderMapperJsonProtocol, ParamsMapperJsonProtocol}
-import de.awagen.kolibri.fleet.akka.testclasses.UnitTestSpec
+import de.awagen.kolibri.base.testclasses.UnitTestSpec
 import spray.json._
 
 
 class ModifierMappersJsonProtocolSpec extends UnitTestSpec {
+
+  import JsonProtocolTestHelper.modifierMappersJsonProtocol._
 
   val paramsMapperJson: JsValue =
     """
