@@ -16,41 +16,26 @@
 
 package de.awagen.kolibri.definitions.io.json
 
-import de.awagen.kolibri.definitions.config.AppProperties
-import de.awagen.kolibri.definitions.domain.Connections.Connection
-import de.awagen.kolibri.definitions.domain.jobdefinitions.provider.CredentialsProvider
-import de.awagen.kolibri.definitions.io.json.CredentialsProviderJsonProtocol.CredentialsProviderFormat
 import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
 import de.awagen.kolibri.datatypes.types.JsonStructDefs._
 import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
+import de.awagen.kolibri.definitions.domain.Connections.Connection
+import de.awagen.kolibri.definitions.domain.jobdefinitions.provider.CredentialsProvider
+import de.awagen.kolibri.definitions.io.json.ConnectionJsonProtocol.{HOST_FIELD, PORT_FIELD, USE_HTTPS_FIELD}
+import de.awagen.kolibri.definitions.io.json.CredentialsProviderJsonProtocol.CredentialsProviderFormat
 import spray.json.{DefaultJsonProtocol, RootJsonFormat}
 
 
-object ConnectionJsonProtocol extends DefaultJsonProtocol with WithStructDef {
-
-  val HOST_FIELD = "host"
-  val PORT_FIELD = "port"
-  val USE_HTTPS_FIELD = "useHttps"
-  val CREDENTIALS_PROVIDER_FIELD = "credentialsProvider"
-
-  implicit val connectionFormat: RootJsonFormat[Connection] = jsonFormat(
-    (host: String, port: Int, useHttps: Boolean, credentialsProvider: Option[CredentialsProvider]) => Connection
-      .apply(host, port, useHttps, credentialsProvider),
-    HOST_FIELD,
-    PORT_FIELD,
-    USE_HTTPS_FIELD,
-    CREDENTIALS_PROVIDER_FIELD
-  )
+case class ConnectionFormatStruct(allowedTargetHosts: Seq[String],
+                                 allowedTargetPorts: Seq[String]) extends WithStructDef {
 
   override def structDef: JsonStructDefs.StructDef[_] = {
-    val allowedHosts = AppProperties.config.allowedRequestTargetHosts
-    val allowedTargetPorts = AppProperties.config.allowedRequestTargetPorts
 
-    val hostFieldDef = allowedHosts match {
+    val hostFieldDef = allowedTargetHosts match {
       case e if e.contains("*") =>
         FieldDef(StringConstantStructDef(HOST_FIELD), RegexStructDef("\\w+".r), required = true)
       case _ =>
-        FieldDef(StringConstantStructDef(HOST_FIELD), StringChoiceStructDef(allowedHosts), required = true)
+        FieldDef(StringConstantStructDef(HOST_FIELD), StringChoiceStructDef(allowedTargetHosts), required = true)
     }
 
     val portFieldDef = allowedTargetPorts match {
@@ -71,4 +56,24 @@ object ConnectionJsonProtocol extends DefaultJsonProtocol with WithStructDef {
       Seq()
     )
   }
+
+}
+
+
+object ConnectionJsonProtocol extends DefaultJsonProtocol {
+
+  val HOST_FIELD = "host"
+  val PORT_FIELD = "port"
+  val USE_HTTPS_FIELD = "useHttps"
+  val CREDENTIALS_PROVIDER_FIELD = "credentialsProvider"
+
+  implicit val connectionFormat: RootJsonFormat[Connection] = jsonFormat(
+    (host: String, port: Int, useHttps: Boolean, credentialsProvider: Option[CredentialsProvider]) => Connection
+      .apply(host, port, useHttps, credentialsProvider),
+    HOST_FIELD,
+    PORT_FIELD,
+    USE_HTTPS_FIELD,
+    CREDENTIALS_PROVIDER_FIELD
+  )
+
 }

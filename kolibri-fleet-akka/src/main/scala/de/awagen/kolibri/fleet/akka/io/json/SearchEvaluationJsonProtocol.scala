@@ -18,13 +18,21 @@
 package de.awagen.kolibri.fleet.akka.io.json
 
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
+import de.awagen.kolibri.datatypes.io.json.EnumerationJsonProtocol.aggregateTypeFormat
+import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
+import de.awagen.kolibri.datatypes.stores.MetricRow
+import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
+import de.awagen.kolibri.datatypes.types.JsonStructDefs._
+import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
+import de.awagen.kolibri.datatypes.values.Calculations.Calculation
+import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType.AggregationType
 import de.awagen.kolibri.definitions.directives.ResourceDirectives.ResourceDirective
 import de.awagen.kolibri.definitions.domain.Connections.Connection
 import de.awagen.kolibri.definitions.http.client.request.RequestTemplate
 import de.awagen.kolibri.definitions.io.json.ConnectionJsonProtocol._
 import de.awagen.kolibri.definitions.io.json.ResourceDirectiveJsonProtocol.GenericResourceDirectiveFormatStruct
 import de.awagen.kolibri.definitions.io.json.TaggingConfigurationsJsonProtocol._
-import de.awagen.kolibri.definitions.io.json.{ConnectionJsonProtocol, ExecutionJsonProtocol, ParameterValuesJsonProtocol, ResourceDirectiveJsonProtocol}
+import de.awagen.kolibri.definitions.io.json.{ExecutionJsonProtocol, ParameterValuesJsonProtocol, ResourceDirectiveJsonProtocol}
 import de.awagen.kolibri.definitions.processing.execution.functions.Execution
 import de.awagen.kolibri.definitions.processing.modifiers.ParameterValues.ValueSeqGenDefinition
 import de.awagen.kolibri.definitions.processing.tagging.TaggingConfigurations.BaseTaggingConfiguration
@@ -34,14 +42,7 @@ import de.awagen.kolibri.definitions.usecase.searchopt.io.json.{JsonSelectorJson
 import de.awagen.kolibri.definitions.usecase.searchopt.parse.JsonSelectors.JsonSelectorPathRegularExpressions.recursivePathKeyGroupingRegex
 import de.awagen.kolibri.definitions.usecase.searchopt.parse.ParsingConfig
 import de.awagen.kolibri.definitions.usecase.searchopt.parse.TypedJsonSelectors.NamedAndTypedSelector
-import de.awagen.kolibri.datatypes.io.json.EnumerationJsonProtocol.aggregateTypeFormat
-import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
-import de.awagen.kolibri.datatypes.stores.MetricRow
-import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
-import de.awagen.kolibri.datatypes.types.JsonStructDefs._
-import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
-import de.awagen.kolibri.datatypes.values.Calculations.Calculation
-import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType.AggregationType
+import de.awagen.kolibri.fleet.akka.config.AppConfig
 import de.awagen.kolibri.fleet.akka.io.json.FIELD_KEYS._
 import de.awagen.kolibri.fleet.akka.processing.JobMessages.{QueryBasedSearchEvaluationDefinition, SearchEvaluationDefinition}
 import de.awagen.kolibri.fleet.akka.usecase.searchopt.io.json.CalculationsJsonProtocol._
@@ -186,7 +187,7 @@ object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSu
         ),
         FieldDef(
           StringConstantStructDef(CONNECTIONS_FIELD),
-          GenericSeqStructDef(ConnectionJsonProtocol.structDef),
+          GenericSeqStructDef(AppConfig.JsonFormats.connectionFormatStruct.structDef),
           required = true,
           description = "The connections to utilize for sending requests. Can be very useful in cases such as when " +
             "multiple clusters of the requested system are available. In this case all of them can be requested and such " +
@@ -366,7 +367,7 @@ object QueryBasedSearchEvaluationJsonProtocol extends DefaultJsonProtocol with S
         ),
         FieldDef(
           StringConstantStructDef(CONNECTIONS_FIELD),
-          GenericSeqStructDef(ConnectionJsonProtocol.structDef),
+          GenericSeqStructDef(AppConfig.JsonFormats.connectionFormatStruct.structDef),
           required = true,
           description = "The connections to utilize for sending requests. Can be very useful in cases such as when " +
             "multiple clusters of the requested system are available. In this case all of them can be requested and such " +

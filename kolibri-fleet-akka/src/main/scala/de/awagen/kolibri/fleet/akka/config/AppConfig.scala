@@ -20,7 +20,7 @@ package de.awagen.kolibri.fleet.akka.config
 import com.softwaremill.macwire.wire
 import de.awagen.kolibri.definitions.io.json
 import de.awagen.kolibri.definitions.io.json.ExecutionJsonProtocol.ExecutionFormat
-import de.awagen.kolibri.definitions.io.json.{IndexedGeneratorJsonProtocol, MappingSupplierJsonProtocol, ModifierGeneratorProviderJsonProtocol, ModifierMappersJsonProtocol, OrderedMultiValuesJsonProtocol, OrderedValuesJsonProtocol, ParameterValuesJsonProtocol, ResourceDirectiveJsonProtocol, SeqModifierGeneratorJsonProtocol, SupplierJsonProtocol}
+import de.awagen.kolibri.definitions.io.json.{ConnectionFormatStruct, IndexedGeneratorJsonProtocol, MappingSupplierJsonProtocol, ModifierGeneratorProviderJsonProtocol, ModifierMappersJsonProtocol, OrderedMultiValuesJsonProtocol, OrderedValuesJsonProtocol, ParameterValuesJsonProtocol, ResourceDirectiveJsonProtocol, SeqModifierGeneratorJsonProtocol, SupplierJsonProtocol}
 import de.awagen.kolibri.definitions.io.json.WeightProviderJsonProtocol.StringWeightProviderFormat
 import de.awagen.kolibri.definitions.processing.execution.functions.Execution
 import de.awagen.kolibri.definitions.provider.WeightProviders.WeightProvider
@@ -127,6 +127,11 @@ object AppConfig {
 
     implicit val seqModifierGeneratorJsonProtocol: SeqModifierGeneratorJsonProtocol = SeqModifierGeneratorJsonProtocol(
       modifierGeneratorProviderJsonProtocol
+    )
+
+    implicit val connectionFormatStruct: ConnectionFormatStruct = ConnectionFormatStruct(
+      AppProperties.config.allowedRequestTargetHosts,
+      AppProperties.config.allowedRequestTargetPorts
     )
 
   }
