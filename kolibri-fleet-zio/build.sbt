@@ -6,6 +6,11 @@ val scalaTestVersion = "3.2.2"
 val playVersion = "2.9.1"
 val playLogbackVersion = "2.8.2"
 val sprayVersion = "1.3.5"
+val zioVersion = "2.0.13"
+val zioJsonVersion = "0.5.0"
+val zioConfigVersion = "4.0.0-RC14"
+val zioLoggingVersion = "2.1.12"
+val zioHttpVersion = "3.0.0-RC1"
 
 // scoverage plugin setting to exclude classes from coverage report
 coverageExcludedPackages := ""
@@ -43,10 +48,22 @@ libraryDependencies ++= Seq(
   "com.typesafe.play" %% "play-json" % playVersion,
   // logback
   "com.typesafe.play" %% "play-logback" % playLogbackVersion,
-  "io.spray" %% "spray-json" % sprayVersion
+  "io.spray" %% "spray-json" % sprayVersion,
+  "dev.zio" %% "zio" % zioVersion,
+  "dev.zio" %% "zio-streams" % zioVersion,
+  "dev.zio" %% "zio-http" % zioHttpVersion,
+  "dev.zio" %% "zio-json" % zioJsonVersion,
+  "dev.zio" %% "zio-config" % zioConfigVersion,
+  "dev.zio" %% "zio-config-typesafe" % zioConfigVersion,
+  "dev.zio" %% "zio-config-magnolia" % zioConfigVersion,
+  "dev.zio" %% "zio-logging" % zioLoggingVersion,
+  "dev.zio" %% "zio-logging-slf4j" % zioLoggingVersion,
+  "dev.zio" %% "zio-http" % zioHttpVersion
 )
 
-libraryDependencies := { libraryDependencies.value :+ ("de.awagen.kolibri" %% "kolibri-definitions" % version.value) }
+libraryDependencies := {
+  libraryDependencies.value :+ ("de.awagen.kolibri" %% "kolibri-definitions" % version.value)
+}
 
 // ---- start settings for publishing to mvn central
 // (needs to fully be in build.sbt of sub-project, also the non-project-specific parts)
@@ -55,10 +72,10 @@ organizationName := "awagen"
 organizationHomepage := Some(url("http://awagen.de"))
 developers := List(
   Developer(
-    id    = "awagen",
-    name  = "Andreas Wagenmann",
+    id = "awagen",
+    name = "Andreas Wagenmann",
     email = "awagen@posteo.net",
-    url   = url("https://github.com/awagen")
+    url = url("https://github.com/awagen")
   )
 )
 licenses := List("Apache 2" -> new URL("http://www.apache.org/licenses/LICENSE-2.0.txt"))
