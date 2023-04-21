@@ -57,4 +57,7 @@ case class BaseMetricDocumentWriter(writer: Writer[String, String, Any],
       writeResults.find(x => x.isLeft).getOrElse(Right(true))
     }
   }
+
+  // TODO: implement
+  override def delete(targetIdentifier: Tag): Either[Exception, Any] = ???
 }

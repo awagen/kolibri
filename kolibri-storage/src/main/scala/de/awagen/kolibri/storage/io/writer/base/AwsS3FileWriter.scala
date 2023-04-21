@@ -85,4 +85,6 @@ case class AwsS3FileWriter(bucketName: String,
     }
   }
 
+  // TODO: implement
+  override def delete(targetIdentifier: String): Either[Exception, PutObjectResult] = ???
 }

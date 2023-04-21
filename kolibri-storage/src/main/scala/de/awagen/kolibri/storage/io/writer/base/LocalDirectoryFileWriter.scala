@@ -53,4 +53,21 @@ case class LocalDirectoryFileWriter(directory: String) extends FileWriter[String
     }
   }
 
+  override def delete(targetIdentifier: String): Either[Exception, Unit] = {
+    logger.info(s"deleting data for identifier: $targetIdentifier")
+    val fullPath = s"$normedDirectory/$targetIdentifier"
+    try {
+      val file = new File(fullPath)
+      file.delete()
+      Right(())
+    }
+    catch {
+      case e: IOException =>
+        logger.error(s"failed deleting file: $fullPath", e)
+        Left(e)
+      case e: NullPointerException =>
+        logger.error(s"Could not get file handle for deleting file: $fullPath")
+        Left(e)
+    }
+  }
 }

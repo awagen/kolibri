@@ -35,6 +35,7 @@ import de.awagen.kolibri.datatypes.values.aggregation.AggregateValue
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
 import de.awagen.kolibri.fleet.akka.actors.work.aboveall.SupervisorActor
 import de.awagen.kolibri.fleet.akka.execution.job.ActorRunnableSinkType
+import de.awagen.kolibri.storage.io.writer.Writers.Writer
 import de.awagen.kolibri.storage.io.writer.base.LocalDirectoryFileWriter
 import org.slf4j.LoggerFactory
 
@@ -121,6 +122,19 @@ object TestJobDefinitions {
       override def apply(): Aggregator[ProcessingMessage[Double], MapWithCount[Tag, AggregateValue[Double]]] = new RunningDoubleAvgPerTagAggregator()
     }
 
+    val writer: Writer[MapWithCount[Tag, AggregateValue[Double]], Tag, Any] = new Writer[MapWithCount[Tag, AggregateValue[Double]], Tag, Any] {
+      override def write(data: MapWithCount[Tag, AggregateValue[Double]], targetIdentifier: Tag): Either[Exception, Any] = {
+        logger.info("writing result: {}", data)
+        logger.info("result is '{}' on '{}' samples; writing result", data.map, data.map(StringTag("ALL")).numSamples)
+        val fileWriter = LocalDirectoryFileWriter(resultDir)
+        val resultString = data.map.keys.map(x => s"$x\t${data.map(x).numSamples}\t${data.map(x).value.toString}").toSeq.mkString("\n")
+        fileWriter.write(resultString, "dartThrowResult.txt")
+      }
+      override def delete(targetIdentifier: Tag): Either[Exception, Any] = {
+        throw new IllegalAccessException("no deletion allowed here")
+      }
+    }
+
     JobMsgFactory.createActorRunnableJobCmd[Int, Int, Double, Double, MapWithCount[Tag, AggregateValue[Double]]](
       jobId = jobName,
       nrThrows,
@@ -130,13 +144,7 @@ object TestJobDefinitions {
       perBatchExpectationGenerator = expectationGen,
       perBatchAggregatorSupplier = aggregatorSupplier,
       perJobAggregatorSupplier = aggregatorSupplier,
-      writer = (data: MapWithCount[Tag, AggregateValue[Double]], _: Tag) => {
-        logger.info("writing result: {}", data)
-        logger.info("result is '{}' on '{}' samples; writing result", data.map, data.map(StringTag("ALL")).numSamples)
-        val fileWriter = LocalDirectoryFileWriter(resultDir)
-        val resultString = data.map.keys.map(x => s"$x\t${data.map(x).numSamples}\t${data.map(x).value.toString}").toSeq.mkString("\n")
-        fileWriter.write(resultString, "dartThrowResult.txt")
-      },
+      writer = writer,
       filteringSingleElementMapperForAggregator = new AcceptAllAsIdentityMapper[ProcessingMessage[Double]],
       filterAggregationMapperForAggregator = new AcceptAllAsIdentityMapper[MapWithCount[Tag, AggregateValue[Double]]],
       filteringMapperForResultSending = new AcceptAllAsIdentityMapper[MapWithCount[Tag, AggregateValue[Double]]],

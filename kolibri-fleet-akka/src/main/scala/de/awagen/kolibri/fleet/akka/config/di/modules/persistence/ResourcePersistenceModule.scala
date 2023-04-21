@@ -43,11 +43,17 @@ class ResourcePersistenceModule extends PersistenceDIModule with tagging.Tag[RES
     override def write(data: String, targetIdentifier: String): Either[Exception, Unit] = {
       Left(new IOException("not writing to local resource"))
     }
+
+    // TODO: implement
+    override def delete(targetIdentifier: String): Either[Exception, Unit] = ???
   }
 
   override def metricAggregationWriter(subFolder: String,
                                        tagToDataIdentifierFunc: Tags.Tag => String): Writers.Writer[MetricAggregation[Tags.Tag], Tags.Tag, Any] = new Writers.Writer[MetricAggregation[Tags.Tag], Tags.Tag, Any] {
     override def write(data: MetricAggregation[Tags.Tag], targetIdentifier: Tags.Tag): Either[Exception, Any] = Left(new IOException("not writing to local resources"))
+
+    // TODO: implement
+    override def delete(targetIdentifier: Tags.Tag): Either[Exception, Any] = ???
   }
 
 }

@@ -41,4 +41,6 @@ case class BaseMetricAggregationWriter(writer: Writer[MetricDocument[Tag], Tag, 
 
   }
 
+  // TODO: implement
+  override def delete(targetIdentifier: Tag): Either[Exception, Any] = ???
 }

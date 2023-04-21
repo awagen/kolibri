@@ -15,3 +15,4 @@ tmp
 /.settings
 public
 *.log
+/tmp_data

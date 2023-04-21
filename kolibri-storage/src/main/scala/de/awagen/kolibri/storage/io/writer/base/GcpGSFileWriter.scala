@@ -50,4 +50,7 @@ case class GcpGSFileWriter(bucketName: String,
     }
 
   }
+
+  // TODO: implement
+  override def delete(targetIdentifier: String): Either[Exception, Unit] = ???
 }

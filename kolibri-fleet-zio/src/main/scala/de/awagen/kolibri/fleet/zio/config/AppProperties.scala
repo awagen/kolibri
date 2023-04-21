@@ -21,11 +21,9 @@ import com.typesafe.config.{Config, ConfigFactory}
 import de.awagen.kolibri.datatypes.metrics.aggregation.writer.{CSVParameterBasedMetricDocumentFormat, JsonMetricDocumentFormat, MetricDocumentFormat}
 import de.awagen.kolibri.datatypes.types.JsonTypeCast
 import de.awagen.kolibri.datatypes.types.JsonTypeCast.JsonTypeCast
-import de.awagen.kolibri.definitions.status.ClusterStates.ClusterStatus
 import de.awagen.kolibri.fleet.zio.config.EnvVariableKeys.PROFILE
 import org.slf4j.{Logger, LoggerFactory}
 
-import java.util
 import java.util.Objects
 import scala.concurrent.duration._
 import scala.util.Random
@@ -174,6 +172,15 @@ object AppProperties {
     val openTasksSubfolder: String = baseConfig.getString("kolibri.job.tasks.state.open.subfolder")
     val inProgressTasksSubfolder: String = baseConfig.getString("kolibri.job.tasks.state.inprogress.subfolder")
     val taskProcessingStateSubfolder: String = baseConfig.getString("kolibri.job.tasks.state.inprogress.state.subfolder")
+
+
+
+    val jobBaseFolder: String = baseConfig.getString("kolibri.job.basefolder").stripPrefix("/").stripSuffix("/")
+    val taskBaseFolder: String = baseConfig.getString("kolibri.job.tasks.basefolder").stripPrefix("/").stripSuffix("/")
+    val taskClaimSubFolder: String = baseConfig.getString("kolibri.job.tasks.claim.subfolder").stripPrefix("/").stripSuffix("/")
+    val openTaskSubFolder: String = baseConfig.getString("kolibri.job.tasks.open.subfolder").stripPrefix("/").stripSuffix("/")
+    val taskInProgressSubFolder: String = baseConfig.getString("kolibri.job.tasks.inprogress.subfolder").stripPrefix("/").stripSuffix("/")
+    val taskProgressStateSubFolder: String = baseConfig.getString("kolibri.job.tasks.inprogress.state.subfolder").stripPrefix("/").stripSuffix("/")
 
   }
 
