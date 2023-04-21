@@ -44,13 +44,7 @@
     <appender-ref ref="ASYNCSTDOUT" />
   </root>
 
-  <logger name="akka.actor" level="INFO" />
-  <logger name="akka.http" level="INFO" />
-  <logger name="akka.stream" level="INFO" />
-  <logger name="akka.http.impl.engine.client.PoolGateway" level="INFO" />
   <logger name="de.awagen.kolibri" level="INFO" />
-  <logger name="akka.cluster.singleton" level="INFO" />
   <logger name="com.esotericsoftware.kryo" level="INFO" />
-  <logger name="io.altoo.akka.serialization.kryo" level="INFO" />
 
 </configuration>
