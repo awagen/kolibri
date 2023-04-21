@@ -24,7 +24,7 @@ import de.awagen.kolibri.datatypes.tagging.TagType.AGGREGATION
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSupplier
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
-import de.awagen.kolibri.fleet.akka.actors.KolibriTestKit
+import de.awagen.kolibri.fleet.akka.actors.{KolibriTestKit, TestMessages}
 import de.awagen.kolibri.fleet.akka.actors.TestMessages.{TaggedInt, messagesToActorRefRunnableGenFunc}
 import de.awagen.kolibri.fleet.akka.actors.work.aboveall.SupervisorActor.FinishedJobEvent
 import de.awagen.kolibri.fleet.akka.actors.work.manager.JobManagerActor.ProcessJobCmd
@@ -66,7 +66,7 @@ class JobManagerActorSpec extends KolibriTestKit {
         experimentId = "testId",
         perBatchAggregatorSupplier = aggregatorSupplier,
         perJobAggregatorSupplier = aggregatorSupplier,
-        writer = (_: MapWithCount[Tag, Double], _: Tag) => Right(()),
+        writer = TestMessages.testWriter,
         maxProcessDuration = 10 minutes,
         maxBatchDuration = 1 minute)
       val jobManagerActor: ActorRef = system.actorOf(managerProps)

@@ -189,6 +189,12 @@ object TestMessages {
     }
   }
 
+  val testWriter: Writer[MapWithCount[Tag, Double], Tag, Any] = new Writer[MapWithCount[Tag, Double], Tag, Any] {
+    override def write(data: MapWithCount[Tag, Double], targetIdentifier: Tag): Either[Exception, Any] = Right(())
+
+    override def delete(targetIdentifier: Tag): Either[Exception, Any] = throw new IllegalAccessException("deletions not allowed here")
+  }
+
   def generateProcessActorRunnableJobCmd(jobId: String): ProcessActorRunnableJobCmd[_, _, _, _ <: WithCount] = {
     val actorRunnableGenerator: IndexedGenerator[ActorRunnable[TaggedInt, Int, Int, MapWithCount[Tag, Double]]] = ByFunctionNrLimitedIndexedGenerator(
       nrOfElements = 4,
@@ -199,7 +205,7 @@ object TestMessages {
       processElements = actorRunnableGenerator.asInstanceOf[IndexedGenerator[ActorRunnable[TaggedInt, ProcessingMessage[Int], Int, MapWithCount[Tag, Double]]]],
       perBatchAggregatorSupplier = aggregatorSupplier,
       perJobAggregatorSupplier = aggregatorSupplier,
-      writer = (_: MapWithCount[Tag, Double], _: Tag) => Right(()),
+      testWriter,
       allowedTimePerBatch = 10 seconds,
       allowedTimeForJob = 2 minutes
     )
@@ -250,6 +256,8 @@ object TestMessages {
       perJobAggregatorSupplier = aggregatorSupplier1,
       writer = new Writer[WithCount, Tag, Any] {
         override def write(data: WithCount, targetIdentifier: Tag): Either[Exception, Any] = Right(())
+
+        override def delete(targetIdentifier: Tag): Either[Exception, Any] = throw new IllegalAccessException("no deletion allowed here")
       },
       filteringSingleElementMapperForAggregator = new AcceptAllAsIdentityMapper[ProcessingMessage[Any]],
       filterAggregationMapperForAggregator = new AcceptAllAsIdentityMapper[WithCount],

@@ -18,6 +18,8 @@ test in assembly := {} //causes no tests to be executed when calling "sbt assemb
 assemblyJarName in assembly := s"kolibri-storage.${version.value}.jar" //jar name
 //sbt-assembly settings. If it should only hold for specific subproject build, place the 'assemblyMergeStrategy in assembly' within subproject settings
 assemblyMergeStrategy in assembly := {
+  case x if x.endsWith("logback.xml") =>
+    MergeStrategy.last
   case "module-info.class" => MergeStrategy.discard
   case PathList("META-INF", xs@_*) => MergeStrategy.discard
   case manifest if manifest.contains("MANIFEST.MF") =>

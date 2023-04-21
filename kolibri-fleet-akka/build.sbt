@@ -122,7 +122,7 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-coordination" % akkaVersion,
   "com.typesafe.akka" %% "akka-remote" % akkaVersion,
   "com.typesafe.akka" %% "akka-protobuf-v3" % akkaVersion,
-  "com.typesafe.akka" %% "akka-testkit" % akkaVersion,
+  "com.typesafe.akka" %% "akka-testkit" % akkaVersion % "test,it",
   //scala test framework (scalactic is recommended but not required)(http://www.scalatest.org/install)
   "org.scalactic" %% "scalactic" % scalaTestVersion % "test,it",
   "org.scalatest" %% "scalatest" % scalaTestVersion % "test,it",
