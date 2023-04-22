@@ -18,11 +18,18 @@
 package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.impl
 
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.Jobs.Job
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.format.FileFormats.{FileFormat, FileNameFormat, Parts}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ClaimStatus.ClaimExerciseStatus.ClaimExerciseStatus
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ClaimStatus.ClaimFilingStatus.ClaimFilingStatus
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ClaimStatus.ClaimVerifyStatus.ClaimVerifyStatus
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.traits.ClaimHandler
 import zio.Task
+
+object FileStorageClaimHandler {
+
+  val claimFileFormat: FileFormat = FileNameFormat(Seq(Parts.BATCH_NR, Parts.CREATION_TIME_IN_MILLIS))
+
+}
 
 case class FileStorageClaimHandler() extends ClaimHandler {
 
