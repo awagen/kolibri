@@ -21,9 +21,18 @@ import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.Jobs.Job
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ClaimStatus.ClaimExerciseStatus.ClaimExerciseStatus
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ClaimStatus.ClaimFilingStatus.ClaimFilingStatus
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ClaimStatus.ClaimVerifyStatus.ClaimVerifyStatus
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.traits.ClaimHandler.ClaimTopic.ClaimTopic
 import zio._
 
+
 object ClaimHandler {
+
+  object ClaimTopic extends Enumeration {
+    type ClaimTopic = Value
+
+    val JOB_TASK_PROCESSING_CLAIM: Value = Value
+    val JOB_TASK_RESET_CLAIM: Value = Value
+  }
 
 }
 
@@ -33,7 +42,7 @@ trait ClaimHandler {
    * File claim for a given batch of a job. Implementation depends on storage, e.g in file system would mean
    * writing a claim file
    */
-  def fileClaim(job: Job): Task[ClaimFilingStatus]
+  def fileClaim(job: Job, claimTopic: ClaimTopic): Task[ClaimFilingStatus]
 
   /**
    * Verify a filed claim. This is used after a claim was filed to check on it after a given period of time
@@ -41,13 +50,13 @@ trait ClaimHandler {
    * Will either return a CLAIM_ACCEPTED, based on which we can exercise the claim (picking the batch to execute
    * and update the processing status), or returns other states indicating why a claim was not accepted.
    */
-  def verifyClaim(job: Job): Task[ClaimVerifyStatus]
+  def verifyClaim(job: Job, claimTopic: ClaimTopic): Task[ClaimVerifyStatus]
 
   /**
    * Should only be used after a successful verification of a files claim. Upon exercising, the node will add the
    * task to its processing queue, and update the state of the batch (remove the status that the batch is open to be
    * picked for processing, put the batch in in-progress, set schedule to regularly update the processing state.
    */
-  def exerciseClaim(job: Job): Task[ClaimExerciseStatus]
+  def exerciseClaim(job: Job, claimTopic: ClaimTopic): Task[ClaimExerciseStatus]
 
 }

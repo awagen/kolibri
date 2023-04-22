@@ -25,6 +25,7 @@ import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ClaimStatus.Clai
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ClaimStatus.ClaimVerifyStatus.ClaimVerifyStatus
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ClaimStatus.{ClaimExerciseStatus, ClaimFilingStatus, ClaimVerifyStatus}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ProcessUpdateStatus.ProcessUpdateStatus
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.traits.ClaimHandler.ClaimTopic.ClaimTopic
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.traits.{ClaimHandler, WorkStatusUpdater}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.zio_di.ZioDIConfig.ClaimHandling.{CLAIM_PREFIX, FILE_NAME_PARTS_DELIMITER, TASK_PREFIX}
 import spray.json.enrichAny
@@ -109,7 +110,7 @@ object ZioDIConfig {
         }
 
         // TODO: could make single steps into effects and map them together
-        override def fileClaim(job: Job): Task[ClaimFilingStatus] = ZIO.attemptBlockingIO {
+        override def fileClaim(job: Job, claimTopic: ClaimTopic): Task[ClaimFilingStatus] = ZIO.attemptBlockingIO {
           val existingClaimsForJob: Seq[String] = getExistingClaimsForJob(job)
           if (existingClaimsForJob.nonEmpty) ClaimFilingStatus.OTHER_CLAIM_EXISTS
           else {
@@ -133,7 +134,7 @@ object ZioDIConfig {
          * @param job - job identifier
          * @return
          */
-        override def verifyClaim(job: Job): Task[ClaimVerifyStatus] = ZIO.attemptBlockingIO {
+        override def verifyClaim(job: Job, claimTopic: ClaimTopic): Task[ClaimVerifyStatus] = ZIO.attemptBlockingIO {
           val allExistingClaims: Seq[String] = getExistingClaimsForJob(job)
             .map(fileName => fileName.split("/").last)
             .sorted
@@ -157,7 +158,7 @@ object ZioDIConfig {
          * @param job
          * @return
          */
-        override def exerciseClaim(job: Job): Task[ClaimExerciseStatus] = {
+        override def exerciseClaim(job: Job, claimTopic: ClaimTopic): Task[ClaimExerciseStatus] = {
           val executionEffect: ZIO[Any, IOException, (Either[Exception, _], Either[Exception, _], Seq[Either[Exception, _]])] = for {
             taskFile <- ZIO.attemptBlockingIO(
               AppConfig.persistenceModule.persistenceDIModule
@@ -197,14 +198,14 @@ object ZioDIConfig {
         }
       })
 
-    def fileClaim(job: Job): ZIO[ClaimHandler, Throwable, ClaimFilingStatus] =
-      ZIO.serviceWithZIO[ClaimHandler](_.fileClaim(job))
+    def fileClaim(job: Job, claimTopic: ClaimTopic): ZIO[ClaimHandler, Throwable, ClaimFilingStatus] =
+      ZIO.serviceWithZIO[ClaimHandler](_.fileClaim(job, claimTopic))
 
-    def verifyClaim(job: Job): ZIO[ClaimHandler, Throwable, ClaimVerifyStatus] =
-      ZIO.serviceWithZIO[ClaimHandler](_.verifyClaim(job))
+    def verifyClaim(job: Job, claimTopic: ClaimTopic): ZIO[ClaimHandler, Throwable, ClaimVerifyStatus] =
+      ZIO.serviceWithZIO[ClaimHandler](_.verifyClaim(job, claimTopic))
 
-    def exerciseClaim(job: Job): ZIO[ClaimHandler, Throwable, ClaimExerciseStatus] =
-      ZIO.serviceWithZIO[ClaimHandler](_.exerciseClaim(job))
+    def exerciseClaim(job: Job, claimTopic: ClaimTopic): ZIO[ClaimHandler, Throwable, ClaimExerciseStatus] =
+      ZIO.serviceWithZIO[ClaimHandler](_.exerciseClaim(job, claimTopic))
 
   }
 

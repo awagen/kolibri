@@ -18,24 +18,26 @@
 package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.impl
 
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.Jobs.Job
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.format.FileFormats.{FileFormat, FileNameFormat, Parts}
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.format.NameFormats.{NameFormat, FileNameFormat, Parts}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ClaimStatus.ClaimExerciseStatus.ClaimExerciseStatus
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ClaimStatus.ClaimFilingStatus.ClaimFilingStatus
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ClaimStatus.ClaimVerifyStatus.ClaimVerifyStatus
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.traits.ClaimHandler
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.traits.ClaimHandler.ClaimTopic.ClaimTopic
 import zio.Task
 
 object FileStorageClaimHandler {
 
-  val claimFileFormat: FileFormat = FileNameFormat(Seq(Parts.BATCH_NR, Parts.CREATION_TIME_IN_MILLIS))
+  val claimFileFormat: NameFormat = FileNameFormat(Seq(Parts.BATCH_NR, Parts.CREATION_TIME_IN_MILLIS))
 
 }
 
 case class FileStorageClaimHandler() extends ClaimHandler {
 
-  override def fileClaim(job: Job): Task[ClaimFilingStatus] = ???
+  override def fileClaim(job: Job, claimTopic: ClaimTopic): Task[ClaimFilingStatus] = ???
 
-  override def verifyClaim(job: Job): Task[ClaimVerifyStatus] = ???
+  override def verifyClaim(job: Job, claimTopic: ClaimTopic): Task[ClaimVerifyStatus] = ???
 
-  override def exerciseClaim(job: Job): Task[ClaimExerciseStatus] = ???
+  override def exerciseClaim(job: Job, claimTopic: ClaimTopic): Task[ClaimExerciseStatus] = ???
+
 }
