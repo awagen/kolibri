@@ -19,6 +19,12 @@ package de.awagen.kolibri.datatypes.mutable.stores
 
 import scala.collection.mutable
 
+object BaseWeaklyTypedMap {
+
+  def empty: BaseWeaklyTypedMap = BaseWeaklyTypedMap(mutable.Map.empty)
+
+}
+
 case class BaseWeaklyTypedMap(map: mutable.Map[String, Any]) extends WeaklyTypedMap[String] {
 
   override def put[U](key: String, value: U): Unit = {
