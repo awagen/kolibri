@@ -31,7 +31,7 @@ object TypedMapStore {
 /**
   * NOTE: it is still needed to apply the cast provided, e.g get(key).map(x => key.castFunc.apply(x)) if we want
   * typing to work, e.g all get(key) will yield Option[Any] of the value, but its guaranteed that key.castFunc.apply(x) will work,
-  * and only after doing that would special types like Option[Seq[String]] be accepcted by the compiler
+  * and only after doing that would special types like Option[Seq[String]] be accepted by the compiler
   */
 case class TypedMapStore(data: scala.collection.mutable.Map[ClassTyped[Any], Any]) extends TypeTaggedMap {
 

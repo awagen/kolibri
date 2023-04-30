@@ -27,7 +27,6 @@ import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ClaimStatus.{Cla
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ProcessUpdateStatus.ProcessUpdateStatus
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.traits.ClaimHandler.ClaimTopic.ClaimTopic
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.traits.{ClaimHandler, WorkStatusUpdater}
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.zio_di.ZioDIConfig.ClaimHandling.{CLAIM_PREFIX, FILE_NAME_PARTS_DELIMITER, TASK_PREFIX}
 import spray.json.enrichAny
 import zio.{Task, ULayer, ZIO, ZLayer}
 
@@ -37,12 +36,12 @@ object ZioDIConfig {
 
 
   object Directories {
-    def baseJobFolder(job: Job): String = {
-      s"${config.jobBaseFolder}/${job.jobId}"
+    def baseJobFolder(jobId: String): String = {
+      s"${config.jobBaseFolder}/$jobId"
     }
 
     def baseTaskFolder(job: Job): String = {
-      s"${baseJobFolder(job)}/${config.taskBaseFolder}"
+      s"${baseJobFolder(job.jobId)}/${config.taskBaseFolder}"
     }
 
     def jobToClaimSubFolder(job: Job): String = {
@@ -60,23 +59,6 @@ object ZioDIConfig {
     def jobToInProcessTaskSubFolder(job: Job): String = {
       s"${baseTaskFolder(job)}/${config.taskInProgressSubFolder}"
     }
-  }
-
-  // TODO: pull out the handling of file names
-  object Files {
-
-    def jobToClaimFilePath(job: Job): String = {
-      s"${Directories.jobToClaimSubFolder(job)}/$CLAIM_PREFIX$FILE_NAME_PARTS_DELIMITER${job.batchNr}${FILE_NAME_PARTS_DELIMITER}${config.node_hash}.json"
-    }
-
-    def openTaskFilePath(job: Job): String = {
-      s"${Directories.jobToOpenTaskSubFolder(job)}/$TASK_PREFIX$FILE_NAME_PARTS_DELIMITER${job.batchNr}.json"
-    }
-
-    def inProgressTaskFilePath(job: Job): String = {
-      s"${Directories.jobToInProcessTaskSubFolder(job)}/$TASK_PREFIX$FILE_NAME_PARTS_DELIMITER${job.batchNr}.json"
-    }
-
   }
 
   object ClaimHandling {

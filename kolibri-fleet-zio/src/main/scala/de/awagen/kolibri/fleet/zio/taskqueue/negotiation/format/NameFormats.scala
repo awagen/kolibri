@@ -122,6 +122,4 @@ object NameFormats {
 
   }
 
-  case object ClaimFileNameFormat extends FileNameFormat(Seq(TOPIC, BATCH_NR, CREATION_TIME_IN_MILLIS, NODE_HASH), "_")
-
 }

@@ -32,6 +32,7 @@ object ClaimHandler {
 
     val JOB_TASK_PROCESSING_CLAIM: Value = Value
     val JOB_TASK_RESET_CLAIM: Value = Value
+    val UNKNOWN: Value = Value
   }
 
 }
