@@ -17,7 +17,6 @@
 
 package de.awagen.kolibri.fleet.akka.io.json
 
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import de.awagen.kolibri.datatypes.io.json.EnumerationJsonProtocol.aggregateTypeFormat
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.datatypes.stores.MetricRow
@@ -29,15 +28,15 @@ import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType.A
 import de.awagen.kolibri.definitions.directives.ResourceDirectives.ResourceDirective
 import de.awagen.kolibri.definitions.domain.Connections.Connection
 import de.awagen.kolibri.definitions.http.client.request.RequestTemplate
-import de.awagen.kolibri.definitions.io.json.ConnectionJsonProtocol._
+import de.awagen.kolibri.definitions.io.json.ConnectionJsonProtocol.connectionFormat
 import de.awagen.kolibri.definitions.io.json.ResourceDirectiveJsonProtocol.GenericResourceDirectiveFormatStruct
-import de.awagen.kolibri.definitions.io.json.TaggingConfigurationsJsonProtocol._
-import de.awagen.kolibri.definitions.io.json.{ExecutionJsonProtocol, ParameterValuesJsonProtocol, ResourceDirectiveJsonProtocol}
+import de.awagen.kolibri.definitions.io.json.TaggingConfigurationsJsonProtocol.TaggingConfigurationJsonFormat
+import de.awagen.kolibri.definitions.io.json.{CalculationsJsonProtocol, ExecutionJsonProtocol, ParameterValuesJsonProtocol, ResourceDirectiveJsonProtocol}
 import de.awagen.kolibri.definitions.processing.execution.functions.Execution
 import de.awagen.kolibri.definitions.processing.modifiers.ParameterValues.ValueSeqGenDefinition
 import de.awagen.kolibri.definitions.processing.tagging.TaggingConfigurations.BaseTaggingConfiguration
-import de.awagen.kolibri.definitions.usecase.searchopt.io.json.JsonSelectorJsonProtocol._
-import de.awagen.kolibri.definitions.usecase.searchopt.io.json.ParsingConfigJsonProtocol._
+import de.awagen.kolibri.definitions.usecase.searchopt.io.json.JsonSelectorJsonProtocol.NamedAndTypedSelectorFormat
+import de.awagen.kolibri.definitions.usecase.searchopt.io.json.ParsingConfigJsonProtocol.parsingConfigJsonFormat
 import de.awagen.kolibri.definitions.usecase.searchopt.io.json.{JsonSelectorJsonProtocol, ParsingConfigJsonProtocol}
 import de.awagen.kolibri.definitions.usecase.searchopt.parse.JsonSelectors.JsonSelectorPathRegularExpressions.recursivePathKeyGroupingRegex
 import de.awagen.kolibri.definitions.usecase.searchopt.parse.ParsingConfig
@@ -45,7 +44,6 @@ import de.awagen.kolibri.definitions.usecase.searchopt.parse.TypedJsonSelectors.
 import de.awagen.kolibri.fleet.akka.config.AppConfig
 import de.awagen.kolibri.fleet.akka.io.json.FIELD_KEYS._
 import de.awagen.kolibri.fleet.akka.processing.JobMessages.{QueryBasedSearchEvaluationDefinition, SearchEvaluationDefinition}
-import de.awagen.kolibri.fleet.akka.usecase.searchopt.io.json.CalculationsJsonProtocol._
 import spray.json.{DefaultJsonProtocol, JsValue, JsonFormat, RootJsonFormat}
 
 
@@ -79,14 +77,21 @@ object FIELD_KEYS {
 
 }
 
-object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSupport with WithStructDef {
+object SearchEvaluationJsonProtocol extends DefaultJsonProtocol {}
 
-  case class SearchEvaluationFormat(executionFormat: RootJsonFormat[Execution[Any]],
-                                    resourceDirectiveJsonProtocol: ResourceDirectiveJsonProtocol,
-                                    parameterValuesJsonProtocol: ParameterValuesJsonProtocol) extends RootJsonFormat[SearchEvaluationDefinition] {
+
+case class SearchEvaluationJsonProtocol(executionFormat: RootJsonFormat[Execution[Any]],
+                                        resourceDirectiveJsonProtocol: ResourceDirectiveJsonProtocol,
+                                        parameterValuesJsonProtocol: ParameterValuesJsonProtocol,
+                                        calculationsJsonProtocol: CalculationsJsonProtocol) extends WithStructDef {
+  import SearchEvaluationJsonProtocol._
+
+
+  implicit object SearchEvaluationFormat extends RootJsonFormat[SearchEvaluationDefinition] {
     implicit val ef: RootJsonFormat[Execution[Any]] = executionFormat
     implicit val genericResourceDirectiveFormat: JsonFormat[ResourceDirective[_]] = resourceDirectiveJsonProtocol.GenericResourceDirectiveFormat
     implicit val valueSeqGenDefinitionFormat: JsonFormat[ValueSeqGenDefinition[_]] = parameterValuesJsonProtocol.ValueSeqGenDefinitionFormat
+    implicit val calculationFormat: JsonFormat[Calculation[WeaklyTypedMap[String], Any]] = calculationsJsonProtocol.FromMapCalculationsFormat
     val format: RootJsonFormat[SearchEvaluationDefinition] = jsonFormat(
       (
         jobName: String,
@@ -242,7 +247,7 @@ object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSu
         FieldDef(
           StringConstantStructDef(CALCULATIONS_FIELD),
           GenericSeqStructDef(
-            FromMapCalculationsFormat.structDef
+            calculationsJsonProtocol.FromMapCalculationsFormat.structDef
           ),
           required = true,
           description = "Calculations to be executed. Here the fields extracted in the parsingConfig are referenced. " +
@@ -304,10 +309,16 @@ object SearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSu
 
 }
 
-object QueryBasedSearchEvaluationJsonProtocol extends DefaultJsonProtocol with SprayJsonSupport with WithStructDef {
+object QueryBasedSearchEvaluationJsonProtocol extends DefaultJsonProtocol
 
-  case class QueryBasedSearchEvaluationFormat(parameterValuesJsonProtocol: ParameterValuesJsonProtocol) extends RootJsonFormat[QueryBasedSearchEvaluationDefinition] {
+case class QueryBasedSearchEvaluationJsonProtocol(parameterValuesJsonProtocol: ParameterValuesJsonProtocol,
+                                                  calculationsJsonProtocol: CalculationsJsonProtocol) extends WithStructDef {
+
+  import QueryBasedSearchEvaluationJsonProtocol._
+
+  implicit object QueryBasedSearchEvaluationFormat extends RootJsonFormat[QueryBasedSearchEvaluationDefinition]  {
     implicit val valueSeqGenFormat: JsonFormat[ValueSeqGenDefinition[_]] = parameterValuesJsonProtocol.ValueSeqGenDefinitionFormat
+    implicit val calculationFormat: JsonFormat[Calculation[WeaklyTypedMap[String], Any]] = calculationsJsonProtocol.FromMapCalculationsFormat
     val format: RootJsonFormat[QueryBasedSearchEvaluationDefinition] = jsonFormat(
       (
         jobName: String,
@@ -409,7 +420,7 @@ object QueryBasedSearchEvaluationJsonProtocol extends DefaultJsonProtocol with S
         FieldDef(
           StringConstantStructDef(OTHER_CALCULATIONS_FIELD),
           GenericSeqStructDef(
-            FromMapCalculationsFormat.structDef
+            AppConfig.JsonFormats.calculationsJsonProtocol.FromMapCalculationsFormat.structDef
           ),
           required = true,
           description = "Calculations to be executed. Here the fields extracted in the parsingConfig are referenced. " +

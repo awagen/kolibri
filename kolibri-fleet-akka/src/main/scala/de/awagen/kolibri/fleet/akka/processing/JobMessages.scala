@@ -47,9 +47,10 @@ import de.awagen.kolibri.datatypes.utils.MapUtils
 import de.awagen.kolibri.datatypes.values.Calculations.Calculation
 import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType
 import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType.AggregationType
+import de.awagen.kolibri.definitions.usecase.searchopt.metrics.Calculations.JudgementsFromResourceIRMetricsCalculations
+import de.awagen.kolibri.fleet.akka.cluster.ClusterNodeObj
 import de.awagen.kolibri.fleet.akka.config.AppConfig.filepathToJudgementProvider
 import de.awagen.kolibri.fleet.akka.config.{AppConfig, AppProperties}
-import de.awagen.kolibri.fleet.akka.usecase.searchopt.metrics.Calculations.JudgementsFromResourceIRMetricsCalculations
 
 object JobMessages {
 
@@ -180,7 +181,8 @@ object JobMessages {
             Metric("RECALL@k=4,t=0.2", MetricFunction(MetricType.RECALL, 2, IRMetricFunctions.recallAtK(4, 0.2)))
           ),
           JudgementHandlingStrategy.EXIST_RESULTS_AND_JUDGEMENTS_MISSING_AS_ZEROS
-        )
+        ),
+        ClusterNodeObj
       )
     ) ++ otherCalculations
     val defaultAggregatorMappings: Map[String, AggregationType.Val[Double]] = Map(

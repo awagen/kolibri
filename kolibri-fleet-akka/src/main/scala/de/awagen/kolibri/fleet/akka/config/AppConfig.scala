@@ -18,25 +18,23 @@
 package de.awagen.kolibri.fleet.akka.config
 
 import com.softwaremill.macwire.wire
+import de.awagen.kolibri.datatypes.types.JsonTypeCast
+import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 import de.awagen.kolibri.definitions.io.json
 import de.awagen.kolibri.definitions.io.json.ExecutionJsonProtocol.ExecutionFormat
-import de.awagen.kolibri.definitions.io.json.{ConnectionFormatStruct, IndexedGeneratorJsonProtocol, MappingSupplierJsonProtocol, ModifierGeneratorProviderJsonProtocol, ModifierMappersJsonProtocol, OrderedMultiValuesJsonProtocol, OrderedValuesJsonProtocol, ParameterValuesJsonProtocol, ResourceDirectiveJsonProtocol, SeqModifierGeneratorJsonProtocol, SupplierJsonProtocol}
 import de.awagen.kolibri.definitions.io.json.WeightProviderJsonProtocol.StringWeightProviderFormat
+import de.awagen.kolibri.definitions.io.json._
 import de.awagen.kolibri.definitions.processing.execution.functions.Execution
 import de.awagen.kolibri.definitions.provider.WeightProviders.WeightProvider
 import de.awagen.kolibri.definitions.usecase.searchopt.parse.JsonSelectors.{PlainAndRecursiveSelector, PlainPathSelector}
 import de.awagen.kolibri.definitions.usecase.searchopt.parse.TypedJsonSelectors.{NamedAndTypedSelector, TypedJsonSeqSelector, TypedJsonSingleValueSelector}
 import de.awagen.kolibri.definitions.usecase.searchopt.provider.FileBasedJudgementProvider.JudgementFileCSVFormatConfig
 import de.awagen.kolibri.definitions.usecase.searchopt.provider.{FileBasedJudgementProvider, JudgementProvider}
-import de.awagen.kolibri.datatypes.types.JsonTypeCast
-import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 import de.awagen.kolibri.fleet.akka.cluster.ClusterNodeObj
 import de.awagen.kolibri.fleet.akka.config.AppProperties.config._
 import de.awagen.kolibri.fleet.akka.config.di.modules.connections.HttpModule
 import de.awagen.kolibri.fleet.akka.config.di.modules.persistence.PersistenceModule
-import de.awagen.kolibri.fleet.akka.io.json.QueryBasedSearchEvaluationJsonProtocol.QueryBasedSearchEvaluationFormat
 import de.awagen.kolibri.fleet.akka.io.json._
-import de.awagen.kolibri.fleet.akka.processing.JobMessages.SearchEvaluationDefinition
 import de.awagen.kolibri.storage.io.reader.DataOverviewReader
 import spray.json.RootJsonFormat
 
@@ -93,18 +91,19 @@ object AppConfig {
       supplierJsonProtocol
     )
 
-    implicit val queryBasedSearchEvaluationFormat: QueryBasedSearchEvaluationFormat = QueryBasedSearchEvaluationFormat(
-      parameterValueJsonProtocol
+    implicit val calculationsJsonProtocol: CalculationsJsonProtocol = CalculationsJsonProtocol(ClusterNodeObj)
+
+    implicit val queryBasedSearchEvaluationJsonProtocol: QueryBasedSearchEvaluationJsonProtocol = QueryBasedSearchEvaluationJsonProtocol(
+      parameterValueJsonProtocol,
+      calculationsJsonProtocol
     )
 
     implicit val resourceDirectiveJsonProtocol: ResourceDirectiveJsonProtocol = ResourceDirectiveJsonProtocol(supplierJsonProtocol)
 
-    implicit val searchEvaluationJsonFormat: RootJsonFormat[SearchEvaluationDefinition] =
-      SearchEvaluationJsonProtocol.SearchEvaluationFormat(
-        executionFormat,
-        resourceDirectiveJsonProtocol,
-        parameterValueJsonProtocol
-      )
+    implicit val searchEvaluationJsonProtocol: SearchEvaluationJsonProtocol = {
+      SearchEvaluationJsonProtocol(executionFormat, resourceDirectiveJsonProtocol,
+        parameterValueJsonProtocol, calculationsJsonProtocol)
+    }
 
     implicit val generatorJsonProtocol: IndexedGeneratorJsonProtocol = IndexedGeneratorJsonProtocol(
       dataOverviewReaderWithSuffixFilterFunc

@@ -27,7 +27,6 @@ import akka.http.scaladsl.server.Route
 import akka.management.cluster.bootstrap.ClusterBootstrap
 import akka.management.scaladsl.AkkaManagement
 import akka.stream.Materializer
-import de.awagen.kolibri.definitions.directives.ResourceProvider
 import de.awagen.kolibri.fleet.akka.actors.clusterinfo.DDResourceStateUtils.DD_BATCH_STATUS_ACTOR_REF_KEY
 import de.awagen.kolibri.fleet.akka.actors.clusterinfo.{BatchStateActor, LocalStateDistributorActor, ResourceToJobMappingClusterStateManagerActor}
 import de.awagen.kolibri.fleet.akka.actors.routing.RoutingActor
@@ -45,7 +44,7 @@ import de.awagen.kolibri.fleet.akka.http.server.routes.JobDefRoutes.getSearchEva
 import de.awagen.kolibri.fleet.akka.http.server.routes.MetricRoutes.{getAvailableIRMetrics, getIRMetricJsonsFromReducedJsons}
 import de.awagen.kolibri.fleet.akka.http.server.routes.JobTemplateResourceRoutes.{getAvailableTemplatesByType, getJobTemplateByTypeAndIdentifier, getJobTemplateOverviewForType, getJobTemplateTypes, storeSearchEvaluationTemplate}
 import de.awagen.kolibri.fleet.akka.http.server.routes.StatusRoutes.{finishedJobStates, getAllJobWorkerStates, getJobStatus, getJobWorkerStatus, getRunningJobIds, health, jobStates, nodeState}
-import de.awagen.kolibri.definitions.resources.RetrievalError
+import de.awagen.kolibri.definitions.resources.{ResourceProvider, RetrievalError}
 import de.awagen.kolibri.fleet.akka.usecase.statesharding.actors.EventAggregatingActor
 import de.awagen.kolibri.fleet.akka.usecase.statesharding.routes.StateRoutes.{sendCombinedEvent, sendEntityEvent, sendKeyValueEvent}
 import kamon.Kamon

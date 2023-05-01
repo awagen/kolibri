@@ -83,6 +83,13 @@ trait AtomicMapPromiseStore[U, V, W] {
   }
 
   /**
+   * retrieve value for key
+   */
+  def get(key: U): Option[Promise[V]] = {
+    valueMap.get().get(key)
+  }
+
+  /**
    * Remove the data corresponding to the passed key.
    *
    * @param key

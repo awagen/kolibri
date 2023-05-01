@@ -28,6 +28,11 @@ import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFuncti
 import de.awagen.kolibri.datatypes.values.Calculations.{Calculation, ComputeResult, ResultRecord}
 import de.awagen.kolibri.datatypes.values.MetricValue
 import de.awagen.kolibri.datatypes.values.RunningValues.RunningValue
+import de.awagen.kolibri.definitions.directives.{Resource, RetrievalDirective}
+import de.awagen.kolibri.definitions.http.client.request.RequestTemplate
+import de.awagen.kolibri.definitions.resources.{ResourceProvider, RetrievalError}
+import de.awagen.kolibri.definitions.usecase.searchopt.jobdefinitions.parts.ReservedStorageKeys.REQUEST_TEMPLATE_STORAGE_KEY
+import de.awagen.kolibri.definitions.usecase.searchopt.provider.JudgementProvider
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.mutable
@@ -63,6 +68,39 @@ object Calculations {
       val result: ComputeResult[U] = data.map(value => function.apply(value))
         .getOrElse(Left(Seq(missingDataKeyFailReason(dataKey))))
       Seq(ResultRecord(names.head, result))
+    }
+  }
+
+  /**
+   * Similar to JudgementBasedMetricsCalculation, yet here this uses judgements as resource, e.g
+   * the set of judgements need to be pre-loaded as node resource.
+   * One purpose is to unify all calculation definitions purely based on either fields created by result parsing
+   * or from node resources.
+   * @param productIdsKey - the key value used to store the productIds in the WeaklyTypedMap[String]
+   * @param queryParamName - name of the parameter used in requests as query parameter
+   * @param judgementsResource - the resource identifier for the judgements map
+   * @param metricsCalculation - definition of which metrics to calculate
+   */
+  case class JudgementsFromResourceIRMetricsCalculations(productIdsKey: String,
+                                                         queryParamName: String,
+                                                         judgementsResource: Resource[JudgementProvider[Double]],
+                                                         metricsCalculation: MetricsCalculation,
+                                                         resourceProvider: ResourceProvider) extends Calculation[WeaklyTypedMap[String], Any] {
+    def calculationResultIdentifier: Set[String] = metricsCalculation.metrics.map(x => x.name).toSet
+
+    override val names: Set[String] = metricsCalculation.metrics.map(metric => metric.name).toSet
+
+    override val calculation: SerializableFunction1[WeaklyTypedMap[String], Seq[ResultRecord[Any]]] = tMap => {
+      val requestTemplate: RequestTemplate = tMap.get[RequestTemplate](REQUEST_TEMPLATE_STORAGE_KEY.name).get
+      val query: String = requestTemplate.getParameter(queryParamName).map(x => x.head).getOrElse("")
+      val productSequence: Seq[String] = tMap.get[Seq[String]](productIdsKey).getOrElse(Seq.empty)
+      val judgementsOrError: Either[RetrievalError[JudgementProvider[Double]], JudgementProvider[Double]] = resourceProvider.getResource(RetrievalDirective.Retrieve(judgementsResource))
+      judgementsOrError match {
+        case Left(error) =>
+          metricsCalculation.metrics.map(x => ResultRecord(x.name, Left(Seq(ComputeFailReason.apply(error.cause.toString)))))
+        case Right(judgementProvider) =>
+          metricsCalculation.calculateAllAndReturnSingleResults(query, productSequence, judgementProvider)
+      }
     }
   }
 }

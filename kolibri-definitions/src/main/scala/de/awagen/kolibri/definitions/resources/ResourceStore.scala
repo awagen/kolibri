@@ -27,7 +27,7 @@ import scala.collection.mutable
 
 sealed trait RetrievalFailCause extends KolibriSerializable
 
-case class RetrievalFailedByException(exception: Exception) extends RetrievalFailCause
+case class RetrievalFailedByException(exception: Throwable) extends RetrievalFailCause
 
 case object ResourceNotFound extends RetrievalFailCause
 
@@ -37,7 +37,7 @@ case object ResourceOK extends ResourceState
 
 case object ResourceAlreadyExists extends ResourceState
 
-case class ResourceFailedByException(exception: Exception) extends ResourceState
+case class ResourceFailedByException(exception: Throwable) extends ResourceState
 
 case class RetrievalError[+T](directive: RetrievalDirective[T], cause: RetrievalFailCause)
 

@@ -19,9 +19,10 @@ package de.awagen.kolibri.fleet.akka.usecase.searchopt.metrics
 
 import de.awagen.kolibri.definitions.directives.{Resource, ResourceType}
 import de.awagen.kolibri.definitions.http.client.request.RequestTemplate
+import de.awagen.kolibri.definitions.usecase.searchopt.metrics.Calculations.JudgementsFromResourceIRMetricsCalculations
 import de.awagen.kolibri.definitions.usecase.searchopt.metrics.{JudgementHandlingStrategy, Metric, MetricsCalculation}
 import de.awagen.kolibri.definitions.usecase.searchopt.provider.JudgementProvider
-import de.awagen.kolibri.fleet.akka.usecase.searchopt.metrics.Calculations.JudgementsFromResourceIRMetricsCalculations
+import de.awagen.kolibri.fleet.akka.cluster.ClusterNodeObj
 
 object CalculationsTestHelper {
 
@@ -42,7 +43,9 @@ object CalculationsTestHelper {
       MetricsCalculation(
         metrics,
         JudgementHandlingStrategy.EXIST_RESULTS_AND_JUDGEMENTS_MISSING_AS_ZEROS
-      ))
+      ),
+      ClusterNodeObj
+    )
   }
 
   def requestTemplateForQuery(query: String): RequestTemplate = {

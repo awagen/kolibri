@@ -15,24 +15,24 @@
  */
 
 
-package de.awagen.kolibri.fleet.akka.usecase.searchopt.io.json
+package de.awagen.kolibri.definitions.io.json
 
-import de.awagen.kolibri.definitions.directives.Resource
-import de.awagen.kolibri.definitions.io.json.ResourceJsonProtocol.StructDefs.RESOURCE_JUDGEMENT_PROVIDER_STRUCT_DEF
-import de.awagen.kolibri.definitions.io.json.ResourceJsonProtocol.resourceJudgementProviderFormat
-import de.awagen.kolibri.definitions.usecase.searchopt.io.json.CalculationName.{BINARY_PRECISION_FALSE_AS_YES, BINARY_PRECISION_TRUE_AS_YES, FALSE_COUNT, FIRST_FALSE, FIRST_TRUE, IDENTITY, IR_METRICS, STRING_SEQUENCE_VALUE_OCCURRENCE_HISTOGRAM, TRUE_COUNT}
-import de.awagen.kolibri.definitions.usecase.searchopt.io.json.MetricsCalculationJsonProtocol
-import de.awagen.kolibri.definitions.usecase.searchopt.io.json.MetricsCalculationJsonProtocol.metricsCalculationFormat
-import de.awagen.kolibri.definitions.usecase.searchopt.metrics.Calculations.FromMapCalculation
-import de.awagen.kolibri.definitions.usecase.searchopt.metrics.ComputeResultFunctions.{booleanPrecision, countValues, findFirstValue, stringSeqHistogram}
-import de.awagen.kolibri.definitions.usecase.searchopt.metrics.{ComputeResultFunctions, MetricsCalculation}
-import de.awagen.kolibri.definitions.usecase.searchopt.provider.JudgementProvider
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
 import de.awagen.kolibri.datatypes.types.JsonStructDefs._
 import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
 import de.awagen.kolibri.datatypes.values.Calculations.Calculation
-import de.awagen.kolibri.fleet.akka.usecase.searchopt.metrics.Calculations.JudgementsFromResourceIRMetricsCalculations
+import de.awagen.kolibri.definitions.directives.Resource
+import de.awagen.kolibri.definitions.io.json.ResourceJsonProtocol.StructDefs.RESOURCE_JUDGEMENT_PROVIDER_STRUCT_DEF
+import de.awagen.kolibri.definitions.io.json.ResourceJsonProtocol.resourceJudgementProviderFormat
+import de.awagen.kolibri.definitions.resources.ResourceProvider
+import de.awagen.kolibri.definitions.usecase.searchopt.io.json.CalculationName.{BINARY_PRECISION_FALSE_AS_YES, BINARY_PRECISION_TRUE_AS_YES, FALSE_COUNT, FIRST_FALSE, FIRST_TRUE, IDENTITY, IR_METRICS, STRING_SEQUENCE_VALUE_OCCURRENCE_HISTOGRAM, TRUE_COUNT}
+import de.awagen.kolibri.definitions.usecase.searchopt.io.json.MetricsCalculationJsonProtocol
+import de.awagen.kolibri.definitions.usecase.searchopt.io.json.MetricsCalculationJsonProtocol.metricsCalculationFormat
+import de.awagen.kolibri.definitions.usecase.searchopt.metrics.Calculations.{FromMapCalculation, JudgementsFromResourceIRMetricsCalculations}
+import de.awagen.kolibri.definitions.usecase.searchopt.metrics.ComputeResultFunctions.{booleanPrecision, countValues, findFirstValue, stringSeqHistogram}
+import de.awagen.kolibri.definitions.usecase.searchopt.metrics.{ComputeResultFunctions, MetricsCalculation}
+import de.awagen.kolibri.definitions.usecase.searchopt.provider.JudgementProvider
 import spray.json.{DefaultJsonProtocol, JsValue, JsonFormat, enrichAny}
 
 object CalculationsJsonProtocol extends DefaultJsonProtocol {
@@ -47,6 +47,12 @@ object CalculationsJsonProtocol extends DefaultJsonProtocol {
   val METRICS_CALCULATION_KEY = "metricsCalculation"
   val EXCLUDE_PARAMS_KEY = "excludeParams"
 
+}
+
+case class CalculationsJsonProtocol(resourceProvider: ResourceProvider) {
+
+  import CalculationsJsonProtocol._
+
   implicit object FromMapCalculationsFormat extends JsonFormat[Calculation[WeaklyTypedMap[String], Any]] with WithStructDef {
     val DATA_KEY_KEY = "dataKey"
     val TYPE_KEY = "type"
@@ -55,7 +61,6 @@ object CalculationsJsonProtocol extends DefaultJsonProtocol {
     override def read(json: JsValue): Calculation[WeaklyTypedMap[String], Any] = json match {
       case spray.json.JsObject(fields) =>
         fields(TYPE_KEY).convertTo[String] match {
-          // TODO: generalize ir metric calculation and move the whole protocol to base module
           case IR_METRICS.name =>
             val queryParamName = fields(QUERY_PARAM_NAME_KEY).convertTo[String]
             val productIdsKey = fields(PRODUCT_IDS_KEY_KEY).convertTo[String]
@@ -65,7 +70,8 @@ object CalculationsJsonProtocol extends DefaultJsonProtocol {
               productIdsKey,
               queryParamName,
               judgementsResource,
-              metricsCalculation: MetricsCalculation)
+              metricsCalculation,
+              resourceProvider)
           case IDENTITY.name =>
             val metricName: String = fields(NAME_KEY).convertTo[String]
             val dataKey: String = fields(DATA_KEY_KEY).convertTo[String]

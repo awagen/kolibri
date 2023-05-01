@@ -42,7 +42,6 @@ import de.awagen.kolibri.fleet.akka.actors.clusterinfo.ResourceToJobMappingClust
 import de.awagen.kolibri.fleet.akka.actors.clusterinfo.ResourceToJobMappingClusterStateManagerActor.{ProcessResourceDirectives, ProcessedResourceDirectives}
 import de.awagen.kolibri.fleet.akka.cluster.ClusterNodeObj
 import de.awagen.kolibri.fleet.akka.config.AppConfig.filepathToJudgementProvider
-import de.awagen.kolibri.fleet.akka.usecase.searchopt.metrics.Calculations.JudgementsFromResourceIRMetricsCalculations
 import de.awagen.kolibri.fleet.akka.usecase.searchopt.metrics.CalculationsTestHelper.{NDCG10_NAME, NDCG2_NAME, NDCG5_NAME, PRODUCT_IDS_KEY, requestTemplateForQuery}
 import de.awagen.kolibri.fleet.akka.utils.JudgementInfoTestHelper.judgementsToSuccessJudgementInfo
 import org.scalatest.BeforeAndAfterAll
@@ -124,8 +123,8 @@ class CalculationsSpec extends KolibriTestKitNoCluster
             Metric(NDCG2_NAME, MetricFunction(MetricType.NDCG, 2, IRMetricFunctions.ndcgAtK(2)))
           ),
           JudgementHandlingStrategy.EXIST_RESULTS_AND_JUDGEMENTS_MISSING_AS_ZEROS
-        )
-
+        ),
+        ClusterNodeObj
       )
       val inputData: WeaklyTypedMap[String] = BaseWeaklyTypedMap(mutable.Map.empty)
       inputData.put(REQUEST_TEMPLATE_STORAGE_KEY.name, requestTemplateForQuery("q0"))

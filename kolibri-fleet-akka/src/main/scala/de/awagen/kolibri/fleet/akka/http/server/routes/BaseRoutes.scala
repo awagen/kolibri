@@ -33,6 +33,7 @@ import de.awagen.kolibri.fleet.akka.actors.clusterinfo.ClusterMetricsListenerAct
 import de.awagen.kolibri.fleet.akka.actors.work.aboveall.SupervisorActor
 import de.awagen.kolibri.fleet.akka.actors.work.aboveall.SupervisorActor._
 import de.awagen.kolibri.fleet.akka.config.AppConfig
+import de.awagen.kolibri.fleet.akka.config.AppConfig.JsonFormats.executionFormat
 import de.awagen.kolibri.fleet.akka.config.AppProperties.config.{analyzeTimeout, internalJobStatusRequestTimeout, kolibriDispatcherName}
 import de.awagen.kolibri.fleet.akka.http.server.routes.JobTemplateResourceRoutes.TemplateTypeValidationAndExecutionInfo
 import de.awagen.kolibri.fleet.akka.http.server.routes.StatusRoutes.corsHandler
@@ -53,9 +54,8 @@ import scala.util.Random
   */
 object BaseRoutes {
 
-  implicit val sf: RootJsonFormat[SearchEvaluationDefinition] = AppConfig.JsonFormats.searchEvaluationJsonFormat
-  implicit val qsf: RootJsonFormat[QueryBasedSearchEvaluationDefinition] = AppConfig.JsonFormats.queryBasedSearchEvaluationFormat
-  import de.awagen.kolibri.fleet.akka.io.json.SearchEvaluationJsonProtocol._
+  implicit val sf: RootJsonFormat[SearchEvaluationDefinition] = AppConfig.JsonFormats.searchEvaluationJsonProtocol.SearchEvaluationFormat
+  implicit val qsf: RootJsonFormat[QueryBasedSearchEvaluationDefinition] = AppConfig.JsonFormats.queryBasedSearchEvaluationJsonProtocol.QueryBasedSearchEvaluationFormat
 
   private[this] val logger: Logger = LoggerFactory.getLogger(BaseRoutes.getClass)
 
@@ -198,6 +198,7 @@ object BaseRoutes {
   }
 
   def startSearchEval(implicit system: ActorSystem): Route = {
+    import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
     implicit val ec: ExecutionContextExecutor = system.dispatchers.lookup(kolibriDispatcherName)
     corsHandler(
       path("search_eval") {
@@ -212,6 +213,7 @@ object BaseRoutes {
   }
 
   def startSearchEvalNoSerialize(implicit system: ActorSystem): Route = {
+    import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
     implicit val ec: ExecutionContextExecutor = system.dispatchers.lookup(kolibriDispatcherName)
     corsHandler(
       path("search_eval_no_ser") {
@@ -226,8 +228,8 @@ object BaseRoutes {
   }
 
   def startQueryBasedReducedSearchEvalNoSerialize(implicit system: ActorSystem): Route = {
+    import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
     implicit val ec: ExecutionContextExecutor = system.dispatchers.lookup(kolibriDispatcherName)
-    import de.awagen.kolibri.fleet.akka.io.json.QueryBasedSearchEvaluationJsonProtocol._
     corsHandler(
       path("search_eval_query_reduced") {
         post {
@@ -273,10 +275,9 @@ object BaseRoutes {
   }
 
   def startExecution(implicit system: ActorSystem): Route = {
+    import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
     implicit val timeout: Timeout = Timeout(analyzeTimeout)
     implicit val ec: ExecutionContextExecutor = system.dispatchers.lookup(kolibriDispatcherName)
-    import AppConfig.JsonFormats.executionFormat
-    import de.awagen.kolibri.definitions.io.json.ExecutionJsonProtocol._
 
     corsHandler(
       path("execution") {

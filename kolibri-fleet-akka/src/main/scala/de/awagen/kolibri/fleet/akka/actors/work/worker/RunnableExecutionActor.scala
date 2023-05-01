@@ -210,7 +210,7 @@ class RunnableExecutionActor[U <: WithCount](maxBatchDuration: FiniteDuration,
         // retrieving the runnable graph and running it (in queue mode)
         // instead of materializing the graph per batch, create one time and retrieve the queue from central state keeper
         val outcome = getQueuedRunnableGraphAndSupplier(runnable)
-        val queueAndKillSwitch: Promise[(SourceQueueWithComplete[IndexedGenerator[(Any, Option[ActorRef])]], (UniqueKillSwitch, Future[Done]))] = QueuedRunnableRepository.retrieveValue(key = runningJobId, default = Some(() => outcome._2.run()))
+        val queueAndKillSwitch: Promise[(SourceQueueWithComplete[IndexedGenerator[(Any, Option[ActorRef])]], (UniqueKillSwitch, Future[Done]))] = QueuedRunnableRepository.retrieveValue(retrievalObj = runningJobId, default = Some(() => outcome._2.run()))
         queueAndKillSwitch.future.onComplete(x => {
           // TODO: handle result of offer (might not be accepted)
           x.get._1.offer(outcome._1)

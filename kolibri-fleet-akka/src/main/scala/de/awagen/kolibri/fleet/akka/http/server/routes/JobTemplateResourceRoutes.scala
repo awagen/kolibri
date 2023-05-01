@@ -21,6 +21,8 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives.{as, complete, entity, get, parameters, path, pathPrefix, post}
 import akka.http.scaladsl.server.Route
+import de.awagen.kolibri.fleet.akka.config.AppConfig.JsonFormats.queryBasedSearchEvaluationJsonProtocol.QueryBasedSearchEvaluationFormat
+import de.awagen.kolibri.fleet.akka.config.AppConfig.JsonFormats.searchEvaluationJsonProtocol.SearchEvaluationFormat
 import de.awagen.kolibri.fleet.akka.config.AppConfig.persistenceModule
 import de.awagen.kolibri.fleet.akka.config.AppProperties
 import de.awagen.kolibri.fleet.akka.http.server.routes.StatusRoutes.corsHandler
@@ -45,8 +47,6 @@ object JobTemplateResourceRoutes {
     */
   object TemplateTypeValidationAndExecutionInfo extends Enumeration {
     type TemplateTypeValidationAndExecutionInfo = Val[_]
-
-    import de.awagen.kolibri.fleet.akka.config.AppConfig.JsonFormats.{queryBasedSearchEvaluationFormat, searchEvaluationJsonFormat}
 
     sealed case class Val[+T: TypeTag](requestPath: String)(implicit jsonReader: JsonReader[T]) extends super.Val {
 

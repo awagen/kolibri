@@ -15,15 +15,25 @@
   */
 
 
-package de.awagen.kolibri.fleet.akka.usecase.searchopt.io.json
+package de.awagen.kolibri.definitions.io.json
 
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.datatypes.values.Calculations.Calculation
-import de.awagen.kolibri.fleet.akka.testclasses.UnitTestSpec
-import de.awagen.kolibri.fleet.akka.usecase.searchopt.io.json.CalculationsJsonProtocol.FromMapCalculationsFormat
+import de.awagen.kolibri.definitions.directives.RetrievalDirective
+import de.awagen.kolibri.definitions.resources.{ResourceProvider, RetrievalError}
+import de.awagen.kolibri.definitions.testclasses.UnitTestSpec
 import spray.json._
 
 class CalculationsJsonProtocolSpec extends UnitTestSpec {
+
+  // NOTE: currently dummy provider, adjust to proper one when testing calculation that requests resources
+  val calculationProtocol: CalculationsJsonProtocol = CalculationsJsonProtocol(new ResourceProvider {
+    override def getResource[T](directive: RetrievalDirective.RetrievalDirective[T]): Either[RetrievalError[T], T] = {
+      null
+    }
+  })
+
+  import calculationProtocol._
 
   val IR_METRICS_CALCULATION: JsValue =
     """

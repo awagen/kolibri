@@ -18,7 +18,7 @@
 package de.awagen.kolibri.definitions.io.json
 
 import de.awagen.kolibri.definitions.directives.RetrievalDirective.Retrieve
-import de.awagen.kolibri.definitions.directives.{Resource, ResourceProvider, ResourceType}
+import de.awagen.kolibri.definitions.directives.{Resource, ResourceType}
 import de.awagen.kolibri.definitions.io.json.OrderedValuesJsonProtocol.OrderedValuesStringFormatStruct
 import de.awagen.kolibri.definitions.io.json.SupplierJsonProtocol.JudgementProviderFormatStruct.JUDGEMENTS_FROM_FILE_TYPE
 import de.awagen.kolibri.definitions.usecase.searchopt.provider.JudgementProvider
@@ -28,6 +28,7 @@ import de.awagen.kolibri.datatypes.types.JsonStructDefs._
 import de.awagen.kolibri.datatypes.types.SerializableCallable.{SerializableFunction1, SerializableSupplier}
 import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
 import de.awagen.kolibri.datatypes.values.OrderedValues
+import de.awagen.kolibri.definitions.resources.ResourceProvider
 import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, FileReaderUtils, Reader}
 import org.slf4j.{Logger, LoggerFactory}
 import spray.json._

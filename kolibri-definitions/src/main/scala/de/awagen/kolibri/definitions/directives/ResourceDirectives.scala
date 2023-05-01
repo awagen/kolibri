@@ -17,15 +17,13 @@
 
 package de.awagen.kolibri.definitions.directives
 
-import de.awagen.kolibri.definitions.directives.ExpirePolicy.ExpirePolicy
-import de.awagen.kolibri.definitions.directives.ResourceType.ResourceType
-import de.awagen.kolibri.definitions.directives.RetrievalDirective.RetrievalDirective
-import de.awagen.kolibri.definitions.resources.RetrievalError
-import de.awagen.kolibri.definitions.usecase.searchopt.provider.JudgementProvider
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.types.ClassTyped
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSupplier
+import de.awagen.kolibri.definitions.directives.ExpirePolicy.ExpirePolicy
+import de.awagen.kolibri.definitions.directives.ResourceType.ResourceType
+import de.awagen.kolibri.definitions.usecase.searchopt.provider.JudgementProvider
 
 import scala.collection.mutable
 
@@ -68,13 +66,6 @@ trait WithResources extends KolibriSerializable {
   }
 
 }
-
-trait ResourceProvider {
-
-  def getResource[T](directive: RetrievalDirective[T]): Either[RetrievalError[T], T]
-
-}
-
 
 /**
  * Resource load instructions

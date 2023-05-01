@@ -1,7 +1,7 @@
 package de.awagen.kolibri.definitions.io.json
 
-import de.awagen.kolibri.definitions.directives.{ResourceProvider, RetrievalDirective}
-import de.awagen.kolibri.definitions.resources.RetrievalError
+import de.awagen.kolibri.definitions.directives.RetrievalDirective
+import de.awagen.kolibri.definitions.resources.{ResourceProvider, RetrievalError}
 import de.awagen.kolibri.definitions.usecase.searchopt.parse.JsonSelectors.{PlainAndRecursiveSelector, PlainPathSelector}
 import de.awagen.kolibri.definitions.usecase.searchopt.parse.TypedJsonSelectors.{NamedAndTypedSelector, TypedJsonSeqSelector, TypedJsonSingleValueSelector}
 import de.awagen.kolibri.definitions.usecase.searchopt.provider.{FileBasedJudgementProvider, JudgementProvider}

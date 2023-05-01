@@ -587,7 +587,7 @@ class SerializationSpec extends KolibriTypedTestKitNoCluster(ConfigOverwrites.co
 
   override val invokeBeforeAllAndAfterAllEvenIfNoTestsAreExpected = true
 
-  implicit val evalFormat = AppConfig.JsonFormats.searchEvaluationJsonFormat
+  implicit val evalFormat: JsonFormat[SearchEvaluationDefinition] = AppConfig.JsonFormats.searchEvaluationJsonProtocol.SearchEvaluationFormat
   implicit val valueSeqFormat: JsonFormat[ValueSeqGenDefinition[_]] = AppConfig.JsonFormats.parameterValueJsonProtocol.ValueSeqGenDefinitionFormat
 
   def serializeAndBack(original: AnyRef): AnyRef = {
