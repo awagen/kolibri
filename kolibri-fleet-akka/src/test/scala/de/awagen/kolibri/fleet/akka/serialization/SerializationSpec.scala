@@ -27,7 +27,7 @@ import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSupplier
 import de.awagen.kolibri.fleet.akka.actors.KolibriTypedTestKitNoCluster
 import de.awagen.kolibri.fleet.akka.config.AppConfig
-import de.awagen.kolibri.fleet.akka.processing.JobMessages.SearchEvaluationDefinition
+import de.awagen.kolibri.definitions.processing.JobMessages.SearchEvaluationDefinition
 import spray.json._
 
 object ConfigOverwrites {

@@ -49,7 +49,7 @@ import de.awagen.kolibri.fleet.akka.cluster.ClusterNode
 import de.awagen.kolibri.fleet.akka.config.AppProperties._
 import de.awagen.kolibri.fleet.akka.config.AppProperties.config.kolibriDispatcherName
 import de.awagen.kolibri.fleet.akka.jobdefinitions.TestJobDefinitions.MapWithCount
-import de.awagen.kolibri.fleet.akka.processing.JobMessages.{SearchEvaluationDefinition, TestPiCalculationDefinition}
+import de.awagen.kolibri.definitions.processing.JobMessages.{SearchEvaluationDefinition, TestPiCalculationDefinition}
 import de.awagen.kolibri.fleet.akka.processing.JobMessagesImplicits.{SearchEvaluationImplicits, TestPiCalcToRunnable}
 import de.awagen.kolibri.storage.io.writer.Writers.Writer
 import org.slf4j.{Logger, LoggerFactory}

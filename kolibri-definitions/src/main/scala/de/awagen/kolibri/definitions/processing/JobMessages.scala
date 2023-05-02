@@ -15,8 +15,21 @@
  */
 
 
-package de.awagen.kolibri.fleet.akka.processing
+package de.awagen.kolibri.definitions.processing
 
+import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
+import de.awagen.kolibri.datatypes.io.KolibriSerializable
+import de.awagen.kolibri.datatypes.metrics.aggregation.writer.MetricDocumentFormat
+import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
+import de.awagen.kolibri.datatypes.stores.MetricRow
+import de.awagen.kolibri.datatypes.tagging.TagType.AGGREGATION
+import de.awagen.kolibri.datatypes.tagging.Tags.Tag
+import de.awagen.kolibri.datatypes.types.JsonTypeCast
+import de.awagen.kolibri.datatypes.types.SerializableCallable.{SerializableConsumer, SerializableFunction1, SerializableSupplier}
+import de.awagen.kolibri.datatypes.utils.MapUtils
+import de.awagen.kolibri.datatypes.values.Calculations.Calculation
+import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType
+import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType.AggregationType
 import de.awagen.kolibri.definitions.directives.ResourceDirectives.{GenericResourceDirective, ResourceDirective}
 import de.awagen.kolibri.definitions.directives.{ExpirePolicy, Resource, ResourceType, WithResources}
 import de.awagen.kolibri.definitions.domain.Connections.Connection
@@ -29,28 +42,18 @@ import de.awagen.kolibri.definitions.processing.modifiers.ParameterValues.ValueS
 import de.awagen.kolibri.definitions.processing.tagging.TaggingConfigurations
 import de.awagen.kolibri.definitions.processing.tagging.TaggingConfigurations.{BaseTaggingConfiguration, EitherThrowableOrTaggedWeaklyTypedMapStore, TaggedMetricRowStore, TaggedRequestTemplateStore}
 import de.awagen.kolibri.definitions.provider.WeightProviders
+import de.awagen.kolibri.definitions.resources.ResourceProvider
+import de.awagen.kolibri.definitions.usecase.searchopt.metrics.Calculations.JudgementsFromResourceIRMetricsCalculations
 import de.awagen.kolibri.definitions.usecase.searchopt.metrics.MetricsCalculation.AVAILABLE_JUDGEMENT_METRICS_NAME_TO_TYPE_MAPPING
 import de.awagen.kolibri.definitions.usecase.searchopt.metrics.{IRMetricFunctions, JudgementHandlingStrategy, Metric, MetricsCalculation}
 import de.awagen.kolibri.definitions.usecase.searchopt.parse.JsonSelectors.JsValueSeqSelector
 import de.awagen.kolibri.definitions.usecase.searchopt.parse.TypedJsonSelectors.{NamedAndTypedSelector, TypedJsonSeqSelector}
 import de.awagen.kolibri.definitions.usecase.searchopt.parse.{JsonSelectors, ParsingConfig}
 import de.awagen.kolibri.definitions.usecase.searchopt.provider.JudgementProvider
-import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
-import de.awagen.kolibri.datatypes.io.KolibriSerializable
-import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
-import de.awagen.kolibri.datatypes.stores.MetricRow
-import de.awagen.kolibri.datatypes.tagging.TagType.AGGREGATION
-import de.awagen.kolibri.datatypes.tagging.Tags.Tag
-import de.awagen.kolibri.datatypes.types.JsonTypeCast
-import de.awagen.kolibri.datatypes.types.SerializableCallable.{SerializableConsumer, SerializableFunction1, SerializableSupplier}
-import de.awagen.kolibri.datatypes.utils.MapUtils
-import de.awagen.kolibri.datatypes.values.Calculations.Calculation
-import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType
-import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType.AggregationType
-import de.awagen.kolibri.definitions.usecase.searchopt.metrics.Calculations.JudgementsFromResourceIRMetricsCalculations
-import de.awagen.kolibri.fleet.akka.cluster.ClusterNodeObj
-import de.awagen.kolibri.fleet.akka.config.AppConfig.filepathToJudgementProvider
-import de.awagen.kolibri.fleet.akka.config.{AppConfig, AppProperties}
+import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, Reader}
+import de.awagen.kolibri.storage.io.writer.Writers.Writer
+
+import scala.util.matching.Regex
 
 object JobMessages {
 
@@ -123,28 +126,35 @@ object JobMessages {
                                                   contextPath: String,
                                                   queryParameter: String,
                                                   productIdSelector: String,
+                                                  resourceProvider: ResourceProvider,
+                                                  fileToJudgementProviderFunc: SerializableFunction1[String, JudgementProvider[Double]],
+                                                  wrapUpRegexToOverviewReaderFunc: SerializableFunction1[Regex, DataOverviewReader],
+                                                  reader: Reader[String, Seq[String]],
+                                                  writer: Writer[String, String, _],
+                                                  metricDocumentFormatsMap: Map[String, MetricDocumentFormat],
                                                   otherSelectors: Seq[NamedAndTypedSelector[_]],
                                                   otherCalculations: Seq[Calculation[WeaklyTypedMap[String], Any]],
                                                   otherMetricNameToAggregationTypeMapping: Map[String, AggregationType],
                                                   judgementFilePath: String,
                                                   requestParameters: Seq[ValueSeqGenDefinition[_]],
                                                   excludeParamColumns: Seq[String],
+                                                  outputResultsPath: String,
+                                                  allowedTimePerElementInMillis: Int,
+                                                  allowedTimePerBatchInSeconds: Int,
+                                                  allowedTimeForJobInSeconds: Int
                                                  ) extends JobDefinition with WithResources {
     val kolibriJudgementsResourceKey = s"KOLIBRI_JUDGEMENTS-job=$jobName"
     val productIdsKey = "productIds"
     val requestTasks: Int = 4
-    val judgementSupplier: SerializableSupplier[JudgementProvider[Double]] = new SerializableSupplier[JudgementProvider[Double]] {
-      override def apply(): JudgementProvider[Double] = {
-        filepathToJudgementProvider(judgementFilePath)
-      }
-    }
     val resourceDirectives: Seq[ResourceDirective[_]] = Seq(
       GenericResourceDirective(
         new Resource[JudgementProvider[Double]](
           ResourceType.JUDGEMENT_PROVIDER,
           kolibriJudgementsResourceKey
         ),
-        judgementSupplier,
+        new SerializableSupplier[JudgementProvider[Double]] {
+          override def apply(): JudgementProvider[Double] = fileToJudgementProviderFunc.apply(judgementFilePath)
+        },
         ExpirePolicy.ON_JOB_END
       )
     )
@@ -182,7 +192,7 @@ object JobMessages {
           ),
           JudgementHandlingStrategy.EXIST_RESULTS_AND_JUDGEMENTS_MISSING_AS_ZEROS
         ),
-        ClusterNodeObj
+        resourceProvider
       )
     ) ++ otherCalculations
     val defaultAggregatorMappings: Map[String, AggregationType.Val[Double]] = Map(
@@ -215,23 +225,19 @@ object JobMessages {
         resultTagger = resultTaggerConfig
       )
     )
-    // TODO: remove dependency on the persistenceModule
     val wrapUpFunction: Option[Execution[Any]] = Some(
       AggregateFromDirectoryByRegexWeighted(
-        regex => AppConfig.persistenceModule.persistenceDIModule.dataOverviewReader(s => regex.matches(s)),
-        AppConfig.persistenceModule.persistenceDIModule.reader,
-        AppConfig.persistenceModule.persistenceDIModule.writer,
-        AppProperties.config.metricDocumentFormatsMap,
-        s"${AppProperties.config.outputResultsPath.getOrElse("")}/$jobName",
-        s"${AppProperties.config.outputResultsPath.getOrElse("")}/$jobName",
+        wrapUpRegexToOverviewReaderFunc,
+        reader,
+        writer,
+        metricDocumentFormatsMap,
+        s"$outputResultsPath/$jobName",
+        s"$outputResultsPath/$jobName",
         s".*[(]$queryParameter=.+[)].*".r,
         WeightProviders.ConstantWeightProvider(1.0),
         "(ALL)"
       )
     )
-    val allowedTimePerElementInMillis: Int = AppProperties.config.allowedTimePerElementInMillis
-    val allowedTimePerBatchInSeconds: Int = AppProperties.config.allowedTimePerBatchInSeconds
-    val allowedTimeForJobInSeconds: Int = AppProperties.config.allowedTimePerJobInSeconds
     val expectResultsFromBatchCalculations: Boolean = false
   }
 }

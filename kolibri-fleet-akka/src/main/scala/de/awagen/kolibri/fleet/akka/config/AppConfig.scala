@@ -34,7 +34,6 @@ import de.awagen.kolibri.fleet.akka.cluster.ClusterNodeObj
 import de.awagen.kolibri.fleet.akka.config.AppProperties.config._
 import de.awagen.kolibri.fleet.akka.config.di.modules.connections.HttpModule
 import de.awagen.kolibri.fleet.akka.config.di.modules.persistence.PersistenceModule
-import de.awagen.kolibri.fleet.akka.io.json._
 import de.awagen.kolibri.storage.io.reader.DataOverviewReader
 import spray.json.RootJsonFormat
 
@@ -93,16 +92,38 @@ object AppConfig {
 
     implicit val calculationsJsonProtocol: CalculationsJsonProtocol = CalculationsJsonProtocol(ClusterNodeObj)
 
+    val fileToJudgementFunc: SerializableFunction1[String, JudgementProvider[Double]] = new SerializableFunction1[String, JudgementProvider[Double]] {
+      override def apply(filePath: String): JudgementProvider[Double] = {
+        filepathToJudgementProvider(filePath)
+      }
+    }
+
+    implicit val connectionFormatStruct: ConnectionFormatStruct = ConnectionFormatStruct(
+      AppProperties.config.allowedRequestTargetHosts,
+      AppProperties.config.allowedRequestTargetPorts
+    )
+
     implicit val queryBasedSearchEvaluationJsonProtocol: QueryBasedSearchEvaluationJsonProtocol = QueryBasedSearchEvaluationJsonProtocol(
       parameterValueJsonProtocol,
-      calculationsJsonProtocol
+      calculationsJsonProtocol,
+      ClusterNodeObj,
+      fileToJudgementFunc,
+      regex => AppConfig.persistenceModule.persistenceDIModule.dataOverviewReader(s => regex.matches(s)),
+      AppConfig.persistenceModule.persistenceDIModule.reader,
+      AppConfig.persistenceModule.persistenceDIModule.writer,
+      AppProperties.config.metricDocumentFormatsMap,
+      AppProperties.config.outputResultsPath.getOrElse(""),
+      AppProperties.config.allowedTimePerElementInMillis,
+      AppProperties.config.allowedTimePerBatchInSeconds,
+      AppProperties.config.allowedTimePerJobInSeconds,
+      connectionFormatStruct
     )
 
     implicit val resourceDirectiveJsonProtocol: ResourceDirectiveJsonProtocol = ResourceDirectiveJsonProtocol(supplierJsonProtocol)
 
     implicit val searchEvaluationJsonProtocol: SearchEvaluationJsonProtocol = {
       SearchEvaluationJsonProtocol(executionFormat, resourceDirectiveJsonProtocol,
-        parameterValueJsonProtocol, calculationsJsonProtocol)
+        parameterValueJsonProtocol, calculationsJsonProtocol, connectionFormatStruct)
     }
 
     implicit val generatorJsonProtocol: IndexedGeneratorJsonProtocol = IndexedGeneratorJsonProtocol(
@@ -127,12 +148,6 @@ object AppConfig {
     implicit val seqModifierGeneratorJsonProtocol: SeqModifierGeneratorJsonProtocol = SeqModifierGeneratorJsonProtocol(
       modifierGeneratorProviderJsonProtocol
     )
-
-    implicit val connectionFormatStruct: ConnectionFormatStruct = ConnectionFormatStruct(
-      AppProperties.config.allowedRequestTargetHosts,
-      AppProperties.config.allowedRequestTargetPorts
-    )
-
   }
 
   val persistenceModule: PersistenceModule = wire[PersistenceModule]

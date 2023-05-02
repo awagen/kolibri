@@ -43,7 +43,7 @@ import de.awagen.kolibri.fleet.akka.config.AppProperties.config.{kolibriBlocking
 import de.awagen.kolibri.fleet.akka.execution.expectation.ExecutionExpectations.finishedJobExecutionExpectation
 import de.awagen.kolibri.fleet.akka.execution.job.ActorRunnable
 import de.awagen.kolibri.fleet.akka.execution.task.utils.TaskUtils
-import de.awagen.kolibri.fleet.akka.processing.JobMessages.{JobDefinition, SearchEvaluationDefinition}
+import de.awagen.kolibri.definitions.processing.JobMessages.{JobDefinition, SearchEvaluationDefinition}
 import de.awagen.kolibri.fleet.akka.processing.JobMessagesImplicits.{SearchEvaluationImplicits, TestPiCalcToRunnable}
 import de.awagen.kolibri.storage.io.writer.Writers.Writer
 

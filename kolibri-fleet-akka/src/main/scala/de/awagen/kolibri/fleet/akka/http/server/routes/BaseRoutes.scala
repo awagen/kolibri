@@ -38,7 +38,7 @@ import de.awagen.kolibri.fleet.akka.config.AppProperties.config.{analyzeTimeout,
 import de.awagen.kolibri.fleet.akka.http.server.routes.JobTemplateResourceRoutes.TemplateTypeValidationAndExecutionInfo
 import de.awagen.kolibri.fleet.akka.http.server.routes.StatusRoutes.corsHandler
 import de.awagen.kolibri.fleet.akka.jobdefinitions.TestJobDefinitions
-import de.awagen.kolibri.fleet.akka.processing.JobMessages.{QueryBasedSearchEvaluationDefinition, SearchEvaluationDefinition, TestPiCalculationDefinition}
+import de.awagen.kolibri.definitions.processing.JobMessages.{QueryBasedSearchEvaluationDefinition, SearchEvaluationDefinition, TestPiCalculationDefinition}
 import de.awagen.kolibri.fleet.akka.processing.JobMessagesImplicits.QueryBasedSearchEvaluationImplicits
 import de.awagen.kolibri.fleet.akka.usecase.searchopt.jobdefinitions.SearchJobDefinitions
 import org.slf4j.{Logger, LoggerFactory}

@@ -15,13 +15,15 @@
  */
 
 
-package de.awagen.kolibri.fleet.akka.io.json
+package de.awagen.kolibri.definitions.io.json
 
 import de.awagen.kolibri.datatypes.io.json.EnumerationJsonProtocol.aggregateTypeFormat
+import de.awagen.kolibri.datatypes.metrics.aggregation.writer.MetricDocumentFormat
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
 import de.awagen.kolibri.datatypes.types.JsonStructDefs._
+import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
 import de.awagen.kolibri.datatypes.values.Calculations.Calculation
 import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType.AggregationType
@@ -29,22 +31,26 @@ import de.awagen.kolibri.definitions.directives.ResourceDirectives.ResourceDirec
 import de.awagen.kolibri.definitions.domain.Connections.Connection
 import de.awagen.kolibri.definitions.http.client.request.RequestTemplate
 import de.awagen.kolibri.definitions.io.json.ConnectionJsonProtocol.connectionFormat
+import de.awagen.kolibri.definitions.io.json.FIELD_KEYS._
 import de.awagen.kolibri.definitions.io.json.ResourceDirectiveJsonProtocol.GenericResourceDirectiveFormatStruct
 import de.awagen.kolibri.definitions.io.json.TaggingConfigurationsJsonProtocol.TaggingConfigurationJsonFormat
-import de.awagen.kolibri.definitions.io.json.{CalculationsJsonProtocol, ExecutionJsonProtocol, ParameterValuesJsonProtocol, ResourceDirectiveJsonProtocol}
+import de.awagen.kolibri.definitions.processing.JobMessages.{QueryBasedSearchEvaluationDefinition, SearchEvaluationDefinition}
 import de.awagen.kolibri.definitions.processing.execution.functions.Execution
 import de.awagen.kolibri.definitions.processing.modifiers.ParameterValues.ValueSeqGenDefinition
 import de.awagen.kolibri.definitions.processing.tagging.TaggingConfigurations.BaseTaggingConfiguration
+import de.awagen.kolibri.definitions.resources.ResourceProvider
 import de.awagen.kolibri.definitions.usecase.searchopt.io.json.JsonSelectorJsonProtocol.NamedAndTypedSelectorFormat
 import de.awagen.kolibri.definitions.usecase.searchopt.io.json.ParsingConfigJsonProtocol.parsingConfigJsonFormat
 import de.awagen.kolibri.definitions.usecase.searchopt.io.json.{JsonSelectorJsonProtocol, ParsingConfigJsonProtocol}
 import de.awagen.kolibri.definitions.usecase.searchopt.parse.JsonSelectors.JsonSelectorPathRegularExpressions.recursivePathKeyGroupingRegex
 import de.awagen.kolibri.definitions.usecase.searchopt.parse.ParsingConfig
 import de.awagen.kolibri.definitions.usecase.searchopt.parse.TypedJsonSelectors.NamedAndTypedSelector
-import de.awagen.kolibri.fleet.akka.config.AppConfig
-import de.awagen.kolibri.fleet.akka.io.json.FIELD_KEYS._
-import de.awagen.kolibri.fleet.akka.processing.JobMessages.{QueryBasedSearchEvaluationDefinition, SearchEvaluationDefinition}
+import de.awagen.kolibri.definitions.usecase.searchopt.provider.JudgementProvider
+import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, Reader}
+import de.awagen.kolibri.storage.io.writer.Writers.Writer
 import spray.json.{DefaultJsonProtocol, JsValue, JsonFormat, RootJsonFormat}
+
+import scala.util.matching.Regex
 
 
 object FIELD_KEYS {
@@ -83,7 +89,8 @@ object SearchEvaluationJsonProtocol extends DefaultJsonProtocol {}
 case class SearchEvaluationJsonProtocol(executionFormat: RootJsonFormat[Execution[Any]],
                                         resourceDirectiveJsonProtocol: ResourceDirectiveJsonProtocol,
                                         parameterValuesJsonProtocol: ParameterValuesJsonProtocol,
-                                        calculationsJsonProtocol: CalculationsJsonProtocol) extends WithStructDef {
+                                        calculationsJsonProtocol: CalculationsJsonProtocol,
+                                        connectionFormatStruct: ConnectionFormatStruct) extends WithStructDef {
   import SearchEvaluationJsonProtocol._
 
 
@@ -192,7 +199,7 @@ case class SearchEvaluationJsonProtocol(executionFormat: RootJsonFormat[Executio
         ),
         FieldDef(
           StringConstantStructDef(CONNECTIONS_FIELD),
-          GenericSeqStructDef(AppConfig.JsonFormats.connectionFormatStruct.structDef),
+          GenericSeqStructDef(connectionFormatStruct.structDef),
           required = true,
           description = "The connections to utilize for sending requests. Can be very useful in cases such as when " +
             "multiple clusters of the requested system are available. In this case all of them can be requested and such " +
@@ -312,7 +319,19 @@ case class SearchEvaluationJsonProtocol(executionFormat: RootJsonFormat[Executio
 object QueryBasedSearchEvaluationJsonProtocol extends DefaultJsonProtocol
 
 case class QueryBasedSearchEvaluationJsonProtocol(parameterValuesJsonProtocol: ParameterValuesJsonProtocol,
-                                                  calculationsJsonProtocol: CalculationsJsonProtocol) extends WithStructDef {
+                                                  calculationsJsonProtocol: CalculationsJsonProtocol,
+                                                  resourceProvider: ResourceProvider,
+                                                  fileToJudgementProviderFunc: SerializableFunction1[String, JudgementProvider[Double]],
+                                                  wrapUpRegexToOverviewReaderFunc: SerializableFunction1[Regex, DataOverviewReader],
+                                                  reader: Reader[String, Seq[String]],
+                                                  writer: Writer[String, String, _],
+                                                  metricDocumentFormatsMap: Map[String, MetricDocumentFormat],
+                                                  outputResultsPath: String,
+                                                  allowedTimePerElementInMillis: Int,
+                                                  allowedTimePerBatchInSeconds: Int,
+                                                  allowedTimeForJobInSeconds: Int,
+                                                  connectionFormatStruct: ConnectionFormatStruct
+                                                 ) extends WithStructDef {
 
   import QueryBasedSearchEvaluationJsonProtocol._
 
@@ -341,12 +360,22 @@ case class QueryBasedSearchEvaluationJsonProtocol(parameterValuesJsonProtocol: P
           contextPath,
           queryParameter,
           productIdSelector,
+          resourceProvider,
+          fileToJudgementProviderFunc,
+          wrapUpRegexToOverviewReaderFunc,
+          reader,
+          writer,
+          metricDocumentFormatsMap,
           otherSelectors,
           otherCalculations,
           otherMetricNameToAggregationTypeMapping,
           judgementFilePath,
           requestParameters,
-          excludeParamColumns
+          excludeParamColumns,
+          outputResultsPath,
+          allowedTimePerElementInMillis,
+          allowedTimePerBatchInSeconds,
+          allowedTimeForJobInSeconds
         ),
       JOB_NAME_FIELD,
       CONNECTIONS_FIELD,
@@ -378,7 +407,7 @@ case class QueryBasedSearchEvaluationJsonProtocol(parameterValuesJsonProtocol: P
         ),
         FieldDef(
           StringConstantStructDef(CONNECTIONS_FIELD),
-          GenericSeqStructDef(AppConfig.JsonFormats.connectionFormatStruct.structDef),
+          GenericSeqStructDef(connectionFormatStruct.structDef),
           required = true,
           description = "The connections to utilize for sending requests. Can be very useful in cases such as when " +
             "multiple clusters of the requested system are available. In this case all of them can be requested and such " +
@@ -420,7 +449,7 @@ case class QueryBasedSearchEvaluationJsonProtocol(parameterValuesJsonProtocol: P
         FieldDef(
           StringConstantStructDef(OTHER_CALCULATIONS_FIELD),
           GenericSeqStructDef(
-            AppConfig.JsonFormats.calculationsJsonProtocol.FromMapCalculationsFormat.structDef
+            calculationsJsonProtocol.FromMapCalculationsFormat.structDef
           ),
           required = true,
           description = "Calculations to be executed. Here the fields extracted in the parsingConfig are referenced. " +

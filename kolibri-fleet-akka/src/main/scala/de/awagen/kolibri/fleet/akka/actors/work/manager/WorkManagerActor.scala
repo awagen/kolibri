@@ -48,7 +48,7 @@ import de.awagen.kolibri.fleet.akka.config.AppProperties
 import de.awagen.kolibri.fleet.akka.config.AppProperties.config
 import de.awagen.kolibri.fleet.akka.config.AppProperties.config.kolibriDispatcherName
 import de.awagen.kolibri.fleet.akka.execution.job.ActorRunnable
-import de.awagen.kolibri.fleet.akka.processing.JobMessages.{SearchEvaluationDefinition, TestPiCalculationDefinition}
+import de.awagen.kolibri.definitions.processing.JobMessages.{SearchEvaluationDefinition, TestPiCalculationDefinition}
 import de.awagen.kolibri.fleet.akka.processing.JobMessagesImplicits.{SearchEvaluationImplicits, TestPiCalcToRunnable}
 import de.awagen.kolibri.storage.io.writer.Writers
 

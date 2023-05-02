@@ -21,7 +21,7 @@ import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.stream.scaladsl.Flow
 import de.awagen.kolibri.definitions.http.client.request.RequestTemplateBuilder
-import de.awagen.kolibri.fleet.akka.processing.JobMessages.SearchEvaluationDefinition
+import de.awagen.kolibri.definitions.processing.JobMessages.SearchEvaluationDefinition
 import de.awagen.kolibri.definitions.processing.ProcessingMessages
 import de.awagen.kolibri.definitions.processing.ProcessingMessages.{AggregationStateWithData, AggregationStateWithoutData, Corn, ProcessingMessage}
 import de.awagen.kolibri.definitions.processing.classifier.Mapper.AcceptAllAsIdentityMapper

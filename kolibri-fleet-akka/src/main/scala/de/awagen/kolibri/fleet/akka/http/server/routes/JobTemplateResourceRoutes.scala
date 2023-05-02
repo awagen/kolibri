@@ -26,7 +26,7 @@ import de.awagen.kolibri.fleet.akka.config.AppConfig.JsonFormats.searchEvaluatio
 import de.awagen.kolibri.fleet.akka.config.AppConfig.persistenceModule
 import de.awagen.kolibri.fleet.akka.config.AppProperties
 import de.awagen.kolibri.fleet.akka.http.server.routes.StatusRoutes.corsHandler
-import de.awagen.kolibri.fleet.akka.processing.JobMessages.{QueryBasedSearchEvaluationDefinition, SearchEvaluationDefinition}
+import de.awagen.kolibri.definitions.processing.JobMessages.{QueryBasedSearchEvaluationDefinition, SearchEvaluationDefinition}
 import de.awagen.kolibri.storage.io.reader.ReaderUtils.safeContentRead
 import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, Reader}
 import de.awagen.kolibri.storage.io.writer.Writers
