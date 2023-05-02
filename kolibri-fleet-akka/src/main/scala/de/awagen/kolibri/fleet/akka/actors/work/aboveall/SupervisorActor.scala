@@ -18,13 +18,6 @@ package de.awagen.kolibri.fleet.akka.actors.work.aboveall
 
 import akka.actor.SupervisorStrategy.Stop
 import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, ActorSystem, Cancellable, OneForOneStrategy, PoisonPill, Props, Terminated}
-import de.awagen.kolibri.definitions.domain.jobdefinitions.Batch
-import de.awagen.kolibri.definitions.processing.ProcessingMessages.{JobStatusInfo, ProcessingMessage}
-import de.awagen.kolibri.definitions.processing.classifier.Mapper.FilteringMapper
-import de.awagen.kolibri.definitions.processing.execution.SimpleTaskExecution
-import de.awagen.kolibri.definitions.processing.execution.expectation._
-import de.awagen.kolibri.definitions.processing.execution.functions.Execution
-import de.awagen.kolibri.definitions.processing.execution.task.Task
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.mutable.stores.TypeTaggedMap
@@ -34,16 +27,23 @@ import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.types.ClassTyped
 import de.awagen.kolibri.datatypes.types.Types.WithCount
 import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
+import de.awagen.kolibri.definitions.domain.jobdefinitions.Batch
+import de.awagen.kolibri.definitions.processing.JobMessages.{JobDefinition, SearchEvaluationDefinition}
+import de.awagen.kolibri.definitions.processing.ProcessingMessages.{JobStatusInfo, ProcessingMessage, ProcessingResult}
+import de.awagen.kolibri.definitions.processing.classifier.Mapper.FilteringMapper
+import de.awagen.kolibri.definitions.processing.execution.SimpleTaskExecution
+import de.awagen.kolibri.definitions.processing.execution.expectation.ExecutionExpectations.finishedJobExecutionExpectation
+import de.awagen.kolibri.definitions.processing.execution.expectation._
+import de.awagen.kolibri.definitions.processing.execution.functions.Execution
+import de.awagen.kolibri.definitions.processing.execution.task.Task
 import de.awagen.kolibri.fleet.akka.actors.work.aboveall.SupervisorActor._
 import de.awagen.kolibri.fleet.akka.actors.work.manager.JobManagerActor
 import de.awagen.kolibri.fleet.akka.actors.work.manager.JobManagerActor._
 import de.awagen.kolibri.fleet.akka.actors.work.worker.TaskExecutionWorkerActor
 import de.awagen.kolibri.fleet.akka.config.AppProperties._
 import de.awagen.kolibri.fleet.akka.config.AppProperties.config.{kolibriBlockingDispatcherName, kolibriDispatcherName}
-import de.awagen.kolibri.fleet.akka.execution.expectation.ExecutionExpectations.finishedJobExecutionExpectation
 import de.awagen.kolibri.fleet.akka.execution.job.ActorRunnable
 import de.awagen.kolibri.fleet.akka.execution.task.utils.TaskUtils
-import de.awagen.kolibri.definitions.processing.JobMessages.{JobDefinition, SearchEvaluationDefinition}
 import de.awagen.kolibri.fleet.akka.processing.JobMessagesImplicits.{SearchEvaluationImplicits, TestPiCalcToRunnable}
 import de.awagen.kolibri.storage.io.writer.Writers.Writer
 
@@ -55,6 +55,9 @@ import scala.concurrent.{ExecutionContextExecutor, Future}
 object SupervisorActor {
 
   def props(returnResponseToSender: Boolean): Props = Props(SupervisorActor(returnResponseToSender))
+
+  val jobSuccessCriterion: FinishedJobEvent => Boolean = e => e.jobStatusInfo.resultSummary.result == ProcessingResult.SUCCESS
+  val jobFailCriterion: FinishedJobEvent => Boolean = e => e.jobStatusInfo.resultSummary.result == ProcessingResult.FAILURE
 
   val JOB_HISTORY_PRIORITY_STORE_KEY = "jobs"
   val finishedJobStateOrdering: Ordering[JobStatusInfo] = (x, y) => {
@@ -219,7 +222,11 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
         // job manager actor stopped
         context.watch(actor)
         actor ! ProcessJobCmd(job.processElements)
-        val expectation = finishedJobExecutionExpectation(job.allowedTimeForJob)
+        val expectation = finishedJobExecutionExpectation(
+          job.allowedTimeForJob,
+          jobSuccessCriterion,
+          jobFailCriterion
+        )
         expectation.init
         jobIdToActorRefAndExpectation(jobId) = (ActorSetup(actor, jobSender), expectation)
       }
@@ -238,14 +245,22 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
             val actor = runnableJobCmdToJobManager(e.jobName, runnable)
             context.watch(actor)
             actor ! e
-            val expectation = finishedJobExecutionExpectation(runnable.allowedTimeForJob)
+            val expectation = finishedJobExecutionExpectation(
+              runnable.allowedTimeForJob,
+              jobSuccessCriterion,
+              jobFailCriterion
+            )
             expectation.init
             jobIdToActorRefAndExpectation(e.jobName) = (ActorSetup(actor, jobSender), expectation)
           case msg: SearchEvaluationDefinition =>
             val actor = runnableJobCmdToJobManager(msg.jobName, msg)
             context.watch(actor)
             actor ! e
-            val expectation = finishedJobExecutionExpectation(FiniteDuration(msg.allowedTimeForJobInSeconds, SECONDS))
+            val expectation = finishedJobExecutionExpectation(
+              FiniteDuration(msg.allowedTimeForJobInSeconds, SECONDS),
+              jobSuccessCriterion,
+              jobFailCriterion
+            )
             expectation.init
             jobIdToActorRefAndExpectation(e.jobName) = (ActorSetup(actor, jobSender), expectation)
         }
@@ -279,7 +294,11 @@ case class SupervisorActor(returnResponseToSender: Boolean) extends Actor with A
           job.allowedTimePerBatch)
         context.watch(actor)
         actor ! ProcessJobCmd(mappedIterable)
-        val expectation = finishedJobExecutionExpectation(job.allowedTimeForJob)
+        val expectation = finishedJobExecutionExpectation(
+          job.allowedTimeForJob,
+          jobSuccessCriterion,
+          jobFailCriterion
+        )
         expectation.init
         jobIdToActorRefAndExpectation(jobId) = (ActorSetup(actor, jobSender), expectation)
       }
