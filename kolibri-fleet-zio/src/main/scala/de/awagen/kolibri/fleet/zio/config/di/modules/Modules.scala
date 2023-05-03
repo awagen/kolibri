@@ -17,16 +17,11 @@
 
 package de.awagen.kolibri.fleet.zio.config.di.modules
 
-import akka.actor.{ActorSystem, ClassicActorSystemProvider}
-import akka.stream.scaladsl.Flow
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
 import de.awagen.kolibri.datatypes.tagging.Tags
-import de.awagen.kolibri.definitions.domain.Connections.Host
 import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, Reader}
 import de.awagen.kolibri.storage.io.writer.Writers.Writer
 
-import scala.concurrent.Future
-import scala.util.Try
 import scala.util.matching.Regex
 
 object Modules {

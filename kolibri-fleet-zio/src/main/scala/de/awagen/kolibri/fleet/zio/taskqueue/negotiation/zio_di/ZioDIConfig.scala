@@ -97,7 +97,7 @@ object ZioDIConfig {
           if (existingClaimsForJob.nonEmpty) ClaimFilingStatus.OTHER_CLAIM_EXISTS
           else {
             val jobString = job.toJson.toString()
-            val targetFilePath = Files.jobToClaimFilePath(job)
+            val targetFilePath = s"${Directories.jobToClaimSubFolder(job)}/${job.batchNr}"
             // TODO: bake this into a writer service and initialize all services centrally in
             // a DI config (zio layer or macWire)
             val persistResult: Either[Exception, _] = AppConfig.persistenceModule.persistenceDIModule.writer
@@ -145,8 +145,7 @@ object ZioDIConfig {
             taskFile <- ZIO.attemptBlockingIO(
               AppConfig.persistenceModule.persistenceDIModule
                 .dataOverviewReader(_ => true)
-                .listResources(Directories.jobToOpenTaskSubFolder(job),
-                  name => name == Files.openTaskFilePath(job).split("/").last)
+                .listResources(Directories.jobToOpenTaskSubFolder(job), name => name == s"${job.batchNr}")
                 .last
             )
             taskFileContent <- ZIO.attemptBlockingIO(
@@ -156,7 +155,7 @@ object ZioDIConfig {
             // move task to in progress tasks
             toInProgressWriteResult <- ZIO.attemptBlockingIO(
               AppConfig.persistenceModule.persistenceDIModule.writer
-                .write(taskFileContent, Files.inProgressTaskFilePath(job))
+                .write(taskFileContent, s"${Directories.jobToInProcessTaskSubFolder(job)}/${job.batchNr}")
             )
             taskFileDeleteResult <- ZIO.attemptBlockingIO(
               AppConfig.persistenceModule.persistenceDIModule.writer

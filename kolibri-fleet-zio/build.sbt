@@ -67,7 +67,8 @@ libraryDependencies ++= Seq(
   "dev.zio" %% "zio-config-magnolia" % zioConfigVersion,
   "dev.zio" %% "zio-logging" % zioLoggingVersion,
   "dev.zio" %% "zio-logging-slf4j" % zioLoggingVersion,
-  "dev.zio" %% "zio-http" % zioHttpVersion
+  "dev.zio" %% "zio-http" % zioHttpVersion,
+  "dev.zio" %% "zio-test-junit" % zioVersion % "test"
 )
 
 libraryDependencies := {

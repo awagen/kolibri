@@ -18,28 +18,55 @@
 package de.awagen.kolibri.fleet.zio.config
 
 import com.softwaremill.macwire.wire
+import de.awagen.kolibri.datatypes.AtomicMapPromiseStore
 import de.awagen.kolibri.datatypes.types.JsonTypeCast
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
-import de.awagen.kolibri.definitions.directives.{ResourceProvider, RetrievalDirective}
+import de.awagen.kolibri.definitions.directives.Resource
+import de.awagen.kolibri.definitions.directives.ResourceDirectives.ResourceDirective
 import de.awagen.kolibri.definitions.io.json
 import de.awagen.kolibri.definitions.io.json.ExecutionJsonProtocol.ExecutionFormat
 import de.awagen.kolibri.definitions.io.json.WeightProviderJsonProtocol.StringWeightProviderFormat
 import de.awagen.kolibri.definitions.io.json._
 import de.awagen.kolibri.definitions.processing.execution.functions.Execution
 import de.awagen.kolibri.definitions.provider.WeightProviders.WeightProvider
-import de.awagen.kolibri.definitions.resources.RetrievalError
 import de.awagen.kolibri.definitions.usecase.searchopt.parse.JsonSelectors.{PlainAndRecursiveSelector, PlainPathSelector}
 import de.awagen.kolibri.definitions.usecase.searchopt.parse.TypedJsonSelectors.{NamedAndTypedSelector, TypedJsonSeqSelector, TypedJsonSingleValueSelector}
 import de.awagen.kolibri.definitions.usecase.searchopt.provider.FileBasedJudgementProvider.JudgementFileCSVFormatConfig
 import de.awagen.kolibri.definitions.usecase.searchopt.provider.{FileBasedJudgementProvider, JudgementProvider}
+import de.awagen.kolibri.fleet.zio.config.AppConfig.JobState.nodeResourceProvider
 import de.awagen.kolibri.fleet.zio.config.AppProperties.config._
 import de.awagen.kolibri.fleet.zio.config.di.modules.persistence.PersistenceModule
+import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobDefinition
+import de.awagen.kolibri.fleet.zio.resources.{AtomicResourceStore, NodeResourceProvider}
 import de.awagen.kolibri.storage.io.reader.DataOverviewReader
 import spray.json.RootJsonFormat
+import zio.{Queue, Ref, UIO}
 
 import scala.util.matching.Regex
 
 object AppConfig {
+
+  object JobState {
+
+    // resource store to load data on per-node level
+    // (computes data at most once, even if many requests
+    // for setting up same resource come in)
+    val resourceStore: AtomicMapPromiseStore[Resource[Any], Any, ResourceDirective[Any]] = AtomicResourceStore()
+
+    // resource provider to allow retrieval of per-
+    // node resources
+    val nodeResourceProvider = new NodeResourceProvider(
+      resourceStore,
+      2
+    )
+
+    // map to keep track of jobs currently in progress
+    val jobsInProgress: UIO[Ref[Map[String, JobDefinition[_]]]] = Ref.make(Map.empty[String, JobDefinition[_]])
+
+    // queue used to add claimed job executions
+    val boundedTaskQueue: UIO[Queue[JobDefinition[_]]] = Queue.bounded[JobDefinition[_]](5)
+
+  }
 
   object JsonFormats {
 
@@ -69,15 +96,12 @@ object AppConfig {
       orderedValuesJsonProtocol
     )
 
-    // TODO: implement the resource provider
     implicit val supplierJsonProtocol: SupplierJsonProtocol = json.SupplierJsonProtocol(
       persistenceModule.persistenceDIModule.reader,
       dataOverviewReaderWithSuffixFilterFunc,
       orderedValuesJsonProtocol,
       AppConfig.filepathToJudgementProvider,
-      new ResourceProvider {
-        override def getResource[T](directive: RetrievalDirective.RetrievalDirective[T]): Either[RetrievalError[T], T] = null
-      }
+      nodeResourceProvider
     )
 
     implicit val executionFormat: RootJsonFormat[Execution[Any]] = ExecutionFormat(

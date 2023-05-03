@@ -20,11 +20,9 @@ package de.awagen.kolibri.fleet.zio.resources
 import de.awagen.kolibri.datatypes.AtomicMapPromiseStore
 import de.awagen.kolibri.definitions.directives.Resource
 import de.awagen.kolibri.definitions.directives.ResourceDirectives.ResourceDirective
-import de.awagen.kolibri.definitions.resources.ResourceStore
+
 
 case class AtomicResourceStore() extends AtomicMapPromiseStore[Resource[Any], Any, ResourceDirective[Any]] {
-
-  val resourceStore: ResourceStore = new ResourceStore()
 
   /**
    * Function to generate value for a passed key. Note that ensuring thread-safety and only single executions
@@ -34,9 +32,8 @@ case class AtomicResourceStore() extends AtomicMapPromiseStore[Resource[Any], An
    * @param key key value
    * @return generated value
    */
-  override def calculateValue(key: ResourceDirective[Any]): Any = {
-    resourceStore.handleResourceDirective(key)
-  }
+  override def calculateValue(key: ResourceDirective[Any]): Any = key.getResource
+
 
   override def retrievalObjectToKeyFunc: ResourceDirective[Any] => Resource[Any] = x => x.resource
 }

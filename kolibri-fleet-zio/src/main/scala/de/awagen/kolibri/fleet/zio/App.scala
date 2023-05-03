@@ -34,19 +34,12 @@ object App extends ZIOAppDefault {
   override val run: ZIO[Any, Throwable, Any] = {
     val fixed = Schedule.fixed(1.minute)
     val rio: RIO[Any, Option[Seq[String]]] = Schedules.taskCheckSchedule("")
-
-    // effect for schedule for checking the job folders
-    val effect1: ZIO[Any, Throwable, Unit] = for {
+    for {
       _ <- ZIO.logInfo("Application started!")
       _ <- Runtime.default.run(rio)
-      _ <- Runtime.default.run(rio.repeat(fixed))
+      _ <- Runtime.default.run(rio.repeat(fixed)).fork
+      - <- Server.serve(app).provide(Server.default)
       _ <- ZIO.logInfo("Application is about to exit!")
     } yield ()
-
-    // effect for running the webserver
-    val effect2: ZIO[Any, Throwable, Nothing] = Server.serve(app).provide(Server.default)
-
-    // create effect that runs both the above in parallel
-    effect1 &> effect2
   }
 }

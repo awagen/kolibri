@@ -24,6 +24,16 @@ import de.awagen.kolibri.datatypes.types.ClassTyped
 
 import scala.concurrent.ExecutionContext
 
+
+/**
+ * Task representation. Defines the prerequisites that need to be available
+ * locally in the passed around TypeTaggedMap,
+ * the successKey as key under which result of the execution is stored,
+ * fail key under which TaskFailType is stored in case execution fails.
+ * start-function provides the actual execution, which returns a TaskState,
+ * indicating whether (async) task is still running or done with success/fail.
+ * In case of success the TypeTaggedMap has result under successKey, or in case of failure has fail reason under failKey.
+ */
 trait Task[+T] extends KolibriSerializable {
 
   def prerequisites: Seq[ClassTyped[Any]]
