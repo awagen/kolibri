@@ -17,6 +17,7 @@
 
 package de.awagen.kolibri.fleet.zio
 
+import de.awagen.kolibri.fleet.zio.config.ZIOConfig
 import de.awagen.kolibri.fleet.zio.schedule.Schedules
 import zio._
 import zio.http._
@@ -35,10 +36,19 @@ object App extends ZIOAppDefault {
     val fixed = Schedule.fixed(1.minute)
     val rio: RIO[Any, Option[Seq[String]]] = Schedules.taskCheckSchedule("")
     for {
+      zioConfig <- ZIO.succeed(new ZIOConfig())
+      _ <- zioConfig.init()
+      jobHandler <- ZIO.succeed(zioConfig.getJobHandler)
+      zioHttp <- ZIO.succeed({
+        Http.collectZIO[Request] {
+              case Method.GET -> !! / "registeredJobs" => jobHandler.registeredJobs.map(jobs => Response.text(s"Files: ${jobs.mkString(",")}"))
+            }.catchAllZIO(x => ZIO.succeed(Response.text(x.toString)))
+      })
       _ <- ZIO.logInfo("Application started!")
       _ <- Runtime.default.run(rio)
       _ <- Runtime.default.run(rio.repeat(fixed)).fork
-      - <- Server.serve(app).provide(Server.default)
+      _ <- Runtime.default.run(Schedules.findAndRegisterJobs(jobHandler).repeat(fixed)).fork
+      _ <- Server.serve(app ++ zioHttp).provide(Server.default)
       _ <- ZIO.logInfo("Application is about to exit!")
     } yield ()
   }

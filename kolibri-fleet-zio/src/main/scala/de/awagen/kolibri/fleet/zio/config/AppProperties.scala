@@ -177,10 +177,10 @@ object AppProperties {
 
     val jobBaseFolder: String = baseConfig.getString("kolibri.job.basefolder").stripPrefix("/").stripSuffix("/")
     val taskBaseFolder: String = baseConfig.getString("kolibri.job.tasks.basefolder").stripPrefix("/").stripSuffix("/")
-    val taskClaimSubFolder: String = baseConfig.getString("kolibri.job.tasks.claim.subfolder").stripPrefix("/").stripSuffix("/")
-    val openTaskSubFolder: String = baseConfig.getString("kolibri.job.tasks.open.subfolder").stripPrefix("/").stripSuffix("/")
-    val taskInProgressSubFolder: String = baseConfig.getString("kolibri.job.tasks.inprogress.subfolder").stripPrefix("/").stripSuffix("/")
-    val taskProgressStateSubFolder: String = baseConfig.getString("kolibri.job.tasks.inprogress.state.subfolder").stripPrefix("/").stripSuffix("/")
+    val taskClaimSubFolder: String = baseConfig.getString("kolibri.job.tasks.state.claim.subfolder").stripPrefix("/").stripSuffix("/")
+    val openTaskSubFolder: String = baseConfig.getString("kolibri.job.tasks.state.open.subfolder").stripPrefix("/").stripSuffix("/")
+    val taskInProgressSubFolder: String = baseConfig.getString("kolibri.job.tasks.state.inprogress.subfolder").stripPrefix("/").stripSuffix("/")
+    val taskProgressStateSubFolder: String = baseConfig.getString("kolibri.job.tasks.state.inprogress.state.subfolder").stripPrefix("/").stripSuffix("/")
 
   }
 

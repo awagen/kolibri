@@ -17,20 +17,22 @@
 
 package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.impl
 
-import de.awagen.kolibri.fleet.zio.config.AppConfig
 import de.awagen.kolibri.fleet.zio.config.AppProperties.config
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobDefinition
 import de.awagen.kolibri.fleet.zio.io.json.JobDefinitionJsonProtocol.JobDefinitionFormat
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.impl.FileStorageJobHandler.JOB_DEFINITION_FILENAME
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.JobStatus.{InvalidJobDefinition, JobState, Loaded}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.traits.JobHandler
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.zio_di.ZioDIConfig
 import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, Reader}
-import spray.json.JsString
-import zio.{Task, ZIO}
+import org.slf4j.{Logger, LoggerFactory}
+import spray.json._
+import zio.{Ref, Task, ZIO}
 
 object FileStorageJobHandler {
 
   val JOB_DEFINITION_FILENAME = "job.json"
+
+  val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
 }
 
@@ -39,41 +41,61 @@ object FileStorageJobHandler {
  * job definition in and add to name -> definition mapping
  */
 case class FileStorageJobHandler(overviewReader: DataOverviewReader,
-                                 reader: Reader[String, Seq[String]]) extends JobHandler {
+                                 reader: Reader[String, Seq[String]],
+                                 jobsInProgressRef: Ref[Map[String, JobState]]) extends JobHandler {
+
+  import FileStorageJobHandler._
 
   override def registeredJobs: Task[Set[String]] = {
-    AppConfig.JobState.jobsInProgress.flatMap(x => x.get)
-      .map(x => x.keySet)
+    for {
+      _ <- ZIO.logDebug("Retrieving registered jobs")
+      inProgressMap <- jobsInProgressRef.get
+      _ <- ZIO.logDebug(s"In progress map: ${inProgressMap}")
+      result <- ZIO.succeed(inProgressMap.keySet)
+    } yield result
   }
 
   override def newJobs: Task[Seq[String]] = {
     for {
+      _ <- ZIO.logDebug("Start looking for new jobs")
       runningJobs <- registeredJobs
+      _ <- ZIO.logDebug(s"Running jobs: $runningJobs")
       jobFoldersNames <- ZIO.attemptBlockingIO(overviewReader.listResources(config.jobBaseFolder, _ => true)
         .map(uri => uri.split("/").last).distinct)
-      newJobs <- ZIO.attempt(Set(jobFoldersNames:_*).diff(runningJobs).toSeq)
+        .logError
+      newJobs <- ZIO.attempt(Set(jobFoldersNames: _*).diff(runningJobs).toSeq)
+      _ <- ZIO.logInfo(s"Found new jobs: $newJobs")
     } yield newJobs
 
   }
 
   override def registerNewJobs: Task[Unit] = {
     for {
+      _ <- ZIO.logDebug("Starting registering new jobs")
       jobFolders <- newJobs
+      _ <- ZIO.logDebug(s"New jobs: $jobFolders")
       nameToDefMap <- ZIO.attemptBlockingIO({
         jobFolders.map(folder => {
           val jobDefPath = s"${ZioDIConfig.Directories.baseJobFolder(folder)}/$JOB_DEFINITION_FILENAME"
+          logger.info(s"Trying to load file: $jobDefPath")
           val jobDefFileContent = reader.read(jobDefPath).mkString("\n")
-          val jobDefinition: JobDefinition[_] = JsString(jobDefFileContent).convertTo[JobDefinition[_]]
-          (folder, jobDefinition)
+          logger.info(s"Casting file '$jobDefPath' to job definition")
+          var jobState: JobState = InvalidJobDefinition
+          try {
+            jobState = Loaded(jobDefFileContent.parseJson.convertTo[JobDefinition[_]])
+            logger.info(s"Finished casting file '$jobDefPath' to job definition")
+          }
+          catch {
+            case e: Exception => logger.warn("Casting file to job definition failed", e)
+          }
+          (folder, jobState)
         }).toMap
       })
-      _ <- ZIO.attempt({
-          for {
-            map <- AppConfig.JobState.jobsInProgress
-            _ <- map.update(_ ++ nameToDefMap)
-          } yield ()
-        })
+      _ <- ZIO.logDebug(s"New jobs: $nameToDefMap")
+      _ <- for {
+        _ <- ZIO.logDebug("Updating jobs in progress map")
+        _ <- jobsInProgressRef.update(_ ++ nameToDefMap)
+      } yield ()
     } yield ()
   }
 }
-

@@ -36,11 +36,9 @@ import de.awagen.kolibri.definitions.usecase.searchopt.provider.{FileBasedJudgem
 import de.awagen.kolibri.fleet.zio.config.AppConfig.JobState.nodeResourceProvider
 import de.awagen.kolibri.fleet.zio.config.AppProperties.config._
 import de.awagen.kolibri.fleet.zio.config.di.modules.persistence.PersistenceModule
-import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobDefinition
 import de.awagen.kolibri.fleet.zio.resources.{AtomicResourceStore, NodeResourceProvider}
 import de.awagen.kolibri.storage.io.reader.DataOverviewReader
 import spray.json.RootJsonFormat
-import zio.{Queue, Ref, UIO}
 
 import scala.util.matching.Regex
 
@@ -59,13 +57,6 @@ object AppConfig {
       resourceStore,
       2
     )
-
-    // map to keep track of jobs currently in progress
-    val jobsInProgress: UIO[Ref[Map[String, JobDefinition[_]]]] = Ref.make(Map.empty[String, JobDefinition[_]])
-
-    // queue used to add claimed job executions
-    val boundedTaskQueue: UIO[Queue[JobDefinition[_]]] = Queue.bounded[JobDefinition[_]](5)
-
   }
 
   object JsonFormats {

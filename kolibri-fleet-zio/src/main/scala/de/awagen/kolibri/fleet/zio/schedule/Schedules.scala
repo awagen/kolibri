@@ -18,11 +18,18 @@
 package de.awagen.kolibri.fleet.zio.schedule
 
 import de.awagen.kolibri.fleet.zio.config.AppConfig
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.traits.JobHandler
 import zio._
 
 object Schedules {
 
   val JSON_FILE_SUFFIX = ".json"
+
+  def findAndRegisterJobs(jobHandler: JobHandler): ZIO[Any, Throwable, Unit] =
+    (for {
+      _ <- ZIO.logDebug("Start checking for new jobs")
+      _ <- jobHandler.registerNewJobs
+    } yield ()).logError
 
   /**
    * Effect for checking file system for specific task-related jobs
