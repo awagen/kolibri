@@ -44,22 +44,26 @@ object App extends ZIOAppDefault {
       jobHandler <- ZIO.succeed(zioConfig.getJobHandler)
       zioHttp <- ZIO.succeed({
         Http.collectZIO[Request] {
-              case Method.GET -> !! / "registeredJobs" => jobHandler.registeredJobs.map(jobs => Response.text(s"Files: ${jobs.mkString(",")}"))
-              case req@Method.POST -> !! / "job" =>
-                for {
-                  jobString <- req.body.asString
-                  jobDef <- ZIO.attempt(jobString.parseJson.convertTo[JobDefinition[_]])
-                  jobFolderExists <- jobHandler.registeredJobs.map(x => x.contains(jobDef.jobName))
-                  _ <- ZIO.unless(jobFolderExists)({
-                    jobHandler.storeJobDefinition(jobString, jobDef.jobName)
-                      .flatMap({
-                        case Left(e) => ZIO.fail(e)
-                        case Right(v) => ZIO.succeed(v)
-                      })
-                  })
-                  _ <- jobHandler.createBatchFilesForJob(jobDef)
-                  r <- ZIO.succeed(Response.text(jobString))
-                } yield r
+          case Method.GET -> !! / "registeredJobs" => jobHandler.registeredJobs.map(jobs => Response.text(s"Files: ${jobs.mkString(",")}"))
+          case req@Method.POST -> !! / "job" =>
+            for {
+              jobString <- req.body.asString
+              jobDef <- ZIO.attempt(jobString.parseJson.convertTo[JobDefinition[_]])
+              jobFolderExists <- jobHandler.registeredJobs.map(x => x.contains(jobDef.jobName))
+              _ <- ZIO.ifZIO(ZIO.succeed(jobFolderExists))(
+                onFalse = {
+                  jobHandler.storeJobDefinition(jobString, jobDef.jobName)
+                    .flatMap({
+                      case Left(e) => ZIO.fail(e)
+                      case Right(v) => ZIO.succeed(v)
+                    })
+                    .flatMap(_ => jobHandler.createBatchFilesForJob(jobDef))
+                },
+                onTrue = ZIO.logInfo(s"Job folder for job ${jobDef.jobName} already exists," +
+                  s" skipping job information persistence step")
+              )
+              r <- ZIO.succeed(Response.text(jobString))
+            } yield r
         }.catchAllZIO(x => ZIO.fail(Response.text(x.toString)))
       })
       _ <- ZIO.logInfo("Application started!")
