@@ -20,6 +20,7 @@ package de.awagen.kolibri.fleet.zio.execution
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.mutable.stores.TypeTaggedMap
 import de.awagen.kolibri.definitions.directives.ResourceDirectives.ResourceDirective
+import de.awagen.kolibri.definitions.domain.jobdefinitions.Batch
 
 object JobDefinitions {
 
@@ -33,10 +34,10 @@ object JobDefinitions {
    * e.g one or more request steps (request + parsing of needed info into Map fields), followed
    * by processing steps and a final write result step.
    */
-  case class JobDefinition[+T](jobName: String,
-                               resourceSetup: Seq[ResourceDirective[_]],
-                               elements: IndexedGenerator[T],
-                               taskSequence: Seq[ZIOTask[_]],
-                               resultConsumer: TypeTaggedMap => ())
+  case class JobDefinition[T](jobName: String,
+                              resourceSetup: Seq[ResourceDirective[_]],
+                              batches: IndexedGenerator[Batch[T]],
+                              taskSequence: Seq[ZIOTask[_]],
+                              resultConsumer: TypeTaggedMap => ())
 
 }

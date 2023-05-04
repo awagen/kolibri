@@ -17,7 +17,10 @@
 
 package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.traits
 
-import zio.Task
+import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobDefinition
+import zio.{IO, Task}
+
+import java.io.IOException
 
 trait JobHandler {
 
@@ -38,5 +41,15 @@ trait JobHandler {
    */
   def registerNewJobs: Task[Unit]
 
+  /**
+   * Storing the job definition content to the right job folder
+   */
+  def storeJobDefinition(content: String, jobName: String): IO[IOException, Either[Exception, _]]
+
+  /**
+   * Storing empty files into open task folder for the job, one per batch, and
+   * each simply named by the batch number so that each batch can be claimed for processing
+   */
+  def createBatchFilesForJob(jobDefinition: JobDefinition[_]): IO[IOException, Unit]
 
 }

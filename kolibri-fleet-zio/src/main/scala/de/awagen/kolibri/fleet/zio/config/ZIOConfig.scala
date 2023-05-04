@@ -33,33 +33,39 @@ class ZIOConfig {
   private[this] var jobQueue: Queue[JobDefinition[_]] = null
 
   def getRunningJobs: UIO[Map[String, JobState]] = runningJobsRef.get
+
   def getJobHandler: JobHandler = jobHandler
+
   def getJobQueue: Queue[JobDefinition[_]] = null
 
   def init(): ZIO[Any, Throwable, Unit] = {
-    ZIO.when(runningJobsRef == null) {
-      for {
-        _ <- ZIO.logDebug("Running ZIOConfig init")
-        runningJobs <- Ref.make(Map.empty[String, JobState])
-        _ <- ZIO.attempt({
-          runningJobsRef = runningJobs
-        })
-        queue <- Queue.bounded[JobDefinition[_]](5)
-        _ <- ZIO.attempt({
-          jobQueue = queue
-        })
-        _ <- ZIO.attempt({
-          jobHandler = FileStorageJobHandler(
-            AppConfig.persistenceModule.persistenceDIModule.dataOverviewReader(_ => true),
-            AppConfig.persistenceModule.persistenceDIModule.reader,
-            runningJobsRef)
-        })
-        _ <- ZIO.logDebug(s"runningJobsRef: $runningJobsRef")
-        _ <- ZIO.logDebug(s"jobHandler: $jobHandler")
+    ZIO.ifZIO(ZIO.succeed(runningJobsRef == null))(
+      onTrue = {
+        for {
+          _ <- ZIO.logDebug("Running ZIOConfig init")
+          runningJobs <- Ref.make(Map.empty[String, JobState])
+          _ <- ZIO.attempt({
+            runningJobsRef = runningJobs
+          })
+          queue <- Queue.bounded[JobDefinition[_]](5)
+          _ <- ZIO.attempt({
+            jobQueue = queue
+          })
+          _ <- ZIO.attempt({
+            jobHandler = FileStorageJobHandler(
+              AppConfig.persistenceModule.persistenceDIModule.dataOverviewReader(_ => true),
+              AppConfig.persistenceModule.persistenceDIModule.reader,
+              AppConfig.persistenceModule.persistenceDIModule.writer,
+              runningJobsRef)
+          })
+          _ <- ZIO.logDebug(s"runningJobsRef: $runningJobsRef")
+          _ <- ZIO.logInfo(s"jobHandler: $jobHandler")
+        } yield ()
+      },
+      onFalse = for {
+        _ <- ZIO.logInfo("already initialized, skipping init()")
       } yield ()
-    }.orElse(for {
-      _ <- ZIO.logInfo("already initialized, skipping init()")
-    } yield ()).logError.map(_ => ())
+    ).logError.map(_ => ())
   }
 
 }

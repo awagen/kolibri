@@ -18,6 +18,7 @@
 package de.awagen.kolibri.fleet.zio.io.json
 
 import de.awagen.kolibri.datatypes.collections.generators.ByFunctionNrLimitedIndexedGenerator
+import de.awagen.kolibri.definitions.domain.jobdefinitions.Batch
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobDefinition
 import de.awagen.kolibri.fleet.zio.execution.ZIOTasks.SimpleWaitTask
 import spray.json.{DefaultJsonProtocol, JsValue, JsonFormat, enrichAny}
@@ -29,12 +30,15 @@ object JobDefinitionJsonProtocol extends DefaultJsonProtocol {
       case spray.json.JsObject(fields) => fields("type").convertTo[String] match {
         case "JUST_WAIT" =>
           val jobName = fields("jobName").convertTo[String]
-          val nrElements = fields("nrElements").convertTo[Int]
+          val nrBatches = fields("nrBatches").convertTo[Int]
           val durationInMillis = fields("durationInMillis").convertTo[Long]
-          JobDefinition(
+          JobDefinition[Int](
             jobName = jobName,
             resourceSetup = Seq.empty,
-            elements = ByFunctionNrLimitedIndexedGenerator.createFromSeq(Range(0, nrElements, 1))  ,
+            batches = ByFunctionNrLimitedIndexedGenerator.createFromSeq(
+              Range(0, nrBatches, 1)
+                .map(batchNr => Batch(batchNr, ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq(1))))
+            ),
             taskSequence = Seq(SimpleWaitTask(durationInMillis)),
             resultConsumer = _ => ())
       }

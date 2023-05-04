@@ -24,9 +24,12 @@ import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.JobStatus.{Inval
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.traits.JobHandler
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.zio_di.ZioDIConfig
 import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, Reader}
+import de.awagen.kolibri.storage.io.writer.Writers.Writer
 import org.slf4j.{Logger, LoggerFactory}
 import spray.json._
-import zio.{Ref, Task, ZIO}
+import zio.{IO, Ref, Task, ZIO}
+
+import java.io.IOException
 
 object FileStorageJobHandler {
 
@@ -42,10 +45,14 @@ object FileStorageJobHandler {
  */
 case class FileStorageJobHandler(overviewReader: DataOverviewReader,
                                  reader: Reader[String, Seq[String]],
+                                 writer: Writer[String, String, _],
                                  jobsInProgressRef: Ref[Map[String, JobState]]) extends JobHandler {
 
   import FileStorageJobHandler._
 
+  /**
+   * Return currently registered jobs
+   */
   override def registeredJobs: Task[Set[String]] = {
     for {
       _ <- ZIO.logDebug("Retrieving registered jobs")
@@ -55,6 +62,9 @@ case class FileStorageJobHandler(overviewReader: DataOverviewReader,
     } yield result
   }
 
+  /**
+   * Find new jobs in job directory which are not yet registered
+   */
   override def newJobs: Task[Seq[String]] = {
     for {
       _ <- ZIO.logDebug("Start looking for new jobs")
@@ -69,6 +79,18 @@ case class FileStorageJobHandler(overviewReader: DataOverviewReader,
 
   }
 
+  /**
+   * Derive the file path to the actual job definition for a job
+   */
+  def jobNameToJobDefinitionFile(jobName: String) =
+    s"${ZioDIConfig.Directories.baseJobFolder(jobName)}/$JOB_DEFINITION_FILENAME"
+
+  def jobNameAndBatchNrToBatchFile(jobName: String, batchNr: Int) =
+    s"${ZioDIConfig.Directories.jobToOpenTaskSubFolder(jobName)}/$batchNr"
+
+  /**
+   * Find yet unregistered jobs and try to parse a JobDefinition out of it
+   */
   override def registerNewJobs: Task[Unit] = {
     for {
       _ <- ZIO.logDebug("Starting registering new jobs")
@@ -76,7 +98,7 @@ case class FileStorageJobHandler(overviewReader: DataOverviewReader,
       _ <- ZIO.logDebug(s"New jobs: $jobFolders")
       nameToDefMap <- ZIO.attemptBlockingIO({
         jobFolders.map(folder => {
-          val jobDefPath = s"${ZioDIConfig.Directories.baseJobFolder(folder)}/$JOB_DEFINITION_FILENAME"
+          val jobDefPath = jobNameToJobDefinitionFile(folder)
           logger.info(s"Trying to load file: $jobDefPath")
           val jobDefFileContent = reader.read(jobDefPath).mkString("\n")
           logger.info(s"Casting file '$jobDefPath' to job definition")
@@ -97,5 +119,22 @@ case class FileStorageJobHandler(overviewReader: DataOverviewReader,
         _ <- jobsInProgressRef.update(_ ++ nameToDefMap)
       } yield ()
     } yield ()
+  }
+
+  override def storeJobDefinition(content: String, jobName: String): IO[IOException, Either[Exception, _]] = {
+    ZIO.attemptBlockingIO({
+      val writePath = jobNameToJobDefinitionFile(jobName)
+      writer.write(content, writePath)
+    })
+  }
+
+  override def createBatchFilesForJob(jobDefinition: JobDefinition[_]): IO[IOException, Unit] = {
+    val numBatches = jobDefinition.batches.size
+    ZIO.attemptBlockingIO({
+      Range(0, numBatches, 1).foreach(batchNr => {
+        val fileName = jobNameAndBatchNrToBatchFile(jobDefinition.jobName, batchNr)
+        writer.write("", fileName)
+      })
+    })
   }
 }

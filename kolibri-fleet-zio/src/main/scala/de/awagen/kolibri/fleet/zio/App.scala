@@ -18,7 +18,10 @@
 package de.awagen.kolibri.fleet.zio
 
 import de.awagen.kolibri.fleet.zio.config.ZIOConfig
+import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobDefinition
+import de.awagen.kolibri.fleet.zio.io.json.JobDefinitionJsonProtocol.JobDefinitionFormat
 import de.awagen.kolibri.fleet.zio.schedule.Schedules
+import spray.json._
 import zio._
 import zio.http._
 import zio.logging.LogFormat
@@ -42,7 +45,22 @@ object App extends ZIOAppDefault {
       zioHttp <- ZIO.succeed({
         Http.collectZIO[Request] {
               case Method.GET -> !! / "registeredJobs" => jobHandler.registeredJobs.map(jobs => Response.text(s"Files: ${jobs.mkString(",")}"))
-            }.catchAllZIO(x => ZIO.succeed(Response.text(x.toString)))
+              case req@Method.POST -> !! / "job" =>
+                for {
+                  jobString <- req.body.asString
+                  jobDef <- ZIO.attempt(jobString.parseJson.convertTo[JobDefinition[_]])
+                  jobFolderExists <- jobHandler.registeredJobs.map(x => x.contains(jobDef.jobName))
+                  _ <- ZIO.unless(jobFolderExists)({
+                    jobHandler.storeJobDefinition(jobString, jobDef.jobName)
+                      .flatMap({
+                        case Left(e) => ZIO.fail(e)
+                        case Right(v) => ZIO.succeed(v)
+                      })
+                  })
+                  _ <- jobHandler.createBatchFilesForJob(jobDef)
+                  r <- ZIO.succeed(Response.text(jobString))
+                } yield r
+        }.catchAllZIO(x => ZIO.fail(Response.text(x.toString)))
       })
       _ <- ZIO.logInfo("Application started!")
       _ <- Runtime.default.run(rio)

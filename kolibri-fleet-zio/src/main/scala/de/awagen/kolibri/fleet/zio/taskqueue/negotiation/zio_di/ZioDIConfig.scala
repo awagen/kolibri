@@ -40,24 +40,24 @@ object ZioDIConfig {
       s"${config.jobBaseFolder}/$jobId"
     }
 
-    def baseTaskFolder(job: Job): String = {
-      s"${baseJobFolder(job.jobId)}/${config.taskBaseFolder}"
+    def baseTaskFolder(jobId: String): String = {
+      s"${baseJobFolder(jobId)}/${config.taskBaseFolder}"
     }
 
-    def jobToClaimSubFolder(job: Job): String = {
-      s"${baseTaskFolder(job)}/${config.taskClaimSubFolder}"
+    def jobToClaimSubFolder(jobId: String): String = {
+      s"${baseTaskFolder(jobId)}/${config.taskClaimSubFolder}"
     }
 
-    def jobToOpenTaskSubFolder(job: Job): String = {
-      s"${baseTaskFolder(job)}/${config.openTaskSubFolder}"
+    def jobToOpenTaskSubFolder(jobId: String): String = {
+      s"${baseTaskFolder(jobId)}/${config.openTaskSubFolder}"
     }
 
-    def jobToTaskProcessStatusSubFolder(job: Job): String = {
-      s"${baseTaskFolder(job)}/${config.taskProgressStateSubFolder}"
+    def jobToTaskProcessStatusSubFolder(jobId: String): String = {
+      s"${baseTaskFolder(jobId)}/${config.taskProgressStateSubFolder}"
     }
 
-    def jobToInProcessTaskSubFolder(job: Job): String = {
-      s"${baseTaskFolder(job)}/${config.taskInProgressSubFolder}"
+    def jobToInProcessTaskSubFolder(jobId: String): String = {
+      s"${baseTaskFolder(jobId)}/${config.taskInProgressSubFolder}"
     }
   }
 
@@ -88,7 +88,7 @@ object ZioDIConfig {
               val lastPath = id.split("/").last
               lastPath.startsWith(CLAIM_PREFIX) && lastPath.endsWith(".json")
             })
-            .listResources(Directories.jobToClaimSubFolder(job), _ => true)
+            .listResources(Directories.jobToClaimSubFolder(job.jobId), _ => true)
         }
 
         // TODO: could make single steps into effects and map them together
@@ -97,7 +97,7 @@ object ZioDIConfig {
           if (existingClaimsForJob.nonEmpty) ClaimFilingStatus.OTHER_CLAIM_EXISTS
           else {
             val jobString = job.toJson.toString()
-            val targetFilePath = s"${Directories.jobToClaimSubFolder(job)}/${job.batchNr}"
+            val targetFilePath = s"${Directories.jobToClaimSubFolder(job.jobId)}/${job.batchNr}"
             // TODO: bake this into a writer service and initialize all services centrally in
             // a DI config (zio layer or macWire)
             val persistResult: Either[Exception, _] = AppConfig.persistenceModule.persistenceDIModule.writer
@@ -145,7 +145,7 @@ object ZioDIConfig {
             taskFile <- ZIO.attemptBlockingIO(
               AppConfig.persistenceModule.persistenceDIModule
                 .dataOverviewReader(_ => true)
-                .listResources(Directories.jobToOpenTaskSubFolder(job), name => name == s"${job.batchNr}")
+                .listResources(Directories.jobToOpenTaskSubFolder(job.jobId), name => name == s"${job.batchNr}")
                 .last
             )
             taskFileContent <- ZIO.attemptBlockingIO(
@@ -155,7 +155,7 @@ object ZioDIConfig {
             // move task to in progress tasks
             toInProgressWriteResult <- ZIO.attemptBlockingIO(
               AppConfig.persistenceModule.persistenceDIModule.writer
-                .write(taskFileContent, s"${Directories.jobToInProcessTaskSubFolder(job)}/${job.batchNr}")
+                .write(taskFileContent, s"${Directories.jobToInProcessTaskSubFolder(job.jobId)}/${job.batchNr}")
             )
             taskFileDeleteResult <- ZIO.attemptBlockingIO(
               AppConfig.persistenceModule.persistenceDIModule.writer

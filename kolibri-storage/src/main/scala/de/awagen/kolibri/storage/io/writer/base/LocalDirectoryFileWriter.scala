@@ -27,7 +27,7 @@ import org.slf4j.{Logger, LoggerFactory}
 
 case class LocalDirectoryFileWriter(directory: String) extends FileWriter[String, Unit] {
   private val logger: Logger = LoggerFactory.getLogger(LocalDirectoryFileWriter.getClass)
-  assert(Objects.nonNull(directory) && directory.startsWith("/"), "directory must start with '/' (must start from root)")
+  assert(Objects.nonNull(directory), "directory must not be null")
   val normedDirectory: String = directory.stripSuffix("/")
 
   override def write(data: String, targetIdentifier: String): Either[Exception, Unit] = {
