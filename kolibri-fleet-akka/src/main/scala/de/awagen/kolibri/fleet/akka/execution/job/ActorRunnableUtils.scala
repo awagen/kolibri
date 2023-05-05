@@ -28,7 +28,7 @@ import de.awagen.kolibri.definitions.processing.consume.AggregatorConfigurations
 import de.awagen.kolibri.definitions.processing.execution.expectation.ExecutionExpectation
 import de.awagen.kolibri.definitions.processing.failure.TaskFailType
 import de.awagen.kolibri.datatypes.types.Types.WithCount
-import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
+import de.awagen.kolibri.datatypes.values.aggregation.mutable.Aggregators.Aggregator
 import de.awagen.kolibri.fleet.akka.actors.decider.Deciders.allResumeDecider
 import de.awagen.kolibri.fleet.akka.config.AppProperties.config
 import de.awagen.kolibri.fleet.akka.config.AppProperties.config._

@@ -38,7 +38,7 @@ import de.awagen.kolibri.definitions.usecase.searchopt.metrics.Calculations.From
 import de.awagen.kolibri.definitions.usecase.searchopt.metrics.{IRMetricFunctions, Metric}
 import de.awagen.kolibri.definitions.usecase.searchopt.provider.JudgementProvider
 import de.awagen.kolibri.datatypes.mutable.stores.{BaseWeaklyTypedMap, WeaklyTypedMap}
-import de.awagen.kolibri.datatypes.stores.MetricRow
+import de.awagen.kolibri.datatypes.stores.immutable.MetricRow
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSupplier
 import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType
 import de.awagen.kolibri.fleet.akka.actors.KolibriTestKitNoCluster

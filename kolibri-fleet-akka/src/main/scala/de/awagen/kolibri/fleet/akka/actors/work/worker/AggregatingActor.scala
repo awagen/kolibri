@@ -29,7 +29,7 @@ import de.awagen.kolibri.definitions.processing.execution.expectation.ExecutionE
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}
 import de.awagen.kolibri.datatypes.types.Types.WithCount
-import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
+import de.awagen.kolibri.datatypes.values.aggregation.mutable.Aggregators.Aggregator
 
 import scala.concurrent.ExecutionContextExecutor
 

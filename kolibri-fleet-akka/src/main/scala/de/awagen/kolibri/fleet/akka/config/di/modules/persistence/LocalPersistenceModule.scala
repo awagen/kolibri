@@ -18,6 +18,7 @@
 package de.awagen.kolibri.fleet.akka.config.di.modules.persistence
 
 import com.softwaremill.tagging
+import de.awagen.kolibri.datatypes.metrics.aggregation.mutable.MetricAggregation
 import de.awagen.kolibri.fleet.akka.config.AppProperties
 import de.awagen.kolibri.fleet.akka.config.AppProperties.config.localPersistenceWriteResultsSubPath
 import de.awagen.kolibri.fleet.akka.config.di.modules.Modules.{LOCAL_MODULE, PersistenceDIModule}
@@ -25,7 +26,6 @@ import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, LocalDirectoryRe
 import de.awagen.kolibri.storage.io.writer.Writers.{FileWriter, Writer}
 import de.awagen.kolibri.storage.io.writer.base.LocalDirectoryFileWriter
 import de.awagen.kolibri.definitions.usecase.searchopt.jobdefinitions.parts.Writer
-import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
 import de.awagen.kolibri.datatypes.tagging.Tags
 
 

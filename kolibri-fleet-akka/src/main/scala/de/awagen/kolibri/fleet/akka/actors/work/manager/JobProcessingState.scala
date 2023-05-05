@@ -25,7 +25,7 @@ import de.awagen.kolibri.definitions.processing.execution.expectation.ExecutionE
 import de.awagen.kolibri.definitions.processing.execution.expectation._
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
-import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
+import de.awagen.kolibri.datatypes.values.aggregation.mutable.Aggregators.Aggregator
 import de.awagen.kolibri.fleet.akka.actors.work.manager.JobManagerActor.currentTimeZonedInstance
 import de.awagen.kolibri.fleet.akka.config.AppProperties.config
 import de.awagen.kolibri.storage.io.writer.Writers.Writer

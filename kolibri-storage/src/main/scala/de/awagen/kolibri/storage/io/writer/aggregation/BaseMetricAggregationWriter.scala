@@ -16,10 +16,11 @@
 
 package de.awagen.kolibri.storage.io.writer.aggregation
 
+import de.awagen.kolibri.datatypes.metrics.aggregation.mutable.MetricAggregation
+import de.awagen.kolibri.datatypes.stores.mutable.MetricDocument
 import de.awagen.kolibri.storage.io.writer.Writers.Writer
-import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
-import de.awagen.kolibri.datatypes.stores.MetricDocument
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
+
 import scala.collection.mutable
 
 

@@ -16,9 +16,9 @@
 
 package de.awagen.kolibri.definitions.domain
 
+import de.awagen.kolibri.datatypes.stores.immutable.MetricRow
 import de.awagen.kolibri.definitions.processing.ProcessingMessages.ProcessingMessage
 import de.awagen.kolibri.definitions.processing.failure.TaskFailType.TaskFailType
-import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.types.ClassTyped
 
 import scala.reflect.runtime.universe._

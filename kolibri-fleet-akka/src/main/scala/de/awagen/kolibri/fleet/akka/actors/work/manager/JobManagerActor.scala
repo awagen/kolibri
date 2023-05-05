@@ -29,12 +29,12 @@ import de.awagen.kolibri.definitions.processing.modifiers.RequestTemplateBuilder
 import de.awagen.kolibri.definitions.resources.{ResourceAlreadyExists, ResourceOK}
 import de.awagen.kolibri.datatypes.collections.generators.ByFunctionNrLimitedIndexedGenerator
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
-import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
-import de.awagen.kolibri.datatypes.stores.MetricRow
+import de.awagen.kolibri.datatypes.metrics.aggregation.mutable.MetricAggregation
+import de.awagen.kolibri.datatypes.stores.immutable.MetricRow
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.types.Types.WithCount
-import de.awagen.kolibri.datatypes.values.aggregation.AggregateValue
-import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
+import de.awagen.kolibri.datatypes.values.aggregation.immutable.AggregateValue
+import de.awagen.kolibri.datatypes.values.aggregation.mutable.Aggregators.Aggregator
 import de.awagen.kolibri.fleet.akka.actors.clusterinfo.DDResourceStateUtils
 import de.awagen.kolibri.fleet.akka.actors.clusterinfo.ResourceToJobMappingClusterStateManagerActor.{CheckedResourceDirectivesAndReadyForProcessing, ProcessResourceDirectives, ProcessedResourceDirectives, RemoveValueFromAllMappings}
 import de.awagen.kolibri.fleet.akka.actors.resources.BatchFreeSlotResourceCheckingActor.AddToRunningBaselineCount

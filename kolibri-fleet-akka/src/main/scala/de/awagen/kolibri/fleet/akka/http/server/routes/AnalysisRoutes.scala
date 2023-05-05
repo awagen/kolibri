@@ -25,7 +25,7 @@ import akka.http.scaladsl.server.{PathMatcher0, PathMatcher1, Route}
 import de.awagen.kolibri.definitions.processing.execution.functions.AnalyzeFunctions.{ExecutionSummary, GetImprovingAndLoosingFromDirPerRegex, GetValueVarianceFromDirPerRegex}
 import de.awagen.kolibri.definitions.processing.execution.functions.Execution
 import de.awagen.kolibri.definitions.processing.failure.TaskFailType
-import de.awagen.kolibri.datatypes.stores.PriorityStores.{BasePriorityStore, PriorityStore}
+import de.awagen.kolibri.datatypes.stores.mutable.PriorityStores.{BasePriorityStore, PriorityStore}
 import de.awagen.kolibri.fleet.akka.config.AppConfig.persistenceModule
 import de.awagen.kolibri.fleet.akka.config.{AppConfig, AppProperties}
 import de.awagen.kolibri.fleet.akka.http.server.routes.StatusRoutes.corsHandler

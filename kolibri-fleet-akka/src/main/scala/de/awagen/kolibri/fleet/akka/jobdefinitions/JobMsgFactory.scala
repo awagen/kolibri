@@ -33,7 +33,7 @@ import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.types.ClassTyped
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 import de.awagen.kolibri.datatypes.types.Types.WithCount
-import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
+import de.awagen.kolibri.datatypes.values.aggregation.mutable.Aggregators.Aggregator
 import de.awagen.kolibri.fleet.akka.actors.work.aboveall.SupervisorActor.{ProcessActorRunnableJobCmd, ProcessActorRunnableTaskJobCmd}
 import de.awagen.kolibri.fleet.akka.execution.job.{ActorRunnable, ActorRunnableSinkType}
 import de.awagen.kolibri.storage.io.writer.Writers.Writer

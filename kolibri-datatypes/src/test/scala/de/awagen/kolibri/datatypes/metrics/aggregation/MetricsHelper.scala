@@ -17,7 +17,7 @@
 package de.awagen.kolibri.datatypes.metrics.aggregation
 
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason
-import de.awagen.kolibri.datatypes.stores.MetricRow
+import de.awagen.kolibri.datatypes.stores.immutable.MetricRow
 import de.awagen.kolibri.datatypes.values.{BiRunningValue, MetricValue, RunningValues}
 
 object MetricsHelper {

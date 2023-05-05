@@ -20,4 +20,4 @@ package de.awagen.kolibri.definitions.domain.jobdefinitions
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 
-case class Batch[V](batchNr: Int, data: IndexedGenerator[V]) extends KolibriSerializable
+case class Batch[+V](batchNr: Int, data: IndexedGenerator[V]) extends KolibriSerializable

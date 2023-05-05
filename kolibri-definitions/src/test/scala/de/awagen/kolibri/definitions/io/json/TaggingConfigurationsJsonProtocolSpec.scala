@@ -23,7 +23,7 @@ import de.awagen.kolibri.definitions.processing.ProcessingMessages.Corn
 import de.awagen.kolibri.definitions.processing.tagging.TaggingConfigurations._
 import de.awagen.kolibri.definitions.testclasses.UnitTestSpec
 import de.awagen.kolibri.datatypes.mutable.stores.{BaseWeaklyTypedMap, WeaklyTypedMap}
-import de.awagen.kolibri.datatypes.stores.MetricRow
+import de.awagen.kolibri.datatypes.stores.immutable.MetricRow
 import de.awagen.kolibri.datatypes.tagging.TagType.AGGREGATION
 import de.awagen.kolibri.datatypes.tagging.Tags
 import de.awagen.kolibri.datatypes.tagging.Tags.{ParameterMultiValueTag, StringTag}

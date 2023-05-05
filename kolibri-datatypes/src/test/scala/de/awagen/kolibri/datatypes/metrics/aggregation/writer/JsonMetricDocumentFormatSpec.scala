@@ -19,7 +19,7 @@ package de.awagen.kolibri.datatypes.metrics.aggregation.writer
 
 import de.awagen.kolibri.datatypes.metrics.aggregation.writer.JsonMetricDocumentFormat.{Document, jsonDocumentFormat}
 import de.awagen.kolibri.datatypes.metrics.aggregation.writer.MetricFormatTestHelper.{doc, histogramDoc1}
-import de.awagen.kolibri.datatypes.stores.MetricDocument
+import de.awagen.kolibri.datatypes.stores.mutable.MetricDocument
 import de.awagen.kolibri.datatypes.tagging.Tags.StringTag
 import de.awagen.kolibri.datatypes.testclasses.UnitTestSpec
 import spray.json._

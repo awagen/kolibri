@@ -22,8 +22,8 @@ import de.awagen.kolibri.datatypes.types.SerializableCallable.{SerializableFunct
 import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType
 import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType.AggregationType
 import de.awagen.kolibri.datatypes.values.RunningValues.RunningValueAdd.{doubleAvgAdd, errorMapAdd, valueMapAdd, valueNestedMapAdd}
-import de.awagen.kolibri.datatypes.values.aggregation.AggregateValue
 import de.awagen.kolibri.datatypes.values.aggregation.AggregationUtils.{divideNumericMapValues, filterValuesByInstanceOfCheck, numericValueMapAggregateValueSumUp, sumUpNestedNumericValueMaps}
+import de.awagen.kolibri.datatypes.values.aggregation.immutable.AggregateValue
 import org.slf4j.{Logger, LoggerFactory}
 
 

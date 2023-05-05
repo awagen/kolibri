@@ -18,15 +18,16 @@
 package de.awagen.kolibri.fleet.akka.processing
 
 import akka.actor.ActorSystem
+import de.awagen.kolibri.datatypes.metrics.aggregation.mutable.MetricAggregation
+import de.awagen.kolibri.datatypes.stores.immutable.MetricRow
 import de.awagen.kolibri.definitions.processing.JobMessages.{QueryBasedSearchEvaluationDefinition, SearchEvaluationDefinition, TestPiCalculationDefinition}
 import de.awagen.kolibri.definitions.processing.ProcessingMessages
 import de.awagen.kolibri.definitions.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
 import de.awagen.kolibri.definitions.usecase.searchopt.jobdefinitions.parts.Aggregators.{fullJobToSingleTagAggregatorSupplier, singleBatchAggregatorSupplier}
-import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
-import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.types.Types.WithCount
-import de.awagen.kolibri.datatypes.values.aggregation.{AggregateValue, Aggregators}
+import de.awagen.kolibri.datatypes.values.aggregation.immutable.AggregateValue
+import de.awagen.kolibri.datatypes.values.aggregation.mutable.Aggregators
 import de.awagen.kolibri.fleet.akka.actors.work.aboveall.SupervisorActor
 import de.awagen.kolibri.fleet.akka.actors.work.aboveall.SupervisorActor.ProcessActorRunnableJobCmd
 import de.awagen.kolibri.fleet.akka.config.AppConfig.persistenceModule

@@ -33,7 +33,7 @@ import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}
 import de.awagen.kolibri.datatypes.types.ClassTyped
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSupplier
 import de.awagen.kolibri.datatypes.types.Types.WithCount
-import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
+import de.awagen.kolibri.datatypes.values.aggregation.mutable.Aggregators.Aggregator
 import de.awagen.kolibri.fleet.akka.actors.testactors.TestTransformActor
 import de.awagen.kolibri.fleet.akka.actors.work.aboveall.SupervisorActor.{ProcessActorRunnableJobCmd, ProcessActorRunnableTaskJobCmd, TaggedTypeTaggedMapBatch}
 import de.awagen.kolibri.fleet.akka.execution.TestTaskHelper._

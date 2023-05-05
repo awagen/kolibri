@@ -24,16 +24,16 @@ import de.awagen.kolibri.definitions.domain.jobdefinitions.{Batch, RunnableExpec
 import de.awagen.kolibri.definitions.processing.ProcessingMessages.ProcessingMessage
 import de.awagen.kolibri.definitions.processing.classifier.Mapper.FilteringMapper
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
-import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
+import de.awagen.kolibri.datatypes.metrics.aggregation.mutable.MetricAggregation
 import de.awagen.kolibri.datatypes.multivalues.OrderedMultiValues
 import de.awagen.kolibri.datatypes.mutable.stores.TypeTaggedMap
-import de.awagen.kolibri.datatypes.stores.MetricRow
+import de.awagen.kolibri.datatypes.stores.immutable.MetricRow
 import de.awagen.kolibri.datatypes.tagging.MapImplicits.MutableTaggedMap
 import de.awagen.kolibri.datatypes.tagging.TaggedWithType
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 import de.awagen.kolibri.datatypes.types.Types.WithCount
-import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
+import de.awagen.kolibri.datatypes.values.aggregation.mutable.Aggregators.Aggregator
 import de.awagen.kolibri.fleet.akka.actors.work.aboveall.SupervisorActor.{ProcessActorRunnableJobCmd, ProcessActorRunnableTaskJobCmd}
 import de.awagen.kolibri.fleet.akka.execution.job.ActorRunnableSinkType.ActorRunnableSinkType
 import de.awagen.kolibri.fleet.akka.jobdefinitions.ProcessingActorProps.ProcessingActorProps

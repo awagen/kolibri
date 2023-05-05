@@ -20,7 +20,7 @@ package de.awagen.kolibri.definitions.io.json
 import de.awagen.kolibri.datatypes.io.json.EnumerationJsonProtocol.aggregateTypeFormat
 import de.awagen.kolibri.datatypes.metrics.aggregation.writer.MetricDocumentFormat
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
-import de.awagen.kolibri.datatypes.stores.MetricRow
+import de.awagen.kolibri.datatypes.stores.immutable.MetricRow
 import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
 import de.awagen.kolibri.datatypes.types.JsonStructDefs._
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1

@@ -17,10 +17,10 @@
 
 package de.awagen.kolibri.definitions.usecase.searchopt.jobdefinitions.parts
 
+import de.awagen.kolibri.datatypes.metrics.aggregation.mutable.MetricAggregation
 import de.awagen.kolibri.definitions.processing.ProcessingMessages.{AggregationStateWithData, AggregationStateWithoutData, Corn}
 import de.awagen.kolibri.definitions.processing.execution.expectation.Expectation.SuccessAndErrorCounts
 import de.awagen.kolibri.definitions.processing.execution.expectation._
-import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
 
 import scala.concurrent.duration._
 import scala.reflect.ClassTag

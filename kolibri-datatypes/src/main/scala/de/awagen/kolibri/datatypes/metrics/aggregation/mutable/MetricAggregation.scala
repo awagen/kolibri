@@ -14,10 +14,11 @@
   * limitations under the License.
   */
 
-package de.awagen.kolibri.datatypes.metrics.aggregation
+package de.awagen.kolibri.datatypes.metrics.aggregation.mutable
 
 import de.awagen.kolibri.datatypes.functions.GeneralSerializableFunctions._
-import de.awagen.kolibri.datatypes.stores.{MetricDocument, MetricRow}
+import de.awagen.kolibri.datatypes.stores.immutable.MetricRow
+import de.awagen.kolibri.datatypes.stores.mutable.MetricDocument
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 import de.awagen.kolibri.datatypes.types.Types.WithCount
 

@@ -14,9 +14,10 @@
  * limitations under the License.
  */
 
-package de.awagen.kolibri.datatypes.stores
+package de.awagen.kolibri.datatypes.stores.mutable
 
-import de.awagen.kolibri.datatypes.stores.MetricDocument.ParamMap
+import de.awagen.kolibri.datatypes.stores.immutable.MetricRow
+import de.awagen.kolibri.datatypes.stores.mutable.MetricDocument.ParamMap
 
 import scala.collection.mutable
 
@@ -49,7 +50,7 @@ case class MetricDocument[+A <: AnyRef](id: A, rows: mutable.Map[ParamMap, Metri
   def add(row: MetricRow): Unit = {
     rows(row.params) = rows.getOrElse(
       row.params,
-      MetricRow(new MetricRow.ResultCountStore(0, 0), row.params, Map.empty)
+      MetricRow(MetricRow.ResultCountStore(0, 0), row.params, Map.empty)
     )
       .addRecordAndIncreaseSampleCount(row)
     metricNames = metricNames ++ row.metricNames

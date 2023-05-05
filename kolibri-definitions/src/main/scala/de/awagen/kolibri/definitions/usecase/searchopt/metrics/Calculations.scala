@@ -23,7 +23,7 @@ import de.awagen.kolibri.definitions.usecase.searchopt.metrics.PlainMetricValueF
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason.missingDataKeyFailReason
-import de.awagen.kolibri.datatypes.stores.MetricRow
+import de.awagen.kolibri.datatypes.stores.immutable.MetricRow
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 import de.awagen.kolibri.datatypes.values.Calculations.{Calculation, ComputeResult, ResultRecord}
 import de.awagen.kolibri.datatypes.values.MetricValue

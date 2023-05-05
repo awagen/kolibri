@@ -18,8 +18,8 @@
 package de.awagen.kolibri.fleet.akka.config.di.modules.persistence
 
 import com.softwaremill.tagging
+import de.awagen.kolibri.datatypes.metrics.aggregation.mutable.MetricAggregation
 import de.awagen.kolibri.definitions.usecase.searchopt.jobdefinitions.parts.Writer
-import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
 import de.awagen.kolibri.datatypes.tagging.Tags
 import de.awagen.kolibri.fleet.akka.config.AppProperties
 import de.awagen.kolibri.fleet.akka.config.AppProperties.config.directoryPathSeparator

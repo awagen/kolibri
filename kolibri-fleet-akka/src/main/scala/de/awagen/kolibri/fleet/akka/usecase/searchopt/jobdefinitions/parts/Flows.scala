@@ -32,7 +32,7 @@ import de.awagen.kolibri.definitions.usecase.searchopt.jobdefinitions.parts.Rese
 import de.awagen.kolibri.definitions.usecase.searchopt.metrics.MetricRowFunctions.throwableToMetricRowResponse
 import de.awagen.kolibri.datatypes.metrics.aggregation.writer.MetricDocumentFormatHelper.getMetricValueFromTypeAndSample
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
-import de.awagen.kolibri.datatypes.stores.MetricRow
+import de.awagen.kolibri.datatypes.stores.immutable.MetricRow
 import de.awagen.kolibri.datatypes.tagging.TagType
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.values.Calculations.{Calculation, ResultRecord}

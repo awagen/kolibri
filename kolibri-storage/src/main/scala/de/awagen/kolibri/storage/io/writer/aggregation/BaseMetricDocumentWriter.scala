@@ -18,7 +18,7 @@ package de.awagen.kolibri.storage.io.writer.aggregation
 
 import de.awagen.kolibri.storage.io.writer.Writers.Writer
 import de.awagen.kolibri.datatypes.metrics.aggregation.writer.MetricDocumentFormat
-import de.awagen.kolibri.datatypes.stores.MetricDocument
+import de.awagen.kolibri.datatypes.stores.mutable.MetricDocument
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import org.slf4j.{Logger, LoggerFactory}
 

@@ -18,7 +18,7 @@
 package de.awagen.kolibri.definitions.format
 
 import de.awagen.kolibri.datatypes.metrics.aggregation.writer.{CSVParameterBasedMetricDocumentFormat, MetricDocumentFormat}
-import de.awagen.kolibri.datatypes.stores.MetricDocument
+import de.awagen.kolibri.datatypes.stores.mutable.MetricDocument
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 
 object Formats {

@@ -34,9 +34,9 @@ import de.awagen.kolibri.definitions.usecase.searchopt.jobdefinitions.parts.Batc
 import de.awagen.kolibri.definitions.usecase.searchopt.jobdefinitions.parts.Expectations.expectationPerBatchSupplier
 import de.awagen.kolibri.definitions.usecase.searchopt.parse.ParsingConfig
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
-import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
+import de.awagen.kolibri.datatypes.metrics.aggregation.mutable.MetricAggregation
 import de.awagen.kolibri.datatypes.mutable.stores.{BaseWeaklyTypedMap, WeaklyTypedMap}
-import de.awagen.kolibri.datatypes.stores.MetricRow
+import de.awagen.kolibri.datatypes.stores.immutable.MetricRow
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 import de.awagen.kolibri.fleet.akka.actors.work.aboveall.SupervisorActor
@@ -135,10 +135,10 @@ object SearchJobDefinitions {
         override def apply(v1: Any): SuccessAndErrorCounts = v1 match {
           case Corn(e, _) if e.isInstanceOf[MetricRow] =>
             val result = e.asInstanceOf[MetricRow]
-            SuccessAndErrorCounts(result.countStore.successCount, result.countStore.failCount)
+            SuccessAndErrorCounts(result.countStore.successes, result.countStore.fails)
           case AggregationStateWithData(data: MetricAggregation[Tag], _, _, _) =>
-            val successSampleCount: Int = data.aggregationStateMap.values.flatMap(x => x.rows.values.map(y => y.countStore.successCount)).sum
-            val errorSampleCount: Int = data.aggregationStateMap.values.flatMap(x => x.rows.values.map(y => y.countStore.failCount)).sum
+            val successSampleCount: Int = data.aggregationStateMap.values.flatMap(x => x.rows.values.map(y => y.countStore.successes)).sum
+            val errorSampleCount: Int = data.aggregationStateMap.values.flatMap(x => x.rows.values.map(y => y.countStore.fails)).sum
             SuccessAndErrorCounts(successSampleCount, errorSampleCount)
           case AggregationStateWithoutData(elementCount: Int, _, _, _) =>
             // TODO: need success and error counts here, change elementCount in the message to

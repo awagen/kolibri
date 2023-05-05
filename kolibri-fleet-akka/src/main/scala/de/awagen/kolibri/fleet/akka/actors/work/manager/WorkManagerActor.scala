@@ -28,9 +28,9 @@ import de.awagen.kolibri.definitions.resources.{ResourceAlreadyExists, ResourceO
 import de.awagen.kolibri.definitions.traits.Traits.WithBatchNr
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
-import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
+import de.awagen.kolibri.datatypes.metrics.aggregation.mutable.MetricAggregation
 import de.awagen.kolibri.datatypes.mutable.stores.TypeTaggedMap
-import de.awagen.kolibri.datatypes.stores.MetricRow
+import de.awagen.kolibri.datatypes.stores.immutable.MetricRow
 import de.awagen.kolibri.datatypes.tagging.TaggedWithType
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.types.ClassTyped

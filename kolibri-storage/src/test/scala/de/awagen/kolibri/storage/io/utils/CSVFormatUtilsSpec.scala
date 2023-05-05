@@ -17,7 +17,7 @@
 package de.awagen.kolibri.storage.io.utils
 
 import de.awagen.kolibri.datatypes.functions.GeneralSerializableFunctions._
-import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
+import de.awagen.kolibri.datatypes.metrics.aggregation.mutable.MetricAggregation
 import de.awagen.kolibri.storage.io.utils.TestObjects.{doc1, doc2}
 import de.awagen.kolibri.storage.testclasses.UnitTestSpec
 

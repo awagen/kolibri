@@ -1,5 +1,7 @@
 package de.awagen.kolibri.datatypes.values.aggregation
 
+import de.awagen.kolibri.datatypes.values.aggregation.immutable.AggregateValue
+
 import scala.collection.mutable
 import Numeric.Implicits._
 

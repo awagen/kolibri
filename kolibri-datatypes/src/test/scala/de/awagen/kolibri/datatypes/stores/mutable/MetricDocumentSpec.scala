@@ -15,10 +15,11 @@
   */
 
 
-package de.awagen.kolibri.datatypes.stores
+package de.awagen.kolibri.datatypes.stores.mutable
 
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricsHelper._
-import de.awagen.kolibri.datatypes.stores.MetricDocument.ParamMap
+import de.awagen.kolibri.datatypes.stores.immutable.MetricRow
+import de.awagen.kolibri.datatypes.stores.mutable.MetricDocument.ParamMap
 import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}
 import de.awagen.kolibri.datatypes.testclasses.UnitTestSpec
 import de.awagen.kolibri.datatypes.values.aggregation.AggregationTestHelper.metricValueSupplier
@@ -39,8 +40,8 @@ class MetricDocumentSpec extends UnitTestSpec {
       metricRow1 = metricRow1.addMetricDontChangeCountStore(metricsSuccess2)
       metricRow2 = metricRow2.addMetricDontChangeCountStore(metricsSuccess3)
       metricRow2 = metricRow2.addMetricDontChangeCountStore(metricsSuccess4)
-      metricRow1.countStore.incrementSuccessCount()
-      metricRow2.countStore.incrementSuccessCount()
+      metricRow1 = metricRow1.incrementSuccessCount()
+      metricRow2 = metricRow2.incrementSuccessCount()
       doc.add(metricRow1)
       doc.add(metricRow2)
       // then

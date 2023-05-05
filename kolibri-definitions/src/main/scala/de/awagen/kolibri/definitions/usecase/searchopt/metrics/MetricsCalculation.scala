@@ -16,10 +16,10 @@
 
 package de.awagen.kolibri.definitions.usecase.searchopt.metrics
 
+import de.awagen.kolibri.datatypes.stores.immutable.MetricRow
 import de.awagen.kolibri.definitions.usecase.searchopt.metrics.JudgementValidation.JudgementValidation
 import de.awagen.kolibri.definitions.usecase.searchopt.metrics.MetricsCalculation.{calculateJudgementMetrics, calculationResultToMetricValue}
 import de.awagen.kolibri.definitions.usecase.searchopt.provider.{JudgementInfo, JudgementProvider}
-import de.awagen.kolibri.datatypes.stores.MetricRow
 import de.awagen.kolibri.datatypes.values.Calculations.{ComputeResult, ResultRecord}
 import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType
 import de.awagen.kolibri.datatypes.values.{MetricValue, RunningValues}

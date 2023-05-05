@@ -18,7 +18,7 @@
 package de.awagen.kolibri.definitions.processing.execution.functions
 
 import de.awagen.kolibri.datatypes.metrics.aggregation.writer.MetricDocumentFormat
-import de.awagen.kolibri.datatypes.stores.MetricDocument
+import de.awagen.kolibri.datatypes.stores.mutable.MetricDocument
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.storage.io.reader.Reader
 

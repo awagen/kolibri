@@ -1,6 +1,7 @@
 package de.awagen.kolibri.storage.io.utils
 
-import de.awagen.kolibri.datatypes.stores.{MetricDocument, MetricRow}
+import de.awagen.kolibri.datatypes.stores.immutable.MetricRow
+import de.awagen.kolibri.datatypes.stores.mutable.MetricDocument
 import de.awagen.kolibri.datatypes.tagging.Tags.ParameterMultiValueTag
 import de.awagen.kolibri.datatypes.values.MetricValue
 

@@ -20,7 +20,8 @@ import de.awagen.kolibri.datatypes.metrics.aggregation.writer.CSVParameterBasedM
 import de.awagen.kolibri.datatypes.metrics.aggregation.writer.MetricFormatTestHelper._
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason
 import de.awagen.kolibri.datatypes.stores
-import de.awagen.kolibri.datatypes.stores.MetricRow
+import de.awagen.kolibri.datatypes.stores.immutable.MetricRow
+import de.awagen.kolibri.datatypes.stores.mutable.MetricDocument
 import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}
 import de.awagen.kolibri.datatypes.testclasses.UnitTestSpec
 import de.awagen.kolibri.datatypes.values.MetricValue
@@ -220,7 +221,7 @@ class CSVParameterBasedMetricDocumentFormatSpec extends UnitTestSpec {
       )
       // when
       val nameToTypeMapping = Map("M1" -> AggregationType.DOUBLE_AVG, "M2" -> AggregationType.DOUBLE_AVG)
-      val metricDocument: stores.MetricDocument[Tag] = writer.readDocument(testHeaders, rows, StringTag("q=test"), nameToTypeMapping)
+      val metricDocument: MetricDocument[Tag] = writer.readDocument(testHeaders, rows, StringTag("q=test"), nameToTypeMapping)
       val params1 = Map("p1" -> Seq("p1_v1"), "p2" -> Seq("p2_v1", "p2_v2"))
       val params2 = Map("p1" -> Seq("p1_v2"), "p2" -> Seq("p2_a1", "p2_a2"))
       val row1Metrics: Map[String, MetricValue[Double]] = metricDocument.rows(params1).metrics.asInstanceOf[Map[String, MetricValue[Double]]]

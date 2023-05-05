@@ -18,12 +18,12 @@
 package de.awagen.kolibri.fleet.akka.config.di.modules.persistence
 
 import com.softwaremill.tagging
+import de.awagen.kolibri.datatypes.metrics.aggregation.mutable.MetricAggregation
 import de.awagen.kolibri.fleet.akka.config.AppProperties._
 import de.awagen.kolibri.fleet.akka.config.di.modules.Modules.{PersistenceDIModule, RESOURCE_MODULE}
 import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, LocalResourceDirectoryReader, LocalResourceFileReader, Reader}
 import de.awagen.kolibri.storage.io.writer.Writers
 import de.awagen.kolibri.storage.io.writer.Writers.FileWriter
-import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
 import de.awagen.kolibri.datatypes.tagging.Tags
 
 import java.io.IOException

@@ -16,7 +16,7 @@
 
 package de.awagen.kolibri.datatypes.values
 
-import de.awagen.kolibri.datatypes.values.aggregation.AggregateValue
+import de.awagen.kolibri.datatypes.values.aggregation.immutable.AggregateValue
 
 
 /**

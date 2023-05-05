@@ -28,7 +28,7 @@ import de.awagen.kolibri.definitions.processing.modifiers.ParameterValues.ValueT
 import de.awagen.kolibri.definitions.usecase.searchopt.provider.JudgementProvider
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.io.json.EnumerationJsonProtocol.EnumerationProtocol
-import de.awagen.kolibri.datatypes.stores.MetricRow
+import de.awagen.kolibri.datatypes.stores.immutable.MetricRow
 import de.awagen.kolibri.datatypes.types.JsonStructDefs.StringChoiceStructDef
 import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
 import spray.json.{DefaultJsonProtocol, DeserializationException, JsString, JsValue}

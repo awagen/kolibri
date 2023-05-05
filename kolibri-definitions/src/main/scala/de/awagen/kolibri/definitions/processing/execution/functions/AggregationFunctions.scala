@@ -21,7 +21,7 @@ import de.awagen.kolibri.definitions.processing.failure.TaskFailType
 import de.awagen.kolibri.definitions.processing.failure.TaskFailType.TaskFailType
 import de.awagen.kolibri.definitions.provider.WeightProviders.WeightProvider
 import de.awagen.kolibri.datatypes.metrics.aggregation.writer.MetricDocumentFormat
-import de.awagen.kolibri.datatypes.stores.MetricDocument
+import de.awagen.kolibri.datatypes.stores.mutable.MetricDocument
 import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, Reader}

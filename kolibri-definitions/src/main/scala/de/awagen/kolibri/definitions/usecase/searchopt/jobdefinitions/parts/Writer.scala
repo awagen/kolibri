@@ -18,9 +18,9 @@
 package de.awagen.kolibri.definitions.usecase.searchopt.jobdefinitions.parts
 
 import com.amazonaws.regions.Regions
-import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
+import de.awagen.kolibri.datatypes.metrics.aggregation.mutable.MetricAggregation
 import de.awagen.kolibri.datatypes.metrics.aggregation.writer.MetricDocumentFormat
-import de.awagen.kolibri.datatypes.stores.MetricDocument
+import de.awagen.kolibri.datatypes.stores.mutable.MetricDocument
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.storage.io.writer.Writers.{FileWriter, Writer}
 import de.awagen.kolibri.storage.io.writer.aggregation.{BaseMetricAggregationWriter, BaseMetricDocumentWriter}

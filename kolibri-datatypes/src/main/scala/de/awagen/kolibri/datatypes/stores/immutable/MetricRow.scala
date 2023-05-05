@@ -13,43 +13,38 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-package de.awagen.kolibri.datatypes.stores
+package de.awagen.kolibri.datatypes.stores.immutable
 
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
-import de.awagen.kolibri.datatypes.stores.MetricRow.ResultCountStore
+import de.awagen.kolibri.datatypes.stores.immutable.MetricRow.ResultCountStore
 import de.awagen.kolibri.datatypes.values.{BiRunningValue, MetricValue}
 
 object MetricRow {
 
-  class ResultCountStore(successes: Int, fails: Int) extends KolibriSerializable{
-    private[this] var successCounter: Int = successes
-    private[this] var failCounter: Int = fails
+  case class ResultCountStore(successes: Int, fails: Int) extends KolibriSerializable{
 
-    def incrementSuccessCount(): Unit = successCounter += 1
-    def incrementFailCount(): Unit = failCounter += 1
-
-    def successCount: Int = successCounter
-    def failCount: Int = failCounter
+    def incrementSuccessCount(): ResultCountStore =  ResultCountStore(successes + 1, fails)
+    def incrementFailCount(): ResultCountStore = ResultCountStore(successes, fails + 1)
 
     override def equals(obj: Any): Boolean = {
       if (!obj.isInstanceOf[ResultCountStore]) false
       else {
         val other = obj.asInstanceOf[ResultCountStore]
-        this.successCount == other.successCount && this.failCount == other.failCount
+        this.successes == other.successes && this.fails == other.fails
       }
     }
 
     override def hashCode(): Int = {
       var hash = 7
-      hash = 31 * hash + successCount
-      hash = 31 * hash + failCount
+      hash = 31 * hash + successes
+      hash = 31 * hash + fails
       hash
     }
 
-    override def toString: String = s"ResultCountStore($successCount, $failCount)"
+    override def toString: String = s"ResultCountStore($successes, $fails)"
   }
 
-  def empty: MetricRow = new MetricRow(new ResultCountStore(0, 0), Map.empty[String, Seq[String]], Map.empty[String, MetricValue[Any]])
+  def empty: MetricRow = new MetricRow(ResultCountStore(0, 0), Map.empty[String, Seq[String]], Map.empty[String, MetricValue[Any]])
 
   def emptyForParams(params: Map[String, Seq[String]]): MetricRow = new MetricRow(new ResultCountStore(0, 0), params, Map.empty[String, MetricValue[Any]])
 
@@ -60,8 +55,8 @@ object MetricRow {
   def metricRow(metrics: MetricValue[Any]*): MetricRow = {
     var store = empty
     store = store.addFullMetricsSampleAndIncreaseSampleCount(metrics: _*)
-    if (isSuccessSample(metrics:_*)) store.countStore.incrementSuccessCount()
-    else store.countStore.incrementFailCount()
+    if (isSuccessSample(metrics:_*)) store.incrementSuccessCount()
+    else store.incrementFailCount()
     store
   }
 
@@ -78,11 +73,14 @@ object MetricRow {
   */
 case class MetricRow(countStore: ResultCountStore, params: Map[String, Seq[String]], metrics: Map[String, MetricValue[Any]]) extends MetricRecord[String, Any] {
 
+  def incrementSuccessCount(): MetricRow =  this.copy(countStore = ResultCountStore(countStore.successes + 1, countStore.fails))
+  def incrementFailCount(): MetricRow = this.copy(countStore = ResultCountStore(countStore.successes, countStore.fails + 1))
+
   def weighted(weight: Double): MetricRow = {
     val map: Map[String, MetricValue[Any]] = metrics.map(x => {
       (x._1, MetricValue(x._2.name, BiRunningValue(x._2.biValue.value1, x._2.biValue.value2.weighted(weight))))
     })
-    MetricRow(new ResultCountStore(countStore.successCount, countStore.failCount), params, map)
+    MetricRow(ResultCountStore(countStore.successes, countStore.fails), params, map)
   }
 
   def successCountForMetric(metricName: String): Int = {
@@ -114,17 +112,15 @@ case class MetricRow(countStore: ResultCountStore, params: Map[String, Seq[Strin
   override def addFullMetricsSampleAndIncreaseSampleCount[T >: Any](newMetrics: MetricValue[T]*): MetricRow = {
     var result: MetricRow = this
     newMetrics.foreach(x => result = result.addMetricDontChangeCountStore(x))
-    if (MetricRow.isSuccessSample(newMetrics:_*)) countStore.incrementSuccessCount()
-    else countStore.incrementFailCount()
-    result
+    if (MetricRow.isSuccessSample(newMetrics:_*)) result.incrementSuccessCount()
+    else result.incrementFailCount()
   }
 
   override def addRecordAndIncreaseSampleCount[T >: Any](record: MetricRecord[String, T]): MetricRow = {
     var result = this
     record.metricValues.foreach(x => result = result.addMetricDontChangeCountStore(x))
-    if (MetricRow.isSuccessSample(record.metricValues:_*)) countStore.incrementSuccessCount()
-    else countStore.incrementFailCount()
-    result
+    if (MetricRow.isSuccessSample(record.metricValues:_*)) result.incrementSuccessCount()
+    else result.incrementFailCount()
   }
 
 }

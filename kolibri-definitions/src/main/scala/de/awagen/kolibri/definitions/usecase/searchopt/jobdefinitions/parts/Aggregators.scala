@@ -19,11 +19,11 @@ package de.awagen.kolibri.definitions.usecase.searchopt.jobdefinitions.parts
 
 import de.awagen.kolibri.definitions.processing.ProcessingMessages.ProcessingMessage
 import de.awagen.kolibri.datatypes.functions.GeneralSerializableFunctions.identity
-import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
-import de.awagen.kolibri.datatypes.stores.MetricRow
+import de.awagen.kolibri.datatypes.metrics.aggregation.mutable.MetricAggregation
+import de.awagen.kolibri.datatypes.stores.immutable.MetricRow
 import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
-import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.{Aggregator, TagKeyMetricAggregationPerClassAggregator}
+import de.awagen.kolibri.datatypes.values.aggregation.mutable.Aggregators.{Aggregator, TagKeyMetricAggregationPerClassAggregator}
 
 object Aggregators {
 

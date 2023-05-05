@@ -15,9 +15,9 @@
   */
 
 
-package de.awagen.kolibri.datatypes.stores
+package de.awagen.kolibri.datatypes.stores.mutable
 
-import de.awagen.kolibri.datatypes.stores.PriorityStores.BasePriorityStore
+import de.awagen.kolibri.datatypes.stores.mutable.PriorityStores.BasePriorityStore
 import de.awagen.kolibri.datatypes.testclasses.UnitTestSpec
 
 class PriorityStoresSpec extends UnitTestSpec {

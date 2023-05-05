@@ -17,9 +17,9 @@
 
 package de.awagen.kolibri.definitions.io.json
 
+import de.awagen.kolibri.datatypes.stores.mutable.MetricDocument
 import de.awagen.kolibri.definitions.format.Formats
 import de.awagen.kolibri.definitions.format.Formats.MetricDocumentStringFormat
-import de.awagen.kolibri.datatypes.stores.MetricDocument
 import spray.json.{DefaultJsonProtocol, DeserializationException, JsValue, JsonFormat, enrichAny}
 
 object FormatJsonProtocol extends DefaultJsonProtocol {

@@ -18,13 +18,13 @@
 package de.awagen.kolibri.fleet.akka.config.di.modules.persistence
 
 import com.softwaremill.macwire.wire
+import de.awagen.kolibri.datatypes.stores.mutable.MetricDocument
 import de.awagen.kolibri.fleet.akka.config.AppProperties
 import de.awagen.kolibri.fleet.akka.config.AppProperties.config.directoryPathSeparator
 import de.awagen.kolibri.fleet.akka.config.di.modules.Modules.PersistenceDIModule
 import de.awagen.kolibri.fleet.akka.config.di.modules.persistence.PersistenceModule.logger
 import de.awagen.kolibri.storage.io.writer.Writers.Writer
 import de.awagen.kolibri.storage.io.writer.aggregation.BaseMetricDocumentWriter
-import de.awagen.kolibri.datatypes.stores.MetricDocument
 import de.awagen.kolibri.datatypes.tagging.Tags
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 import org.slf4j.{Logger, LoggerFactory}

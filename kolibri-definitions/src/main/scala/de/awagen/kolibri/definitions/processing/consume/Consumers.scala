@@ -21,7 +21,7 @@ import de.awagen.kolibri.definitions.processing.ProcessingMessages.{AggregationS
 import de.awagen.kolibri.definitions.processing.execution.expectation.ExecutionExpectation
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}
-import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
+import de.awagen.kolibri.datatypes.values.aggregation.mutable.Aggregators.Aggregator
 import de.awagen.kolibri.storage.io.writer.Writers.Writer
 import org.slf4j.{Logger, LoggerFactory}
 

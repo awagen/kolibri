@@ -19,9 +19,9 @@ package de.awagen.kolibri.definitions.io.json
 
 import de.awagen.kolibri.definitions.format.Formats
 import de.awagen.kolibri.definitions.testclasses.UnitTestSpec
-import de.awagen.kolibri.datatypes.stores.MetricDocument
 import spray.json._
 import FormatJsonProtocol._
+import de.awagen.kolibri.datatypes.stores.mutable.MetricDocument
 
 
 class FormatJsonProtocolSpec extends UnitTestSpec {

@@ -23,7 +23,7 @@ import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIn
 import de.awagen.kolibri.datatypes.tagging.TagType.AGGREGATION
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSupplier
-import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
+import de.awagen.kolibri.datatypes.values.aggregation.mutable.Aggregators.Aggregator
 import de.awagen.kolibri.fleet.akka.actors.{KolibriTestKit, TestMessages}
 import de.awagen.kolibri.fleet.akka.actors.TestMessages.{TaggedInt, messagesToActorRefRunnableGenFunc}
 import de.awagen.kolibri.fleet.akka.actors.work.aboveall.SupervisorActor.FinishedJobEvent

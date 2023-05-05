@@ -21,12 +21,12 @@ import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, ActorSystem, Can
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.mutable.stores.TypeTaggedMap
-import de.awagen.kolibri.datatypes.stores.PriorityStores.{BasePriorityStore, PriorityStore}
+import de.awagen.kolibri.datatypes.stores.mutable.PriorityStores.{BasePriorityStore, PriorityStore}
 import de.awagen.kolibri.datatypes.tagging.TaggedWithType
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.types.ClassTyped
 import de.awagen.kolibri.datatypes.types.Types.WithCount
-import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
+import de.awagen.kolibri.datatypes.values.aggregation.mutable.Aggregators.Aggregator
 import de.awagen.kolibri.definitions.domain.jobdefinitions.Batch
 import de.awagen.kolibri.definitions.processing.JobMessages.{JobDefinition, SearchEvaluationDefinition}
 import de.awagen.kolibri.definitions.processing.ProcessingMessages.{JobStatusInfo, ProcessingMessage, ProcessingResult}

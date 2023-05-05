@@ -30,7 +30,7 @@ import de.awagen.kolibri.definitions.processing.execution.task.Task
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.types.ClassTyped
 import de.awagen.kolibri.datatypes.types.Types.WithCount
-import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.Aggregator
+import de.awagen.kolibri.datatypes.values.aggregation.mutable.Aggregators.Aggregator
 import de.awagen.kolibri.fleet.akka.actors.work.aboveall.SupervisorActor.BatchTypeTaggedMapGenerator
 import de.awagen.kolibri.fleet.akka.actors.work.worker.TaskExecutionWorkerActor.ProcessTaskExecution
 import de.awagen.kolibri.fleet.akka.execution.job.{ActorRunnable, ActorRunnableSinkType}

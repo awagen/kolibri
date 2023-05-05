@@ -21,7 +21,7 @@ import de.awagen.kolibri.definitions.http.client.request.RequestTemplate
 import de.awagen.kolibri.definitions.processing.ProcessingMessages.ProcessingMessage
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
-import de.awagen.kolibri.datatypes.stores.MetricRow
+import de.awagen.kolibri.datatypes.stores.immutable.MetricRow
 import de.awagen.kolibri.datatypes.tagging.TagType.TagType
 import de.awagen.kolibri.datatypes.tagging.Tags.{ParameterMultiValueTag, Tag}
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableConsumer

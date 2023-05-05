@@ -14,7 +14,7 @@
   * limitations under the License.
   */
 
-package de.awagen.kolibri.datatypes.stores
+package de.awagen.kolibri.datatypes.stores.immutable
 
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricsHelper._
 import de.awagen.kolibri.datatypes.testclasses.UnitTestSpec

@@ -1,30 +1,33 @@
 /**
-  * Copyright 2021 Andreas Wagenmann
-  *
-  * Licensed under the Apache License, Version 2.0 (the "License");
-  * you may not use this file except in compliance with the License.
-  * You may obtain a copy of the License at
-  *
-  * http://www.apache.org/licenses/LICENSE-2.0
-  *
-  * Unless required by applicable law or agreed to in writing, software
-  * distributed under the License is distributed on an "AS IS" BASIS,
-  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  * See the License for the specific language governing permissions and
-  * limitations under the License.
-  */
+ * Copyright 2021 Andreas Wagenmann
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-package de.awagen.kolibri.datatypes.values.aggregation
+
+package de.awagen.kolibri.datatypes.values.aggregation.mutable
 
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
-import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
-import de.awagen.kolibri.datatypes.stores.{MetricDocument, MetricRow}
+import de.awagen.kolibri.datatypes.metrics.aggregation.mutable.MetricAggregation
+import de.awagen.kolibri.datatypes.stores.immutable.MetricRow
+import de.awagen.kolibri.datatypes.stores.mutable.MetricDocument
 import de.awagen.kolibri.datatypes.tagging.TagType.AGGREGATION
 import de.awagen.kolibri.datatypes.tagging.TaggedWithType
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.types.SerializableCallable.{SerializableFunction1, SerializableFunction2, SerializableSupplier}
-import de.awagen.kolibri.datatypes.values.RunningValues.doubleAvgRunningValue
 import de.awagen.kolibri.datatypes.values.DataPoint
+import de.awagen.kolibri.datatypes.values.RunningValues.doubleAvgRunningValue
+import de.awagen.kolibri.datatypes.values.aggregation.immutable.AggregateValue
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.mutable
@@ -46,9 +49,10 @@ object Aggregators {
 
   /**
    * Aggregator taking start value generator, aggregation and merge functions to define the aggregation behavior
-   * @param aggFunc - Given sample of type U and aggregation of type V, generate new value of type V
+   *
+   * @param aggFunc       - Given sample of type U and aggregation of type V, generate new value of type V
    * @param startValueGen - supplier of start value of aggregation, type V
-   * @param mergeFunc - merge function of aggregations, taking two values of type V and providing new value of type V
+   * @param mergeFunc     - merge function of aggregations, taking two values of type V and providing new value of type V
    * @tparam U - type of single data points
    * @tparam V - type of aggregation
    */
@@ -68,12 +72,12 @@ object Aggregators {
 
   /**
    *
-   * @param aggFunc - aggregation function, taking single data point of type TT, aggregated value of type V, providing new aggregation of type V
+   * @param aggFunc          - aggregation function, taking single data point of type TT, aggregated value of type V, providing new aggregation of type V
    * @param startValueForKey - function giving an initial aggregation value, given a Tag
-   * @param mergeFunc - merge function of aggregation values
-   * @param keyMapFunction - function mapping value of type Tag to value of type Tag (in case the Tag shall not be mapped, just use identity)
+   * @param mergeFunc        - merge function of aggregation values
+   * @param keyMapFunction   - function mapping value of type Tag to value of type Tag (in case the Tag shall not be mapped, just use identity)
    * @tparam TT - type of single data point, needs to extend TaggedWithType
-   * @tparam V - type of aggregation
+   * @tparam V  - type of aggregation
    */
   class BasePerClassAggregator[TT <: TaggedWithType : TypeTag, V: TypeTag](aggFunc: SerializableFunction2[TT, V, V],
                                                                            startValueForKey: SerializableFunction1[Tag, V],
@@ -98,6 +102,7 @@ object Aggregators {
 
   /**
    * Aggregator that aggregates (running) averages per class
+   *
    * @param keyMapFunction - function mapping value of type Tag to value of type Tag (in case the Tag shall not be mapped, just use identity)
    */
   class TagKeyRunningDoubleAvgPerClassAggregator(keyMapFunction: SerializableFunction1[Tag, Tag]) extends BasePerClassAggregator[TaggedWithType with DataPoint[Double], AggregateValue[Double]](
@@ -117,12 +122,12 @@ object Aggregators {
   }
 
   /**
-    * In case of a mapping function that alters original tags, ignoreIdDiff would need to be true to avoid conflicts.
-    * Setting this attribute to true enables aggregating data for the original tag to data for the mapped tag.
-    *
-    * @param keyMapFunction - mapping function of Tag of input sample data
-    * @param ignoreIdDiff - determines whether merging aggregations for different IDs is allowed
-    */
+   * In case of a mapping function that alters original tags, ignoreIdDiff would need to be true to avoid conflicts.
+   * Setting this attribute to true enables aggregating data for the original tag to data for the mapped tag.
+   *
+   * @param keyMapFunction - mapping function of Tag of input sample data
+   * @param ignoreIdDiff   - determines whether merging aggregations for different IDs is allowed
+   */
   class TagKeyMetricDocumentPerClassAggregator(keyMapFunction: SerializableFunction1[Tag, Tag], ignoreIdDiff: Boolean = false) extends BasePerClassAggregator[TaggedWithType with DataPoint[MetricRow], MetricDocument[Tag]](
     aggFunc = (x, y) => {
       y.add(x.data)
@@ -136,12 +141,12 @@ object Aggregators {
     keyMapFunction) {}
 
   /**
-    * In case of a mapping function that alters original tags, ignoreIdDiff would need to be true to avoid conflicts.
-    * Setting this attribute to true enables aggregating data for the original tag to data for the mapped tag.
-    *
-    * @param keyMapFunction - mapping function of Tag of input sample data
-    * @param ignoreIdDiff - determines whether merging aggregations for different IDs is allowed
-    */
+   * In case of a mapping function that alters original tags, ignoreIdDiff would need to be true to avoid conflicts.
+   * Setting this attribute to true enables aggregating data for the original tag to data for the mapped tag.
+   *
+   * @param keyMapFunction - mapping function of Tag of input sample data
+   * @param ignoreIdDiff   - determines whether merging aggregations for different IDs is allowed
+   */
   class TagKeyMetricAggregationPerClassAggregator(keyMapFunction: SerializableFunction1[Tag, Tag], ignoreIdDiff: Boolean = false) extends Aggregator[TaggedWithType with DataPoint[MetricRow], MetricAggregation[Tag]] {
     val aggregationState: MetricAggregation[Tag] = MetricAggregation.empty[Tag](keyMapFunction)
 
@@ -162,12 +167,12 @@ object Aggregators {
   }
 
   /**
-    * Wrapper for typed aggregators to accept any message and aggregate only those matching the type
-    *
-    * @param aggregator
-    * @tparam T
-    * @tparam V
-    */
+   * Wrapper for typed aggregators to accept any message and aggregate only those matching the type
+   *
+   * @param aggregator
+   * @tparam T
+   * @tparam V
+   */
   case class BaseAnyAggregator[T: TypeTag, V: TypeTag](aggregator: Aggregator[T, V]) extends Aggregator[Any, V] {
     override def add(sample: Any): Unit = {
       try {
