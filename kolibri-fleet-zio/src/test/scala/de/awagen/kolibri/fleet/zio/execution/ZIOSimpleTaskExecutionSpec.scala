@@ -31,11 +31,7 @@ class ZIOSimpleTaskExecutionSpec extends JUnitRunnableSpec {
     test("correctly execute tasks") {
       // given
       val task: ZIOTask[Unit] = SimpleWaitTask(50)
-      val taskExecution: ZIOSimpleTaskExecution[Unit] = ZIOSimpleTaskExecution(
-        task.successKey,
-        TypedMapStore.apply(Map.empty),
-        Seq(task)
-      )
+      val taskExecution: ZIOSimpleTaskExecution[Unit] = ZIOSimpleTaskExecution(TypedMapStore.apply(Map.empty), Seq(task))
       // when, then
       for {
         result <- taskExecution.processAllTasks

@@ -17,35 +17,24 @@
 
 package de.awagen.kolibri.fleet.zio.io.json
 
-import de.awagen.kolibri.datatypes.collections.generators.ByFunctionNrLimitedIndexedGenerator
-import de.awagen.kolibri.definitions.domain.jobdefinitions.Batch
-import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobDefinition
-import de.awagen.kolibri.fleet.zio.execution.ZIOTasks.SimpleWaitTask
+import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.{JobDefinition, simpleWaitJob}
 import spray.json.{DefaultJsonProtocol, JsValue, JsonFormat, enrichAny}
 
 object JobDefinitionJsonProtocol extends DefaultJsonProtocol {
 
-  implicit object JobDefinitionFormat extends JsonFormat[JobDefinition[_]] {
-    override def read(json: JsValue): JobDefinition[_] = json match {
+  implicit object JobDefinitionFormat extends JsonFormat[JobDefinition[_, _]] {
+    override def read(json: JsValue): JobDefinition[_,_] = json match {
       case spray.json.JsObject(fields) => fields("type").convertTo[String] match {
         case "JUST_WAIT" =>
           val jobName = fields("jobName").convertTo[String]
           val nrBatches = fields("nrBatches").convertTo[Int]
           val durationInMillis = fields("durationInMillis").convertTo[Long]
-          JobDefinition[Int](
-            jobName = jobName,
-            resourceSetup = Seq.empty,
-            batches = ByFunctionNrLimitedIndexedGenerator.createFromSeq(
-              Range(0, nrBatches, 1)
-                .map(batchNr => Batch(batchNr, ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq(1))))
-            ),
-            taskSequence = Seq(SimpleWaitTask(durationInMillis)),
-            resultConsumer = _ => ())
+          simpleWaitJob(jobName, nrBatches, durationInMillis)
       }
     }
 
     // TODO
-    override def write(obj: JobDefinition[_]): JsValue = """{}""".toJson
+    override def write(obj: JobDefinition[_,_]): JsValue = """{}""".toJson
   }
 
 

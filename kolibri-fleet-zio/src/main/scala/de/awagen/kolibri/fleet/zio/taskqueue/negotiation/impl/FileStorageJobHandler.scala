@@ -57,7 +57,7 @@ case class FileStorageJobHandler(overviewReader: DataOverviewReader,
     for {
       _ <- ZIO.logDebug("Retrieving registered jobs")
       inProgressMap <- jobsInProgressRef.get
-      _ <- ZIO.logDebug(s"In progress map: ${inProgressMap}")
+      _ <- ZIO.logDebug(s"In progress map: $inProgressMap")
       result <- ZIO.succeed(inProgressMap.keySet)
     } yield result
   }
@@ -104,7 +104,7 @@ case class FileStorageJobHandler(overviewReader: DataOverviewReader,
           logger.info(s"Casting file '$jobDefPath' to job definition")
           var jobState: JobState = InvalidJobDefinition
           try {
-            jobState = Loaded(jobDefFileContent.parseJson.convertTo[JobDefinition[_]])
+            jobState = Loaded(jobDefFileContent.parseJson.convertTo[JobDefinition[_,_]])
             logger.info(s"Finished casting file '$jobDefPath' to job definition")
           }
           catch {
@@ -128,7 +128,7 @@ case class FileStorageJobHandler(overviewReader: DataOverviewReader,
     })
   }
 
-  override def createBatchFilesForJob(jobDefinition: JobDefinition[_]): IO[IOException, Unit] = {
+  override def createBatchFilesForJob(jobDefinition: JobDefinition[_,_]): IO[IOException, Unit] = {
     val numBatches = jobDefinition.batches.size
     ZIO.attemptBlockingIO({
       Range(0, numBatches, 1).foreach(batchNr => {

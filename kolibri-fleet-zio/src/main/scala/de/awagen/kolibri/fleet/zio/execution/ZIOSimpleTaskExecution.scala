@@ -23,8 +23,7 @@ import de.awagen.kolibri.definitions.processing.failure.TaskFailType
 import zio.{Task, ZIO}
 
 
-case class ZIOSimpleTaskExecution[+T](resultKey: ClassTyped[T],
-                                      initData: TypeTaggedMap,
+case class ZIOSimpleTaskExecution[+T](initData: TypeTaggedMap,
                                       tasks: Seq[ZIOTask[_]]) extends ZIOTaskExecution[T] {
 
   assert(tasks.nonEmpty)

@@ -34,7 +34,7 @@ object ClaimStatus {
   object ClaimExerciseStatus extends Enumeration {
     type ClaimExerciseStatus = super.Value
 
-    val EXERCISE_SUCCESS, FAILED_PERSIST_CONFIRM_PROCESS_START, FAILED_DELETING_ALL_CLAIMS = super.Value
+    val EXERCISE_SUCCESS, FAILED_STATUS_UPDATE = super.Value
   }
 
 }

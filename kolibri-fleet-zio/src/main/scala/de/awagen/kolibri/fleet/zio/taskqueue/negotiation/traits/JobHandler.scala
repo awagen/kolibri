@@ -50,6 +50,6 @@ trait JobHandler {
    * Storing empty files into open task folder for the job, one per batch, and
    * each simply named by the batch number so that each batch can be claimed for processing
    */
-  def createBatchFilesForJob(jobDefinition: JobDefinition[_]): IO[IOException, Unit]
+  def createBatchFilesForJob(jobDefinition: JobDefinition[_,_]): IO[IOException, Unit]
 
 }

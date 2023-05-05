@@ -19,7 +19,6 @@ package de.awagen.kolibri.fleet.zio.execution
 
 import de.awagen.kolibri.datatypes.immutable.stores.TypeTaggedMap
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
-import de.awagen.kolibri.datatypes.types.ClassTyped
 import de.awagen.kolibri.definitions.processing.failure.TaskFailType.TaskFailType
 
 sealed trait ExecutionState
@@ -36,8 +35,6 @@ trait ZIOTaskExecution[+T] extends KolibriSerializable {
   def wasSuccessful(executionStates: Seq[ExecutionState]): Boolean
 
   def initData: TypeTaggedMap
-
-  val resultKey: ClassTyped[T]
 
   def tasks: Seq[ZIOTask[_]]
 

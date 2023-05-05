@@ -18,7 +18,7 @@
 package de.awagen.kolibri.fleet.zio.config.di.modules.persistence
 
 import com.softwaremill.tagging
-import de.awagen.kolibri.datatypes.metrics.aggregation.MetricAggregation
+import de.awagen.kolibri.datatypes.metrics.aggregation.mutable.MetricAggregation
 import de.awagen.kolibri.datatypes.tagging.Tags
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 import de.awagen.kolibri.definitions.usecase.searchopt.jobdefinitions.parts.Writer

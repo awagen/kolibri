@@ -18,7 +18,7 @@
 package de.awagen.kolibri.fleet.zio.config.di.modules.persistence
 
 import com.softwaremill.macwire.wire
-import de.awagen.kolibri.datatypes.stores.MetricDocument
+import de.awagen.kolibri.datatypes.stores.mutable.MetricDocument
 import de.awagen.kolibri.datatypes.tagging.Tags
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 import de.awagen.kolibri.fleet.zio.config.{AppConfig, AppProperties}

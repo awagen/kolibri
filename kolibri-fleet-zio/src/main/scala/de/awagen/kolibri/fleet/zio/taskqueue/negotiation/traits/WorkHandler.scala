@@ -15,14 +15,24 @@
  */
 
 
-package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.impl
+package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.traits
 
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.impl.JobBatch
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ProcessUpdateStatus.ProcessUpdateStatus
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.traits.WorkStatusUpdater
 import zio.Task
 
-case class FileStorageWorkStatusUpdater() extends WorkStatusUpdater {
+/**
+ * Takes care of picking the work status from all workers and update the proccessing state information for all.
+ */
+trait WorkHandler {
 
-  override def update(): Task[ProcessUpdateStatus] = ???
+  /**
+   * Update the processing status information for each task
+   */
+  def updateProcessStatus(): Task[ProcessUpdateStatus]
+
+  def addBatches(batches: Seq[JobBatch[_,_]]): Task[Seq[Boolean]]
+
+  def addBatch(batch: JobBatch[_,_]): Task[Boolean]
 
 }

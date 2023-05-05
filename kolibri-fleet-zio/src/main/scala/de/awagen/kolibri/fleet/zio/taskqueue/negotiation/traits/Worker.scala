@@ -17,8 +17,11 @@
 
 package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.traits
 
+import de.awagen.kolibri.datatypes.values.aggregation.mutable.Aggregators.Aggregator
+import de.awagen.kolibri.definitions.processing.ProcessingMessages.ProcessingMessage
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.impl.JobBatch
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.WorkStatus.WorkStatus
-import zio.Task
+import zio.{Task, ZIO}
 
 /**
  * Instances of Worker take care of the actual computations and provide the status of computation.
@@ -30,7 +33,7 @@ trait Worker {
    *
    * @return
    */
-  def work[T](): Task[T]
+  def work[T, W](jobBatch: JobBatch[T,W]): ZIO[Any, Nothing, Option[Aggregator[ProcessingMessage[Any], W]]]
 
   /**
    * Returns current work status for the given task

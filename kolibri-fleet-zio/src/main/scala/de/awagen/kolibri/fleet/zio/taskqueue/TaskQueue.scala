@@ -22,6 +22,6 @@ import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobDefinition
 
 trait TaskQueue {
 
-  def offerJob(jobDefinition: JobDefinition[_]): Boolean
+  def offerJob(jobDefinition: JobDefinition[_,_]): Boolean
 
 }

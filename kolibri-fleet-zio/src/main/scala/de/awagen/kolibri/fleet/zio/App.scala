@@ -48,7 +48,7 @@ object App extends ZIOAppDefault {
           case req@Method.POST -> !! / "job" =>
             for {
               jobString <- req.body.asString
-              jobDef <- ZIO.attempt(jobString.parseJson.convertTo[JobDefinition[_]])
+              jobDef <- ZIO.attempt(jobString.parseJson.convertTo[JobDefinition[_,_]])
               jobFolderExists <- jobHandler.registeredJobs.map(x => x.contains(jobDef.jobName))
               _ <- ZIO.ifZIO(ZIO.succeed(jobFolderExists))(
                 onFalse = {

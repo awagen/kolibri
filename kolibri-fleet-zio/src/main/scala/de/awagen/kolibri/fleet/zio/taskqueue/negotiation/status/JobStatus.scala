@@ -25,6 +25,6 @@ object JobStatus {
 
   case object InvalidJobDefinition extends JobState
 
-  case class Loaded(jobDefinition: JobDefinition[_]) extends JobState
+  case class Loaded(jobDefinition: JobDefinition[_,_]) extends JobState
 
 }
