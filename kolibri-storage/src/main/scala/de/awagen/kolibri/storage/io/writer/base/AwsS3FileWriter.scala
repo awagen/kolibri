@@ -87,4 +87,10 @@ case class AwsS3FileWriter(bucketName: String,
 
   // TODO: implement
   override def delete(targetIdentifier: String): Either[Exception, PutObjectResult] = ???
+
+  // TODO: implement
+  override def copyDirectory(dirPath: String, toDirPath: String): Unit = ???
+
+  // TODO: implement
+  override def moveDirectory(dirPath: String, toDirPath: String): Unit = ???
 }

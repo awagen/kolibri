@@ -11,6 +11,7 @@ val zioJsonVersion = "0.5.0"
 val zioConfigVersion = "4.0.0-RC14"
 val zioLoggingVersion = "2.1.12"
 val zioHttpVersion = "3.0.0-RC1"
+val mockitoVersion = "3.2.10.0"
 
 // scoverage plugin setting to exclude classes from coverage report
 coverageExcludedPackages := ""
@@ -68,7 +69,8 @@ libraryDependencies ++= Seq(
   "dev.zio" %% "zio-logging" % zioLoggingVersion,
   "dev.zio" %% "zio-logging-slf4j" % zioLoggingVersion,
   "dev.zio" %% "zio-http" % zioHttpVersion,
-  "dev.zio" %% "zio-test-junit" % zioVersion % "test"
+  "dev.zio" %% "zio-test-junit" % zioVersion % Test,
+  "org.scalatestplus" %% "mockito-3-4" % mockitoVersion % Test
 )
 
 libraryDependencies := {

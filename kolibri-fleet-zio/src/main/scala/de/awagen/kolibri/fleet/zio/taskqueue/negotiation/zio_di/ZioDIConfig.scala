@@ -23,29 +23,36 @@ object ZioDIConfig {
 
 
   object Directories {
-    def baseJobFolder(jobId: String): String = {
-      s"${config.jobBaseFolder}/$jobId"
+
+    def folderForJob(jobId: String, isOpenJob: Boolean): String = {
+      if (isOpenJob) s"${config.openJobBaseFolder}/$jobId"
+      else s"${config.doneJobBaseFolder}/$jobId"
     }
 
-    def baseTaskFolder(jobId: String): String = {
-      s"${baseJobFolder(jobId)}/${config.taskBaseFolder}"
+    def jobSubFolder(jobId: String, subFolder: String, isOpenJob: Boolean): String = {
+      s"${folderForJob(jobId, isOpenJob)}/$subFolder"
     }
 
-    def jobToClaimSubFolder(jobId: String): String = {
-      s"${baseTaskFolder(jobId)}/${config.taskClaimSubFolder}"
+    def jobTaskSubFolder(jobId: String, isOpenJob: Boolean): String = {
+      s"${jobSubFolder(jobId, config.perJobTaskBaseFolder, isOpenJob)}"
     }
 
-    def jobToOpenTaskSubFolder(jobId: String): String = {
-      s"${baseTaskFolder(jobId)}/${config.openTaskSubFolder}"
+    def jobClaimSubFolder(jobId: String, isOpenJob: Boolean): String = {
+      s"${jobSubFolder(jobId, config.perJobClaimBaseFolder, isOpenJob)}"
     }
 
-    def jobToTaskProcessStatusSubFolder(jobId: String): String = {
-      s"${baseTaskFolder(jobId)}/${config.taskProgressStateSubFolder}"
+    def jobOpenTasksSubFolder(jobId: String, isOpenJob: Boolean): String = {
+      s"${jobSubFolder(jobId, config.perJobOpenTaskBaseFolder, isOpenJob)}"
     }
 
-    def jobToInProcessTaskSubFolder(jobId: String): String = {
-      s"${baseTaskFolder(jobId)}/${config.taskInProgressSubFolder}"
+    def jobDoneTasksSubFolder(jobId: String, isOpenJob: Boolean): String = {
+      s"${jobSubFolder(jobId, config.perJobDoneTaskBaseFolder, isOpenJob)}"
     }
+
+    def jobTasksInProgressStateSubFolder(jobId: String, isOpenJob: Boolean): String = {
+      s"${jobSubFolder(jobId, config.perJobTaskProgressStateBaseFolder, isOpenJob)}"
+    }
+
   }
 
 }

@@ -15,16 +15,18 @@
  */
 
 
-package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status
+package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.actions
 
-import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobDefinition
+object JobActions {
 
-object JobStatus {
+  sealed trait JobAction
 
-  sealed trait JobState
+  case object ProcessAllNodes extends JobAction
 
-  case object InvalidJobDefinition extends JobState
+  sealed case class ProcessOnlyNode(nodeHash: String) extends JobAction
 
-  case class Loaded(jobDefinition: JobDefinition[_,_]) extends JobState
+  case object StopAllNodes extends JobAction
+
+  sealed case class StopNodes(nodeHashes: Set[String]) extends JobAction
 
 }

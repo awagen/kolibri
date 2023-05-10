@@ -26,7 +26,7 @@ import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ClaimStatus.Clai
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ClaimStatus.ClaimVerifyStatus.ClaimVerifyStatus
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ClaimStatus.{ClaimFilingStatus, ClaimVerifyStatus}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.traits.ClaimHandler.ClaimTopic.{ClaimTopic, UNKNOWN}
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.traits.{ClaimHandler, JobHandler}
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.traits.{ClaimHandler, JobStateHandler}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.zio_di.ZioDIConfig
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.zio_di.ZioDIConfig.Directories
 import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, Reader}
@@ -86,7 +86,7 @@ object FileStorageClaimHandler {
 case class FileStorageClaimHandler(filterToOverviewReader: (String => Boolean) => DataOverviewReader,
                                    writer: Writer[String, String, _],
                                    reader: Reader[String, Seq[String]],
-                                   jobHandler: JobHandler) extends ClaimHandler {
+                                   jobHandler: JobStateHandler) extends ClaimHandler {
 
   private[this] val overviewReader: DataOverviewReader = filterToOverviewReader(_ => true)
 
@@ -98,12 +98,12 @@ case class FileStorageClaimHandler(filterToOverviewReader: (String => Boolean) =
       System.currentTimeMillis(),
       AppProperties.config.node_hash
     )
-    s"${ZioDIConfig.Directories.jobToClaimSubFolder(jobId)}/$fileName"
+    s"${ZioDIConfig.Directories.jobClaimSubFolder(jobId, isOpenJob = true)}/$fileName"
   }
 
   private def getExistingClaimsForJob(jobId: String, claimTopic: ClaimTopic): Seq[String] = {
     overviewReader
-      .listResources(Directories.jobToClaimSubFolder(jobId), filename => {
+      .listResources(Directories.jobClaimSubFolder(jobId, isOpenJob = true), filename => {
         val topic: String = ClaimFileNameFormat.parse(filename)
           .get(TOPIC.namedClassTyped.name)
           .getOrElse(UNKNOWN.toString)
@@ -122,7 +122,7 @@ case class FileStorageClaimHandler(filterToOverviewReader: (String => Boolean) =
 
   private def getInProgressFileForJob(jobId: String, batchNr: Int): String = {
     val fileName: String = InProgressTaskFileNameFormat.getFileName(batchNr)
-    s"${Directories.jobToInProcessTaskSubFolder(jobId)}/$fileName"
+    s"${Directories.jobTasksInProgressStateSubFolder(jobId, isOpenJob = true)}/$fileName"
   }
 
   /**
@@ -236,7 +236,7 @@ case class FileStorageClaimHandler(filterToOverviewReader: (String => Boolean) =
    */
   override def exerciseBatchClaim(jobId: String, batchNr: Int, claimTopic: ClaimTopic): Task[Unit] = {
     for {
-      openTaskFile <- ZIO.succeed(s"${ZioDIConfig.Directories.jobToOpenTaskSubFolder(jobId)}/$batchNr")
+      openTaskFile <- ZIO.succeed(s"${ZioDIConfig.Directories.jobOpenTasksSubFolder(jobId, isOpenJob = true)}/$batchNr")
       _ <- writeTaskToProgressFolder(jobId, batchNr)
       _ <- removeFile(openTaskFile)
       allExistingBatchClaims <- findAllClaimsForBatch(jobId, batchNr, claimTopic)
@@ -253,7 +253,7 @@ case class FileStorageClaimHandler(filterToOverviewReader: (String => Boolean) =
    */
   private def getAllClaimsByCurrentNode(claimTopic: ClaimTopic): ZIO[Any, Throwable, Set[String]] = {
     for {
-      allKnownJobs <- jobHandler.registeredJobs
+      allKnownJobs <- jobHandler.fetchState.map(x => x.jobStateSnapshots.values.map(x => x.jobId).toSet)
       allClaims <- ZIO.attemptBlocking({
         allKnownJobs.flatMap(job => getExistingClaimsForJob(job, claimTopic))
       })

@@ -168,20 +168,23 @@ object AppProperties {
       .map(x => x.trim).filter(x => x.nonEmpty)
     val allowedRequestTargetContextPaths: Seq[String] = baseConfig.getString("kolibri.request.target.allowedContextPaths").split(",")
 
-    val tasksClaimSubfolder: String = baseConfig.getString("kolibri.job.tasks.state.claim.subfolder")
-    val openTasksSubfolder: String = baseConfig.getString("kolibri.job.tasks.state.open.subfolder")
-    val inProgressTasksSubfolder: String = baseConfig.getString("kolibri.job.tasks.state.inprogress.subfolder")
-    val taskProcessingStateSubfolder: String = baseConfig.getString("kolibri.job.tasks.state.inprogress.state.subfolder")
 
-
-
+    // --- jobs folder relative to readers / writers base folder
+    // base folder where jobs are stored
     val jobBaseFolder: String = baseConfig.getString("kolibri.job.basefolder").stripPrefix("/").stripSuffix("/")
-    val taskBaseFolder: String = baseConfig.getString("kolibri.job.tasks.basefolder").stripPrefix("/").stripSuffix("/")
-    val taskClaimSubFolder: String = baseConfig.getString("kolibri.job.tasks.state.claim.subfolder").stripPrefix("/").stripSuffix("/")
-    val openTaskSubFolder: String = baseConfig.getString("kolibri.job.tasks.state.open.subfolder").stripPrefix("/").stripSuffix("/")
-    val taskInProgressSubFolder: String = baseConfig.getString("kolibri.job.tasks.state.inprogress.subfolder").stripPrefix("/").stripSuffix("/")
-    val taskProgressStateSubFolder: String = baseConfig.getString("kolibri.job.tasks.state.inprogress.state.subfolder").stripPrefix("/").stripSuffix("/")
+    // the base folder where the open (not yet fully processed) jobs are stored (every job has own folder
+    // named by [jobName]_[timePlacedInMillis]
+    val openJobBaseFolder: String = s"$jobBaseFolder/${baseConfig.getString("kolibri.job.openJobsSubfolder").stripPrefix("/").stripSuffix("/")}"
+    // the base folder where the processed jobs are stored
+    val doneJobBaseFolder: String = s"$jobBaseFolder/${baseConfig.getString("kolibri.job.doneJobsSubfolder").stripPrefix("/").stripSuffix("/")}"
 
+    // base folder within a given job folder where tasks are stored (thus this folder is meant to be relative
+    // to a specific job folder that resides either within the openJobBaseFolder or doneJobBaseFolder)
+    val perJobTaskBaseFolder: String = baseConfig.getString("kolibri.job.tasks.basefolder").stripPrefix("/").stripSuffix("/")
+    val perJobClaimBaseFolder: String = s"$perJobTaskBaseFolder/${baseConfig.getString("kolibri.job.tasks.claimSubFolder").stripPrefix("/").stripSuffix("/")}"
+    val perJobOpenTaskBaseFolder: String = s"$perJobTaskBaseFolder/${baseConfig.getString("kolibri.job.tasks.openTasksSubFolder").stripPrefix("/").stripSuffix("/")}"
+    val perJobDoneTaskBaseFolder: String = s"$perJobTaskBaseFolder/${baseConfig.getString("kolibri.job.tasks.doneTasksSubFolder").stripPrefix("/").stripSuffix("/")}"
+    val perJobTaskProgressStateBaseFolder: String = s"$perJobTaskBaseFolder/${baseConfig.getString("kolibri.job.tasks.inProgressStateTasksSubFolder").stripPrefix("/").stripSuffix("/")}"
   }
 
 }

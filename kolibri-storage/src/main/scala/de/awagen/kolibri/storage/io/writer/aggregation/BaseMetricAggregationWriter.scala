@@ -44,4 +44,10 @@ case class BaseMetricAggregationWriter(writer: Writer[MetricDocument[Tag], Tag, 
 
   // TODO: implement
   override def delete(targetIdentifier: Tag): Either[Exception, Any] = ???
+
+  // TODO: implement
+  override def copyDirectory(dirPath: String, toDirPath: String): Unit = ???
+
+  // TODO: implement
+  override def moveDirectory(dirPath: String, toDirPath: String): Unit = ???
 }

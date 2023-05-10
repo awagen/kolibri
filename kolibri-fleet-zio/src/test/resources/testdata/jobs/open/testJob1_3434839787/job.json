@@ -1,0 +1,6 @@
+{
+  "type": "JUST_WAIT",
+  "jobName": "testJob1",
+  "nrBatches": 10,
+  "durationInMillis": 1000
+}

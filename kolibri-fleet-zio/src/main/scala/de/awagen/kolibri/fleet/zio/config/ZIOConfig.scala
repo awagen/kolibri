@@ -18,9 +18,9 @@
 package de.awagen.kolibri.fleet.zio.config
 
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobDefinition
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.impl.FileStorageJobHandler
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.JobStatus.JobState
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.traits.JobHandler
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.impl.FileStorageJobStateHandler
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.JobDefinitionLoadStates.JobDefinitionLoadStatus
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.traits.JobStateHandler
 import zio.{Queue, Ref, UIO, ZIO}
 
 /**
@@ -28,13 +28,16 @@ import zio.{Queue, Ref, UIO, ZIO}
  */
 class ZIOConfig {
 
-  private[this] var runningJobsRef: Ref[Map[String, JobState]] = null
-  private[this] var jobHandler: JobHandler = null
+  private[this] var runningJobsRef: Ref[Map[String, JobDefinitionLoadStatus]] = null
+  private[this] var jobHandler: JobStateHandler = null
   private[this] var jobQueue: Queue[JobDefinition[_,_]] = null
 
-  def getRunningJobs: UIO[Map[String, JobState]] = runningJobsRef.get
+  // TODO: do not need this specific one, will replace with other structures to record
+  // a) the queue for claimed batches and b) the batches currently in progress together with some
+  // status on their progress (e.g via information using the aggregator on each task)
+  def getRunningJobs: UIO[Map[String, JobDefinitionLoadStatus]] = runningJobsRef.get
 
-  def getJobHandler: JobHandler = jobHandler
+  def getJobHandler: JobStateHandler = jobHandler
 
   def getJobQueue: Queue[JobDefinition[_,_]] = null
 
@@ -43,7 +46,7 @@ class ZIOConfig {
       onTrue = {
         for {
           _ <- ZIO.logDebug("Running ZIOConfig init")
-          runningJobs <- Ref.make(Map.empty[String, JobState])
+          runningJobs <- Ref.make(Map.empty[String, JobDefinitionLoadStatus])
           _ <- ZIO.attempt({
             runningJobsRef = runningJobs
           })
@@ -52,11 +55,10 @@ class ZIOConfig {
             jobQueue = queue
           })
           _ <- ZIO.attempt({
-            jobHandler = FileStorageJobHandler(
+            jobHandler = FileStorageJobStateHandler(
               AppConfig.persistenceModule.persistenceDIModule.dataOverviewReader(_ => true),
               AppConfig.persistenceModule.persistenceDIModule.reader,
-              AppConfig.persistenceModule.persistenceDIModule.writer,
-              runningJobsRef)
+              AppConfig.persistenceModule.persistenceDIModule.writer)
           })
           _ <- ZIO.logDebug(s"runningJobsRef: $runningJobsRef")
           _ <- ZIO.logInfo(s"jobHandler: $jobHandler")

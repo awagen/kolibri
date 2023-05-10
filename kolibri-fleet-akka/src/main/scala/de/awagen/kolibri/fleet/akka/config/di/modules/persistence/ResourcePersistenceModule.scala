@@ -46,6 +46,12 @@ class ResourcePersistenceModule extends PersistenceDIModule with tagging.Tag[RES
 
     // TODO: implement
     override def delete(targetIdentifier: String): Either[Exception, Unit] = ???
+
+    // TODO: implement
+    override def copyDirectory(dirPath: String, toDirPath: String): Unit = ???
+
+    // TODO: implement
+    override def moveDirectory(dirPath: String, toDirPath: String): Unit = ???
   }
 
   override def metricAggregationWriter(subFolder: String,
@@ -54,6 +60,12 @@ class ResourcePersistenceModule extends PersistenceDIModule with tagging.Tag[RES
 
     // TODO: implement
     override def delete(targetIdentifier: Tags.Tag): Either[Exception, Any] = ???
+
+    // TODO: implement
+    override def copyDirectory(dirPath: String, toDirPath: String): Unit = ???
+
+    // TODO: implement
+    override def moveDirectory(dirPath: String, toDirPath: String): Unit = ???
   }
 
 }

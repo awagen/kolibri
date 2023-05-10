@@ -133,6 +133,10 @@ object TestJobDefinitions {
       override def delete(targetIdentifier: Tag): Either[Exception, Any] = {
         throw new IllegalAccessException("no deletion allowed here")
       }
+
+      override def copyDirectory(dirPath: String, toDirPath: String): Unit = throw new IllegalAccessException("directory copying not allowed here")
+
+      override def moveDirectory(dirPath: String, toDirPath: String): Unit = throw new IllegalAccessException("directory moving not allowed here")
     }
 
     JobMsgFactory.createActorRunnableJobCmd[Int, Int, Double, Double, MapWithCount[Tag, AggregateValue[Double]]](

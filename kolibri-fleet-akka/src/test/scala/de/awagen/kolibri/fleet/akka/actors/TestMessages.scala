@@ -193,6 +193,10 @@ object TestMessages {
     override def write(data: MapWithCount[Tag, Double], targetIdentifier: Tag): Either[Exception, Any] = Right(())
 
     override def delete(targetIdentifier: Tag): Either[Exception, Any] = throw new IllegalAccessException("deletions not allowed here")
+
+    override def copyDirectory(dirPath: String, toDirPath: String): Unit = throw new IllegalAccessException("directory copying not allowed here")
+
+    override def moveDirectory(dirPath: String, toDirPath: String): Unit = throw new IllegalAccessException("directory moving not allowed here")
   }
 
   def generateProcessActorRunnableJobCmd(jobId: String): ProcessActorRunnableJobCmd[_, _, _, _ <: WithCount] = {
@@ -258,6 +262,10 @@ object TestMessages {
         override def write(data: WithCount, targetIdentifier: Tag): Either[Exception, Any] = Right(())
 
         override def delete(targetIdentifier: Tag): Either[Exception, Any] = throw new IllegalAccessException("no deletion allowed here")
+
+        override def copyDirectory(dirPath: String, toDirPath: String): Unit = throw new IllegalAccessException("directory copying not allowed here")
+
+        override def moveDirectory(dirPath: String, toDirPath: String): Unit = throw new IllegalAccessException("directory moving not allowed here")
       },
       filteringSingleElementMapperForAggregator = new AcceptAllAsIdentityMapper[ProcessingMessage[Any]],
       filterAggregationMapperForAggregator = new AcceptAllAsIdentityMapper[WithCount],

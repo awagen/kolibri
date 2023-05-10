@@ -20,8 +20,8 @@ import java.io.{BufferedWriter, File, IOException}
 import java.util.Objects
 import java.nio.file.Files
 import java.nio.file.Paths
-
 import de.awagen.kolibri.storage.io.writer.Writers.FileWriter
+import org.apache.commons.io.FileUtils
 import org.slf4j.{Logger, LoggerFactory}
 
 
@@ -53,6 +53,10 @@ case class LocalDirectoryFileWriter(directory: String) extends FileWriter[String
     }
   }
 
+  /**
+   * Delete a single file or (empty!) folder. In case a folder with sontent needs to be removed
+   * use deleteDirectory.
+   */
   override def delete(targetIdentifier: String): Either[Exception, Unit] = {
     logger.info(s"deleting data for identifier: $targetIdentifier")
     val fullPath = s"$normedDirectory/$targetIdentifier"
@@ -70,4 +74,25 @@ case class LocalDirectoryFileWriter(directory: String) extends FileWriter[String
         Left(e)
     }
   }
+
+  override def copyDirectory(dirPath: String, toDirPath: String): Unit = {
+    val fullSrcDirPath = s"$normedDirectory/$dirPath"
+    val fullDirTargetPath = s"$normedDirectory/$toDirPath"
+    FileUtils.copyDirectory(new File(fullSrcDirPath), new File(fullDirTargetPath), true)
+  }
+
+  /**
+   * NOTE: the normal delete function above only works on files and empty directories.
+   * deleteDirectory instead recursively deletes folders
+   */
+  private[this] def deleteDirectory(dirPath: String): Unit = {
+    val fullDirPath = s"$normedDirectory/$dirPath"
+    FileUtils.deleteDirectory(new File(fullDirPath))
+  }
+
+  override def moveDirectory(dirPath: String, toDirPath: String): Unit = {
+    copyDirectory(dirPath, toDirPath)
+    deleteDirectory(dirPath)
+  }
+
 }

@@ -17,6 +17,10 @@ object Writers {
 
     def delete(targetIdentifier: V): Either[Exception, W]
 
+    def copyDirectory(dirPath: String, toDirPath: String): Unit
+
+    def moveDirectory(dirPath: String, toDirPath: String): Unit
+
   }
 
   /**
