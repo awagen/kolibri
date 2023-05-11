@@ -36,8 +36,6 @@ object ClaimHandler {
 
 }
 
-// TODO: right now we only care about claims for specific batches. Claims for executions on job-level will
-// need to be added (e.g job level for final aggregations and the like)
 trait ClaimHandler {
 
   /**

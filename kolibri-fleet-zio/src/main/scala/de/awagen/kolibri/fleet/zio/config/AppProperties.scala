@@ -61,10 +61,6 @@ object AppProperties {
 
     final val applicationName: String = baseConfig.getString("kolibri.appName")
 
-    // node-hash to identify and distinguish claims and processing states from
-    // distinct nodes
-    val node_hash: String = Random.alphanumeric.take(6).mkString
-
     val http_server_port: Int = HTTP_SERVER_PORT.value.toInt
 
     val requestParallelism: Int = baseConfig.getInt("kolibri.request.parallelism")
@@ -185,6 +181,13 @@ object AppProperties {
     val perJobOpenTaskBaseFolder: String = s"$perJobTaskBaseFolder/${baseConfig.getString("kolibri.job.tasks.openTasksSubFolder").stripPrefix("/").stripSuffix("/")}"
     val perJobDoneTaskBaseFolder: String = s"$perJobTaskBaseFolder/${baseConfig.getString("kolibri.job.tasks.doneTasksSubFolder").stripPrefix("/").stripSuffix("/")}"
     val perJobTaskProgressStateBaseFolder: String = s"$perJobTaskBaseFolder/${baseConfig.getString("kolibri.job.tasks.inProgressStateTasksSubFolder").stripPrefix("/").stripSuffix("/")}"
+
+
+    // node-hash to identify and distinguish claims and processing states from
+    // distinct nodes
+    val node_hash: String = safeGetString("kolibri.nodeHash").getOrElse(
+      Random.alphanumeric.take(6).mkString
+    )
   }
 
 }

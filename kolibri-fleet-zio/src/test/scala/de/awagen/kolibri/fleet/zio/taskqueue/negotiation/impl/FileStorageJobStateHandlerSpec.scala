@@ -18,12 +18,9 @@
 package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.impl
 
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.directives.JobDirectives
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.traits.JobStateHandler
-import de.awagen.kolibri.storage.io.reader.{LocalDirectoryReader, LocalResourceFileReader}
-import de.awagen.kolibri.storage.io.writer.Writers.FileWriter
-import org.mockito.Mockito.{doNothing, doReturn, times, verify}
+import de.awagen.kolibri.fleet.zio.testutils.TestObjects.{fileWriterMock, jobStateHandler}
+import org.mockito.Mockito.{times, verify}
 import org.mockito.{ArgumentCaptor, ArgumentMatchers}
-import org.scalatestplus.mockito.MockitoSugar.mock
 import zio.Scope
 import zio.test._
 import zio.test.junit.JUnitRunnableSpec
@@ -33,30 +30,11 @@ class FileStorageJobStateHandlerSpec extends JUnitRunnableSpec {
   import TestObjects._
 
   object TestObjects {
-    def fileWriterMock: FileWriter[String, Unit] = {
-      val mocked = mock[FileWriter[String, Unit]]
-      doNothing().when(mocked).moveDirectory(ArgumentMatchers.any[String], ArgumentMatchers.any[String])
-      doReturn(Right(())).when(mocked).write(ArgumentMatchers.any[String], ArgumentMatchers.any[String])
-      doNothing().when(mocked).copyDirectory(ArgumentMatchers.any[String], ArgumentMatchers.any[String])
-      doReturn(Right()).when(mocked).delete(ArgumentMatchers.any[String])
-      mocked
-    }
 
     // NOTE that this way of resolving resource files does not
     // point to resources folder in source code but in the respective
     // one in the target folder in the compiled sources
     val baseResourceFolder: String = getClass.getResource("/testdata").getPath
-    def jobStateHandler(writer: FileWriter[String, Unit]): JobStateHandler = FileStorageJobStateHandler(
-      LocalDirectoryReader(
-        baseDir = baseResourceFolder,
-        baseFilenameFilter = _ => true),
-      LocalResourceFileReader(
-        basePath = baseResourceFolder,
-        delimiterAndPosition = None,
-        fromClassPath = false
-      ),
-      writer
-    )
   }
 
   val testJobDefinitionJson: String =
@@ -73,7 +51,7 @@ class FileStorageJobStateHandlerSpec extends JUnitRunnableSpec {
 
     test("fetchState") {
       val writerMock = fileWriterMock
-      val jobHandler = jobStateHandler(writerMock)
+      val jobHandler = jobStateHandler(writerMock, baseResourceFolder)
       for {
         fetchedState <- jobHandler.fetchState
       } yield assert(fetchedState.jobsSortedByPriority.size)(Assertion.equalTo(1)) &&
@@ -84,7 +62,7 @@ class FileStorageJobStateHandlerSpec extends JUnitRunnableSpec {
 
     test("store job definition and batches") {
       val writerMock = fileWriterMock
-      val jobHandler = jobStateHandler(writerMock)
+      val jobHandler = jobStateHandler(writerMock, baseResourceFolder)
       for {
         _ <- jobHandler.storeJobDefinitionAndBatches(testJobDefinitionJson)
       } yield assert({
@@ -108,7 +86,7 @@ class FileStorageJobStateHandlerSpec extends JUnitRunnableSpec {
 
     test("move folder to done") {
       val writerMock = fileWriterMock
-      val jobHandler = jobStateHandler(writerMock)
+      val jobHandler = jobStateHandler(writerMock, baseResourceFolder)
       for {
         _ <- jobHandler.moveToDone("testJob1_3434839787")
       } yield assert(

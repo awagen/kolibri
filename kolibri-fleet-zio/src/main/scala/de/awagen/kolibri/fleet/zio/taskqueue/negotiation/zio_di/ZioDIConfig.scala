@@ -22,6 +22,9 @@ import de.awagen.kolibri.fleet.zio.config.AppProperties._
 object ZioDIConfig {
 
 
+  /**
+   * NOTE: jobId in the below means [jobName]_[timePlacedInMillis] format
+   */
   object Directories {
 
     def folderForJob(jobId: String, isOpenJob: Boolean): String = {

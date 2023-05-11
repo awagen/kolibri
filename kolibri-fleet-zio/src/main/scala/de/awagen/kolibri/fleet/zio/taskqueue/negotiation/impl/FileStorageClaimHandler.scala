@@ -45,13 +45,13 @@ object FileStorageClaimHandler {
     }
   }
 
-  case object InProgressTaskFileNameFormat extends FileNameFormat(Seq(BATCH_NR), "_") {
+  case object InProgressTaskFileNameFormat extends FileNameFormat(Seq(BATCH_NR), "__") {
     def getFileName(batchNr: Int): String = {
       this.format(TypedMapStore(mutable.Map(BATCH_NR.namedClassTyped -> batchNr)))
     }
   }
 
-  case object ClaimFileNameFormat extends FileNameFormat(Seq(TOPIC, JOB_ID, BATCH_NR, CREATION_TIME_IN_MILLIS, NODE_HASH), "_") {
+  case object ClaimFileNameFormat extends FileNameFormat(Seq(TOPIC, JOB_ID, BATCH_NR, CREATION_TIME_IN_MILLIS, NODE_HASH), "__") {
 
     def getFileName(claimTopic: ClaimTopic,
                     jobName: String,
@@ -104,7 +104,7 @@ case class FileStorageClaimHandler(filterToOverviewReader: (String => Boolean) =
   private def getExistingClaimsForJob(jobId: String, claimTopic: ClaimTopic): Seq[String] = {
     overviewReader
       .listResources(Directories.jobClaimSubFolder(jobId, isOpenJob = true), filename => {
-        val topic: String = ClaimFileNameFormat.parse(filename)
+        val topic: String = ClaimFileNameFormat.parse(filename.split("/").last)
           .get(TOPIC.namedClassTyped.name)
           .getOrElse(UNKNOWN.toString)
         topic == claimTopic.toString
@@ -114,7 +114,7 @@ case class FileStorageClaimHandler(filterToOverviewReader: (String => Boolean) =
   private def getExistingClaimsForBatch(jobId: String, batchNr: Int, claimTopic: ClaimTopic): Seq[String] = {
     getExistingClaimsForJob(jobId, claimTopic)
       .filter(file => {
-        ClaimFileNameFormat.parse(file)
+        ClaimFileNameFormat.parse(file.split("/").last)
           .get(BATCH_NR.namedClassTyped.name)
           .get == batchNr
       })
@@ -126,7 +126,8 @@ case class FileStorageClaimHandler(filterToOverviewReader: (String => Boolean) =
   }
 
   /**
-   * Write a claim for a given job for a given claim topic (e.g claiming an execution, a cleanup or the like)
+   * Write a claim for a given job for a given claim topic (e.g claiming an execution, a cleanup or the like).
+   * NOTE that jobId here means [jobName]_[timePlacedInMillis]
    */
   override def fileBatchClaim(jobId: String, batchNr: Int, claimTopic: ClaimTopic): Task[ClaimFilingStatus] = {
     ZIO.ifZIO(ZIO.attemptBlockingIO(getExistingClaimsForBatch(jobId, batchNr, claimTopic).isEmpty))(
