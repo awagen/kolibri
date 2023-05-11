@@ -17,6 +17,7 @@
 
 package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.impl
 
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ClaimStatus.ClaimVerifyStatus
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.traits.ClaimHandler
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.traits.ClaimHandler.ClaimTopic
 import de.awagen.kolibri.fleet.zio.testutils.TestObjects.{fileWriterMock, jobStateHandler}
@@ -70,11 +71,31 @@ class FileStorageClaimHandlerSpec extends JUnitRunnableSpec {
     },
 
     test("verifyBatchClaim") {
-      assertTrue(true)
+      val writerMock = fileWriterMock
+      val claimH = claimHandler(writerMock, baseResourceFolder)
+      for {
+        claimResult1 <- claimH.verifyBatchClaim("testJob1_3434839787", 2, ClaimTopic.JOB_TASK_PROCESSING_CLAIM)
+        claimResult2 <- claimH.verifyBatchClaim("testJob1_3434839787", 3, ClaimTopic.JOB_TASK_PROCESSING_CLAIM)
+      } yield assert(claimResult1)(Assertion.equalTo(ClaimVerifyStatus.CLAIM_ACCEPTED)) &&
+        assert(claimResult2)(Assertion.equalTo(ClaimVerifyStatus.NODE_CLAIM_DOES_NOT_EXIST))
     },
 
     test("exerciseBatchClaim") {
-      assertTrue(true)
+      val writerMock = fileWriterMock
+      val claimH = claimHandler(writerMock, baseResourceFolder)
+      for {
+        _ <- claimH.exerciseBatchClaim("testJob1_3434839787", 2, ClaimTopic.JOB_TASK_PROCESSING_CLAIM)
+      } yield assert({
+        verify(writerMock, times(1))
+          .write(
+            ArgumentMatchers.eq(""),
+            ArgumentMatchers.eq("jobs/open/testJob1_3434839787/tasks/inprogress_state/2")
+          )
+        verify(writerMock, times(1))
+          .delete(
+            ArgumentMatchers.eq("jobs/open/testJob1_3434839787/tasks/open/2")
+          )
+      })(Assertion.assertion("all true")(_ => true))
     }
 
 
