@@ -103,7 +103,7 @@ class FileStorageClaimHandlerSpec extends JUnitRunnableSpec {
         verify(writerMock, times(1))
           .write(
             processingStateCaptor.capture(),
-            ArgumentMatchers.eq("jobs/open/testJob1_3434839787/tasks/inprogress_state/2")
+            ArgumentMatchers.eq("jobs/open/testJob1_3434839787/tasks/inprogress_state/2__abc234")
           )
         verify(writerMock, times(4))
           .delete(

@@ -38,6 +38,7 @@ object NameFormats {
     case class PartsValue[T: TypeTag](namedClassTyped: NamedClassTyped[T], parseFunc: String => T)
 
     val NODE_HASH: PartsValue[String] = PartsValue[String](NamedClassTyped[String]("nodeHash"), identity)
+    val TIME_CLAIMED_IN_MILLIS: PartsValue[Long] = PartsValue[Long](NamedClassTyped[Long]("creationTimeInMillis"), x => x.toLong)
     val CREATION_TIME_IN_MILLIS: PartsValue[Long] = PartsValue[Long](NamedClassTyped[Long]("creationTimeInMillis"), x => x.toLong)
     val TOPIC: PartsValue[String] = PartsValue[String](NamedClassTyped[String]("topic"), identity)
     val ID: PartsValue[String] = PartsValue[String](NamedClassTyped[String]("id"), identity)

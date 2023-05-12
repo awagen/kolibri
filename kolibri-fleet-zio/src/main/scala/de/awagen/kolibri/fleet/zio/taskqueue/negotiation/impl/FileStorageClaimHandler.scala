@@ -33,11 +33,9 @@ import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.zio_di.ZioDIConfig
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.zio_di.ZioDIConfig.Directories
 import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, Reader}
 import de.awagen.kolibri.storage.io.writer.Writers.Writer
-import org.joda.time.DateTime
 import zio.stream.{ZSink, ZStream}
-import zio.{IO, Task, ZIO}
+import zio.{Task, ZIO}
 
-import java.io.IOException
 import scala.collection.mutable
 
 object FileStorageClaimHandler {
@@ -48,9 +46,12 @@ object FileStorageClaimHandler {
     }
   }
 
-  case object InProgressTaskFileNameFormat extends FileNameFormat(Seq(BATCH_NR), "__") {
+  case object InProgressTaskFileNameFormat extends FileNameFormat(Seq(BATCH_NR, NODE_HASH), "__") {
     def getFileName(batchNr: Int): String = {
-      this.format(TypedMapStore(mutable.Map(BATCH_NR.namedClassTyped -> batchNr)))
+      this.format(TypedMapStore(mutable.Map(
+        BATCH_NR.namedClassTyped -> batchNr,
+        NODE_HASH.namedClassTyped -> AppProperties.config.node_hash,
+      )))
     }
   }
 
