@@ -200,23 +200,38 @@ case class FileStorageClaimHandler(filterToOverviewReader: (String => Boolean) =
       })
   }
 
-  private def findAllClaimsForBatch(jobId: String, batchNr: Int, claimTopic: ClaimTopic): IO[IOException, Seq[String]] = {
-    ZIO.attemptBlockingIO(getExistingClaimsForBatch(jobId, batchNr, claimTopic))
-  }
-
   private def isCurrentNodeClaim(claimURI: String): Boolean = {
     val claimAttributes: WeaklyTypedMap[String] = ClaimFileNameFormat.parse(claimURI.split("/").last)
     claimAttributes.get(NODE_HASH.namedClassTyped.name).getOrElse("UNDEFINED") == AppProperties.config.node_hash
   }
 
-  private def removeClaims(existingClaimFiles: Seq[String], claimURIFilter: String => Boolean): Task[Any] = {
+  private[this] def claimNameToPath(name: String): String = {
+    val parsedName: WeaklyTypedMap[String] = ClaimFileNameFormat.parse(name)
+    val jobId = JOB_ID.parseFunc(parsedName.get(JOB_ID.namedClassTyped.name).get)
+    s"${Directories.jobClaimSubFolder(jobId, isOpenJob = true)}/$name"
+  }
+
+  /**
+   * Remove claims. The passed claim file names can either be just the filenames or the full uri,
+   * since we remove all path-info besides the file name for which the actual claim path
+   * is then generated before deletion. This makes sure the basepath of the used writer is
+   * taken into account (we could also do by deleting any basepath suffix in the paths)
+   * @param existingClaimFiles
+   * @param claimURIFilter
+   * @return
+   */
+  private def removeClaims(existingClaimFiles: Seq[String], claimURIFilter: String => Boolean): Task[Unit] = {
     for {
-      claimsToDelete <- ZIO.attempt(existingClaimFiles.filter(claimURIFilter))
+      _ <- ZIO.logDebug(s"Available claims: $existingClaimFiles")
+      claimsToDelete <- ZIO.attempt({
+        existingClaimFiles.filter(claimURIFilter)
+          .map(claimPath => claimPath.split("/").last)
+          .map(claimNameToPath)
+      })
+      _ <- ZIO.logDebug(s" Claims for deletion after filtering: $claimsToDelete")
       deletionResult <- ZIO.ifZIO(ZIO.succeed(claimsToDelete.nonEmpty))(
-        onTrue = ZIO.attemptBlockingIO({
-          claimsToDelete.tail.foldLeft(removeFile(claimsToDelete.head))((task, fileId) => {
+        onTrue = claimsToDelete.tail.foldLeft(removeFile(claimsToDelete.head))((task, fileId) => {
             task.flatMap(_ => removeFile(fileId))
-          })
         }),
         onFalse = ZIO.succeed(())
       )
@@ -240,7 +255,7 @@ case class FileStorageClaimHandler(filterToOverviewReader: (String => Boolean) =
       openTaskFile <- ZIO.succeed(s"${ZioDIConfig.Directories.jobOpenTasksSubFolder(jobId, isOpenJob = true)}/$batchNr")
       _ <- writeTaskToProgressFolder(jobId, batchNr)
       _ <- removeFile(openTaskFile)
-      allExistingBatchClaims <- findAllClaimsForBatch(jobId, batchNr, claimTopic)
+      allExistingBatchClaims <- ZIO.attemptBlocking(getExistingClaimsForBatch(jobId, batchNr, claimTopic))
       // first only delete those claims that do not belong to the current node
       _ <- removeClaims(allExistingBatchClaims, x => !isCurrentNodeClaim(x))
       // then delete the claim for the current node (assumption since exercise claim was called is that the current node

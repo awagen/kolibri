@@ -79,9 +79,10 @@ class FileStorageJobStateHandlerSpec extends JUnitRunnableSpec {
             ArgumentMatchers.eq(""),
             batchCaptor.capture()
           )
-        val capturedValues: Seq[String] = batchCaptor.getAllValues.toArray.toSeq.asInstanceOf[Seq[String]]
-        assert(capturedValues.map(x => x.toInt))(Assertion.equalTo(Range(0, 10, 1)))
-      })(Assertion.assertion("all true")(_ => true))
+        batchCaptor.getAllValues.toArray.toSeq.asInstanceOf[Seq[String]]
+      })(Assertion.assertion("all true")(seq => {
+        seq.map(x => x.split("/").last.toInt) == Range(0, 10, 1)
+      }))
     },
 
     test("move folder to done") {

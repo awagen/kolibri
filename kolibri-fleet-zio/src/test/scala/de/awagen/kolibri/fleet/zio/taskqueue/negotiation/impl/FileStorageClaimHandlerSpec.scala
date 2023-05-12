@@ -23,8 +23,8 @@ import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.traits.ClaimHandler.Cla
 import de.awagen.kolibri.fleet.zio.testutils.TestObjects.{fileWriterMock, jobStateHandler}
 import de.awagen.kolibri.storage.io.reader.{LocalDirectoryReader, LocalResourceFileReader}
 import de.awagen.kolibri.storage.io.writer.Writers.FileWriter
-import org.mockito.ArgumentMatchers
 import org.mockito.Mockito.{times, verify}
+import org.mockito.{ArgumentCaptor, ArgumentMatchers}
 import zio.Scope
 import zio.test._
 import zio.test.junit.JUnitRunnableSpec
@@ -86,16 +86,26 @@ class FileStorageClaimHandlerSpec extends JUnitRunnableSpec {
       for {
         _ <- claimH.exerciseBatchClaim("testJob1_3434839787", 2, ClaimTopic.JOB_TASK_PROCESSING_CLAIM)
       } yield assert({
+        val deleteCmdFileCaptor: ArgumentCaptor[String] = ArgumentCaptor.forClass(classOf[String])
         verify(writerMock, times(1))
           .write(
             ArgumentMatchers.eq(""),
             ArgumentMatchers.eq("jobs/open/testJob1_3434839787/tasks/inprogress_state/2")
           )
-        verify(writerMock, times(1))
+        verify(writerMock, times(4))
           .delete(
-            ArgumentMatchers.eq("jobs/open/testJob1_3434839787/tasks/open/2")
+            deleteCmdFileCaptor.capture()
           )
-      })(Assertion.assertion("all true")(_ => true))
+        deleteCmdFileCaptor.getAllValues.toArray.toSeq.asInstanceOf[Seq[String]]
+      })(Assertion.assertion("deletion called on correct paths")(fileSeq => {
+        val slice = fileSeq.slice(1, 3)
+        fileSeq.head == "jobs/open/testJob1_3434839787/tasks/open/2" &&
+          slice.toSet == Set(
+            "jobs/open/testJob1_3434839787/tasks/claims/JOB_TASK_PROCESSING_CLAIM__testJob1_3434839787__2__1703845333850__other1",
+            "jobs/open/testJob1_3434839787/tasks/claims/JOB_TASK_PROCESSING_CLAIM__testJob1_3434839787__2__1713845333850__other2"
+          ) &&
+          fileSeq.last == "jobs/open/testJob1_3434839787/tasks/claims/JOB_TASK_PROCESSING_CLAIM__testJob1_3434839787__2__1683845333850__abc234"
+      }))
     }
 
 
