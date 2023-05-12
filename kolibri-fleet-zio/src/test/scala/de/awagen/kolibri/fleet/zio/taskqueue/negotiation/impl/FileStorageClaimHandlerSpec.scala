@@ -17,12 +17,15 @@
 
 package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.impl
 
+import de.awagen.kolibri.fleet.zio.io.json.ProcessingStateJsonProtocol.processingStateFormat
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.{ProcessingState, ProcessingStateUtils, ProcessingStatus}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ClaimStatus.ClaimVerifyStatus
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.traits.ClaimHandler
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.traits.ClaimHandler.ClaimTopic
 import de.awagen.kolibri.fleet.zio.testutils.TestObjects.{fileWriterMock, jobStateHandler}
 import de.awagen.kolibri.storage.io.reader.{LocalDirectoryReader, LocalResourceFileReader}
 import de.awagen.kolibri.storage.io.writer.Writers.FileWriter
+import spray.json._
 import org.mockito.Mockito.{times, verify}
 import org.mockito.{ArgumentCaptor, ArgumentMatchers}
 import zio.Scope
@@ -83,31 +86,43 @@ class FileStorageClaimHandlerSpec extends JUnitRunnableSpec {
     test("exerciseBatchClaim") {
       val writerMock = fileWriterMock
       val claimH = claimHandler(writerMock, baseResourceFolder)
+      val expectedProcessingState = ProcessingState(
+        "testJob1_3434839787",
+        2,
+        ProcessingStatus.QUEUED,
+        0,
+        0,
+        "abc234",
+        ProcessingStateUtils.timeInMillisToFormattedTime(1703845333850L)
+      )
       for {
         _ <- claimH.exerciseBatchClaim("testJob1_3434839787", 2, ClaimTopic.JOB_TASK_PROCESSING_CLAIM)
       } yield assert({
         val deleteCmdFileCaptor: ArgumentCaptor[String] = ArgumentCaptor.forClass(classOf[String])
+        val processingStateCaptor: ArgumentCaptor[String] = ArgumentCaptor.forClass(classOf[String])
         verify(writerMock, times(1))
           .write(
-            ArgumentMatchers.eq(""),
+            processingStateCaptor.capture(),
             ArgumentMatchers.eq("jobs/open/testJob1_3434839787/tasks/inprogress_state/2")
           )
         verify(writerMock, times(4))
           .delete(
             deleteCmdFileCaptor.capture()
           )
-        deleteCmdFileCaptor.getAllValues.toArray.toSeq.asInstanceOf[Seq[String]]
-      })(Assertion.assertion("deletion called on correct paths")(fileSeq => {
+        (deleteCmdFileCaptor.getAllValues.toArray.toSeq.asInstanceOf[Seq[String]],
+          processingStateCaptor.getValue)
+      })(Assertion.assertion("deletion called on correct paths")(x => {
+        val fileSeq = x._1
+        val processingStateContent = x._2.parseJson.convertTo[ProcessingState]
         val slice = fileSeq.slice(1, 3)
         fileSeq.head == "jobs/open/testJob1_3434839787/tasks/open/2" &&
           slice.toSet == Set(
             "jobs/open/testJob1_3434839787/tasks/claims/JOB_TASK_PROCESSING_CLAIM__testJob1_3434839787__2__1703845333850__other1",
             "jobs/open/testJob1_3434839787/tasks/claims/JOB_TASK_PROCESSING_CLAIM__testJob1_3434839787__2__1713845333850__other2"
           ) &&
-          fileSeq.last == "jobs/open/testJob1_3434839787/tasks/claims/JOB_TASK_PROCESSING_CLAIM__testJob1_3434839787__2__1683845333850__abc234"
+          fileSeq.last == "jobs/open/testJob1_3434839787/tasks/claims/JOB_TASK_PROCESSING_CLAIM__testJob1_3434839787__2__1683845333850__abc234" &&
+          processingStateContent == expectedProcessingState.copy(lastUpdate = processingStateContent.lastUpdate)
       }))
     }
-
-
   )
 }

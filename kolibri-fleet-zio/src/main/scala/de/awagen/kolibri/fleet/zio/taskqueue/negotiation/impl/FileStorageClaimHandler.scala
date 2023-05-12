@@ -19,9 +19,11 @@ package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.impl
 
 import de.awagen.kolibri.datatypes.mutable.stores.{TypeTaggedMap, TypedMapStore, WeaklyTypedMap}
 import de.awagen.kolibri.fleet.zio.config.AppProperties
+import de.awagen.kolibri.fleet.zio.io.json.ProcessingStateJsonProtocol
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.format.NameFormats.FileNameFormat
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.format.NameFormats.Parts.{BATCH_NR, CREATION_TIME_IN_MILLIS, JOB_ID, NODE_HASH, TOPIC}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.impl.FileStorageClaimHandler.{ClaimFileNameFormat, InProgressTaskFileNameFormat}
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.{ProcessingState, ProcessingStateUtils, ProcessingStatus}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ClaimStatus.ClaimFilingStatus.ClaimFilingStatus
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ClaimStatus.ClaimVerifyStatus.ClaimVerifyStatus
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ClaimStatus.{ClaimFilingStatus, ClaimVerifyStatus}
@@ -31,6 +33,7 @@ import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.zio_di.ZioDIConfig
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.zio_di.ZioDIConfig.Directories
 import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, Reader}
 import de.awagen.kolibri.storage.io.writer.Writers.Writer
+import org.joda.time.DateTime
 import zio.stream.{ZSink, ZStream}
 import zio.{IO, Task, ZIO}
 
@@ -174,16 +177,26 @@ case class FileStorageClaimHandler(filterToOverviewReader: (String => Boolean) =
   }
 
   /**
-   * Copy the file representing the given batch to the in-progress folder.
-   * Note that those files are purely content-less files named by the batchNr, using them as status-representation
-   * by placing them in distinct folders. Thus we do not need to read a file here, we just need to write
-   * a file named with the correct batchNr into the in-progress files
+   * Writing a file representing the given batch to the in-progress folder.
+   * File is only named by the batch number.
+   * The content of the file contains additional information about the process state.
+   * Note that when the processing has not yet started, the information about number of elements
+   * and the like might be at default values (e.g 0).
    */
   private def writeTaskToProgressFolder(jobId: String, batchNr: Int): Task[Any] = {
     (for {
-      toInProgressWriteResult <- ZIO.attemptBlockingIO(
-        writer.write("", getInProgressFileForJob(jobId, batchNr))
-      )
+      toInProgressWriteResult <- ZIO.attemptBlockingIO({
+        val processingState = ProcessingState(
+          jobId,
+          batchNr,
+          ProcessingStatus.QUEUED,
+          0,
+          0,
+          AppProperties.config.node_hash,
+          ProcessingStateUtils.timeInMillisToFormattedTime(System.currentTimeMillis())
+        )
+        writer.write(ProcessingStateJsonProtocol.processingStateFormat.write(processingState).toString, getInProgressFileForJob(jobId, batchNr))
+      })
     } yield toInProgressWriteResult)
       .flatMap({
         case Left(e) => ZIO.fail(e)
@@ -253,6 +266,7 @@ case class FileStorageClaimHandler(filterToOverviewReader: (String => Boolean) =
   override def exerciseBatchClaim(jobId: String, batchNr: Int, claimTopic: ClaimTopic): Task[Unit] = {
     for {
       openTaskFile <- ZIO.succeed(s"${ZioDIConfig.Directories.jobOpenTasksSubFolder(jobId, isOpenJob = true)}/$batchNr")
+      // TODO: also add task to processQueue for the current node
       _ <- writeTaskToProgressFolder(jobId, batchNr)
       _ <- removeFile(openTaskFile)
       allExistingBatchClaims <- ZIO.attemptBlocking(getExistingClaimsForBatch(jobId, batchNr, claimTopic))
