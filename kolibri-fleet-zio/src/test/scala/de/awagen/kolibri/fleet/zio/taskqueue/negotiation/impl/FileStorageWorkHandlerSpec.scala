@@ -18,6 +18,7 @@
 package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.impl
 
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions
+import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobBatch
 import zio.test.junit.JUnitRunnableSpec
 import zio.test.{Spec, TestEnvironment, assertTrue}
 import zio.{Queue, Scope, ZIO}

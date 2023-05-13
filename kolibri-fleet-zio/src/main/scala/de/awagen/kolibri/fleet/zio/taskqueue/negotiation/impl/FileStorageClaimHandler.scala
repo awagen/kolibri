@@ -19,28 +19,30 @@ package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.impl
 
 import de.awagen.kolibri.datatypes.mutable.stores.{TypeTaggedMap, TypedMapStore, WeaklyTypedMap}
 import de.awagen.kolibri.fleet.zio.config.AppProperties
+import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobBatch
 import de.awagen.kolibri.fleet.zio.io.json.ProcessingStateJsonProtocol
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.format.NameFormats.FileNameFormat
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.format.NameFormats.Parts.{BATCH_NR, CREATION_TIME_IN_MILLIS, JOB_ID, NODE_HASH, TOPIC}
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.impl.FileStorageClaimHandler.{ClaimFileNameFormat, InProgressTaskFileNameFormat}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.{ProcessingState, ProcessingStateUtils, ProcessingStatus}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ClaimStatus.ClaimFilingStatus.ClaimFilingStatus
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ClaimStatus.ClaimVerifyStatus.ClaimVerifyStatus
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ClaimStatus.{ClaimFilingStatus, ClaimVerifyStatus}
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.traits.ClaimHandler.ClaimTopic
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.traits.ClaimHandler.ClaimTopic.{ClaimTopic, UNKNOWN}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.traits.{ClaimHandler, JobStateHandler}
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.utils.DataTypeUtils
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.zio_di.ZioDIConfig
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.zio_di.ZioDIConfig.Directories
 import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, Reader}
 import de.awagen.kolibri.storage.io.writer.Writers.Writer
 import zio.stream.{ZSink, ZStream}
-import zio.{Task, ZIO}
+import zio.{Queue, Ref, Task, ZIO}
 
 import scala.collection.mutable
 
 object FileStorageClaimHandler {
 
-  case object OpenTaskFileNameFormat extends FileNameFormat(Seq(BATCH_NR), "_") {
+  case object OpenTaskFileNameFormat extends FileNameFormat(Seq(BATCH_NR), "__") {
     def getFileName(batchNr: Int): String = {
       this.format(TypedMapStore(mutable.Map(BATCH_NR.namedClassTyped -> batchNr)))
     }
@@ -72,6 +74,35 @@ object FileStorageClaimHandler {
       format(map)
     }
   }
+
+  private def getFullFilePathForClaimFile(jobId: String, batchNr: Int, claimTopic: ClaimTopic): String = {
+    val fileName = ClaimFileNameFormat.getFileName(
+      claimTopic,
+      jobId,
+      batchNr,
+      System.currentTimeMillis(),
+      AppProperties.config.node_hash
+    )
+    s"${ZioDIConfig.Directories.jobClaimSubFolder(jobId, isOpenJob = true)}/$fileName"
+  }
+
+  private def getInProgressFilePathForJob(jobId: String, batchNr: Int): String = {
+    val fileName: String = InProgressTaskFileNameFormat.getFileName(batchNr)
+    s"${Directories.jobTasksInProgressStateSubFolder(jobId, isOpenJob = true)}/$fileName"
+  }
+
+  private def isCurrentNodeClaim(claimURI: String): Boolean = {
+    val claimAttributes: WeaklyTypedMap[String] = ClaimFileNameFormat.parse(claimURI.split("/").last)
+    claimAttributes.get(NODE_HASH.namedClassTyped.name).getOrElse("UNDEFINED") == AppProperties.config.node_hash
+  }
+
+  private def claimNameToPath(name: String): String = {
+    val parsedName: WeaklyTypedMap[String] = ClaimFileNameFormat.parse(name)
+    val jobId = JOB_ID.parseFunc(parsedName.get(JOB_ID.namedClassTyped.name).get)
+    s"${Directories.jobClaimSubFolder(jobId, isOpenJob = true)}/$name"
+  }
+
+
 }
 
 /**
@@ -86,24 +117,30 @@ object FileStorageClaimHandler {
  * - after exercising a claim for a batch, a node has to write regular status updates, even if that is just "IN_QUEUE",
  * otherwise the other nodes will claim the right to cleanup the data, e.g move the batch back to open, and remove
  * all status info. This allows nodes to claim the batch again.
+ *
+ * The claim handler is only responsible for filing claims,
+ * validating whether the node won the right to execute specific batches
+ * and then exercising the claim which means writing a process state file
+ * and removing the file indicating the batch is still open for processing,
+ * along with removing all existing claim files.
+ * The steps after this are then handled by WorkManager directly syncing with
+ * the process state folder for each job.
+ *
+ * NOTE that also other tasks are subject to claiming,
+ * e.g in case some node has not written any inprogress state updates,
+ * then the "open" state for a job has to be restored again.
+ * For this some node needs to claim cleanup rights and then execute it.
+ * This type of control process is still to be implemented though
+ * for the cleanup case.
  */
 case class FileStorageClaimHandler(filterToOverviewReader: (String => Boolean) => DataOverviewReader,
                                    writer: Writer[String, String, _],
                                    reader: Reader[String, Seq[String]],
-                                   jobHandler: JobStateHandler) extends ClaimHandler {
+                                   jobStateHandler: JobStateHandler) extends ClaimHandler {
+
+  import FileStorageClaimHandler._
 
   private[this] val overviewReader: DataOverviewReader = filterToOverviewReader(_ => true)
-
-  private def getFullFilePathForClaimFile(jobId: String, batchNr: Int, claimTopic: ClaimTopic): String = {
-    val fileName = ClaimFileNameFormat.getFileName(
-      claimTopic,
-      jobId,
-      batchNr,
-      System.currentTimeMillis(),
-      AppProperties.config.node_hash
-    )
-    s"${ZioDIConfig.Directories.jobClaimSubFolder(jobId, isOpenJob = true)}/$fileName"
-  }
 
   private def getExistingClaimsForJob(jobId: String, claimTopic: ClaimTopic): Seq[String] = {
     overviewReader
@@ -122,11 +159,6 @@ case class FileStorageClaimHandler(filterToOverviewReader: (String => Boolean) =
           .get(BATCH_NR.namedClassTyped.name)
           .get == batchNr
       })
-  }
-
-  private def getInProgressFileForJob(jobId: String, batchNr: Int): String = {
-    val fileName: String = InProgressTaskFileNameFormat.getFileName(batchNr)
-    s"${Directories.jobTasksInProgressStateSubFolder(jobId, isOpenJob = true)}/$fileName"
   }
 
   /**
@@ -196,7 +228,7 @@ case class FileStorageClaimHandler(filterToOverviewReader: (String => Boolean) =
           AppProperties.config.node_hash,
           ProcessingStateUtils.timeInMillisToFormattedTime(System.currentTimeMillis())
         )
-        writer.write(ProcessingStateJsonProtocol.processingStateFormat.write(processingState).toString, getInProgressFileForJob(jobId, batchNr))
+        writer.write(ProcessingStateJsonProtocol.processingStateFormat.write(processingState).toString, getInProgressFilePathForJob(jobId, batchNr))
       })
     } yield toInProgressWriteResult)
       .flatMap({
@@ -212,17 +244,6 @@ case class FileStorageClaimHandler(filterToOverviewReader: (String => Boolean) =
         case Left(e) => ZIO.fail(e)
         case Right(v) => ZIO.succeed(v)
       })
-  }
-
-  private def isCurrentNodeClaim(claimURI: String): Boolean = {
-    val claimAttributes: WeaklyTypedMap[String] = ClaimFileNameFormat.parse(claimURI.split("/").last)
-    claimAttributes.get(NODE_HASH.namedClassTyped.name).getOrElse("UNDEFINED") == AppProperties.config.node_hash
-  }
-
-  private[this] def claimNameToPath(name: String): String = {
-    val parsedName: WeaklyTypedMap[String] = ClaimFileNameFormat.parse(name)
-    val jobId = JOB_ID.parseFunc(parsedName.get(JOB_ID.namedClassTyped.name).get)
-    s"${Directories.jobClaimSubFolder(jobId, isOpenJob = true)}/$name"
   }
 
   /**
@@ -254,21 +275,20 @@ case class FileStorageClaimHandler(filterToOverviewReader: (String => Boolean) =
 
   /**
    * if winner hash corresponds to the current node, file an in-progress note,
-   * remove all claims and start working, if not, ignore so that the node
-   * that is the winner can start
+   * remove the file indicating the batch is open for processing and
+   * remove all claims.
    *
    * Steps:
-   * 1) move the batch-file from open to in-progress (file is simply named by the nr of the batch, without any content)
-   * 2) add to tasks to process for node
-   * 3) write process status file (e.g IN_QUEUE, IN_PROGRESS,...)
-   * 4) remove all claim-files for the corresponding batch
-   * // TODO: add writing of process file (point 3))
+   * 1) write process status file with some initial information
+   * 2) remove the file indicating that the batch is in open state
+   * 3) remove claims on the batch belonging to other nodes
+   * 4) if all of the above successful, remove the claim filed by
+   * this very node
    */
   override def exerciseBatchClaim(jobId: String, batchNr: Int, claimTopic: ClaimTopic): Task[Unit] = {
     for {
-      openTaskFile <- ZIO.succeed(s"${ZioDIConfig.Directories.jobOpenTasksSubFolder(jobId, isOpenJob = true)}/$batchNr")
-      // TODO: also add task to processQueue for the current node
       _ <- writeTaskToProgressFolder(jobId, batchNr)
+      openTaskFile <- ZIO.succeed(s"${ZioDIConfig.Directories.jobOpenTasksSubFolder(jobId, isOpenJob = true)}/$batchNr")
       _ <- removeFile(openTaskFile)
       allExistingBatchClaims <- ZIO.attemptBlocking(getExistingClaimsForBatch(jobId, batchNr, claimTopic))
       // first only delete those claims that do not belong to the current node
@@ -284,7 +304,7 @@ case class FileStorageClaimHandler(filterToOverviewReader: (String => Boolean) =
    */
   private def getAllClaimsByCurrentNode(claimTopic: ClaimTopic): ZIO[Any, Throwable, Set[String]] = {
     for {
-      allKnownJobs <- jobHandler.fetchState.map(x => x.jobStateSnapshots.values.map(x => x.jobId).toSet)
+      allKnownJobs <- jobStateHandler.fetchState.map(x => x.jobStateSnapshots.values.map(x => x.jobId).toSet)
       allClaims <- ZIO.attemptBlocking({
         allKnownJobs.flatMap(job => getExistingClaimsForJob(job, claimTopic))
       })
@@ -304,7 +324,7 @@ case class FileStorageClaimHandler(filterToOverviewReader: (String => Boolean) =
    * 1 - verify existing claims and exercise the batches that the node claimed successfully
    * 2 - test whether there is any demand for the node to claim additional batches. If so, file claims
    */
-  def manageClaims(claimTopic: ClaimTopic): Task[Unit] = {
+  def manageClaims(claimTopic: ClaimTopic, batchQueueRef: Ref[Queue[JobBatch[_,_]]]): Task[Unit] = {
     for {
       claimsByCurrentNode <- getAllClaimsByCurrentNode(claimTopic)
       // verify each claim
@@ -320,11 +340,22 @@ case class FileStorageClaimHandler(filterToOverviewReader: (String => Boolean) =
         verifyBatchClaim(claimInfo._2, claimInfo._3, claimTopic).map(status => status == ClaimVerifyStatus.CLAIM_ACCEPTED)
       }).run(ZSink.foldLeft(Seq.empty[(String, String, Int)])((oldState, newElement) => oldState :+ newElement ))
       // Now exercise all verified claims
-      claimExerciseStatus <- ZStream.fromIterable(verifiedClaims).foreach(claimInfo => {
+      _ <- ZStream.fromIterable(verifiedClaims).foreach(claimInfo => {
         exerciseBatchClaim(claimInfo._2, claimInfo._3, claimTopic)
       })
-      // TODO: Now check the need to actually file more batch claims (if nr of claimed items is below a claimLimit)
-      // TODO: for this we need some work manager that keeps record of the work items claimed
+      batchQueue <- batchQueueRef.get
+      numberOfNewlyClaimableBatches <- DataTypeUtils.numFreeQueueSlots(batchQueue)
+      _ <- jobStateHandler.fetchState.map(x => x.getNextNOpenBatches(numberOfNewlyClaimableBatches))
+        .flatMap(openBatchesToClaim => {
+          val jobIdToBatchPairs: Seq[(String, Int)] = openBatchesToClaim
+            .flatMap(x => {
+              x._2.map(batchNr => (x._1.jobName, batchNr))
+            })
+          ZStream.fromIterable(jobIdToBatchPairs)
+            .foreach(el => {
+              fileBatchClaim(el._1, el._2, ClaimTopic.JOB_TASK_PROCESSING_CLAIM)
+            })
+        })
     } yield ()
   }
 

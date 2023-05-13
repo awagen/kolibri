@@ -17,6 +17,7 @@
 
 package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.traits
 
+import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobBatch
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ClaimStatus.ClaimFilingStatus.ClaimFilingStatus
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ClaimStatus.ClaimVerifyStatus.ClaimVerifyStatus
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.traits.ClaimHandler.ClaimTopic.ClaimTopic
@@ -58,5 +59,12 @@ trait ClaimHandler {
    * picked for processing, put the batch in in-progress, set schedule to regularly update the processing state.
    */
   def exerciseBatchClaim(jobId: String, batchNr: Int, claimTopic: ClaimTopic): Task[Unit]
+
+  /**
+   * Manage the state of current claims (e.g filing new ones for open jobs
+   * if resources available, verifying and exercising claims).
+   * This function would usually be the only call that needs to be exposed.
+   */
+  def manageClaims(claimTopic: ClaimTopic, batchQueueRef: Ref[Queue[JobBatch[_,_]]]): Task[Unit]
 
 }

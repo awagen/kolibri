@@ -17,14 +17,11 @@
 
 package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.impl
 
-import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobDefinition
+import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobBatch
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ProcessUpdateStatus.ProcessUpdateStatus
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.traits.WorkHandler
-import zio.stream.ZStream
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.utils.DataTypeUtils.addElementsToQueueIfEmptySlots
 import zio.{Queue, Task, ZIO}
-
-
-case class JobBatch[+T, W](job: JobDefinition[T, W], batchNr: Int)
 
 
 /**
@@ -55,21 +52,7 @@ case class FileStorageWorkHandler(batchQueue: Queue[JobBatch[_, _]]) extends Wor
    * since we abort further offerings in case an offering was not successful.
    */
   override def addBatches(batches: Seq[JobBatch[_,_]]): Task[Seq[Boolean]] = {
-    ZStream.fromIterable(batches)
-      .mapZIO(e =>
-        // we need to check here explicitly, since otherwise the fiber blocks
-        // on offer till any place in the queue is available
-        ZIO.ifZIO(batchQueue.isFull)(
-          onTrue = ZIO.succeed(false),
-          onFalse = batchQueue.offer(e)
-        )
-      )
-      .mapZIO({
-        case false => ZIO.fail(new RuntimeException("Failed adding element to queue"))
-        case true => ZIO.succeed(true)
-      })
-      .orElse[Any, Exception, Boolean](ZStream.fromIterable[Boolean](Seq(false)))
-      .runFold[Seq[Boolean]](Seq.empty)((oldSeq, newElement) => oldSeq :+ newElement)
+    addElementsToQueueIfEmptySlots(batches, batchQueue)
   }
 
   // TODO: now we have the means to fill the job queue,

@@ -19,7 +19,7 @@ package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.traits
 
 import de.awagen.kolibri.datatypes.values.aggregation.mutable.Aggregators.Aggregator
 import de.awagen.kolibri.definitions.processing.ProcessingMessages.ProcessingMessage
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.impl.JobBatch
+import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobBatch
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.WorkStatus.WorkStatus
 import zio.{Task, ZIO}
 

@@ -59,4 +59,6 @@ object JobDefinitions {
     )
   }
 
+  case class JobBatch[+T, W](job: JobDefinition[T, W], batchNr: Int)
+
 }

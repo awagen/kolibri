@@ -22,11 +22,13 @@ import de.awagen.kolibri.datatypes.types.{ClassTyped, NamedClassTyped}
 import de.awagen.kolibri.datatypes.values.aggregation.mutable.Aggregators._
 import de.awagen.kolibri.definitions.processing.ProcessingMessages._
 import de.awagen.kolibri.definitions.processing.failure.TaskFailType.FailedByException
+import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobBatch
 import de.awagen.kolibri.fleet.zio.execution.{Failed, ZIOSimpleTaskExecution}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.WorkStatus.WorkStatus
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.traits.Worker
 import zio.stream.ZStream
 import zio.{Task, ZIO}
+
 import scala.reflect.runtime.universe._
 
 object TaskWorker {
