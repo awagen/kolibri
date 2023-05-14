@@ -188,6 +188,9 @@ object AppProperties {
     val node_hash: String = safeGetString("kolibri.nodeHash").getOrElse(
       Random.alphanumeric.take(6).mkString
     )
+
+    val maxNrJobsClaimed: Int = baseConfig.getInt("kolibri.job.tasks.maxNrJobsClaimed")
+    val maxNrJobsProcessing: Int = baseConfig.getInt("kolibri.job.tasks.maxNrJobsProcessing")
   }
 
 }

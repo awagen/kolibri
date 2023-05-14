@@ -43,6 +43,7 @@ object NameFormats {
     val TOPIC: PartsValue[String] = PartsValue[String](NamedClassTyped[String]("topic"), identity)
     val ID: PartsValue[String] = PartsValue[String](NamedClassTyped[String]("id"), identity)
     val BATCH_NR: PartsValue[Int] = PartsValue[Int](NamedClassTyped[Int]("batchNr"), x => x.toInt)
+    val PROCESSING_STATUS: PartsValue[String] = PartsValue[String](NamedClassTyped[String]("processingStatus"), identity)
     val JOB_ID: PartsValue[String] = PartsValue[String](NamedClassTyped[String]("jobId"), identity)
   }
 

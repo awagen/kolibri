@@ -18,6 +18,7 @@
 package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state
 
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.directives.JobDirectives
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.OpenJobsSnapshotSpec.TestData.jobStateSnapshot
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.OpenJobsSnapshotSpec._
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.BatchProcessingStates
@@ -29,18 +30,19 @@ object OpenJobsSnapshotSpec {
   val formatter: DateTimeFormatter = DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss")
 
   object TestData {
-    def jobStateSnapshot(jobName: String, dateString: String, nrBatches: Int): JobStateSnapshot = JobStateSnapshot(
+    def jobStateSnapshot(jobName: String, dateString: String, nrBatches: Int, batchNrToClaimingNodeHashes: Map[Int, Set[String]]): JobStateSnapshot = JobStateSnapshot(
       jobName,
       formatter.parseDateTime(dateString).getMillis,
       JobDefinitions.simpleWaitJob(jobName, nrBatches, 20L),
-      Set.empty,
-      Range(0, nrBatches, 1).map(x => (x, BatchProcessingStates.Open)).toMap
+      Set(JobDirectives.Process),
+      Range(0, nrBatches, 1).map(x => (x, BatchProcessingStates.Open)).toMap,
+      batchNrToClaimingNodeHashes
     )
   }
 
-  val jobState1 = jobStateSnapshot("job1", "2020-03-01 01:10:32", 2)
-  val jobState2 = jobStateSnapshot("job2", "2020-03-01 01:10:34", 2)
-  val jobState3 = jobStateSnapshot("job3", "2020-03-02 01:10:34", 2)
+  val jobState1 = jobStateSnapshot("job1", "2020-03-01 01:10:32", 2, Map(0 -> Set("abc234"), 1 -> Set("other1")))
+  val jobState2 = jobStateSnapshot("job2", "2020-03-01 01:10:34", 2, Map.empty)
+  val jobState3 = jobStateSnapshot("job3", "2020-03-02 01:10:34", 2, Map.empty)
 
 
 }
@@ -53,7 +55,7 @@ class OpenJobsSnapshotSpec extends UnitTestSpec {
       // given
       val openJobsSnapshot = OpenJobsSnapshot(Seq(jobState3, jobState2, jobState1).map(x => (x.jobId, x)).toMap)
       // when
-      val jobsSorted = openJobsSnapshot.getJobsSortedByPriority
+      val jobsSorted: Seq[JobStateSnapshot] = openJobsSnapshot.getJobsSortedByPriority(_ => true)
       // then
       jobsSorted.map(x => x.jobId) mustBe Seq("job1", "job2", "job3")
     }
@@ -67,15 +69,35 @@ class OpenJobsSnapshotSpec extends UnitTestSpec {
         ("job3", Seq(0, 1))
       )
       // when
-      val next6 = openJobsSnapshot.getNextNOpenBatches(6)
-      val next10 = openJobsSnapshot.getNextNOpenBatches(10)
-      val next3 = openJobsSnapshot.getNextNOpenBatches(3)
+      val next6 = openJobsSnapshot.getNextNOpenBatches(6, ignoreClaimedBatches = false)
+      val next10 = openJobsSnapshot.getNextNOpenBatches(10, ignoreClaimedBatches = false)
+      val next3 = openJobsSnapshot.getNextNOpenBatches(3, ignoreClaimedBatches = false)
       // then
       next6.map(x => (x._1.jobName, x._2)) mustBe allExpected
       next10.map(x => (x._1.jobName, x._2)) mustBe allExpected
       next3.map(x => (x._1.jobName, x._2)) mustBe Seq(
         ("job1", Seq(0, 1)),
         ("job2", Seq(0))
+      )
+    }
+
+    "ignore already claimed batches" in {
+      // given
+      val openJobsSnapshot = OpenJobsSnapshot(Seq(jobState3, jobState2, jobState1).map(x => (x.jobId, x)).toMap)
+      val expectedUnclaimed = Seq(
+        ("job2", Seq(0, 1)),
+        ("job3", Seq(0, 1))
+      )
+      // when
+      val next6 = openJobsSnapshot.getNextNOpenBatches(6, ignoreClaimedBatches = true)
+      val next10 = openJobsSnapshot.getNextNOpenBatches(10, ignoreClaimedBatches = true)
+      val next3 = openJobsSnapshot.getNextNOpenBatches(3, ignoreClaimedBatches = true)
+      // then
+      next6.map(x => (x._1.jobName, x._2)) mustBe expectedUnclaimed
+      next10.map(x => (x._1.jobName, x._2)) mustBe expectedUnclaimed
+      next3.map(x => (x._1.jobName, x._2)) mustBe Seq(
+        ("job2", Seq(0, 1)),
+        ("job3", Seq(0))
       )
     }
   }

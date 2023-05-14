@@ -24,6 +24,7 @@ import org.joda.time.format.{DateTimeFormat, DateTimeFormatter, DateTimeFormatte
 
 object ProcessingStatus extends Enumeration {
   type ProcessingStatus = Value
+  val PLANNED: Value = Value
   val QUEUED: Value = Value
   val IN_PROGRESS: Value = Value
   val DONE: Value = Value

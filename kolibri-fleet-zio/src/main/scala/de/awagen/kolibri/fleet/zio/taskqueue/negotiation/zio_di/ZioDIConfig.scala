@@ -56,6 +56,10 @@ object ZioDIConfig {
       s"${jobSubFolder(jobId, config.perJobTaskProgressStateBaseFolder, isOpenJob)}"
     }
 
+    def jobTasksInProgressStateForNodeSubFolder(jobId: String, nodeHash: String, isOpenJob: Boolean): String = {
+      s"${jobTasksInProgressStateSubFolder(jobId, isOpenJob)}/$nodeHash"
+    }
+
   }
 
 }

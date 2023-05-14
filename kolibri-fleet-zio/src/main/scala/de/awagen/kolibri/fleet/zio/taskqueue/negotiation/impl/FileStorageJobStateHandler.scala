@@ -17,18 +17,21 @@
 
 package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.impl
 
-import de.awagen.kolibri.datatypes.mutable.stores.TypedMapStore
+import de.awagen.kolibri.datatypes.mutable.stores.{TypedMapStore, WeaklyTypedMap}
 import de.awagen.kolibri.fleet.zio.config.AppProperties.config
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobDefinition
 import de.awagen.kolibri.fleet.zio.io.json.JobDefinitionJsonProtocol.JobDefinitionFormat
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.directives.JobDirectives
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.directives.JobDirectives.JobDirective
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.format.NameFormats.FileNameFormat
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.format.NameFormats.Parts.{BATCH_NR, CREATION_TIME_IN_MILLIS, JOB_ID}
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.format.NameFormats.Parts.{BATCH_NR, CREATION_TIME_IN_MILLIS, JOB_ID, NODE_HASH, TOPIC}
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.impl.FileStorageClaimHandler.ClaimFileNameFormat
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.{JobStateSnapshot, OpenJobsSnapshot}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.BatchProcessingStates
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.BatchProcessingStates.BatchProcessingStatus
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.JobDefinitionLoadStates.{InvalidJobDefinition, JobDefinitionLoadStatus, Loaded}
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.traits.ClaimHandler.ClaimTopic
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.traits.ClaimHandler.ClaimTopic.{ClaimTopic, UNKNOWN}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.traits.JobStateHandler
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.zio_di.ZioDIConfig
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.zio_di.ZioDIConfig.Directories
@@ -169,6 +172,20 @@ case class FileStorageJobStateHandler(overviewReader: DataOverviewReader,
   }
 
   /**
+   * Get all full claim paths for the passed jobId and the given claimTopic
+   * TODO: duplicate of the same in FileStorageClaimHandler. Externalize to io-service
+   */
+  private def getExistingClaimsForJob(jobId: String, claimTopic: ClaimTopic): Seq[String] = {
+    overviewReader
+      .listResources(Directories.jobClaimSubFolder(jobId, isOpenJob = true), filename => {
+        val topic: String = ClaimFileNameFormat.parse(filename.split("/").last)
+          .get(TOPIC.namedClassTyped.name)
+          .getOrElse(UNKNOWN.toString)
+        topic == claimTopic.toString
+      })
+  }
+
+  /**
    * Given a directory name, fetch info and wrap in JobStateSnapshot
    */
   private[this] def retrieveJobStateSnapshot(jobDirName: String): URIO[Any, Either[Throwable, JobStateSnapshot]] =
@@ -181,12 +198,25 @@ case class FileStorageJobStateHandler(overviewReader: DataOverviewReader,
         })
       jobLevelDirectives <- ZIO.attemptBlocking(loadJobLevelDirectivesByJobDirectoryName(jobDirName))
       batchStateMapping <- ZIO.attemptBlocking(findBatchesForJobWithState(jobDirName))
+      // Retrieve the information about existing claims per batch for the current job
+      claimsForJob <- ZIO.attemptBlocking(getExistingClaimsForJob(jobDirName, ClaimTopic.JOB_TASK_PROCESSING_CLAIM)
+        .map(claimPath => {
+          val claimInfo: WeaklyTypedMap[String] = ClaimFileNameFormat.parse(claimPath.split("/").last)
+          val claimingNodeHash: String = claimInfo.get(NODE_HASH.namedClassTyped.name).getOrElse("")
+          val batchNr: Int = claimInfo.get(BATCH_NR.namedClassTyped.name).getOrElse(-1)
+          (batchNr, claimingNodeHash)
+        })
+        .foldLeft(Map.empty[Int, Set[String]])((oldMap, tuple) => {
+          oldMap + (tuple._1 -> (oldMap.getOrElse(tuple._1, Set.empty[String]) + tuple._2))
+        })
+      )
     } yield JobStateSnapshot(
       jobNameAndCreationTime._1,
       jobNameAndCreationTime._2,
       jobDefinition,
       jobLevelDirectives,
-      batchStateMapping
+      batchStateMapping,
+      claimsForJob
     )).logError.either
 
   private[this] def retrieveJobStateSnapshots: ZIO[Any, IOException, Seq[JobStateSnapshot]] = {

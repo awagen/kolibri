@@ -54,10 +54,10 @@ class FileStorageJobStateHandlerSpec extends JUnitRunnableSpec {
       val jobHandler = jobStateHandler(writerMock, baseResourceFolder)
       for {
         fetchedState <- jobHandler.fetchState
-      } yield assert(fetchedState.jobsSortedByPriority.size)(Assertion.equalTo(1)) &&
-      assert(fetchedState.jobsSortedByPriority.head.jobId)(Assertion.equalTo("testJob1")) &&
-      assert(fetchedState.jobsSortedByPriority.head.batchesWithState.keys.size)(Assertion.equalTo(10)) &&
-      assert(fetchedState.jobsSortedByPriority.head.jobLevelDirectives.toSeq)(Assertion.equalTo(Seq(JobDirectives.Process)))
+      } yield assert(fetchedState.allJobsSortedByPriority.size)(Assertion.equalTo(1)) &&
+      assert(fetchedState.allJobsSortedByPriority.head.jobId)(Assertion.equalTo("testJob1")) &&
+      assert(fetchedState.allJobsSortedByPriority.head.batchesToState.keys.size)(Assertion.equalTo(10)) &&
+      assert(fetchedState.allJobsSortedByPriority.head.jobLevelDirectives.toSeq)(Assertion.equalTo(Seq(JobDirectives.Process)))
     },
 
     test("store job definition and batches") {

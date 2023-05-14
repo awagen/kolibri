@@ -28,7 +28,7 @@ object ClaimStatus {
   object ClaimVerifyStatus extends Enumeration {
     type ClaimVerifyStatus = super.Value
 
-    val NO_CLAIM_EXISTS, NODE_CLAIM_DOES_NOT_EXIST, CLAIM_ACCEPTED, OTHER_CLAIMED_EARLIER = super.Value
+    val NO_CLAIM_EXISTS, NODE_CLAIM_DOES_NOT_EXIST, CLAIM_ACCEPTED, OTHER_CLAIMED_EARLIER, FAILED_VERIFICATION = super.Value
   }
 
   object ClaimExerciseStatus extends Enumeration {

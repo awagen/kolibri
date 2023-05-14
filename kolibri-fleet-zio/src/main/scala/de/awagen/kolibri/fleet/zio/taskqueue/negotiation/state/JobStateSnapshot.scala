@@ -18,7 +18,9 @@
 package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state
 
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobDefinition
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.actions.JobActions.JobAction
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.directives.JobDirectives.JobDirective
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.rules.Rules.JobDirectiveRules
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.BatchProcessingStates.BatchProcessingStatus
 
 
@@ -38,4 +40,15 @@ case class JobStateSnapshot(jobId: String,
                             timePlacedInMillis: Long,
                             jobDefinition: JobDefinition[_,_],
                             jobLevelDirectives: Set[JobDirective],
-                            batchesWithState: Map[Int, BatchProcessingStatus])
+                            batchesToState: Map[Int, BatchProcessingStatus],
+                            batchesToProcessingClaimNodes: Map[Int, Set[String]]) {
+
+  /**
+   * From given job level directives, derive actions to be taken for the current job.
+   * Includes actions such as stopping all processing, only processing it on a few nodes,
+   * resume processing,...
+   */
+  def actionForJob: JobAction = JobDirectiveRules.rule(jobLevelDirectives)
+
+
+}

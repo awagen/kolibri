@@ -19,10 +19,12 @@ package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.impl
 
 import de.awagen.kolibri.datatypes.mutable.stores.{TypeTaggedMap, TypedMapStore, WeaklyTypedMap}
 import de.awagen.kolibri.fleet.zio.config.AppProperties
+import de.awagen.kolibri.fleet.zio.config.AppProperties.config.maxNrJobsClaimed
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobBatch
 import de.awagen.kolibri.fleet.zio.io.json.ProcessingStateJsonProtocol
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.format.NameFormats.FileNameFormat
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.format.NameFormats.Parts.{BATCH_NR, CREATION_TIME_IN_MILLIS, JOB_ID, NODE_HASH, TOPIC}
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.format.NameFormats.Parts.{BATCH_NR, CREATION_TIME_IN_MILLIS, JOB_ID, NODE_HASH, PROCESSING_STATUS, TOPIC}
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ProcessingStatus.ProcessingStatus
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.{ProcessingState, ProcessingStateUtils, ProcessingStatus}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ClaimStatus.ClaimFilingStatus.ClaimFilingStatus
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ClaimStatus.ClaimVerifyStatus.ClaimVerifyStatus
@@ -30,13 +32,12 @@ import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ClaimStatus.{Cla
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.traits.ClaimHandler.ClaimTopic
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.traits.ClaimHandler.ClaimTopic.{ClaimTopic, UNKNOWN}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.traits.{ClaimHandler, JobStateHandler}
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.utils.DataTypeUtils
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.zio_di.ZioDIConfig
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.zio_di.ZioDIConfig.Directories
 import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, Reader}
 import de.awagen.kolibri.storage.io.writer.Writers.Writer
 import zio.stream.{ZSink, ZStream}
-import zio.{Queue, Ref, Task, ZIO}
+import zio.{Queue, Task, ZIO}
 
 import scala.collection.mutable
 
@@ -48,11 +49,11 @@ object FileStorageClaimHandler {
     }
   }
 
-  case object InProgressTaskFileNameFormat extends FileNameFormat(Seq(BATCH_NR, NODE_HASH), "__") {
-    def getFileName(batchNr: Int): String = {
+  case object InProgressTaskFileNameFormat extends FileNameFormat(Seq(BATCH_NR, PROCESSING_STATUS), "__") {
+    def getFileName(batchNr: Int, processingStatus: ProcessingStatus): String = {
       this.format(TypedMapStore(mutable.Map(
         BATCH_NR.namedClassTyped -> batchNr,
-        NODE_HASH.namedClassTyped -> AppProperties.config.node_hash,
+        PROCESSING_STATUS.namedClassTyped -> processingStatus.toString,
       )))
     }
   }
@@ -86,9 +87,9 @@ object FileStorageClaimHandler {
     s"${ZioDIConfig.Directories.jobClaimSubFolder(jobId, isOpenJob = true)}/$fileName"
   }
 
-  private def getInProgressFilePathForJob(jobId: String, batchNr: Int): String = {
-    val fileName: String = InProgressTaskFileNameFormat.getFileName(batchNr)
-    s"${Directories.jobTasksInProgressStateSubFolder(jobId, isOpenJob = true)}/$fileName"
+  private def getInProgressFilePathForJob(jobId: String, batchNr: Int, processingStatus: ProcessingStatus): String = {
+    val fileName: String = InProgressTaskFileNameFormat.getFileName(batchNr, processingStatus)
+    s"${Directories.jobTasksInProgressStateSubFolder(jobId, isOpenJob = true)}/${AppProperties.config.node_hash}/$fileName"
   }
 
   private def isCurrentNodeClaim(claimURI: String): Boolean = {
@@ -142,6 +143,25 @@ case class FileStorageClaimHandler(filterToOverviewReader: (String => Boolean) =
 
   private[this] val overviewReader: DataOverviewReader = filterToOverviewReader(_ => true)
 
+  /**
+   * Get the mapping of jobId to full file paths of in-progress files
+   * for the current node, covering all the passed jobs
+   */
+  private def getExistingInProgressFilesForNode(jobs: Set[String]): Map[String, Set[String]] = {
+    jobs.map(jobId => {
+      val inProgressStateFiles: Set[String] = overviewReader
+        .listResources(Directories.jobTasksInProgressStateForNodeSubFolder(
+          jobId,
+          AppProperties.config.node_hash,
+          isOpenJob = true
+        ), _ => true).toSet
+      (jobId, inProgressStateFiles)
+    }).toMap
+  }
+
+  /**
+   * Get all full claim paths for the passed jobId and the given claimTopic
+   */
   private def getExistingClaimsForJob(jobId: String, claimTopic: ClaimTopic): Seq[String] = {
     overviewReader
       .listResources(Directories.jobClaimSubFolder(jobId, isOpenJob = true), filename => {
@@ -165,7 +185,7 @@ case class FileStorageClaimHandler(filterToOverviewReader: (String => Boolean) =
    * Write a claim for a given job for a given claim topic (e.g claiming an execution, a cleanup or the like).
    * NOTE that jobId here means [jobName]_[timePlacedInMillis]
    */
-  override def fileBatchClaim(jobId: String, batchNr: Int, claimTopic: ClaimTopic): Task[ClaimFilingStatus] = {
+  private[impl] def fileBatchClaim(jobId: String, batchNr: Int, claimTopic: ClaimTopic): Task[ClaimFilingStatus] = {
     ZIO.ifZIO(ZIO.attemptBlockingIO(getExistingClaimsForBatch(jobId, batchNr, claimTopic).isEmpty))(
       onTrue = {
         // write claim
@@ -183,13 +203,18 @@ case class FileStorageClaimHandler(filterToOverviewReader: (String => Boolean) =
 
 
   /**
+   * Verify a filed claim. This is used after a claim was filed to check on it after a given period of time
+   * to see whether the claim "won", e.g the node is allowed to pick the claimed batch and execute it.
+   * Will either return a CLAIM_ACCEPTED, based on which we can exercise the claim (picking the batch to execute
+   * and update the processing status), or returns other states indicating why a claim was not accepted.
+   *
    * Verify whether a filed claim succeeded and if so (CLAIM_ACCEPTED)
    * indicates that the node can start processing
    *
    * @param job - job identifier
    * @return
    */
-  override def verifyBatchClaim(jobId: String, batchNr: Int, claimTopic: ClaimTopic): Task[ClaimVerifyStatus] = ZIO.attemptBlockingIO {
+  private[impl] def verifyBatchClaim(jobId: String, batchNr: Int, claimTopic: ClaimTopic): Task[ClaimVerifyStatus] = ZIO.attemptBlockingIO {
     val allExistingClaims: Seq[String] = getExistingClaimsForBatch(jobId, batchNr, claimTopic)
       .map(fileName => fileName.split("/").last)
       .sorted
@@ -222,13 +247,16 @@ case class FileStorageClaimHandler(filterToOverviewReader: (String => Boolean) =
         val processingState = ProcessingState(
           jobId,
           batchNr,
-          ProcessingStatus.QUEUED,
+          ProcessingStatus.PLANNED,
           0,
           0,
           AppProperties.config.node_hash,
           ProcessingStateUtils.timeInMillisToFormattedTime(System.currentTimeMillis())
         )
-        writer.write(ProcessingStateJsonProtocol.processingStateFormat.write(processingState).toString, getInProgressFilePathForJob(jobId, batchNr))
+        writer.write(
+          ProcessingStateJsonProtocol.processingStateFormat.write(processingState).toString,
+          getInProgressFilePathForJob(jobId, batchNr, ProcessingStatus.PLANNED)
+        )
       })
     } yield toInProgressWriteResult)
       .flatMap({
@@ -274,6 +302,11 @@ case class FileStorageClaimHandler(filterToOverviewReader: (String => Boolean) =
   }
 
   /**
+   * Should only be used after a successful verification of a files claim. Upon exercising, the node will add the
+   * a progress state file with "PLANNED" status to indicate to workers
+   * that the task is ready to be picked up, and update the state of the batch (remove the status that the batch is open to be
+   * picked for processing).
+   *
    * if winner hash corresponds to the current node, file an in-progress note,
    * remove the file indicating the batch is open for processing and
    * remove all claims.
@@ -285,7 +318,7 @@ case class FileStorageClaimHandler(filterToOverviewReader: (String => Boolean) =
    * 4) if all of the above successful, remove the claim filed by
    * this very node
    */
-  override def exerciseBatchClaim(jobId: String, batchNr: Int, claimTopic: ClaimTopic): Task[Unit] = {
+  private[impl] def exerciseBatchClaim(jobId: String, batchNr: Int, claimTopic: ClaimTopic): Task[Unit] = {
     for {
       _ <- writeTaskToProgressFolder(jobId, batchNr)
       openTaskFile <- ZIO.succeed(s"${ZioDIConfig.Directories.jobOpenTasksSubFolder(jobId, isOpenJob = true)}/$batchNr")
@@ -324,8 +357,12 @@ case class FileStorageClaimHandler(filterToOverviewReader: (String => Boolean) =
    * 1 - verify existing claims and exercise the batches that the node claimed successfully
    * 2 - test whether there is any demand for the node to claim additional batches. If so, file claims
    */
-  def manageClaims(claimTopic: ClaimTopic, batchQueueRef: Ref[Queue[JobBatch[_,_]]]): Task[Unit] = {
+  def manageClaims(claimTopic: ClaimTopic, batchQueue: Queue[JobBatch[_,_]]): Task[Unit] = {
     for {
+      // TODO: for filed claims where the jobs are not relevant for the current node anymore
+      // make sure to delete the claims (only for this very node) and if we have any
+      // jobs in progress, to also delete the in-progress file (missing file to be picked up by WorkHandler
+      // to actually stop the execution) and move the batch back to the OPEN-folder
       claimsByCurrentNode <- getAllClaimsByCurrentNode(claimTopic)
       // verify each claim
       claimWithJobIdWithBatchNr <- ZIO.attempt({
@@ -337,15 +374,40 @@ case class FileStorageClaimHandler(filterToOverviewReader: (String => Boolean) =
         })
       })
       verifiedClaims <- ZStream.fromIterable(claimWithJobIdWithBatchNr).filterZIO(claimInfo => {
-        verifyBatchClaim(claimInfo._2, claimInfo._3, claimTopic).map(status => status == ClaimVerifyStatus.CLAIM_ACCEPTED)
-      }).run(ZSink.foldLeft(Seq.empty[(String, String, Int)])((oldState, newElement) => oldState :+ newElement ))
+        verifyBatchClaim(claimInfo._2, claimInfo._3, claimTopic)
+          .either
+          .map({
+            case Right(v) => v
+            case Left(_) => ClaimVerifyStatus.FAILED_VERIFICATION
+          })
+          .map(status => status == ClaimVerifyStatus.CLAIM_ACCEPTED)
+      })
+        .run(ZSink.foldLeft(Seq.empty[(String, String, Int)])((oldState, newElement) => oldState :+ newElement ))
       // Now exercise all verified claims
       _ <- ZStream.fromIterable(verifiedClaims).foreach(claimInfo => {
-        exerciseBatchClaim(claimInfo._2, claimInfo._3, claimTopic)
+        exerciseBatchClaim(claimInfo._2, claimInfo._3, claimTopic).map(_ => ())
       })
-      batchQueue <- batchQueueRef.get
-      numberOfNewlyClaimableBatches <- DataTypeUtils.numFreeQueueSlots(batchQueue)
-      _ <- jobStateHandler.fetchState.map(x => x.getNextNOpenBatches(numberOfNewlyClaimableBatches))
+      openJobsSnapshot <- jobStateHandler.fetchState
+      // mapping jobId -> Set[Int] representing the batches claimed by the current node
+      existingClaimsForNode <- ZIO.attempt({
+        openJobsSnapshot.getExistingClaimsForNode(AppProperties.config.node_hash)
+      })
+      // fetching all files showing succesfully claimed (exercised claims in the form of
+      // files in the in-progress state subfolder) batches as full file paths to the in-progress files
+      inProgressStateFilesPerJobForThisNode <- ZIO.attemptBlockingIO(getExistingInProgressFilesForNode(
+        openJobsSnapshot.jobStateSnapshots.keys.toSet
+      ))
+      // from the total number of claims filed and the number of batches already claimed calculate
+      // whether there is any need to file more claims
+      numberOfNewlyClaimableBatches <- ZIO.attempt({
+        val nrOfInProgressFiles = inProgressStateFilesPerJobForThisNode.values.flatten.count(_ => true)
+        val nrOfFiledClaims = existingClaimsForNode.values.flatten.count(_ => true)
+        math.max(0, maxNrJobsClaimed - (nrOfInProgressFiles + nrOfFiledClaims))
+      })
+      // if there are is some room to claim additional batches, do so (filing the batch claim,
+      // while the verification and possible exercising of each claim will be handled in the next
+      // round of the manageClaims call
+      _ <- ZIO.attempt(openJobsSnapshot.getNextNOpenBatches(numberOfNewlyClaimableBatches, ignoreClaimedBatches = true))
         .flatMap(openBatchesToClaim => {
           val jobIdToBatchPairs: Seq[(String, Int)] = openBatchesToClaim
             .flatMap(x => {

@@ -17,20 +17,20 @@
 
 package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.impl
 
+import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobBatch
 import de.awagen.kolibri.fleet.zio.io.json.ProcessingStateJsonProtocol.processingStateFormat
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.{ProcessingState, ProcessingStateUtils, ProcessingStatus}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ClaimStatus.ClaimVerifyStatus
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.traits.ClaimHandler
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.traits.ClaimHandler.ClaimTopic
 import de.awagen.kolibri.fleet.zio.testutils.TestObjects.{fileWriterMock, jobStateHandler}
 import de.awagen.kolibri.storage.io.reader.{LocalDirectoryReader, LocalResourceFileReader}
 import de.awagen.kolibri.storage.io.writer.Writers.FileWriter
-import spray.json._
 import org.mockito.Mockito.{times, verify}
 import org.mockito.{ArgumentCaptor, ArgumentMatchers}
-import zio.Scope
+import spray.json._
 import zio.test._
 import zio.test.junit.JUnitRunnableSpec
+import zio.{Queue, Scope}
 
 class FileStorageClaimHandlerSpec extends JUnitRunnableSpec {
 
@@ -38,7 +38,7 @@ class FileStorageClaimHandlerSpec extends JUnitRunnableSpec {
 
     val baseResourceFolder: String = getClass.getResource("/testdata").getPath
 
-    def claimHandler(writer: FileWriter[String, Unit], baseFolder: String): ClaimHandler = FileStorageClaimHandler(
+    def claimHandler(writer: FileWriter[String, Unit], baseFolder: String): FileStorageClaimHandler = FileStorageClaimHandler(
       filter => LocalDirectoryReader(baseDir = baseResourceFolder, baseFilenameFilter = filter),
       writer,
       LocalResourceFileReader(
@@ -57,7 +57,7 @@ class FileStorageClaimHandlerSpec extends JUnitRunnableSpec {
 
     test("fileBatchClaim") {
       val writerMock = fileWriterMock
-      val claimH = claimHandler(writerMock, baseResourceFolder)
+      val claimH: FileStorageClaimHandler = claimHandler(writerMock, baseResourceFolder)
       for {
         _ <- claimH.fileBatchClaim("testJob1_3434839787", 1, ClaimTopic.JOB_TASK_PROCESSING_CLAIM)
         _ <- claimH.fileBatchClaim("testJob1_3434839787", 2, ClaimTopic.JOB_TASK_PROCESSING_CLAIM)
@@ -89,7 +89,7 @@ class FileStorageClaimHandlerSpec extends JUnitRunnableSpec {
       val expectedProcessingState = ProcessingState(
         "testJob1_3434839787",
         2,
-        ProcessingStatus.QUEUED,
+        ProcessingStatus.PLANNED,
         0,
         0,
         "abc234",
@@ -103,7 +103,7 @@ class FileStorageClaimHandlerSpec extends JUnitRunnableSpec {
         verify(writerMock, times(1))
           .write(
             processingStateCaptor.capture(),
-            ArgumentMatchers.eq("jobs/open/testJob1_3434839787/tasks/inprogress_state/2__abc234")
+            ArgumentMatchers.eq("jobs/open/testJob1_3434839787/tasks/inprogress_state/abc234/2__PLANNED")
           )
         verify(writerMock, times(4))
           .delete(
@@ -123,6 +123,16 @@ class FileStorageClaimHandlerSpec extends JUnitRunnableSpec {
           fileSeq.last == "jobs/open/testJob1_3434839787/tasks/claims/JOB_TASK_PROCESSING_CLAIM__testJob1_3434839787__2__1683845333850__abc234" &&
           processingStateContent == expectedProcessingState.copy(lastUpdate = processingStateContent.lastUpdate)
       }))
+    },
+
+    test("manageClaims") {
+      val writerMock = fileWriterMock
+      val claimH = claimHandler(writerMock, baseResourceFolder)
+      for {
+        queue <- Queue.bounded[JobBatch[_,_]](2)
+        _ <- claimH.manageClaims(ClaimTopic.JOB_TASK_PROCESSING_CLAIM, queue)
+      } yield assert(true)(Assertion.assertion("true")(_ => true))
     }
+
   )
 }
