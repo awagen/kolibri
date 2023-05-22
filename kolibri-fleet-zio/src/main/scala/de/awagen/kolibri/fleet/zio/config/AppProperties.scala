@@ -191,6 +191,10 @@ object AppProperties {
 
     val maxNrJobsClaimed: Int = baseConfig.getInt("kolibri.job.tasks.maxNrJobsClaimed")
     val maxNrJobsProcessing: Int = baseConfig.getInt("kolibri.job.tasks.maxNrJobsProcessing")
+
+    val maxParallelItemsPerBatch: Int = baseConfig.getInt("kolibri.execution.maxParallelItemsPerBatch")
+
+
   }
 
 }

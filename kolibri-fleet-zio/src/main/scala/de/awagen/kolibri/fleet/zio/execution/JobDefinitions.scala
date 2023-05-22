@@ -19,16 +19,22 @@ package de.awagen.kolibri.fleet.zio.execution
 
 import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator}
 import de.awagen.kolibri.datatypes.types.ClassTyped
-import de.awagen.kolibri.datatypes.values.aggregation.mutable.Aggregators.Aggregator
+import de.awagen.kolibri.datatypes.values.aggregation.immutable.Aggregators.Aggregator
 import de.awagen.kolibri.definitions.directives.ResourceDirectives.ResourceDirective
 import de.awagen.kolibri.definitions.domain.jobdefinitions.Batch
 import de.awagen.kolibri.definitions.processing.ProcessingMessages.ProcessingMessage
-import de.awagen.kolibri.fleet.zio.execution.ZIOTasks.SimpleWaitTask
+import de.awagen.kolibri.fleet.zio.execution.ZIOTasks.{SimpleWaitTask, SimpleWaitTaskResultAsProcessingMessage}
 
 object JobDefinitions {
 
-  case class BatchAggregationInfo[W](successKey: ClassTyped[ProcessingMessage[Any]],
-                                     batchAggregatorSupplier: () => Aggregator[ProcessingMessage[Any], W])
+  /**
+   * Aggregation info that needs the key where to pick the value resulting from the computation from.
+   * This success key can either refer to entry of type V or of V wrapped in a ProcessingMessage.
+   * The aggregator always takes a ProcessingMessage, which provides means to selectively tag
+   * results and - depending on the chosen aggregator - allows aggregating via distinct tag (or group of tags)
+   */
+  case class BatchAggregationInfo[V, W](successKey: Either[ClassTyped[V], ClassTyped[ProcessingMessage[V]]],
+                                        batchAggregatorSupplier: () => Aggregator[ProcessingMessage[V], W])
 
   /**
    * Job definition here encapsulates several parts:
@@ -40,25 +46,46 @@ object JobDefinitions {
    * e.g one or more request steps (request + parsing of needed info into Map fields), followed
    * by processing steps and a final write result step.
    */
-  case class JobDefinition[+T, W](jobName: String,
-                                  resourceSetup: Seq[ResourceDirective[_]],
-                                  batches: IndexedGenerator[Batch[T]],
-                                  taskSequence: Seq[ZIOTask[_]],
-                                  aggregationInfo: Option[BatchAggregationInfo[W]])
+  case class JobDefinition[+T, V, W](jobName: String,
+                                     resourceSetup: Seq[ResourceDirective[_]],
+                                     batches: IndexedGenerator[Batch[T]],
+                                     taskSequence: Seq[ZIOTask[_]],
+                                     aggregationInfo: Option[BatchAggregationInfo[V, W]])
 
-  def simpleWaitJob(jobName: String, nrBatches: Int, waitDurationInMillis: Long): JobDefinition[Int, Unit] = {
-    JobDefinition[Int, Unit](
+  def simpleWaitJob(jobName: String,
+                    nrBatches: Int,
+                    waitDurationInMillis: Long,
+                    elementsPerBatch: Int = 1,
+                    aggregationInfoOpt: Option[BatchAggregationInfo[Unit, Int]] = None): JobDefinition[Int, Unit, Int] = {
+    JobDefinition[Int, Unit, Int](
       jobName = jobName,
       resourceSetup = Seq.empty,
       batches = ByFunctionNrLimitedIndexedGenerator.createFromSeq(
         Range(0, nrBatches, 1)
-          .map(batchNr => Batch(batchNr, ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq(1))))
+          .map(batchNr => Batch(batchNr, ByFunctionNrLimitedIndexedGenerator.createFromSeq(Range(0, elementsPerBatch, 1))))
       ),
       taskSequence = Seq(SimpleWaitTask(waitDurationInMillis)),
-      aggregationInfo = None
+      aggregationInfo = aggregationInfoOpt
     )
   }
 
-  case class JobBatch[+T, W](job: JobDefinition[T, W], batchNr: Int)
+  def simpleWaitJobResultAsProcessingMessage(jobName: String,
+                    nrBatches: Int,
+                    waitDurationInMillis: Long,
+                    elementsPerBatch: Int = 1,
+                    aggregationInfoOpt: Option[BatchAggregationInfo[Unit, Int]] = None): JobDefinition[Int, Unit, Int] = {
+    JobDefinition[Int, Unit, Int](
+      jobName = jobName,
+      resourceSetup = Seq.empty,
+      batches = ByFunctionNrLimitedIndexedGenerator.createFromSeq(
+        Range(0, nrBatches, 1)
+          .map(batchNr => Batch(batchNr, ByFunctionNrLimitedIndexedGenerator.createFromSeq(Range(0, elementsPerBatch, 1))))
+      ),
+      taskSequence = Seq(SimpleWaitTaskResultAsProcessingMessage(waitDurationInMillis)),
+      aggregationInfo = aggregationInfoOpt
+    )
+  }
+
+  case class JobBatch[+T, V, W](job: JobDefinition[T, V, W], batchNr: Int)
 
 }

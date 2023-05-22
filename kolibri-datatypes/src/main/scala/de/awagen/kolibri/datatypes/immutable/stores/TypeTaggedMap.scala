@@ -24,7 +24,7 @@ import scala.reflect.runtime.universe._
 trait TypeTaggedMap extends KolibriSerializable {
 
   def isOfType[T: TypeTag](data: T, typeInstance: Type): Boolean = {
-    typeOf[T] =:= typeInstance
+    typeOf[T] <:< typeInstance
   }
 
   def put[T: TypeTag, V](key: ClassTyped[V], value: T): (Option[T], TypeTaggedMap)

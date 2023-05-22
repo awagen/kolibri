@@ -35,17 +35,17 @@ class FileStorageJobStateHandlerSpec extends JUnitRunnableSpec {
     // point to resources folder in source code but in the respective
     // one in the target folder in the compiled sources
     val baseResourceFolder: String = getClass.getResource("/testdata").getPath
-  }
 
-  val testJobDefinitionJson: String =
-    """
-      |{
-      |  "type": "JUST_WAIT",
-      |  "jobName": "waitingJob",
-      |  "nrBatches": 10,
-      |  "durationInMillis": 1000
-      |}
-      |""".stripMargin
+    val testJobDefinitionJson: String =
+      """
+        |{
+        |  "type": "JUST_WAIT",
+        |  "jobName": "waitingJob",
+        |  "nrBatches": 10,
+        |  "durationInMillis": 1000
+        |}
+        |""".stripMargin
+  }
 
   def spec: Spec[TestEnvironment with Scope, Any] = suite("FileStorageJobStateHandlerSpec")(
 
@@ -53,7 +53,7 @@ class FileStorageJobStateHandlerSpec extends JUnitRunnableSpec {
       val writerMock = fileWriterMock
       val jobHandler = jobStateHandler(writerMock, baseResourceFolder)
       for {
-        fetchedState <- jobHandler.fetchState
+        fetchedState <- jobHandler.fetchOpenJobState
       } yield assert(fetchedState.allJobsSortedByPriority.size)(Assertion.equalTo(1)) &&
       assert(fetchedState.allJobsSortedByPriority.head.jobId)(Assertion.equalTo("testJob1")) &&
       assert(fetchedState.allJobsSortedByPriority.head.batchesToState.keys.size)(Assertion.equalTo(10)) &&

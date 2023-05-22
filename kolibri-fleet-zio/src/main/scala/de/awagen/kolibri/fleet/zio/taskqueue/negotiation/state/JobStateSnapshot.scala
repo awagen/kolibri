@@ -38,7 +38,7 @@ object JobStateSnapshot {
  */
 case class JobStateSnapshot(jobId: String,
                             timePlacedInMillis: Long,
-                            jobDefinition: JobDefinition[_,_],
+                            jobDefinition: JobDefinition[_, _, _],
                             jobLevelDirectives: Set[JobDirective],
                             batchesToState: Map[Int, BatchProcessingStatus],
                             batchesToProcessingClaimNodes: Map[Int, Set[String]]) {

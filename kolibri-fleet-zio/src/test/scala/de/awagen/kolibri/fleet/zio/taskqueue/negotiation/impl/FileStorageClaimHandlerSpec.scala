@@ -129,7 +129,7 @@ class FileStorageClaimHandlerSpec extends JUnitRunnableSpec {
       val writerMock = fileWriterMock
       val claimH = claimHandler(writerMock, baseResourceFolder)
       for {
-        queue <- Queue.bounded[JobBatch[_,_]](2)
+        queue <- Queue.bounded[JobBatch[_, _, _]](2)
         _ <- claimH.manageClaims(ClaimTopic.JOB_TASK_PROCESSING_CLAIM, queue)
       } yield assert(true)(Assertion.assertion("true")(_ => true))
     }

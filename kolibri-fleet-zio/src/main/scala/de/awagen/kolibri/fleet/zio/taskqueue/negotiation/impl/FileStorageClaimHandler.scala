@@ -25,7 +25,7 @@ import de.awagen.kolibri.fleet.zio.io.json.ProcessingStateJsonProtocol
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.format.NameFormats.FileNameFormat
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.format.NameFormats.Parts.{BATCH_NR, CREATION_TIME_IN_MILLIS, JOB_ID, NODE_HASH, PROCESSING_STATUS, TOPIC}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ProcessingStatus.ProcessingStatus
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.{ProcessingState, ProcessingStateUtils, ProcessingStatus}
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.{OpenJobsSnapshot, ProcessingState, ProcessingStateUtils, ProcessingStatus}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ClaimStatus.ClaimFilingStatus.ClaimFilingStatus
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ClaimStatus.ClaimVerifyStatus.ClaimVerifyStatus
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ClaimStatus.{ClaimFilingStatus, ClaimVerifyStatus}
@@ -279,6 +279,7 @@ case class FileStorageClaimHandler(filterToOverviewReader: (String => Boolean) =
    * since we remove all path-info besides the file name for which the actual claim path
    * is then generated before deletion. This makes sure the basepath of the used writer is
    * taken into account (we could also do by deleting any basepath suffix in the paths)
+   *
    * @param existingClaimFiles
    * @param claimURIFilter
    * @return
@@ -294,7 +295,7 @@ case class FileStorageClaimHandler(filterToOverviewReader: (String => Boolean) =
       _ <- ZIO.logDebug(s" Claims for deletion after filtering: $claimsToDelete")
       deletionResult <- ZIO.ifZIO(ZIO.succeed(claimsToDelete.nonEmpty))(
         onTrue = claimsToDelete.tail.foldLeft(removeFile(claimsToDelete.head))((task, fileId) => {
-            task.flatMap(_ => removeFile(fileId))
+          task.flatMap(_ => removeFile(fileId))
         }),
         onFalse = ZIO.succeed(())
       )
@@ -335,9 +336,9 @@ case class FileStorageClaimHandler(filterToOverviewReader: (String => Boolean) =
   /**
    * Over all currently registered jobs, find the claims filed by this node
    */
-  private def getAllClaimsByCurrentNode(claimTopic: ClaimTopic): ZIO[Any, Throwable, Set[String]] = {
+  private def getAllClaimsByCurrentNode(claimTopic: ClaimTopic, openJobsSnapshot: OpenJobsSnapshot): ZIO[Any, Throwable, Set[String]] = {
     for {
-      allKnownJobs <- jobStateHandler.fetchState.map(x => x.jobStateSnapshots.values.map(x => x.jobId).toSet)
+      allKnownJobs <- ZIO.attempt(openJobsSnapshot.jobStateSnapshots.values.map(x => x.jobId).toSet)
       allClaims <- ZIO.attemptBlocking({
         allKnownJobs.flatMap(job => getExistingClaimsForJob(job, claimTopic))
       })
@@ -354,17 +355,18 @@ case class FileStorageClaimHandler(filterToOverviewReader: (String => Boolean) =
   /**
    * Method to be called by
    * Here we follow the sequence:
+   * 0 - check if any claims were made for any job that is now marked to be ignored by this node. If so,
+   * delete the respective claims
    * 1 - verify existing claims and exercise the batches that the node claimed successfully
-   * 2 - test whether there is any demand for the node to claim additional batches. If so, file claims
+   * 2 - test whether there is any demand for the node to claim additional batches. If so, file additional claims
    */
-  def manageClaims(claimTopic: ClaimTopic, batchQueue: Queue[JobBatch[_,_]]): Task[Unit] = {
+  def manageClaims(claimTopic: ClaimTopic, batchQueue: Queue[JobBatch[_, _, _]]): Task[Unit] = {
     for {
-      // TODO: for filed claims where the jobs are not relevant for the current node anymore
-      // make sure to delete the claims (only for this very node) and if we have any
-      // jobs in progress, to also delete the in-progress file (missing file to be picked up by WorkHandler
-      // to actually stop the execution) and move the batch back to the OPEN-folder
-      claimsByCurrentNode <- getAllClaimsByCurrentNode(claimTopic)
-      // verify each claim
+      openJobsSnapshot <- jobStateHandler.fetchOpenJobState
+      ignoreJobIdsOnThisNode <- ZIO.succeed(openJobsSnapshot.jobsToBeIgnoredOnThisNode.map(x => x.jobId))
+      // extract all (jobId, batchNr) tuples of claims currently filed for the node
+      claimsByCurrentNode <- getAllClaimsByCurrentNode(claimTopic, openJobsSnapshot)
+      //verify each claim
       claimWithJobIdWithBatchNr <- ZIO.attempt({
         claimsByCurrentNode.map(claim => {
           val claimInfo = ClaimFileNameFormat.parse(claim.split("/").last)
@@ -373,6 +375,11 @@ case class FileStorageClaimHandler(filterToOverviewReader: (String => Boolean) =
           (claim, jobId, batchNr)
         })
       })
+      // remove the claims that are not needed anymore (only for this particular node)
+      claimsToBeRemoved <- ZIO.succeed(claimWithJobIdWithBatchNr.filter(x => ignoreJobIdsOnThisNode.contains(x._2)))
+      _ <- removeClaims(claimsToBeRemoved.map(x => x._1).toSeq, _ => true)
+      // for those jobs that shall be ignored, also remove all process state files and move the files representing the
+      // respective batches back to the 'open' folder
       verifiedClaims <- ZStream.fromIterable(claimWithJobIdWithBatchNr).filterZIO(claimInfo => {
         verifyBatchClaim(claimInfo._2, claimInfo._3, claimTopic)
           .either
@@ -382,12 +389,11 @@ case class FileStorageClaimHandler(filterToOverviewReader: (String => Boolean) =
           })
           .map(status => status == ClaimVerifyStatus.CLAIM_ACCEPTED)
       })
-        .run(ZSink.foldLeft(Seq.empty[(String, String, Int)])((oldState, newElement) => oldState :+ newElement ))
+        .run(ZSink.foldLeft(Seq.empty[(String, String, Int)])((oldState, newElement) => oldState :+ newElement))
       // Now exercise all verified claims
       _ <- ZStream.fromIterable(verifiedClaims).foreach(claimInfo => {
         exerciseBatchClaim(claimInfo._2, claimInfo._3, claimTopic).map(_ => ())
       })
-      openJobsSnapshot <- jobStateHandler.fetchState
       // mapping jobId -> Set[Int] representing the batches claimed by the current node
       existingClaimsForNode <- ZIO.attempt({
         openJobsSnapshot.getExistingClaimsForNode(AppProperties.config.node_hash)

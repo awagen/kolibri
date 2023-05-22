@@ -43,6 +43,6 @@ trait ClaimHandler {
    * if resources available, verifying and exercising claims).
    * This function would usually be the only call that needs to be exposed.
    */
-  def manageClaims(claimTopic: ClaimTopic, batchQueueRef: Queue[JobBatch[_, _]]): Task[Unit]
+  def manageClaims(claimTopic: ClaimTopic, batchQueueRef: Queue[JobBatch[_, _, _]]): Task[Unit]
 
 }

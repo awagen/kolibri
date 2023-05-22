@@ -30,7 +30,7 @@ class ZIOConfig {
 
   private[this] var runningJobsRef: Ref[Map[String, JobDefinitionLoadStatus]] = null
   private[this] var jobHandler: JobStateHandler = null
-  private[this] var jobQueue: Queue[JobDefinition[_,_]] = null
+  private[this] var jobQueue: Queue[JobDefinition[_, _, _]] = null
 
   // TODO: do not need this specific one, will replace with other structures to record
   // a) the queue for claimed batches and b) the batches currently in progress together with some
@@ -39,7 +39,7 @@ class ZIOConfig {
 
   def getJobHandler: JobStateHandler = jobHandler
 
-  def getJobQueue: Queue[JobDefinition[_,_]] = null
+  def getJobQueue: Queue[JobDefinition[_, _, _]] = null
 
   def init(): ZIO[Any, Throwable, Unit] = {
     ZIO.ifZIO(ZIO.succeed(runningJobsRef == null))(
@@ -50,7 +50,7 @@ class ZIOConfig {
           _ <- ZIO.attempt({
             runningJobsRef = runningJobs
           })
-          queue <- Queue.bounded[JobDefinition[_,_]](5)
+          queue <- Queue.bounded[JobDefinition[_, _, _]](5)
           _ <- ZIO.attempt({
             jobQueue = queue
           })

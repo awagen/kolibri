@@ -41,7 +41,7 @@ private[this] class TaskQueueOrchestrator(jobHandler: JobStateHandler) extends T
 
   override def update(): Task[Unit] = for {
     // update registered jobs
-    jobStateSnapshot <- jobHandler.fetchState
+    jobStateSnapshot <- jobHandler.fetchOpenJobState
 
   } yield jobStateSnapshot
 }

@@ -29,7 +29,7 @@ object Schedules {
   def findAndRegisterJobs(jobHandler: JobStateHandler): Task[OpenJobsSnapshot] =
     (for {
       _ <- ZIO.logDebug("Start checking for new jobs")
-      state <- jobHandler.fetchState
+      state <- jobHandler.fetchOpenJobState
     } yield state).logError
 
   /**

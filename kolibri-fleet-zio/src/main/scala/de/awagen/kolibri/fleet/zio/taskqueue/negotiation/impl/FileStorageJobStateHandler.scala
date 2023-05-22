@@ -104,7 +104,7 @@ case class FileStorageJobStateHandler(overviewReader: DataOverviewReader,
     val jobDefFileContent = reader.read(jobDefPath).mkString("\n")
     var jobState: JobDefinitionLoadStatus = InvalidJobDefinition
     try {
-      jobState = Loaded(jobDefFileContent.parseJson.convertTo[JobDefinition[_, _]])
+      jobState = Loaded(jobDefFileContent.parseJson.convertTo[JobDefinition[_, _, _]])
       logger.info(s"Finished casting file '$jobDefPath' to job definition")
     }
     catch {
@@ -121,7 +121,7 @@ case class FileStorageJobStateHandler(overviewReader: DataOverviewReader,
 
   override def storeJobDefinitionAndBatches(jobDefinition: String): Task[Unit] = {
     for {
-      jobDef <- ZIO.attempt(jobDefinition.parseJson.convertTo[JobDefinition[_,_]])
+      jobDef <- ZIO.attempt(jobDefinition.parseJson.convertTo[JobDefinition[_, _, _]])
       _ <- storeJobDefinition(jobDefinition, s"${jobDef.jobName}_${System.currentTimeMillis()}")
       batchStorageResult <- storeBatchFilesForJob(jobDef)
     } yield batchStorageResult
@@ -137,7 +137,7 @@ case class FileStorageJobStateHandler(overviewReader: DataOverviewReader,
     })
   }
 
-  private[this] def storeBatchFilesForJob(jobDefinition: JobDefinition[_, _]): Task[Unit] = {
+  private[this] def storeBatchFilesForJob(jobDefinition: JobDefinition[_, _, _]): Task[Unit] = {
     ZIO.attemptBlockingIO({
       val numBatches = jobDefinition.batches.size
       Range(0, numBatches, 1).foreach(batchNr => {
@@ -246,7 +246,7 @@ case class FileStorageJobStateHandler(overviewReader: DataOverviewReader,
    * - set job level directives
    * - open jobs
    */
-  override def fetchState: Task[OpenJobsSnapshot] = {
+  override def fetchOpenJobState: Task[OpenJobsSnapshot] = {
     for {
       jobStateSnapshots <- retrieveJobStateSnapshots
     } yield OpenJobsSnapshot(jobStateSnapshots.map(x => (x.jobId, x)).toMap)

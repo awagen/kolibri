@@ -29,14 +29,15 @@ import zio.Task
 trait JobStateHandler {
 
   /**
-   * Schedule task that can be run via
-   * Runtime.default.run(handler.updateSchedule).fork.
    * Logic shall contain all updates of
    * - available jobs sorted by priority and mapped to their definitions
    * - set job level directives
    * - open jobs
    */
-  def fetchState: Task[OpenJobsSnapshot]
+  def fetchOpenJobState: Task[OpenJobsSnapshot]
+
+  // TODO
+  // def fetchInProgressState: Task
 
   /**
    * Move

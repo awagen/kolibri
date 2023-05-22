@@ -22,8 +22,8 @@ import spray.json.{DefaultJsonProtocol, JsValue, JsonFormat, enrichAny}
 
 object JobDefinitionJsonProtocol extends DefaultJsonProtocol {
 
-  implicit object JobDefinitionFormat extends JsonFormat[JobDefinition[_, _]] {
-    override def read(json: JsValue): JobDefinition[_,_] = json match {
+  implicit object JobDefinitionFormat extends JsonFormat[JobDefinition[_, _, _]] {
+    override def read(json: JsValue): JobDefinition[_, _, _] = json match {
       case spray.json.JsObject(fields) => fields("type").convertTo[String] match {
         case "JUST_WAIT" =>
           val jobName = fields("jobName").convertTo[String]
@@ -34,7 +34,7 @@ object JobDefinitionJsonProtocol extends DefaultJsonProtocol {
     }
 
     // TODO
-    override def write(obj: JobDefinition[_,_]): JsValue = """{}""".toJson
+    override def write(obj: JobDefinition[_, _, _]): JsValue = """{}""".toJson
   }
 
 

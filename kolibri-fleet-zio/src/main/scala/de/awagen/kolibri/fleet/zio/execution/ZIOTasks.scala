@@ -19,6 +19,7 @@ package de.awagen.kolibri.fleet.zio.execution
 
 import de.awagen.kolibri.datatypes.immutable.stores.TypeTaggedMap
 import de.awagen.kolibri.datatypes.types.{ClassTyped, NamedClassTyped}
+import de.awagen.kolibri.definitions.processing.ProcessingMessages._
 import de.awagen.kolibri.definitions.processing.failure.TaskFailType
 import zio.{Task, ZIO}
 
@@ -38,6 +39,19 @@ object ZIOTasks {
     override def task(map: TypeTaggedMap): Task[TypeTaggedMap] = ZIO.attemptBlocking({
       Thread.sleep(waitTimeInMillis)
       map.put(successKey, ())._2
+    })
+  }
+
+  case class SimpleWaitTaskResultAsProcessingMessage(waitTimeInMillis: Long) extends ZIOTask[ProcessingMessage[Unit]] {
+    override def prerequisites: Seq[ClassTyped[Any]] = Seq.empty
+
+    override def successKey: ClassTyped[ProcessingMessage[Unit]] = NamedClassTyped[ProcessingMessage[Unit]]("DONE_WAITING")
+
+    override def failKey: ClassTyped[TaskFailType.TaskFailType] = NamedClassTyped[TaskFailType.TaskFailType]("FAILED_WAITING")
+
+    override def task(map: TypeTaggedMap): Task[TypeTaggedMap] = ZIO.attemptBlocking({
+      Thread.sleep(waitTimeInMillis)
+      map.put(successKey, Corn[Unit](()))._2
     })
   }
 }

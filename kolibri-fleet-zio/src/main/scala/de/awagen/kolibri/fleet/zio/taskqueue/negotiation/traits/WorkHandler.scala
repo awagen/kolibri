@@ -31,8 +31,8 @@ trait WorkHandler {
    */
   def updateProcessStatus(): Task[ProcessUpdateStatus]
 
-  def addBatches(batches: Seq[JobBatch[_,_]]): Task[Seq[Boolean]]
+  def addBatches(batches: Seq[JobBatch[_,_, _]]): Task[Seq[Boolean]]
 
-  def addBatch(batch: JobBatch[_,_]): Task[Boolean]
+  def addBatch(batch: JobBatch[_,_, _]): Task[Boolean]
 
 }

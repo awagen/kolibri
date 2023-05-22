@@ -46,14 +46,14 @@ object App extends ZIOAppDefault {
         Http.collectZIO[Request] {
           case Method.GET -> !! / "registeredJobs" => for {
             // TODO: avoid reloading the current state from filesystem on each request
-            jobState <- jobHandler.fetchState
+            jobState <- jobHandler.fetchOpenJobState
           } yield Response.text(s"Files: ${jobState.jobStateSnapshots.keys.toSeq.mkString(",")}")
           case req@Method.POST -> !! / "job" =>
             for {
               jobString <- req.body.asString
-              jobDef <- ZIO.attempt(jobString.parseJson.convertTo[JobDefinition[_,_]])
+              jobDef <- ZIO.attempt(jobString.parseJson.convertTo[JobDefinition[_,_, _]])
               // TODO: avoid reloading the current state from filesystem on each request
-              jobState <- jobHandler.fetchState
+              jobState <- jobHandler.fetchOpenJobState
               jobFolderExists <- ZIO.attempt(jobState.jobStateSnapshots.contains(jobDef.jobName))
               _ <- ZIO.ifZIO(ZIO.succeed(jobFolderExists))(
                 onFalse = jobHandler.storeJobDefinitionAndBatches(jobString),

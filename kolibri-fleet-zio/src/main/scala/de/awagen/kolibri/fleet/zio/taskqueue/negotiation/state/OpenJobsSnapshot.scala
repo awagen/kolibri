@@ -87,7 +87,7 @@ case class OpenJobsSnapshot(jobStateSnapshots: Map[String, JobStateSnapshot],
    * Otherwise either contains other jobs as well or - if not enough open batches available
    * over all open jobs - return less than n batches.
    */
-  def getNextNOpenBatches(n: Int, ignoreClaimedBatches: Boolean): Seq[(JobDefinition[_, _], Seq[Int])] = {
+  def getNextNOpenBatches(n: Int, ignoreClaimedBatches: Boolean): Seq[(JobDefinition[_, _, _], Seq[Int])] = {
     var ignoreJobNameBatchTuples: Map[String, Set[Int]] = Map.empty
     if (ignoreClaimedBatches) {
       ignoreJobNameBatchTuples = jobsForThisNodeSortedByPriority.map(x => (x.jobId, x.batchesToProcessingClaimNodes.keys.toSet)).toMap
