@@ -42,7 +42,8 @@ object ProcessingMessages {
    * @tparam T
    */
   sealed trait ProcessingMessage[+T] extends KolibriSerializable with TaggedWithType with DataPoint[T] {
-    val data: T
+    def data: T
+    def weight: Double
     private[this] val contextMap: mutable.Map[TypedKey[_], Any] = mutable.Map.empty
 
     /**
