@@ -20,6 +20,11 @@ package de.awagen.kolibri.fleet.akka.usecase.searchopt.jobdefinitions
 import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.stream.scaladsl.Flow
+import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
+import de.awagen.kolibri.datatypes.metrics.aggregation.mutable.MetricAggregation
+import de.awagen.kolibri.datatypes.stores.immutable.MetricRow
+import de.awagen.kolibri.datatypes.tagging.Tags.Tag
+import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 import de.awagen.kolibri.definitions.http.client.request.RequestTemplateBuilder
 import de.awagen.kolibri.definitions.processing.JobMessages.SearchEvaluationDefinition
 import de.awagen.kolibri.definitions.processing.ProcessingMessages
@@ -32,13 +37,6 @@ import de.awagen.kolibri.definitions.processing.modifiers.RequestTemplateBuilder
 import de.awagen.kolibri.definitions.usecase.searchopt.jobdefinitions.parts.Aggregators.{fullJobToSingleTagAggregatorSupplier, singleBatchAggregatorSupplier}
 import de.awagen.kolibri.definitions.usecase.searchopt.jobdefinitions.parts.BatchGenerators.batchByGeneratorAtIndex
 import de.awagen.kolibri.definitions.usecase.searchopt.jobdefinitions.parts.Expectations.expectationPerBatchSupplier
-import de.awagen.kolibri.definitions.usecase.searchopt.parse.ParsingConfig
-import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
-import de.awagen.kolibri.datatypes.metrics.aggregation.mutable.MetricAggregation
-import de.awagen.kolibri.datatypes.mutable.stores.{BaseWeaklyTypedMap, WeaklyTypedMap}
-import de.awagen.kolibri.datatypes.stores.immutable.MetricRow
-import de.awagen.kolibri.datatypes.tagging.Tags.Tag
-import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 import de.awagen.kolibri.fleet.akka.actors.work.aboveall.SupervisorActor
 import de.awagen.kolibri.fleet.akka.config.AppConfig
 import de.awagen.kolibri.fleet.akka.execution.job.ActorRunnableSinkType
@@ -47,36 +45,12 @@ import de.awagen.kolibri.fleet.akka.usecase.searchopt.http.client.flows.RequestP
 import de.awagen.kolibri.fleet.akka.usecase.searchopt.http.client.flows.RequestProcessingFlows.connectionToProcessingFunc
 import de.awagen.kolibri.fleet.akka.usecase.searchopt.http.client.flows.responsehandlers.SolrHttpResponseHandlers
 import de.awagen.kolibri.fleet.akka.usecase.searchopt.jobdefinitions.parts.Flows
-import org.slf4j.{Logger, LoggerFactory}
-import play.api.libs.json.JsValue
 
-import scala.collection.mutable
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.DurationInt
 import scala.util.Random
 
 object SearchJobDefinitions {
-
-  private[this] val logger: Logger = LoggerFactory.getLogger(this.getClass)
-
-
-  def jsValueToTypeTaggedMap(parsingConfig: ParsingConfig): SerializableFunction1[JsValue, WeaklyTypedMap[String]] = new SerializableFunction1[JsValue, WeaklyTypedMap[String]] {
-    override def apply(jsValue: JsValue): WeaklyTypedMap[String] = {
-      val typedMap = BaseWeaklyTypedMap(mutable.Map.empty)
-      parsingConfig.selectors.foreach(selector => {
-        val value: Any = selector.select(jsValue)
-        value match {
-          case v: Option[_] => v.foreach(value => typedMap.put(selector.name, value))
-          case _ => typedMap.put(selector.name, value)
-        }
-
-      })
-      if (typedMap.keys.isEmpty) {
-        logger.warn("no data placed in typed map")
-      }
-      typedMap
-    }
-  }
 
   /**
    * Generating actor runnable job cmd from search evaluation definition.
@@ -169,7 +143,7 @@ object SearchJobDefinitions {
         RequestProcessingFlows.balancingRequestAndParsingFlow(
           eval.connections,
           connectionToProcessingFunc(
-            SolrHttpResponseHandlers.httpResponseToTypeTaggedMapParseFunc(_ => true, jsValueToTypeTaggedMap(eval.parsingConfig))
+            SolrHttpResponseHandlers.httpResponseToTypeTaggedMapParseFunc(_ => true, eval.parsingConfig.jsValueToTypeTaggedMap)
           )
         )
       ),

@@ -22,10 +22,9 @@ import de.awagen.kolibri.datatypes.values.aggregation.immutable.Aggregators.Aggr
 import de.awagen.kolibri.definitions.processing.ProcessingMessages.ProcessingMessage
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.{BatchAggregationInfo, JobBatch}
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.traits.Worker
-import zio.{Ref, Scope}
-import zio.test.junit.JUnitRunnableSpec
+import zio.Scope
 import zio.test._
+import zio.test.junit.JUnitRunnableSpec
 
 class TaskWorkerSpec extends JUnitRunnableSpec {
 
@@ -83,6 +82,7 @@ class TaskWorkerSpec extends JUnitRunnableSpec {
       for {
         workRawResult <- TaskWorker.work(TestObjects.jobBatch)
         workProcessingMessageResult <- TaskWorker.work(TestObjects.jobBatchResultAsProcessingMessage)
+        // join is needed here to make sure the fiber completed the execution
         _ <- workRawResult._2.join
         _ <- workProcessingMessageResult._2.join
         aggregator <- workRawResult._1.get
