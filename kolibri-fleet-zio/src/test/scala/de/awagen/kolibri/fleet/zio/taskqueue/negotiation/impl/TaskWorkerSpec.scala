@@ -17,7 +17,9 @@
 
 package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.impl
 
+import de.awagen.kolibri.datatypes.tagging.TaggedWithType
 import de.awagen.kolibri.datatypes.types.NamedClassTyped
+import de.awagen.kolibri.datatypes.values.DataPoint
 import de.awagen.kolibri.datatypes.values.aggregation.immutable.Aggregators.Aggregator
 import de.awagen.kolibri.definitions.processing.ProcessingMessages.ProcessingMessage
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions
@@ -31,14 +33,14 @@ object TaskWorkerSpec extends ZIOSpecDefault {
 
     val baseResourceFolder: String = getClass.getResource("/testdata").getPath
 
-    def countingAggregator(count: Int): Aggregator[ProcessingMessage[Unit], Int] = new Aggregator[ProcessingMessage[Unit], Int] {
-      override def add(sample: ProcessingMessage[Unit]): Aggregator[ProcessingMessage[Unit], Int] = {
+    def countingAggregator(count: Int): Aggregator[TaggedWithType with DataPoint[Unit], Int] = new Aggregator[TaggedWithType with DataPoint[Unit], Int] {
+      override def add(sample: TaggedWithType with DataPoint[Unit]): Aggregator[TaggedWithType with DataPoint[Unit], Int] = {
         countingAggregator(count + 1)
       }
 
       override def aggregation: Int = count
 
-      override def addAggregate(aggregatedValue: Int): Aggregator[ProcessingMessage[Unit], Int] = {
+      override def addAggregate(aggregatedValue: Int): Aggregator[TaggedWithType with DataPoint[Unit], Int] = {
         countingAggregator(count + aggregatedValue)
       }
     }

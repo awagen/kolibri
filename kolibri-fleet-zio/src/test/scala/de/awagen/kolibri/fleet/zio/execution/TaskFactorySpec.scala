@@ -29,7 +29,7 @@ import de.awagen.kolibri.definitions.io.json.MetricFunctionJsonProtocol.{MetricF
 import de.awagen.kolibri.definitions.processing.ProcessingMessages
 import de.awagen.kolibri.definitions.processing.ProcessingMessages.ProcessingMessage
 import de.awagen.kolibri.definitions.processing.modifiers.RequestTemplateBuilderModifiers
-import de.awagen.kolibri.definitions.resources.{ResourceLoader, ResourceProvider}
+import de.awagen.kolibri.definitions.resources.ResourceProvider
 import de.awagen.kolibri.definitions.usecase.searchopt.metrics._
 import de.awagen.kolibri.definitions.usecase.searchopt.parse.JsonSelectors.PlainPathSelector
 import de.awagen.kolibri.definitions.usecase.searchopt.parse.ParsingConfig
@@ -37,7 +37,7 @@ import de.awagen.kolibri.definitions.usecase.searchopt.parse.TypedJsonSelectors.
 import de.awagen.kolibri.definitions.usecase.searchopt.provider.{FileBasedJudgementProvider, JudgementProvider}
 import de.awagen.kolibri.fleet.zio.execution.TaskFactory.RequestJsonAndParseValuesTask.requestTemplateBuilderModifierKey
 import de.awagen.kolibri.fleet.zio.execution.TaskFactory.{CalculateMetricsTask, RequestJsonAndParseValuesTask}
-import de.awagen.kolibri.fleet.zio.resources.{AtomicResourceStore, NodeResourceProvider}
+import de.awagen.kolibri.fleet.zio.resources.NodeResourceProvider
 import de.awagen.kolibri.storage.io.reader.LocalResourceFileReader
 import org.mockito.ArgumentMatchers
 import org.mockito.Mockito.when
@@ -75,11 +75,6 @@ object TaskFactorySpec extends ZIOSpecDefault {
       contextPath,
       fixedParams,
       ZLayer.succeed(clientMock)
-    )
-
-    def resourceProvider: ResourceProvider with ResourceLoader = new NodeResourceProvider(
-      resourceStore = AtomicResourceStore(),
-      waitTimeInSeconds = 5
     )
 
     def calculateMetricsTask(responseKey: ClassTyped[ProcessingMessage[WeaklyTypedMap[String]]],
@@ -163,16 +158,14 @@ object TaskFactorySpec extends ZIOSpecDefault {
       val initialMap = TypedMapStore(Map(
         initKey -> ProcessingMessages.Corn(typedMap),
       ))
-      val resourceProvider = TestObjects.resourceProvider
-
       // prepare directive to load judgement data before metrics calculation will retrieve it
       val judgementFileResourcePath: String = "/data/test_judgements.txt"
       val judgementResourceDirective = TestObjects.judgementResourceDirective(judgementFileResourcePath)
 
       implicit val ec: ExecutionContext = scala.concurrent.ExecutionContext.global
       // wait till resource is loaded
-      Await.result(resourceProvider.createResource(judgementResourceDirective).future, 10 seconds)
-      val metricTask = TestObjects.calculateMetricsTask(initKey, resourceProvider)
+      Await.result(NodeResourceProvider.createResource(judgementResourceDirective).future, 10 seconds)
+      val metricTask = TestObjects.calculateMetricsTask(initKey, NodeResourceProvider)
       // when, then
       for {
         result <- metricTask.task(initialMap)

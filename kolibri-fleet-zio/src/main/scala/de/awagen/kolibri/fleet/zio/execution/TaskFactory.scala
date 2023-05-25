@@ -38,6 +38,7 @@ import de.awagen.kolibri.definitions.processing.modifiers.RequestTemplateBuilder
 import de.awagen.kolibri.definitions.usecase.searchopt.jobdefinitions.parts.ReservedStorageKeys.REQUEST_TEMPLATE_STORAGE_KEY
 import de.awagen.kolibri.definitions.usecase.searchopt.metrics.MetricRowFunctions.throwableToMetricRowResponse
 import de.awagen.kolibri.definitions.usecase.searchopt.parse.ParsingConfig
+import de.awagen.kolibri.fleet.zio.config.AppProperties
 import de.awagen.kolibri.fleet.zio.http.client.request.RequestTemplateImplicits.RequestTemplateToZIOHttpRequest
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.impl.TaskWorker.INITIAL_DATA_KEY
 import play.api.libs.json.Json
@@ -98,14 +99,16 @@ object TaskFactory {
       val requestTemplate: RequestTemplate = modifier.apply(requestTemplateBuilder).build()
       // adding the request template to the map
       val updatedMap = map.put(requestTemplateKey, requestTemplate)._2
-      val connection = connectionSupplier()
+      val connection = connectionSupplier.apply()
       val protocolPrefix = if (connection.useHttps) "https" else "http"
       val compute = (for {
         // TODO: connection credentials are not yet taken into account
         res <- requestTemplate.toZIOHttpRequest(s"$protocolPrefix://${connection.host}:${connection.port}")
         data <- res.body.asString.map(x => Json.parse(x))
         parsed <- ZIO.attempt(parsingConfig.jsValueToTypeTaggedMap.apply(data))
-      } yield parsed).provide(httpClient)
+      } yield parsed)
+        .retryN(AppProperties.config.maxRetriesPerBatchTask)
+        .provide(httpClient)
       compute.map(value => updatedMap.put(successKey, ProcessingMessages.Corn(value))._2)
         .catchAll(throwable => ZIO.succeed(updatedMap.put(failKey, TaskFailType.FailedByException(throwable))._2))
     }
@@ -169,7 +172,9 @@ object TaskFactory {
           ProcessingMessages.Corn(metricRow).withTags(TagType.AGGREGATION, originalTags)
         })
       } yield processingMessageResult
-      compute.map(value => map.put(successKey, value)._2)
+      compute
+        .retryN(AppProperties.config.maxRetriesPerBatchTask)
+        .map(value => map.put(successKey, value)._2)
         // try to map the throwable to a MetricRow result containing info about the failure
         .catchAll(throwable => ZIO.attempt {
           // need to add paramNames here to set the fail reasons for each

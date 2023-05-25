@@ -18,14 +18,18 @@
 package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.impl
 
 import de.awagen.kolibri.datatypes.immutable.stores.TypedMapStore
+import de.awagen.kolibri.datatypes.tagging.{TaggedWithType, Tags}
+import de.awagen.kolibri.datatypes.tagging.Tags.StringTag
 import de.awagen.kolibri.datatypes.types.{ClassTyped, NamedClassTyped}
+import de.awagen.kolibri.datatypes.values.DataPoint
 import de.awagen.kolibri.datatypes.values.aggregation.immutable.Aggregators._
 import de.awagen.kolibri.definitions.processing.ProcessingMessages._
 import de.awagen.kolibri.definitions.processing.failure.TaskFailType.FailedByException
 import de.awagen.kolibri.fleet.zio.config.AppProperties.config.maxParallelItemsPerBatch
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobBatch
-import de.awagen.kolibri.fleet.zio.execution.{Failed, ZIOSimpleTaskExecution}
+import de.awagen.kolibri.fleet.zio.execution.{Failed, JobDefinitions, ZIOSimpleTaskExecution}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.traits.Worker
+import de.awagen.kolibri.storage.io.writer.Writers
 import zio.stream.ZStream
 import zio.{Fiber, Ref, ZIO}
 
@@ -35,17 +39,19 @@ object TaskWorker extends Worker {
 
   val INITIAL_DATA_KEY = "INIT_DATA"
 
-  def inactiveAggregator[V: TypeTag, W: TypeTag]: Aggregator[ProcessingMessage[V], W] = new Aggregator[ProcessingMessage[V], W] {
-    override def add(sample: ProcessingMessage[V]): Aggregator[ProcessingMessage[V], W] = this
+  def inactiveAggregator[V: TypeTag, W: TypeTag]: Aggregator[TaggedWithType with DataPoint[V], W] = new Aggregator[TaggedWithType with DataPoint[V], W] {
+    override def add(sample: TaggedWithType with DataPoint[V]): Aggregator[TaggedWithType with DataPoint[V], W] = inactiveAggregator
 
     override def aggregation: W = null.asInstanceOf[W]
 
-    override def addAggregate(aggregatedValue: W): Aggregator[ProcessingMessage[V], W] = this
+    override def addAggregate(aggregatedValue: W): Aggregator[TaggedWithType with DataPoint[V], W] = inactiveAggregator
   }
 
-  override def work[T: TypeTag, V: TypeTag, W: TypeTag](jobBatch: JobBatch[T, V, W]): ZIO[Any, Nothing, (Ref[Aggregator[ProcessingMessage[V], W]], Fiber.Runtime[Nothing, Unit])] = {
-    val aggregator: Aggregator[ProcessingMessage[V], W] = jobBatch.job.aggregationInfo
+  override def work[T: TypeTag, V: TypeTag, W: TypeTag](jobBatch: JobBatch[T, V, W]): ZIO[Any, Nothing, (Ref[Aggregator[TaggedWithType with DataPoint[V], W]], Fiber.Runtime[Nothing, Unit])] = {
+    val aggregator: Aggregator[TaggedWithType with DataPoint[V], W] = jobBatch.job.aggregationInfo
       .map(x => x.batchAggregatorSupplier()).getOrElse(inactiveAggregator[V, W])
+    val batchResultWriter: Writers.Writer[W, Tags.Tag, Any] = jobBatch.job.aggregationInfo
+      .map(x => x.writer).getOrElse(JobDefinitions.doNothingWriter[W])
     val successKey: Option[ClassTyped[Any]] = jobBatch.job.aggregationInfo.map(x => x.successKey match {
       case Left(value) => value
       case Right(value) => value
@@ -91,6 +97,16 @@ object TaskWorker extends Worker {
               )
         }
         .runDrain
+        // when we are done, write the result
+        .onExit(
+          _ => {
+            aggregatorRef.get.flatMap(aggregator => {
+              ZIO.attemptBlockingIO({
+                batchResultWriter.write(aggregator.aggregation, StringTag(jobBatch.job.jobName))
+              }).either
+            })
+          }
+        )
         .fork
     } yield (aggregatorRef, computeResultFiber)
   }

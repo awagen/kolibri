@@ -45,7 +45,7 @@ object MetricAggregation {
  */
 case class MetricAggregation[A <: AnyRef](aggregationStateMap: Map[A, MetricDocument[A]] = Map.empty[A, MetricDocument[A]],
                                           keyMapFunction: SerializableFunction1[A, A] = identity,
-                                          aggregatedElementsCount: Int = 0) extends WithCount {
+                                          aggregatedElementsCount: Int = 0) extends WithCount with Serializable {
 
   override def count: Int = aggregatedElementsCount
 

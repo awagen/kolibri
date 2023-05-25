@@ -22,13 +22,28 @@ import de.awagen.kolibri.definitions.directives.Resource
 import de.awagen.kolibri.definitions.directives.ResourceDirectives.ResourceDirective
 import de.awagen.kolibri.definitions.directives.RetrievalDirective.RetrievalDirective
 import de.awagen.kolibri.definitions.resources._
+import de.awagen.kolibri.fleet.zio.config.AppProperties
 
 import scala.concurrent.duration.{FiniteDuration, SECONDS}
 import scala.concurrent.{Await, ExecutionContext, Promise}
 
+object NodeResourceProvider extends ResourceProvider with ResourceLoader {
 
-class NodeResourceProvider(resourceStore: AtomicMapPromiseStore[Resource[Any], Any, ResourceDirective[Any]],
-                           waitTimeInSeconds: Int) extends ResourceProvider with ResourceLoader {
+  private[this] val resourceProvider = new NodeResourceProvider(
+    AtomicResourceStore(),
+    AppProperties.config.maxResourceDirectiveLoadTimeInMinutes * 60
+  )
+
+  override def getResource[T](directive: RetrievalDirective[T]): Either[RetrievalError[T], T] = resourceProvider
+    .getResource(directive)
+
+  override def createResource(resourceDirective: ResourceDirective[Any])(implicit ec: ExecutionContext): Promise[Any] =
+    resourceProvider.createResource(resourceDirective)
+}
+
+
+private class NodeResourceProvider(resourceStore: AtomicMapPromiseStore[Resource[Any], Any, ResourceDirective[Any]],
+                                   waitTimeInSeconds: Int) extends ResourceProvider with ResourceLoader {
 
   /**
    * Retrieving a resource. This assumes that the resource has been

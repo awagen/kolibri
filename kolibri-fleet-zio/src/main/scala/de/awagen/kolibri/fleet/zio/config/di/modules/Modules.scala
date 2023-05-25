@@ -17,7 +17,9 @@
 
 package de.awagen.kolibri.fleet.zio.config.di.modules
 
+import de.awagen.kolibri.datatypes.metrics.aggregation.immutable
 import de.awagen.kolibri.datatypes.metrics.aggregation.mutable.MetricAggregation
+import de.awagen.kolibri.datatypes.stores.mutable.MetricDocument
 import de.awagen.kolibri.datatypes.tagging.Tags
 import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, Reader}
 import de.awagen.kolibri.storage.io.writer.Writers.Writer
@@ -60,6 +62,39 @@ object Modules {
 
     def metricAggregationWriter(subFolder: String,
                                 tagToDataIdentifierFunc: Tags.Tag => String): Writer[MetricAggregation[Tags.Tag], Tags.Tag, Any]
+
+    /**
+     * Writer handling the immutable variant of MetricAggregation.
+     * NOTE: right now uses the writer for the mutable variant and does the respective transformations.
+     * This is suboptimal and adds a bit of overhead, thus to be changed.
+     */
+    def immutableMetricAggregationWriter(subFolder: String,
+                                         tagToDataIdentifierFunc: Tags.Tag => String): Writer[de.awagen.kolibri.datatypes.metrics.aggregation.immutable.MetricAggregation[Tags.Tag], Tags.Tag, Any] =
+      new Writer[de.awagen.kolibri.datatypes.metrics.aggregation.immutable.MetricAggregation[Tags.Tag], Tags.Tag, Any] {
+        val mutableMetricAggregationWriter = metricAggregationWriter(subFolder, tagToDataIdentifierFunc)
+
+        override def write(data: immutable.MetricAggregation[Tags.Tag], targetIdentifier: Tags.Tag): Either[Exception, Any] = {
+          val mutableAggregation = MetricAggregation[Tags.Tag](
+            scala.collection.mutable.Map({
+              data.aggregationStateMap.view.mapValues(immutableDoc => {
+                MetricDocument[Tags.Tag](immutableDoc.id, scala.collection.mutable.Map(immutableDoc.rows.toSeq:_*))
+              }).toSeq:_*
+            }).result(),
+            data.keyMapFunction
+          )
+          mutableMetricAggregationWriter.write(mutableAggregation, targetIdentifier)
+        }
+
+        override def delete(targetIdentifier: Tags.Tag): Either[Exception, Any] = {
+          mutableMetricAggregationWriter.delete(targetIdentifier)
+        }
+
+        override def copyDirectory(dirPath: String, toDirPath: String): Unit =
+          mutableMetricAggregationWriter.copyDirectory(dirPath, toDirPath)
+
+        override def moveDirectory(dirPath: String, toDirPath: String): Unit =
+          mutableMetricAggregationWriter.moveDirectory(dirPath, toDirPath)
+      }
 
   }
 

@@ -18,14 +18,29 @@
 package de.awagen.kolibri.fleet.zio.execution
 
 import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator}
+import de.awagen.kolibri.datatypes.tagging.{TaggedWithType, Tags}
 import de.awagen.kolibri.datatypes.types.ClassTyped
+import de.awagen.kolibri.datatypes.values.DataPoint
 import de.awagen.kolibri.datatypes.values.aggregation.immutable.Aggregators.Aggregator
 import de.awagen.kolibri.definitions.directives.ResourceDirectives.ResourceDirective
 import de.awagen.kolibri.definitions.domain.jobdefinitions.Batch
 import de.awagen.kolibri.definitions.processing.ProcessingMessages.ProcessingMessage
 import de.awagen.kolibri.fleet.zio.execution.ZIOTasks.{SimpleWaitTask, SimpleWaitTaskResultAsProcessingMessage}
+import de.awagen.kolibri.storage.io.writer.Writers.Writer
 
 object JobDefinitions {
+
+  def doNothingWriter[W]: Writer[W, Tags.Tag, _] = {
+    new Writer[W, Tags.Tag, Any] {
+      override def write(data: W, targetIdentifier: Tags.Tag): Either[Exception, Any] = Right(())
+
+      override def delete(targetIdentifier: Tags.Tag): Either[Exception, Any] = Right(())
+
+      override def copyDirectory(dirPath: String, toDirPath: String): Unit = ()
+
+      override def moveDirectory(dirPath: String, toDirPath: String): Unit = ()
+    }
+  }
 
   /**
    * Aggregation info that needs the key where to pick the value resulting from the computation from.
@@ -34,7 +49,8 @@ object JobDefinitions {
    * results and - depending on the chosen aggregator - allows aggregating via distinct tag (or group of tags)
    */
   case class BatchAggregationInfo[V, W](successKey: Either[ClassTyped[V], ClassTyped[ProcessingMessage[V]]],
-                                        batchAggregatorSupplier: () => Aggregator[ProcessingMessage[V], W])
+                                        batchAggregatorSupplier: () => Aggregator[TaggedWithType with DataPoint[V], W],
+                                        writer: Writer[W, Tags.Tag, Any] = doNothingWriter[W])
 
   /**
    * Job definition here encapsulates several parts:
@@ -70,10 +86,10 @@ object JobDefinitions {
   }
 
   def simpleWaitJobResultAsProcessingMessage(jobName: String,
-                    nrBatches: Int,
-                    waitDurationInMillis: Long,
-                    elementsPerBatch: Int = 1,
-                    aggregationInfoOpt: Option[BatchAggregationInfo[Unit, Int]] = None): JobDefinition[Int, Unit, Int] = {
+                                             nrBatches: Int,
+                                             waitDurationInMillis: Long,
+                                             elementsPerBatch: Int = 1,
+                                             aggregationInfoOpt: Option[BatchAggregationInfo[Unit, Int]] = None): JobDefinition[Int, Unit, Int] = {
     JobDefinition[Int, Unit, Int](
       jobName = jobName,
       resourceSetup = Seq.empty,

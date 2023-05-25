@@ -33,7 +33,6 @@ import de.awagen.kolibri.definitions.usecase.searchopt.parse.JsonSelectors.{Plai
 import de.awagen.kolibri.definitions.usecase.searchopt.parse.TypedJsonSelectors.{NamedAndTypedSelector, TypedJsonSeqSelector, TypedJsonSingleValueSelector}
 import de.awagen.kolibri.definitions.usecase.searchopt.provider.FileBasedJudgementProvider.JudgementFileCSVFormatConfig
 import de.awagen.kolibri.definitions.usecase.searchopt.provider.{FileBasedJudgementProvider, JudgementProvider}
-import de.awagen.kolibri.fleet.zio.config.AppConfig.JobState.nodeResourceProvider
 import de.awagen.kolibri.fleet.zio.config.AppProperties.config._
 import de.awagen.kolibri.fleet.zio.config.di.modules.persistence.PersistenceModule
 import de.awagen.kolibri.fleet.zio.resources.{AtomicResourceStore, NodeResourceProvider}
@@ -51,12 +50,6 @@ object AppConfig {
     // for setting up same resource come in)
     val resourceStore: AtomicMapPromiseStore[Resource[Any], Any, ResourceDirective[Any]] = AtomicResourceStore()
 
-    // resource provider to allow retrieval of per-
-    // node resources
-    val nodeResourceProvider = new NodeResourceProvider(
-      resourceStore,
-      2
-    )
   }
 
   object JsonFormats {
@@ -92,7 +85,7 @@ object AppConfig {
       dataOverviewReaderWithSuffixFilterFunc,
       orderedValuesJsonProtocol,
       AppConfig.filepathToJudgementProvider,
-      nodeResourceProvider
+      NodeResourceProvider
     )
 
     implicit val executionFormat: RootJsonFormat[Execution[Any]] = ExecutionFormat(

@@ -34,7 +34,7 @@ object Aggregators {
 
   private val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
-  abstract class Aggregator[-U: TypeTag, V: TypeTag] extends KolibriSerializable {
+  abstract class Aggregator[U: TypeTag, V: TypeTag] extends KolibriSerializable {
 
     def add(sample: U): Aggregator[U, V]
 

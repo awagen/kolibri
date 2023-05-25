@@ -194,6 +194,8 @@ object AppProperties {
 
     val maxParallelItemsPerBatch: Int = baseConfig.getInt("kolibri.execution.maxParallelItemsPerBatch")
 
+    val maxRetriesPerBatchTask: Int = baseConfig.getInt("kolibri.execution.maxBatchTaskRetries")
+
 
   }
 

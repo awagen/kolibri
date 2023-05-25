@@ -26,8 +26,11 @@ import de.awagen.kolibri.datatypes.values.aggregation.immutable.Aggregators.TagK
 import de.awagen.kolibri.definitions.processing.JobMessages.{QueryBasedSearchEvaluationDefinition, SearchEvaluationDefinition}
 import de.awagen.kolibri.definitions.processing.ProcessingMessages.ProcessingMessage
 import de.awagen.kolibri.definitions.usecase.searchopt.jobdefinitions.parts.BatchGenerators.batchByGeneratorAtIndex
+import de.awagen.kolibri.fleet.zio.config.AppConfig
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.BatchAggregationInfo
 import de.awagen.kolibri.fleet.zio.execution.TaskFactory._
+
+import scala.util.Random
 
 object JobMessagesImplicits {
 
@@ -80,11 +83,18 @@ object JobMessagesImplicits {
         eval.resourceDirectives,
         batchByGeneratorAtIndex(batchByIndex = eval.batchByIndex).apply(eval.requestTemplateModifiers),
         getTaskSequenceForSearchEval,
-        Some(BatchAggregationInfo(
+        Some(BatchAggregationInfo[MetricRow, MetricAggregation[Tag]](
           successKey = Right(metricRowResultKey),
           batchAggregatorSupplier = () => new TagKeyMetricAggregationPerClassAggregator(
             aggregationState = MetricAggregation.empty[Tag](identity),
             ignoreIdDiff = false
+          ),
+          writer = AppConfig.persistenceModule.persistenceDIModule.immutableMetricAggregationWriter(
+            subFolder = eval.jobName,
+            x => {
+              val randomAdd: String = Random.alphanumeric.take(5).mkString
+              s"${x.toString()}-$randomAdd"
+            }
           )
         ))
       )
