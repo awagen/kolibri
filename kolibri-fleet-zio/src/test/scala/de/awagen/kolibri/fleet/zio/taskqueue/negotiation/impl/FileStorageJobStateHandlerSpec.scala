@@ -23,9 +23,8 @@ import org.mockito.Mockito.{times, verify}
 import org.mockito.{ArgumentCaptor, ArgumentMatchers}
 import zio.Scope
 import zio.test._
-import zio.test.junit.JUnitRunnableSpec
 
-class FileStorageJobStateHandlerSpec extends JUnitRunnableSpec {
+object FileStorageJobStateHandlerSpec extends ZIOSpecDefault {
 
   import TestObjects._
 

@@ -22,11 +22,10 @@ import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobBatch
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.traits.WorkHandler
 import de.awagen.kolibri.fleet.zio.testutils.TestObjects.{fileWriterMock, jobStateHandler}
 import de.awagen.kolibri.storage.io.writer.Writers.FileWriter
-import zio.test.junit.JUnitRunnableSpec
-import zio.test.{Spec, TestEnvironment, assertTrue}
+import zio.test.{Spec, TestEnvironment, ZIOSpecDefault, assertTrue}
 import zio.{Queue, Scope, ZIO}
 
-class FileStorageWorkHandlerSpec extends JUnitRunnableSpec {
+object FileStorageWorkHandlerSpec extends ZIOSpecDefault {
 
   object TestObjects {
 

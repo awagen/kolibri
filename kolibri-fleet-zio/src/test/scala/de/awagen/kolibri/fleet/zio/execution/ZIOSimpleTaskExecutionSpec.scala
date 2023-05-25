@@ -21,10 +21,9 @@ import de.awagen.kolibri.datatypes.immutable.stores.TypedMapStore
 import de.awagen.kolibri.fleet.zio.execution.ZIOTasks.SimpleWaitTask
 import zio._
 import zio.test._
-import zio.test.junit.JUnitRunnableSpec
 
 
-class ZIOSimpleTaskExecutionSpec extends JUnitRunnableSpec {
+object ZIOSimpleTaskExecutionSpec extends ZIOSpecDefault {
 
   def spec: Spec[TestEnvironment with Scope, Any] = suite("ZIOSimpleTaskExecutionSpec")(
 

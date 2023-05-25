@@ -69,9 +69,12 @@ libraryDependencies ++= Seq(
   "dev.zio" %% "zio-logging" % zioLoggingVersion,
   "dev.zio" %% "zio-logging-slf4j" % zioLoggingVersion,
   "dev.zio" %% "zio-http" % zioHttpVersion,
-  "dev.zio" %% "zio-test-junit" % zioVersion % Test,
+  "dev.zio" %% "zio-test-sbt" % zioVersion % Test,
+  "dev.zio" %% "zio-test-magnolia" % zioVersion % Test,
   "org.scalatestplus" %% "mockito-3-4" % mockitoVersion % Test
 )
+
+testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")
 
 libraryDependencies := {
   libraryDependencies.value :+ ("de.awagen.kolibri" %% "kolibri-definitions" % version.value)

@@ -24,9 +24,8 @@ import de.awagen.kolibri.fleet.zio.execution.JobDefinitions
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.{BatchAggregationInfo, JobBatch}
 import zio.Scope
 import zio.test._
-import zio.test.junit.JUnitRunnableSpec
 
-class TaskWorkerSpec extends JUnitRunnableSpec {
+object TaskWorkerSpec extends ZIOSpecDefault {
 
   object TestObjects {
 

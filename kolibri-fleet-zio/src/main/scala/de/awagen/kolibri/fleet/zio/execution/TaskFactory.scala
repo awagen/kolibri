@@ -27,6 +27,7 @@ import de.awagen.kolibri.datatypes.types.{ClassTyped, NamedClassTyped}
 import de.awagen.kolibri.datatypes.values.Calculations.{Calculation, ResultRecord}
 import de.awagen.kolibri.datatypes.values.MetricValue
 import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType.AggregationType
+import de.awagen.kolibri.datatypes.values.RunningValues.RunningValue
 import de.awagen.kolibri.definitions.domain.Connections.Connection
 import de.awagen.kolibri.definitions.http.client.request.{RequestTemplate, RequestTemplateBuilder}
 import de.awagen.kolibri.definitions.processing.ProcessingMessages
@@ -34,6 +35,8 @@ import de.awagen.kolibri.definitions.processing.ProcessingMessages.ProcessingMes
 import de.awagen.kolibri.definitions.processing.failure.TaskFailType
 import de.awagen.kolibri.definitions.processing.failure.TaskFailType.TaskFailType
 import de.awagen.kolibri.definitions.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
+import de.awagen.kolibri.definitions.usecase.searchopt.jobdefinitions.parts.ReservedStorageKeys.REQUEST_TEMPLATE_STORAGE_KEY
+import de.awagen.kolibri.definitions.usecase.searchopt.metrics.MetricRowFunctions.throwableToMetricRowResponse
 import de.awagen.kolibri.definitions.usecase.searchopt.parse.ParsingConfig
 import de.awagen.kolibri.fleet.zio.http.client.request.RequestTemplateImplicits.RequestTemplateToZIOHttpRequest
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.impl.TaskWorker.INITIAL_DATA_KEY
@@ -51,18 +54,15 @@ object TaskFactory {
   object RequestJsonAndParseValuesTask {
 
     val requestTemplateBuilderModifierKey = NamedClassTyped[RequestTemplateBuilderModifier](INITIAL_DATA_KEY)
-
+    val requestTemplateKey = NamedClassTyped[RequestTemplate](REQUEST_TEMPLATE_STORAGE_KEY.name)
   }
 
   /**
    * Task for executing a request defined by modifier on RequestTemplateBuilder,
-   * contextPath and some fixed parameters.
+   * contextPath and some fixed parameters. Also places the RequestTemplate in the resulting map.
    * Fields are extracted from the response according to the
    * ParsingConfig.
    * TODO: we would need to apply the initial tagger already
-   * TODO: might consider mapping a throwable to a MetricRow with fail values (see metricsCalc function
-   * in the akka variant) instead of letting the calculation fail as is done in TaskWorker if
-   * fail key is detected
    */
   case class RequestJsonAndParseValuesTask(parsingConfig: ParsingConfig,
                                            connectionSupplier: () => Connection,
@@ -78,13 +78,13 @@ object TaskFactory {
                                                ) >>> Client.live
                                            },
                                            successKeyName: String = "parsedValueMap",
-                                           failKeyName: String = "parseFail") extends ZIOTask[ProcessingMessage[(WeaklyTypedMap[String], RequestTemplate)]] {
+                                           failKeyName: String = "parseFail") extends ZIOTask[ProcessingMessage[WeaklyTypedMap[String]]] {
 
     import RequestJsonAndParseValuesTask._
 
     override def prerequisites: Seq[ClassTyped[Any]] = Seq(requestTemplateBuilderModifierKey)
 
-    override def successKey: ClassTyped[ProcessingMessage[(WeaklyTypedMap[String], RequestTemplate)]] = NamedClassTyped[ProcessingMessage[(WeaklyTypedMap[String], RequestTemplate)]](successKeyName)
+    override def successKey: ClassTyped[ProcessingMessage[WeaklyTypedMap[String]]] = NamedClassTyped[ProcessingMessage[WeaklyTypedMap[String]]](successKeyName)
 
     override def failKey: ClassTyped[TaskFailType] = NamedClassTyped[TaskFailType](failKeyName)
 
@@ -96,6 +96,8 @@ object TaskFactory {
         .withParams(fixedParams)
       val modifier: RequestTemplateBuilderModifier = map.get(requestTemplateBuilderModifierKey).get
       val requestTemplate: RequestTemplate = modifier.apply(requestTemplateBuilder).build()
+      // adding the request template to the map
+      val updatedMap = map.put(requestTemplateKey, requestTemplate)._2
       val connection = connectionSupplier()
       val protocolPrefix = if (connection.useHttps) "https" else "http"
       val compute = (for {
@@ -104,12 +106,18 @@ object TaskFactory {
         data <- res.body.asString.map(x => Json.parse(x))
         parsed <- ZIO.attempt(parsingConfig.jsValueToTypeTaggedMap.apply(data))
       } yield parsed).provide(httpClient)
-      compute.map(value => map.put(successKey, ProcessingMessages.Corn((value, requestTemplate)))._2)
-        .catchAll(throwable => ZIO.succeed(map.put(failKey, TaskFailType.FailedByException(throwable))._2))
+      compute.map(value => updatedMap.put(successKey, ProcessingMessages.Corn(value))._2)
+        .catchAll(throwable => ZIO.succeed(updatedMap.put(failKey, TaskFailType.FailedByException(throwable))._2))
     }
   }
 
-  case class CalculateMetricsTask(requestAndParseSuccessKey: ClassTyped[ProcessingMessage[(WeaklyTypedMap[String], RequestTemplate)]],
+  /**
+   * Metrics calculation task.
+   * Note that a failure during metric calculation is mapped to a MetricRow with fail entry
+   * rather than letting task fail by setting value for the fail-key. The latter only happens
+   * in case the mapping to a MetricRow indicating the failure was not successful.
+   */
+  case class CalculateMetricsTask(requestAndParseSuccessKey: ClassTyped[ProcessingMessage[WeaklyTypedMap[String]]],
                                   calculations: Seq[Calculation[WeaklyTypedMap[String], Any]],
                                   metricNameToAggregationTypeMapping: Map[String, AggregationType],
                                   excludeParamsFromMetricRow: Seq[String],
@@ -121,34 +129,68 @@ object TaskFactory {
 
     override def failKey: ClassTyped[TaskFailType] = NamedClassTyped[TaskFailType](failKeyName)
 
+    private def calculateMetrics(parsedFields: ProcessingMessage[WeaklyTypedMap[String]]): Seq[MetricValue[Any]] = {
+      calculations
+        .flatMap(x => {
+          // ResultRecord is only combination of name and Either[Seq[ComputeFailReason], T]
+          val values: Seq[ResultRecord[Any]] = x.calculation.apply(parsedFields.data)
+          // we use all result records for which we have a AggregationType mapping
+          // TODO: allow more than one aggregation type mapping per result record name
+          values.map(value => {
+            val metricAggregationType: Option[AggregationType] = metricNameToAggregationTypeMapping.get(value.name)
+            metricAggregationType.map(aggregationType => {
+              getMetricValueFromTypeAndSample(aggregationType, value)
+            }).orNull
+          })
+            .filter(x => Objects.nonNull(x))
+        })
+    }
+
+    private def metricValuesToMetricRow(metricValues: Seq[MetricValue[_]],
+                                        metricRowParams: Map[String, Seq[String]]): MetricRow = {
+      MetricRow.emptyForParams(params = metricRowParams)
+        .addFullMetricsSampleAndIncreaseSampleCount(metricValues: _*)
+    }
+
+
     override def task(map: TypeTaggedMap): Task[TypeTaggedMap] = {
+      val parsedFieldsOpt: Option[ProcessingMessage[WeaklyTypedMap[String]]] = map.get(requestAndParseSuccessKey)
+      val requestTemplateOpt: Option[RequestTemplate] = parsedFieldsOpt.flatMap(x => x.data.get[RequestTemplate](RequestJsonAndParseValuesTask.requestTemplateKey.name))
+      val metricRowParamsOpt: Option[Map[String, Seq[String]]] = requestTemplateOpt.map(x => Map(x.parameters.toSeq.filter(x => !excludeParamsFromMetricRow.contains(x._1)): _ *))
       val compute = for {
         processingMessageResult <- ZIO.attempt({
-          val parsedFields: ProcessingMessage[(WeaklyTypedMap[String], RequestTemplate)] = map.get(requestAndParseSuccessKey).get
-          val metricRowParams: Map[String, Seq[String]] = Map(parsedFields.data._2.parameters.toSeq.filter(x => !excludeParamsFromMetricRow.contains(x._1)): _*)
-          val singleResults: Seq[MetricValue[Any]] = calculations
-            .flatMap(x => {
-              // ResultRecord is only combination of name and Either[Seq[ComputeFailReason], T]
-              val values: Seq[ResultRecord[Any]] = x.calculation.apply(parsedFields.data._1)
-              // we use all result records for which we have a AggregationType mapping
-              // TODO: allow more than one aggregation type mapping per result record name
-              values.map(value => {
-                val metricAggregationType: Option[AggregationType] = metricNameToAggregationTypeMapping.get(value.name)
-                metricAggregationType.map(aggregationType => {
-                  getMetricValueFromTypeAndSample(aggregationType, value)
-                }).orNull
-              })
-                .filter(x => Objects.nonNull(x))
-            })
-          // add all in MetricRow
-          var metricRow = MetricRow.emptyForParams(params = metricRowParams)
-          metricRow = metricRow.addFullMetricsSampleAndIncreaseSampleCount(singleResults: _*)
+          val parsedFields = parsedFieldsOpt.get
+          val metricRowParams = metricRowParamsOpt.get
+          val singleResults: Seq[MetricValue[Any]] = calculateMetrics(parsedFields)
+          // create metric row from single metric values
+          val metricRow = metricValuesToMetricRow(singleResults, metricRowParams)
+          // take over the tags from the original processing message
           val originalTags: Set[Tag] = parsedFields.getTagsForType(TagType.AGGREGATION)
           ProcessingMessages.Corn(metricRow).withTags(TagType.AGGREGATION, originalTags)
         })
       } yield processingMessageResult
       compute.map(value => map.put(successKey, value)._2)
-        .catchAll(throwable => ZIO.succeed(map.put(failKey, TaskFailType.FailedByException(throwable))._2))
+        // try to map the throwable to a MetricRow result containing info about the failure
+        .catchAll(throwable => ZIO.attempt {
+          // need to add paramNames here to set the fail reasons for each
+          val allParamNames: Set[String] = calculations.flatMap(x => x.names).toSet
+          // check if we know rhe right running value mapping, otherwise need to ignore the metric
+          val validParamNameEmptyRunningValueMap: Map[String, RunningValue[_]] = allParamNames.map(name => {
+            (name, metricNameToAggregationTypeMapping.get(name)
+              .map(aggType => aggType.emptyRunningValueSupplier.apply())
+              .orNull)
+          })
+            .filter(x => Objects.nonNull(x._2)).toMap
+          val metricRowParams = metricRowParamsOpt.get
+          val metricRow = throwableToMetricRowResponse(throwable, validParamNameEmptyRunningValueMap, metricRowParams)
+          val result: ProcessingMessage[MetricRow] = ProcessingMessages.Corn(metricRow)
+          val originalTags: Set[Tag] = parsedFieldsOpt.get.getTagsForType(TagType.AGGREGATION)
+          result.addTags(TagType.AGGREGATION, originalTags)
+          map.put(successKey, result)._2
+        } // if the mapping to a MetricRow object with the failure information fails,
+          // we declare the task as failed
+          .catchAll(throwable => ZIO.succeed(map.put(failKey, TaskFailType.FailedByException(throwable))._2))
+        )
     }
   }
 

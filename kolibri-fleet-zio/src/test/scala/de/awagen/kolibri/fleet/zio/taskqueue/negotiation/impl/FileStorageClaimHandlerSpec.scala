@@ -29,10 +29,9 @@ import org.mockito.Mockito.{times, verify}
 import org.mockito.{ArgumentCaptor, ArgumentMatchers}
 import spray.json._
 import zio.test._
-import zio.test.junit.JUnitRunnableSpec
 import zio.{Queue, Scope}
 
-class FileStorageClaimHandlerSpec extends JUnitRunnableSpec {
+object FileStorageClaimHandlerSpec extends ZIOSpecDefault {
 
   object TestObjects {
 
