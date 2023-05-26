@@ -64,8 +64,11 @@ case class ZIOSimpleTaskExecution[+T](initData: TypeTaggedMap,
             task.task(e._1).flatMap({
               case v if v.keySet.contains(task.failKey) =>
                 for {
+                  _ <- ZIO.logWarning(s"State '$v' contains failKey '${task.failKey}'")
                   _ <- ZIO.logWarning(s"Task '${e._2.size + 1}' failed with fail reason: ${v.get(task.failKey)}")
-                  result <- ZIO.succeed((v, e._2 ++ Seq(Failed(0, e._1.get(task.failKey).get))))
+                  result <- {
+                    ZIO.succeed((v, e._2 ++ Seq(Failed(0, v.get(task.failKey).get))))
+                  }
                 } yield result
               case v =>
                 for {

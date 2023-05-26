@@ -28,11 +28,12 @@ import de.awagen.kolibri.definitions.processing.failure.TaskFailType.FailedByExc
 import de.awagen.kolibri.fleet.zio.config.AppProperties.config.maxParallelItemsPerBatch
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobBatch
 import de.awagen.kolibri.fleet.zio.execution.{Failed, JobDefinitions, ZIOSimpleTaskExecution}
+import de.awagen.kolibri.fleet.zio.resources.NodeResourceProvider
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.traits.Worker
 import de.awagen.kolibri.storage.io.writer.Writers
 import zio.stream.ZStream
 import zio.{Fiber, Ref, ZIO}
-
+import scala.concurrent.ExecutionContext
 import scala.reflect.runtime.universe._
 
 object TaskWorker extends Worker {
@@ -57,6 +58,14 @@ object TaskWorker extends Worker {
       case Right(value) => value
     })
     for {
+      executor <- ZIO.executor
+      // TODO: handle failed resource loading better
+      _ <- ZStream.fromIterable(jobBatch.job.resourceSetup)
+        .mapZIO(directive => {
+          implicit val exc: ExecutionContext = executor.asExecutionContext
+          ZIO.fromPromiseScala(NodeResourceProvider.createResource(directive))
+        })
+        .runDrain.either
       aggregatorRef <- Ref.make(aggregator)
       computeResultFiber <- ZStream.fromIterable(jobBatch.job.batches.get(jobBatch.batchNr).get.data)
         .mapZIO(dataPoint =>

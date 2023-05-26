@@ -74,12 +74,6 @@ object JobMessagesImplicits {
       val metricRowResultKey = taskSequence.last.successKey.asInstanceOf[ClassTyped[ProcessingMessage[MetricRow]]]
       JobDefinitions.JobDefinition(
         eval.jobName,
-        // TODO: implement global resource loading / removing such that we can pull data from the
-        // global storage on each node. Note that the global resources
-        // only need to be loaded when a job is started, not on each batch;
-        // be aware that the judgements are already expected to be loaded into the resources
-        // in case IR metrics are calculated, so we need to take care of that
-        // (see the resource provider in the global node config)
         eval.resourceDirectives,
         batchByGeneratorAtIndex(batchByIndex = eval.batchByIndex).apply(eval.requestTemplateModifiers),
         getTaskSequenceForSearchEval,

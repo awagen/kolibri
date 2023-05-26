@@ -17,14 +17,24 @@
 
 package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.impl
 
+import de.awagen.kolibri.datatypes.collections.generators.ByFunctionNrLimitedIndexedGenerator
+import de.awagen.kolibri.datatypes.metrics.aggregation.immutable.MetricAggregation
+import de.awagen.kolibri.datatypes.stores.immutable.MetricRow
 import de.awagen.kolibri.datatypes.tagging.TaggedWithType
-import de.awagen.kolibri.datatypes.types.NamedClassTyped
+import de.awagen.kolibri.datatypes.tagging.Tags.Tag
+import de.awagen.kolibri.datatypes.types.{JsonTypeCast, NamedClassTyped}
 import de.awagen.kolibri.datatypes.values.DataPoint
-import de.awagen.kolibri.datatypes.values.aggregation.immutable.Aggregators.Aggregator
+import de.awagen.kolibri.datatypes.values.aggregation.immutable.Aggregators.{Aggregator, TagKeyMetricAggregationPerClassAggregator}
+import de.awagen.kolibri.definitions.domain.jobdefinitions.Batch
 import de.awagen.kolibri.definitions.processing.ProcessingMessages.ProcessingMessage
-import de.awagen.kolibri.fleet.zio.execution.JobDefinitions
+import de.awagen.kolibri.definitions.processing.modifiers.RequestTemplateBuilderModifiers._
+import de.awagen.kolibri.definitions.usecase.searchopt.parse.ParsingConfig
+import de.awagen.kolibri.definitions.usecase.searchopt.parse.JsonSelectors._
+import de.awagen.kolibri.definitions.usecase.searchopt.parse.TypedJsonSelectors._
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.{BatchAggregationInfo, JobBatch}
-import zio.Scope
+import de.awagen.kolibri.fleet.zio.execution.{JobDefinitions, TaskTestObjects, ZIOTask}
+import de.awagen.kolibri.fleet.zio.resources.NodeResourceProvider
+import zio.{Scope, ZIO}
 import zio.test._
 
 object TaskWorkerSpec extends ZIOSpecDefault {
@@ -73,7 +83,6 @@ object TaskWorkerSpec extends ZIOSpecDefault {
         aggregationInfoOpt = None),
       1
     )
-
   }
 
   override def spec: Spec[TestEnvironment with Scope, Any] = suite("TaskWorkerSpec")(
@@ -100,6 +109,50 @@ object TaskWorkerSpec extends ZIOSpecDefault {
         _ <- work._2.join
         aggregator <- work._1.get
       } yield assert(aggregator.aggregation)(Assertion.equalTo(0))
+    },
+
+    test("execute requesting and metric calculation") {
+      val parsingConfig = ParsingConfig(Seq(
+        TypedJsonSingleValueSelector("field1", PlainPathSelector(Seq("results", "field1")), JsonTypeCast.STRING),
+        TypedJsonSingleValueSelector("productIds", PlainPathSelector(Seq("results", "productIds")), JsonTypeCast.SEQ_STRING),
+      ))
+      val requestTask = TaskTestObjects.requestAndParseTask(
+        TaskTestObjects.httpClientMock("""{"results": {"field1": "value1", "productIds": ["p5", "p2", "p1", "p4", "p3"]}}"""),
+        parsingConfig
+      )
+      val metricsTask = TaskTestObjects.calculateMetricsTask(
+        requestTask.successKey,
+        NodeResourceProvider
+      )
+      val tasks: Seq[ZIOTask[_]] = Seq(requestTask, metricsTask)
+      val judgementFileResourcePath: String = "/data/test_judgements.txt"
+      val jobDefinition = JobDefinitions.JobDefinition(
+        jobName = "testJob1",
+        resourceSetup = Seq(TaskTestObjects.judgementResourceDirective(judgementFileResourcePath)),
+        batches = ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq(
+          Batch[RequestTemplateBuilderModifier](0,
+            ByFunctionNrLimitedIndexedGenerator.createFromSeq(Seq(RequestParameterModifier(Map("q" -> Seq("q1")), replace = true)))
+          )
+        )),
+        taskSequence = tasks,
+        aggregationInfo = Some(BatchAggregationInfo[MetricRow, MetricAggregation[Tag]](
+          successKey = Right(metricsTask.successKey),
+          batchAggregatorSupplier = () => new TagKeyMetricAggregationPerClassAggregator(
+            aggregationState = MetricAggregation.empty[Tag](identity),
+            ignoreIdDiff = false
+          ),
+          writer = JobDefinitions.doNothingWriter[MetricAggregation[Tag]]
+        )
+      ))
+      for {
+        aggAndFiber <- TaskWorker.work[RequestTemplateBuilderModifier, MetricRow, MetricAggregation[Tag]](JobBatch(jobDefinition, 0))
+        _ <- aggAndFiber._2.join
+        // NOTE: make sure the results are tagged, otherwise the aggregator might not
+        // reflect the sample in the final aggregation (depending on tagger)
+        aggregator <- aggAndFiber._1.get
+        _ <- ZIO.logInfo(s"aggregation: ${aggregator.aggregation.aggregationStateMap}")
+      } yield assert(aggregator.aggregation.count)(Assertion.equalTo(1)) &&
+        assert(aggregator.aggregation.aggregationStateMap.values.head.rows.values.head.metrics("ndcg_5").biValue.value2.value.asInstanceOf[Double])(Assertion.approximatelyEquals(0.3797, 0.0001))
     }
   )
 }

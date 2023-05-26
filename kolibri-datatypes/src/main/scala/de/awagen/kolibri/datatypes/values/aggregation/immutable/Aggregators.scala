@@ -161,7 +161,7 @@ object Aggregators {
       logger.debug(s"adding sample to aggregation (for keys: ${sample.getTagsForType(AGGREGATION)}: $sample")
       val keys = sample.getTagsForType(AGGREGATION)
       val newState = aggregationState.addResults(keys, sample.data)
-      logger.debug(s"aggregation state is now: $aggregationState")
+      logger.debug(s"aggregation state is now: $newState")
       new TagKeyMetricAggregationPerClassAggregator(newState, ignoreIdDiff)
     }
 
@@ -170,7 +170,7 @@ object Aggregators {
     override def addAggregate(aggregatedValue: MetricAggregation[Tag]): Aggregator[TaggedWithType with DataPoint[MetricRow], MetricAggregation[Tag]] = {
       logger.debug(s"adding aggregation to aggregation: $aggregatedValue")
       val newState = aggregationState.add(aggregatedValue, ignoreIdDiff)
-      logger.debug(s"aggregation state is now: $aggregationState")
+      logger.debug(s"aggregation state is now: $newState")
       new TagKeyMetricAggregationPerClassAggregator(newState, ignoreIdDiff)
     }
   }
