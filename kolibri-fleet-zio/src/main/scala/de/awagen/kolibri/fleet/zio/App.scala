@@ -42,6 +42,7 @@ object App extends ZIOAppDefault {
       zioConfig <- ZIO.succeed(new ZIOConfig())
       _ <- zioConfig.init()
       jobHandler <- ZIO.succeed(zioConfig.getJobHandler)
+      jobUpdater <- ZIO.succeed(zioConfig.getJobUpdater)
       zioHttp <- ZIO.succeed({
         Http.collectZIO[Request] {
           case Method.GET -> !! / "registeredJobs" => for {
@@ -56,7 +57,7 @@ object App extends ZIOAppDefault {
               jobState <- jobHandler.fetchOpenJobState
               jobFolderExists <- ZIO.attempt(jobState.jobStateSnapshots.contains(jobDef.jobName))
               _ <- ZIO.ifZIO(ZIO.succeed(jobFolderExists))(
-                onFalse = jobHandler.storeJobDefinitionAndBatches(jobString),
+                onFalse = jobUpdater.storeJobDefinitionAndBatches(jobString),
                 onTrue = ZIO.logInfo(s"Job folder for job ${jobDef.jobName} already exists," +
                   s" skipping job information persistence step")
               )

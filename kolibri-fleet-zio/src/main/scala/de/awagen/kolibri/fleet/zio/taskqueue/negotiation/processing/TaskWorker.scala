@@ -15,11 +15,11 @@
  */
 
 
-package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.impl
+package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.processing
 
 import de.awagen.kolibri.datatypes.immutable.stores.TypedMapStore
-import de.awagen.kolibri.datatypes.tagging.{TaggedWithType, Tags}
 import de.awagen.kolibri.datatypes.tagging.Tags.StringTag
+import de.awagen.kolibri.datatypes.tagging.{TaggedWithType, Tags}
 import de.awagen.kolibri.datatypes.types.{ClassTyped, NamedClassTyped}
 import de.awagen.kolibri.datatypes.values.DataPoint
 import de.awagen.kolibri.datatypes.values.aggregation.immutable.Aggregators._
@@ -29,13 +29,19 @@ import de.awagen.kolibri.fleet.zio.config.AppProperties.config.maxParallelItemsP
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobBatch
 import de.awagen.kolibri.fleet.zio.execution.{Failed, JobDefinitions, ZIOSimpleTaskExecution}
 import de.awagen.kolibri.fleet.zio.resources.NodeResourceProvider
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.traits.Worker
 import de.awagen.kolibri.storage.io.writer.Writers
 import zio.stream.ZStream
 import zio.{Fiber, Ref, ZIO}
+
 import scala.concurrent.ExecutionContext
 import scala.reflect.runtime.universe._
 
+/**
+ * Worker object providing methods to provide tuple of aggregator reflecting the aggregation / job execution
+ * state so far and the Fiber executing it. This allows picking intermediate states / info about processing
+ * state from aggregator and interruption of the processing, e.g in case the job was marked to be stopped
+ * on the current instance (or all).
+ */
 object TaskWorker extends Worker {
 
   val INITIAL_DATA_KEY = "INIT_DATA"
@@ -59,7 +65,10 @@ object TaskWorker extends Worker {
     })
     for {
       executor <- ZIO.executor
-      // TODO: handle failed resource loading better
+      // TODO: handle failed resource loading better (and do not do it on batch level but globally
+      // in the instance handling job management, e.g when loading a job, and with bookkeeping on
+      // which jobs need which resources, so that we can clean up if some job is not there anymore
+      // and also need to provide cancelling of all jobs related to a specific job
       _ <- ZStream.fromIterable(jobBatch.job.resourceSetup)
         .mapZIO(directive => {
           implicit val exc: ExecutionContext = executor.asExecutionContext

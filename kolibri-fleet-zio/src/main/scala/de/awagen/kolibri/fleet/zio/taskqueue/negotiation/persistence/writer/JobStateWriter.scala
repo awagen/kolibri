@@ -15,13 +15,24 @@
  */
 
 
-package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.traits
+package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer
 
 import zio.Task
 
-trait TaskOrchestrator {
+trait JobStateWriter {
 
-  def update(): Task[Unit]
+  /**
+   * Move a job from open to done
+   */
+  def moveToDone(jobName: String): Task[Unit]
+
+  /**
+   * Storing the job definition content.
+   * Storing batch info, and so that each batch can be claimed for processing.
+   * After writing job definition and batches, write PROCESS directive into
+   * folder to indicate the job is up for processing.
+   */
+  def storeJobDefinitionAndBatches(jobDefinition: String): Task[Unit]
 
 
 }

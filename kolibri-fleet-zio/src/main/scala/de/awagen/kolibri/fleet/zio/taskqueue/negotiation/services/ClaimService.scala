@@ -15,34 +15,20 @@
  */
 
 
-package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.traits
+package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services
 
-import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobBatch
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.traits.ClaimHandler.ClaimTopic.ClaimTopic
-import zio._
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.ClaimTopic.ClaimTopic
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.JobStates.OpenJobsSnapshot
+import zio.Task
 
-
-object ClaimHandler {
-
-  object ClaimTopic extends Enumeration {
-    type ClaimTopic = Value
-
-    val JOB_TASK_PROCESSING_CLAIM: Value = Value
-    val JOB_TASK_WRAP_UP_CLAIM: Value = Value
-    val JOB_TASK_RESET_CLAIM: Value = Value
-    val UNKNOWN: Value = Value
-  }
-
-}
-
-trait ClaimHandler {
-
+trait ClaimService {
 
   /**
    * Manage the state of current claims (e.g filing new ones for open jobs
    * if resources available, verifying and exercising claims).
    * This function would usually be the only call that needs to be exposed.
    */
-  def manageClaims(claimTopic: ClaimTopic, batchQueueRef: Queue[JobBatch[_, _, _]]): Task[Unit]
+  def manageClaims(claimTopic: ClaimTopic,
+                   openJobsSnapshot: OpenJobsSnapshot): Task[Unit]
 
 }

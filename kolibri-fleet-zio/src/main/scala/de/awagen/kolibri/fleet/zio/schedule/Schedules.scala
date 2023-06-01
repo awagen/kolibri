@@ -18,15 +18,15 @@
 package de.awagen.kolibri.fleet.zio.schedule
 
 import de.awagen.kolibri.fleet.zio.config.AppConfig
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.OpenJobsSnapshot
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.traits.JobStateHandler
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.JobStateReader
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.JobStates.OpenJobsSnapshot
 import zio._
 
 object Schedules {
 
   val JSON_FILE_SUFFIX = ".json"
 
-  def findAndRegisterJobs(jobHandler: JobStateHandler): Task[OpenJobsSnapshot] =
+  def findAndRegisterJobs(jobHandler: JobStateReader): Task[OpenJobsSnapshot] =
     (for {
       _ <- ZIO.logDebug("Start checking for new jobs")
       state <- jobHandler.fetchOpenJobState

@@ -18,11 +18,13 @@
 package de.awagen.kolibri.fleet.zio.io.json
 
 import de.awagen.kolibri.fleet.zio.io.json.EnumerationJsonProtocol.processingStatusFormat
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ProcessingState
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.{ProcessId, ProcessingInfo, ProcessingState}
 import spray.json.{DefaultJsonProtocol, RootJsonFormat}
 
 object ProcessingStateJsonProtocol extends DefaultJsonProtocol {
 
-  implicit val processingStateFormat: RootJsonFormat[ProcessingState] = jsonFormat7(ProcessingState)
+  implicit val processIdFormat: RootJsonFormat[ProcessId] = jsonFormat2(ProcessId)
+  implicit val processingInfoFormat: RootJsonFormat[ProcessingInfo] = jsonFormat5(ProcessingInfo)
+  implicit val processingStateFormat: RootJsonFormat[ProcessingState] = jsonFormat2(ProcessingState)
 
 }

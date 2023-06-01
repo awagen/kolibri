@@ -15,7 +15,7 @@
  */
 
 
-package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.impl
+package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services
 
 import de.awagen.kolibri.datatypes.collections.generators.ByFunctionNrLimitedIndexedGenerator
 import de.awagen.kolibri.datatypes.metrics.aggregation.immutable.MetricAggregation
@@ -34,6 +34,7 @@ import de.awagen.kolibri.definitions.usecase.searchopt.parse.TypedJsonSelectors.
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.{BatchAggregationInfo, JobBatch}
 import de.awagen.kolibri.fleet.zio.execution.{JobDefinitions, TaskTestObjects, ZIOTask}
 import de.awagen.kolibri.fleet.zio.resources.NodeResourceProvider
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.processing.TaskWorker
 import zio.{Scope, ZIO}
 import zio.test._
 

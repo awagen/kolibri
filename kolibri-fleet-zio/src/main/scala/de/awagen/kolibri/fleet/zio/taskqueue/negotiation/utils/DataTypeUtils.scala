@@ -23,6 +23,28 @@ import zio.{Queue, Task, ZIO}
 object DataTypeUtils {
 
   /**
+   * Trying to add a single batch. Note that this deviates from the queue.offer case where
+   * on size limited queues the fiber would stall till there is room for an element.
+   * Here we check first whether queue is full, and avoid waiting in case queue is full.
+   */
+  def addElementToQueue[T](batch: T, batchQueue: Queue[T]): Task[Boolean] = {
+    addElementsToQueue(Seq(batch), batchQueue).map(x => x.head)
+  }
+
+  /**
+   * Try to add multiple batches.
+   * Deviates from the original queue.offerAll since we want the addition to stop on the
+   * first fail instead of back-pressuring and adding later.
+   * The returned sequence contains true for each element where offering to the queue
+   * succeeded, and false where it failed. Note that there will be at most one
+   * element with value false, and this would be the last element of the sequence,
+   * since we abort further offerings in case an offering was not successful.
+   */
+  def addElementsToQueue[T](batches: Seq[T], batchQueue: Queue[T]): Task[Seq[Boolean]] = {
+    addElementsToQueueIfEmptySlots(batches, batchQueue)
+  }
+
+  /**
    * Try to add multiple elements to queue.
    * Deviates from the original queue.offerAll since we want the addition to stop on the
    * first fail instead of back-pressuring and adding later.

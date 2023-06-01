@@ -15,7 +15,7 @@
  */
 
 
-package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.actions
+package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.processing.actions
 
 object JobActions {
 

@@ -15,7 +15,7 @@
  */
 
 
-package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.traits
+package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.processing
 
 import de.awagen.kolibri.datatypes.tagging.TaggedWithType
 import de.awagen.kolibri.datatypes.values.DataPoint

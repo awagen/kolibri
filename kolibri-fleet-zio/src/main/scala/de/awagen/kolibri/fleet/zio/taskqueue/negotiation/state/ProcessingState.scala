@@ -17,9 +17,10 @@
 
 package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state
 
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.format.FileFormats.InProgressTaskFileNameFormat
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ProcessingStatus.ProcessingStatus
 import org.joda.time.DateTime
-import org.joda.time.format.{DateTimeFormat, DateTimeFormatter, DateTimeFormatterBuilder}
+import org.joda.time.format.{DateTimeFormat, DateTimeFormatter}
 
 
 object ProcessingStatus extends Enumeration {
@@ -28,6 +29,7 @@ object ProcessingStatus extends Enumeration {
   val QUEUED: Value = Value
   val IN_PROGRESS: Value = Value
   val DONE: Value = Value
+  val ABORTED: Value = Value
 }
 
 object ProcessingStateUtils {
@@ -38,16 +40,28 @@ object ProcessingStateUtils {
     new DateTime(timeInMillis).toString(DATE_FORMATTER)
   }
 
+  def timeStringToTimeInMillis(timeStr: String): Long = {
+    DateTime.parse(timeStr, DATE_FORMATTER).toInstant.getMillis
+  }
+
 }
 
-case class ProcessingState(jobId: String,
-                           batchNr: Int,
-                           status: ProcessingStatus,
-                           numItemsTotal: Int,
-                           numItemsProcessed: Int,
-                           processingNode: String,
-                           lastUpdate: String) {
+case class ProcessId(jobId: String,
+                     batchNr: Int) {
 
+  def toIdentifier: String = InProgressTaskFileNameFormat
+    .getFileName(batchNr)
+
+}
+
+case class ProcessingInfo(processingStatus: ProcessingStatus,
+                          numItemsTotal: Int,
+                          numItemsProcessed: Int,
+                          processingNode: String,
+                          lastUpdate: String)
+
+case class ProcessingState(stateId: ProcessId,
+                           processingInfo: ProcessingInfo) {
 
 
 }

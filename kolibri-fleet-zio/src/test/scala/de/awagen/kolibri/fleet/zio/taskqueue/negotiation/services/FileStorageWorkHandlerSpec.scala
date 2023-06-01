@@ -15,11 +15,10 @@
  */
 
 
-package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.impl
+package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services
 
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobBatch
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.traits.WorkHandler
 import de.awagen.kolibri.fleet.zio.testutils.TestObjects.{fileWriterMock, jobStateHandler}
 import de.awagen.kolibri.storage.io.writer.Writers.FileWriter
 import zio.test.{Spec, TestEnvironment, ZIOSpecDefault, assertTrue}
@@ -31,7 +30,7 @@ object FileStorageWorkHandlerSpec extends ZIOSpecDefault {
 
     val baseResourceFolder: String = getClass.getResource("/testdata").getPath
 
-    def workHandler(queue: Queue[JobBatch[_, _, _]], writer: FileWriter[String, Unit], baseFolder: String): WorkHandler = FileStorageWorkHandler(
+    def workHandler(queue: Queue[JobBatch[_, _, _]], writer: FileWriter[String, Unit], baseFolder: String): WorkHandlerService = IdBasedWorkHandlerService(
       queue,
       jobStateHandler(writer, baseFolder)
     )

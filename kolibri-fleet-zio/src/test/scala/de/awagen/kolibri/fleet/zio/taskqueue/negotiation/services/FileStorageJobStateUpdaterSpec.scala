@@ -15,18 +15,16 @@
  */
 
 
-package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.impl
+package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services
 
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.directives.JobDirectives
-import de.awagen.kolibri.fleet.zio.testutils.TestObjects.{fileWriterMock, jobStateHandler}
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services.FileStorageJobStateHandlerSpec.TestObjects.testJobDefinitionJson
+import de.awagen.kolibri.fleet.zio.testutils.TestObjects.{fileWriterMock, jobStateUpdater}
 import org.mockito.Mockito.{times, verify}
 import org.mockito.{ArgumentCaptor, ArgumentMatchers}
 import zio.Scope
-import zio.test._
+import zio.test.{Assertion, Spec, TestEnvironment, ZIOSpecDefault, assert}
 
-object FileStorageJobStateHandlerSpec extends ZIOSpecDefault {
-
-  import TestObjects._
+class FileStorageJobStateUpdaterSpec extends ZIOSpecDefault {
 
   object TestObjects {
 
@@ -35,35 +33,15 @@ object FileStorageJobStateHandlerSpec extends ZIOSpecDefault {
     // one in the target folder in the compiled sources
     val baseResourceFolder: String = getClass.getResource("/testdata").getPath
 
-    val testJobDefinitionJson: String =
-      """
-        |{
-        |  "type": "JUST_WAIT",
-        |  "jobName": "waitingJob",
-        |  "nrBatches": 10,
-        |  "durationInMillis": 1000
-        |}
-        |""".stripMargin
   }
 
-  def spec: Spec[TestEnvironment with Scope, Any] = suite("FileStorageJobStateHandlerSpec")(
-
-    test("fetchState") {
-      val writerMock = fileWriterMock
-      val jobHandler = jobStateHandler(writerMock, baseResourceFolder)
-      for {
-        fetchedState <- jobHandler.fetchOpenJobState
-      } yield assert(fetchedState.allJobsSortedByPriority.size)(Assertion.equalTo(1)) &&
-      assert(fetchedState.allJobsSortedByPriority.head.jobId)(Assertion.equalTo("testJob1")) &&
-      assert(fetchedState.allJobsSortedByPriority.head.batchesToState.keys.size)(Assertion.equalTo(10)) &&
-      assert(fetchedState.allJobsSortedByPriority.head.jobLevelDirectives.toSeq)(Assertion.equalTo(Seq(JobDirectives.Process)))
-    },
+  override def spec: Spec[TestEnvironment with Scope, Any] = suite("FileStorageJobStateUpdaterSpec") (
 
     test("store job definition and batches") {
       val writerMock = fileWriterMock
-      val jobHandler = jobStateHandler(writerMock, baseResourceFolder)
+      val jobUpdater = jobStateUpdater(writerMock)
       for {
-        _ <- jobHandler.storeJobDefinitionAndBatches(testJobDefinitionJson)
+        _ <- jobUpdater.storeJobDefinitionAndBatches(testJobDefinitionJson)
       } yield assert({
         // verify the writing of the job definition
         verify(writerMock, times(1))
@@ -86,9 +64,9 @@ object FileStorageJobStateHandlerSpec extends ZIOSpecDefault {
 
     test("move folder to done") {
       val writerMock = fileWriterMock
-      val jobHandler = jobStateHandler(writerMock, baseResourceFolder)
+      val jobUpdater = jobStateUpdater(writerMock)
       for {
-        _ <- jobHandler.moveToDone("testJob1_3434839787")
+        _ <- jobUpdater.moveToDone("testJob1_3434839787")
       } yield assert(
         verify(writerMock, times(1))
           .moveDirectory(
@@ -98,6 +76,5 @@ object FileStorageJobStateHandlerSpec extends ZIOSpecDefault {
       )(Assertion.assertion("all true")(_ => true))
     }
   )
-
 
 }

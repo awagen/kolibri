@@ -15,13 +15,14 @@
  */
 
 
-package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.impl
+package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services
 
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobBatch
 import de.awagen.kolibri.fleet.zio.io.json.ProcessingStateJsonProtocol.processingStateFormat
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.{ProcessingState, ProcessingStateUtils, ProcessingStatus}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ClaimStatus.ClaimVerifyStatus
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.traits.ClaimHandler.ClaimTopic
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.ClaimTopic
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.FileStorageClaimReader
 import de.awagen.kolibri.fleet.zio.testutils.TestObjects.{fileWriterMock, jobStateHandler}
 import de.awagen.kolibri.storage.io.reader.{LocalDirectoryReader, LocalResourceFileReader}
 import de.awagen.kolibri.storage.io.writer.Writers.FileWriter
@@ -37,7 +38,7 @@ object FileStorageClaimHandlerSpec extends ZIOSpecDefault {
 
     val baseResourceFolder: String = getClass.getResource("/testdata").getPath
 
-    def claimHandler(writer: FileWriter[String, Unit], baseFolder: String): FileStorageClaimHandler = FileStorageClaimHandler(
+    def claimHandler(writer: FileWriter[String, Unit], baseFolder: String): FileStorageClaimReader = FileStorageClaimHandler(
       filter => LocalDirectoryReader(baseDir = baseResourceFolder, baseFilenameFilter = filter),
       writer,
       LocalResourceFileReader(
@@ -56,7 +57,7 @@ object FileStorageClaimHandlerSpec extends ZIOSpecDefault {
 
     test("fileBatchClaim") {
       val writerMock = fileWriterMock
-      val claimH: FileStorageClaimHandler = claimHandler(writerMock, baseResourceFolder)
+      val claimH: FileStorageClaimReader = claimHandler(writerMock, baseResourceFolder)
       for {
         _ <- claimH.fileBatchClaim("testJob1_3434839787", 1, ClaimTopic.JOB_TASK_PROCESSING_CLAIM)
         _ <- claimH.fileBatchClaim("testJob1_3434839787", 2, ClaimTopic.JOB_TASK_PROCESSING_CLAIM)

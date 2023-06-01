@@ -15,24 +15,24 @@
  */
 
 
-package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.traits
+package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer
 
-import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobBatch
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ProcessUpdateStatus.ProcessUpdateStatus
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.{ProcessId, ProcessingState}
 import zio.Task
 
-/**
- * Takes care of picking the work status from all workers and update the proccessing state information for all.
- */
-trait WorkHandler {
+trait WorkStateWriter {
 
   /**
-   * Update the processing status information for each task
+   * Update the process state information for a particular batch.
+   * Assumes that this node also processes the particular batch,
+   * since ProcessingState contains information about
    */
-  def updateProcessStatus(): Task[ProcessUpdateStatus]
+  def updateInProgressState(processingState: ProcessingState): Task[Unit]
 
-  def addBatches(batches: Seq[JobBatch[_,_, _]]): Task[Seq[Boolean]]
-
-  def addBatch(batch: JobBatch[_,_, _]): Task[Boolean]
+  /**
+   * Deletes persisted state for the passed processId.
+   * Needed if node either
+   */
+  def deleteInProgressState(processId: ProcessId): Task[Unit]
 
 }

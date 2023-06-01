@@ -17,8 +17,8 @@
 
 package de.awagen.kolibri.fleet.zio.testutils
 
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.impl.FileStorageJobStateHandler
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.traits.JobStateHandler
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.{FileStorageJobStateReader, JobStateReader}
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer.{FileStorageJobStateWriter, JobStateWriter}
 import de.awagen.kolibri.storage.io.reader.{LocalDirectoryReader, LocalResourceFileReader}
 import de.awagen.kolibri.storage.io.writer.Writers.FileWriter
 import org.mockito.ArgumentMatchers
@@ -36,7 +36,7 @@ object TestObjects {
     mocked
   }
 
-  def jobStateHandler(writer: FileWriter[String, Unit], baseFolder: String): JobStateHandler = FileStorageJobStateHandler(
+  def jobStateHandler(writer: FileWriter[String, Unit], baseFolder: String): JobStateReader = FileStorageJobStateReader(
     LocalDirectoryReader(
       baseDir = baseFolder,
       baseFilenameFilter = _ => true),
@@ -44,7 +44,10 @@ object TestObjects {
       basePath = baseFolder,
       delimiterAndPosition = None,
       fromClassPath = false
-    ),
+    )
+  )
+
+  def jobStateUpdater(writer: FileWriter[String, Unit]): JobStateWriter = FileStorageJobStateWriter(
     writer
   )
 

@@ -15,9 +15,9 @@
  */
 
 
-package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.traits
+package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader
 
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.OpenJobsSnapshot
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.JobStates.OpenJobsSnapshot
 import zio.Task
 
 
@@ -26,7 +26,7 @@ import zio.Task
  * (job definitions and batchIds to process).
  * Providing a snapshot of the current state of open jobs.
  */
-trait JobStateHandler {
+trait JobStateReader {
 
   /**
    * Logic shall contain all updates of
@@ -35,21 +35,5 @@ trait JobStateHandler {
    * - open jobs
    */
   def fetchOpenJobState: Task[OpenJobsSnapshot]
-
-  // TODO
-  // def fetchInProgressState: Task
-
-  /**
-   * Move
-   */
-  def moveToDone(jobDirectoryName: String): Task[Unit]
-
-  /**
-   * Storing the job definition content.
-   * Storing batch info, and so that each batch can be claimed for processing.
-   * After writing job definition and batches, write PROCESS directive into
-   * folder to indicate the job is up for processing.
-   */
-  def storeJobDefinitionAndBatches(jobDefinition: String): Task[Unit]
 
 }

@@ -39,7 +39,7 @@ import de.awagen.kolibri.definitions.usecase.searchopt.metrics.MetricRowFunction
 import de.awagen.kolibri.definitions.usecase.searchopt.parse.ParsingConfig
 import de.awagen.kolibri.fleet.zio.config.AppProperties
 import de.awagen.kolibri.fleet.zio.http.client.request.RequestTemplateImplicits.RequestTemplateToZIOHttpRequest
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.impl.TaskWorker.INITIAL_DATA_KEY
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.processing.TaskWorker.INITIAL_DATA_KEY
 import play.api.libs.json.Json
 import zio.http.ZClient.Config
 import zio.http.netty.NettyConfig
