@@ -40,4 +40,12 @@ case class FileStorageWorkStateWriter(writer: Writer[String, String, _]) extends
     }).flatMap(res => ZIO.fromEither(res))
       .map(_ => ())
   }
+
+  override def writeToDone(processId: ProcessId): Task[Unit] = {
+    ZIO.attemptBlocking({
+      val file = Directories.DoneTasks.jobNameAndBatchNrToDoneFile(processId.jobId, processId.batchNr, isOpenJob = true)
+      writer.write("", file)
+    }).flatMap(res => ZIO.fromEither(res))
+      .map(_ => ())
+  }
 }

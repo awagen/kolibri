@@ -17,6 +17,7 @@
 
 package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer
 
+import de.awagen.kolibri.datatypes.types.Types.WithCount
 import de.awagen.kolibri.fleet.zio.config.AppProperties.config
 import de.awagen.kolibri.fleet.zio.config.Directories.JobTopLevel
 import de.awagen.kolibri.fleet.zio.config.Directories.JobTopLevel.jobNameToJobDefinitionFile
@@ -41,7 +42,7 @@ case class FileStorageJobStateWriter(writer: Writer[String, String, _]) extends 
 
   override def storeJobDefinitionAndBatches(jobDefinition: String): Task[Unit] = {
     for {
-      jobDef <- ZIO.attempt(jobDefinition.parseJson.convertTo[JobDefinition[_, _, _]])
+      jobDef <- ZIO.attempt(jobDefinition.parseJson.convertTo[JobDefinition[_, _, _ <: WithCount]])
       _ <- storeJobDefinition(jobDefinition, s"${jobDef.jobName}_${System.currentTimeMillis()}")
       batchStorageResult <- storeBatchFilesForJob(jobDef)
     } yield batchStorageResult

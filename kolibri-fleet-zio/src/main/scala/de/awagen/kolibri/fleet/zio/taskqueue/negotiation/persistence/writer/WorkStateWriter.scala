@@ -31,8 +31,13 @@ trait WorkStateWriter {
 
   /**
    * Deletes persisted state for the passed processId.
-   * Needed if node either
    */
   def deleteInProgressState(processId: ProcessId): Task[Unit]
+
+  /**
+   * Persist the corresponding batch as DONE
+   * (e.g in case of file-based state, this means storing a file in the done-folder for the passed batch)
+   */
+  def writeToDone(processId: ProcessId): Task[Unit]
 
 }

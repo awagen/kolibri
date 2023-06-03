@@ -20,6 +20,7 @@ package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.processing
 import de.awagen.kolibri.datatypes.immutable.stores.TypedMapStore
 import de.awagen.kolibri.datatypes.tagging.Tags.StringTag
 import de.awagen.kolibri.datatypes.tagging.{TaggedWithType, Tags}
+import de.awagen.kolibri.datatypes.types.Types.WithCount
 import de.awagen.kolibri.datatypes.types.{ClassTyped, NamedClassTyped}
 import de.awagen.kolibri.datatypes.values.DataPoint
 import de.awagen.kolibri.datatypes.values.aggregation.immutable.Aggregators._
@@ -27,14 +28,15 @@ import de.awagen.kolibri.definitions.processing.ProcessingMessages._
 import de.awagen.kolibri.definitions.processing.failure.TaskFailType.FailedByException
 import de.awagen.kolibri.fleet.zio.config.AppProperties.config.maxParallelItemsPerBatch
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobBatch
-import de.awagen.kolibri.fleet.zio.execution.{Failed, JobDefinitions, ZIOSimpleTaskExecution}
+import de.awagen.kolibri.fleet.zio.execution.{Failed, ZIOSimpleTaskExecution}
 import de.awagen.kolibri.fleet.zio.resources.NodeResourceProvider
 import de.awagen.kolibri.storage.io.writer.Writers
 import zio.stream.ZStream
-import zio.{Fiber, Ref, ZIO}
+import zio.{Fiber, Ref, UIO, ZIO}
 
 import scala.concurrent.ExecutionContext
 import scala.reflect.runtime.universe._
+
 
 /**
  * Worker object providing methods to provide tuple of aggregator reflecting the aggregation / job execution
@@ -46,23 +48,13 @@ object TaskWorker extends Worker {
 
   val INITIAL_DATA_KEY = "INIT_DATA"
 
-  def inactiveAggregator[V: TypeTag, W: TypeTag]: Aggregator[TaggedWithType with DataPoint[V], W] = new Aggregator[TaggedWithType with DataPoint[V], W] {
-    override def add(sample: TaggedWithType with DataPoint[V]): Aggregator[TaggedWithType with DataPoint[V], W] = inactiveAggregator
-
-    override def aggregation: W = null.asInstanceOf[W]
-
-    override def addAggregate(aggregatedValue: W): Aggregator[TaggedWithType with DataPoint[V], W] = inactiveAggregator
-  }
-
-  override def work[T: TypeTag, V: TypeTag, W: TypeTag](jobBatch: JobBatch[T, V, W]): ZIO[Any, Nothing, (Ref[Aggregator[TaggedWithType with DataPoint[V], W]], Fiber.Runtime[Nothing, Unit])] = {
-    val aggregator: Aggregator[TaggedWithType with DataPoint[V], W] = jobBatch.job.aggregationInfo
-      .map(x => x.batchAggregatorSupplier()).getOrElse(inactiveAggregator[V, W])
-    val batchResultWriter: Writers.Writer[W, Tags.Tag, Any] = jobBatch.job.aggregationInfo
-      .map(x => x.writer).getOrElse(JobDefinitions.doNothingWriter[W])
-    val successKey: Option[ClassTyped[Any]] = jobBatch.job.aggregationInfo.map(x => x.successKey match {
+  override def work[T: TypeTag, V: TypeTag, W <: WithCount](jobBatch: JobBatch[T, V, W])(implicit tag: TypeTag[W]): ZIO[Any, Nothing, (Ref[Aggregator[TaggedWithType with DataPoint[V], W]], Fiber.Runtime[Throwable, Unit])] = {
+    val aggregator: Aggregator[TaggedWithType with DataPoint[V], W] = jobBatch.job.aggregationInfo.batchAggregatorSupplier()
+    val batchResultWriter: Writers.Writer[W, Tags.Tag, Any] = jobBatch.job.aggregationInfo.writer
+    val successKey: ClassTyped[Any] = jobBatch.job.aggregationInfo.successKey match {
       case Left(value) => value
       case Right(value) => value
-    })
+    }
     for {
       executor <- ZIO.executor
       // TODO: handle failed resource loading better (and do not do it on batch level but globally
@@ -77,53 +69,62 @@ object TaskWorker extends Worker {
         .runDrain.either
       aggregatorRef <- Ref.make(aggregator)
       computeResultFiber <- ZStream.fromIterable(jobBatch.job.batches.get(jobBatch.batchNr).get.data)
-        .mapZIO(dataPoint =>
-          ZIOSimpleTaskExecution(
-            TypedMapStore(Map(NamedClassTyped[T](INITIAL_DATA_KEY) -> dataPoint)),
-            jobBatch.job.taskSequence)
-            // we explicitly lift possible errors to an Either, to avoid the
-            // stream from stopping. The distinct cases can then separately be
-            // aggregated
-            .processAllTasks.either
+        .mapZIO(dataPoint => ZIOSimpleTaskExecution(
+          TypedMapStore(Map(NamedClassTyped[T](INITIAL_DATA_KEY) -> dataPoint)),
+          jobBatch.job.taskSequence)
+          // we explicitly lift possible errors to an Either, to avoid the
+          // stream from stopping. The distinct cases can then separately be
+          // aggregated
+          .processAllTasks.either
         )
-        .mapZIOParUnordered(maxParallelItemsPerBatch) {
-          case Left(e) => ZIO.succeed({
-            val failType = FailedByException(e)
-            aggregatorRef.update(x => x.add(BadCorn(failType)))
-          })
-          case Right(v) =>
-            ZIO.log(s"task processing succeeded, map: ${v._1}") *>
-              // actually perform the aggregation
-              ZIO.ifZIO(ZIO.succeed(successKey.nonEmpty))(
-                onTrue = {
-                  val failedTask: Option[Failed] = v._2.find(x => x.isInstanceOf[Failed]).map(x => x.asInstanceOf[Failed])
-                  // if any of the tasks failed, we aggregate it is part of the failure aggregation
-                  if (failedTask.nonEmpty) {
-                    aggregatorRef.update(x => x.add(BadCorn(failedTask.get.taskFailType)))
-                  }
-                  // if nothing failed, we just normally consume the result
-                  else {
-                    v._1.get(successKey.get).get match {
-                      case sample: ProcessingMessage[V] =>
-                        aggregatorRef.update(x => x.add(sample))
-                      case value =>
-                        aggregatorRef.update(x => x.add(Corn(value.asInstanceOf[V])))
-                    }
-                  }
-                },
-                onFalse = ZIO.logDebug("Not aggregating")
-              )
-        }
+        .mapZIOParUnordered(maxParallelItemsPerBatch)(element =>
+          for {
+            // aggregate update step
+            _ <- element match {
+              case Left(e) => ZIO.succeed({
+                val failType = FailedByException(e)
+                aggregatorRef.update(x => x.add(BadCorn(failType)))
+              })
+              case Right(v) =>
+                ZIO.logDebug(s"task processing succeeded, map: ${v._1}") *>
+                  // actually perform the aggregation
+                  (for {
+                    failedTask <- ZIO.attempt(v._2.find(x => x.isInstanceOf[Failed]).map(x => x.asInstanceOf[Failed]))
+                    _ <- ZIO.ifZIO(ZIO.succeed(failedTask.nonEmpty))(
+                      // if any of the tasks failed, we aggregate it is part of the failure aggregation
+                      onTrue = {
+                        ZIO.logWarning(s"Aggregating fail item: ${failedTask.get.taskFailType}") *>
+                          aggregatorRef.update(x => x.add(BadCorn(failedTask.get.taskFailType)))
+                      },
+                      // if nothing failed, we just normally consume the result
+                      onFalse = {
+                        val aggregationEffect: UIO[Unit] = v._1.get(successKey).get match {
+                          case sample: ProcessingMessage[V] =>
+                            aggregatorRef.update(x => x.add(sample))
+                          case value =>
+                            aggregatorRef.update(x => x.add(Corn(value.asInstanceOf[V])))
+                        }
+                        ZIO.logDebug(s"Aggregating success: ${v._1.get(successKey)}") *>
+                          aggregationEffect
+                      }
+                    )
+                  } yield ())
+                    .onError(throwable => ZIO.logWarning(s"aggregation failed: $throwable"))
+            }
+            updatedAggregator <- aggregatorRef.get
+            _ <- ZIO.logDebug(s"updated aggregator state: ${updatedAggregator.aggregation}")
+
+          } yield ())
         .runDrain
         // when we are done, write the result
         .onExit(
-          _ => {
-            aggregatorRef.get.flatMap(aggregator => {
-              ZIO.attemptBlockingIO({
-                batchResultWriter.write(aggregator.aggregation, StringTag(jobBatch.job.jobName))
-              }).either
-            })
-          }
+          _ => for {
+            agg <- aggregatorRef.get
+            _ <- ZIO.logDebug(s"final aggregation state: ${agg.aggregation}")
+            _ <- ZIO.attemptBlockingIO({
+              batchResultWriter.write(agg.aggregation, StringTag(jobBatch.job.jobName))
+            }).either
+          } yield ()
         )
         .fork
     } yield (aggregatorRef, computeResultFiber)

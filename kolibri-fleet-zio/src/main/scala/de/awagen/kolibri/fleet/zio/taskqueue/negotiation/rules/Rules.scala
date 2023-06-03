@@ -20,6 +20,7 @@ package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.rules
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.directives.JobDirectives
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.directives.JobDirectives.JobDirective
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.processing.actions.JobActions
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.processing.actions.JobActions.JobAction
 
 object Rules {
 

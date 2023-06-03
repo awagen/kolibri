@@ -17,6 +17,7 @@
 
 package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader
 
+import de.awagen.kolibri.datatypes.types.Types.WithCount
 import de.awagen.kolibri.fleet.zio.config.AppProperties.config
 import de.awagen.kolibri.fleet.zio.config.Directories.JobTopLevel.jobNameToJobDefinitionFile
 import de.awagen.kolibri.fleet.zio.config.Directories._
@@ -43,13 +44,13 @@ object FileStorageJobStateReader {
 
   val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
-  private[impl] def jobFolderNameToJobIdAndCreationTimeInMillis(jobDirName: String): (String, Long) = {
+  private[reader] def jobFolderNameToJobIdAndCreationTimeInMillis(jobDirName: String): (String, Long) = {
     val attributeMap = JobDirectoryNameFormat.parse(jobDirName)
     (attributeMap.get(JOB_ID.namedClassTyped.name).get,
       attributeMap.get(CREATION_TIME_IN_MILLIS.namedClassTyped.name).get)
   }
 
-  private[impl] def castableAsInt(str: String): Boolean = {
+  private[reader] def castableAsInt(str: String): Boolean = {
     FuncUtils.isExecutableStringOp[Int](x => x.toInt)(str)
   }
 
@@ -64,12 +65,12 @@ case class FileStorageJobStateReader(overviewReader: DataOverviewReader,
 
   import FileStorageJobStateReader._
 
-  private[impl] def loadJobDefinitionByJobDirectoryName(jobDirName: String): JobDefinitionLoadStatus = {
+  private[reader] def loadJobDefinitionByJobDirectoryName(jobDirName: String): JobDefinitionLoadStatus = {
     val jobDefPath = jobNameToJobDefinitionFile(jobDirName)
     val jobDefFileContent = reader.read(jobDefPath).mkString("\n")
     var jobState: JobDefinitionLoadStatus = InvalidJobDefinition
     try {
-      jobState = Loaded(jobDefFileContent.parseJson.convertTo[JobDefinition[_, _, _]])
+      jobState = Loaded(jobDefFileContent.parseJson.convertTo[JobDefinition[_, _, _ <: WithCount]])
       logger.info(s"Finished casting file '$jobDefPath' to job definition")
     }
     catch {
@@ -78,7 +79,7 @@ case class FileStorageJobStateReader(overviewReader: DataOverviewReader,
     jobState
   }
 
-  private[impl] def loadJobLevelDirectivesByJobDirectoryName(jobDirName: String): Set[JobDirective] = {
+  private[reader] def loadJobLevelDirectivesByJobDirectoryName(jobDirName: String): Set[JobDirective] = {
     val directory = JobTopLevel.folderForJob(jobDirName, isOpenJob = true)
     overviewReader.listResources(directory, x => x.split("/").last.startsWith(JobDirectives.JOB_DIRECTIVE_PREFIX))
       .map(x => x.split("/").last).map(JobDirective.parse).toSet

@@ -18,6 +18,9 @@
 package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state
 
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions
+import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.BatchAggregationInfo
+import de.awagen.kolibri.fleet.zio.execution.ZIOTasks.SimpleWaitTask
+import de.awagen.kolibri.fleet.zio.execution.aggregation.Aggregators
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.directives.JobDirectives
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.JobStates.{JobStateSnapshot, OpenJobsSnapshot}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.JobStatesSpec.TestData.jobStateSnapshot
@@ -34,7 +37,16 @@ object JobStatesSpec {
     def jobStateSnapshot(jobName: String, dateString: String, nrBatches: Int): JobStateSnapshot = JobStateSnapshot(
       jobName,
       formatter.parseDateTime(dateString).getMillis,
-      JobDefinitions.simpleWaitJob(jobName, nrBatches, 20L),
+      JobDefinitions.simpleWaitJob(
+        jobName,
+        nrBatches,
+        20L,
+        1,
+        BatchAggregationInfo(
+          Left(SimpleWaitTask.successKey),
+          () => Aggregators.countingAggregator(0, 0)
+        )
+      ),
       Set(JobDirectives.Process),
       Range(0, nrBatches, 1).map(x => (x, BatchProcessingStates.Open)).toMap
     )

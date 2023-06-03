@@ -87,6 +87,10 @@ object Directories {
     def jobDoneTasksSubFolder(jobId: String, isOpenJob: Boolean): String = {
       s"${jobSubFolder(jobId, config.perJobDoneTaskBaseFolder, isOpenJob)}"
     }
+
+    def jobNameAndBatchNrToDoneFile(jobId: String, batchNr: Int, isOpenJob: Boolean): String = {
+      s"${DoneTasks.jobDoneTasksSubFolder(jobId, isOpenJob)}/$batchNr"
+    }
   }
 
   object InProgressTasks {

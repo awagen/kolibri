@@ -17,6 +17,7 @@
 
 package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state
 
+import de.awagen.kolibri.datatypes.types.Types.WithCount
 import de.awagen.kolibri.fleet.zio.config.AppProperties
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobDefinition
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.directives.JobDirectives.JobDirective
@@ -43,7 +44,7 @@ object JobStates {
    */
   case class JobStateSnapshot(jobId: String,
                               timePlacedInMillis: Long,
-                              jobDefinition: JobDefinition[_, _, _],
+                              jobDefinition: JobDefinition[_, _, _ <: WithCount],
                               jobLevelDirectives: Set[JobDirective],
                               batchesToState: Map[Int, BatchProcessingStatus]) {
 

@@ -20,23 +20,22 @@ package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services
 import de.awagen.kolibri.datatypes.collections.generators.ByFunctionNrLimitedIndexedGenerator
 import de.awagen.kolibri.datatypes.metrics.aggregation.immutable.MetricAggregation
 import de.awagen.kolibri.datatypes.stores.immutable.MetricRow
-import de.awagen.kolibri.datatypes.tagging.TaggedWithType
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.types.{JsonTypeCast, NamedClassTyped}
-import de.awagen.kolibri.datatypes.values.DataPoint
-import de.awagen.kolibri.datatypes.values.aggregation.immutable.Aggregators.{Aggregator, TagKeyMetricAggregationPerClassAggregator}
+import de.awagen.kolibri.datatypes.values.aggregation.immutable.Aggregators.TagKeyMetricAggregationPerClassAggregator
 import de.awagen.kolibri.definitions.domain.jobdefinitions.Batch
 import de.awagen.kolibri.definitions.processing.ProcessingMessages.ProcessingMessage
 import de.awagen.kolibri.definitions.processing.modifiers.RequestTemplateBuilderModifiers._
-import de.awagen.kolibri.definitions.usecase.searchopt.parse.ParsingConfig
 import de.awagen.kolibri.definitions.usecase.searchopt.parse.JsonSelectors._
+import de.awagen.kolibri.definitions.usecase.searchopt.parse.ParsingConfig
 import de.awagen.kolibri.definitions.usecase.searchopt.parse.TypedJsonSelectors._
-import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.{BatchAggregationInfo, JobBatch}
+import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.{BatchAggregationInfo, JobBatch, ValueWithCount}
+import de.awagen.kolibri.fleet.zio.execution.aggregation.Aggregators.countingAggregator
 import de.awagen.kolibri.fleet.zio.execution.{JobDefinitions, TaskTestObjects, ZIOTask}
 import de.awagen.kolibri.fleet.zio.resources.NodeResourceProvider
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.processing.TaskWorker
-import zio.{Scope, ZIO}
 import zio.test._
+import zio.{Scope, ZIO}
 
 object TaskWorkerSpec extends ZIOSpecDefault {
 
@@ -44,44 +43,26 @@ object TaskWorkerSpec extends ZIOSpecDefault {
 
     val baseResourceFolder: String = getClass.getResource("/testdata").getPath
 
-    def countingAggregator(count: Int): Aggregator[TaggedWithType with DataPoint[Unit], Int] = new Aggregator[TaggedWithType with DataPoint[Unit], Int] {
-      override def add(sample: TaggedWithType with DataPoint[Unit]): Aggregator[TaggedWithType with DataPoint[Unit], Int] = {
-        countingAggregator(count + 1)
-      }
-
-      override def aggregation: Int = count
-
-      override def addAggregate(aggregatedValue: Int): Aggregator[TaggedWithType with DataPoint[Unit], Int] = {
-        countingAggregator(count + aggregatedValue)
-      }
-    }
-
     // aggregation info assuming plain result
     val batchAggregationInfo = BatchAggregationInfo(
       Left(NamedClassTyped[Unit]("DONE_WAITING")),
-      () => TestObjects.countingAggregator(0)
+      () => countingAggregator(0, 0)
     )
     // aggregation info assuming result wrapped in ProcessingMessage
     val batchAggregationInfoResultAsProcessingMessage = BatchAggregationInfo(
       Right(NamedClassTyped[ProcessingMessage[Unit]]("DONE_WAITING")),
-      () => TestObjects.countingAggregator(0)
+      () => countingAggregator(0, 0)
     )
     // job definition where the result is plain Unit
-    val jobBatch: JobBatch[Int, Unit, Int] = JobBatch(
+    val jobBatch: JobBatch[Int, Unit, ValueWithCount[Int]] = JobBatch(
       JobDefinitions.simpleWaitJob("testJob1", 10, 100, elementsPerBatch = 10,
-        aggregationInfoOpt = Some(batchAggregationInfo)),
+        aggregationInfoOpt = batchAggregationInfo),
       1
     )
     // job definition where result is ProcessingMessage[Unit]
-    val jobBatchResultAsProcessingMessage: JobBatch[Int, Unit, Int] = JobBatch(
+    val jobBatchResultAsProcessingMessage: JobBatch[Int, Unit, ValueWithCount[Int]] = JobBatch(
       JobDefinitions.simpleWaitJobResultAsProcessingMessage("testJob1", 10, 100, elementsPerBatch = 10,
-        aggregationInfoOpt = Some(batchAggregationInfoResultAsProcessingMessage)),
-      1
-    )
-
-    val jobBatchWithoutAggregation: JobBatch[Int, Unit, Int] = JobBatch(
-      JobDefinitions.simpleWaitJob("testJob1", 10, 100, elementsPerBatch = 10,
-        aggregationInfoOpt = None),
+        aggregationInfoOpt = batchAggregationInfoResultAsProcessingMessage),
       1
     )
   }
@@ -99,17 +80,8 @@ object TaskWorkerSpec extends ZIOSpecDefault {
         aggregator <- workRawResult._1.get
         aggregatorForResultAsProcessingMessage <- workProcessingMessageResult._1.get
       } yield assert((aggregator.aggregation, aggregatorForResultAsProcessingMessage.aggregation))(
-        Assertion.assertion("both aggregations must contain all elements")(x => x._1 == 10 && x._2 == 10)
+        Assertion.assertion("both aggregations must contain all elements")(x => x._1.count == 10 && x._2.count == 10)
       )
-    },
-
-    test("must also execute if no aggregator defined") {
-      // given, when, then
-      for {
-        work <- TaskWorker.work(TestObjects.jobBatchWithoutAggregation)
-        _ <- work._2.join
-        aggregator <- work._1.get
-      } yield assert(aggregator.aggregation)(Assertion.equalTo(0))
     },
 
     test("execute requesting and metric calculation") {
@@ -136,7 +108,7 @@ object TaskWorkerSpec extends ZIOSpecDefault {
           )
         )),
         taskSequence = tasks,
-        aggregationInfo = Some(BatchAggregationInfo[MetricRow, MetricAggregation[Tag]](
+        aggregationInfo = BatchAggregationInfo[MetricRow, MetricAggregation[Tag]](
           successKey = Right(metricsTask.successKey),
           batchAggregatorSupplier = () => new TagKeyMetricAggregationPerClassAggregator(
             aggregationState = MetricAggregation.empty[Tag](identity),
@@ -144,7 +116,7 @@ object TaskWorkerSpec extends ZIOSpecDefault {
           ),
           writer = JobDefinitions.doNothingWriter[MetricAggregation[Tag]]
         )
-      ))
+      )
       for {
         aggAndFiber <- TaskWorker.work[RequestTemplateBuilderModifier, MetricRow, MetricAggregation[Tag]](JobBatch(jobDefinition, 0))
         _ <- aggAndFiber._2.join

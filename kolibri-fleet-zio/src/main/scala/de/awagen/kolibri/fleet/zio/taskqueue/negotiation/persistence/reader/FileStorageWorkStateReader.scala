@@ -37,25 +37,36 @@ case class FileStorageWorkStateReader(filterToOverviewReader: (String => Boolean
   /**
    * Get the mapping of jobId set of high level process descriptors,
    * covering all the passed jobs for the current node.
-   * NOTE that the ProcessIds are
+   * If resources for a job cannot be found, there will be no entry for the corresponding job in the result
    */
-  override def getInProgressIdsForNode(jobs: Set[String]): Task[Map[String, Set[ProcessId]]] = ZIO.attemptBlocking {
-    jobs.map(jobId => {
-      val inProgressStateFiles: Set[String] = overviewReader
-        .listResources(InProgressTasks.jobTasksInProgressStateForNodeSubFolder(
-          jobId,
-          AppProperties.config.node_hash,
-          isOpenJob = true
-        ), _ => true).toSet
-      val processIds = inProgressStateFiles.map(file => InProgressTaskFileNameFormat.processIdFromIdentifier(jobId, file))
-      (jobId, processIds)
-    }).toMap
+  override def getInProgressIdsForNode(jobs: Set[String]): Task[Map[String, Set[ProcessId]]] = {
+    ZStream.fromIterable(jobs)
+      .mapZIO(jobId => ZIO.attemptBlocking {
+        val inProgressStateFiles: Set[String] = overviewReader
+          .listResources(InProgressTasks.jobTasksInProgressStateForNodeSubFolder(
+            jobId,
+            AppProperties.config.node_hash,
+            isOpenJob = true
+          ), _ => true).toSet
+        val processIds = inProgressStateFiles.map(file => InProgressTaskFileNameFormat.processIdFromIdentifier(jobId, file))
+        (jobId, processIds)
+      }
+        .either)
+      .filterZIO({
+        case Right(_) => ZIO.succeed(true)
+        case Left(e) =>
+          ZIO.logError(s"Error on retrieving processing state folder overview:\n${e.getMessage}") *>
+            ZIO.succeed(false)
+      })
+      .map(x => x.toOption.get)
+      .runCollect.map(x => x.toMap)
   }
+
 
   /**
    * Given a processId, parse the respective in-progress state file and return information as ProcessingState.
    */
-  private def processIdToProcessState(processId: ProcessId): Task[ProcessingState] = {
+  override def processIdToProcessState(processId: ProcessId): Task[ProcessingState] = {
     for {
       processFileContent <- ZIO.attemptBlocking(
         reader.read(Directories.InProgressTasks.getInProgressFilePathForJob(processId.jobId, processId.batchNr))
@@ -74,9 +85,8 @@ case class FileStorageWorkStateReader(filterToOverviewReader: (String => Boolean
   override def getInProgressStateForNode(jobs: Set[String]): Task[Map[String, Set[ProcessingState]]] = {
     for {
       jobIdToProcessIds <- getInProgressIdsForNode(jobs)
-      processingStateMapping <- ZIO.succeed(jobIdToProcessIds)
-        .flatMap(mapping => {
-          val v: immutable.Iterable[ZIO[Any, Throwable, (String, Set[ProcessingState])]] = mapping.map(x => {
+      processingStateMapping <- {
+          val v: immutable.Iterable[ZIO[Any, Throwable, (String, Set[ProcessingState])]] = jobIdToProcessIds.map(x => {
             ZStream.fromIterable(x._2)
               .mapZIO(processId => {
                 processIdToProcessState(processId)
@@ -92,7 +102,8 @@ case class FileStorageWorkStateReader(filterToOverviewReader: (String => Boolean
               .map(y => (x._1, y.toSet))
           })
           ZIO.collectAll(v).map(z => z.toMap)
-        })
+        }
     } yield processingStateMapping
   }
+
 }

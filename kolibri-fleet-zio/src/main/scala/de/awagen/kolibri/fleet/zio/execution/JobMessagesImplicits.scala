@@ -77,7 +77,7 @@ object JobMessagesImplicits {
         eval.resourceDirectives,
         batchByGeneratorAtIndex(batchByIndex = eval.batchByIndex).apply(eval.requestTemplateModifiers),
         getTaskSequenceForSearchEval,
-        Some(BatchAggregationInfo[MetricRow, MetricAggregation[Tag]](
+        BatchAggregationInfo[MetricRow, MetricAggregation[Tag]](
           successKey = Right(metricRowResultKey),
           batchAggregatorSupplier = () => new TagKeyMetricAggregationPerClassAggregator(
             aggregationState = MetricAggregation.empty[Tag](identity),
@@ -90,7 +90,7 @@ object JobMessagesImplicits {
               s"${x.toString()}-$randomAdd"
             }
           )
-        ))
+        )
       )
     }
   }

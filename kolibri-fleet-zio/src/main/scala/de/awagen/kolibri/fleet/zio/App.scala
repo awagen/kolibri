@@ -17,6 +17,7 @@
 
 package de.awagen.kolibri.fleet.zio
 
+import de.awagen.kolibri.datatypes.types.Types.WithCount
 import de.awagen.kolibri.fleet.zio.config.ZIOConfig
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobDefinition
 import de.awagen.kolibri.fleet.zio.io.json.JobDefinitionJsonProtocol.JobDefinitionFormat
@@ -52,7 +53,7 @@ object App extends ZIOAppDefault {
           case req@Method.POST -> !! / "job" =>
             for {
               jobString <- req.body.asString
-              jobDef <- ZIO.attempt(jobString.parseJson.convertTo[JobDefinition[_,_, _]])
+              jobDef <- ZIO.attempt(jobString.parseJson.convertTo[JobDefinition[_,_, _ <: WithCount]])
               // TODO: avoid reloading the current state from filesystem on each request
               jobState <- jobHandler.fetchOpenJobState
               jobFolderExists <- ZIO.attempt(jobState.jobStateSnapshots.contains(jobDef.jobName))

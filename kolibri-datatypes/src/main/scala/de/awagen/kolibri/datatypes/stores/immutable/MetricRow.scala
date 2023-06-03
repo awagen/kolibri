@@ -17,6 +17,7 @@ package de.awagen.kolibri.datatypes.stores.immutable
 
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.stores.immutable.MetricRow.ResultCountStore
+import de.awagen.kolibri.datatypes.types.Types.WithCount
 import de.awagen.kolibri.datatypes.values.{BiRunningValue, MetricValue}
 
 object MetricRow {
@@ -71,7 +72,9 @@ object MetricRow {
   * @param metrics - Map with key = metric name and value = MetricValue[Any], describing the actual value that might
   *                be generated from many samples and error types along with the error counts
   */
-case class MetricRow(countStore: ResultCountStore, params: Map[String, Seq[String]], metrics: Map[String, MetricValue[Any]]) extends MetricRecord[String, Any] {
+case class MetricRow(countStore: ResultCountStore, params: Map[String, Seq[String]], metrics: Map[String, MetricValue[Any]]) extends MetricRecord[String, Any] with WithCount {
+
+  def count: Int = countStore.fails + countStore.successes
 
   def incrementSuccessCount(): MetricRow =  this.copy(countStore = ResultCountStore(countStore.successes + 1, countStore.fails))
   def incrementFailCount(): MetricRow = this.copy(countStore = ResultCountStore(countStore.successes, countStore.fails + 1))

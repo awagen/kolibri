@@ -17,6 +17,7 @@
 
 package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status
 
+import de.awagen.kolibri.datatypes.types.Types.WithCount
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobDefinition
 
 object JobDefinitionLoadStates {
@@ -25,6 +26,6 @@ object JobDefinitionLoadStates {
 
   case object InvalidJobDefinition extends JobDefinitionLoadStatus
 
-  case class Loaded(jobDefinition: JobDefinition[_, _, _]) extends JobDefinitionLoadStatus
+  case class Loaded(jobDefinition: JobDefinition[_, _, _ <: WithCount]) extends JobDefinitionLoadStatus
 
 }

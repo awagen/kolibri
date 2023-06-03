@@ -25,6 +25,14 @@ import zio.{Task, ZIO}
 
 object ZIOTasks {
 
+  object SimpleWaitTask {
+
+    val successKey: ClassTyped[Unit] = NamedClassTyped[Unit]("DONE_WAITING")
+
+    val failKey: ClassTyped[TaskFailType.TaskFailType] = NamedClassTyped[TaskFailType.TaskFailType]("FAILED_WAITING")
+
+  }
+
   /**
    * Simple task that does nothing except waiting for a given amount of
    * time
@@ -32,9 +40,9 @@ object ZIOTasks {
   case class SimpleWaitTask(waitTimeInMillis: Long) extends ZIOTask[Unit] {
     override def prerequisites: Seq[ClassTyped[Any]] = Seq.empty
 
-    override def successKey: ClassTyped[Unit] = NamedClassTyped[Unit]("DONE_WAITING")
+    override def successKey: ClassTyped[Unit] = SimpleWaitTask.successKey
 
-    override def failKey: ClassTyped[TaskFailType.TaskFailType] = NamedClassTyped[TaskFailType.TaskFailType]("FAILED_WAITING")
+    override def failKey: ClassTyped[TaskFailType.TaskFailType] = SimpleWaitTask.failKey
 
     override def task(map: TypeTaggedMap): Task[TypeTaggedMap] = ZIO.attemptBlocking({
       Thread.sleep(waitTimeInMillis)

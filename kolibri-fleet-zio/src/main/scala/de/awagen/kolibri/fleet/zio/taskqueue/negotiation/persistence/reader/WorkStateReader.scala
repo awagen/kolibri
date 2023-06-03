@@ -36,5 +36,9 @@ trait WorkStateReader {
    */
   def getInProgressStateForNode(jobs: Set[String]): Task[Map[String, Set[ProcessingState]]]
 
+  /**
+   * Given a processId, retrieve the current ProcessingState
+   */
+  def processIdToProcessState(processId: ProcessId): Task[ProcessingState]
 
 }
