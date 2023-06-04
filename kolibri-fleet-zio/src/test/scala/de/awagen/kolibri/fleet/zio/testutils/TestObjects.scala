@@ -17,8 +17,9 @@
 
 package de.awagen.kolibri.fleet.zio.testutils
 
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.{FileStorageJobStateReader, JobStateReader}
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer.{FileStorageJobStateWriter, JobStateWriter}
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.{FileStorageClaimReader, FileStorageJobStateReader, FileStorageWorkStateReader, JobStateReader}
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer.{FileStorageClaimWriter, FileStorageJobStateWriter, JobStateWriter}
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services.BaseClaimService
 import de.awagen.kolibri.storage.io.reader.{LocalDirectoryReader, LocalResourceFileReader}
 import de.awagen.kolibri.storage.io.writer.Writers.FileWriter
 import org.mockito.ArgumentMatchers
@@ -26,6 +27,8 @@ import org.mockito.Mockito.{doNothing, doReturn}
 import org.scalatestplus.mockito.MockitoSugar.mock
 
 object TestObjects {
+
+  val baseResourceFolder: String = getClass.getResource("/testdata").getPath
 
   def fileWriterMock: FileWriter[String, Unit] = {
     val mocked = mock[FileWriter[String, Unit]]
@@ -36,7 +39,7 @@ object TestObjects {
     mocked
   }
 
-  def jobStateHandler(writer: FileWriter[String, Unit], baseFolder: String): JobStateReader = FileStorageJobStateReader(
+  def jobStateReader(baseFolder: String): JobStateReader = FileStorageJobStateReader(
     LocalDirectoryReader(
       baseDir = baseFolder,
       baseFilenameFilter = _ => true),
@@ -47,8 +50,34 @@ object TestObjects {
     )
   )
 
-  def jobStateUpdater(writer: FileWriter[String, Unit]): JobStateWriter = FileStorageJobStateWriter(
+  def jobStateWriter(writer: FileWriter[String, Unit]): JobStateWriter = FileStorageJobStateWriter(
     writer
+  )
+
+  def claimReader: FileStorageClaimReader = FileStorageClaimReader(
+    filter => LocalDirectoryReader(baseDir = baseResourceFolder, baseFilenameFilter = filter),
+    LocalResourceFileReader(
+      basePath = baseResourceFolder,
+      delimiterAndPosition = None,
+      fromClassPath = false
+    )
+  )
+
+  def claimWriter(writer: FileWriter[String, Unit]) = FileStorageClaimWriter(writer)
+
+  def workStateReader = FileStorageWorkStateReader(
+    filter => LocalDirectoryReader(baseDir = baseResourceFolder, baseFilenameFilter = filter),
+    LocalResourceFileReader(
+      basePath = baseResourceFolder,
+      delimiterAndPosition = None,
+      fromClassPath = false
+    )
+  )
+
+  def claimService(writer: FileWriter[String, Unit]) = BaseClaimService(
+    claimReader,
+    claimWriter(writer),
+    workStateReader
   )
 
 }

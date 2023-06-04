@@ -17,10 +17,10 @@
 
 package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader
 
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.TestObjects.claimReader
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.ClaimTopic
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ClaimStates._
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ClaimStatus.ClaimVerifyStatus
+import de.awagen.kolibri.fleet.zio.testutils.TestObjects.claimReader
 import zio.Scope
 import zio.test._
 

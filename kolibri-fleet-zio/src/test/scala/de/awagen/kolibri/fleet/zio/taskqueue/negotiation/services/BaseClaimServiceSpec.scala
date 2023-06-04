@@ -22,11 +22,10 @@ import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.BatchAggregationInfo
 import de.awagen.kolibri.fleet.zio.execution.ZIOTasks.SimpleWaitTask
 import de.awagen.kolibri.fleet.zio.execution.aggregation.Aggregators.countingAggregator
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.directives.JobDirectives
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.TestObjects.claimService
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.ClaimTopic
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.JobStates.{JobStateSnapshot, OpenJobsSnapshot}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.BatchProcessingStates
-import de.awagen.kolibri.fleet.zio.testutils.TestObjects.fileWriterMock
+import de.awagen.kolibri.fleet.zio.testutils.TestObjects.{claimService, fileWriterMock}
 import zio.Scope
 import zio.test._
 

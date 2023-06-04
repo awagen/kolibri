@@ -18,11 +18,10 @@
 package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer
 
 import de.awagen.kolibri.fleet.zio.io.json.ProcessingStateJsonProtocol.processingStateFormat
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.TestObjects.claimWriter
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.ClaimTopic
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ClaimStates.Claim
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state._
-import de.awagen.kolibri.fleet.zio.testutils.TestObjects.fileWriterMock
+import de.awagen.kolibri.fleet.zio.testutils.TestObjects.{claimWriter, fileWriterMock}
 import org.mockito.Mockito.{times, verify}
 import org.mockito.{ArgumentCaptor, ArgumentMatchers}
 import spray.json._
