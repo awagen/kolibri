@@ -103,7 +103,7 @@ case class BaseWorkHandlerService(workStateReader: WorkStateReader,
       // pick all known jobIds for the current snapshot
       currentOpenJobIds <- ZIO.succeed(openJobsSnapshot.jobStateSnapshots.keySet)
       // get all process states for the current jobs
-      existingProcessStatesForJobs <- workStateReader.getInProgressStateForNode(currentOpenJobIds)
+      existingProcessStatesForJobs <- workStateReader.getInProgressStateForCurrentNode(currentOpenJobIds)
       // interrupt all running processes for which there is no progress state persisted
       _ <- compareRunningBatchesWithSnapshotAndInterruptIfIndicated(
         existingProcessStatesForJobs.values.flatten.toSeq,
@@ -131,7 +131,7 @@ case class BaseWorkHandlerService(workStateReader: WorkStateReader,
       // for the relevant jobIds, pick the current processing states (where available; since we do not check here
       // explicitly, the workStateReader needs to be able to tolerate if for some passed jobIds no progress info is
       // available)
-      processStates <- workStateReader.getInProgressStateForNode(jobIdToJobDefAsRelevantForNode.keySet)
+      processStates <- workStateReader.getInProgressStateForCurrentNode(jobIdToJobDefAsRelevantForNode.keySet)
       // planned tasks are those we wanna add to the job-queue
       plannedTasks <- ZIO.succeed(
         processStates.values.flatten

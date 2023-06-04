@@ -75,7 +75,7 @@ object JobDefinitions {
                     nrBatches: Int,
                     waitDurationInMillis: Long,
                     elementsPerBatch: Int,
-                    aggregationInfoOpt: BatchAggregationInfo[Unit, ValueWithCount[Int]]): JobDefinition[Int, Unit, ValueWithCount[Int]] = {
+                    aggregationInfo: BatchAggregationInfo[Unit, ValueWithCount[Int]]): JobDefinition[Int, Unit, ValueWithCount[Int]] = {
     JobDefinition[Int, Unit, ValueWithCount[Int]](
       jobName = jobName,
       resourceSetup = Seq.empty,
@@ -84,7 +84,7 @@ object JobDefinitions {
           .map(batchNr => Batch(batchNr, ByFunctionNrLimitedIndexedGenerator.createFromSeq(Range(0, elementsPerBatch, 1))))
       ),
       taskSequence = Seq(SimpleWaitTask(waitDurationInMillis)),
-      aggregationInfo = aggregationInfoOpt
+      aggregationInfo = aggregationInfo
     )
   }
 
@@ -92,7 +92,7 @@ object JobDefinitions {
                                              nrBatches: Int,
                                              waitDurationInMillis: Long,
                                              elementsPerBatch: Int,
-                                             aggregationInfoOpt: BatchAggregationInfo[Unit, ValueWithCount[Int]]): JobDefinition[Int, Unit, ValueWithCount[Int]] = {
+                                             aggregationInfo: BatchAggregationInfo[Unit, ValueWithCount[Int]]): JobDefinition[Int, Unit, ValueWithCount[Int]] = {
     JobDefinition[Int, Unit, ValueWithCount[Int]](
       jobName = jobName,
       resourceSetup = Seq.empty,
@@ -101,7 +101,7 @@ object JobDefinitions {
           .map(batchNr => Batch(batchNr, ByFunctionNrLimitedIndexedGenerator.createFromSeq(Range(0, elementsPerBatch, 1))))
       ),
       taskSequence = Seq(SimpleWaitTaskResultAsProcessingMessage(waitDurationInMillis)),
-      aggregationInfo = aggregationInfoOpt
+      aggregationInfo = aggregationInfo
     )
   }
 

@@ -28,13 +28,13 @@ trait WorkStateReader {
    * mechanism this would be the file name) of in-progress files
    * for the current node, covering all the passed jobs.
    */
-  def getInProgressIdsForNode(jobs: Set[String]): Task[Map[String, Set[ProcessId]]]
+  def getInProgressIdsForCurrentNode(jobs: Set[String]): Task[Map[String, Set[ProcessId]]]
 
   /**
    * Retrieve more detailed information about all batches that are in progress for
    * the passed jobs.
    */
-  def getInProgressStateForNode(jobs: Set[String]): Task[Map[String, Set[ProcessingState]]]
+  def getInProgressStateForCurrentNode(jobs: Set[String]): Task[Map[String, Set[ProcessingState]]]
 
   /**
    * Given a processId, retrieve the current ProcessingState

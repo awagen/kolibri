@@ -39,7 +39,7 @@ case class FileStorageWorkStateReader(filterToOverviewReader: (String => Boolean
    * covering all the passed jobs for the current node.
    * If resources for a job cannot be found, there will be no entry for the corresponding job in the result
    */
-  override def getInProgressIdsForNode(jobs: Set[String]): Task[Map[String, Set[ProcessId]]] = {
+  override def getInProgressIdsForCurrentNode(jobs: Set[String]): Task[Map[String, Set[ProcessId]]] = {
     ZStream.fromIterable(jobs)
       .mapZIO(jobId => ZIO.attemptBlocking {
         val inProgressStateFiles: Set[String] = overviewReader
@@ -82,9 +82,9 @@ case class FileStorageWorkStateReader(filterToOverviewReader: (String => Boolean
    * Retrieve more detailed information about all batches that are in progress for
    * the passed jobs.
    */
-  override def getInProgressStateForNode(jobs: Set[String]): Task[Map[String, Set[ProcessingState]]] = {
+  override def getInProgressStateForCurrentNode(jobs: Set[String]): Task[Map[String, Set[ProcessingState]]] = {
     for {
-      jobIdToProcessIds <- getInProgressIdsForNode(jobs)
+      jobIdToProcessIds <- getInProgressIdsForCurrentNode(jobs)
       processingStateMapping <- {
           val v: immutable.Iterable[ZIO[Any, Throwable, (String, Set[ProcessingState])]] = jobIdToProcessIds.map(x => {
             ZStream.fromIterable(x._2)
@@ -105,5 +105,15 @@ case class FileStorageWorkStateReader(filterToOverviewReader: (String => Boolean
         }
     } yield processingStateMapping
   }
+
+
+  // TODO: we need to be able to get a full picture of in-progress states, over all jobs and nodes
+  // TODO: then we also need further methods to boil this down. We might start with one object and then provide
+  // filter methods in the objects
+//  def getInProgressStatesForAllJobsForCurrentNode: Task[Unit]
+//
+//  def getInProgressStatesForAllNodes: Task[Unit]
+//
+//  def getInProgressStatesForNode(nodeHash: String): Task[Unit]
 
 }

@@ -53,13 +53,12 @@ case class FileStorageClaimWriter(writer: Writer[String, String, _]) extends Cla
     ZIO.ifZIO(ZIO.succeed(existingClaimsForBatch.isEmpty))(
       onTrue = {
         // write claim
-        val claimPath = getFullFilePathForClaimFile(jobId, batchNr, claimTopic)
-        val persistResult: Either[Exception, _] = writer.write("", claimPath)
-        persistResult match {
-          case Left(e) =>
-            ZIO.fail(e)
-          case _ => ZIO.succeed(ClaimFilingStatus.PERSIST_SUCCESS)
-        }
+        for {
+          claimPath <- ZIO.attempt(getFullFilePathForClaimFile(jobId, batchNr, claimTopic))
+          _ <- ZIO.logDebug(s"writing claim to path: $claimPath")
+          persistResult <- ZIO.attemptBlockingIO(writer.write("", claimPath))
+          result <- ZIO.fromEither(persistResult).map(_ => ClaimFilingStatus.PERSIST_SUCCESS)
+        } yield result
       },
       onFalse = ZIO.succeed(ClaimFilingStatus.OTHER_CLAIM_EXISTS)
     )
@@ -74,6 +73,8 @@ case class FileStorageClaimWriter(writer: Writer[String, String, _]) extends Cla
    */
   override def writeTaskToProgressFolder(jobId: String, batchNr: Int): Task[Any] = {
     (for {
+      writePath <- ZIO.attempt(getInProgressFilePathForJob(jobId, batchNr))
+      _ <- ZIO.logDebug(s"writing in-progress task to: $writePath")
       toInProgressWriteResult <- ZIO.attemptBlockingIO({
         val processingState = ProcessingState(
           ProcessId(
@@ -90,7 +91,7 @@ case class FileStorageClaimWriter(writer: Writer[String, String, _]) extends Cla
         )
         writer.write(
           ProcessingStateJsonProtocol.processingStateFormat.write(processingState).toString,
-          getInProgressFilePathForJob(jobId, batchNr)
+          writePath
         )
       })
     } yield toInProgressWriteResult)

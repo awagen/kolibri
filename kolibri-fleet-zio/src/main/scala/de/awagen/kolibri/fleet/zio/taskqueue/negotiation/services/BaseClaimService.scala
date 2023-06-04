@@ -74,7 +74,7 @@ case class BaseClaimService(claimReader: ClaimReader,
       existingClaimsForNode <- claimReader.getClaimsByCurrentNode(claimTopic, openJobsSnapshot)
       // fetching all files showing succesfully claimed (exercised claims in the form of
       // files in the in-progress state subfolder) batches as full file paths to the in-progress files
-      inProgressStateFilesPerJobForThisNode <- workStateReader.getInProgressIdsForNode(openJobsSnapshot.jobStateSnapshots.keys.toSet)
+      inProgressStateFilesPerJobForThisNode <- workStateReader.getInProgressIdsForCurrentNode(openJobsSnapshot.jobStateSnapshots.keys.toSet)
       // from the total number of claims filed and the number of batches already claimed calculate
       // whether there is any need to file more claims
       numberOfNewlyClaimableBatches <- ZIO.attempt({

@@ -56,13 +56,13 @@ object TaskWorkerSpec extends ZIOSpecDefault {
     // job definition where the result is plain Unit
     val jobBatch: JobBatch[Int, Unit, ValueWithCount[Int]] = JobBatch(
       JobDefinitions.simpleWaitJob("testJob1", 10, 100, elementsPerBatch = 10,
-        aggregationInfoOpt = batchAggregationInfo),
+        aggregationInfo = batchAggregationInfo),
       1
     )
     // job definition where result is ProcessingMessage[Unit]
     val jobBatchResultAsProcessingMessage: JobBatch[Int, Unit, ValueWithCount[Int]] = JobBatch(
       JobDefinitions.simpleWaitJobResultAsProcessingMessage("testJob1", 10, 100, elementsPerBatch = 10,
-        aggregationInfoOpt = batchAggregationInfoResultAsProcessingMessage),
+        aggregationInfo = batchAggregationInfoResultAsProcessingMessage),
       1
     )
   }
