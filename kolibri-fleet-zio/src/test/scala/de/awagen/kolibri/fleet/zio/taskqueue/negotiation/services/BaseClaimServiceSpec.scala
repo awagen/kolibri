@@ -17,15 +17,8 @@
 
 package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services
 
-import de.awagen.kolibri.fleet.zio.execution.JobDefinitions
-import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.BatchAggregationInfo
-import de.awagen.kolibri.fleet.zio.execution.ZIOTasks.SimpleWaitTask
-import de.awagen.kolibri.fleet.zio.execution.aggregation.Aggregators.countingAggregator
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.directives.JobDirectives
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.ClaimTopic
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.JobStates.{JobStateSnapshot, OpenJobsSnapshot}
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.BatchProcessingStates
-import de.awagen.kolibri.fleet.zio.testutils.TestObjects.{claimService, fileWriterMock}
+import de.awagen.kolibri.fleet.zio.testutils.TestObjects.{SnapshotSample1, claimService, fileWriterMock}
 import zio.Scope
 import zio.test._
 
@@ -37,29 +30,9 @@ object BaseClaimServiceSpec extends ZIOSpecDefault {
       // given
       val writerMock = fileWriterMock
       val claimH = claimService(writerMock)
-      val batchAggregationInfo: BatchAggregationInfo[Unit, JobDefinitions.ValueWithCount[Int]] = BatchAggregationInfo(
-        Left(SimpleWaitTask.successKey),
-        () => countingAggregator(0, 0)
-      )
-      val jobDef = JobDefinitions.simpleWaitJob(
-        "testJob1_3434839787",
-        1,
-        1000L,
-        1,
-        batchAggregationInfo
-      )
-      val openJobsSnapshot = OpenJobsSnapshot(
-        Map("testJob1_3434839787" -> JobStateSnapshot(
-          "testJob1_3434839787",
-          3434839787L,
-          jobDef,
-          Set(JobDirectives.Process),
-          Map(1 -> BatchProcessingStates.Open)
-        ))
-      )
       // when, then
       for {
-        _ <- claimH.manageClaims(ClaimTopic.JOB_TASK_PROCESSING_CLAIM, openJobsSnapshot)
+        _ <- claimH.manageClaims(ClaimTopic.JOB_TASK_PROCESSING_CLAIM, SnapshotSample1.openJobsSnapshot)
       } yield assert(true)(Assertion.assertion("true")(_ => true))
     }
   )

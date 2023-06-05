@@ -17,15 +17,28 @@
 
 package de.awagen.kolibri.fleet.zio.testutils
 
+import de.awagen.kolibri.datatypes.tagging.TaggedWithType
+import de.awagen.kolibri.datatypes.types.Types.WithCount
+import de.awagen.kolibri.datatypes.values.DataPoint
+import de.awagen.kolibri.datatypes.values.aggregation.immutable.Aggregators
+import de.awagen.kolibri.fleet.zio.execution.JobDefinitions
+import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.BatchAggregationInfo
+import de.awagen.kolibri.fleet.zio.execution.ZIOTasks.SimpleWaitTask
+import de.awagen.kolibri.fleet.zio.execution.aggregation.Aggregators.countingAggregator
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.directives.JobDirectives
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.{FileStorageClaimReader, FileStorageJobStateReader, FileStorageWorkStateReader, JobStateReader}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer.{FileStorageClaimWriter, FileStorageJobStateWriter, JobStateWriter}
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services.BaseClaimService
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services.{BaseClaimService, BaseWorkHandlerService, WorkHandlerService}
 import de.awagen.kolibri.storage.io.reader.{LocalDirectoryReader, LocalResourceFileReader}
 import de.awagen.kolibri.storage.io.writer.Writers.FileWriter
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer.FileStorageWorkStateWriter
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.JobStates.{JobStateSnapshot, OpenJobsSnapshot}
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ProcessId
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.BatchProcessingStates
 import org.mockito.ArgumentMatchers
 import org.mockito.Mockito.{doNothing, doReturn}
 import org.scalatestplus.mockito.MockitoSugar.mock
+import zio.{Fiber, Queue, Ref, Task, ZIO}
 
 object TestObjects {
 
@@ -84,5 +97,53 @@ object TestObjects {
     claimWriter(writer),
     workStateReader
   )
+
+  def workHandler(writer: FileWriter[String, Unit]): Task[WorkHandlerService] = for {
+    queue <- Queue.bounded[JobDefinitions.JobBatch[_, _, _ <: WithCount]](5)
+    addedBatchesHistory <- Ref.make(Seq.empty[ProcessId])
+    processIdToAggregatorMappingRef <- Ref.make(Map.empty[ProcessId, Ref[Aggregators.Aggregator[TaggedWithType with DataPoint[_], _ <: WithCount]]])
+    processIdToFiberMappingRef <- Ref.make(Map.empty[ProcessId, Fiber.Runtime[Throwable, Unit]])
+    workHandler <- ZIO.attempt({
+      BaseWorkHandlerService(
+        workStateReader,
+        workStateWriter(writer),
+        queue,
+        addedBatchesHistory,
+        processIdToAggregatorMappingRef,
+        processIdToFiberMappingRef
+      )
+    })
+  } yield workHandler
+
+  object SnapshotSample1 {
+
+    def batchAggregationInfo: BatchAggregationInfo[Unit, JobDefinitions.ValueWithCount[Int]] = BatchAggregationInfo(
+      Left(SimpleWaitTask.successKey),
+      () => countingAggregator(0, 0)
+    )
+
+    def jobDef: JobDefinitions.JobDefinition[Int, Unit, JobDefinitions.ValueWithCount[Int]] = {
+      JobDefinitions.simpleWaitJob(
+        "testJob1_3434839787",
+        1,
+        1000L,
+        1,
+        batchAggregationInfo
+      )
+    }
+
+    def openJobsSnapshot = {
+      OpenJobsSnapshot(
+        Map("testJob1_3434839787" -> JobStateSnapshot(
+          "testJob1_3434839787",
+          3434839787L,
+          jobDef,
+          Set(JobDirectives.Process),
+          Map(1 -> BatchProcessingStates.Open)
+        ))
+      )
+    }
+
+  }
 
 }

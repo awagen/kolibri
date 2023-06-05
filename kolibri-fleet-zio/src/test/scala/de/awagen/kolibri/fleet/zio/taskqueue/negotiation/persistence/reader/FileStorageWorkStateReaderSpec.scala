@@ -17,16 +17,35 @@
 
 package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader
 
+import de.awagen.kolibri.fleet.zio.config.AppProperties
+import de.awagen.kolibri.fleet.zio.testutils.TestObjects.workStateReader
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.{ProcessId, ProcessingInfo, ProcessingState, ProcessingStatus}
 import zio.Scope
-import zio.test.{Spec, TestEnvironment, ZIOSpecDefault, assertTrue}
+import zio.test._
 
 object FileStorageWorkStateReaderSpec extends ZIOSpecDefault {
 
   override def spec: Spec[TestEnvironment with Scope, Any] = suite("FileStorageWorkStateReaderSpec")(
 
     test("") {
-      assertTrue(true)
+      val reader = workStateReader
+      val expectedState = ProcessingState(
+        ProcessId("testJob1_3434839787", 0),
+        ProcessingInfo(
+          ProcessingStatus.QUEUED,
+          100,
+          0,
+          AppProperties.config.node_hash,
+          "2023-01-01 01:02:03"
+        )
+      )
+      for {
+        processState <- reader.processIdToProcessState(ProcessId("testJob1_3434839787", 0))
+      } yield assert(processState)(Assertion.assertion("process state matches")(state => {
+        state == expectedState
+      }))
     }
+
 
   )
 

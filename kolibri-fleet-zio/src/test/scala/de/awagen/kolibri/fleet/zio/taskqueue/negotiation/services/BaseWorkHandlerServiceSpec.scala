@@ -17,6 +17,7 @@
 
 package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services
 
+import de.awagen.kolibri.fleet.zio.testutils.TestObjects.{SnapshotSample1, fileWriterMock, workHandler}
 import zio.Scope
 import zio.test.{Spec, TestEnvironment, ZIOSpecDefault, assertTrue}
 
@@ -24,9 +25,21 @@ object BaseWorkHandlerServiceSpec extends ZIOSpecDefault {
 
   override def spec: Spec[TestEnvironment with Scope, Any] = suite("BaseWorkHandlerServiceSpec")(
 
-    test("") {
+    // TODO: test criteria besides pure execution
+    test("manage batches") {
+      val writer = fileWriterMock
+      for {
+        handler <- workHandler(writer)
+        _ <- handler.manageBatches(SnapshotSample1.openJobsSnapshot)
+      } yield ()
+      assertTrue(true)
+    },
+
+    // TODO: write test
+    test("persist process states") {
       assertTrue(true)
     }
+
 
   )
 
