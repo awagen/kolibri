@@ -22,6 +22,7 @@ import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer.{Fil
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services.BaseClaimService
 import de.awagen.kolibri.storage.io.reader.{LocalDirectoryReader, LocalResourceFileReader}
 import de.awagen.kolibri.storage.io.writer.Writers.FileWriter
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer.FileStorageWorkStateWriter
 import org.mockito.ArgumentMatchers
 import org.mockito.Mockito.{doNothing, doReturn}
 import org.scalatestplus.mockito.MockitoSugar.mock
@@ -72,6 +73,10 @@ object TestObjects {
       delimiterAndPosition = None,
       fromClassPath = false
     )
+  )
+
+  def workStateWriter(writer: FileWriter[String, Unit]) = FileStorageWorkStateWriter(
+    writer
   )
 
   def claimService(writer: FileWriter[String, Unit]) = BaseClaimService(
