@@ -17,7 +17,7 @@
 
 package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.format
 
-import de.awagen.kolibri.datatypes.mutable.stores.{TypeTaggedMap, TypedMapStore}
+import de.awagen.kolibri.datatypes.mutable.stores.{TypeTaggedMap, TypedMapStore, WeaklyTypedMap}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.format.NameFormats.FileNameFormat
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.format.NameFormats.Parts.{BATCH_NR, CREATION_TIME_IN_MILLIS, JOB_ID, NODE_HASH, TOPIC}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.ClaimTopic
@@ -51,8 +51,8 @@ object FileFormats {
     }
 
     def processIdFromIdentifier(jobId: String, identifier: String): ProcessId = {
-      val values = InProgressTaskFileNameFormat.parse(identifier.split("/").last)
-      val batchNr = values.get(BATCH_NR.namedClassTyped.name).get
+      val values: WeaklyTypedMap[String] = InProgressTaskFileNameFormat.parse(identifier.split("/").last)
+      val batchNr: Int = values.get(BATCH_NR.namedClassTyped.name).get
       ProcessId(jobId, batchNr)
     }
   }

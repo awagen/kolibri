@@ -42,12 +42,13 @@ case class FileStorageWorkStateReader(filterToOverviewReader: (String => Boolean
   override def getInProgressIdsForCurrentNode(jobs: Set[String]): Task[Map[String, Set[ProcessId]]] = {
     ZStream.fromIterable(jobs)
       .mapZIO(jobId => ZIO.attemptBlocking {
+        val subFolder = InProgressTasks.jobTasksInProgressStateForNodeSubFolder(
+          jobId,
+          AppProperties.config.node_hash,
+          isOpenJob = true
+        )
         val inProgressStateFiles: Set[String] = overviewReader
-          .listResources(InProgressTasks.jobTasksInProgressStateForNodeSubFolder(
-            jobId,
-            AppProperties.config.node_hash,
-            isOpenJob = true
-          ), _ => true).toSet
+          .listResources(subFolder, _ => true).toSet
         val processIds = inProgressStateFiles.map(file => InProgressTaskFileNameFormat.processIdFromIdentifier(jobId, file))
         (jobId, processIds)
       }

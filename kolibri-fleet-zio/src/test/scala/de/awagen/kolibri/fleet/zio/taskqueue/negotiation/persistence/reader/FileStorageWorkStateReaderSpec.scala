@@ -25,24 +25,51 @@ import zio.test._
 
 object FileStorageWorkStateReaderSpec extends ZIOSpecDefault {
 
+  object TestObjects {
+
+    val expectedState = ProcessingState(
+      ProcessId("testJob1_3434839787", 0),
+      ProcessingInfo(
+        ProcessingStatus.QUEUED,
+        100,
+        0,
+        AppProperties.config.node_hash,
+        "2023-01-01 01:02:03"
+      )
+    )
+
+  }
+
+  import TestObjects._
+
   override def spec: Spec[TestEnvironment with Scope, Any] = suite("FileStorageWorkStateReaderSpec")(
 
-    test("") {
+    test("read process state from processId") {
       val reader = workStateReader
-      val expectedState = ProcessingState(
-        ProcessId("testJob1_3434839787", 0),
-        ProcessingInfo(
-          ProcessingStatus.QUEUED,
-          100,
-          0,
-          AppProperties.config.node_hash,
-          "2023-01-01 01:02:03"
-        )
-      )
+
       for {
         processState <- reader.processIdToProcessState(ProcessId("testJob1_3434839787", 0))
       } yield assert(processState)(Assertion.assertion("process state matches")(state => {
         state == expectedState
+      }))
+    },
+
+    test("read processIds for in-progress files for job") {
+      val reader = workStateReader
+      for {
+        processIds <- reader.getInProgressIdsForCurrentNode(Set("testJob1_3434839787"))
+      } yield assert(processIds)(Assertion.assertion("process ids match")(ids => {
+        ids == Map("testJob1_3434839787" -> Set(ProcessId("testJob1_3434839787", 0)))
+      }))
+    },
+
+    test("read process states for in-progress files for job") {
+      val reader = workStateReader
+      for {
+        inProgressStates <- reader.getInProgressStateForCurrentNode(Set("testJob1_3434839787"))
+      } yield assert(inProgressStates)(Assertion.assertion("states match")(states => {
+        states.keySet == Set("testJob1_3434839787") &&
+          states("testJob1_3434839787") == Set(expectedState)
       }))
     }
 
