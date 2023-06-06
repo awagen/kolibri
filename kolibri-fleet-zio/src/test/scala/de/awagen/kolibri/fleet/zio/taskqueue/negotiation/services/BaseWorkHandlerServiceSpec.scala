@@ -17,9 +17,20 @@
 
 package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services
 
+import de.awagen.kolibri.datatypes.tagging.TaggedWithType
+import de.awagen.kolibri.datatypes.values.DataPoint
+import de.awagen.kolibri.datatypes.values.aggregation.immutable.Aggregators.Aggregator
+import de.awagen.kolibri.fleet.zio.config.AppProperties
+import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.ValueWithCount
+import de.awagen.kolibri.fleet.zio.execution.aggregation.Aggregators.countingAggregator
+import de.awagen.kolibri.fleet.zio.io.json.ProcessingStateJsonProtocol.processingStateFormat
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state._
 import de.awagen.kolibri.fleet.zio.testutils.TestObjects.{SnapshotSample1, fileWriterMock, workHandler}
-import zio.Scope
-import zio.test.{Spec, TestEnvironment, ZIOSpecDefault, assertTrue}
+import org.mockito.Mockito.{times, verify}
+import org.mockito.{ArgumentCaptor, ArgumentMatchers}
+import spray.json._
+import zio.test._
+import zio.{Ref, Scope, ZIO}
 
 object BaseWorkHandlerServiceSpec extends ZIOSpecDefault {
 
@@ -29,17 +40,61 @@ object BaseWorkHandlerServiceSpec extends ZIOSpecDefault {
     test("manage batches") {
       val writer = fileWriterMock
       for {
-        handler <- workHandler(writer)
+        handler <- workHandler[TaggedWithType with DataPoint[Unit], ValueWithCount[Int]](writer)
         _ <- handler.manageBatches(SnapshotSample1.openJobsSnapshot)
       } yield ()
       assertTrue(true)
     },
 
-    // TODO: write test
-    test("persist process states") {
-      assertTrue(true)
+    test("update process states") {
+      // given
+      val writer = fileWriterMock
+      val jobId = "testJob1_3434839787"
+      val nodeHash = AppProperties.config.node_hash
+      val batchNr = 0
+      val processId = ProcessId(jobId, batchNr)
+      val addedBatchesHistoryInitState = Seq(processId)
+      val aggregatorState: Aggregator[TaggedWithType with DataPoint[Unit], ValueWithCount[Int]] = countingAggregator(0, 0)
+      val expectedProcessingState = ProcessingState(
+        ProcessId(
+          "testJob1_3434839787",
+          0
+        ),
+        ProcessingInfo(
+          ProcessingStatus.DONE,
+          100,
+          0,
+          "abc234",
+          ProcessingStateUtils.timeInMillisToFormattedTime(1703845333850L)
+        )
+      )
+      // when, then
+      for {
+        aggregatorRef <- Ref.make(aggregatorState)
+        fiber <- ZIO.attemptBlocking({
+          Thread.sleep(1)
+        }).fork
+        // putting fiber state to DONE
+        _ <- fiber.join
+        handler <- workHandler(
+          writer,
+          addedBatchesHistoryInitState = addedBatchesHistoryInitState,
+          processIdToAggregatorMappingInitState = Map(processId -> aggregatorRef),
+          processIdToFiberMappingInitState = Map(processId -> fiber)
+        )
+        _ <- handler.updateProcessStates
+      } yield assert({
+        val processingStateCaptor: ArgumentCaptor[String] = ArgumentCaptor.forClass(classOf[String])
+        verify(writer, times(1)).write(
+          processingStateCaptor.capture(),
+          ArgumentMatchers.eq(s"jobs/open/$jobId/tasks/inprogress_state/$nodeHash/$batchNr")
+        )
+        processingStateCaptor.getValue
+      })(Assertion.assertion("processing state must be correct")(stateStr => {
+        val processingState = stateStr.parseJson.convertTo[ProcessingState]
+        processingState == expectedProcessingState.copy(processingInfo = expectedProcessingState.processingInfo.copy(lastUpdate = processingState.processingInfo.lastUpdate))
+      }))
     }
-
 
   )
 

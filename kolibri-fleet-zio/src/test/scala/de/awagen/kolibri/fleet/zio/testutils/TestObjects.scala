@@ -98,11 +98,16 @@ object TestObjects {
     workStateReader
   )
 
-  def workHandler(writer: FileWriter[String, Unit]): Task[WorkHandlerService] = for {
-    queue <- Queue.bounded[JobDefinitions.JobBatch[_, _, _ <: WithCount]](5)
-    addedBatchesHistory <- Ref.make(Seq.empty[ProcessId])
-    processIdToAggregatorMappingRef <- Ref.make(Map.empty[ProcessId, Ref[Aggregators.Aggregator[TaggedWithType with DataPoint[_], _ <: WithCount]]])
-    processIdToFiberMappingRef <- Ref.make(Map.empty[ProcessId, Fiber.Runtime[Throwable, Unit]])
+  def workHandler[U <: TaggedWithType with DataPoint[Any], V <: WithCount](writer: FileWriter[String, Unit],
+                                                                           jobBatchQueueSize: Int = 5,
+                                                                           addedBatchesHistoryInitState: Seq[ProcessId] = Seq.empty[ProcessId],
+                                                                           processIdToAggregatorMappingInitState: Map[ProcessId, Ref[Aggregators.Aggregator[U, V]]] = Map.empty[ProcessId, Ref[Aggregators.Aggregator[U, V]]],
+                                                                           processIdToFiberMappingInitState: Map[ProcessId, Fiber.Runtime[Throwable, Unit]] = Map.empty[ProcessId, Fiber.Runtime[Throwable, Unit]]
+                                                                          ): Task[WorkHandlerService] = for {
+    queue <- Queue.bounded[JobDefinitions.JobBatch[_, _, _ <: WithCount]](jobBatchQueueSize)
+    addedBatchesHistory <- Ref.make(addedBatchesHistoryInitState)
+    processIdToAggregatorMappingRef <- Ref.make(processIdToAggregatorMappingInitState)
+    processIdToFiberMappingRef <- Ref.make(processIdToFiberMappingInitState)
     workHandler <- ZIO.attempt({
       BaseWorkHandlerService(
         workStateReader,

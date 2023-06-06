@@ -53,11 +53,11 @@ object BaseWorkHandlerService {
  * care of deleting resources that are not needed anymore and keeps
  * track of jobs needing a particular resource.
  */
-case class BaseWorkHandlerService(workStateReader: WorkStateReader,
+case class BaseWorkHandlerService[U <: TaggedWithType with DataPoint[Any], V <: WithCount](workStateReader: WorkStateReader,
                                   workStateWriter: WorkStateWriter,
                                   queue: Queue[JobBatch[_, _, _ <: WithCount]],
                                   addedBatchesHistoryRef: Ref[Seq[ProcessId]],
-                                  processIdToAggregatorRef: Ref[Map[ProcessId, Ref[Aggregator[TaggedWithType with DataPoint[_], _ <: WithCount]]]],
+                                  processIdToAggregatorRef: Ref[Map[ProcessId, Ref[Aggregator[U, V]]]],
                                   processIdToFiberRef: Ref[Map[ProcessId, Fiber.Runtime[Throwable, Unit]]]) extends WorkHandlerService {
 
 
@@ -208,9 +208,9 @@ case class BaseWorkHandlerService(workStateReader: WorkStateReader,
   }
 
   /**
-   * For the passed processing state, write an updated in-progress file with status
-   * "QUEUED". Return sequence of booleans, each indicating whether changing process state was successful for
-   * the particular batch
+   * For the passed processing state, write an updated in-progress file with passed status value.
+   * Return sequence of booleans, each indicating whether changing process state was successful for
+   * the particular batch. Besides the state and status update, lastUpdate timestamp is updated.
    */
   private def persistProcessingStateUpdate(processingStates: Seq[ProcessingState], processingStatus: ProcessingStatus): ZIO[Any, Nothing, Seq[Boolean]] = {
     val updatedState = processingStates.map(x => x.copy(processingInfo = x.processingInfo.copy(
@@ -252,35 +252,12 @@ case class BaseWorkHandlerService(workStateReader: WorkStateReader,
     _ <- TaskWorker.work(job)
       .forEachZIO(aggAndFiber => {
         processIdToAggregatorRef.update(oldMap =>
-          oldMap + (ProcessId(job.job.jobName, job.batchNr) -> aggAndFiber._1.asInstanceOf[Ref[Aggregator[TaggedWithType with DataPoint[_], _ <: WithCount]]])
+          oldMap + (ProcessId(job.job.jobName, job.batchNr) -> aggAndFiber._1.asInstanceOf[Ref[Aggregator[U, V]]])
         ) *>
           processIdToFiberRef.update(oldMap =>
             oldMap + (ProcessId(job.job.jobName, job.batchNr) -> aggAndFiber._2))
       })
   } yield ()
-
-  /**
-   * Query the batch state from the current state of aggregators to update both the update timestamp
-   * and the numbers of elements processed.
-   * NOTE: needs to be invoked before checking for completion and removal.
-   * NOTE: we might wanna keep the last process update after completion, as means to record processing
-   * details.
-   */
-  private def updateProcessStates: Task[Unit] = {
-    for {
-      processIdToAggregatorMapping <- processIdToAggregatorRef.get
-      _ <- ZStream.fromIterable(processIdToAggregatorMapping.keys)
-        .foreach(processId => for {
-          processAggregationState <- processIdToAggregatorMapping(processId).get
-          processingState <- workStateReader.processIdToProcessState(processId)
-          _ <- persistProcessingStateUpdate(
-            Seq(processingState.copy(processingInfo = processingState.processingInfo.copy(numItemsProcessed = processAggregationState.aggregation.count))),
-            processingState.processingInfo.processingStatus
-          )
-        } yield ()
-        )
-    } yield ()
-  }
 
   /**
    * Check the fiber runtimes corresponding to the tasks in progress and return those with status DONE
@@ -343,6 +320,27 @@ case class BaseWorkHandlerService(workStateReader: WorkStateReader,
     } yield ()
   }
 
-  // pick the newest processing states for all processed batches and update the respective files
-  override def persistProcessStates: Task[Unit] = ???
+  /**
+   * Query the batch state from the current state of aggregators to update both the update timestamp
+   * and the numbers of elements processed in the persisted in-progress files.
+   */
+  override def updateProcessStates: Task[Unit] = {
+    for {
+      processIdToAggregatorMapping <- processIdToAggregatorRef.get
+      processIdToFiberMapping <- processIdToFiberRef.get
+      _ <- ZStream.fromIterable(processIdToAggregatorMapping.keys)
+        .foreach(processId => for {
+          processAggregationState <- processIdToAggregatorMapping(processId).get
+          processFiberStatus <- processIdToFiberMapping(processId).status
+          processingState <- workStateReader.processIdToProcessState(processId)
+          updatedProcessingState <- ZIO.attempt(processingState.copy(processingInfo = processingState.processingInfo.copy(numItemsProcessed = processAggregationState.aggregation.count)))
+          _ <- persistProcessingStateUpdate(
+            Seq(updatedProcessingState),
+            if (processFiberStatus == Fiber.Status.Done) ProcessingStatus.DONE else processingState.processingInfo.processingStatus
+          )
+        } yield ()
+        )
+    } yield ()
+  }
+
 }

@@ -53,7 +53,7 @@ object JobDefinitions {
                                         batchAggregatorSupplier: () => Aggregator[TaggedWithType with DataPoint[V], W],
                                         writer: Writer[W, Tags.Tag, Any] = doNothingWriter[W])
 
-  case class ValueWithCount[T](value: T, count: Int) extends WithCount
+  case class ValueWithCount[+T](value: T, count: Int) extends WithCount
 
   /**
    * Job definition here encapsulates several parts:

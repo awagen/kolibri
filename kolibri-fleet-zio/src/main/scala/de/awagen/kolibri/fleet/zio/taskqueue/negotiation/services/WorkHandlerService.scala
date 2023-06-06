@@ -46,6 +46,6 @@ trait WorkHandlerService {
    * so that other nodes can decide whether a task must be taken from the node by
    * removing in-progress state and moving batch back to "open" to be claimed by any node.
    */
-  def persistProcessStates: Task[Unit]
+  def updateProcessStates: Task[Unit]
 
 }
