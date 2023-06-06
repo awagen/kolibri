@@ -32,21 +32,23 @@ object FileStorageJobStateReaderSpec extends ZIOSpecDefault {
 
     /**
      * Note: as of now the directory is a combination of [jobName]_[timePlacedInMillis].
-     * In the snapshot only the jobName will be used as key, while
-     * it contains an attribute timePlacedInMillis for the timestamp
+     * This is what is used as keys in the mapping, not the pure
+     * jobName.
      */
     test("read job state") {
       // given
       val reader = TestObjects.jobStateReader(TestObjects.baseResourceFolder)
+      val jobKey = "testJob1_3434839787"
       // when, then
       for {
         openJobsSnapshot <- reader.fetchOpenJobState
-      } yield assert(openJobsSnapshot.jobStateSnapshots.keySet)(Assertion.equalTo(Set("testJob1"))) &&
-        assert(openJobsSnapshot.jobStateSnapshots("testJob1").timePlacedInMillis)(Assertion.equalTo(3434839787L)) &&
-        assert(openJobsSnapshot.jobStateSnapshots("testJob1").jobLevelDirectives)(Assertion.equalTo(Set[JobDirective](JobDirectives.Process))) &&
-        assert(openJobsSnapshot.jobStateSnapshots("testJob1").actionForJob)(Assertion.equalTo(JobActions.ProcessAllNodes)) &&
-        assert(openJobsSnapshot.jobStateSnapshots("testJob1").batchesToState.keySet)(Assertion.equalTo(Range(0, 10, 1).toSet)) &&
-        assert(openJobsSnapshot.jobStateSnapshots("testJob1").batchesToState.values.toSeq)(Assertion.equalTo(Range(0, 10, 1).map(_ => BatchProcessingStates.Open)))
+      } yield assert(openJobsSnapshot.jobStateSnapshots.keySet)(Assertion.equalTo(Set(jobKey))) &&
+        assert(openJobsSnapshot.jobStateSnapshots(jobKey).jobId)(Assertion.equalTo(jobKey)) &&
+        assert(openJobsSnapshot.jobStateSnapshots(jobKey).timePlacedInMillis)(Assertion.equalTo(3434839787L)) &&
+        assert(openJobsSnapshot.jobStateSnapshots(jobKey).jobLevelDirectives)(Assertion.equalTo(Set[JobDirective](JobDirectives.Process))) &&
+        assert(openJobsSnapshot.jobStateSnapshots(jobKey).actionForJob)(Assertion.equalTo(JobActions.ProcessAllNodes)) &&
+        assert(openJobsSnapshot.jobStateSnapshots(jobKey).batchesToState.keySet)(Assertion.equalTo(Range(0, 10, 1).toSet)) &&
+        assert(openJobsSnapshot.jobStateSnapshots(jobKey).batchesToState.values.toSeq)(Assertion.equalTo(Range(0, 10, 1).map(_ => BatchProcessingStates.Open)))
     }
 
   )

@@ -123,7 +123,7 @@ case class FileStorageJobStateReader(overviewReader: DataOverviewReader,
       jobLevelDirectives <- ZIO.attemptBlocking(loadJobLevelDirectivesByJobDirectoryName(jobDirName))
       batchStateMapping <- ZIO.attemptBlocking(findBatchesForJobWithState(jobDirName))
     } yield JobStateSnapshot(
-      jobNameAndCreationTime._1,
+      jobDirName,
       jobNameAndCreationTime._2,
       jobDefinition,
       jobLevelDirectives,

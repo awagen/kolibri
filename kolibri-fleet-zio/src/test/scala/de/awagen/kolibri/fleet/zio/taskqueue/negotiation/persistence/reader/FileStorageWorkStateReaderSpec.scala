@@ -46,7 +46,6 @@ object FileStorageWorkStateReaderSpec extends ZIOSpecDefault {
 
     test("read process state from processId") {
       val reader = workStateReader
-
       for {
         processState <- reader.processIdToProcessState(ProcessId("testJob1_3434839787", 0))
       } yield assert(processState)(Assertion.assertion("process state matches")(state => {
