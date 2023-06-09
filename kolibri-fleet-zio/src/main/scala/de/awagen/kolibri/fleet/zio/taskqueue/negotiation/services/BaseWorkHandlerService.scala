@@ -95,9 +95,9 @@ case class BaseWorkHandlerService[U <: TaggedWithType with DataPoint[Any], V <: 
   private[services] def interruptRunningProcessIds(processIds: Seq[ProcessId]): UIO[Chunk[(ProcessId, Exit[Throwable, Unit])]] = {
     for {
       processToFiberMapping <- processIdToFiberRef.get
-      _ <- ZIO.logInfo(s"Trying to interrupt running processes: $processIds")
+      _ <- ZIO.logDebug(s"Trying to interrupt running processes: $processIds")
       fiberInterruptResults <- ZStream.fromIterable(processIds)
-        .tap(processId => ZIO.logWarning(s"Trying to interrupt fiber for processId: $processId"))
+        .tap(processId => ZIO.logDebug(s"Trying to interrupt fiber for processId: $processId"))
         .map(processId => (processId, processToFiberMapping(processId)))
         .mapZIO(processIdAndFiber => {
           processIdAndFiber._2
@@ -105,7 +105,7 @@ case class BaseWorkHandlerService[U <: TaggedWithType with DataPoint[Any], V <: 
             .map(x => (processIdAndFiber._1, x))
         })
         .mapZIO[Any, Nothing, (ProcessId, Exit[Throwable, Unit])](result => {
-          (ZIO.logInfo(s"Fiber interrupted for processId '${result._1}', removing from mapping") &>
+          (ZIO.logDebug(s"Fiber interrupted for processId '${result._1}', removing from mapping") &>
             processIdToFiberRef.update(x => x - result._1) *>
               processIdToAggregatorRef.update(x => x - result._1)) *>
             ZIO.succeed((result._1, result._2))
@@ -262,6 +262,7 @@ case class BaseWorkHandlerService[U <: TaggedWithType with DataPoint[Any], V <: 
    * TODO: note that this is not safe in case we pick a Job from the queue and then
    * the further processing fails. Check baking it into an STM or change from Queue to size-limited Ref where
    * the element is only removed after all actions to initiate processing are finished
+   * (we can use a TQueue to take part in STM transaction instead of normal Queue)
    *
    * TODO: we also need to instantiate resources in case this is the first batch for the respective job.
    * The same on finish of a job, we need to ensure resources are cleared again
@@ -278,10 +279,8 @@ case class BaseWorkHandlerService[U <: TaggedWithType with DataPoint[Any], V <: 
   private def processNextBatch: Task[Boolean] = {
     (for {
       // pick
-      job <- ZIO.ifZIO(queue.isEmpty)(
-        onFalse = queue.take,
-        onTrue = ZIO.fail(new RuntimeException("no element available"))
-      )
+      jobOpt <- queue.poll
+      job <- ZIO.fromOption(jobOpt)
       processingStateForJobOpt <- workStateReader.processIdToProcessState(ProcessId(job.job.jobName, job.batchNr))
       res <- ZIO.ifZIO(ZIO.succeed(processingStateForJobOpt.nonEmpty))(
         onTrue = {

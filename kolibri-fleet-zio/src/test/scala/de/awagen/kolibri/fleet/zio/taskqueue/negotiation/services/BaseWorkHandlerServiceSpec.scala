@@ -83,7 +83,7 @@ object BaseWorkHandlerServiceSpec extends ZIOSpecDefault {
         )
         _ <- handler.manageBatches(SnapshotSample1.openJobsSnapshot)
         updatedProcessIdToFiberMapping <- handler.processIdToFiberRef.get
-        nextQueueElement <- handler.queue.take
+        nextQueueElementOpt <- handler.queue.poll
       } yield assert({
         val updateFileContentCaptor1: ArgumentCaptor[String] = ArgumentCaptor.forClass(classOf[String])
         verify(writer, times(2))
@@ -116,8 +116,8 @@ object BaseWorkHandlerServiceSpec extends ZIOSpecDefault {
             TestObjects.processingState2, batch1StateChange2.processingInfo.lastUpdate, ProcessingStatus.QUEUED
           )
       })) &&
-        assert(nextQueueElement)(Assertion.assertion("correct next queued element")(element => {
-          element.batchNr == 1 && element.job.jobName == jobId
+        assert(nextQueueElementOpt)(Assertion.assertion("correct next queued element")(element => {
+          element.get.batchNr == 1 && element.get.job.jobName == jobId
         })) &&
         assert(updatedProcessIdToFiberMapping)(Assertion.assertion("fiber mapping must be updated")(fiberMapping => {
           fiberMapping.keySet == Set(processId1, processId2)
