@@ -42,7 +42,9 @@ object BaseWorkHandlerServiceSpec extends ZIOSpecDefault {
       val processId1 = ProcessId("testJob1_3434839787", 0)
       val processId2 = ProcessId("testJob1_3434839787", 1)
       val processId3 = ProcessId("testJob1_3434839787", 2)
-      val addedBatchesHistoryInitState = Seq(processId1, processId2, processId3)
+      // only add processId1 and processId3 to history state, since processId2 refers to batch still in
+      // planned state and thus still needs to be added to the queue for processing
+      val addedBatchesHistoryInitState = Seq(processId1, processId3)
       val aggregatorState1: Aggregator[TaggedWithType with DataPoint[Unit], ValueWithCount[Int]] = countingAggregator(0, 0)
       val aggregatorState2: Aggregator[TaggedWithType with DataPoint[Unit], ValueWithCount[Int]] = countingAggregator(0, 0)
       val aggregatorState3: Aggregator[TaggedWithType with DataPoint[Unit], ValueWithCount[Int]] = countingAggregator(0, 0)
@@ -80,9 +82,45 @@ object BaseWorkHandlerServiceSpec extends ZIOSpecDefault {
         )
         _ <- handler.manageBatches(SnapshotSample1.openJobsSnapshot)
         updatedProcessIdToFiberMapping <- handler.processIdToFiberRef.get
-      } yield assert(updatedProcessIdToFiberMapping)(Assertion.assertion("fiber mapping must be updated")(fiberMapping => {
-        fiberMapping.keySet == Set(processId1, processId2)
-      }))
+        nextQueueElement <- handler.queue.take
+      } yield assert({
+        val updateFileContentCaptor1: ArgumentCaptor[String] = ArgumentCaptor.forClass(classOf[String])
+        verify(writer, times(2))
+          .write(
+            updateFileContentCaptor1.capture(),
+            ArgumentMatchers.eq("jobs/open/testJob1_3434839787/tasks/inprogress_state/abc234/0")
+          )
+        val updateFileContentCaptor2: ArgumentCaptor[String] = ArgumentCaptor.forClass(classOf[String])
+        verify(writer, times(2))
+          .write(
+            updateFileContentCaptor2.capture(),
+            ArgumentMatchers.eq("jobs/open/testJob1_3434839787/tasks/inprogress_state/abc234/1")
+          )
+        (updateFileContentCaptor1.getAllValues, updateFileContentCaptor2.getAllValues)
+      })(Assertion.assertion("true")(writeValues => {
+        val batch0StateChange1 = writeValues._1.get(0).parseJson.convertTo[ProcessingState]
+        val batch0StateChange2 = writeValues._1.get(1).parseJson.convertTo[ProcessingState]
+        val batch1StateChange1 = writeValues._2.get(0).parseJson.convertTo[ProcessingState]
+        val batch1StateChange2 = writeValues._2.get(1).parseJson.convertTo[ProcessingState]
+        batch0StateChange1 == TestObjects.copyProcessingStateWithAdjustedTimeAndState(
+          TestObjects.processingState1, batch0StateChange1.processingInfo.lastUpdate, ProcessingStatus.QUEUED
+        ) &&
+          batch0StateChange2 == TestObjects.copyProcessingStateWithAdjustedTimeAndState(
+            TestObjects.processingState1, batch0StateChange2.processingInfo.lastUpdate, ProcessingStatus.IN_PROGRESS
+          ) &&
+          batch1StateChange1 == TestObjects.copyProcessingStateWithAdjustedTimeAndState(
+            TestObjects.processingState2, batch1StateChange1.processingInfo.lastUpdate, ProcessingStatus.PLANNED
+          ) &&
+          batch1StateChange2 == TestObjects.copyProcessingStateWithAdjustedTimeAndState(
+            TestObjects.processingState2, batch1StateChange2.processingInfo.lastUpdate, ProcessingStatus.QUEUED
+          )
+      })) &&
+        assert(nextQueueElement)(Assertion.assertion("correct next queued element")(element => {
+          element.batchNr == 1 && element.job.jobName == "testJob1_3434839787"
+        })) &&
+        assert(updatedProcessIdToFiberMapping)(Assertion.assertion("fiber mapping must be updated")(fiberMapping => {
+          fiberMapping.keySet == Set(processId1, processId2)
+        }))
     },
 
     test("update process states") {

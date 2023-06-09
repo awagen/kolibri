@@ -155,6 +155,7 @@ case class BaseWorkHandlerService[U <: TaggedWithType with DataPoint[Any], V <: 
       // explicitly, the workStateReader needs to be able to tolerate if for some passed jobIds no progress info is
       // available)
       processStates <- workStateReader.getInProgressStateForCurrentNode(jobIdToJobDefAsRelevantForNode.keySet)
+      _ <- ZIO.logDebug(s"Process states: $processStates")
       // planned tasks are those we wanna add to the job-queue
       plannedTasks <- ZIO.succeed(
         processStates.values.flatten
@@ -162,6 +163,7 @@ case class BaseWorkHandlerService[U <: TaggedWithType with DataPoint[Any], V <: 
           .filter(x => !historySeq.contains(x.stateId))
           .toSeq
       )
+      _ <- ZIO.logDebug(s"Planned tasks: $plannedTasks")
       // for all planned tasks, generate the JobBatch object
       tasksToAdd <- ZIO.attempt(plannedTasks
         .filter(task => jobIdToJobDefAsRelevantForNode.contains(task.stateId.jobId))

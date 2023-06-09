@@ -33,6 +33,7 @@ import de.awagen.kolibri.storage.io.reader.{LocalDirectoryReader, LocalResourceF
 import de.awagen.kolibri.storage.io.writer.Writers.FileWriter
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer.FileStorageWorkStateWriter
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.JobStates.{JobStateSnapshot, OpenJobsSnapshot}
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ProcessingStatus.ProcessingStatus
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.{ProcessId, ProcessingState, ProcessingStateUtils, ProcessingStatus}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.BatchProcessingStates
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state._
@@ -148,7 +149,7 @@ object TestObjects {
           3434839787L,
           jobDef,
           Set(JobDirectives.Process),
-          Map(1 -> BatchProcessingStates.Open)
+          Map(0 -> BatchProcessingStates.Open, 1 -> BatchProcessingStates.Open)
         ))
       )
     }
@@ -168,5 +169,26 @@ object TestObjects {
       ProcessingStateUtils.timeInMillisToFormattedTime(1703845333850L)
     )
   )
+
+  val processingState2 = ProcessingState(
+    ProcessId(
+      "testJob1_3434839787",
+      1
+    ),
+    ProcessingInfo(
+      ProcessingStatus.PLANNED,
+      100,
+      0,
+      "abc234",
+      ProcessingStateUtils.timeInMillisToFormattedTime(1703845333850L)
+    )
+  )
+
+  def copyProcessingStateWithAdjustedTimeAndState(state: ProcessingState, timeStr: String, processingStatus: ProcessingStatus): ProcessingState = {
+    state.copy(processingInfo = state.processingInfo.copy(
+        lastUpdate = timeStr,
+        processingStatus = processingStatus
+      ))
+  }
 
 }
