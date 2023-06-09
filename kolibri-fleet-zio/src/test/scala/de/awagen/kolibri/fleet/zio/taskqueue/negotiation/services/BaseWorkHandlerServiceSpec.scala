@@ -39,9 +39,10 @@ object BaseWorkHandlerServiceSpec extends ZIOSpecDefault {
 
     test("manage batches") {
       val writer = fileWriterMock
-      val processId1 = ProcessId("testJob1_3434839787", 0)
-      val processId2 = ProcessId("testJob1_3434839787", 1)
-      val processId3 = ProcessId("testJob1_3434839787", 2)
+      val jobId = "testJob1_3434839787"
+      val processId1 = ProcessId(jobId, 0)
+      val processId2 = ProcessId(jobId, 1)
+      val processId3 = ProcessId(jobId, 2)
       // only add processId1 and processId3 to history state, since processId2 refers to batch still in
       // planned state and thus still needs to be added to the queue for processing
       val addedBatchesHistoryInitState = Seq(processId1, processId3)
@@ -88,13 +89,13 @@ object BaseWorkHandlerServiceSpec extends ZIOSpecDefault {
         verify(writer, times(2))
           .write(
             updateFileContentCaptor1.capture(),
-            ArgumentMatchers.eq("jobs/open/testJob1_3434839787/tasks/inprogress_state/abc234/0")
+            ArgumentMatchers.eq(s"jobs/open/$jobId/tasks/inprogress_state/${AppProperties.config.node_hash}/0")
           )
         val updateFileContentCaptor2: ArgumentCaptor[String] = ArgumentCaptor.forClass(classOf[String])
         verify(writer, times(2))
           .write(
             updateFileContentCaptor2.capture(),
-            ArgumentMatchers.eq("jobs/open/testJob1_3434839787/tasks/inprogress_state/abc234/1")
+            ArgumentMatchers.eq(s"jobs/open/$jobId/tasks/inprogress_state/${AppProperties.config.node_hash}/1")
           )
         (updateFileContentCaptor1.getAllValues, updateFileContentCaptor2.getAllValues)
       })(Assertion.assertion("true")(writeValues => {
@@ -116,7 +117,7 @@ object BaseWorkHandlerServiceSpec extends ZIOSpecDefault {
           )
       })) &&
         assert(nextQueueElement)(Assertion.assertion("correct next queued element")(element => {
-          element.batchNr == 1 && element.job.jobName == "testJob1_3434839787"
+          element.batchNr == 1 && element.job.jobName == jobId
         })) &&
         assert(updatedProcessIdToFiberMapping)(Assertion.assertion("fiber mapping must be updated")(fiberMapping => {
           fiberMapping.keySet == Set(processId1, processId2)
