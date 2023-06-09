@@ -39,6 +39,6 @@ trait WorkStateReader {
   /**
    * Given a processId, retrieve the current ProcessingState
    */
-  def processIdToProcessState(processId: ProcessId): Task[ProcessingState]
+  def processIdToProcessState(processId: ProcessId): Task[Option[ProcessingState]]
 
 }

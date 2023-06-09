@@ -33,8 +33,10 @@ import de.awagen.kolibri.storage.io.reader.{LocalDirectoryReader, LocalResourceF
 import de.awagen.kolibri.storage.io.writer.Writers.FileWriter
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer.FileStorageWorkStateWriter
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.JobStates.{JobStateSnapshot, OpenJobsSnapshot}
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ProcessId
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.{ProcessId, ProcessingState, ProcessingStateUtils, ProcessingStatus}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.BatchProcessingStates
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state._
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.utils.DataTypeUtils
 import org.mockito.ArgumentMatchers
 import org.mockito.Mockito.{doNothing, doReturn}
 import org.scalatestplus.mockito.MockitoSugar.mock
@@ -100,11 +102,13 @@ object TestObjects {
 
   def workHandler[U <: TaggedWithType with DataPoint[Any], V <: WithCount](writer: FileWriter[String, Unit],
                                                                            jobBatchQueueSize: Int = 5,
+                                                                           initialQueueContent: Seq[JobDefinitions.JobBatch[_, _, _ <: WithCount]] = Seq.empty,
                                                                            addedBatchesHistoryInitState: Seq[ProcessId] = Seq.empty[ProcessId],
                                                                            processIdToAggregatorMappingInitState: Map[ProcessId, Ref[Aggregators.Aggregator[U, V]]] = Map.empty[ProcessId, Ref[Aggregators.Aggregator[U, V]]],
                                                                            processIdToFiberMappingInitState: Map[ProcessId, Fiber.Runtime[Throwable, Unit]] = Map.empty[ProcessId, Fiber.Runtime[Throwable, Unit]]
-                                                                          ): Task[WorkHandlerService] = for {
+                                                                          ): Task[BaseWorkHandlerService[_ <: TaggedWithType with DataPoint[Any], _ <: WithCount]] = for {
     queue <- Queue.bounded[JobDefinitions.JobBatch[_, _, _ <: WithCount]](jobBatchQueueSize)
+    _ <- DataTypeUtils.addElementsToQueue(initialQueueContent, queue)
     addedBatchesHistory <- Ref.make(addedBatchesHistoryInitState)
     processIdToAggregatorMappingRef <- Ref.make(processIdToAggregatorMappingInitState)
     processIdToFiberMappingRef <- Ref.make(processIdToFiberMappingInitState)
@@ -131,8 +135,8 @@ object TestObjects {
       JobDefinitions.simpleWaitJob(
         "testJob1_3434839787",
         1,
-        1000L,
-        1,
+        1L,
+        100,
         batchAggregationInfo
       )
     }
@@ -150,5 +154,19 @@ object TestObjects {
     }
 
   }
+
+  val processingState1 = ProcessingState(
+    ProcessId(
+      "testJob1_3434839787",
+      0
+    ),
+    ProcessingInfo(
+      ProcessingStatus.DONE,
+      100,
+      0,
+      "abc234",
+      ProcessingStateUtils.timeInMillisToFormattedTime(1703845333850L)
+    )
+  )
 
 }

@@ -66,15 +66,20 @@ case class FileStorageWorkStateReader(filterToOverviewReader: (String => Boolean
 
   /**
    * Given a processId, parse the respective in-progress state file and return information as ProcessingState.
+   * Note that in case the file system doesnt see the respective file,
+   * there wont be a processing state value, hus return value is Option here.
    */
-  override def processIdToProcessState(processId: ProcessId): Task[ProcessingState] = {
+  override def processIdToProcessState(processId: ProcessId): Task[Option[ProcessingState]] = {
     for {
-      processFileContent <- ZIO.attemptBlocking(
-        reader.read(Directories.InProgressTasks.getInProgressFilePathForJob(processId.jobId, processId.batchNr))
-          .mkString("\n")
+      processFileContentOpt <- ZIO.attemptBlockingIO(
+        Some(reader.read(Directories.InProgressTasks.getInProgressFilePathForJob(processId.jobId, processId.batchNr))
+          .mkString("\n"))
+      ).catchAll(ex =>
+        ZIO.logWarning(s"Could not read in-progress file for processId '$processId':\n$ex")
+          *> ZIO.succeed(None)
       )
       processingState <- ZIO.attempt({
-        processFileContent.parseJson.convertTo[ProcessingState]
+        processFileContentOpt.map(x => x.parseJson.convertTo[ProcessingState])
       })
     } yield processingState
   }
@@ -87,34 +92,24 @@ case class FileStorageWorkStateReader(filterToOverviewReader: (String => Boolean
     for {
       jobIdToProcessIds <- getInProgressIdsForCurrentNode(jobs)
       processingStateMapping <- {
-          val v: immutable.Iterable[ZIO[Any, Throwable, (String, Set[ProcessingState])]] = jobIdToProcessIds.map(x => {
-            ZStream.fromIterable(x._2)
-              .mapZIO(processId => {
-                processIdToProcessState(processId)
-                  .onError(e => ZIO.logError(s"Error parsing process state for id: $processId:\n$e"))
-              })
-              .either
-              .filter({
-                case Right(_) => true
-                case _ => false
-              })
-              .map(x => x.toOption.get)
-              .runCollect
-              .map(y => (x._1, y.toSet))
-          })
-          ZIO.collectAll(v).map(z => z.toMap)
-        }
+        val v: immutable.Iterable[ZIO[Any, Throwable, (String, Set[ProcessingState])]] = jobIdToProcessIds.map(x => {
+          ZStream.fromIterable(x._2)
+            .mapZIO(processId => {
+              processIdToProcessState(processId)
+                .onError(e => ZIO.logError(s"Error parsing process state for id: $processId:\n$e"))
+            })
+            .either
+            .filter({
+              case Right(_) => true
+              case _ => false
+            })
+            .map(x => x.toOption.get)
+            .runCollect
+            .map(y => (x._1, y.filter(z => z.nonEmpty).map(z => z.get).toSet))
+        })
+        ZIO.collectAll(v).map(z => z.toMap)
+      }
     } yield processingStateMapping
   }
-
-
-  // TODO: we need to be able to get a full picture of in-progress states, over all jobs and nodes
-  // TODO: then we also need further methods to boil this down. We might start with one object and then provide
-  // filter methods in the objects
-//  def getInProgressStatesForAllJobsForCurrentNode: Task[Unit]
-//
-//  def getInProgressStatesForAllNodes: Task[Unit]
-//
-//  def getInProgressStatesForNode(nodeHash: String): Task[Unit]
 
 }

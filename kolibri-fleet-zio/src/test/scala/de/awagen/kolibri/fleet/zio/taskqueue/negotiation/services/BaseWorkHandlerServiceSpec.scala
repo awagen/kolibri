@@ -21,10 +21,11 @@ import de.awagen.kolibri.datatypes.tagging.TaggedWithType
 import de.awagen.kolibri.datatypes.values.DataPoint
 import de.awagen.kolibri.datatypes.values.aggregation.immutable.Aggregators.Aggregator
 import de.awagen.kolibri.fleet.zio.config.AppProperties
-import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.ValueWithCount
+import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.{JobBatch, ValueWithCount}
 import de.awagen.kolibri.fleet.zio.execution.aggregation.Aggregators.countingAggregator
 import de.awagen.kolibri.fleet.zio.io.json.ProcessingStateJsonProtocol.processingStateFormat
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state._
+import de.awagen.kolibri.fleet.zio.testutils.TestObjects
 import de.awagen.kolibri.fleet.zio.testutils.TestObjects.{SnapshotSample1, fileWriterMock, workHandler}
 import org.mockito.Mockito.{times, verify}
 import org.mockito.{ArgumentCaptor, ArgumentMatchers}
@@ -36,14 +37,52 @@ object BaseWorkHandlerServiceSpec extends ZIOSpecDefault {
 
   override def spec: Spec[TestEnvironment with Scope, Any] = suite("BaseWorkHandlerServiceSpec")(
 
-    // TODO: test criteria besides pure execution
     test("manage batches") {
       val writer = fileWriterMock
+      val processId1 = ProcessId("testJob1_3434839787", 0)
+      val processId2 = ProcessId("testJob1_3434839787", 1)
+      val processId3 = ProcessId("testJob1_3434839787", 2)
+      val addedBatchesHistoryInitState = Seq(processId1, processId2, processId3)
+      val aggregatorState1: Aggregator[TaggedWithType with DataPoint[Unit], ValueWithCount[Int]] = countingAggregator(0, 0)
+      val aggregatorState2: Aggregator[TaggedWithType with DataPoint[Unit], ValueWithCount[Int]] = countingAggregator(0, 0)
+      val aggregatorState3: Aggregator[TaggedWithType with DataPoint[Unit], ValueWithCount[Int]] = countingAggregator(0, 0)
       for {
-        handler <- workHandler[TaggedWithType with DataPoint[Unit], ValueWithCount[Int]](writer)
+        aggregatorRef1 <- Ref.make(aggregatorState1)
+        aggregatorRef2 <- Ref.make(aggregatorState2)
+        aggregatorRef3 <- Ref.make(aggregatorState3)
+        fiber1 <- ZIO.attemptBlockingInterrupt({
+          Thread.sleep(10000)
+        })
+          .onInterrupt(ZIO.logInfo("fiber1 interrupted"))
+          .fork
+        fiber2 <- ZIO.attemptBlockingInterrupt({
+          Thread.sleep(10000)
+        })
+          .onInterrupt(ZIO.logInfo("fiber2 interrupted"))
+          .fork
+        fiber3 <- ZIO.attemptBlockingInterrupt({
+          Thread.sleep(10000)
+        })
+          .onInterrupt(ZIO.logInfo("fiber3 interrupted"))
+          .fork
+        processToFiberMapping <- ZIO.succeed(Map(processId1 -> fiber1, processId2 -> fiber2, processId3 -> fiber3))
+        handler <- workHandler[TaggedWithType with DataPoint[Unit], ValueWithCount[Int]](
+          writer,
+          jobBatchQueueSize = 5,
+          initialQueueContent = Seq(
+            JobBatch(
+              TestObjects.SnapshotSample1.jobDef, 0
+            )
+          ),
+          addedBatchesHistoryInitState = addedBatchesHistoryInitState,
+          processIdToAggregatorMappingInitState = Map(processId1 -> aggregatorRef1, processId2 -> aggregatorRef2, processId3 -> aggregatorRef3),
+          processIdToFiberMappingInitState = processToFiberMapping
+        )
         _ <- handler.manageBatches(SnapshotSample1.openJobsSnapshot)
-      } yield ()
-      assertTrue(true)
+        updatedProcessIdToFiberMapping <- handler.processIdToFiberRef.get
+      } yield assert(updatedProcessIdToFiberMapping)(Assertion.assertion("fiber mapping must be updated")(fiberMapping => {
+        fiberMapping.keySet == Set(processId1, processId2)
+      }))
     },
 
     test("update process states") {
@@ -55,19 +94,7 @@ object BaseWorkHandlerServiceSpec extends ZIOSpecDefault {
       val processId = ProcessId(jobId, batchNr)
       val addedBatchesHistoryInitState = Seq(processId)
       val aggregatorState: Aggregator[TaggedWithType with DataPoint[Unit], ValueWithCount[Int]] = countingAggregator(0, 0)
-      val expectedProcessingState = ProcessingState(
-        ProcessId(
-          "testJob1_3434839787",
-          0
-        ),
-        ProcessingInfo(
-          ProcessingStatus.DONE,
-          100,
-          0,
-          "abc234",
-          ProcessingStateUtils.timeInMillisToFormattedTime(1703845333850L)
-        )
-      )
+      val expectedProcessingState = TestObjects.processingState1
       // when, then
       for {
         aggregatorRef <- Ref.make(aggregatorState)

@@ -43,6 +43,9 @@ import scala.reflect.runtime.universe._
  * state so far and the Fiber executing it. This allows picking intermediate states / info about processing
  * state from aggregator and interruption of the processing, e.g in case the job was marked to be stopped
  * on the current instance (or all).
+ *
+ * TODO: might wanna make it a Cancellable, e.g include some atomic reference to some "processing"-flag,
+ * which can be used as killswitch (e.g setting to false)
  */
 object TaskWorker extends Worker {
 

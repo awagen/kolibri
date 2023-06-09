@@ -60,7 +60,7 @@ object FileStorageWorkStateReaderSpec extends ZIOSpecDefault {
       for {
         processState <- reader.processIdToProcessState(ProcessId("testJob1_3434839787", 0))
       } yield assert(processState)(Assertion.assertion("process state matches")(state => {
-        state == expectedState1
+        state.get == expectedState1
       }))
     },
 
