@@ -17,7 +17,8 @@
 
 package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader
 
-import ClaimReader.ClaimTopic.ClaimTopic
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.ClaimTopics.JobTaskResetClaim.typePrefix
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.ClaimTopics._
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ClaimStates.Claim
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.JobStates.OpenJobsSnapshot
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ClaimStatus.ClaimVerifyStatus.ClaimVerifyStatus
@@ -26,13 +27,58 @@ import zio.Task
 
 object ClaimReader {
 
-  object ClaimTopic extends Enumeration {
-    type ClaimTopic = Value
+  object ClaimTopics {
 
-    val JOB_TASK_PROCESSING_CLAIM,
-    JOB_TASK_WRAP_UP_CLAIM,
-    JOB_TASK_RESET_CLAIM,
-    UNKNOWN = Value
+    sealed trait ClaimTopic
+
+    case object JobTaskProcessingClaim extends ClaimTopic {
+
+      val id: String = "JOB_TASK_PROCESSING_CLAIM"
+
+      override def toString: String = id
+
+    }
+
+    case object JobWrapUpClaim extends ClaimTopic {
+
+      val id: String = "JOB_WRAP_UP_CLAIM"
+
+      override def toString: String = id
+
+    }
+
+    object JobTaskResetClaim {
+
+      val argumentDelimiter = "-"
+      val typePrefix = "JOB_TASK_RESET_CLAIM"
+
+      def fromString(str: String): JobTaskResetClaim = {
+        JobTaskResetClaim(str.split(argumentDelimiter)(1))
+      }
+
+    }
+
+    sealed case class JobTaskResetClaim(nodeHash: String) extends ClaimTopic {
+
+      override def toString: String = s"$typePrefix-$nodeHash"
+
+    }
+
+    case object Unknown extends ClaimTopic {
+
+      val id: String = "UNKNOWN"
+
+      override def toString: String = id
+
+    }
+
+  }
+
+  def stringToClaimTopic(str: String): ClaimTopic = str match {
+    case JobTaskProcessingClaim.id => JobTaskProcessingClaim
+    case JobWrapUpClaim.id => JobWrapUpClaim
+    case v if v.startsWith(JobTaskResetClaim.typePrefix) => JobTaskResetClaim.fromString(str)
+    case _ => Unknown
   }
 
 }

@@ -19,11 +19,12 @@ package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer
 
 import de.awagen.kolibri.datatypes.types.Types.WithCount
 import de.awagen.kolibri.fleet.zio.config.AppProperties.config
-import de.awagen.kolibri.fleet.zio.config.Directories.JobTopLevel
+import de.awagen.kolibri.fleet.zio.config.Directories.{JobTopLevel, OpenTasks}
 import de.awagen.kolibri.fleet.zio.config.Directories.JobTopLevel.jobNameToJobDefinitionFile
 import de.awagen.kolibri.fleet.zio.config.Directories.OpenTasks.jobNameAndBatchNrToBatchFile
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobDefinition
 import de.awagen.kolibri.fleet.zio.io.json.JobDefinitionJsonProtocol.JobDefinitionFormat
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ProcessId
 import de.awagen.kolibri.storage.io.writer.Writers.Writer
 import spray.json._
 import zio.{Task, ZIO}
@@ -68,4 +69,13 @@ case class FileStorageJobStateWriter(writer: Writer[String, String, _]) extends 
     })
   }
 
+  override def writeBatchToOpen(processId: ProcessId): Task[Unit] = {
+    ZIO.attemptBlockingIO({
+      val writePath = OpenTasks.jobNameAndBatchNrToBatchFile(processId.jobId, processId.batchNr)
+      writer.write("", writePath)
+    }).flatMap({
+      case Left(e) => ZIO.fail(e)
+      case Right(v) => ZIO.succeed(v)
+    })
+  }
 }

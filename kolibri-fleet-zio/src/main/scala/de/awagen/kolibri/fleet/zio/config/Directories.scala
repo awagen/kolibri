@@ -21,7 +21,7 @@ import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.fleet.zio.config.AppProperties.config
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.format.FileFormats.{ClaimFileNameFormat, InProgressTaskFileNameFormat}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.format.NameFormats.Parts.JOB_ID
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.ClaimTopic.ClaimTopic
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.ClaimTopics.ClaimTopic
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ClaimStates._
 
 /**
@@ -102,9 +102,9 @@ object Directories {
       s"${InProgressTasks.jobTasksInProgressStateSubFolder(jobId, isOpenJob)}/$nodeHash"
     }
 
-    def getInProgressFilePathForJob(jobId: String, batchNr: Int): String = {
+    def getInProgressFilePathForJob(jobId: String, batchNr: Int, nodeHash: String): String = {
       val fileName: String = InProgressTaskFileNameFormat.getFileName(batchNr)
-      s"${InProgressTasks.jobTasksInProgressStateSubFolder(jobId, isOpenJob = true)}/${AppProperties.config.node_hash}/$fileName"
+      s"${InProgressTasks.jobTasksInProgressStateSubFolder(jobId, isOpenJob = true)}/$nodeHash/$fileName"
     }
   }
 

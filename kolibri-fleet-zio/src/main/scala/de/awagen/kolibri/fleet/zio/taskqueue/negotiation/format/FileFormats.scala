@@ -20,7 +20,7 @@ package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.format
 import de.awagen.kolibri.datatypes.mutable.stores.{TypeTaggedMap, TypedMapStore, WeaklyTypedMap}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.format.NameFormats.FileNameFormat
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.format.NameFormats.Parts.{BATCH_NR, CREATION_TIME_IN_MILLIS, JOB_ID, NODE_HASH, TOPIC}
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.ClaimTopic
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.stringToClaimTopic
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ClaimStates.Claim
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ProcessId
 
@@ -77,7 +77,8 @@ object FileFormats {
         fields.get[Int](BATCH_NR.namedClassTyped.name).get,
         fields.get[String](NODE_HASH.namedClassTyped.name).get,
         fields.get[Long](CREATION_TIME_IN_MILLIS.namedClassTyped.name).get,
-        fields.get[String](TOPIC.namedClassTyped.name).map(x => ClaimTopic.withName(x)).get
+        fields.get[String](TOPIC.namedClassTyped.name)
+          .map(x => stringToClaimTopic(x)).get
       )
     }
   }

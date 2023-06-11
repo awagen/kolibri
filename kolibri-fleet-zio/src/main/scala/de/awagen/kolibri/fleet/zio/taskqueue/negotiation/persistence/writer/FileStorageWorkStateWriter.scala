@@ -16,7 +16,8 @@
 
 
 package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer
-import de.awagen.kolibri.fleet.zio.config.Directories
+
+import de.awagen.kolibri.fleet.zio.config.{AppProperties, Directories}
 import de.awagen.kolibri.fleet.zio.io.json.ProcessingStateJsonProtocol
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.{ProcessId, ProcessingState}
 import de.awagen.kolibri.storage.io.writer.Writers.Writer
@@ -26,16 +27,20 @@ case class FileStorageWorkStateWriter(writer: Writer[String, String, _]) extends
 
   override def updateInProgressState(processingState: ProcessingState): Task[Unit] = {
     ZIO.attemptBlocking({
-      val file = Directories.InProgressTasks.getInProgressFilePathForJob(processingState.stateId.jobId, processingState.stateId.batchNr)
+      val file = Directories.InProgressTasks.getInProgressFilePathForJob(
+        processingState.stateId.jobId,
+        processingState.stateId.batchNr,
+        AppProperties.config.node_hash
+      )
       val processingFileStr = ProcessingStateJsonProtocol.processingStateFormat.write(processingState).toString()
       writer.write(processingFileStr, file)
     }).flatMap(res => ZIO.fromEither(res))
       .map(_ => ())
   }
 
-  override def deleteInProgressState(processId: ProcessId): Task[Unit] = {
+  override def deleteInProgressState(processId: ProcessId, nodeHash: String): Task[Unit] = {
     ZIO.attemptBlocking({
-      val file = Directories.InProgressTasks.getInProgressFilePathForJob(processId.jobId, processId.batchNr)
+      val file = Directories.InProgressTasks.getInProgressFilePathForJob(processId.jobId, processId.batchNr, nodeHash)
       writer.delete(file)
     }).flatMap(res => ZIO.fromEither(res))
       .map(_ => ())

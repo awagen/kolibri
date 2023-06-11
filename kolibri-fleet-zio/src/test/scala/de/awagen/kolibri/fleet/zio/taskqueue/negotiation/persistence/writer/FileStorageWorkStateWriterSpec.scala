@@ -40,7 +40,7 @@ object FileStorageWorkStateWriterSpec extends ZIOSpecDefault {
       val nodeHash = AppProperties.config.node_hash
       // when, then
       for {
-        _ <- stateWriter.deleteInProgressState(ProcessId(jobName, batchNr))
+        _ <- stateWriter.deleteInProgressState(ProcessId(jobName, batchNr), nodeHash)
       } yield assert({
         verify(writer, times(1)).delete(
           ArgumentMatchers.eq(s"jobs/open/$jobName/tasks/inprogress_state/$nodeHash/$batchNr")

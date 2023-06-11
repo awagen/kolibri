@@ -26,7 +26,7 @@ import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobBatch
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.WorkStateReader
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer.WorkStateWriter
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.processing.TaskWorker
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services.BaseWorkHandlerService.BatchAndProcessingState
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services.BaseWorkHandlerService.{BatchAndProcessingState, addTasksToHistory, compareRunningBatchesWithSnapshotAndInterruptIfIndicated, getCompletedBatches, removeKeysFromMappings}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.JobStates.OpenJobsSnapshot
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ProcessingStatus.ProcessingStatus
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state._
@@ -38,6 +38,87 @@ import zio.{Chunk, Exit, Fiber, Queue, Ref, Task, UIO, ZIO}
 object BaseWorkHandlerService {
 
   case class BatchAndProcessingState(batch: JobBatch[_, _, _ <: WithCount], processingState: ProcessingState)
+
+  /**
+   * Logic to interrupt running jobs that are not present in the
+   * persisted processing states anymore. This might mean that a claimed job was revoked
+   * due to node inactivity or similar. Ensures consistency of processing with persisted
+   * processing state
+   *
+   * @param processingIds         - the processing states currently persisted
+   * @param processToFiberMapping - the mapping of processIds to the actual Fiber on which they are currently processed.
+   *                              This reflects the jobs that are actually running right now (or that completed already).
+   *                              There can be an inconsistency between currently running jobs and those for which
+   *                              an in-progress state exists, e.g in case the node did not update the in-progress state
+   *                              frequent enough, in which case other nodes can claim the right to revoke the
+   *                              claimed batch for this node by means of removing the in-progress state for the current
+   *                              node and moving the batch back to "open", for all nodes to claim
+   */
+  private def compareRunningBatchesWithSnapshotAndInterruptIfIndicated(processingIds: Seq[ProcessId],
+                                                                       processToFiberMapping: Map[ProcessId, Fiber.Runtime[Throwable, Unit]]): Task[Chunk[(ProcessId, Exit[Throwable, Unit])]] = {
+    for {
+      runningBatchesWithoutInProgressFile <- ZIO.attempt(processToFiberMapping.keys.filter(batch => !processingIds.contains(batch)).toSeq)
+      fiberInterruptResults <- interruptRunningProcessIds(runningBatchesWithoutInProgressFile, processToFiberMapping)
+    } yield fiberInterruptResults
+  }
+
+  /**
+   * NOTE: in case a blocking operation is wrapped in ZIO.attemptBlocking, a fiber interrupt will not cause interruption
+   * of the execution. To ensure this we need ZIO.attemptBlockingInterrupt or attemptBlockingCancelable
+   * (https://zio.dev/reference/interruption/).
+   * Note that the former adds overhead, the latter needs manually adding
+   * some kill-switch (e.g atomic reference used as flag to handle stopping of execution
+   * excplicitly or similar).
+   */
+  private[services] def interruptRunningProcessIds(processIds: Seq[ProcessId],
+                                                   processToFiberMapping: Map[ProcessId, Fiber.Runtime[Throwable, Unit]]): UIO[Chunk[(ProcessId, Exit[Throwable, Unit])]] = {
+    for {
+      _ <- ZIO.logDebug(s"Trying to interrupt running processes: $processIds")
+      fiberInterruptResults <- ZStream.fromIterable(processIds)
+        .tap(processId => ZIO.logDebug(s"Trying to interrupt fiber for processId: $processId"))
+        .map(processId => (processId, processToFiberMapping(processId)))
+        .mapZIO(processIdAndFiber => {
+          processIdAndFiber._2
+            .interrupt
+            .map(x => (processIdAndFiber._1, x))
+        })
+        .runCollect
+    } yield fiberInterruptResults
+  }
+
+  /**
+   * Remove set of keys from passed mapping references
+   */
+  private[services] def removeKeysFromMappings[T](keys: Set[T], mappings: Seq[Ref[Map[T, Any]]]): ZIO[Any, Nothing, Unit] = {
+    ZStream.fromIterable(mappings)
+      .mapZIO(mapRef => {
+        ZStream.fromIterable(keys)
+          .foreach(key => mapRef.update(map => map - key))
+      })
+      .runDrain
+  }
+
+  /**
+   * Check the fiber runtimes corresponding to the tasks in progress and return those with status DONE
+   */
+  private def getCompletedBatches(processFiberMapping: Map[ProcessId, Fiber.Runtime[Throwable, Unit]]): Task[Chunk[ProcessId]] = for {
+    completedProcesses <- ZStream.fromIterable(processFiberMapping.toSeq)
+      .mapZIO(tuple => for {
+        status <- tuple._2.status
+      } yield (tuple._1, status))
+      .filter(x => x._2 == Fiber.Status.Done)
+      .map(x => x._1)
+      .runCollect
+  } yield completedProcesses
+
+  private def addTasksToHistory(tasks: Seq[ProcessId], historyRef: Ref[Seq[ProcessId]]): ZIO[Any, Nothing, Unit] = {
+    ZStream.fromIterable(tasks)
+      .foreach(task => {
+        historyRef.update(
+          history => (history :+ task).takeRight(AppProperties.config.pulledTaskHistorySize)
+        )
+      })
+  }
 
 }
 
@@ -59,61 +140,6 @@ case class BaseWorkHandlerService[U <: TaggedWithType with DataPoint[Any], V <: 
                                                                                            processIdToAggregatorRef: Ref[Map[ProcessId, Ref[Aggregator[U, V]]]],
                                                                                            processIdToFiberRef: Ref[Map[ProcessId, Fiber.Runtime[Throwable, Unit]]]) extends WorkHandlerService {
 
-
-  /**
-   * Logic to interrupt running jobs that are not present in the
-   * persisted processing states anymore. This might mean that a claimed job was revoked
-   * due to node inactivity or similar. Ensures consistency of processing with persisted
-   * processing state
-   *
-   * @param processingStates      - the processing states currently persisted
-   * @param processToFiberMapping - the mapping of processIds to the actual Fiber on which they are currently processed.
-   *                              This reflects the jobs that are actually running right now (or that completed already).
-   *                              There can be an inconsistency between currently running jobs and those for which
-   *                              an in-progress state exists, e.g in case the node did not update the in-progress state
-   *                              frequent enough, in which case other nodes can claim the right to revoke the
-   *                              claimed batch for this node by means of removing the in-progress state for the current
-   *                              node and moving the batch back to "open", for all nodes to claim
-   */
-  private def compareRunningBatchesWithSnapshotAndInterruptIfIndicated(processingStates: Seq[ProcessingState],
-                                                                       processToFiberMapping: Map[ProcessId, Fiber.Runtime[_, Unit]]): Task[Chunk[(ProcessId, Exit[Throwable, Unit])]] = {
-    for {
-      batchesWithProgressFile <- ZIO.attempt(processingStates.map(x => x.stateId))
-      runningBatchesWithoutInProgressFile <- ZIO.attempt(processToFiberMapping.keys.filter(batch => !batchesWithProgressFile.contains(batch)).toSeq)
-      fiberInterruptResults <- interruptRunningProcessIds(runningBatchesWithoutInProgressFile)
-    } yield fiberInterruptResults
-  }
-
-  /**
-   * NOTE: in case a blocking operation is wrapped in ZIO.attemptBlocking, a fiber interrupt will not cause interruption
-   * of the execution. To ensure this we need ZIO.attemptBlockingInterrupt or attemptBlockingCancelable
-   * (https://zio.dev/reference/interruption/).
-   * Note that the former adds overhead, the latter needs manually adding
-   * some kill-switch (e.g atomic reference used as flag to handle stopping of execution
-   * excplicitly or similar).
-   */
-  private[services] def interruptRunningProcessIds(processIds: Seq[ProcessId]): UIO[Chunk[(ProcessId, Exit[Throwable, Unit])]] = {
-    for {
-      processToFiberMapping <- processIdToFiberRef.get
-      _ <- ZIO.logDebug(s"Trying to interrupt running processes: $processIds")
-      fiberInterruptResults <- ZStream.fromIterable(processIds)
-        .tap(processId => ZIO.logDebug(s"Trying to interrupt fiber for processId: $processId"))
-        .map(processId => (processId, processToFiberMapping(processId)))
-        .mapZIO(processIdAndFiber => {
-          processIdAndFiber._2
-            .interrupt
-            .map(x => (processIdAndFiber._1, x))
-        })
-        .mapZIO[Any, Nothing, (ProcessId, Exit[Throwable, Unit])](result => {
-          (ZIO.logDebug(s"Fiber interrupted for processId '${result._1}', removing from mapping") &>
-            processIdToFiberRef.update(x => x - result._1) *>
-              processIdToAggregatorRef.update(x => x - result._1)) *>
-            ZIO.succeed((result._1, result._2))
-        })
-        .runCollect
-    } yield fiberInterruptResults
-  }
-
   /**
    * Given a current snapshot of the open job state and mapping of ProcessId to Fiber,
    * interrupt processes that do not match the current persisted state.
@@ -123,15 +149,14 @@ case class BaseWorkHandlerService[U <: TaggedWithType with DataPoint[Any], V <: 
    *                              is running on
    */
   private def cleanUpProcessesWithMissingProcessingStates(currentOpenJobIds: Set[String],
-                                                          processToFiberMapping: Map[ProcessId, Fiber.Runtime[_, Unit]]): Task[Unit] = {
+                                                          processToFiberMapping: Map[ProcessId, Fiber.Runtime[Throwable, Unit]]): Task[Unit] = {
     for {
       // get all process states for the current jobs
       existingProcessStatesForJobs <- workStateReader.getInProgressStateForCurrentNode(currentOpenJobIds)
       // interrupt all running processes for which there is no progress state persisted
-      _ <- compareRunningBatchesWithSnapshotAndInterruptIfIndicated(
-        existingProcessStatesForJobs.values.flatten.toSeq,
-        processToFiberMapping
-      )
+      fiberInterruptResults <- compareRunningBatchesWithSnapshotAndInterruptIfIndicated(existingProcessStatesForJobs.values.flatten.map(x => x.stateId).toSeq, processToFiberMapping)
+      // remove the cancelled processIds from the aggregator and fiber mappings
+      _ <- removeKeysFromMappings(fiberInterruptResults.map(x => x._1).toSet, Seq(processIdToFiberRef, processIdToAggregatorRef).map(x => x.asInstanceOf[Ref[Map[ProcessId, Any]]]))
     } yield ()
   }
 
@@ -165,19 +190,20 @@ case class BaseWorkHandlerService[U <: TaggedWithType with DataPoint[Any], V <: 
       )
       _ <- ZIO.logDebug(s"Planned tasks: $plannedTasks")
       // for all planned tasks, generate the JobBatch object
-      tasksToAdd <- ZIO.attempt(plannedTasks
-        .filter(task => jobIdToJobDefAsRelevantForNode.contains(task.stateId.jobId))
-        .map(task =>
-          BatchAndProcessingState(
-            JobBatch(jobIdToJobDefAsRelevantForNode(task.stateId.jobId), task.stateId.batchNr),
-            task
+      tasksToAdd <- ZIO.attempt(
+        plannedTasks
+          .filter(task => jobIdToJobDefAsRelevantForNode.contains(task.stateId.jobId))
+          .map(task =>
+            BatchAndProcessingState(
+              JobBatch(jobIdToJobDefAsRelevantForNode(task.stateId.jobId), task.stateId.batchNr),
+              task
+            )
           )
-        )
       )
     } yield tasksToAdd
   }
 
-  private def movePlannedJobsToQueued(batches: Seq[BatchAndProcessingState]): ZIO[Any, Nothing, Chunk[Either[Throwable, ProcessingState]]] = {
+  private def movePlannedJobsToQueued(batches: Seq[BatchAndProcessingState]): ZIO[Any, Nothing, Chunk[Either[Throwable, ProcessId]]] = {
     // update processing states and add planned tasks to queue
     ZStream.fromIterable(batches)
       .mapZIO(batchAndState => changeStateToQueuedAndAddToQueue(batchAndState).either)
@@ -188,16 +214,13 @@ case class BaseWorkHandlerService[U <: TaggedWithType with DataPoint[Any], V <: 
    * Handling planned task by updating its processing status to state "QUEUED" and then adding the task to the
    * queue. If updating the processing status fails, the task will not be added to the queue for further processing
    */
-  private def changeStateToQueuedAndAddToQueue(batchAndProcessingState: BatchAndProcessingState): Task[ProcessingState] = {
+  private def changeStateToQueuedAndAddToQueue(batchAndProcessingState: BatchAndProcessingState): Task[ProcessId] = {
     for {
       _ <- persistProcessingStateUpdate(Seq(batchAndProcessingState.processingState), ProcessingStatus.QUEUED).map(x => x.head).flatMap({
         case true => ZIO.succeed(true)
         case false => ZIO.fail(new RuntimeException("Could not change processing state"))
       })
-      addResult <- addPlannedTasksToQueueAndHistory(
-        Seq(batchAndProcessingState.batch),
-        Seq(batchAndProcessingState.processingState)
-      )
+      addResult <- addTasksToQueue(Seq(batchAndProcessingState.batch), Seq(batchAndProcessingState.processingState.stateId))
     } yield addResult.head
 
   }
@@ -213,19 +236,16 @@ case class BaseWorkHandlerService[U <: TaggedWithType with DataPoint[Any], V <: 
    * @return for every batch that could succesfully be added to the queue return the ProcessingState. Those not contained
    *         were not added.
    */
-  private def addPlannedTasksToQueueAndHistory(tasksToAdd: Seq[JobBatch[_, _, _ <: WithCount]], plannedTasks: Seq[ProcessingState]): Task[Seq[ProcessingState]] = {
+  private def addTasksToQueue(tasksToAdd: Seq[JobBatch[_, _, _ <: WithCount]], plannedTasks: Seq[ProcessId]): ZIO[Any, Throwable, Seq[ProcessId]] = {
     for {
       queueAddResult <- {
         DataTypeUtils.addElementsToQueue(tasksToAdd, queue).map(x => {
           val onlySuccesses = x.filter(identity)
           val processIds = tasksToAdd
             .take(onlySuccesses.size)
-            .map(batch => plannedTasks.find(tasks => tasks.stateId.jobId == batch.job.jobName && tasks.stateId.batchNr == batch.batchNr))
+            .map(batch => plannedTasks.find(tasks => tasks.jobId == batch.job.jobName && tasks.batchNr == batch.batchNr))
             .filter(x => x.nonEmpty)
             .map(x => x.get)
-          processIds.foreach(id => addedBatchesHistoryRef.update(
-            history => (history :+ id.stateId).takeRight(AppProperties.config.pulledTaskHistorySize)
-          ))
           processIds
         })
       }
@@ -259,11 +279,6 @@ case class BaseWorkHandlerService[U <: TaggedWithType with DataPoint[Any], V <: 
    * Pick next job to process, and initialize processing, keep ref to aggregator and
    * the fiber the processing is running on to be able to interrupt the computation.
    *
-   * TODO: note that this is not safe in case we pick a Job from the queue and then
-   * the further processing fails. Check baking it into an STM or change from Queue to size-limited Ref where
-   * the element is only removed after all actions to initiate processing are finished
-   * (we can use a TQueue to take part in STM transaction instead of normal Queue)
-   *
    * TODO: we also need to instantiate resources in case this is the first batch for the respective job.
    * The same on finish of a job, we need to ensure resources are cleared again
    *
@@ -278,9 +293,8 @@ case class BaseWorkHandlerService[U <: TaggedWithType with DataPoint[Any], V <: 
    */
   private def processNextBatch: Task[Boolean] = {
     (for {
-      // pick
-      jobOpt <- queue.poll
-      job <- ZIO.fromOption(jobOpt)
+      // pick job from queue and start processing
+      job <- queue.poll.flatMap(x => ZIO.fromOption(x))
       processingStateForJobOpt <- workStateReader.processIdToProcessState(ProcessId(job.job.jobName, job.batchNr))
       res <- ZIO.ifZIO(ZIO.succeed(processingStateForJobOpt.nonEmpty))(
         onTrue = {
@@ -308,29 +322,15 @@ case class BaseWorkHandlerService[U <: TaggedWithType with DataPoint[Any], V <: 
   }
 
   /**
-   * Check the fiber runtimes corresponding to the tasks in progress and return those with status DONE
-   */
-  private def getCompletedBatches: Task[Chunk[ProcessId]] = for {
-    processFiberMapping <- processIdToFiberRef.get
-    completedProcesses <- ZStream.fromIterable(processFiberMapping.toSeq)
-      .mapZIO(tuple => for {
-        status <- tuple._2.status
-      } yield (tuple._1, status))
-      .filter(x => x._2 == Fiber.Status.Done)
-      .map(x => x._1)
-      .runCollect
-  } yield completedProcesses
-
-  /**
    * Remove the in-progress state files for the passed processIDs and persist the corresponding batches
    * to done folder for the corresponding job.
    * Further remove the processIDs corresponding to the completed batches from the aggregation and fiber runtime mappings.
    */
-  private def removeCompletedBatches(completedBatches: Seq[ProcessId]): Task[Unit] = {
-    ZStream.fromIterable(completedBatches)
+  private def removeBatches(batches: Seq[ProcessId]): Task[Unit] = {
+    ZStream.fromIterable(batches)
       .foreach(processId => {
         for {
-          _ <- workStateWriter.deleteInProgressState(processId)
+          _ <- workStateWriter.deleteInProgressState(processId, AppProperties.config.node_hash)
           _ <- workStateWriter.writeToDone(processId)
           _ <- processIdToAggregatorRef.update(map => map - processId)
           _ <- processIdToFiberRef.update(map => map - processId)
@@ -351,13 +351,16 @@ case class BaseWorkHandlerService[U <: TaggedWithType with DataPoint[Any], V <: 
 
       // check Fiber.Runtime for each running process and if completed both remove processing status of batch and move
       // batch to "done" and remove the process from the process mapping
-      completedProcessIds <- getCompletedBatches
-      _ <- removeCompletedBatches(completedProcessIds)
+      processFiberMapping <- processIdToFiberRef.get
+      completedProcessIds <- getCompletedBatches(processFiberMapping)
+      _ <- removeBatches(completedProcessIds)
 
       // pick the tasks in PLANNED state for the current node
       plannedTasksForNode <- pullPlannedTasks(openJobSnapshot)
       // for planned tasks try to change processing status to queued and add to queue
-      _ <- movePlannedJobsToQueued(plannedTasksForNode)
+      addedToQueue <- movePlannedJobsToQueued(plannedTasksForNode)
+      // add the tasks added to queue to history record
+      _ <- addTasksToHistory(addedToQueue.filter(x => x.isRight).map(x => x.toOption.get), addedBatchesHistoryRef)
 
       // fill empty slots for processing with tasks from queue, see processNextBatch
       nrOpenProcessSlots <- processIdToAggregatorRef.get

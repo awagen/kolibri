@@ -17,6 +17,7 @@
 
 package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer
 
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ProcessId
 import zio.Task
 
 trait JobStateWriter {
@@ -33,6 +34,11 @@ trait JobStateWriter {
    * folder to indicate the job is up for processing.
    */
   def storeJobDefinitionAndBatches(jobDefinition: String): Task[Unit]
+
+  /**
+   * Persist batch as in "open" state, e.g to be claimed by any node.
+   */
+  def writeBatchToOpen(processId: ProcessId): Task[Unit]
 
 
 }

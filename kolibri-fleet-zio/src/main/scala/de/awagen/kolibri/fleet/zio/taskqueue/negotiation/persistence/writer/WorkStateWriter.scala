@@ -32,7 +32,7 @@ trait WorkStateWriter {
   /**
    * Deletes persisted state for the passed processId.
    */
-  def deleteInProgressState(processId: ProcessId): Task[Unit]
+  def deleteInProgressState(processId: ProcessId, nodeHash: String): Task[Unit]
 
   /**
    * Persist the corresponding batch as DONE

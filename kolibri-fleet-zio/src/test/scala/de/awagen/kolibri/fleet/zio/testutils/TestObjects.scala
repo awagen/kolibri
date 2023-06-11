@@ -98,7 +98,9 @@ object TestObjects {
   def claimService(writer: FileWriter[String, Unit]) = BaseClaimService(
     claimReader,
     claimWriter(writer),
-    workStateReader
+    workStateReader,
+    workStateWriter(writer),
+    jobStateWriter(writer)
   )
 
   def workHandler[U <: TaggedWithType with DataPoint[Any], V <: WithCount](writer: FileWriter[String, Unit],
@@ -186,9 +188,9 @@ object TestObjects {
 
   def copyProcessingStateWithAdjustedTimeAndState(state: ProcessingState, timeStr: String, processingStatus: ProcessingStatus): ProcessingState = {
     state.copy(processingInfo = state.processingInfo.copy(
-        lastUpdate = timeStr,
-        processingStatus = processingStatus
-      ))
+      lastUpdate = timeStr,
+      processingStatus = processingStatus
+    ))
   }
 
 }

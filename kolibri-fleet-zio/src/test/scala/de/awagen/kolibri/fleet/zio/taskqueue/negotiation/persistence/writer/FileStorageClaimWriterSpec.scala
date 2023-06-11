@@ -18,7 +18,7 @@
 package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer
 
 import de.awagen.kolibri.fleet.zio.io.json.ProcessingStateJsonProtocol.processingStateFormat
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.ClaimTopic
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.ClaimTopics
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ClaimStates.Claim
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state._
 import de.awagen.kolibri.fleet.zio.testutils.TestObjects.{claimWriter, fileWriterMock}
@@ -36,10 +36,10 @@ object FileStorageClaimWriterSpec extends ZIOSpecDefault {
       val writerMock = fileWriterMock
       val writer = claimWriter(writerMock)
       for {
-        _ <- writer.fileBatchClaim("testJob1_3434839787", 1, ClaimTopic.JOB_TASK_PROCESSING_CLAIM, Set.empty)
-        _ <- writer.fileBatchClaim("testJob1_3434839787", 2, ClaimTopic.JOB_TASK_PROCESSING_CLAIM, Set.empty)
-        _ <- writer.fileBatchClaim("testJob1_3434839787", 3, ClaimTopic.JOB_TASK_PROCESSING_CLAIM,
-          Set(ClaimStates.Claim("testJob1_3434839787", 3, "uuu1", 1683845333850L, ClaimTopic.JOB_TASK_PROCESSING_CLAIM))
+        _ <- writer.fileBatchClaim(ProcessId("testJob1_3434839787", 1), ClaimTopics.JobTaskProcessingClaim, Set.empty)
+        _ <- writer.fileBatchClaim(ProcessId("testJob1_3434839787", 2), ClaimTopics.JobTaskProcessingClaim, Set.empty)
+        _ <- writer.fileBatchClaim(ProcessId("testJob1_3434839787", 3), ClaimTopics.JobTaskProcessingClaim,
+          Set(ClaimStates.Claim("testJob1_3434839787", 3, "uuu1", 1683845333850L, ClaimTopics.JobTaskProcessingClaim))
         )
       } yield assert({
         verify(writerMock, times(1)).write(
@@ -74,10 +74,10 @@ object FileStorageClaimWriterSpec extends ZIOSpecDefault {
         )
       )
       for {
-        _ <- writer.exerciseBatchClaim("testJob1_3434839787", 2, Set(
-          Claim("testJob1_3434839787", 2, "abc234", 1683845333850L, ClaimTopic.JOB_TASK_PROCESSING_CLAIM),
-          Claim("testJob1_3434839787", 2, "other1", 1703845333850L, ClaimTopic.JOB_TASK_PROCESSING_CLAIM),
-          Claim("testJob1_3434839787", 2, "other2", 1713845333850L, ClaimTopic.JOB_TASK_PROCESSING_CLAIM)
+        _ <- writer.exerciseBatchClaim(ProcessId("testJob1_3434839787", 2), Set(
+          Claim("testJob1_3434839787", 2, "abc234", 1683845333850L, ClaimTopics.JobTaskProcessingClaim),
+          Claim("testJob1_3434839787", 2, "other1", 1703845333850L, ClaimTopics.JobTaskProcessingClaim),
+          Claim("testJob1_3434839787", 2, "other2", 1713845333850L, ClaimTopics.JobTaskProcessingClaim)
         ))
       } yield assert({
         val deleteCmdFileCaptor: ArgumentCaptor[String] = ArgumentCaptor.forClass(classOf[String])
