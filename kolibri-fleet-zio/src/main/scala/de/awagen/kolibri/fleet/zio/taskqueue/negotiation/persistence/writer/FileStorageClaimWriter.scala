@@ -24,7 +24,6 @@ import de.awagen.kolibri.fleet.zio.config.Directories.OpenTasks
 import de.awagen.kolibri.fleet.zio.io.json.ProcessingStateJsonProtocol
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.format.FileFormats.ClaimFileNameFormat
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.ClaimTopics.ClaimTopic
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer.FileStorageClaimWriter.isCurrentNodeClaim
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ClaimStates.Claim
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state._
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ClaimStatus.ClaimFilingStatus
@@ -32,13 +31,6 @@ import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ClaimStatus.Clai
 import de.awagen.kolibri.storage.io.writer.Writers.Writer
 import zio.{Task, ZIO}
 
-object FileStorageClaimWriter {
-
-  private def isCurrentNodeClaim(claim: Claim): Boolean = {
-    claim.nodeId == AppProperties.config.node_hash
-  }
-
-}
 
 case class FileStorageClaimWriter(writer: Writer[String, String, _]) extends ClaimWriter {
 
@@ -46,21 +38,15 @@ case class FileStorageClaimWriter(writer: Writer[String, String, _]) extends Cla
    * Write a claim for a given job for a given claim topic (e.g claiming an execution, a cleanup or the like).
    * NOTE that jobId here means [jobName]_[timePlacedInMillis]
    */
-  override def fileBatchClaim(processId: ProcessId,
-                              claimTopic: ClaimTopic,
-                              existingClaimsForBatch: Set[Claim]): Task[ClaimFilingStatus] = {
-    ZIO.ifZIO(ZIO.succeed(existingClaimsForBatch.isEmpty))(
-      onTrue = {
-        // write claim
-        for {
-          claimPath <- ZIO.attempt(getFullFilePathForClaimFile(processId.jobId, processId.batchNr, claimTopic))
-          _ <- ZIO.logDebug(s"writing claim to path: $claimPath")
-          persistResult <- ZIO.attemptBlockingIO(writer.write("", claimPath))
-          result <- ZIO.fromEither(persistResult).map(_ => ClaimFilingStatus.PERSIST_SUCCESS)
-        } yield result
-      },
-      onFalse = ZIO.succeed(ClaimFilingStatus.OTHER_CLAIM_EXISTS)
-    )
+  override def fileClaim(processId: ProcessId,
+                         claimTopic: ClaimTopic): Task[ClaimFilingStatus] = {
+    // write claim
+    for {
+      claimPath <- ZIO.attempt(getFullFilePathForClaimFile(processId.jobId, processId.batchNr, claimTopic))
+      _ <- ZIO.logDebug(s"writing claim to path: $claimPath")
+      persistResult <- ZIO.attemptBlockingIO(writer.write("", claimPath))
+      result <- ZIO.fromEither(persistResult).map(_ => ClaimFilingStatus.PERSIST_SUCCESS)
+    } yield result
   }
 
   /**
@@ -139,27 +125,17 @@ case class FileStorageClaimWriter(writer: Writer[String, String, _]) extends Cla
    * picked for processing).
    *
    * if winner hash corresponds to the current node, file an in-progress note,
-   * remove the file indicating the batch is open for processing and
-   * remove all claims.
+   * remove the file indicating the batch is open for processing
    *
    * Steps:
    * 1) write process status file with some initial information
    * 2) remove the file indicating that the batch is in open state
-   * 3) remove claims on the batch belonging to other nodes
-   * 4) if all of the above successful, remove the claim filed by
-   * this very node
    */
-  override def exerciseBatchClaim(processId: ProcessId,
-                                  existingClaimsForBatch: Set[Claim]): Task[Unit] = {
+  override def exerciseBatchClaim(processId: ProcessId): Task[Unit] = {
     for {
       _ <- writeTaskToProgressFolder(processId)
       openTaskFile <- ZIO.succeed(s"${OpenTasks.jobOpenTasksSubFolder(processId.jobId, isOpenJob = true)}/${processId.batchNr}")
       _ <- removeFile(openTaskFile)
-      // first only delete those claims that do not belong to the current node
-      _ <- removeClaims(existingClaimsForBatch, x => !isCurrentNodeClaim(x))
-      // then delete the claim for the current node (assumption since exercise claim was called is that the current node
-      // successfully claimed the batch execution
-      _ <- removeClaims(existingClaimsForBatch, isCurrentNodeClaim)
     } yield ()
   }
 

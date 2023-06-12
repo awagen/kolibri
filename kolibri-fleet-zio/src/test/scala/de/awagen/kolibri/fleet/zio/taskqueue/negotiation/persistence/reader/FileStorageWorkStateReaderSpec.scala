@@ -18,8 +18,8 @@
 package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader
 
 import de.awagen.kolibri.fleet.zio.config.AppProperties
-import de.awagen.kolibri.fleet.zio.testutils.TestObjects.workStateReader
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.{ProcessId, ProcessingInfo, ProcessingState, ProcessingStatus}
+import de.awagen.kolibri.fleet.zio.testutils.TestObjects.workStateReader
 import zio.Scope
 import zio.test._
 
@@ -49,6 +49,17 @@ object FileStorageWorkStateReaderSpec extends ZIOSpecDefault {
       )
     )
 
+    val expectedState3 = ProcessingState(
+      ProcessId("testJob1_3434839787", 2),
+      ProcessingInfo(
+        ProcessingStatus.QUEUED,
+        100,
+        0,
+        "other1",
+        "2023-01-01 01:02:03"
+      )
+    )
+
   }
 
   import TestObjects._
@@ -58,10 +69,26 @@ object FileStorageWorkStateReaderSpec extends ZIOSpecDefault {
     test("read process state from processId") {
       val reader = workStateReader
       for {
-        processState <- reader.processIdToProcessState(ProcessId("testJob1_3434839787", 0))
+        processState <- reader.processIdToProcessState(ProcessId("testJob1_3434839787", 0), AppProperties.config.node_hash)
       } yield assert(processState)(Assertion.assertion("process state matches")(state => {
         state.get == expectedState1
       }))
+    },
+
+    test("read process states from processIds") {
+      val reader = workStateReader
+      for {
+        processStatesNode1 <- reader.processIdsToProcessState(Seq(ProcessId("testJob1_3434839787", 0), ProcessId("testJob1_3434839787", 1)), AppProperties.config.node_hash)
+        processStatesNode2 <- reader.processIdsToProcessState(Seq(ProcessId("testJob1_3434839787", 2)), "other1")
+        invalidProcessNodeResult <- reader.processIdsToProcessState(Seq(ProcessId("testJob1_3434839787", 2)), "abc234")
+      } yield assert(processStatesNode1)(Assertion.assertion("state1 match")(data => {
+        data.size == 2 && data.head == expectedState1 && data(1) == expectedState2
+      })) &&
+        assert(processStatesNode2)(Assertion.assertion("state2 match")(data => {
+          data.size == 1 && data.head == expectedState3
+        })
+      ) &&
+        assert(invalidProcessNodeResult)(Assertion.assertion("state3 empty")(data => data.isEmpty))
     },
 
     test("read processIds for in-progress files for job") {
@@ -76,6 +103,33 @@ object FileStorageWorkStateReaderSpec extends ZIOSpecDefault {
       }))
     },
 
+    test("read processIds for in-progress files for node and job") {
+      val reader = workStateReader
+      for {
+        processIds <- reader.getInProgressIdsForNode(Set("testJob1_3434839787"), "other1")
+      } yield assert(processIds)(Assertion.assertion("process ids match")(ids => {
+        ids == Map("testJob1_3434839787" -> Set(
+          ProcessId("testJob1_3434839787", 2))
+        )
+      }))
+    },
+
+    test("read processIds for in-progress files for all nodes") {
+      val reader = workStateReader
+      for {
+        mapping <- reader.getInProgressIdsForAllNodes(Set("testJob1_3434839787"))
+      } yield assert(mapping)(Assertion.assertion("process ids match")(mapping => {
+        mapping.keySet == Set("abc234", "other1") &&
+          mapping("abc234") == Map("testJob1_3434839787" -> Set(
+            ProcessId("testJob1_3434839787", 0),
+            ProcessId("testJob1_3434839787", 1))
+          ) &&
+          mapping("other1") == Map("testJob1_3434839787" -> Set(
+            ProcessId("testJob1_3434839787", 2))
+          )
+      }))
+    },
+
     test("read process states for in-progress files for job") {
       val reader = workStateReader
       for {
@@ -84,6 +138,24 @@ object FileStorageWorkStateReaderSpec extends ZIOSpecDefault {
         states.keySet == Set("testJob1_3434839787") &&
           states("testJob1_3434839787") == Set(expectedState1, expectedState2)
       }))
+    },
+
+    test("read process states for in-progress files for all nodes") {
+      val reader = workStateReader
+      for {
+        mapping <- reader.getInProgressStateForAllNodes(Set("testJob1_3434839787"))
+      } yield assert(mapping)(Assertion.assertion("states match")(mapping => {
+        mapping.keySet == Set("abc234", "other1") &&
+          mapping("abc234") == Map("testJob1_3434839787" -> Set(expectedState1, expectedState2)) &&
+          mapping("other1") == Map("testJob1_3434839787" -> Set(expectedState3))
+      }))
+    },
+
+    test("get all node hashes with in-progress states") {
+      val reader = workStateReader
+      for {
+        hashes <- reader.getAllNodeHashesWithInProgressStates(Set("testJob1_3434839787"))
+      } yield assert(hashes)(Assertion.assertion("correct hashes")(hashes => hashes == Set("abc234", "other1")))
     }
 
 

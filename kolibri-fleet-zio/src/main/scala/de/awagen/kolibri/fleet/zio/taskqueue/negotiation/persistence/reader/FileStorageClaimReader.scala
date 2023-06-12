@@ -76,9 +76,8 @@ case class FileStorageClaimReader(filterToOverviewReader: (String => Boolean) =>
   /**
    * Over all currently registered jobs, find the claims filed by this node
    */
-  override def getClaimsByCurrentNode(claimTopic: ClaimTopic, openJobsSnapshot: OpenJobsSnapshot): Task[Set[Claim]] = {
-      val allKnownJobs: Set[String] = openJobsSnapshot.jobStateSnapshots.values.map(x => x.jobId).toSet
-      ZStream.fromIterable(allKnownJobs)
+  override def getClaimsByCurrentNode(claimTopic: ClaimTopic, jobIds: Set[String]): Task[Set[Claim]] = {
+      ZStream.fromIterable(jobIds)
         .mapZIO(job => {
           getClaimsForJob(job, claimTopic)
             .map(seq => seq.filter(x => x.nodeId == AppProperties.config.node_hash))

@@ -91,7 +91,7 @@ trait ClaimReader {
 
   def getClaimsForBatch(jobId: String, batchNr: Int, claimTopic: ClaimTopic): Task[Set[Claim]]
 
-  def getClaimsByCurrentNode(claimTopic: ClaimTopic, openJobsSnapshot: OpenJobsSnapshot): Task[Set[Claim]]
+  def getClaimsByCurrentNode(claimTopic: ClaimTopic, jobIds: Set[String]): Task[Set[Claim]]
 
   def verifyBatchClaim(jobId: String, batchNr: Int, claimTopic: ClaimTopic): Task[ClaimVerifyStatus]
 

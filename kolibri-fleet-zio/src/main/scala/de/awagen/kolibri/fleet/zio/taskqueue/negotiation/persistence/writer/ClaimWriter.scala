@@ -25,13 +25,12 @@ import zio.Task
 
 trait ClaimWriter {
 
-  def fileBatchClaim(processId: ProcessId, claimTopic: ClaimTopic, existingClaimsForBatch: Set[Claim]): Task[ClaimFilingStatus]
+  def fileClaim(processId: ProcessId, claimTopic: ClaimTopic): Task[ClaimFilingStatus]
 
   def writeTaskToProgressFolder(processId: ProcessId): Task[Any]
 
   def removeClaims(existingClaimFiles: Set[Claim], claimURIFilter: Claim => Boolean): Task[Unit]
 
-  def exerciseBatchClaim(process: ProcessId,
-                         existingClaimsForBatch: Set[Claim]): Task[Unit]
+  def exerciseBatchClaim(process: ProcessId): Task[Unit]
 
 }

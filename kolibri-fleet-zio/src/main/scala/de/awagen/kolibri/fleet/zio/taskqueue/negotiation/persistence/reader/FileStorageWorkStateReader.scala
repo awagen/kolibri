@@ -27,7 +27,6 @@ import spray.json._
 import zio.stream.ZStream
 import zio.{Task, ZIO}
 
-import scala.collection.immutable
 
 case class FileStorageWorkStateReader(filterToOverviewReader: (String => Boolean) => DataOverviewReader,
                                       reader: Reader[String, Seq[String]]) extends WorkStateReader {
@@ -39,16 +38,11 @@ case class FileStorageWorkStateReader(filterToOverviewReader: (String => Boolean
    * covering all the passed jobs for the current node.
    * If resources for a job cannot be found, there will be no entry for the corresponding job in the result
    */
-  override def getInProgressIdsForCurrentNode(jobs: Set[String]): Task[Map[String, Set[ProcessId]]] = {
+  private[reader] def getInProgressIdsForNode(jobs: Set[String], nodeHash: String): Task[Map[String, Set[ProcessId]]] = {
     ZStream.fromIterable(jobs)
       .mapZIO(jobId => ZIO.attemptBlocking {
-        val subFolder = InProgressTasks.jobTasksInProgressStateForNodeSubFolder(
-          jobId,
-          AppProperties.config.node_hash,
-          isOpenJob = true
-        )
-        val inProgressStateFiles: Set[String] = overviewReader
-          .listResources(subFolder, _ => true).toSet
+        val subFolder = InProgressTasks.jobTasksInProgressStateForNodeSubFolder(jobId, nodeHash, isOpenJob = true)
+        val inProgressStateFiles: Set[String] = overviewReader.listResources(subFolder, _ => true).toSet
         val processIds = inProgressStateFiles.map(file => InProgressTaskFileNameFormat.processIdFromIdentifier(jobId, file))
         (jobId, processIds)
       }
@@ -63,22 +57,48 @@ case class FileStorageWorkStateReader(filterToOverviewReader: (String => Boolean
       .runCollect.map(x => x.toMap)
   }
 
+  /**
+   * Get the mapping of jobId to processIds for the current node
+   */
+  override def getInProgressIdsForCurrentNode(jobs: Set[String]): Task[Map[String, Set[ProcessId]]] = {
+    getInProgressIdsForNode(jobs, AppProperties.config.node_hash)
+  }
+
+  /**
+   * For the passed jobIds, collect the set of nodeHashes for which in-progress sub-folders exist for any
+   * of the passed jobsIds.
+   */
+  private[reader] def getAllNodeHashesWithInProgressStates(jobs: Set[String]): Task[Set[String]] = {
+    ZStream.fromIterable(jobs)
+      .map(jobId => InProgressTasks.jobTasksInProgressStateSubFolder(jobId, isOpenJob = true))
+      .map(subFolder => overviewReader.listResources(subFolder, _ => true).map(x => x.split("/").last).toSet)
+      .runFold(Set.empty[String])((oldSet, newSet) => oldSet ++ newSet)
+  }
+
+  /**
+   * Retrieve mapping of nodeHash (identifying the processing node) to map of jobId -> Set[ProcessId]
+   */
+  override def getInProgressIdsForAllNodes(jobs: Set[String]): Task[Map[String, Map[String, Set[ProcessId]]]] = {
+    for {
+      activeNodeHashes <- getAllNodeHashesWithInProgressStates(jobs)
+      results <- ZStream.fromIterable(activeNodeHashes)
+        .mapZIO(nodeHash => getInProgressIdsForNode(jobs, nodeHash).map(x => Map(nodeHash -> x)))
+        .runFold(Map.empty[String, Map[String, Set[ProcessId]]])((oldMap, newEntry) => oldMap ++ newEntry)
+    } yield results
+  }
 
   /**
    * Given a processId, parse the respective in-progress state file and return information as ProcessingState.
    * Note that in case the file system doesnt see the respective file,
    * there wont be a processing state value, hus return value is Option here.
    */
-  override def processIdToProcessState(processId: ProcessId): Task[Option[ProcessingState]] = {
+  override def processIdToProcessState(processId: ProcessId, nodeHash: String): Task[Option[ProcessingState]] = {
     for {
-      processFileContentOpt <- ZIO.attemptBlockingIO(
-        Some(reader.read(Directories.InProgressTasks.getInProgressFilePathForJob(
-          processId.jobId,
-          processId.batchNr,
-          AppProperties.config.node_hash)
-        )
-          .mkString("\n"))
-      ).catchAll(ex =>
+      processFileContentOpt <- ZIO.attemptBlockingIO({
+        val inProgressFilePath = Directories.InProgressTasks.getInProgressFilePathForJob(processId.jobId,
+          processId.batchNr, nodeHash)
+        Some(reader.read(inProgressFilePath).mkString("\n"))
+      }).catchAll(ex =>
         ZIO.logWarning(s"Could not read in-progress file for processId '$processId':\n$ex")
           *> ZIO.succeed(None)
       )
@@ -89,31 +109,53 @@ case class FileStorageWorkStateReader(filterToOverviewReader: (String => Boolean
   }
 
   /**
+   * Given a set of processIds, read the ProcessingState for each and return those for which the
+   * ProcessingState could be derived (result only contains those, those unsuccessful are ignored
+   */
+  private[reader] def processIdsToProcessState(processIds: Seq[ProcessId], nodeHash: String): Task[Seq[ProcessingState]] = {
+    ZStream.fromIterable(processIds)
+      .mapZIO(processId => {
+        processIdToProcessState(processId, nodeHash)
+          .onError(e => ZIO.logError(s"Error parsing process state for id: $processId:\n$e"))
+      })
+      .either
+      .filter({
+        case Right(_) => true
+        case _ => false
+      })
+      .map(x => x.toOption.get)
+      .runCollect
+      .map(x => x.filter(y => y.nonEmpty).map(y => y.get))
+  }
+
+  /**
    * Retrieve more detailed information about all batches that are in progress for
    * the passed jobs.
    */
   override def getInProgressStateForCurrentNode(jobs: Set[String]): Task[Map[String, Set[ProcessingState]]] = {
     for {
       jobIdToProcessIds <- getInProgressIdsForCurrentNode(jobs)
-      processingStateMapping <- {
-        val v: immutable.Iterable[ZIO[Any, Throwable, (String, Set[ProcessingState])]] = jobIdToProcessIds.map(x => {
-          ZStream.fromIterable(x._2)
-            .mapZIO(processId => {
-              processIdToProcessState(processId)
-                .onError(e => ZIO.logError(s"Error parsing process state for id: $processId:\n$e"))
-            })
-            .either
-            .filter({
-              case Right(_) => true
-              case _ => false
-            })
-            .map(x => x.toOption.get)
-            .runCollect
-            .map(y => (x._1, y.filter(z => z.nonEmpty).map(z => z.get).toSet))
-        })
-        ZIO.collectAll(v).map(z => z.toMap)
-      }
+      processingStateMapping <- ZStream.fromIterable(jobIdToProcessIds)
+        .mapZIO(x => processIdsToProcessState(x._2.toSeq, AppProperties.config.node_hash).map(y => (x._1, y.toSet)))
+        .runCollect.map(y => y.toMap)
     } yield processingStateMapping
   }
 
+  /**
+   * For all nodeHashes for which there exist an in-progress directory in any of the passed jobs,
+   * retrieve the corresponding set of ProcessingState per jobId.
+   * Thus the mapping is nodeHash -> (jobId -> Set[ProcessingState]).
+   */
+  override def getInProgressStateForAllNodes(jobs: Set[String]): Task[Map[String, Map[String, Set[ProcessingState]]]] = {
+    for {
+      nodeHashToJobIdToProcessIds <- getInProgressIdsForAllNodes(jobs)
+      nodeHashToProcessingStatesMapping <- ZStream.fromIterable(nodeHashToJobIdToProcessIds.keySet)
+        .mapZIO(hash => {
+          ZStream.fromIterable(nodeHashToJobIdToProcessIds(hash))
+            .mapZIO(x => processIdsToProcessState(x._2.toSeq, hash).map(y => (x._1, y.toSet)))
+            .runCollect.map(y => (hash, y.toMap))
+        })
+        .runCollect.map(x => x.toMap)
+    } yield nodeHashToProcessingStatesMapping
+  }
 }

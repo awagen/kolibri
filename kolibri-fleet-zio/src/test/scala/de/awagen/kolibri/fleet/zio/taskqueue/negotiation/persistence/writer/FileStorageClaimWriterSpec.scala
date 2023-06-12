@@ -19,7 +19,6 @@ package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer
 
 import de.awagen.kolibri.fleet.zio.io.json.ProcessingStateJsonProtocol.processingStateFormat
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.ClaimTopics
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ClaimStates.Claim
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state._
 import de.awagen.kolibri.fleet.zio.testutils.TestObjects.{claimWriter, fileWriterMock}
 import org.mockito.Mockito.{times, verify}
@@ -36,11 +35,9 @@ object FileStorageClaimWriterSpec extends ZIOSpecDefault {
       val writerMock = fileWriterMock
       val writer = claimWriter(writerMock)
       for {
-        _ <- writer.fileBatchClaim(ProcessId("testJob1_3434839787", 1), ClaimTopics.JobTaskProcessingClaim, Set.empty)
-        _ <- writer.fileBatchClaim(ProcessId("testJob1_3434839787", 2), ClaimTopics.JobTaskProcessingClaim, Set.empty)
-        _ <- writer.fileBatchClaim(ProcessId("testJob1_3434839787", 3), ClaimTopics.JobTaskProcessingClaim,
-          Set(ClaimStates.Claim("testJob1_3434839787", 3, "uuu1", 1683845333850L, ClaimTopics.JobTaskProcessingClaim))
-        )
+        _ <- writer.fileClaim(ProcessId("testJob1_3434839787", 1), ClaimTopics.JobTaskProcessingClaim)
+        _ <- writer.fileClaim(ProcessId("testJob1_3434839787", 2), ClaimTopics.JobTaskProcessingClaim)
+        _ <- writer.fileClaim(ProcessId("testJob1_3434839787", 3), ClaimTopics.JobTaskProcessingClaim)
       } yield assert({
         verify(writerMock, times(1)).write(
           ArgumentMatchers.eq(""),
@@ -50,7 +47,7 @@ object FileStorageClaimWriterSpec extends ZIOSpecDefault {
           ArgumentMatchers.eq(""),
           ArgumentMatchers.startsWith(s"jobs/open/testJob1_3434839787/tasks/claims/JOB_TASK_PROCESSING_CLAIM__testJob1_3434839787__2__"),
         )
-        verify(writerMock, times(0)).write(
+        verify(writerMock, times(1)).write(
           ArgumentMatchers.eq(""),
           ArgumentMatchers.startsWith(s"jobs/open/testJob1_3434839787/tasks/claims/JOB_TASK_PROCESSING_CLAIM__testJob1_3434839787__3__"),
         )
@@ -74,11 +71,7 @@ object FileStorageClaimWriterSpec extends ZIOSpecDefault {
         )
       )
       for {
-        _ <- writer.exerciseBatchClaim(ProcessId("testJob1_3434839787", 2), Set(
-          Claim("testJob1_3434839787", 2, "abc234", 1683845333850L, ClaimTopics.JobTaskProcessingClaim),
-          Claim("testJob1_3434839787", 2, "other1", 1703845333850L, ClaimTopics.JobTaskProcessingClaim),
-          Claim("testJob1_3434839787", 2, "other2", 1713845333850L, ClaimTopics.JobTaskProcessingClaim)
-        ))
+        _ <- writer.exerciseBatchClaim(ProcessId("testJob1_3434839787", 2))
       } yield assert({
         val deleteCmdFileCaptor: ArgumentCaptor[String] = ArgumentCaptor.forClass(classOf[String])
         val processingStateCaptor: ArgumentCaptor[String] = ArgumentCaptor.forClass(classOf[String])
@@ -87,22 +80,15 @@ object FileStorageClaimWriterSpec extends ZIOSpecDefault {
             processingStateCaptor.capture(),
             ArgumentMatchers.eq("jobs/open/testJob1_3434839787/tasks/inprogress_state/abc234/2")
           )
-        verify(writerMock, times(4))
+        verify(writerMock, times(1))
           .delete(
             deleteCmdFileCaptor.capture()
           )
-        (deleteCmdFileCaptor.getAllValues.toArray.toSeq.asInstanceOf[Seq[String]],
+        (deleteCmdFileCaptor.getValue,
           processingStateCaptor.getValue)
       })(Assertion.assertion("deletion called on correct paths")(x => {
-        val fileSeq = x._1
         val processingStateContent = x._2.parseJson.convertTo[ProcessingState]
-        val slice = fileSeq.slice(1, 3)
-        fileSeq.head == "jobs/open/testJob1_3434839787/tasks/open/2" &&
-          slice.toSet == Set(
-            "jobs/open/testJob1_3434839787/tasks/claims/JOB_TASK_PROCESSING_CLAIM__testJob1_3434839787__2__1703845333850__other1",
-            "jobs/open/testJob1_3434839787/tasks/claims/JOB_TASK_PROCESSING_CLAIM__testJob1_3434839787__2__1713845333850__other2"
-          ) &&
-          fileSeq.last == "jobs/open/testJob1_3434839787/tasks/claims/JOB_TASK_PROCESSING_CLAIM__testJob1_3434839787__2__1683845333850__abc234" &&
+        x._1 == "jobs/open/testJob1_3434839787/tasks/open/2" &&
           processingStateContent == expectedProcessingState.copy(processingInfo = expectedProcessingState.processingInfo.copy(lastUpdate = processingStateContent.processingInfo.lastUpdate))
       }))
     },

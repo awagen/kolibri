@@ -30,15 +30,19 @@ trait WorkStateReader {
    */
   def getInProgressIdsForCurrentNode(jobs: Set[String]): Task[Map[String, Set[ProcessId]]]
 
+  def getInProgressIdsForAllNodes(jobs: Set[String]): Task[Map[String, Map[String, Set[ProcessId]]]]
+
   /**
    * Retrieve more detailed information about all batches that are in progress for
    * the passed jobs.
    */
   def getInProgressStateForCurrentNode(jobs: Set[String]): Task[Map[String, Set[ProcessingState]]]
 
+  def getInProgressStateForAllNodes(jobs: Set[String]): Task[Map[String, Map[String, Set[ProcessingState]]]]
+
   /**
    * Given a processId, retrieve the current ProcessingState
    */
-  def processIdToProcessState(processId: ProcessId): Task[Option[ProcessingState]]
+  def processIdToProcessState(processId: ProcessId, nodeHash: String): Task[Option[ProcessingState]]
 
 }

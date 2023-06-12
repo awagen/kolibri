@@ -47,8 +47,10 @@ object FileStorageJobStateReaderSpec extends ZIOSpecDefault {
         assert(openJobsSnapshot.jobStateSnapshots(jobKey).timePlacedInMillis)(Assertion.equalTo(3434839787L)) &&
         assert(openJobsSnapshot.jobStateSnapshots(jobKey).jobLevelDirectives)(Assertion.equalTo(Set[JobDirective](JobDirectives.Process))) &&
         assert(openJobsSnapshot.jobStateSnapshots(jobKey).actionForJob)(Assertion.equalTo(JobActions.ProcessAllNodes)) &&
-        assert(openJobsSnapshot.jobStateSnapshots(jobKey).batchesToState.keySet)(Assertion.equalTo(Range(0, 10, 1).toSet)) &&
-        assert(openJobsSnapshot.jobStateSnapshots(jobKey).batchesToState.values.toSeq)(Assertion.equalTo(Range(0, 10, 1).map(_ => BatchProcessingStates.Open)))
+        assert(openJobsSnapshot.jobStateSnapshots(jobKey).batchesToState.keySet)(Assertion.equalTo(Range(3, 10, 1).toSet)) &&
+        assert(openJobsSnapshot.jobStateSnapshots(jobKey).batchesToState.values.toSeq)(Assertion.equalTo(
+          Range(3, 10, 1).map(_ => BatchProcessingStates.Open)
+        ))
     }
 
   )

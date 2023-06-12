@@ -17,18 +17,28 @@
 
 package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services
 
+import de.awagen.kolibri.fleet.zio.config.AppProperties
 import de.awagen.kolibri.fleet.zio.config.AppProperties.config.maxNrJobsClaimed
-import de.awagen.kolibri.fleet.zio.execution.JobDefinitions
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.ClaimTopics
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.ClaimTopics.ClaimTopic
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.{ClaimReader, WorkStateReader}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer.{ClaimWriter, JobStateWriter, WorkStateWriter}
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services.BaseClaimService.isCurrentNodeClaim
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ClaimStates.Claim
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.JobStates.OpenJobsSnapshot
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ProcessId
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ClaimStatus.ClaimFilingStatus.ClaimFilingStatus
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ClaimStatus.ClaimVerifyStatus
 import zio.stream.{ZSink, ZStream}
 import zio.{Task, ZIO}
+
+object BaseClaimService {
+
+  private def isCurrentNodeClaim(claim: Claim): Boolean = {
+    claim.nodeId == AppProperties.config.node_hash
+  }
+
+}
 
 case class BaseClaimService(claimReader: ClaimReader,
                             claimUpdater: ClaimWriter,
@@ -39,15 +49,47 @@ case class BaseClaimService(claimReader: ClaimReader,
   /**
    * Given a range of claims, file all of them (e.g "apply for eligibility to perform the claimed task")
    */
-  private[services] def fileBatchClaims(batches: Seq[(JobDefinitions.JobDefinition[_, _, _], Seq[Int])]): Task[Unit] = {
+  private[services] def fileBatchProcessingClaims(processIds: Seq[ProcessId]): Task[Unit] = {
     for {
-      processIds <- ZIO.attempt(batches.flatMap(defWithBatches => {
-        defWithBatches._2.map(batchNr => ProcessId(defWithBatches._1.jobName, batchNr))
-      }))
       fileBatchClaimResults <- ZStream.fromIterable(processIds).foreach(id => {
-        claimUpdater.fileBatchClaim(id, ClaimTopics.JobTaskProcessingClaim, Set.empty)
+        claimUpdater.fileClaim(id, ClaimTopics.JobTaskProcessingClaim)
       })
     } yield fileBatchClaimResults
+  }
+
+  /**
+   * Filing claim for resetting a batch processing state for another node.
+   */
+  private[services] def fileBatchResetClaim(processId: ProcessId, nodeHash: String): Task[ClaimFilingStatus] = {
+    claimUpdater.fileClaim(processId, ClaimTopics.JobTaskResetClaim(nodeHash))
+  }
+
+  /**
+   * Filing claim for moving the batch status data to done
+   */
+  private[services] def fileJobToDoneClaim(jobId: String): Task[ClaimFilingStatus] = {
+    claimUpdater.fileClaim(ProcessId(jobId, -1), ClaimTopics.JobWrapUpClaim)
+  }
+
+  /**
+   * Given any claim, pick the right method to file the claim
+   */
+  private[services] def fileClaim(claim: Claim): Task[Unit] = {
+    claim.claimTopic match {
+      case ClaimTopics.JobTaskProcessingClaim =>
+        fileBatchProcessingClaims(Seq(ProcessId(claim.jobId, claim.batchNr)))
+      case ClaimTopics.JobTaskResetClaim(nodeHash) =>
+        fileBatchResetClaim(ProcessId(claim.jobId, claim.batchNr), nodeHash).map(_ => ())
+      case ClaimTopics.JobWrapUpClaim =>
+        fileJobToDoneClaim(claim.jobId).map(_ => ())
+    }
+  }
+
+  /**
+   * Given a Seq of any claims, file all of them
+   */
+  private[services] def fileClaims(claims: Seq[Claim]): Task[Unit] = {
+    ZStream.fromIterable(claims).foreach(fileClaim)
   }
 
   /**
@@ -67,32 +109,64 @@ case class BaseClaimService(claimReader: ClaimReader,
   }
 
   /**
+   * deletes all claims that match the job / batchNr / claimTopic combination of the
+   * passed claim. First deletes those claims from other node and then the one of the current node.
+   * The assumption here is that the node calling for deletion of the claims actually won
+   * the claim, thus do only use after positive result from verifyClaim
+   */
+  private[services] def deleteAllClaimsForMatchingJobAndBatchAndClaimTopic(claim: Claim): Task[Unit] = {
+    for {
+      // get all claims for the same job / batch / claimTopic combination as the passed claim
+      existingClaimsForBatch <- claimReader.getClaimsForBatch(claim.jobId, claim.batchNr, claim.claimTopic)
+      // first delete claims belonging to other nodes to avoid a claim for another node remaining if the winner
+      // claim is already deleted
+      _ <- claimUpdater.removeClaims(existingClaimsForBatch, x => !isCurrentNodeClaim(x))
+      // also delete the claim of the current node (the one who won the claim)
+      _ <- claimUpdater.removeClaims(existingClaimsForBatch, isCurrentNodeClaim)
+    } yield ()
+  }
+
+
+  /**
    * Take distinct exercise action depending on the ClaimTopic files.
-   * - JOB_TASK_PROCESSING_CLAIM: write in-progress state with status PLANNED for the batch for current node,
+   * - JobTaskProcessingClaim: write in-progress state with status PLANNED for the batch for current node,
    * delete the other claims
-   * - JOB_TASK_RESET_CLAIM: means that some node did not in time update the processing state of a batch it was
+   * - JobTaskResetClaim: means that some node did not in time update the processing state of a batch it was
    * processing. In that case we need to delete the in-progress file for that particular node, write the batch
    * file back to the "open" folder for the job to be claimed by other nodes.
+   * - JobWrapUpClaim: moving job from open-jobs to done-jobs
+   * - Unknown: do nothing
+   *
    */
   private[services] def exerciseClaim(claim: Claim): Task[Unit] = {
     claim.claimTopic match {
       case ClaimTopics.JobTaskProcessingClaim =>
         for {
-          existingClaimsForBatch <- claimReader.getClaimsForBatch(claim.jobId, claim.batchNr, claim.claimTopic)
-          _ <- claimUpdater.exerciseBatchClaim(ProcessId(claim.jobId, claim.batchNr), existingClaimsForBatch)
+          // exercising the claim and deleting the claim files
+          _ <- claimUpdater.exerciseBatchClaim(ProcessId(claim.jobId, claim.batchNr))
+          // delete claims for respective job
+          _ <- deleteAllClaimsForMatchingJobAndBatchAndClaimTopic(claim)
         } yield ()
       case ClaimTopics.JobTaskResetClaim(nodeHash) =>
         for {
           // write a file for the batch to reset back to open-folder
           _ <- jobStateWriter.writeBatchToOpen(ProcessId(claim.jobId, claim.batchNr))
           _ <- workStateWriter.deleteInProgressState(ProcessId(claim.jobId, claim.batchNr), nodeHash)
+          // clean up all claims for this particular task
+          _ <- deleteAllClaimsForMatchingJobAndBatchAndClaimTopic(claim)
         } yield ()
       case ClaimTopics.JobWrapUpClaim =>
-        // wrap up whole job by moving the full job folder to done state
-        jobStateWriter.moveToDone(claim.jobId)
+        for {
+          // wrap up whole job by moving the full job folder to done state
+          _ <- jobStateWriter.moveToDone(claim.jobId)
+          // remove all claims
+          _ <- deleteAllClaimsForMatchingJobAndBatchAndClaimTopic(claim)
+        } yield ()
       case _ =>
-        // not a covered claim, thus do nothing
-        ZIO.succeed(())
+        for {
+          // not a covered claim, thus do nothing but removing existing claims
+          _ <- deleteAllClaimsForMatchingJobAndBatchAndClaimTopic(claim)
+        } yield ()
     }
   }
 
@@ -101,6 +175,81 @@ case class BaseClaimService(claimReader: ClaimReader,
    */
   private[services] def exerciseClaims(claims: Seq[Claim]): Task[Unit] = {
     ZStream.fromIterable(claims).foreach(claimInfo => exerciseClaim(claimInfo))
+  }
+
+  /**
+   * Check of there is room to claim more batch processing tasks. If yes, file claims for those.
+   */
+  private[services] def fillUpBatchProcessingClaims(openJobsSnapshot: OpenJobsSnapshot): Task[Unit] = {
+    for {
+      // open job ids used to limit the retrieved state data to
+      jobIds <- ZIO.succeed(openJobsSnapshot.jobStateSnapshots.values.map(x => x.jobId).toSet)
+      // Set[Claim] representing the claims made by the current node
+      existingClaimsForNode <- claimReader.getClaimsByCurrentNode(
+        ClaimTopics.JobTaskProcessingClaim,
+        jobIds
+      )
+      // fetching all files showing successfully claimed (exercised claims in the form of
+      // files in the in-progress state subfolder) batches as full file paths to the in-progress files
+      inProgressStateFilesPerJobForThisNode <- workStateReader.getInProgressIdsForCurrentNode(jobIds)
+      // from the total number of claims filed and the number of batches already claimed calculate
+      // whether there is any need to file more claims
+      numberOfNewlyClaimableBatches <- ZIO.attempt({
+        val nrOfInProgressFiles = inProgressStateFilesPerJobForThisNode.values.flatten.count(_ => true)
+        val nrOfFiledClaims = existingClaimsForNode.count(_ => true)
+        math.max(0, maxNrJobsClaimed - (nrOfInProgressFiles + nrOfFiledClaims))
+      })
+      // if there are is some room to claim additional batches, do so (filing the batch claim,
+      // while the verification and possible exercising of each claim will be handled in the next
+      // round of the manageClaims call
+      existingClaims <- claimReader.getAllClaims(
+        jobIds,
+        ClaimTopics.JobTaskProcessingClaim
+      ).map(x => x.groupBy(claim => claim.jobId).map(x => (x._1, x._2.map(y => y.batchNr))))
+      nNextOpenBatches <- ZIO.attempt(openJobsSnapshot.getNextNOpenBatches(numberOfNewlyClaimableBatches, existingClaims))
+      nNextOpenProcessIds <- ZIO.attempt(nNextOpenBatches.flatMap(defWithBatches => {
+        defWithBatches._2.map(batchNr => ProcessId(defWithBatches._1.jobName, batchNr))
+      }))
+      _ <- fileBatchProcessingClaims(nNextOpenProcessIds)
+    } yield ()
+  }
+
+  /**
+   * Check if there is any in-progress task state for any node that has not been updated recent enough.
+   * If so and in case there is no claim for this yet, file the claim (we do not need limitation here,
+   * as its not a longer computation but just a small state persistence)
+   *
+   * TODO: implement logic
+   */
+  private[services] def fillUpTaskResetClaims(jobs: Set[String]): Task[Unit] = {
+    for {
+      _ <- workStateReader.getInProgressIdsForCurrentNode(jobs)
+    } yield ()
+    ZIO.succeed(())
+  }
+
+  /**
+   * File claim to move job state to done.
+   * This needs claiming when a) its not yet claimed and b) all open tasks in job are completed
+   *
+   * TODO: implement logic
+   */
+  private[services] def fillUpJobToDoneClaims(): Task[Unit] = {
+    ZIO.succeed(())
+  }
+
+  private[services] def fillUpClaims(claimTopic: ClaimTopic,
+                                     openJobSnapshot: OpenJobsSnapshot): Task[Unit] = {
+    claimTopic match {
+      case ClaimTopics.JobTaskProcessingClaim =>
+        fillUpBatchProcessingClaims(openJobSnapshot)
+      case ClaimTopics.JobTaskResetClaim(_) =>
+        fillUpTaskResetClaims(openJobSnapshot.jobStateSnapshots.keySet)
+      case ClaimTopics.JobWrapUpClaim =>
+        fillUpJobToDoneClaims()
+      case _ =>
+        ZIO.succeed(())
+    }
   }
 
   /**
@@ -116,7 +265,7 @@ case class BaseClaimService(claimReader: ClaimReader,
     for {
       ignoreJobIdsOnThisNode <- ZIO.succeed(openJobsSnapshot.jobsToBeIgnoredOnThisNode.map(x => x.jobId))
       // extract all (jobId, batchNr) tuples of claims currently filed for the node
-      claimsByCurrentNode <- claimReader.getClaimsByCurrentNode(claimTopic, openJobsSnapshot)
+      claimsByCurrentNode <- claimReader.getClaimsByCurrentNode(claimTopic, openJobsSnapshot.jobStateSnapshots.values.map(x => x.jobId).toSet)
       //verify each claim
       // remove the claims that are not needed anymore (only for this particular node)
       claimsToBeRemoved <- ZIO.succeed(claimsByCurrentNode.filter(x => ignoreJobIdsOnThisNode.contains(x.jobId)))
@@ -126,33 +275,8 @@ case class BaseClaimService(claimReader: ClaimReader,
       verifiedClaims <- verifyClaimsAndReturnSuccessful(claimsByCurrentNode, claimTopic)
       // Now exercise all verified claims
       _ <- exerciseClaims(verifiedClaims)
-
-
-      // Set[Claim] representing the claims made by the current node
-      existingClaimsForNode <- claimReader.getClaimsByCurrentNode(claimTopic, openJobsSnapshot)
-      // fetching all files showing successfully claimed (exercised claims in the form of
-      // files in the in-progress state subfolder) batches as full file paths to the in-progress files
-      // TODO: picking in-progress info only holds in case the claim topic refers to a batch execution.
-      // TODO: also further down on claim writing, decision what to claim is specific to the topics, e.g resetting another
-      // node's processing state for a task is another matter than claiming a batch execution
-      inProgressStateFilesPerJobForThisNode <- workStateReader.getInProgressIdsForCurrentNode(openJobsSnapshot.jobStateSnapshots.keys.toSet)
-      // from the total number of claims filed and the number of batches already claimed calculate
-      // whether there is any need to file more claims
-      numberOfNewlyClaimableBatches <- ZIO.attempt({
-        val nrOfInProgressFiles = inProgressStateFilesPerJobForThisNode.values.flatten.count(_ => true)
-        val nrOfFiledClaims = existingClaimsForNode.count(_ => true)
-        math.max(0, maxNrJobsClaimed - (nrOfInProgressFiles + nrOfFiledClaims))
-      })
-      // if there are is some room to claim additional batches, do so (filing the batch claim,
-      // while the verification and possible exercising of each claim will be handled in the next
-      // round of the manageClaims call
-      existingClaims <- claimReader.getAllClaims(
-        openJobsSnapshot.jobStateSnapshots.keys.toSet,
-        ClaimTopics.JobTaskProcessingClaim
-      ).map(x => x.groupBy(claim => claim.jobId).map(x => (x._1, x._2.map(y => y.batchNr)))
-      )
-      nNextOpenBatches <- ZIO.attempt(openJobsSnapshot.getNextNOpenBatches(numberOfNewlyClaimableBatches, existingClaims))
-      _ <- fileBatchClaims(nNextOpenBatches)
+      // add claims for given claimTopic (if any)
+      _ <- fillUpClaims(claimTopic, openJobsSnapshot)
     } yield ()
   }
 }

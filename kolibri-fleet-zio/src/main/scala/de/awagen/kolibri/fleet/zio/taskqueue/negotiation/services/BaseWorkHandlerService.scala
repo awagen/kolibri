@@ -295,7 +295,8 @@ case class BaseWorkHandlerService[U <: TaggedWithType with DataPoint[Any], V <: 
     (for {
       // pick job from queue and start processing
       job <- queue.poll.flatMap(x => ZIO.fromOption(x))
-      processingStateForJobOpt <- workStateReader.processIdToProcessState(ProcessId(job.job.jobName, job.batchNr))
+      processingStateForJobOpt <- workStateReader.processIdToProcessState(ProcessId(job.job.jobName, job.batchNr),
+        AppProperties.config.node_hash)
       res <- ZIO.ifZIO(ZIO.succeed(processingStateForJobOpt.nonEmpty))(
         onTrue = {
           for {
@@ -387,7 +388,7 @@ case class BaseWorkHandlerService[U <: TaggedWithType with DataPoint[Any], V <: 
         .foreach(processId => for {
           processAggregationState <- processIdToAggregatorMapping(processId).get
           processFiberStatus <- processIdToFiberMapping(processId).status
-          processingStateOpt <- workStateReader.processIdToProcessState(processId)
+          processingStateOpt <- workStateReader.processIdToProcessState(processId, AppProperties.config.node_hash)
           _ <- ZIO.ifZIO(ZIO.succeed(processingStateOpt.nonEmpty))(
             onTrue = {
               for {
