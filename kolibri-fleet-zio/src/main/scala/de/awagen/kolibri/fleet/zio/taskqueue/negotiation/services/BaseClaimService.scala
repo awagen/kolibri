@@ -218,6 +218,28 @@ case class BaseClaimService(claimReader: ClaimReader,
   }
 
   /**
+   * checks if task reset claim already exists for passed processing state,
+   * and if not files the claim.
+   * TODO: better getting all relevant claims at once and then filtering instead of checking for each candidate (IO)
+   */
+  private[services] def fileTaskResetClaimIfDoesntExist(state: ProcessingState): Task[Unit] = {
+    for {
+      // check if any claims already exist
+      existingClaims <- claimReader.getAllClaims(
+        Set(state.stateId.jobId),
+        ClaimTopics.JobTaskResetClaim(state.processingInfo.processingNode)
+      )
+      // if claim does not exist, file it
+      _ <- ZIO.when(existingClaims.isEmpty)(
+        claimUpdater.fileClaim(
+          ProcessId(state.stateId.jobId, state.stateId.batchNr),
+          ClaimTopics.JobTaskResetClaim(state.processingInfo.processingNode)
+        )
+      )
+    } yield ()
+  }
+
+  /**
    * Check if there is any in-progress task state for any node that has not been updated recent enough.
    * If so and in case there is no claim for this yet, file the claim (we do not need limitation here,
    * as its not a longer computation but just a small state persistence)
@@ -236,22 +258,7 @@ case class BaseClaimService(claimReader: ClaimReader,
         })
         .runCollect
       _ <- ZStream.fromIterable(overdueProcessingStates)
-        .foreach(state =>
-          for {
-            // check if any claims already exist
-            existingClaims <- claimReader.getAllClaims(
-              Set(state.stateId.jobId),
-              ClaimTopics.JobTaskResetClaim(state.processingInfo.processingNode)
-            )
-            // if claim does not exist, file it
-            _ <- ZIO.when(existingClaims.isEmpty)(
-              claimUpdater.fileClaim(
-                ProcessId(state.stateId.jobId, state.stateId.batchNr),
-                ClaimTopics.JobTaskResetClaim(state.processingInfo.processingNode)
-              )
-            )
-          } yield ()
-        )
+        .foreach(state => fileTaskResetClaimIfDoesntExist(state))
     } yield ()
   }
 
