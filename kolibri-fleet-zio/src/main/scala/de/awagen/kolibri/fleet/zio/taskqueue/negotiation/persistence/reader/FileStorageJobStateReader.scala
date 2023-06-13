@@ -100,11 +100,27 @@ case class FileStorageJobStateReader(overviewReader: DataOverviewReader,
   }
 
   /**
+   * In in-progress base folder first find subfolders, corresponding to the processing
+   * node hashes, and then look in each node subfolder for in-progress files and
+   * extract the respective batchIds
+   */
+  private[this] def findInProgressBatches(baseFolder: String): Set[Int] = {
+    val nodeHashes = overviewReader
+      .listResources(baseFolder, _ => true)
+      .map(x => x.split("/").last)
+    nodeHashes
+      .map(hash => {
+        findBatchesInFolderAsState(s"${baseFolder.stripSuffix("/")}/$hash", BatchProcessingStates.InProgress).keySet
+      }).toSet.flatten
+  }
+
+  /**
    * For given job folder name, retrieve current state of batch to processing state mapping
    */
   private[this] def findBatchesForJobWithState(jobDirName: String): Map[Int, BatchProcessingStatus] = {
     val openBatchMap = findBatchesInFolderAsState(OpenTasks.jobOpenTasksSubFolder(jobDirName, isOpenJob = true), BatchProcessingStates.Open)
-    val inProgressBatchMap = findBatchesInFolderAsState(InProgressTasks.jobTasksInProgressStateSubFolder(jobDirName, isOpenJob = true), BatchProcessingStates.InProgress)
+    val inProgressBatchMap = findInProgressBatches(InProgressTasks.jobTasksInProgressStateSubFolder(jobDirName, isOpenJob = true))
+      .map(batch => (batch, BatchProcessingStates.InProgress)).toMap
     val doneBatchMap = findBatchesInFolderAsState(DoneTasks.jobDoneTasksSubFolder(jobDirName, isOpenJob = true), BatchProcessingStates.Done)
     openBatchMap ++ inProgressBatchMap ++ doneBatchMap
   }
