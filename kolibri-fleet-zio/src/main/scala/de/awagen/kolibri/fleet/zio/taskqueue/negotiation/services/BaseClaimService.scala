@@ -23,16 +23,19 @@ import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.Clai
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.ClaimTopics.ClaimTopic
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.{ClaimReader, WorkStateReader}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer.{ClaimWriter, JobStateWriter, WorkStateWriter}
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services.BaseClaimService.isCurrentNodeClaim
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services.BaseClaimService.{DUMMY_BATCH_NR, isCurrentNodeClaim}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ClaimStates.Claim
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.JobStates.OpenJobsSnapshot
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ProcessId
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.{ProcessId, ProcessingState, ProcessingStateUtils}
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.BatchProcessingStates
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ClaimStatus.ClaimFilingStatus.ClaimFilingStatus
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ClaimStatus.ClaimVerifyStatus
 import zio.stream.{ZSink, ZStream}
 import zio.{Task, ZIO}
 
 object BaseClaimService {
+
+  val DUMMY_BATCH_NR: Int = -1
 
   private def isCurrentNodeClaim(claim: Claim): Boolean = {
     claim.nodeId == AppProperties.config.node_hash
@@ -68,7 +71,7 @@ case class BaseClaimService(claimReader: ClaimReader,
    * Filing claim for moving the batch status data to done
    */
   private[services] def fileJobToDoneClaim(jobId: String): Task[ClaimFilingStatus] = {
-    claimUpdater.fileClaim(ProcessId(jobId, -1), ClaimTopics.JobWrapUpClaim)
+    claimUpdater.fileClaim(ProcessId(jobId, DUMMY_BATCH_NR), ClaimTopics.JobWrapUpClaim)
   }
 
   /**
@@ -219,34 +222,77 @@ case class BaseClaimService(claimReader: ClaimReader,
    * If so and in case there is no claim for this yet, file the claim (we do not need limitation here,
    * as its not a longer computation but just a small state persistence)
    *
-   * TODO: implement logic
+   * @param processingStates : processingStates reflecting all currently persisted processing states
    */
-  private[services] def fillUpTaskResetClaims(jobs: Set[String]): Task[Unit] = {
+  private[services] def fillUpTaskResetClaims(processingStates: Set[ProcessingState]): Task[Unit] = {
     for {
-      _ <- workStateReader.getInProgressIdsForCurrentNode(jobs)
+      // current time to filter out those in-progress states that were not updated for too long
+      currentTimeInMillis <- ZIO.succeed(System.currentTimeMillis())
+      // filtering for in-progress states with overdue updates
+      overdueProcessingStates <- ZStream.fromIterable(processingStates)
+        .filter(state => {
+          val timeUpdated: Long = ProcessingStateUtils.timeStringToTimeInMillis(state.processingInfo.lastUpdate)
+          currentTimeInMillis - timeUpdated > AppProperties.config.maxTimeBetweenProgressUpdatesInSeconds
+        })
+        .runCollect
+      _ <- ZStream.fromIterable(overdueProcessingStates)
+        .foreach(state =>
+          for {
+            // check if any claims already exist
+            existingClaims <- claimReader.getAllClaims(
+              Set(state.stateId.jobId),
+              ClaimTopics.JobTaskResetClaim(state.processingInfo.processingNode)
+            )
+            // if claim does not exist, file it
+            _ <- ZIO.when(existingClaims.isEmpty)(
+              claimUpdater.fileClaim(
+                ProcessId(state.stateId.jobId, state.stateId.batchNr),
+                ClaimTopics.JobTaskResetClaim(state.processingInfo.processingNode)
+              )
+            )
+          } yield ()
+        )
     } yield ()
-    ZIO.succeed(())
   }
 
   /**
    * File claim to move job state to done.
    * This needs claiming when a) its not yet claimed and b) all open tasks in job are completed
    *
-   * TODO: implement logic
+   * @param jobIdsToMove : the jobIds for which to claim moving it to done (condition: there can be no open batch or
+   *                     running batch be remaining for the job; this condition is not checked here, we only check whether
+   *                     any other node has claimed it so far for the job and do not claim if another claim exists)
    */
-  private[services] def fillUpJobToDoneClaims(): Task[Unit] = {
-    ZIO.succeed(())
+  private[services] def fillUpJobToDoneClaims(openJobsSnapshot: OpenJobsSnapshot): Task[Unit] = {
+    for {
+      // extract all jobIds that are in open state but that have no open or in-progress batches anymore
+      jobIdsWithoutUnfinishedBusiness <- ZIO.attempt({
+        openJobsSnapshot.jobStateSnapshots.values.filter(x => {
+          !x.batchesToState.values.exists(state => state != BatchProcessingStates.Done)
+        }).map(x => x.jobId).toSet
+      })
+      // jobs that already have a respective claim filed by some node
+      jobsWithExistingWrapUpClaims <- claimReader
+        .getAllClaims(jobIdsWithoutUnfinishedBusiness, ClaimTopics.JobWrapUpClaim).map(x => x.map(y => y.jobId))
+      // extract jobIds for which a wrap-up claim shall be filed
+      claimForJobIds <- ZIO.attempt(jobIdsWithoutUnfinishedBusiness -- jobsWithExistingWrapUpClaims)
+      // file claims
+      _ <- ZStream.fromIterable(claimForJobIds).foreach(jobId => {
+        claimUpdater.fileClaim(ProcessId(jobId, DUMMY_BATCH_NR), ClaimTopics.JobWrapUpClaim)
+      })
+    } yield ()
   }
 
   private[services] def fillUpClaims(claimTopic: ClaimTopic,
-                                     openJobSnapshot: OpenJobsSnapshot): Task[Unit] = {
+                                     openJobSnapshot: OpenJobsSnapshot,
+                                     processingStates: Set[ProcessingState]): Task[Unit] = {
     claimTopic match {
       case ClaimTopics.JobTaskProcessingClaim =>
         fillUpBatchProcessingClaims(openJobSnapshot)
       case ClaimTopics.JobTaskResetClaim(_) =>
-        fillUpTaskResetClaims(openJobSnapshot.jobStateSnapshots.keySet)
+        fillUpTaskResetClaims(processingStates)
       case ClaimTopics.JobWrapUpClaim =>
-        fillUpJobToDoneClaims()
+        fillUpJobToDoneClaims(openJobSnapshot)
       case _ =>
         ZIO.succeed(())
     }
@@ -275,8 +321,11 @@ case class BaseClaimService(claimReader: ClaimReader,
       verifiedClaims <- verifyClaimsAndReturnSuccessful(claimsByCurrentNode, claimTopic)
       // Now exercise all verified claims
       _ <- exerciseClaims(verifiedClaims)
+      // extract all processing states
+      processingStates <- workStateReader.getInProgressStateForAllNodes(openJobsSnapshot.jobStateSnapshots.keySet)
+        .map(x => x.values.flatMap(y => y.values).flatten.toSet)
       // add claims for given claimTopic (if any)
-      _ <- fillUpClaims(claimTopic, openJobsSnapshot)
+      _ <- fillUpClaims(claimTopic, openJobsSnapshot, processingStates)
     } yield ()
   }
 }

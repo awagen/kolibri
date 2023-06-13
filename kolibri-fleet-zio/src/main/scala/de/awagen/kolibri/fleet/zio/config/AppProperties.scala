@@ -197,6 +197,8 @@ object AppProperties {
 
     val maxRetriesPerBatchTask: Int = baseConfig.getInt("kolibri.execution.maxBatchTaskRetries")
 
+    val maxTimeBetweenProgressUpdatesInSeconds: Int = baseConfig.getInt("kolibri.execution.maxTimeBetweenUpdatesInSeconds")
+
   }
 
 }
