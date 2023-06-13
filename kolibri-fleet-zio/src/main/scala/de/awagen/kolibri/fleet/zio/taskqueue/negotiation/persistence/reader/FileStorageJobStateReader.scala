@@ -104,14 +104,14 @@ case class FileStorageJobStateReader(overviewReader: DataOverviewReader,
    * node hashes, and then look in each node subfolder for in-progress files and
    * extract the respective batchIds
    */
-  private[this] def findInProgressBatches(baseFolder: String): Set[Int] = {
+  private[this] def findInProgressBatches(baseFolder: String): Map[Int, BatchProcessingStatus] = {
     val nodeHashes = overviewReader
       .listResources(baseFolder, _ => true)
       .map(x => x.split("/").last)
     nodeHashes
       .map(hash => {
-        findBatchesInFolderAsState(s"${baseFolder.stripSuffix("/")}/$hash", BatchProcessingStates.InProgress).keySet
-      }).toSet.flatten
+        findBatchesInFolderAsState(s"${baseFolder.stripSuffix("/")}/$hash", BatchProcessingStates.InProgress(hash)).toSet
+      }).toSet.flatten.toMap
   }
 
   /**
@@ -120,7 +120,6 @@ case class FileStorageJobStateReader(overviewReader: DataOverviewReader,
   private[this] def findBatchesForJobWithState(jobDirName: String): Map[Int, BatchProcessingStatus] = {
     val openBatchMap = findBatchesInFolderAsState(OpenTasks.jobOpenTasksSubFolder(jobDirName, isOpenJob = true), BatchProcessingStates.Open)
     val inProgressBatchMap = findInProgressBatches(InProgressTasks.jobTasksInProgressStateSubFolder(jobDirName, isOpenJob = true))
-      .map(batch => (batch, BatchProcessingStates.InProgress)).toMap
     val doneBatchMap = findBatchesInFolderAsState(DoneTasks.jobDoneTasksSubFolder(jobDirName, isOpenJob = true), BatchProcessingStates.Done)
     openBatchMap ++ inProgressBatchMap ++ doneBatchMap
   }

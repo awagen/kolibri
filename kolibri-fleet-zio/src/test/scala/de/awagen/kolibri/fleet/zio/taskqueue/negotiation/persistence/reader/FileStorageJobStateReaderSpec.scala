@@ -50,7 +50,11 @@ object FileStorageJobStateReaderSpec extends ZIOSpecDefault {
         assert(openJobsSnapshot.jobStateSnapshots(jobKey).batchesToState.keySet)(Assertion.equalTo(Range(0, 10, 1).toSet)) &&
         assert(openJobsSnapshot.jobStateSnapshots(jobKey).batchesToState)(Assertion.equalTo(
           (Range(3, 10, 1).map(batchNr => (batchNr, BatchProcessingStates.Open))
-            ++ Range(0, 3, 1).map(batchNr => (batchNr, BatchProcessingStates.InProgress))).toMap
+            ++ Seq(
+            (0, BatchProcessingStates.InProgress("abc234")),
+            (1, BatchProcessingStates.InProgress("abc234")),
+            (2, BatchProcessingStates.InProgress("other1"))
+          )).toMap
         ))
     }
 

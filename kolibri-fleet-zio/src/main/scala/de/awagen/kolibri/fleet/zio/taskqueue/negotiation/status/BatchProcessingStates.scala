@@ -23,7 +23,7 @@ object BatchProcessingStates {
 
   case object Open extends BatchProcessingStatus
 
-  case object InProgress extends BatchProcessingStatus
+  case class InProgress(nodeHash: String) extends BatchProcessingStatus
 
   case object Done extends BatchProcessingStatus
 
