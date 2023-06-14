@@ -39,6 +39,8 @@ object NodeResourceProvider extends ResourceProvider with ResourceLoader {
 
   override def createResource(resourceDirective: ResourceDirective[Any])(implicit ec: ExecutionContext): Promise[Any] =
     resourceProvider.createResource(resourceDirective)
+
+  override def removeResource[T](resource: Resource[T]): Unit = resourceProvider.removeResource(resource)
 }
 
 
@@ -71,4 +73,6 @@ private class NodeResourceProvider(resourceStore: AtomicMapPromiseStore[Resource
   override def createResource(resourceDirective: ResourceDirective[Any])(implicit ec: ExecutionContext): Promise[Any] = {
     resourceStore.retrieveValue(resourceDirective)
   }
+
+  override def removeResource[T](resource: Resource[T]): Unit = resourceStore.remove(resource)
 }

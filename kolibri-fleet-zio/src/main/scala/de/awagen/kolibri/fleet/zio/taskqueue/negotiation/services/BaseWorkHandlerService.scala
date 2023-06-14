@@ -21,9 +21,12 @@ import de.awagen.kolibri.datatypes.tagging.TaggedWithType
 import de.awagen.kolibri.datatypes.types.Types.WithCount
 import de.awagen.kolibri.datatypes.values.DataPoint
 import de.awagen.kolibri.datatypes.values.aggregation.immutable.Aggregators.Aggregator
+import de.awagen.kolibri.definitions.directives.Resource
 import de.awagen.kolibri.fleet.zio.config.AppProperties
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobBatch
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.WorkStateReader
+import de.awagen.kolibri.fleet.zio.resources.NodeResourceProvider
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.ClaimTopics
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.{ClaimReader, WorkStateReader}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer.WorkStateWriter
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.processing.TaskWorker
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services.BaseWorkHandlerService.{BatchAndProcessingState, addTasksToHistory, compareRunningBatchesWithSnapshotAndInterruptIfIndicated, getCompletedBatches, removeKeysFromMappings}
@@ -133,12 +136,14 @@ object BaseWorkHandlerService {
  * care of deleting resources that are not needed anymore and keeps
  * track of jobs needing a particular resource.
  */
-case class BaseWorkHandlerService[U <: TaggedWithType with DataPoint[Any], V <: WithCount](workStateReader: WorkStateReader,
+case class BaseWorkHandlerService[U <: TaggedWithType with DataPoint[Any], V <: WithCount](claimReader: ClaimReader,
+                                                                                           workStateReader: WorkStateReader,
                                                                                            workStateWriter: WorkStateWriter,
                                                                                            queue: Queue[JobBatch[_, _, _ <: WithCount]],
                                                                                            addedBatchesHistoryRef: Ref[Seq[ProcessId]],
                                                                                            processIdToAggregatorRef: Ref[Map[ProcessId, Ref[Aggregator[U, V]]]],
-                                                                                           processIdToFiberRef: Ref[Map[ProcessId, Fiber.Runtime[Throwable, Unit]]]) extends WorkHandlerService {
+                                                                                           processIdToFiberRef: Ref[Map[ProcessId, Fiber.Runtime[Throwable, Unit]]],
+                                                                                           resourceToJobIdsRef: Ref[Map[Resource[Any], Set[String]]]) extends WorkHandlerService {
 
   /**
    * Given a current snapshot of the open job state and mapping of ProcessId to Fiber,
@@ -275,26 +280,23 @@ case class BaseWorkHandlerService[U <: TaggedWithType with DataPoint[Any], V <: 
       .runFold(Seq.empty[Boolean])((oldSeq, newBool) => oldSeq :+ newBool)
   }
 
+  private def addResourceJobMapping(jobId: String, resources: Seq[Resource[Any]]): Task[Unit] = {
+    ZStream.fromIterable(resources)
+      .foreach(resource => resourceToJobIdsRef.update(map => {
+        map + (resource -> (map.getOrElse(resource, Set.empty[String]) + jobId))
+      }))
+  }
+
   /**
    * Pick next job to process, and initialize processing, keep ref to aggregator and
    * the fiber the processing is running on to be able to interrupt the computation.
-   *
-   * TODO: we also need to instantiate resources in case this is the first batch for the respective job.
-   * The same on finish of a job, we need to ensure resources are cleared again
-   *
-   * TODO: check behavior in case no element is in the queue.
-   * This would mean that there is a in-progress file indicating
-   * that the batch is queued, but its not.
-   * We might wanna persist a corrected state (such as planned)
-   * or just wait for the cleanup to happen for the batch to be moved
-   * back to open.
-   * Note that if this situation happens, the element is already
-   * removed from the queue, thus it wont be a repeated failing.
    */
   private def processNextBatch: Task[Boolean] = {
     (for {
       // pick job from queue and start processing
       job <- queue.poll.flatMap(x => ZIO.fromOption(x))
+      // add mapping of resource to job names of jobs utilizing the resource
+      _ <- addResourceJobMapping(job.job.jobName, job.job.resourceSetup.map(x => x.resource))
       processingStateForJobOpt <- workStateReader.processIdToProcessState(ProcessId(job.job.jobName, job.batchNr),
         AppProperties.config.node_hash)
       res <- ZIO.ifZIO(ZIO.succeed(processingStateForJobOpt.nonEmpty))(
@@ -347,7 +349,7 @@ case class BaseWorkHandlerService[U <: TaggedWithType with DataPoint[Any], V <: 
       _ <- cleanUpProcessesWithMissingProcessingStates(openJobSnapshot.jobStateSnapshots.keySet, runningProcesses)
 
       // for all remaining running processes (those that have a corresponding in-progress state), update the current
-      // state
+      // state (means: persisting the current state with updated timestamp)
       _ <- updateProcessStates
 
       // check Fiber.Runtime for each running process and if completed both remove processing status of batch and move
@@ -367,8 +369,36 @@ case class BaseWorkHandlerService[U <: TaggedWithType with DataPoint[Any], V <: 
       nrOpenProcessSlots <- processIdToAggregatorRef.get
         .map(x => x.toSet.count(_ => true))
         .map(runningJobCount => AppProperties.config.maxNrJobsProcessing - runningJobCount)
-      _ <- ZStream(Range(0, nrOpenProcessSlots, 1))
-        .foreach(_ => processNextBatch)
+      elementsInQueue <- queue.size
+      _ <- ZIO.loop(math.min(elementsInQueue, nrOpenProcessSlots))(_ > 0, _ - 1)(_ => processNextBatch)
+
+      // clean up loaded resources that are not needed anymore
+      _ <- cleanUpGlobalResources
+
+    } yield ()
+  }
+
+  /**
+   * Clean up jobName -> resource references and remove those global resources which has no assigned jobName anymore
+   */
+  private def cleanUpGlobalResources: Task[Unit] = {
+    for {
+      // remove all job names for which current node neither has running batch nor filed any claim for such
+      // from resourceToJobIdsRef mappings and free resources with no jobId assignment.
+      jobsWithResourceMappings <- resourceToJobIdsRef.get.map(x => x.values.flatten.toSet)
+      runningJobs <- processIdToAggregatorRef.get.map(x => x.keySet.map(y => y.jobId))
+      // for jobs with current resource assignment, get those jobs for which the current node has any claim filed
+      jobsWithClaims <- claimReader.getClaimsByCurrentNode(ClaimTopics.JobTaskProcessingClaim, jobsWithResourceMappings)
+        .map(x => x.map(y => y.jobId))
+      // remove all resource - jobName assignments for jobs that are neither running anymore nor part of any claim
+      _ <- ZStream.fromIterable(jobsWithResourceMappings -- runningJobs -- jobsWithClaims)
+        .foreach(removeJobId => {
+          resourceToJobIdsRef.update(map => map.toSeq.map(x => (x._1, x._2 - removeJobId)).toMap)
+        })
+      // delete those resources for which no mapping to a running or claimed job exists
+      resourcesWithoutJobs <- resourceToJobIdsRef.get.map(mapping => mapping.filter(x => x._2.isEmpty).keys.toSet)
+      _ <- ZStream.fromIterable(resourcesWithoutJobs)
+        .foreach(resource => ZIO.attempt(NodeResourceProvider.removeResource(resource)))
     } yield ()
   }
 

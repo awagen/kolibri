@@ -17,6 +17,7 @@
 
 package de.awagen.kolibri.definitions.resources
 
+import de.awagen.kolibri.definitions.directives.Resource
 import de.awagen.kolibri.definitions.directives.ResourceDirectives.ResourceDirective
 
 import scala.concurrent.{ExecutionContext, Promise}
@@ -24,5 +25,7 @@ import scala.concurrent.{ExecutionContext, Promise}
 trait ResourceLoader {
 
   def createResource(resourceDirective: ResourceDirective[Any])(implicit ec: ExecutionContext): Promise[Any]
+
+  def removeResource[T](resource: Resource[T]): Unit
 
 }

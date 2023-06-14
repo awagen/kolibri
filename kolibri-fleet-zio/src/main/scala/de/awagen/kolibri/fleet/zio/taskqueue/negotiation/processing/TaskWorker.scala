@@ -24,6 +24,7 @@ import de.awagen.kolibri.datatypes.types.Types.WithCount
 import de.awagen.kolibri.datatypes.types.{ClassTyped, NamedClassTyped}
 import de.awagen.kolibri.datatypes.values.DataPoint
 import de.awagen.kolibri.datatypes.values.aggregation.immutable.Aggregators._
+import de.awagen.kolibri.definitions.directives.ResourceDirectives.ResourceDirective
 import de.awagen.kolibri.definitions.processing.ProcessingMessages._
 import de.awagen.kolibri.definitions.processing.failure.TaskFailType.FailedByException
 import de.awagen.kolibri.fleet.zio.config.AppProperties.config.maxParallelItemsPerBatch
@@ -32,7 +33,7 @@ import de.awagen.kolibri.fleet.zio.execution.{Failed, ZIOSimpleTaskExecution}
 import de.awagen.kolibri.fleet.zio.resources.NodeResourceProvider
 import de.awagen.kolibri.storage.io.writer.Writers
 import zio.stream.ZStream
-import zio.{Fiber, Ref, UIO, ZIO}
+import zio.{Fiber, Ref, Task, UIO, ZIO}
 
 import scala.concurrent.ExecutionContext
 import scala.reflect.runtime.universe._
@@ -51,7 +52,24 @@ object TaskWorker extends Worker {
 
   val INITIAL_DATA_KEY = "INIT_DATA"
 
-  override def work[T: TypeTag, V: TypeTag, W <: WithCount](jobBatch: JobBatch[T, V, W])(implicit tag: TypeTag[W]): ZIO[Any, Nothing, (Ref[Aggregator[TaggedWithType with DataPoint[V], W]], Fiber.Runtime[Throwable, Unit])] = {
+  /**
+   * Load the resources needed by the batch into global node state. Note that multiple requests for the same
+   * resource will only lead to a single call to actually load the data.
+   * TODO: we need to make sure to free the resources again if no job needs them anymore
+   */
+  private[processing] def prepareGlobalResources(directives: Seq[ResourceDirective[_]]): Task[Unit] = {
+    for {
+      executor <- ZIO.executor
+      _ <- ZStream.fromIterable(directives)
+        .mapZIO(directive => {
+          implicit val exc: ExecutionContext = executor.asExecutionContext
+          ZIO.fromPromiseScala(NodeResourceProvider.createResource(directive))
+        })
+        .runDrain
+    } yield()
+  }
+
+  override def work[T: TypeTag, V: TypeTag, W <: WithCount](jobBatch: JobBatch[T, V, W])(implicit tag: TypeTag[W]): Task[(Ref[Aggregator[TaggedWithType with DataPoint[V], W]], Fiber.Runtime[Throwable, Unit])] = {
     val aggregator: Aggregator[TaggedWithType with DataPoint[V], W] = jobBatch.job.aggregationInfo.batchAggregatorSupplier()
     val batchResultWriter: Writers.Writer[W, Tags.Tag, Any] = jobBatch.job.aggregationInfo.writer
     val successKey: ClassTyped[Any] = jobBatch.job.aggregationInfo.successKey match {
@@ -59,17 +77,7 @@ object TaskWorker extends Worker {
       case Right(value) => value
     }
     for {
-      executor <- ZIO.executor
-      // TODO: handle failed resource loading better (and do not do it on batch level but globally
-      // in the instance handling job management, e.g when loading a job, and with bookkeeping on
-      // which jobs need which resources, so that we can clean up if some job is not there anymore
-      // and also need to provide cancelling of all jobs related to a specific job
-      _ <- ZStream.fromIterable(jobBatch.job.resourceSetup)
-        .mapZIO(directive => {
-          implicit val exc: ExecutionContext = executor.asExecutionContext
-          ZIO.fromPromiseScala(NodeResourceProvider.createResource(directive))
-        })
-        .runDrain.either
+      _ <- prepareGlobalResources(jobBatch.job.resourceSetup)
       aggregatorRef <- Ref.make(aggregator)
       computeResultFiber <- ZStream.fromIterable(jobBatch.job.batches.get(jobBatch.batchNr).get.data)
         .mapZIO(dataPoint => ZIOSimpleTaskExecution(
