@@ -22,6 +22,7 @@ import de.awagen.kolibri.datatypes.types.Types.WithCount
 import de.awagen.kolibri.datatypes.values.DataPoint
 import de.awagen.kolibri.datatypes.values.aggregation.immutable.Aggregators.Aggregator
 import de.awagen.kolibri.definitions.directives.Resource
+import de.awagen.kolibri.definitions.io.json.ResourceJsonProtocol.AnyResourceFormat
 import de.awagen.kolibri.fleet.zio.config.AppProperties
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobBatch
 import de.awagen.kolibri.fleet.zio.resources.NodeResourceProvider
@@ -34,6 +35,8 @@ import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.JobStates.OpenJob
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ProcessingStatus.ProcessingStatus
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state._
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.utils.DataTypeUtils
+import spray.json.DefaultJsonProtocol.immSetFormat
+import spray.json.enrichAny
 import zio.stream.ZStream
 import zio.{Chunk, Exit, Fiber, Queue, Ref, Task, UIO, ZIO}
 
@@ -290,6 +293,9 @@ case class BaseWorkHandlerService[U <: TaggedWithType with DataPoint[Any], V <: 
   /**
    * Pick next job to process, and initialize processing, keep ref to aggregator and
    * the fiber the processing is running on to be able to interrupt the computation.
+   *
+   * In case there is no next element, this call will finish successfully with boolean value false,
+   * and log a warning
    */
   private def processNextBatch: Task[Boolean] = {
     (for {
@@ -397,6 +403,8 @@ case class BaseWorkHandlerService[U <: TaggedWithType with DataPoint[Any], V <: 
         })
       // delete those resources for which no mapping to a running or claimed job exists
       resourcesWithoutJobs <- resourceToJobIdsRef.get.map(mapping => mapping.filter(x => x._2.isEmpty).keys.toSet)
+      _ <- ZIO.logInfo(s"Cleaning up resources since no reference to any job exists anymore: " +
+        s"${resourcesWithoutJobs.toJson.toString()}")
       _ <- ZStream.fromIterable(resourcesWithoutJobs)
         .foreach(resource => ZIO.attempt(NodeResourceProvider.removeResource(resource)))
     } yield ()
