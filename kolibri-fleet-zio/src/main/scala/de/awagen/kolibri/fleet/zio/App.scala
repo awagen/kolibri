@@ -18,10 +18,13 @@
 package de.awagen.kolibri.fleet.zio
 
 import de.awagen.kolibri.datatypes.types.Types.WithCount
+import de.awagen.kolibri.definitions.io.json.ResourceJsonProtocol.AnyResourceFormat
 import de.awagen.kolibri.fleet.zio.config.ZIOConfig
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobDefinition
 import de.awagen.kolibri.fleet.zio.io.json.JobDefinitionJsonProtocol.JobDefinitionFormat
+import de.awagen.kolibri.fleet.zio.resources.NodeResourceProvider
 import de.awagen.kolibri.fleet.zio.schedule.Schedules
+import spray.json.DefaultJsonProtocol.immSetFormat
 import spray.json._
 import zio._
 import zio.http._
@@ -32,8 +35,13 @@ object App extends ZIOAppDefault {
 
   override val bootstrap: ZLayer[Any, Nothing, Unit] = SLF4J.slf4j(LogLevel.Info, LogFormat.colored)
 
-  val app: HttpApp[Any, Nothing] = Http.collect[Request] {
+  private val app: HttpApp[Any, Nothing] = Http.collect[Request] {
     case Method.GET -> !! / "text" => Response.text("Hello World!")
+  }
+
+  // list loaded global resources
+  private val globalResourceListing: HttpApp[Any, Nothing] = Http.collect[Request] {
+    case Method.GET -> !! / "global_resources" => Response.text(NodeResourceProvider.listResources.toJson.toString())
   }
 
   override val run: ZIO[Any, Throwable, Any] = {
@@ -70,7 +78,7 @@ object App extends ZIOAppDefault {
       _ <- Runtime.default.run(rio)
       _ <- Runtime.default.run(rio.repeat(fixed)).fork
       _ <- Runtime.default.run(Schedules.findAndRegisterJobs(jobHandler).repeat(fixed)).fork
-      _ <- Server.serve(app ++ zioHttp).provide(Server.default)
+      _ <- Server.serve(app ++ zioHttp ++ globalResourceListing).provide(Server.default)
       _ <- ZIO.logInfo("Application is about to exit!")
     } yield ()
   }

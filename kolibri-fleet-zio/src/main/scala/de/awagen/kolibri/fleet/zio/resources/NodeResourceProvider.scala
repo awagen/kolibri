@@ -27,7 +27,7 @@ import de.awagen.kolibri.fleet.zio.config.AppProperties
 import scala.concurrent.duration.{FiniteDuration, SECONDS}
 import scala.concurrent.{Await, ExecutionContext, Promise}
 
-object NodeResourceProvider extends ResourceProvider with ResourceLoader {
+object NodeResourceProvider extends ResourceProvider with ResourceLoader with ResourceListing {
 
   private[this] val resourceProvider = new NodeResourceProvider(
     AtomicResourceStore(),
@@ -41,11 +41,13 @@ object NodeResourceProvider extends ResourceProvider with ResourceLoader {
     resourceProvider.createResource(resourceDirective)
 
   override def removeResource[T](resource: Resource[T]): Unit = resourceProvider.removeResource(resource)
+
+  override def listResources: Set[Resource[Any]] = resourceProvider.listResources
 }
 
 
 private class NodeResourceProvider(resourceStore: AtomicMapPromiseStore[Resource[Any], Any, ResourceDirective[Any]],
-                                   waitTimeInSeconds: Int) extends ResourceProvider with ResourceLoader {
+                                   waitTimeInSeconds: Int) extends ResourceProvider with ResourceLoader with ResourceListing {
 
   /**
    * Retrieving a resource. This assumes that the resource has been
@@ -75,4 +77,7 @@ private class NodeResourceProvider(resourceStore: AtomicMapPromiseStore[Resource
   }
 
   override def removeResource[T](resource: Resource[T]): Unit = resourceStore.remove(resource)
+
+  override def listResources: Set[Resource[Any]] = resourceStore.keySet
+
 }

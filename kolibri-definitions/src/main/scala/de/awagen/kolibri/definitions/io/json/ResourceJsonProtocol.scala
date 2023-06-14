@@ -17,14 +17,14 @@
 
 package de.awagen.kolibri.definitions.io.json
 
-import de.awagen.kolibri.definitions.directives.Resource
-import de.awagen.kolibri.definitions.io.json.EnumerationJsonProtocol.{resourceTypeGeneratorStringFormat, resourceTypeJudgementProviderFormat, resourceTypeMapStringDoubleFormat, resourceTypeMapStringGeneratorStringFormat}
-import de.awagen.kolibri.definitions.usecase.searchopt.provider.JudgementProvider
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
 import de.awagen.kolibri.datatypes.types.JsonStructDefs.{NestedFieldSeqStructDef, StringConstantStructDef, StringStructDef, StructDef}
+import de.awagen.kolibri.definitions.directives.{Resource, ResourceType}
+import de.awagen.kolibri.definitions.io.json.EnumerationJsonProtocol.{resourceTypeGeneratorStringFormat, resourceTypeJudgementProviderFormat, resourceTypeMapStringDoubleFormat, resourceTypeMapStringGeneratorStringFormat}
+import de.awagen.kolibri.definitions.usecase.searchopt.provider.JudgementProvider
 import spray.json.DefaultJsonProtocol.{StringJsonFormat, jsonFormat2}
-import spray.json.RootJsonFormat
+import spray.json.{JsValue, JsonFormat, RootJsonFormat, enrichAny}
 
 object ResourceJsonProtocol {
 
@@ -32,6 +32,32 @@ object ResourceJsonProtocol {
   implicit val resourceMapStringDoubleFormat: RootJsonFormat[Resource[Map[String, Double]]] = jsonFormat2(Resource[Map[String, Double]])
   implicit val resourceJudgementProviderFormat: RootJsonFormat[Resource[JudgementProvider[Double]]] = jsonFormat2(Resource[JudgementProvider[Double]])
   implicit val resourceMapStringStringValuesFormat: RootJsonFormat[Resource[Map[String, IndexedGenerator[String]]]] = jsonFormat2(Resource[Map[String, IndexedGenerator[String]]])
+
+  implicit object AnyResourceFormat extends JsonFormat[Resource[Any]] {
+
+    val RESOURCE_TYPE_KEY = "resourceType"
+    val IDENTIFIER_KEY = "identifier"
+
+    override def read(json: JsValue): Resource[Any] = json match {
+      case spray.json.JsObject(fields) if fields.contains(RESOURCE_TYPE_KEY) => fields(RESOURCE_TYPE_KEY).convertTo[String] match {
+        case "STRING_VALUES" =>
+          Resource(ResourceType.STRING_VALUES, fields(IDENTIFIER_KEY).convertTo[String])
+        case "MAP_STRING_TO_DOUBLE_VALUE" =>
+          Resource(ResourceType.MAP_STRING_TO_DOUBLE_VALUE, fields(IDENTIFIER_KEY).convertTo[String])
+        case "MAP_STRING_TO_STRING_VALUES" =>
+          Resource(ResourceType.MAP_STRING_TO_STRING_VALUES, fields(IDENTIFIER_KEY).convertTo[String])
+        case "JUDGEMENT_PROVIDER" =>
+          Resource(ResourceType.JUDGEMENT_PROVIDER, fields(IDENTIFIER_KEY).convertTo[String])
+      }
+    }
+
+    override def write(obj: Resource[Any]): JsValue =
+      s"""{
+        |"$RESOURCE_TYPE_KEY": "${obj.resourceType.toString().toUpperCase}",
+        |"$IDENTIFIER_KEY": "${obj.identifier}"
+        |}""".toJson
+
+  }
 
   object StructDefs {
 

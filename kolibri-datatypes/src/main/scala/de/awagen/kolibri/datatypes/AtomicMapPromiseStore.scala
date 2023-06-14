@@ -44,6 +44,8 @@ trait AtomicMapPromiseStore[U, V, W] {
 
   def retrievalObjectToKeyFunc: W => U
 
+  def keySet: Set[U] = valueMap.get().keySet
+
   /**
    *
    * @param key     - key for which the data is requested

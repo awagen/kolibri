@@ -92,7 +92,7 @@ object BaseWorkHandlerServiceSpec extends ZIOSpecDefault {
             ArgumentMatchers.eq(s"jobs/open/$jobId/tasks/inprogress_state/${AppProperties.config.node_hash}/0")
           )
         val updateFileContentCaptor2: ArgumentCaptor[String] = ArgumentCaptor.forClass(classOf[String])
-        verify(writer, times(2))
+        verify(writer, times(3))
           .write(
             updateFileContentCaptor2.capture(),
             ArgumentMatchers.eq(s"jobs/open/$jobId/tasks/inprogress_state/${AppProperties.config.node_hash}/1")
@@ -103,6 +103,7 @@ object BaseWorkHandlerServiceSpec extends ZIOSpecDefault {
         val batch0StateChange2 = writeValues._1.get(1).parseJson.convertTo[ProcessingState]
         val batch1StateChange1 = writeValues._2.get(0).parseJson.convertTo[ProcessingState]
         val batch1StateChange2 = writeValues._2.get(1).parseJson.convertTo[ProcessingState]
+        val batch1StateChange3 = writeValues._2.get(2).parseJson.convertTo[ProcessingState]
         batch0StateChange1 == TestObjects.copyProcessingStateWithAdjustedTimeAndState(
           TestObjects.processingState1, batch0StateChange1.processingInfo.lastUpdate, ProcessingStatus.QUEUED
         ) &&
@@ -114,10 +115,13 @@ object BaseWorkHandlerServiceSpec extends ZIOSpecDefault {
           ) &&
           batch1StateChange2 == TestObjects.copyProcessingStateWithAdjustedTimeAndState(
             TestObjects.processingState2, batch1StateChange2.processingInfo.lastUpdate, ProcessingStatus.QUEUED
+          ) &&
+          batch1StateChange3 == TestObjects.copyProcessingStateWithAdjustedTimeAndState(
+            TestObjects.processingState2, batch1StateChange2.processingInfo.lastUpdate, ProcessingStatus.IN_PROGRESS
           )
       })) &&
         assert(nextQueueElementOpt)(Assertion.assertion("correct next queued element")(element => {
-          element.get.batchNr == 1 && element.get.job.jobName == jobId
+          element.isEmpty
         })) &&
         assert(updatedProcessIdToFiberMapping)(Assertion.assertion("fiber mapping must be updated")(fiberMapping => {
           fiberMapping.keySet == Set(processId1, processId2)
