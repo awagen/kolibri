@@ -335,4 +335,6 @@ case class BaseClaimService(claimReader: ClaimReader,
       _ <- fillUpClaims(claimTopic, openJobsSnapshot, processingStates)
     } yield ()
   }
+
+  override def getAllClaims(jobIds: Set[String], claimTopic: ClaimTopic): Task[Set[Claim]] = claimReader.getAllClaims(jobIds, claimTopic)
 }

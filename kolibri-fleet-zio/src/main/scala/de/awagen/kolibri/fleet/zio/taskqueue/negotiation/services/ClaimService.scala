@@ -18,6 +18,7 @@
 package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services
 
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.ClaimTopics.ClaimTopic
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ClaimStates.Claim
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.JobStates.OpenJobsSnapshot
 import zio.Task
 
@@ -30,5 +31,7 @@ trait ClaimService {
    */
   def manageClaims(claimTopic: ClaimTopic,
                    openJobsSnapshot: OpenJobsSnapshot): Task[Unit]
+
+  def getAllClaims(jobIds: Set[String], claimTopic: ClaimTopic): Task[Set[Claim]]
 
 }

@@ -19,67 +19,115 @@ package de.awagen.kolibri.fleet.zio
 
 import de.awagen.kolibri.datatypes.types.Types.WithCount
 import de.awagen.kolibri.definitions.io.json.ResourceJsonProtocol.AnyResourceFormat
-import de.awagen.kolibri.fleet.zio.config.ZIOConfig
+import de.awagen.kolibri.fleet.zio.config.di.ZioDIConfig
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobDefinition
 import de.awagen.kolibri.fleet.zio.io.json.JobDefinitionJsonProtocol.JobDefinitionFormat
 import de.awagen.kolibri.fleet.zio.resources.NodeResourceProvider
-import de.awagen.kolibri.fleet.zio.schedule.Schedules
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.ClaimTopics
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.JobStateReader
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer.JobStateWriter
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services.{ClaimService, WorkHandlerService}
 import spray.json.DefaultJsonProtocol.immSetFormat
 import spray.json._
 import zio._
 import zio.http._
 import zio.logging.LogFormat
 import zio.logging.backend.SLF4J
+import zio.stream.ZStream
 
 object App extends ZIOAppDefault {
 
   override val bootstrap: ZLayer[Any, Nothing, Unit] = SLF4J.slf4j(LogLevel.Info, LogFormat.colored)
 
-  private val app: HttpApp[Any, Nothing] = Http.collect[Request] {
-    case Method.GET -> !! / "text" => Response.text("Hello World!")
+  private val app: Http[JobStateWriter with JobStateReader, Nothing, Request, Response] = Http.collectZIO[Request] {
+    case Method.GET -> !! / "hello" => ZIO.succeed(Response.text("Hello World!"))
+    case Method.GET -> !! / "global_resources" =>
+      ZIO.attempt(Response.text(NodeResourceProvider.listResources.toJson.toString()))
+        .catchAll(throwable =>
+          ZIO.logInfo(s"error retrieving global resources:\n$throwable")) *> ZIO.succeed(Response.text("failed retrieving global resources"))
+    case Method.GET -> !! / "registeredJobs" =>
+      for {
+        // TODO: avoid reloading the current state from filesystem on each request
+        stateReader <- ZIO.service[JobStateReader]
+        jobStateEither <- stateReader.fetchOpenJobState.either
+        _ <- ZIO.when(jobStateEither.isLeft)(ZIO.logInfo(s"Retrieving job state failed with error:\n${jobStateEither.swap.toOption.get}"))
+      } yield jobStateEither match {
+        case Right(jobState) =>
+          Response.text(s"Files: ${jobState.jobStateSnapshots.keys.toSeq.mkString(",")}")
+        case Left(_) =>
+          Response.text(s"Failed retrieving registered jobs")
+      }
+    case req@Method.POST -> !! / "job" =>
+      (for {
+        jobStateReader <- ZIO.service[JobStateReader]
+        jobStateWriter <- ZIO.service[JobStateWriter]
+        jobString <- req.body.asString
+        jobDef <- ZIO.attempt(jobString.parseJson.convertTo[JobDefinition[_, _, _ <: WithCount]])
+        // TODO: avoid reloading the current state from filesystem on each request
+        jobState <- jobStateReader.fetchOpenJobState
+        jobFolderExists <- ZIO.attempt(jobState.jobStateSnapshots.contains(jobDef.jobName))
+        _ <- ZIO.ifZIO(ZIO.succeed(jobFolderExists))(
+          onFalse = jobStateWriter.storeJobDefinitionAndBatches(jobString),
+          onTrue = ZIO.logInfo(s"Job folder for job ${jobDef.jobName} already exists," +
+            s" skipping job information persistence step")
+        )
+        r <- ZIO.succeed(Response.text(jobString))
+      } yield r).catchAll(throwable =>
+        ZIO.logWarning(s"Error on posting job:\n$throwable")
+          *> ZIO.succeed(Response.text(s"Failed posting job"))
+      )
   }
 
-  // list loaded global resources
-  private val globalResourceListing: HttpApp[Any, Nothing] = Http.collect[Request] {
-    case Method.GET -> !! / "global_resources" => Response.text(NodeResourceProvider.listResources.toJson.toString())
+  /**
+   * Effect taking care of claim and work management
+   * TODO: are we always recreating by calling ZIO.service or is the below valid?
+   */
+  val taskWorkerApp: ZIO[JobStateReader with ClaimService with WorkHandlerService, Throwable, Unit] = {
+    for {
+      jobStateReaderService <- ZIO.service[JobStateReader]
+      claimService <- ZIO.service[ClaimService]
+      workHandlerService <- ZIO.service[WorkHandlerService]
+      openJobsState <- jobStateReaderService.fetchOpenJobState
+      allProcessingClaims <- claimService.getAllClaims(
+        openJobsState.jobStateSnapshots.keySet,
+        ClaimTopics.JobTaskProcessingClaim)
+      allProcessingClaimHashes <- ZIO.succeed(allProcessingClaims.map(x => x.nodeId))
+      // manage claiming of job wrap up
+      _ <- claimService.manageClaims(ClaimTopics.JobWrapUpClaim, openJobsState)
+      // handle claimed task reset claims per node hash
+      _ <- ZStream.fromIterable(allProcessingClaimHashes)
+        .foreach(hash => claimService.manageClaims(ClaimTopics.JobTaskResetClaim(hash), openJobsState))
+      // manage claiming of new processing tasks
+      _ <- claimService.manageClaims(ClaimTopics.JobTaskProcessingClaim, openJobsState)
+      // handle processing of claimed tasks
+      _ <- workHandlerService.manageBatches(openJobsState)
+      // persist the updated status of the batches processed
+      _ <- workHandlerService.updateProcessStates
+    } yield ()
   }
 
   override val run: ZIO[Any, Throwable, Any] = {
-    val fixed = Schedule.fixed(1.minute)
-    val rio: RIO[Any, Option[Seq[String]]] = Schedules.taskCheckSchedule("")
-    for {
-      zioConfig <- ZIO.succeed(new ZIOConfig())
-      _ <- zioConfig.init()
-      jobHandler <- ZIO.succeed(zioConfig.getJobHandler)
-      jobUpdater <- ZIO.succeed(zioConfig.getJobUpdater)
-      zioHttp <- ZIO.succeed({
-        Http.collectZIO[Request] {
-          case Method.GET -> !! / "registeredJobs" => for {
-            // TODO: avoid reloading the current state from filesystem on each request
-            jobState <- jobHandler.fetchOpenJobState
-          } yield Response.text(s"Files: ${jobState.jobStateSnapshots.keys.toSeq.mkString(",")}")
-          case req@Method.POST -> !! / "job" =>
-            for {
-              jobString <- req.body.asString
-              jobDef <- ZIO.attempt(jobString.parseJson.convertTo[JobDefinition[_,_, _ <: WithCount]])
-              // TODO: avoid reloading the current state from filesystem on each request
-              jobState <- jobHandler.fetchOpenJobState
-              jobFolderExists <- ZIO.attempt(jobState.jobStateSnapshots.contains(jobDef.jobName))
-              _ <- ZIO.ifZIO(ZIO.succeed(jobFolderExists))(
-                onFalse = jobUpdater.storeJobDefinitionAndBatches(jobString),
-                onTrue = ZIO.logInfo(s"Job folder for job ${jobDef.jobName} already exists," +
-                  s" skipping job information persistence step")
-              )
-              r <- ZIO.succeed(Response.text(jobString))
-            } yield r
-        }.catchAllZIO(x => ZIO.fail(Response.text(x.toString)))
-      })
+    val fixed = Schedule.fixed(30 seconds)
+    (for {
       _ <- ZIO.logInfo("Application started!")
-      _ <- Runtime.default.run(rio)
-      _ <- Runtime.default.run(rio.repeat(fixed)).fork
-      _ <- Runtime.default.run(Schedules.findAndRegisterJobs(jobHandler).repeat(fixed)).fork
-      _ <- Server.serve(app ++ zioHttp ++ globalResourceListing).provide(Server.default)
+      _ <- Runtime.default.run(taskWorkerApp)
+      _ <- Runtime.default.run(taskWorkerApp.repeat(fixed).delay(30 seconds)).fork
+      _ <- Server.serve(app)
       _ <- ZIO.logInfo("Application is about to exit!")
-    } yield ()
+    } yield ())
+      .provide(
+        Server.default,
+        ZioDIConfig.writerLayer,
+        ZioDIConfig.readerLayer,
+        ZioDIConfig.overviewReaderLayer,
+        ZioDIConfig.jobStateReaderLayer,
+        ZioDIConfig.jobStateWriterLayer,
+        ZioDIConfig.claimReaderLayer,
+        ZioDIConfig.claimWriterLayer,
+        ZioDIConfig.workStateReaderLayer,
+        ZioDIConfig.workStateWriterLayer,
+        ZioDIConfig.claimServiceLayer,
+        ZioDIConfig.workHandlerServiceLayer
+      )
   }
 }
