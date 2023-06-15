@@ -203,6 +203,7 @@ case class BaseClaimService(claimReader: ClaimReader,
         val nrOfFiledClaims = existingClaimsForNode.count(_ => true)
         math.max(0, maxNrJobsClaimed - (nrOfInProgressFiles + nrOfFiledClaims))
       })
+      _ <- ZIO.logDebug(s"Nr of claimable batches: $numberOfNewlyClaimableBatches")
       // if there are is some room to claim additional batches, do so (filing the batch claim,
       // while the verification and possible exercising of each claim will be handled in the next
       // round of the manageClaims call

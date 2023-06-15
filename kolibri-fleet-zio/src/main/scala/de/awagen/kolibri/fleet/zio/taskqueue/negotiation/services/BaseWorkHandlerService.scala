@@ -403,8 +403,8 @@ case class BaseWorkHandlerService[U <: TaggedWithType with DataPoint[Any], V <: 
         })
       // delete those resources for which no mapping to a running or claimed job exists
       resourcesWithoutJobs <- resourceToJobIdsRef.get.map(mapping => mapping.filter(x => x._2.isEmpty).keys.toSet)
-      _ <- ZIO.logInfo(s"Cleaning up resources since no reference to any job exists anymore: " +
-        s"${resourcesWithoutJobs.toJson.toString()}")
+      _ <- ZIO.when(resourcesWithoutJobs.nonEmpty)(ZIO.logInfo(s"Cleaning up resources since no reference to any job exists anymore: " +
+        s"${resourcesWithoutJobs.toJson.toString()}"))
       _ <- ZStream.fromIterable(resourcesWithoutJobs)
         .foreach(resource => ZIO.attempt(NodeResourceProvider.removeResource(resource)))
     } yield ()

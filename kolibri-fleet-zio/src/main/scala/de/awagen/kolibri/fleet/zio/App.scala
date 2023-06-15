@@ -46,13 +46,13 @@ object App extends ZIOAppDefault {
     case Method.GET -> !! / "global_resources" =>
       ZIO.attempt(Response.text(NodeResourceProvider.listResources.toJson.toString()))
         .catchAll(throwable =>
-          ZIO.logInfo(s"error retrieving global resources:\n$throwable")) *> ZIO.succeed(Response.text("failed retrieving global resources"))
+          ZIO.logError(s"error retrieving global resources:\n$throwable")) *> ZIO.succeed(Response.text("failed retrieving global resources"))
     case Method.GET -> !! / "registeredJobs" =>
       for {
         // TODO: avoid reloading the current state from filesystem on each request
         stateReader <- ZIO.service[JobStateReader]
         jobStateEither <- stateReader.fetchOpenJobState.either
-        _ <- ZIO.when(jobStateEither.isLeft)(ZIO.logInfo(s"Retrieving job state failed with error:\n${jobStateEither.swap.toOption.get}"))
+        _ <- ZIO.when(jobStateEither.isLeft)(ZIO.logError(s"Retrieving job state failed with error:\n${jobStateEither.swap.toOption.get}"))
       } yield jobStateEither match {
         case Right(jobState) =>
           Response.text(s"Files: ${jobState.jobStateSnapshots.keys.toSeq.mkString(",")}")
@@ -67,6 +67,7 @@ object App extends ZIOAppDefault {
         jobDef <- ZIO.attempt(jobString.parseJson.convertTo[JobDefinition[_, _, _ <: WithCount]])
         // TODO: avoid reloading the current state from filesystem on each request
         jobState <- jobStateReader.fetchOpenJobState
+        // TODO: here need to decompose existing job identifiers in job name and timestamp and use the job name for comparison
         jobFolderExists <- ZIO.attempt(jobState.jobStateSnapshots.contains(jobDef.jobName))
         _ <- ZIO.ifZIO(ZIO.succeed(jobFolderExists))(
           onFalse = jobStateWriter.storeJobDefinitionAndBatches(jobString),

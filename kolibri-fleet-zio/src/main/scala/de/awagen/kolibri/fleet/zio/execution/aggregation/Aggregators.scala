@@ -32,12 +32,12 @@ object Aggregators {
 
   def countingAggregator(value: Int, count: Int): Aggregator[TaggedWithType with DataPoint[Unit], ValueWithCount[Int]] = new Aggregator[TaggedWithType with DataPoint[Unit], ValueWithCount[Int]] {
     override def add(sample: TaggedWithType with DataPoint[Unit]): Aggregator[TaggedWithType with DataPoint[Unit], ValueWithCount[Int]] = {
-      logger.info(s"adding sample to aggregator: $sample")
+      logger.debug(s"adding sample to aggregator: $sample")
       countingAggregator(value + 1, count + 1)
     }
 
     override def aggregation: ValueWithCount[Int] = {
-      logger.info("requesting current aggregation state")
+      logger.debug("requesting current aggregation state")
       ValueWithCount(value, count)
     }
 

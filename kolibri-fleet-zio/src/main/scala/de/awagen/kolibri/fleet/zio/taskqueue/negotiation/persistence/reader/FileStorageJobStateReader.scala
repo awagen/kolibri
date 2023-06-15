@@ -71,7 +71,6 @@ case class FileStorageJobStateReader(overviewReader: DataOverviewReader,
     var jobState: JobDefinitionLoadStatus = InvalidJobDefinition
     try {
       jobState = Loaded(jobDefFileContent.parseJson.convertTo[JobDefinition[_, _, _ <: WithCount]])
-      logger.info(s"Finished casting file '$jobDefPath' to job definition")
     }
     catch {
       case e: Exception => logger.warn("Casting file to job definition failed", e)
@@ -157,7 +156,7 @@ case class FileStorageJobStateReader(overviewReader: DataOverviewReader,
       jobFolderNames <- ZIO.attemptBlockingIO[Seq[String]](overviewReader.listResources(config.openJobBaseFolder, _ => true)
         .map(uri => uri.split("/").last).distinct)
         .logError
-      _ <- ZIO.logInfo(s"job folder names: $jobFolderNames")
+      _ <- ZIO.logDebug(s"job folder names: $jobFolderNames")
       // parse details out of the folder names (jobName_timeInMillis)
       jobStateSnapshots <- ZStream.fromIterable(jobFolderNames)
         .mapZIO(folderName => retrieveOpenJobStateSnapshot(folderName))

@@ -123,7 +123,7 @@ object TaskWorkerSpec extends ZIOSpecDefault {
         // NOTE: make sure the results are tagged, otherwise the aggregator might not
         // reflect the sample in the final aggregation (depending on tagger)
         aggregator <- aggAndFiber._1.get
-        _ <- ZIO.logInfo(s"aggregation: ${aggregator.aggregation.aggregationStateMap}")
+        _ <- ZIO.logDebug(s"aggregation: ${aggregator.aggregation.aggregationStateMap}")
       } yield assert(aggregator.aggregation.count)(Assertion.equalTo(1)) &&
         assert(aggregator.aggregation.aggregationStateMap.values.head.rows.values.head.metrics("ndcg_5").biValue.value2.value.asInstanceOf[Double])(Assertion.approximatelyEquals(0.3797, 0.0001))
     }
