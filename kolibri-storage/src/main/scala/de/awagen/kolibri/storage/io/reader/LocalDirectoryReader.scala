@@ -40,12 +40,12 @@ case class LocalDirectoryReader(baseDir: String,
     logger.debug(s"scanning files in directory $fullDir")
     val directory = new File(fullDir)
     if (Objects.isNull(directory)) {
-      logger.warn(s"directory '$fullDir' does not exist, returning empty resource list")
+      logger.debug(s"directory '$fullDir' does not exist, returning empty resource list")
       return Seq.empty
     }
     val fileList = directory.listFiles()
     if (Objects.isNull(fileList)) {
-      logger.warn(s"directory '$fullDir' does not exist or does not contain files, returning empty resource list")
+      logger.debug(s"directory '$fullDir' does not exist or does not contain files, returning empty resource list")
       return Seq.empty
     }
     logger.debug(s"found files: ${fileList.mkString(",")}")
