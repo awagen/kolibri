@@ -24,9 +24,11 @@ import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobDefinition
 import de.awagen.kolibri.fleet.zio.io.json.JobDefinitionJsonProtocol.JobDefinitionFormat
 import de.awagen.kolibri.fleet.zio.resources.NodeResourceProvider
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.ClaimTopics
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.JobStateReader
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer.JobStateWriter
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.{ClaimReader, JobStateReader, WorkStateReader}
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer.{ClaimWriter, FileStorageJobStateWriter, JobStateWriter, WorkStateWriter}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services.{ClaimService, WorkHandlerService}
+import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, Reader}
+import de.awagen.kolibri.storage.io.writer.Writers
 import spray.json.DefaultJsonProtocol.immSetFormat
 import spray.json._
 import zio._
@@ -80,7 +82,6 @@ object App extends ZIOAppDefault {
 
   /**
    * Effect taking care of claim and work management
-   * TODO: are we always recreating by calling ZIO.service or is the below valid?
    */
   val taskWorkerApp: ZIO[JobStateReader with ClaimService with WorkHandlerService, Throwable, Unit] = {
     for {
@@ -93,12 +94,12 @@ object App extends ZIOAppDefault {
         ClaimTopics.JobTaskProcessingClaim)
       allProcessingClaimHashes <- ZIO.succeed(allProcessingClaims.map(x => x.nodeId))
       // manage claiming of job wrap up
-      _ <- claimService.manageClaims(ClaimTopics.JobWrapUpClaim, openJobsState)
+      _ <- claimService.manageClaims(ClaimTopics.JobWrapUpClaim)
       // handle claimed task reset claims per node hash
       _ <- ZStream.fromIterable(allProcessingClaimHashes)
-        .foreach(hash => claimService.manageClaims(ClaimTopics.JobTaskResetClaim(hash), openJobsState))
+        .foreach(hash => claimService.manageClaims(ClaimTopics.JobTaskResetClaim(hash)))
       // manage claiming of new processing tasks
-      _ <- claimService.manageClaims(ClaimTopics.JobTaskProcessingClaim, openJobsState)
+      _ <- claimService.manageClaims(ClaimTopics.JobTaskProcessingClaim)
       // handle processing of claimed tasks
       _ <- workHandlerService.manageBatches(openJobsState)
       // persist the updated status of the batches processed
@@ -106,28 +107,30 @@ object App extends ZIOAppDefault {
     } yield ()
   }
 
+  val combinedLayer: ZLayer[Any, Nothing, Writers.Writer[String, String, _] with Reader[String, Seq[String]] with DataOverviewReader with ((String => Boolean) => DataOverviewReader) with JobStateReader with FileStorageJobStateWriter with ClaimReader with ClaimWriter with WorkStateReader with WorkStateWriter with ClaimService with WorkHandlerService] =
+    ZioDIConfig.writerLayer >+>
+      ZioDIConfig.readerLayer >+>
+      ZioDIConfig.overviewReaderLayer >+>
+      ZioDIConfig.fileFilterToOverViewFuncLayer >+>
+      ZioDIConfig.jobStateReaderLayer >+>
+      ZioDIConfig.jobStateWriterLayer >+>
+      ZioDIConfig.claimReaderLayer >+>
+      ZioDIConfig.claimWriterLayer >+>
+      ZioDIConfig.workStateReaderLayer >+>
+      ZioDIConfig.workStateWriterLayer >+>
+      ZioDIConfig.claimServiceLayer >+>
+      ZioDIConfig.workHandlerServiceLayer
+
+
   override val run: ZIO[Any, Throwable, Any] = {
     val fixed = Schedule.fixed(30 seconds)
     (for {
       _ <- ZIO.logInfo("Application started!")
-      _ <- Runtime.default.run(taskWorkerApp)
-      _ <- Runtime.default.run(taskWorkerApp.repeat(fixed).delay(30 seconds)).fork
+      _ <- taskWorkerApp
+      _ <- taskWorkerApp.repeat(fixed).delay(30 seconds).fork
       _ <- Server.serve(app)
       _ <- ZIO.logInfo("Application is about to exit!")
     } yield ())
-      .provide(
-        Server.default,
-        ZioDIConfig.writerLayer,
-        ZioDIConfig.readerLayer,
-        ZioDIConfig.overviewReaderLayer,
-        ZioDIConfig.jobStateReaderLayer,
-        ZioDIConfig.jobStateWriterLayer,
-        ZioDIConfig.claimReaderLayer,
-        ZioDIConfig.claimWriterLayer,
-        ZioDIConfig.workStateReaderLayer,
-        ZioDIConfig.workStateWriterLayer,
-        ZioDIConfig.claimServiceLayer,
-        ZioDIConfig.workHandlerServiceLayer
-      )
+      .provide(Server.default >+> combinedLayer)
   }
 }

@@ -96,11 +96,12 @@ object TestObjects {
     writer
   )
 
-  def claimService(writer: FileWriter[String, Unit]) = BaseClaimService(
+  def claimService(writer: FileWriter[String, Unit], jobStateReaderInst: JobStateReader = jobStateReader(baseResourceFolder)) = BaseClaimService(
     claimReader,
     claimWriter(writer),
     workStateReader,
     workStateWriter(writer),
+    jobStateReaderInst,
     jobStateWriter(writer)
   )
 

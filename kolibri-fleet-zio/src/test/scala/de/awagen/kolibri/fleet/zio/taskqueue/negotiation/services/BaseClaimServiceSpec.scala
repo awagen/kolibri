@@ -18,8 +18,10 @@
 package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services
 
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.ClaimTopics
+import de.awagen.kolibri.fleet.zio.testutils.TestObjects
 import de.awagen.kolibri.fleet.zio.testutils.TestObjects.{SnapshotSample1, claimService, fileWriterMock}
-import zio.Scope
+import org.mockito.Mockito.{spy, when}
+import zio.{Scope, ZIO}
 import zio.test._
 
 object BaseClaimServiceSpec extends ZIOSpecDefault {
@@ -29,10 +31,12 @@ object BaseClaimServiceSpec extends ZIOSpecDefault {
     test("manageClaims") {
       // given
       val writerMock = fileWriterMock
-      val claimH = claimService(writerMock)
+      val jobStateReaderSpy = spy(TestObjects.jobStateReader(TestObjects.baseResourceFolder))
+      when(jobStateReaderSpy.fetchOpenJobState).thenReturn(ZIO.succeed(SnapshotSample1.openJobsSnapshot))
+      val claimH = claimService(writerMock, jobStateReaderSpy)
       // when, then
       for {
-        _ <- claimH.manageClaims(ClaimTopics.JobTaskProcessingClaim, SnapshotSample1.openJobsSnapshot)
+        _ <- claimH.manageClaims(ClaimTopics.JobTaskProcessingClaim)
       } yield assert(true)(Assertion.assertion("true")(_ => true))
     }
   )

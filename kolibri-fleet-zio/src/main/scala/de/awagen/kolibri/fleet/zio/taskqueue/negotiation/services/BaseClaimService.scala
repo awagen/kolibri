@@ -21,7 +21,7 @@ import de.awagen.kolibri.fleet.zio.config.AppProperties
 import de.awagen.kolibri.fleet.zio.config.AppProperties.config.maxNrJobsClaimed
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.ClaimTopics
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.ClaimTopics.ClaimTopic
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.{ClaimReader, WorkStateReader}
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.{ClaimReader, JobStateReader, WorkStateReader}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer.{ClaimWriter, JobStateWriter, WorkStateWriter}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services.BaseClaimService.{DUMMY_BATCH_NR, isCurrentNodeClaim}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ClaimStates.Claim
@@ -47,6 +47,7 @@ case class BaseClaimService(claimReader: ClaimReader,
                             claimUpdater: ClaimWriter,
                             workStateReader: WorkStateReader,
                             workStateWriter: WorkStateWriter,
+                            jobStateReader: JobStateReader,
                             jobStateWriter: JobStateWriter) extends ClaimService {
 
   /**
@@ -313,12 +314,12 @@ case class BaseClaimService(claimReader: ClaimReader,
    * 1 - verify existing claims and exercise the batches that the node claimed successfully
    * 2 - test whether there is any demand for the node to claim additional batches. If so, file additional claims
    */
-  def manageClaims(claimTopic: ClaimTopic,
-                   openJobsSnapshot: OpenJobsSnapshot): Task[Unit] = {
+  def manageClaims(claimTopic: ClaimTopic): Task[Unit] = {
     for {
-      ignoreJobIdsOnThisNode <- ZIO.succeed(openJobsSnapshot.jobsToBeIgnoredOnThisNode.map(x => x.jobId))
+      openJobsSnapshot1 <- jobStateReader.fetchOpenJobState
+      ignoreJobIdsOnThisNode <- ZIO.succeed(openJobsSnapshot1.jobsToBeIgnoredOnThisNode.map(x => x.jobId))
       // extract all (jobId, batchNr) tuples of claims currently filed for the node
-      claimsByCurrentNode <- claimReader.getClaimsByCurrentNode(claimTopic, openJobsSnapshot.jobStateSnapshots.values.map(x => x.jobId).toSet)
+      claimsByCurrentNode <- claimReader.getClaimsByCurrentNode(claimTopic, openJobsSnapshot1.jobStateSnapshots.values.map(x => x.jobId).toSet)
       //verify each claim
       // remove the claims that are not needed anymore (only for this particular node)
       claimsToBeRemoved <- ZIO.succeed(claimsByCurrentNode.filter(x => ignoreJobIdsOnThisNode.contains(x.jobId)))
@@ -328,6 +329,16 @@ case class BaseClaimService(claimReader: ClaimReader,
       verifiedClaims <- verifyClaimsAndReturnSuccessful(claimsByCurrentNode, claimTopic)
       // Now exercise all verified claims
       _ <- exerciseClaims(verifiedClaims)
+      // to avoid new claims being filed based on old states, reload the current job state here and file new claims
+      // based on that state
+      _ <- reloadCurrentStateAndFileClaims(claimTopic)
+    } yield ()
+  }
+
+  private def reloadCurrentStateAndFileClaims(claimTopic: ClaimTopic): ZIO[Any, Throwable, Unit] = {
+    for {
+      // to avoid new claims being filed based on old states, reload the current job state here
+      openJobsSnapshot <- jobStateReader.fetchOpenJobState
       // extract all processing states
       processingStates <- workStateReader.getInProgressStateForAllNodes(openJobsSnapshot.jobStateSnapshots.keySet)
         .map(x => x.values.flatMap(y => y.values).flatten.toSet)

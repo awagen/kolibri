@@ -129,11 +129,17 @@ case class FileStorageJobStateReader(overviewReader: DataOverviewReader,
    */
   private[this] def retrieveOpenJobStateSnapshot(jobDirName: String): URIO[Any, Either[Throwable, JobStateSnapshot]] =
     (for {
+      // job folder is combination of [jobId]_[timePlacedInMillis], here we decompose
       jobNameAndCreationTime <- ZIO.attempt(jobFolderNameToJobIdAndCreationTimeInMillis(jobDirName))
       jobDefinition <- ZIO.attemptBlocking(loadJobDefinitionByJobDirectoryName(jobDirName))
         .flatMap({
           case InvalidJobDefinition => ZIO.fail(new RuntimeException("invalid job definition format"))
-          case Loaded(definition) => ZIO.succeed(definition)
+          case Loaded(definition) => ZIO.succeed({
+            // we replace the orginal job name in the file with the one given by the timestamped folder.
+            // note that the job definition itself is not changed, so we will be able to pick it up in whatever
+            // job folder it lies
+            definition.copy(jobName = jobDirName)
+          })
         })
       jobLevelDirectives <- ZIO.attemptBlocking(loadJobLevelDirectivesByJobDirectoryName(jobDirName))
       batchStateMapping <- ZIO.attemptBlocking(findBatchesForJobWithState(jobDirName))

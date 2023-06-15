@@ -77,7 +77,7 @@ case class LocalDirectoryFileWriter(directory: String) extends FileWriter[String
 
   override def copyDirectory(dirPath: String, toDirPath: String): Unit = {
     val fullSrcDirPath = s"$normedDirectory/$dirPath"
-    val fullDirTargetPath = s"$normedDirectory/$toDirPath"
+    val fullDirTargetPath = s"$normedDirectory/$toDirPath/${dirPath.split("/").last}"
     FileUtils.copyDirectory(new File(fullSrcDirPath), new File(fullDirTargetPath), true)
   }
 

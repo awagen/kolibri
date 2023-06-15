@@ -50,11 +50,15 @@ object ZioDIConfig {
     } yield FileStorageJobStateReader(overviewReader, fileReader)
   }
 
-  val jobStateWriterLayer: ZLayer[Writer[String, String, Unit], Nothing, JobStateWriter] = ZLayer {
-    for {
-      writer <- ZIO.service[Writer[String, String, Unit]]
-    } yield FileStorageJobStateWriter(writer)
-  }
+  val jobStateWriterLayer: ZLayer[Writer[String, String, _], Nothing, FileStorageJobStateWriter] =
+    ZLayer {
+      for {
+        writer <- ZIO.service[Writer[String, String, _]]
+      } yield FileStorageJobStateWriter(writer)
+    }
+
+  val fileFilterToOverViewFuncLayer: ULayer[(String => Boolean) => DataOverviewReader] =
+    ZLayer.succeed(filter => AppConfig.persistenceModule.persistenceDIModule.dataOverviewReader(filter))
 
   val claimReaderLayer: ZLayer[((String => Boolean) => DataOverviewReader) with Reader[String, Seq[String]], Nothing, ClaimReader] = ZLayer {
     for {
@@ -63,9 +67,9 @@ object ZioDIConfig {
     } yield FileStorageClaimReader(overviewReaderFunc, reader)
   }
 
-  val claimWriterLayer: ZLayer[FileWriter[String, Unit], Nothing, ClaimWriter] = ZLayer {
+  val claimWriterLayer: ZLayer[Writer[String, String, _], Nothing, ClaimWriter] = ZLayer {
     for {
-      writer <- ZIO.service[FileWriter[String, Unit]]
+      writer <- ZIO.service[Writer[String, String, _]]
     } yield FileStorageClaimWriter(writer)
   }
 
@@ -76,20 +80,21 @@ object ZioDIConfig {
     } yield FileStorageWorkStateReader(overviewReaderFunc, reader)
   }
 
-  val workStateWriterLayer: ZLayer[Writer[String, String, Unit], Nothing, WorkStateWriter] = ZLayer {
+  val workStateWriterLayer: ZLayer[Writer[String, String, _], Nothing, WorkStateWriter] = ZLayer {
     for {
-      writer <- ZIO.service[Writer[String, String, Unit]]
+      writer <- ZIO.service[Writer[String, String, _]]
     } yield FileStorageWorkStateWriter(writer)
   }
 
-  val claimServiceLayer: ZLayer[ClaimReader with ClaimWriter with WorkStateReader with WorkStateWriter with JobStateWriter, Nothing, ClaimService] = ZLayer {
+  val claimServiceLayer: ZLayer[ClaimReader with ClaimWriter with WorkStateReader with WorkStateWriter with JobStateReader with JobStateWriter, Nothing, ClaimService] = ZLayer {
     for {
       claimReader <- ZIO.service[ClaimReader]
       claimWriter <- ZIO.service[ClaimWriter]
       workStateReader <- ZIO.service[WorkStateReader]
       workStateWriter <- ZIO.service[WorkStateWriter]
+      jobStateReader <- ZIO.service[JobStateReader]
       jobStateWriter <- ZIO.service[JobStateWriter]
-    } yield BaseClaimService(claimReader, claimWriter, workStateReader, workStateWriter, jobStateWriter)
+    } yield BaseClaimService(claimReader, claimWriter, workStateReader, workStateWriter, jobStateReader, jobStateWriter)
   }
 
   val workHandlerServiceLayer: ZLayer[ClaimReader with WorkStateReader with WorkStateWriter, Nothing, WorkHandlerService] = ZLayer {
@@ -99,7 +104,7 @@ object ZioDIConfig {
       workStateWriter <- ZIO.service[WorkStateWriter]
       queue <- Queue.bounded[JobDefinitions.JobBatch[_, _, _ <: WithCount]](AppProperties.config.maxNrJobsClaimed)
       addedBatchesHistory <- Ref.make(Seq.empty[ProcessId])
-      processIdToAggregatorMappingRef <- Ref.make(Map.empty[ProcessId, Ref[Aggregators.Aggregator[_ <: TaggedWithType with DataPoint[Any], _ <: WithCount]]])
+      processIdToAggregatorMappingRef <- Ref.make(Map.empty[ProcessId, Ref[Aggregators.Aggregator[TaggedWithType with DataPoint[Any], WithCount]]])
       processIdToFiberMappingRef <- Ref.make(Map.empty[ProcessId, Fiber.Runtime[Throwable, Unit]])
       resourceToJobIdMappingRef <- Ref.make(Map.empty[Resource[Any], Set[String]])
     } yield BaseWorkHandlerService(
