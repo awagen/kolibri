@@ -23,9 +23,13 @@ import zio.http.{Body, Client, Header, Headers, Method, Path, QueryParams, Reque
 
 object RequestTemplateImplicits {
 
+  val protocolMapping: Map[String, Version] = Map(
+    "HTTP/1.1" ->  Version.`HTTP/1.1`,
+    "HTTP/1.0" ->  Version.`HTTP/1.0`
+  )
+
   implicit class RequestTemplateToZIOHttpRequest(template: RequestTemplate) {
 
-    // TODO: template.protocol not taken into account yet
     def toZIOHttpRequest(host: String): ZIO[Client, Throwable, Response] = {
       for {
         httpClient <- ZIO.service[Client]
@@ -38,7 +42,7 @@ object RequestTemplateImplicits {
               path = Path.decode(s"$host/${template.query}"),
               queryParams = QueryParams(template.parameters.map(x => (x._1, Chunk.fromIterable(x._2))))
             ),
-            version = Version.`HTTP/1.1`,
+            version = protocolMapping.getOrElse(template.protocol, Version.`HTTP/1.1`),
             remoteAddress = None
           ))
       } yield response
