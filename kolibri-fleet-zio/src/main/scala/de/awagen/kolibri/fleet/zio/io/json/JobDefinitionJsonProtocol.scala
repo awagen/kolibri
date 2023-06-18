@@ -34,7 +34,7 @@ object JobDefinitionJsonProtocol extends DefaultJsonProtocol {
           val nrBatches = fields("nrBatches").convertTo[Int]
           val durationInMillis = fields("durationInMillis").convertTo[Long]
           val batchAggregationInfo: BatchAggregationInfo[Unit, JobDefinitions.ValueWithCount[Int]] = BatchAggregationInfo(
-            Left(SimpleWaitTask.successKey),
+            SimpleWaitTask.successKey,
             () => countingAggregator(0, 0)
           )
           simpleWaitJob(

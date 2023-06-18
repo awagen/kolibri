@@ -29,6 +29,7 @@ import de.awagen.kolibri.definitions.resources.ResourceProvider
 import de.awagen.kolibri.definitions.usecase.searchopt.io.json.CalculationName.{BINARY_PRECISION_FALSE_AS_YES, BINARY_PRECISION_TRUE_AS_YES, FALSE_COUNT, FIRST_FALSE, FIRST_TRUE, IDENTITY, IR_METRICS, STRING_SEQUENCE_VALUE_OCCURRENCE_HISTOGRAM, TRUE_COUNT}
 import de.awagen.kolibri.definitions.usecase.searchopt.io.json.MetricsCalculationJsonProtocol
 import de.awagen.kolibri.definitions.usecase.searchopt.io.json.MetricsCalculationJsonProtocol.metricsCalculationFormat
+import de.awagen.kolibri.definitions.usecase.searchopt.jobdefinitions.parts.ReservedStorageKeys.REQUEST_TEMPLATE_STORAGE_KEY
 import de.awagen.kolibri.definitions.usecase.searchopt.metrics.Calculations.{FromMapCalculation, JudgementsFromResourceIRMetricsCalculations}
 import de.awagen.kolibri.definitions.usecase.searchopt.metrics.ComputeResultFunctions.{booleanPrecision, countValues, findFirstValue, stringSeqHistogram}
 import de.awagen.kolibri.definitions.usecase.searchopt.metrics.{ComputeResultFunctions, MetricsCalculation}
@@ -68,6 +69,7 @@ case class CalculationsJsonProtocol(resourceProvider: ResourceProvider) {
             val metricsCalculation = fields(METRICS_CALCULATION_KEY).convertTo[MetricsCalculation]
             JudgementsFromResourceIRMetricsCalculations(
               productIdsKey,
+              REQUEST_TEMPLATE_STORAGE_KEY.name,
               queryParamName,
               judgementsResource,
               metricsCalculation,

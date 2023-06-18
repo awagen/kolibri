@@ -19,6 +19,7 @@ package de.awagen.kolibri.fleet.zio.execution
 
 import de.awagen.kolibri.datatypes.immutable.stores.TypeTaggedMap
 import de.awagen.kolibri.datatypes.types.ClassTyped
+import de.awagen.kolibri.definitions.processing.ProcessingMessages.ProcessingMessage
 import de.awagen.kolibri.definitions.processing.failure.TaskFailType
 import zio.{Task, ZIO}
 
@@ -28,7 +29,7 @@ case class ZIOSimpleTaskExecution[+T](initData: TypeTaggedMap,
 
   assert(tasks.nonEmpty)
 
-  val allFailKeys: Seq[ClassTyped[TaskFailType.TaskFailType]] = tasks.map(x => x.failKey)
+  val allFailKeys: Seq[ClassTyped[ProcessingMessage[TaskFailType.TaskFailType]]] = tasks.map(x => x.failKey)
 
 
   override def hasFailed(executionStates: Seq[ExecutionState]): Boolean =
@@ -47,7 +48,7 @@ case class ZIOSimpleTaskExecution[+T](initData: TypeTaggedMap,
         case e if e.keySet.contains(tasks.head.failKey) =>
           for {
             _ <- ZIO.logWarning(s"Task '1' failed with fail reason: ${e.get(tasks.head.failKey)}")
-            result <- ZIO.succeed(e, Seq(Failed(0, e.get(tasks.head.failKey).get)))
+            result <- ZIO.succeed(e, Seq(Failed(0, e.get(tasks.head.failKey).get.data)))
           } yield result
         case e =>
           for {
@@ -67,7 +68,8 @@ case class ZIOSimpleTaskExecution[+T](initData: TypeTaggedMap,
                   _ <- ZIO.logWarning(s"State '$v' contains failKey '${task.failKey}'")
                   _ <- ZIO.logWarning(s"Task '${e._2.size + 1}' failed with fail reason: ${v.get(task.failKey)}")
                   result <- {
-                    ZIO.succeed((v, e._2 ++ Seq(Failed(0, v.get(task.failKey).get))))
+                    // TODO: the index in the Failed is wrong, correct with actual nr of task
+                    ZIO.succeed((v, e._2 ++ Seq(Failed(0, v.get(task.failKey).get.data))))
                   }
                 } yield result
               case v =>

@@ -45,24 +45,14 @@ object TaskWorkerSpec extends ZIOSpecDefault {
 
     // aggregation info assuming plain result
     val batchAggregationInfo = BatchAggregationInfo(
-      Left(NamedClassTyped[Unit]("DONE_WAITING")),
+      NamedClassTyped[ProcessingMessage[Unit]]("DONE_WAITING"),
       () => countingAggregator(0, 0)
     )
-    // aggregation info assuming result wrapped in ProcessingMessage
-    val batchAggregationInfoResultAsProcessingMessage = BatchAggregationInfo(
-      Right(NamedClassTyped[ProcessingMessage[Unit]]("DONE_WAITING")),
-      () => countingAggregator(0, 0)
-    )
+
     // job definition where the result is plain Unit
     val jobBatch: JobBatch[Int, Unit, ValueWithCount[Int]] = JobBatch(
       JobDefinitions.simpleWaitJob("testJob1", 10, 100, elementsPerBatch = 10,
         aggregationInfo = batchAggregationInfo),
-      1
-    )
-    // job definition where result is ProcessingMessage[Unit]
-    val jobBatchResultAsProcessingMessage: JobBatch[Int, Unit, ValueWithCount[Int]] = JobBatch(
-      JobDefinitions.simpleWaitJobResultAsProcessingMessage("testJob1", 10, 100, elementsPerBatch = 10,
-        aggregationInfo = batchAggregationInfoResultAsProcessingMessage),
       1
     )
   }
@@ -73,14 +63,11 @@ object TaskWorkerSpec extends ZIOSpecDefault {
       // given, when, then
       for {
         workRawResult <- TaskWorker.work(TestObjects.jobBatch)
-        workProcessingMessageResult <- TaskWorker.work(TestObjects.jobBatchResultAsProcessingMessage)
         // join is needed here to make sure the fiber completed the execution
         _ <- workRawResult._2.join
-        _ <- workProcessingMessageResult._2.join
         aggregator <- workRawResult._1.get
-        aggregatorForResultAsProcessingMessage <- workProcessingMessageResult._1.get
-      } yield assert((aggregator.aggregation, aggregatorForResultAsProcessingMessage.aggregation))(
-        Assertion.assertion("both aggregations must contain all elements")(x => x._1.count == 10 && x._2.count == 10)
+      } yield assert(aggregator.aggregation)(
+        Assertion.assertion("both aggregations must contain all elements")(x => x.count == 10)
       )
     },
 
@@ -109,7 +96,7 @@ object TaskWorkerSpec extends ZIOSpecDefault {
         )),
         taskSequence = tasks,
         aggregationInfo = BatchAggregationInfo[MetricRow, MetricAggregation[Tag]](
-          successKey = Right(metricsTask.successKey),
+          successKey = metricsTask.successKey,
           batchAggregatorSupplier = () => new TagKeyMetricAggregationPerClassAggregator(
             aggregationState = MetricAggregation.empty[Tag](identity),
             ignoreIdDiff = false

@@ -27,9 +27,9 @@ object ZIOTasks {
 
   object SimpleWaitTask {
 
-    val successKey: ClassTyped[Unit] = NamedClassTyped[Unit]("DONE_WAITING")
+    val successKey: ClassTyped[ProcessingMessage[Unit]] = NamedClassTyped[ProcessingMessage[Unit]]("DONE_WAITING")
 
-    val failKey: ClassTyped[TaskFailType.TaskFailType] = NamedClassTyped[TaskFailType.TaskFailType]("FAILED_WAITING")
+    val failKey: ClassTyped[ProcessingMessage[TaskFailType.TaskFailType]] = NamedClassTyped[ProcessingMessage[TaskFailType.TaskFailType]]("FAILED_WAITING")
 
   }
 
@@ -40,26 +40,14 @@ object ZIOTasks {
   case class SimpleWaitTask(waitTimeInMillis: Long) extends ZIOTask[Unit] {
     override def prerequisites: Seq[ClassTyped[Any]] = Seq.empty
 
-    override def successKey: ClassTyped[Unit] = SimpleWaitTask.successKey
+    override def successKey: ClassTyped[ProcessingMessage[Unit]] = SimpleWaitTask.successKey
 
-    override def failKey: ClassTyped[TaskFailType.TaskFailType] = SimpleWaitTask.failKey
-
-    override def task(map: TypeTaggedMap): Task[TypeTaggedMap] = ZIO.attemptBlocking({
-      Thread.sleep(waitTimeInMillis)
-      map.put(successKey, ())._2
-    })
-  }
-
-  case class SimpleWaitTaskResultAsProcessingMessage(waitTimeInMillis: Long) extends ZIOTask[ProcessingMessage[Unit]] {
-    override def prerequisites: Seq[ClassTyped[Any]] = Seq.empty
-
-    override def successKey: ClassTyped[ProcessingMessage[Unit]] = NamedClassTyped[ProcessingMessage[Unit]]("DONE_WAITING")
-
-    override def failKey: ClassTyped[TaskFailType.TaskFailType] = NamedClassTyped[TaskFailType.TaskFailType]("FAILED_WAITING")
+    override def failKey: ClassTyped[ProcessingMessage[TaskFailType.TaskFailType]] = SimpleWaitTask.failKey
 
     override def task(map: TypeTaggedMap): Task[TypeTaggedMap] = ZIO.attemptBlocking({
       Thread.sleep(waitTimeInMillis)
-      map.put(successKey, Corn[Unit](()))._2
+      map.put(successKey, Corn(()))._2
     })
   }
+
 }

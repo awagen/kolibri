@@ -20,12 +20,14 @@ package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.processing
 import de.awagen.kolibri.datatypes.immutable.stores.TypedMapStore
 import de.awagen.kolibri.datatypes.tagging.Tags.StringTag
 import de.awagen.kolibri.datatypes.tagging.{TaggedWithType, Tags}
-import de.awagen.kolibri.datatypes.types.Types.WithCount
 import de.awagen.kolibri.datatypes.types.{ClassTyped, NamedClassTyped}
+import de.awagen.kolibri.datatypes.types.Types.WithCount
 import de.awagen.kolibri.datatypes.values.DataPoint
 import de.awagen.kolibri.datatypes.values.aggregation.immutable.Aggregators._
 import de.awagen.kolibri.definitions.directives.ResourceDirectives.ResourceDirective
+import de.awagen.kolibri.definitions.processing.ProcessingMessages
 import de.awagen.kolibri.definitions.processing.ProcessingMessages._
+import de.awagen.kolibri.definitions.processing.failure.TaskFailType
 import de.awagen.kolibri.definitions.processing.failure.TaskFailType.FailedByException
 import de.awagen.kolibri.fleet.zio.config.AppProperties.config.maxParallelItemsPerBatch
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobBatch
@@ -55,7 +57,6 @@ object TaskWorker extends Worker {
   /**
    * Load the resources needed by the batch into global node state. Note that multiple requests for the same
    * resource will only lead to a single call to actually load the data.
-   * TODO: we need to make sure to free the resources again if no job needs them anymore
    */
   private[processing] def prepareGlobalResources(directives: Seq[ResourceDirective[_]]): Task[Unit] = {
     for {
@@ -66,16 +67,13 @@ object TaskWorker extends Worker {
           ZIO.fromPromiseScala(NodeResourceProvider.createResource(directive))
         })
         .runDrain
-    } yield()
+    } yield ()
   }
 
   override def work[T: TypeTag, V: TypeTag, W <: WithCount](jobBatch: JobBatch[T, V, W])(implicit tag: TypeTag[W]): Task[(Ref[Aggregator[TaggedWithType with DataPoint[V], W]], Fiber.Runtime[Throwable, Unit])] = {
     val aggregator: Aggregator[TaggedWithType with DataPoint[V], W] = jobBatch.job.aggregationInfo.batchAggregatorSupplier()
     val batchResultWriter: Writers.Writer[W, Tags.Tag, Any] = jobBatch.job.aggregationInfo.writer
-    val successKey: ClassTyped[Any] = jobBatch.job.aggregationInfo.successKey match {
-      case Left(value) => value
-      case Right(value) => value
-    }
+    val successKey: ClassTyped[ProcessingMessage[V]] = jobBatch.job.aggregationInfo.successKey
     for {
       _ <- prepareGlobalResources(jobBatch.job.resourceSetup)
       aggregatorRef <- Ref.make(aggregator)
@@ -109,14 +107,15 @@ object TaskWorker extends Worker {
                       },
                       // if nothing failed, we just normally consume the result
                       onFalse = {
-                        val aggregationEffect: UIO[Unit] = v._1.get(successKey).get match {
-                          case sample: ProcessingMessage[V] =>
-                            aggregatorRef.update(x => x.add(sample))
-                          case value =>
-                            aggregatorRef.update(x => x.add(Corn(value.asInstanceOf[V])))
+                        val computedValueOpt: Option[ProcessingMessage[V]] = v._1.get(successKey)
+                        val aggregationEffect: UIO[Unit] = computedValueOpt match {
+                          case Some(value) => aggregatorRef.update(x => x.add(value)) *>
+                            ZIO.logDebug(s"Aggregating success: ${v._1.get(successKey)}")
+                          case None =>
+                            ZIO.logWarning(s"no fail key, but missing success key '$successKey'") *>
+                              aggregatorRef.update(x => x.add(ProcessingMessages.BadCorn(TaskFailType.MissingResultKey(successKey))))
                         }
-                        ZIO.logDebug(s"Aggregating success: ${v._1.get(successKey)}") *>
-                          aggregationEffect
+                        aggregationEffect
                       }
                     )
                   } yield ())

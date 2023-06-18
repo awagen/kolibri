@@ -82,6 +82,7 @@ object Calculations {
    * @param metricsCalculation - definition of which metrics to calculate
    */
   case class JudgementsFromResourceIRMetricsCalculations(productIdsKey: String,
+                                                         requestTemplateKey: String,
                                                          queryParamName: String,
                                                          judgementsResource: Resource[JudgementProvider[Double]],
                                                          metricsCalculation: MetricsCalculation,
@@ -91,7 +92,7 @@ object Calculations {
     override val names: Set[String] = metricsCalculation.metrics.map(metric => metric.name).toSet
 
     override val calculation: SerializableFunction1[WeaklyTypedMap[String], Seq[ResultRecord[Any]]] = tMap => {
-      val requestTemplate: RequestTemplate = tMap.get[RequestTemplate](REQUEST_TEMPLATE_STORAGE_KEY.name).get
+      val requestTemplate: RequestTemplate = tMap.get[RequestTemplate](requestTemplateKey).get
       val query: String = requestTemplate.getParameter(queryParamName).map(x => x.head).getOrElse("")
       val productSequence: Seq[String] = tMap.get[Seq[String]](productIdsKey).getOrElse(Seq.empty)
       val judgementsOrError: Either[RetrievalError[JudgementProvider[Double]], JudgementProvider[Double]] = resourceProvider.getResource(RetrievalDirective.Retrieve(judgementsResource))

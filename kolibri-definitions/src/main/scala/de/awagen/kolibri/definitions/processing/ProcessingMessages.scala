@@ -73,6 +73,12 @@ object ProcessingMessages {
       this.addTags(tagType, tags)
       this
     }
+
+    def takeOverTags(other: ProcessingMessage[_]): Unit = {
+      other.getTags.foldLeft[ProcessingMessage[T]](this)((oldMsg, typeAndTags) => {
+        oldMsg.withTags(typeAndTags._1, typeAndTags._2)
+      })
+    }
   }
 
   case class Corn[+T](data: T, weight: Double = 1.0) extends ProcessingMessage[T]

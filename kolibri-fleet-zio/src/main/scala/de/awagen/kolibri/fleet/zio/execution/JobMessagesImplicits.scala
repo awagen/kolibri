@@ -18,14 +18,18 @@
 package de.awagen.kolibri.fleet.zio.execution
 
 import de.awagen.kolibri.datatypes.metrics.aggregation.immutable.MetricAggregation
+import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.datatypes.stores.immutable.MetricRow
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
-import de.awagen.kolibri.datatypes.types.ClassTyped
+import de.awagen.kolibri.datatypes.types.SerializableCallable._
+import de.awagen.kolibri.datatypes.types.{ClassTyped, SerializableCallable}
 import de.awagen.kolibri.datatypes.types.Types.WithCount
 import de.awagen.kolibri.datatypes.values.aggregation.immutable.Aggregators.TagKeyMetricAggregationPerClassAggregator
+import de.awagen.kolibri.definitions.http.client.request.RequestTemplate
 import de.awagen.kolibri.definitions.processing.JobMessages.{QueryBasedSearchEvaluationDefinition, SearchEvaluationDefinition}
 import de.awagen.kolibri.definitions.processing.ProcessingMessages.ProcessingMessage
 import de.awagen.kolibri.definitions.usecase.searchopt.jobdefinitions.parts.BatchGenerators.batchByGeneratorAtIndex
+import de.awagen.kolibri.definitions.usecase.searchopt.jobdefinitions.parts.ReservedStorageKeys.REQUEST_TEMPLATE_STORAGE_KEY
 import de.awagen.kolibri.fleet.zio.config.AppConfig
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.BatchAggregationInfo
 import de.awagen.kolibri.fleet.zio.execution.TaskFactory._
@@ -40,13 +44,21 @@ object JobMessagesImplicits {
 
   }
 
+  case class RequestAndParsingResultTaggerConfig(requestTagger: SerializableConsumer[ProcessingMessage[RequestTemplate]],
+                                                 parsingResultTagger: SerializableConsumer[ProcessingMessage[(Either[Throwable, WeaklyTypedMap[String]], RequestTemplate)]])
+
   implicit class SearchEvaluationImplicits(eval: SearchEvaluationDefinition) extends ZIOJobDefinitionConvertible {
 
     def getTaskSequenceForSearchEval: Seq[ZIOTask[_]] = {
-
       val random = new util.Random()
+      // configuration for initial tagging based on the request template
+      val requestTemplateTagger: SerializableConsumer[ProcessingMessage[RequestTemplate]] =
+        eval.taggingConfiguration.map(x => x.initTagger).getOrElse(_ => ())
+      val parsingResultTagger: SerializableConsumer[ProcessingMessage[(Either[Throwable, WeaklyTypedMap[String]], RequestTemplate)]] =
+        eval.taggingConfiguration.map(x => x.processedTagger).getOrElse(_ => ())
       val requestTask = RequestJsonAndParseValuesTask(
         parsingConfig = eval.parsingConfig,
+        taggingConfig = RequestAndParsingResultTaggerConfig(requestTemplateTagger, parsingResultTagger),
         // NOTE: while this randomly picks connections, it does not take care of
         // backpressure and the like, just using different connections for requests
         connectionSupplier = () => {
@@ -60,6 +72,7 @@ object JobMessagesImplicits {
       )
       val metricCalculationTask = CalculateMetricsTask(
         requestAndParseSuccessKey = requestTask.successKey,
+        requestTemplateKey = REQUEST_TEMPLATE_STORAGE_KEY.name,
         calculations = eval.calculations,
         metricNameToAggregationTypeMapping = eval.metricNameToAggregationTypeMapping,
         excludeParamsFromMetricRow = eval.excludeParamsFromMetricRow,
@@ -78,7 +91,7 @@ object JobMessagesImplicits {
         batchByGeneratorAtIndex(batchByIndex = eval.batchByIndex).apply(eval.requestTemplateModifiers),
         getTaskSequenceForSearchEval,
         BatchAggregationInfo[MetricRow, MetricAggregation[Tag]](
-          successKey = Right(metricRowResultKey),
+          successKey = metricRowResultKey,
           batchAggregatorSupplier = () => new TagKeyMetricAggregationPerClassAggregator(
             aggregationState = MetricAggregation.empty[Tag](identity),
             ignoreIdDiff = false

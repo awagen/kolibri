@@ -114,6 +114,7 @@ class CalculationsSpec extends KolibriTestKitNoCluster
       prepareJudgementResource()
       val calculation = JudgementsFromResourceIRMetricsCalculations(
         PRODUCT_IDS_KEY,
+        REQUEST_TEMPLATE_STORAGE_KEY.name,
         "q",
         Resource(ResourceType.JUDGEMENT_PROVIDER, "judgements1"),
         MetricsCalculation(

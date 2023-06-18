@@ -43,6 +43,7 @@ import de.awagen.kolibri.definitions.processing.tagging.TaggingConfigurations
 import de.awagen.kolibri.definitions.processing.tagging.TaggingConfigurations.{BaseTaggingConfiguration, EitherThrowableOrTaggedWeaklyTypedMapStore, TaggedMetricRowStore, TaggedRequestTemplateStore}
 import de.awagen.kolibri.definitions.provider.WeightProviders
 import de.awagen.kolibri.definitions.resources.ResourceProvider
+import de.awagen.kolibri.definitions.usecase.searchopt.jobdefinitions.parts.ReservedStorageKeys.REQUEST_TEMPLATE_STORAGE_KEY
 import de.awagen.kolibri.definitions.usecase.searchopt.metrics.Calculations.JudgementsFromResourceIRMetricsCalculations
 import de.awagen.kolibri.definitions.usecase.searchopt.metrics.MetricsCalculation.AVAILABLE_JUDGEMENT_METRICS_NAME_TO_TYPE_MAPPING
 import de.awagen.kolibri.definitions.usecase.searchopt.metrics.{IRMetricFunctions, JudgementHandlingStrategy, Metric, MetricsCalculation}
@@ -173,6 +174,7 @@ object JobMessages {
     val calculations: Seq[Calculation[WeaklyTypedMap[String], Any]] = Seq(
       JudgementsFromResourceIRMetricsCalculations(
         productIdsKey,
+        REQUEST_TEMPLATE_STORAGE_KEY.name,
         queryParameter,
         new Resource[JudgementProvider[Double]](
           ResourceType.JUDGEMENT_PROVIDER,

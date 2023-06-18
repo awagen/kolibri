@@ -19,6 +19,7 @@ package de.awagen.kolibri.fleet.akka.usecase.searchopt.metrics
 
 import de.awagen.kolibri.definitions.directives.{Resource, ResourceType}
 import de.awagen.kolibri.definitions.http.client.request.RequestTemplate
+import de.awagen.kolibri.definitions.usecase.searchopt.jobdefinitions.parts.ReservedStorageKeys.REQUEST_TEMPLATE_STORAGE_KEY
 import de.awagen.kolibri.definitions.usecase.searchopt.metrics.Calculations.JudgementsFromResourceIRMetricsCalculations
 import de.awagen.kolibri.definitions.usecase.searchopt.metrics.{JudgementHandlingStrategy, Metric, MetricsCalculation}
 import de.awagen.kolibri.definitions.usecase.searchopt.provider.JudgementProvider
@@ -38,6 +39,7 @@ object CalculationsTestHelper {
                                           metrics: Seq[Metric]): JudgementsFromResourceIRMetricsCalculations = {
     JudgementsFromResourceIRMetricsCalculations(
       PRODUCT_IDS_KEY,
+      REQUEST_TEMPLATE_STORAGE_KEY.name,
       QUERY_PARAM,
       Resource[JudgementProvider[Double]](ResourceType.JUDGEMENT_PROVIDER, judgementsResourceIdentifier),
       MetricsCalculation(

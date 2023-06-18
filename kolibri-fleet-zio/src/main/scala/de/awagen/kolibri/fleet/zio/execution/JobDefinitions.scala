@@ -26,7 +26,7 @@ import de.awagen.kolibri.datatypes.values.aggregation.immutable.Aggregators.Aggr
 import de.awagen.kolibri.definitions.directives.ResourceDirectives.ResourceDirective
 import de.awagen.kolibri.definitions.domain.jobdefinitions.Batch
 import de.awagen.kolibri.definitions.processing.ProcessingMessages.ProcessingMessage
-import de.awagen.kolibri.fleet.zio.execution.ZIOTasks.{SimpleWaitTask, SimpleWaitTaskResultAsProcessingMessage}
+import de.awagen.kolibri.fleet.zio.execution.ZIOTasks.SimpleWaitTask
 import de.awagen.kolibri.storage.io.writer.Writers.Writer
 
 object JobDefinitions {
@@ -49,7 +49,7 @@ object JobDefinitions {
    * The aggregator always takes a ProcessingMessage, which provides means to selectively tag
    * results and - depending on the chosen aggregator - allows aggregating via distinct tag (or group of tags)
    */
-  case class BatchAggregationInfo[V, W](successKey: Either[ClassTyped[V], ClassTyped[ProcessingMessage[V]]],
+  case class BatchAggregationInfo[V, W](successKey: ClassTyped[ProcessingMessage[V]],
                                         batchAggregatorSupplier: () => Aggregator[TaggedWithType with DataPoint[V], W],
                                         writer: Writer[W, Tags.Tag, Any] = doNothingWriter[W])
 
@@ -84,23 +84,6 @@ object JobDefinitions {
           .map(batchNr => Batch(batchNr, ByFunctionNrLimitedIndexedGenerator.createFromSeq(Range(0, elementsPerBatch, 1))))
       ),
       taskSequence = Seq(SimpleWaitTask(waitDurationInMillis)),
-      aggregationInfo = aggregationInfo
-    )
-  }
-
-  def simpleWaitJobResultAsProcessingMessage(jobName: String,
-                                             nrBatches: Int,
-                                             waitDurationInMillis: Long,
-                                             elementsPerBatch: Int,
-                                             aggregationInfo: BatchAggregationInfo[Unit, ValueWithCount[Int]]): JobDefinition[Int, Unit, ValueWithCount[Int]] = {
-    JobDefinition[Int, Unit, ValueWithCount[Int]](
-      jobName = jobName,
-      resourceSetup = Seq.empty,
-      batches = ByFunctionNrLimitedIndexedGenerator.createFromSeq(
-        Range(0, nrBatches, 1)
-          .map(batchNr => Batch(batchNr, ByFunctionNrLimitedIndexedGenerator.createFromSeq(Range(0, elementsPerBatch, 1))))
-      ),
-      taskSequence = Seq(SimpleWaitTaskResultAsProcessingMessage(waitDurationInMillis)),
       aggregationInfo = aggregationInfo
     )
   }

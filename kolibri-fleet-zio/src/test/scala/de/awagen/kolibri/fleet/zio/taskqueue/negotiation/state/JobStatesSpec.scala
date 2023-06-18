@@ -43,7 +43,7 @@ object JobStatesSpec {
         20L,
         1,
         BatchAggregationInfo(
-          Left(SimpleWaitTask.successKey),
+          SimpleWaitTask.successKey,
           () => Aggregators.countingAggregator(0, 0)
         )
       ),
