@@ -18,7 +18,9 @@ jobs:
       with:
         distribution: adopt
         java-version: 11
-    - name: Run tests
-      run: sbt test
-    - name: Run integration tests
-      run: sbt IntegrationTest/test
+    - name: Run tests (with coverage)
+      run: sbt coverage test
+    - name: Run integration tests (with coverage)
+      run: sbt coverage IntegrationTest/test
+    - name: Generate aggregated coverage report
+      run: sbt coverageAggregate
