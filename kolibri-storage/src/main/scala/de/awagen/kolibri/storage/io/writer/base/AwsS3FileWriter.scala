@@ -64,7 +64,7 @@ case class AwsS3FileWriter(bucketName: String,
   override def write(data: String, targetIdentifier: String): Either[Exception, PutObjectResult] = {
     try {
       setS3ClientIfNotSet()
-      logger.info(s"writing data for identifier: $targetIdentifier")
+      logger.debug(s"writing data for identifier: $targetIdentifier")
       //file upload as new object with ContentType and title
       val metaData: ObjectMetadata = baseMetaData()
       metaData.setContentLength(data.getBytes(StandardCharsets.UTF_8).length)
@@ -72,7 +72,7 @@ case class AwsS3FileWriter(bucketName: String,
       val key = s"$dirPathNormalized$targetIdentifier".stripSuffix(delimiter)
       val putObjectRequest: PutObjectRequest = new PutObjectRequest(bucketName, key , contentStream, metaData)
       val result = s3Client.putObject(putObjectRequest)
-      logger.info(s"write result: $result")
+      logger.debug(s"write result: $result")
       Right(result)
     }
     catch {

@@ -97,23 +97,24 @@ object TaskFactory {
 
     override def failKey: ClassTyped[ProcessingMessage[TaskFailType]] = NamedClassTyped[ProcessingMessage[TaskFailType]](failKeyName)
 
-    override def task(map: TypeTaggedMap): Task[TypeTaggedMap] = {
-      val requestTemplateBuilder = new RequestTemplateBuilder()
-        .withContextPath(contextPath)
-        .withHttpMethod(httpMethod)
-        .withProtocol(HTTP_1_1_PROTOCOL_ID)
-        .withParams(fixedParams)
-      val modifier: RequestTemplateBuilderModifier = map.get(requestTemplateBuilderModifierKey).get
-      val requestTemplate: RequestTemplate = modifier.apply(requestTemplateBuilder).build()
+    private def initRequestTemplateBuilder: RequestTemplateBuilder = new RequestTemplateBuilder()
+      .withContextPath(contextPath)
+      .withHttpMethod(httpMethod)
+      .withProtocol(HTTP_1_1_PROTOCOL_ID)
+      .withParams(fixedParams)
 
+    override def task(map: TypeTaggedMap): Task[TypeTaggedMap] = {
+      // compose the request template
+      val modifier: RequestTemplateBuilderModifier = map.get(requestTemplateBuilderModifierKey).get
+      val requestTemplate: RequestTemplate = modifier.apply(initRequestTemplateBuilder).build()
       // wrap in processing message and tag
       val requestTemplateProcessingMessage: ProcessingMessages.Corn[RequestTemplate] = ProcessingMessages.Corn(requestTemplate)
       taggingConfig.requestTagger.apply(requestTemplateProcessingMessage)
-
+      // prepare the request and parsing effect
       val connection = connectionSupplier.apply()
       val basicAuthOpt: Option[Credentials] = connection.credentialsProvider.map(x => x.getCredentials)
       val protocolPrefix = if (connection.useHttps) HTTPS_URL_PREFIX else HTTP_URL_PREFIX
-      val compute: ZIO[Any, Throwable, WeaklyTypedMap[String]] = (for {
+      val requestAndParseEffect: ZIO[Any, Throwable, WeaklyTypedMap[String]] = (for {
         res <- requestTemplate.toZIOHttpRequest(
           s"$protocolPrefix://${connection.host}:${connection.port}",
           basicAuthOpt
@@ -123,10 +124,9 @@ object TaskFactory {
       } yield parsed)
         .retryN(AppProperties.config.maxRetriesPerBatchTask)
         .provide(httpClient)
-      compute.either.map(value => {
+      requestAndParseEffect.either.map(value => {
         // wrap in processing message and apply tagger
-        val parseResultMessage = ProcessingMessages.Corn((value, requestTemplate))
-        parseResultMessage.takeOverTags(requestTemplateProcessingMessage)
+        val parseResultMessage = requestTemplateProcessingMessage.map(_ => (value, requestTemplate))
         taggingConfig.parsingResultTagger.apply(parseResultMessage)
         parseResultMessage.data match {
           case (Left(throwable), _) =>
@@ -208,13 +208,13 @@ object TaskFactory {
         currentTags <- ZIO.attempt(parsedFields.getTagsForType(TagType.AGGREGATION))
         metricRowParams <- ZIO.attempt(metricRowParamsOpt.get)
         singleResults <- ZIO.attempt(calculateMetrics(parsedFields))
-        _ <- ZIO.logInfo(s"single results: $singleResults")
+        _ <- ZIO.logDebug(s"single results: $singleResults")
         metricRow <- ZIO.attempt(metricValuesToMetricRow(singleResults, metricRowParams))
-        _ <- ZIO.logInfo(s"computed metric values for aggregation tags '$currentTags': '$metricRow'")
+        _ <- ZIO.logDebug(s"computed metric values for aggregation tags '$currentTags': '$metricRow'")
         processingMessageResult <- ZIO.attempt(tagger.apply(ProcessingMessages.Corn(metricRow).withTags(TagType.AGGREGATION, currentTags)))
       } yield processingMessageResult
       computeResult
-        .tap(result => ZIO.logInfo(s"calculated metrics: ${result.data}"))
+        .tap(result => ZIO.logDebug(s"calculated metrics: ${result.data}"))
         .retryN(AppProperties.config.maxRetriesPerBatchTask)
         .map(value => map.put(successKey, value)._2)
         // try to map the throwable to a MetricRow result containing info about the failure

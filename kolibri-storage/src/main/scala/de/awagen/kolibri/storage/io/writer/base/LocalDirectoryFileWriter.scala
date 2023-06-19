@@ -31,7 +31,7 @@ case class LocalDirectoryFileWriter(directory: String) extends FileWriter[String
   val normedDirectory: String = directory.stripSuffix("/")
 
   override def write(data: String, targetIdentifier: String): Either[Exception, Unit] = {
-    logger.info(s"writing data for identifier: $targetIdentifier")
+    logger.debug(s"writing data for identifier: $targetIdentifier")
     val fullPath = s"$normedDirectory/$targetIdentifier"
     val fileName = fullPath.split("/").last
     val fullPathWithoutFile = fullPath.stripSuffix(fileName).stripSuffix("/")
@@ -58,7 +58,7 @@ case class LocalDirectoryFileWriter(directory: String) extends FileWriter[String
    * use deleteDirectory.
    */
   override def delete(targetIdentifier: String): Either[Exception, Unit] = {
-    logger.info(s"deleting data for identifier: $targetIdentifier")
+    logger.debug(s"deleting data for identifier: $targetIdentifier")
     val fullPath = s"$normedDirectory/$targetIdentifier"
     try {
       val file = new File(fullPath)
