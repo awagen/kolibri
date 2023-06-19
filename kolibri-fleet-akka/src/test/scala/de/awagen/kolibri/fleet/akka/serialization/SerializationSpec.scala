@@ -126,6 +126,7 @@ object TestData {
       |    "rows": ["100"]
       |  },
       |  "contextPath": "query/search_path",
+      |  "httpMethod": "GET",
       |  "connections": [
       |    {
       |      "host": "searchapi1",
@@ -329,6 +330,7 @@ object TestData {
       |    ]
       |  },
       |  "contextPath": "search",
+      |  "httpMethod": "GET",
       |  "connections": [
       |    {
       |      "host": "search-service",

@@ -32,6 +32,8 @@ import de.awagen.kolibri.datatypes.stores.immutable.MetricRow
 import de.awagen.kolibri.datatypes.types.JsonStructDefs.StringChoiceStructDef
 import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
 import spray.json.{DefaultJsonProtocol, DeserializationException, JsString, JsValue}
+import de.awagen.kolibri.definitions.http.HttpMethod
+import de.awagen.kolibri.definitions.http.HttpMethod.HttpMethod
 
 
 object EnumerationJsonProtocol extends DefaultJsonProtocol {
@@ -65,7 +67,14 @@ object EnumerationJsonProtocol extends DefaultJsonProtocol {
     }
   }
 
-
+  implicit object httpMethodFormat extends EnumerationProtocol[HttpMethod] {
+    override def read(json: JsValue): HttpMethod = {
+      json match {
+        case JsString(txt) => HttpMethod.withName(txt)
+        case e => throw DeserializationException(s"Expected a value from HttpMethod but got value $e")
+      }
+    }
+  }
 
   implicit object expectationGeneratorFormat extends EnumerationProtocol[ExpectationGenerators] {
     override def read(json: JsValue): ExpectationGenerators = {

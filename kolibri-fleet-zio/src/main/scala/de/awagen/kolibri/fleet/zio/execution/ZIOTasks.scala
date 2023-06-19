@@ -38,7 +38,7 @@ object ZIOTasks {
    * time
    */
   case class SimpleWaitTask(waitTimeInMillis: Long) extends ZIOTask[Unit] {
-    override def prerequisites: Seq[ClassTyped[Any]] = Seq.empty
+    override def prerequisiteKeys: Seq[ClassTyped[Any]] = Seq.empty
 
     override def successKey: ClassTyped[ProcessingMessage[Unit]] = SimpleWaitTask.successKey
 

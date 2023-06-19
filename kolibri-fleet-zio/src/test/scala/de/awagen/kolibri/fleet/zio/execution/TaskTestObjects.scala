@@ -80,6 +80,7 @@ object TaskTestObjects {
     connectionSupplier,
     contextPath,
     fixedParams,
+    "GET",
     ZLayer.succeed(clientMock),
   )
 

@@ -33,6 +33,7 @@ import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType.A
 import de.awagen.kolibri.definitions.directives.ResourceDirectives.{GenericResourceDirective, ResourceDirective}
 import de.awagen.kolibri.definitions.directives.{ExpirePolicy, Resource, ResourceType, WithResources}
 import de.awagen.kolibri.definitions.domain.Connections.Connection
+import de.awagen.kolibri.definitions.http.HttpMethod.HttpMethod
 import de.awagen.kolibri.definitions.http.client.request.{RequestTemplate, RequestTemplateBuilder}
 import de.awagen.kolibri.definitions.io.json.MetricFunctionJsonProtocol.{MetricFunction, MetricType}
 import de.awagen.kolibri.definitions.processing.execution.functions.AggregationFunctions.AggregateFromDirectoryByRegexWeighted
@@ -81,6 +82,7 @@ object JobMessages {
                                         requestTasks: Int,
                                         fixedParams: Map[String, Seq[String]],
                                         contextPath: String,
+                                        httpMethod: HttpMethod,
                                         connections: Seq[Connection],
                                         resourceDirectives: Seq[ResourceDirective[_]],
                                         requestParameters: Seq[ValueSeqGenDefinition[_]],
@@ -126,6 +128,7 @@ object JobMessages {
                                                   fixedParams: Map[String, Seq[String]],
                                                   contextPath: String,
                                                   queryParameter: String,
+                                                  httpMethod: HttpMethod,
                                                   productIdSelector: String,
                                                   resourceProvider: ResourceProvider,
                                                   fileToJudgementProviderFunc: SerializableFunction1[String, JudgementProvider[Double]],

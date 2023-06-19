@@ -22,6 +22,7 @@
     ]
   },
   "contextPath": "search",
+  "httpMethod": "GET",
   "queryParameter": "q",
   "productIdSelector": "\\ response \\ docs \\\\ product_id",
   "otherSelectors": [

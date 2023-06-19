@@ -47,6 +47,12 @@ object ProcessingMessages {
     private[this] val contextMap: mutable.Map[TypedKey[_], Any] = mutable.Map.empty
 
     /**
+     * map type to yield ProcessingMessage of new type. In implementations make sure to take over both context and tagging
+     * values.
+     */
+    def map[U](f: T => U): ProcessingMessage[U]
+
+    /**
      * Take over context values from other processing message
      *
      * @param other     - the other processing message
@@ -81,10 +87,24 @@ object ProcessingMessages {
     }
   }
 
-  case class Corn[+T](data: T, weight: Double = 1.0) extends ProcessingMessage[T]
+  case class Corn[+T](data: T, weight: Double = 1.0) extends ProcessingMessage[T] {
+    override def map[U](f: T => U): ProcessingMessage[U] = {
+      val newMsg = Corn(f.apply(data), weight)
+      newMsg.takeOverTags(this)
+      newMsg.takeOverContextValues(this)
+      newMsg
+    }
+  }
 
   case class BadCorn[+T](failType: TaskFailType, weight: Double = 1.0) extends ProcessingMessage[T] {
     override val data: T = null.asInstanceOf[T]
+
+    override def map[U](f: T => U): ProcessingMessage[U] = {
+      val newMsg = BadCorn[U](failType, weight)
+      newMsg.takeOverTags(this)
+      newMsg.takeOverContextValues(this)
+      newMsg
+    }
   }
 
   /**

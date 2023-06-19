@@ -34,9 +34,9 @@ import de.awagen.kolibri.definitions.processing.failure.TaskFailType.TaskFailTyp
  */
 trait ZIOTask[+T] extends KolibriSerializable {
 
-  def prerequisites: Seq[ClassTyped[Any]]
+  def prerequisiteKeys: Seq[ClassTyped[Any]]
 
-  def getFailedPrerequisites(map: TypeTaggedMap): Seq[ClassTyped[_]] = prerequisites
+  def getMissingPrerequisiteKeys(map: TypeTaggedMap): Seq[ClassTyped[_]] = prerequisiteKeys
     .filter(x => !map.keySet.contains(x))
 
   def successKey: ClassTyped[ProcessingMessage[T]]

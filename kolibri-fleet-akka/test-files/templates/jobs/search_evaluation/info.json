@@ -3,6 +3,7 @@
   "requestTasks": "Number of execution tasks requested. A task corresponds to a single batch.",
   "fixedParams": "Mapping of parameter name to a list of values. The lists can contain a single or multiple values. The latter is useful when one parameter can have multiple values, e.g p=a&p=b&p=c",
   "contextPath": "The context path of the requests",
+  "httpMethod": "The method (GET, PUT, POST) of the http call",
   "connections": "List of connections, where each connection is represented by value for keys: host, port, useHttps and optional credentials.",
   "requestParameters": "Specifies the permutations of modifications made to the base request (executed on a connection, using the defined context path). Modifications can either be parameters, bodies or headers. The order in which those are defined is relevant for the batchByIndex setting.",
   "batchByIndex": "The index of the permutation to batch the overall permutations by. The index corresponds directly to the order or permutations defined in the requestPermutation setting.",

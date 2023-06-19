@@ -11,6 +11,7 @@
     ]
   },
   "contextPath": "search",
+  "httpMethod": "GET",
   "connections": [
     {
       "host": "search-service",

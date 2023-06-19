@@ -65,6 +65,7 @@ object JobMessagesImplicits {
         requestTasks = eval.requestTasks,
         fixedParams = eval.fixedParams,
         contextPath = eval.contextPath,
+        httpMethod = eval.httpMethod,
         connections = eval.connections,
         resourceDirectives = eval.resourceDirectives,
         requestParameters = eval.requestParameters,

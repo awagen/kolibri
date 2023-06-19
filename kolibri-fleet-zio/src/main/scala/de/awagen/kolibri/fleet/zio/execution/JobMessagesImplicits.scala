@@ -21,8 +21,8 @@ import de.awagen.kolibri.datatypes.metrics.aggregation.immutable.MetricAggregati
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.datatypes.stores.immutable.MetricRow
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
+import de.awagen.kolibri.datatypes.types.ClassTyped
 import de.awagen.kolibri.datatypes.types.SerializableCallable._
-import de.awagen.kolibri.datatypes.types.{ClassTyped, SerializableCallable}
 import de.awagen.kolibri.datatypes.types.Types.WithCount
 import de.awagen.kolibri.datatypes.values.aggregation.immutable.Aggregators.TagKeyMetricAggregationPerClassAggregator
 import de.awagen.kolibri.definitions.http.client.request.RequestTemplate
@@ -67,6 +67,7 @@ object JobMessagesImplicits {
         },
         contextPath = eval.contextPath,
         fixedParams = eval.fixedParams,
+        httpMethod = eval.httpMethod.toString,
         successKeyName = "1-parsedValueMap",
         failKeyName = "1-parseFail"
       )
@@ -116,6 +117,7 @@ object JobMessagesImplicits {
         requestTasks = eval.requestTasks,
         fixedParams = eval.fixedParams,
         contextPath = eval.contextPath,
+        httpMethod = eval.httpMethod,
         connections = eval.connections,
         resourceDirectives = eval.resourceDirectives,
         requestParameters = eval.requestParameters,

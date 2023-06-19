@@ -28,6 +28,8 @@ import de.awagen.kolibri.datatypes.values.MetricValue
 import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType.AggregationType
 import de.awagen.kolibri.datatypes.values.RunningValues.RunningValue
 import de.awagen.kolibri.definitions.domain.Connections.Connection
+import de.awagen.kolibri.definitions.domain.jobdefinitions.provider.Credentials
+import de.awagen.kolibri.definitions.http.HttpMethod
 import de.awagen.kolibri.definitions.http.client.request.{RequestTemplate, RequestTemplateBuilder}
 import de.awagen.kolibri.definitions.processing.ProcessingMessages
 import de.awagen.kolibri.definitions.processing.ProcessingMessages.ProcessingMessage
@@ -56,6 +58,11 @@ object TaskFactory {
 
     val requestTemplateBuilderModifierKey = NamedClassTyped[RequestTemplateBuilderModifier](INITIAL_DATA_KEY)
     val requestTemplateKey = NamedClassTyped[RequestTemplate](REQUEST_TEMPLATE_STORAGE_KEY.name)
+
+    val HTTPS_URL_PREFIX = "https"
+    val HTTP_URL_PREFIX = "http"
+    val HTTP_1_1_PROTOCOL_ID = "HTTP/1.1"
+
   }
 
   /**
@@ -69,6 +76,7 @@ object TaskFactory {
                                            connectionSupplier: () => Connection,
                                            contextPath: String,
                                            fixedParams: Map[String, Seq[String]],
+                                           httpMethod: String = HttpMethod.GET.toString,
                                            // default value of http client utilizes dynamic connection pool
                                            httpClient: ZLayer[Any, Throwable, Client] = {
                                              implicit val trace: Trace = Trace.empty
@@ -83,7 +91,7 @@ object TaskFactory {
 
     import RequestJsonAndParseValuesTask._
 
-    override def prerequisites: Seq[ClassTyped[Any]] = Seq(requestTemplateBuilderModifierKey)
+    override def prerequisiteKeys: Seq[ClassTyped[Any]] = Seq(requestTemplateBuilderModifierKey)
 
     override def successKey: ClassTyped[ProcessingMessage[WeaklyTypedMap[String]]] = NamedClassTyped[ProcessingMessage[WeaklyTypedMap[String]]](successKeyName)
 
@@ -92,8 +100,8 @@ object TaskFactory {
     override def task(map: TypeTaggedMap): Task[TypeTaggedMap] = {
       val requestTemplateBuilder = new RequestTemplateBuilder()
         .withContextPath(contextPath)
-        .withHttpMethod("GET")
-        .withProtocol("HTTP/1.1")
+        .withHttpMethod(httpMethod)
+        .withProtocol(HTTP_1_1_PROTOCOL_ID)
         .withParams(fixedParams)
       val modifier: RequestTemplateBuilderModifier = map.get(requestTemplateBuilderModifierKey).get
       val requestTemplate: RequestTemplate = modifier.apply(requestTemplateBuilder).build()
@@ -103,10 +111,13 @@ object TaskFactory {
       taggingConfig.requestTagger.apply(requestTemplateProcessingMessage)
 
       val connection = connectionSupplier.apply()
-      val protocolPrefix = if (connection.useHttps) "https" else "http"
+      val basicAuthOpt: Option[Credentials] = connection.credentialsProvider.map(x => x.getCredentials)
+      val protocolPrefix = if (connection.useHttps) HTTPS_URL_PREFIX else HTTP_URL_PREFIX
       val compute: ZIO[Any, Throwable, WeaklyTypedMap[String]] = (for {
-        // TODO: connection credentials are not yet taken into account
-        res <- requestTemplate.toZIOHttpRequest(s"$protocolPrefix://${connection.host}:${connection.port}")
+        res <- requestTemplate.toZIOHttpRequest(
+          s"$protocolPrefix://${connection.host}:${connection.port}",
+          basicAuthOpt
+        )
         data <- res.body.asString.map(x => Json.parse(x))
         parsed <- ZIO.attempt(parsingConfig.jsValueToTypeTaggedMap.apply(data))
       } yield parsed)
@@ -156,7 +167,7 @@ object TaskFactory {
                                   tagger: ProcessingMessage[MetricRow] => ProcessingMessage[MetricRow] = identity,
                                   successKeyName: String = "metricsRow",
                                   failKeyName: String = "metricsCalculationFail") extends ZIOTask[MetricRow] {
-    override def prerequisites: Seq[ClassTyped[Any]] = Seq(requestAndParseSuccessKey)
+    override def prerequisiteKeys: Seq[ClassTyped[Any]] = Seq(requestAndParseSuccessKey)
 
     override def successKey: ClassTyped[ProcessingMessage[MetricRow]] = NamedClassTyped[ProcessingMessage[MetricRow]](successKeyName)
 
@@ -168,7 +179,6 @@ object TaskFactory {
           // ResultRecord is only combination of name and Either[Seq[ComputeFailReason], T]
           val values: Seq[ResultRecord[Any]] = x.calculation.apply(parsedFields.data)
           // we use all result records for which we have a AggregationType mapping
-          // TODO: allow more than one aggregation type mapping per result record name
           values.map(value => {
             val metricAggregationType: Option[AggregationType] = metricNameToAggregationTypeMapping.get(value.name)
             metricAggregationType.map(aggregationType => {
@@ -246,6 +256,7 @@ object TaskFactory {
         map.put(successKey, result)._2
       }
     }
+
   }
 
 

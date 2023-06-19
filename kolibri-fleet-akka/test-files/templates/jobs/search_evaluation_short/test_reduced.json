@@ -41,6 +41,7 @@
   }],
   "productIdSelector": "\\ response \\ docs \\\\ product_id",
   "queryParameter": "q",
+  "httpMethod": "GET",
   "requestParameters": [{
     "type": "STANDALONE",
     "values": {

@@ -17,9 +17,10 @@
 
 package de.awagen.kolibri.fleet.zio.http.client.request
 
+import de.awagen.kolibri.definitions.domain.jobdefinitions.provider.Credentials
 import de.awagen.kolibri.definitions.http.client.request.RequestTemplate
+import zio.http._
 import zio.{Chunk, ZIO}
-import zio.http.{Body, Client, Header, Headers, Method, Path, QueryParams, Request, Response, URL, Version}
 
 object RequestTemplateImplicits {
 
@@ -30,13 +31,19 @@ object RequestTemplateImplicits {
 
   implicit class RequestTemplateToZIOHttpRequest(template: RequestTemplate) {
 
-    def toZIOHttpRequest(host: String): ZIO[Client, Throwable, Response] = {
+    def toZIOHttpRequest(host: String, credentialsOpt: Option[Credentials]): ZIO[Client, Throwable, Response] = {
       for {
         httpClient <- ZIO.service[Client]
         response <- httpClient.request(
           Request(
             body = Body.fromCharSequence(template.body),
-            headers = Headers((template.getContextHeaders ++ template.headers).map(x => Header.Custom(x._1, x._2))),
+            headers = Headers(
+              (template.getContextHeaders ++ template.headers).map(x => Header.Custom(x._1, x._2)) ++
+                // add basic auth if credentials passed as argument
+                credentialsOpt
+                  .map(cred => Seq(Header.Authorization.Basic(username = cred.username, password = cred.password)))
+                  .getOrElse(Seq.empty)
+            ),
             method = Method.fromString(template.httpMethod),
             url = new URL(
               path = Path.decode(s"$host/${template.query}"),

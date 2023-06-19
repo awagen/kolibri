@@ -27,8 +27,11 @@ import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFuncti
 import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
 import de.awagen.kolibri.datatypes.values.Calculations.Calculation
 import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType.AggregationType
+import de.awagen.kolibri.definitions.io.json.EnumerationJsonProtocol.httpMethodFormat
 import de.awagen.kolibri.definitions.directives.ResourceDirectives.ResourceDirective
 import de.awagen.kolibri.definitions.domain.Connections.Connection
+import de.awagen.kolibri.definitions.http.HttpMethod
+import de.awagen.kolibri.definitions.http.HttpMethod.HttpMethod
 import de.awagen.kolibri.definitions.http.client.request.RequestTemplate
 import de.awagen.kolibri.definitions.io.json.ConnectionJsonProtocol.connectionFormat
 import de.awagen.kolibri.definitions.io.json.FIELD_KEYS._
@@ -81,6 +84,8 @@ object FIELD_KEYS {
   val OTHER_METRIC_NAME_TO_AGGREGATION_TYPE_MAPPING_FIELD = "otherMetricNameToAggregationTypeMapping"
   val JUDGEMENT_FILE_PATH_FIELD = "judgementFilePath"
 
+  val HTTP_METHOD_FIELD = "httpMethod"
+
 }
 
 object SearchEvaluationJsonProtocol extends DefaultJsonProtocol {}
@@ -105,6 +110,7 @@ case class SearchEvaluationJsonProtocol(executionFormat: RootJsonFormat[Executio
         requestTasks: Int,
         fixedParams: Map[String, Seq[String]],
         contextPath: String,
+        httpMethod: HttpMethod,
         connections: Seq[Connection],
         resourceDirectives: Seq[ResourceDirective[_]],
         requestParameters: Seq[ValueSeqGenDefinition[_]],
@@ -125,6 +131,7 @@ case class SearchEvaluationJsonProtocol(executionFormat: RootJsonFormat[Executio
           requestTasks,
           fixedParams,
           contextPath,
+          httpMethod,
           connections,
           resourceDirectives,
           requestParameters,
@@ -144,6 +151,7 @@ case class SearchEvaluationJsonProtocol(executionFormat: RootJsonFormat[Executio
       REQUEST_TASKS_FIELD,
       FIXED_PARAMS_FIELD,
       CONTEXT_PATH_FIELD,
+      HTTP_METHOD_FIELD,
       CONNECTIONS_FIELD,
       RESOURCE_DIRECTIVES_FIELD,
       REQUEST_PARAMETERS_FIELD,
@@ -196,6 +204,12 @@ case class SearchEvaluationJsonProtocol(executionFormat: RootJsonFormat[Executio
           StringStructDef,
           required = true,
           description = "The context path when composing the request."
+        ),
+        FieldDef(
+          StringConstantStructDef(HTTP_METHOD_FIELD),
+          StringChoiceStructDef(Seq(HttpMethod.GET.toString, HttpMethod.PUT.toString, HttpMethod.POST.toString)),
+          required = true,
+          description = "The http method to be used"
         ),
         FieldDef(
           StringConstantStructDef(CONNECTIONS_FIELD),
@@ -345,6 +359,7 @@ case class QueryBasedSearchEvaluationJsonProtocol(parameterValuesJsonProtocol: P
         fixedParams: Map[String, Seq[String]],
         contextPath: String,
         queryParameter: String,
+        httpMethod: HttpMethod,
         productIdSelector: String,
         otherSelectors: Seq[NamedAndTypedSelector[_]],
         otherCalculations: Seq[Calculation[WeaklyTypedMap[String], Any]],
@@ -359,6 +374,7 @@ case class QueryBasedSearchEvaluationJsonProtocol(parameterValuesJsonProtocol: P
           fixedParams,
           contextPath,
           queryParameter,
+          httpMethod,
           productIdSelector,
           resourceProvider,
           fileToJudgementProviderFunc,
@@ -382,6 +398,7 @@ case class QueryBasedSearchEvaluationJsonProtocol(parameterValuesJsonProtocol: P
       FIXED_PARAMS_FIELD,
       CONTEXT_PATH_FIELD,
       QUERY_PARAMETER_FIELD,
+      HTTP_METHOD_FIELD,
       PRODUCT_ID_SELECTOR_FIELD,
       OTHER_SELECTORS_FIELD,
       OTHER_CALCULATIONS_FIELD,
@@ -432,6 +449,12 @@ case class QueryBasedSearchEvaluationJsonProtocol(parameterValuesJsonProtocol: P
           RegexStructDef(".+".r),
           required = true,
           description = "The url parameter holding the query value."
+        ),
+        FieldDef(
+          StringConstantStructDef(HTTP_METHOD_FIELD),
+          StringChoiceStructDef(Seq(HttpMethod.GET.toString, HttpMethod.PUT.toString, HttpMethod.POST.toString)),
+          required = true,
+          description = "The http method to be used"
         ),
         FieldDef(
           StringConstantStructDef(PRODUCT_ID_SELECTOR_FIELD),
