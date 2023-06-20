@@ -307,6 +307,18 @@ case class BaseClaimService(claimReader: ClaimReader,
     }
   }
 
+  private def cleanupClaimsAndReturnRemaining(openJobsSnapshot: OpenJobsSnapshot, claimTopic: ClaimTopic): Task[Set[Claim]] = {
+    for {
+      ignoreJobIdsOnThisNode <- ZIO.succeed(openJobsSnapshot.jobsToBeIgnoredOnThisNode.map(x => x.jobId))
+      // extract all (jobId, batchNr) tuples of claims currently filed for the node
+      claimsByCurrentNode <- claimReader.getClaimsByCurrentNode(claimTopic, openJobsSnapshot.jobStateSnapshots.values.map(x => x.jobId).toSet)
+      //verify each claim
+      // remove the claims that are not needed anymore (only for this particular node)
+      claimsToBeRemoved <- ZIO.succeed(claimsByCurrentNode.filter(x => ignoreJobIdsOnThisNode.contains(x.jobId)))
+      _ <- claimUpdater.removeClaims(claimsToBeRemoved, _ => true)
+    } yield (claimsByCurrentNode -- claimsToBeRemoved)
+  }
+
   /**
    * Method to be called by
    * Here we follow the sequence:
@@ -317,17 +329,11 @@ case class BaseClaimService(claimReader: ClaimReader,
    */
   def manageClaims(claimTopic: ClaimTopic): Task[Unit] = {
     for {
-      openJobsSnapshot1 <- jobStateReader.fetchOpenJobState
-      ignoreJobIdsOnThisNode <- ZIO.succeed(openJobsSnapshot1.jobsToBeIgnoredOnThisNode.map(x => x.jobId))
-      // extract all (jobId, batchNr) tuples of claims currently filed for the node
-      claimsByCurrentNode <- claimReader.getClaimsByCurrentNode(claimTopic, openJobsSnapshot1.jobStateSnapshots.values.map(x => x.jobId).toSet)
-      //verify each claim
-      // remove the claims that are not needed anymore (only for this particular node)
-      claimsToBeRemoved <- ZIO.succeed(claimsByCurrentNode.filter(x => ignoreJobIdsOnThisNode.contains(x.jobId)))
-      _ <- claimUpdater.removeClaims(claimsToBeRemoved, _ => true)
-      // for those jobs that shall be ignored, also remove all process state files and move the files representing the
-      // respective batches back to the 'open' folder
-      verifiedClaims <- verifyClaimsAndReturnSuccessful(claimsByCurrentNode, claimTopic)
+      openJobsSnapshot <- jobStateReader.fetchOpenJobState
+      // housekeeping
+      remainingClaimsByCurrentNode <- cleanupClaimsAndReturnRemaining(openJobsSnapshot, claimTopic)
+      // verifying remaining claims by this node
+      verifiedClaims <- verifyClaimsAndReturnSuccessful(remainingClaimsByCurrentNode, claimTopic)
       // Now exercise all verified claims
       _ <- exerciseClaims(verifiedClaims)
       // to avoid new claims being filed based on old states, reload the current job state here and file new claims

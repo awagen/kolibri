@@ -20,10 +20,11 @@ package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer
 import de.awagen.kolibri.fleet.zio.config.{AppProperties, Directories}
 import de.awagen.kolibri.fleet.zio.io.json.ProcessingStateJsonProtocol
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.{ProcessId, ProcessingState}
+import de.awagen.kolibri.storage.io.reader.Reader
 import de.awagen.kolibri.storage.io.writer.Writers.Writer
 import zio.{Task, ZIO}
 
-case class FileStorageWorkStateWriter(writer: Writer[String, String, _]) extends WorkStateWriter {
+case class FileStorageWorkStateWriter(reader: Reader[String, Seq[String]], writer: Writer[String, String, _]) extends WorkStateWriter {
 
   override def updateInProgressState(processingState: ProcessingState): Task[Unit] = {
     ZIO.attemptBlocking({
@@ -53,4 +54,18 @@ case class FileStorageWorkStateWriter(writer: Writer[String, String, _]) extends
     }).flatMap(res => ZIO.fromEither(res))
       .map(_ => ())
   }
+
+  /**
+   * Move in-progress state file to done
+   */
+  override def moveToDone(processId: ProcessId, nodeHash: String): Task[Unit] = {
+    for {
+      currentFileURI <- ZIO.attempt(Directories.InProgressTasks.getInProgressFilePathForJob(processId.jobId, processId.batchNr, nodeHash))
+      currentState <- ZIO.attemptBlockingIO(reader.read(currentFileURI).mkString("\n"))
+      doneFileURI <- ZIO.attempt(Directories.DoneTasks.jobNameAndBatchNrToDoneFile(processId.jobId, processId.batchNr, isOpenJob = true))
+      _ <- ZIO.attemptBlockingIO(writer.write(currentState, doneFileURI))
+      _ <- ZIO.attemptBlockingIO(writer.delete(currentFileURI))
+    } yield ()
+  }
+
 }

@@ -80,10 +80,11 @@ object ZioDIConfig {
     } yield FileStorageWorkStateReader(overviewReaderFunc, reader)
   }
 
-  val workStateWriterLayer: ZLayer[Writer[String, String, _], Nothing, WorkStateWriter] = ZLayer {
+  val workStateWriterLayer: ZLayer[Writer[String, String, _] with Reader[String, Seq[String]], Nothing, WorkStateWriter] = ZLayer {
     for {
+      reader <- ZIO.service[Reader[String, Seq[String]]]
       writer <- ZIO.service[Writer[String, String, _]]
-    } yield FileStorageWorkStateWriter(writer)
+    } yield FileStorageWorkStateWriter(reader, writer)
   }
 
   val claimServiceLayer: ZLayer[ClaimReader with ClaimWriter with WorkStateReader with WorkStateWriter with JobStateReader with JobStateWriter, Nothing, ClaimService] = ZLayer {

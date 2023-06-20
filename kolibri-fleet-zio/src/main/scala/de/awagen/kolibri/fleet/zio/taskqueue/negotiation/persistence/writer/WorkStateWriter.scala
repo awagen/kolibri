@@ -40,4 +40,9 @@ trait WorkStateWriter {
    */
   def writeToDone(processId: ProcessId): Task[Unit]
 
+  /**
+   * Move in-progress state file to done
+   */
+  def moveToDone(processId: ProcessId, nodeHash: String): Task[Unit]
+
 }

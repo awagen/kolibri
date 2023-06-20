@@ -55,15 +55,17 @@ object TestObjects {
     mocked
   }
 
+  def reader(baseFolder: String) = LocalResourceFileReader(
+    basePath = baseFolder,
+    delimiterAndPosition = None,
+    fromClassPath = false
+  )
+
   def jobStateReader(baseFolder: String): JobStateReader = FileStorageJobStateReader(
     LocalDirectoryReader(
       baseDir = baseFolder,
       baseFilenameFilter = _ => true),
-    LocalResourceFileReader(
-      basePath = baseFolder,
-      delimiterAndPosition = None,
-      fromClassPath = false
-    )
+    reader(baseFolder)
   )
 
   def jobStateWriter(writer: FileWriter[String, Unit]): JobStateWriter = FileStorageJobStateWriter(
@@ -72,25 +74,18 @@ object TestObjects {
 
   def claimReader: FileStorageClaimReader = FileStorageClaimReader(
     filter => LocalDirectoryReader(baseDir = baseResourceFolder, baseFilenameFilter = filter),
-    LocalResourceFileReader(
-      basePath = baseResourceFolder,
-      delimiterAndPosition = None,
-      fromClassPath = false
-    )
+    reader(baseResourceFolder)
   )
 
   def claimWriter(writer: FileWriter[String, Unit]) = FileStorageClaimWriter(writer)
 
   def workStateReader = FileStorageWorkStateReader(
     filter => LocalDirectoryReader(baseDir = baseResourceFolder, baseFilenameFilter = filter),
-    LocalResourceFileReader(
-      basePath = baseResourceFolder,
-      delimiterAndPosition = None,
-      fromClassPath = false
-    )
+    reader(baseResourceFolder)
   )
 
   def workStateWriter(writer: FileWriter[String, Unit]) = FileStorageWorkStateWriter(
+    reader(baseResourceFolder),
     writer
   )
 

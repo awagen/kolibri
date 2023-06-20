@@ -117,6 +117,9 @@ object BaseWorkHandlerService {
       .runCollect
   } yield completedProcesses
 
+  // TODO: this is not worth much since any instance would have different history.
+  // we will need to load existing jobs (open and done) and check if we want to allow placing it
+  // also might wanna have process that checks whether same jobs were added in a too close timely manner
   private def addTasksToHistory(tasks: Seq[ProcessId], historyRef: Ref[Seq[ProcessId]]): ZIO[Any, Nothing, Unit] = {
     ZStream.fromIterable(tasks)
       .foreach(task => {
@@ -335,12 +338,11 @@ case class BaseWorkHandlerService[U <: TaggedWithType with DataPoint[Any], V <: 
    * to done folder for the corresponding job.
    * Further remove the processIDs corresponding to the completed batches from the aggregation and fiber runtime mappings.
    */
-  private def removeBatches(batches: Seq[ProcessId]): Task[Unit] = {
+  private def moveInProgressFileToDoneAndCleanupBatches(batches: Seq[ProcessId]): Task[Unit] = {
     ZStream.fromIterable(batches)
       .foreach(processId => {
         for {
-          _ <- workStateWriter.deleteInProgressState(processId, AppProperties.config.node_hash)
-          _ <- workStateWriter.writeToDone(processId)
+          _ <- workStateWriter.moveToDone(processId, AppProperties.config.node_hash)
           _ <- processIdToAggregatorRef.update(map => map - processId)
           _ <- processIdToFiberRef.update(map => map - processId)
         } yield ()
@@ -354,15 +356,15 @@ case class BaseWorkHandlerService[U <: TaggedWithType with DataPoint[Any], V <: 
       // cleanup orphaned running processes
       _ <- cleanUpProcessesWithMissingProcessingStates(openJobSnapshot.jobStateSnapshots.keySet, runningProcesses)
 
-      // for all remaining running processes (those that have a corresponding in-progress state), update the current
-      // state (means: persisting the current state with updated timestamp)
-      _ <- updateProcessStates
-
       // check Fiber.Runtime for each running process and if completed both remove processing status of batch and move
       // batch to "done" and remove the process from the process mapping
       processFiberMapping <- processIdToFiberRef.get
       completedProcessIds <- getCompletedBatches(processFiberMapping)
-      _ <- removeBatches(completedProcessIds)
+      // for all remaining running processes (those that have a corresponding in-progress state), update the current
+      // state (means: persisting the current state with updated timestamp)
+      _ <- updateProcessStates
+      // move / delete the completed batches
+      _ <- moveInProgressFileToDoneAndCleanupBatches(completedProcessIds)
 
       // pick the tasks in PLANNED state for the current node
       plannedTasksForNode <- pullPlannedTasks(openJobSnapshot)
