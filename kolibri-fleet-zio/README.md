@@ -63,3 +63,15 @@ for {
 ```
 This comes with the drawback that we have to implement the cancelling manually, such as 
 by changing an atomic reference value.
+
+
+## Code coverage
+To calculate code coverage, the sbt-scoverage plugin is used (https://github.com/scoverage/sbt-scoverage).
+The commands to generate the reports are as follows:
+- run tests with coverage: ```sbt clean coverage test``` (or in case project contains integration tests: ```sbt clean coverage it:test```)
+- generate coverage report: ```sbt coverageReport``` (reports to be found in ```target/scala-<scala-version>/scoverage-report```)
+- instead of running ```sbt coverageReport```, we can directly aggregate the results via ```sbt coverageAggregate```
+
+Its also possible to enable coverage for each build via sbt setting ```coverageEnabled := true```.
+For more settings (such as minimal coverage criteria for build to succeed), see above-referenced project page.
+
