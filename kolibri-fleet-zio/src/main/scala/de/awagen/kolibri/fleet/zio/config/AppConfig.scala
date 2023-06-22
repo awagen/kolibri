@@ -18,11 +18,8 @@
 package de.awagen.kolibri.fleet.zio.config
 
 import com.softwaremill.macwire.wire
-import de.awagen.kolibri.datatypes.AtomicMapPromiseStore
 import de.awagen.kolibri.datatypes.types.JsonTypeCast
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
-import de.awagen.kolibri.definitions.directives.Resource
-import de.awagen.kolibri.definitions.directives.ResourceDirectives.ResourceDirective
 import de.awagen.kolibri.definitions.io.json
 import de.awagen.kolibri.definitions.io.json.ExecutionJsonProtocol.ExecutionFormat
 import de.awagen.kolibri.definitions.io.json.WeightProviderJsonProtocol.StringWeightProviderFormat
@@ -35,22 +32,13 @@ import de.awagen.kolibri.definitions.usecase.searchopt.provider.FileBasedJudgeme
 import de.awagen.kolibri.definitions.usecase.searchopt.provider.{FileBasedJudgementProvider, JudgementProvider}
 import de.awagen.kolibri.fleet.zio.config.AppProperties.config._
 import de.awagen.kolibri.fleet.zio.config.di.modules.persistence.PersistenceModule
-import de.awagen.kolibri.fleet.zio.resources.{AtomicResourceStore, NodeResourceProvider}
+import de.awagen.kolibri.fleet.zio.resources.NodeResourceProvider
 import de.awagen.kolibri.storage.io.reader.DataOverviewReader
 import spray.json.RootJsonFormat
 
 import scala.util.matching.Regex
 
 object AppConfig {
-
-  object JobState {
-
-    // resource store to load data on per-node level
-    // (computes data at most once, even if many requests
-    // for setting up same resource come in)
-    val resourceStore: AtomicMapPromiseStore[Resource[Any], Any, ResourceDirective[Any]] = AtomicResourceStore()
-
-  }
 
   object JsonFormats {
 
@@ -101,7 +89,41 @@ object AppConfig {
       supplierJsonProtocol
     )
 
+    implicit val calculationsJsonProtocol: CalculationsJsonProtocol = CalculationsJsonProtocol(NodeResourceProvider)
+
+    val fileToJudgementFunc: SerializableFunction1[String, JudgementProvider[Double]] = new SerializableFunction1[String, JudgementProvider[Double]] {
+      override def apply(filePath: String): JudgementProvider[Double] = {
+        filepathToJudgementProvider(filePath)
+      }
+    }
+
+    implicit val connectionFormatStruct: ConnectionFormatStruct = ConnectionFormatStruct(
+      AppProperties.config.allowedRequestTargetHosts,
+      AppProperties.config.allowedRequestTargetPorts
+    )
+
+    implicit val queryBasedSearchEvaluationJsonProtocol: QueryBasedSearchEvaluationJsonProtocol = QueryBasedSearchEvaluationJsonProtocol(
+      parameterValueJsonProtocol,
+      calculationsJsonProtocol,
+      NodeResourceProvider,
+      fileToJudgementFunc,
+      regex => AppConfig.persistenceModule.persistenceDIModule.dataOverviewReader(s => regex.matches(s)),
+      AppConfig.persistenceModule.persistenceDIModule.reader,
+      AppConfig.persistenceModule.persistenceDIModule.writer,
+      AppProperties.config.metricDocumentFormatsMap,
+      AppProperties.config.outputResultsPath.getOrElse(""),
+      AppProperties.config.allowedTimePerElementInMillis,
+      AppProperties.config.allowedTimePerBatchInSeconds,
+      AppProperties.config.allowedTimePerJobInSeconds,
+      connectionFormatStruct
+    )
+
     implicit val resourceDirectiveJsonProtocol: ResourceDirectiveJsonProtocol = ResourceDirectiveJsonProtocol(supplierJsonProtocol)
+
+    implicit val searchEvaluationJsonProtocol: SearchEvaluationJsonProtocol = {
+      SearchEvaluationJsonProtocol(executionFormat, resourceDirectiveJsonProtocol,
+        parameterValueJsonProtocol, calculationsJsonProtocol, connectionFormatStruct)
+    }
 
     implicit val generatorJsonProtocol: IndexedGeneratorJsonProtocol = IndexedGeneratorJsonProtocol(
       dataOverviewReaderWithSuffixFilterFunc
@@ -124,11 +146,6 @@ object AppConfig {
 
     implicit val seqModifierGeneratorJsonProtocol: SeqModifierGeneratorJsonProtocol = SeqModifierGeneratorJsonProtocol(
       modifierGeneratorProviderJsonProtocol
-    )
-
-    implicit val connectionFormatStruct: ConnectionFormatStruct = ConnectionFormatStruct(
-      AppProperties.config.allowedRequestTargetHosts,
-      AppProperties.config.allowedRequestTargetPorts
     )
 
   }

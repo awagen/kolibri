@@ -44,13 +44,13 @@ object FileStorageJobStateReader {
 
   val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
-  private[reader] def jobFolderNameToJobIdAndCreationTimeInMillis(jobDirName: String): (String, Long) = {
+  def jobFolderNameToJobIdAndCreationTimeInMillis(jobDirName: String): (String, Long) = {
     val attributeMap = JobDirectoryNameFormat.parse(jobDirName)
     (attributeMap.get(JOB_ID.namedClassTyped.name).get,
       attributeMap.get(CREATION_TIME_IN_MILLIS.namedClassTyped.name).get)
   }
 
-  private[reader] def castableAsInt(str: String): Boolean = {
+  def castableAsInt(str: String): Boolean = {
     FuncUtils.isExecutableStringOp[Int](x => x.toInt)(str)
   }
 
@@ -148,14 +148,13 @@ case class FileStorageJobStateReader(overviewReader: DataOverviewReader,
       jobDefinition,
       jobLevelDirectives,
       batchStateMapping
-    )).logError.either
+    )).either
 
   private[this] def retrieveAllOpenJobStateSnapshots: ZIO[Any, IOException, Seq[JobStateSnapshot]] = {
     val jobResults: ZIO[Any, IOException, Seq[Either[Throwable, JobStateSnapshot]]] = for {
       // retrieve job folder names
       jobFolderNames <- ZIO.attemptBlockingIO[Seq[String]](overviewReader.listResources(config.openJobBaseFolder, _ => true)
         .map(uri => uri.split("/").last).distinct)
-        .logError
       _ <- ZIO.logDebug(s"job folder names: $jobFolderNames")
       // parse details out of the folder names (jobName_timeInMillis)
       jobStateSnapshots <- ZStream.fromIterable(jobFolderNames)

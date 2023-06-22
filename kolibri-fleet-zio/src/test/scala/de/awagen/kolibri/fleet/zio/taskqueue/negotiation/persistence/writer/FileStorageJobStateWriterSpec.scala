@@ -32,9 +32,11 @@ object FileStorageJobStateWriterSpec extends ZIOSpecDefault {
       """
         |{
         |  "type": "JUST_WAIT",
-        |  "jobName": "waitingJob",
-        |  "nrBatches": 10,
-        |  "durationInMillis": 1000
+        |  "def": {
+        |    "jobName": "waitingJob",
+        |    "nrBatches": 10,
+        |    "durationInMillis": 1000
+        |  }
         |}
         |""".stripMargin
 
@@ -62,7 +64,7 @@ object FileStorageJobStateWriterSpec extends ZIOSpecDefault {
       val writerMock = fileWriterMock
       val stateWriter = jobStateWriter(writerMock)
       for {
-        _ <- stateWriter.storeJobDefinitionAndBatches(testJobDefinitionJson)
+        _ <- stateWriter.storeJobDefinitionAndBatches(testJobDefinitionJson, s"waitingJob_${System.currentTimeMillis()}")
       } yield assert({
         // verify the writing of the job definition
         verify(writerMock, times(1))

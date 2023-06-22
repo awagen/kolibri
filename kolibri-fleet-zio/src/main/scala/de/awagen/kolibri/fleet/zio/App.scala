@@ -17,20 +17,13 @@
 
 package de.awagen.kolibri.fleet.zio
 
-import de.awagen.kolibri.datatypes.types.Types.WithCount
-import de.awagen.kolibri.definitions.io.json.ResourceJsonProtocol.AnyResourceFormat
 import de.awagen.kolibri.fleet.zio.config.di.ZioDIConfig
-import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobDefinition
-import de.awagen.kolibri.fleet.zio.io.json.JobDefinitionJsonProtocol.JobDefinitionFormat
-import de.awagen.kolibri.fleet.zio.resources.NodeResourceProvider
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.ClaimTopics
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.{ClaimReader, JobStateReader, WorkStateReader}
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer.{ClaimWriter, FileStorageJobStateWriter, JobStateWriter, WorkStateWriter}
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer.{ClaimWriter, FileStorageJobStateWriter, WorkStateWriter}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services.{ClaimService, WorkHandlerService}
 import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, Reader}
 import de.awagen.kolibri.storage.io.writer.Writers
-import spray.json.DefaultJsonProtocol.immSetFormat
-import spray.json._
 import zio._
 import zio.http._
 import zio.logging.LogFormat
@@ -40,46 +33,6 @@ import zio.stream.ZStream
 object App extends ZIOAppDefault {
 
   override val bootstrap: ZLayer[Any, Nothing, Unit] = SLF4J.slf4j(LogLevel.Info, LogFormat.colored)
-
-  private val app: Http[JobStateWriter with JobStateReader, Nothing, Request, Response] = Http.collectZIO[Request] {
-    case Method.GET -> !! / "hello" => ZIO.succeed(Response.text("Hello World!"))
-    case Method.GET -> !! / "global_resources" =>
-      ZIO.attempt(Response.text(NodeResourceProvider.listResources.toJson.toString()))
-        .catchAll(throwable =>
-          ZIO.logError(s"error retrieving global resources:\n$throwable")) *> ZIO.succeed(Response.text("failed retrieving global resources"))
-    case Method.GET -> !! / "registeredJobs" =>
-      for {
-        // TODO: avoid reloading the current state from filesystem on each request
-        stateReader <- ZIO.service[JobStateReader]
-        jobStateEither <- stateReader.fetchOpenJobState.either
-        _ <- ZIO.when(jobStateEither.isLeft)(ZIO.logError(s"Retrieving job state failed with error:\n${jobStateEither.swap.toOption.get}"))
-      } yield jobStateEither match {
-        case Right(jobState) =>
-          Response.text(s"Files: ${jobState.jobStateSnapshots.keys.toSeq.mkString(",")}")
-        case Left(_) =>
-          Response.text(s"Failed retrieving registered jobs")
-      }
-    case req@Method.POST -> !! / "job" =>
-      (for {
-        jobStateReader <- ZIO.service[JobStateReader]
-        jobStateWriter <- ZIO.service[JobStateWriter]
-        jobString <- req.body.asString
-        jobDef <- ZIO.attempt(jobString.parseJson.convertTo[JobDefinition[_, _, _ <: WithCount]])
-        // TODO: avoid reloading the current state from filesystem on each request
-        jobState <- jobStateReader.fetchOpenJobState
-        // TODO: here need to decompose existing job identifiers in job name and timestamp and use the job name for comparison
-        jobFolderExists <- ZIO.attempt(jobState.jobStateSnapshots.contains(jobDef.jobName))
-        _ <- ZIO.ifZIO(ZIO.succeed(jobFolderExists))(
-          onFalse = jobStateWriter.storeJobDefinitionAndBatches(jobString),
-          onTrue = ZIO.logInfo(s"Job folder for job ${jobDef.jobName} already exists," +
-            s" skipping job information persistence step")
-        )
-        r <- ZIO.succeed(Response.text(jobString))
-      } yield r).catchAll(throwable =>
-        ZIO.logWarning(s"Error on posting job:\n$throwable")
-          *> ZIO.succeed(Response.text(s"Failed posting job"))
-      )
-  }
 
   /**
    * Effect taking care of claim and work management
@@ -129,7 +82,8 @@ object App extends ZIOAppDefault {
       _ <- ZIO.logInfo("Application started!")
       _ <- taskWorkerApp
       _ <- taskWorkerApp.repeat(fixed).delay(30 seconds).fork
-      _ <- Server.serve(app)
+      jobStateCache <- ServerEndpoints.openJobStateCache
+      _ <- Server.serve(ServerEndpoints.jobPostingEndpoints ++ ServerEndpoints.statusEndpoints(jobStateCache))
       _ <- ZIO.logInfo("Application is about to exit!")
     } yield ())
       .provide(Server.default >+> combinedLayer)

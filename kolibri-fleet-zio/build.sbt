@@ -8,6 +8,7 @@ val playLogbackVersion = "2.8.2"
 val sprayVersion = "1.3.5"
 val zioVersion = "2.0.13"
 val zioJsonVersion = "0.5.0"
+val zioCacheVersion = "0.2.3"
 val zioConfigVersion = "4.0.0-RC14"
 val zioLoggingVersion = "2.1.12"
 val zioHttpVersion = "3.0.0-RC1"
@@ -20,7 +21,7 @@ test in assembly := {} //causes no tests to be executed when calling "sbt assemb
 assemblyJarName in assembly := s"kolibri-fleet-zio.${version.value}.jar" //jar name
 //sbt-assembly settings. If it should only hold for specific subproject build, place the 'assemblyMergeStrategy in assembly' within subproject settings
 assemblyMergeStrategy in assembly := {
-  // picking last to make sure the application configs and logback config of kolibri-fleet-akka are picked up instead
+  // picking last to make sure the application configs and logback config of kolibri-fleet-zio are picked up instead
   // from a dependency
   case x if "application.*\\.conf".r.findFirstMatchIn(x.split("/").last).nonEmpty =>
     MergeStrategy.last
@@ -63,6 +64,7 @@ libraryDependencies ++= Seq(
   "dev.zio" %% "zio-streams" % zioVersion,
   "dev.zio" %% "zio-http" % zioHttpVersion,
   "dev.zio" %% "zio-json" % zioJsonVersion,
+  "dev.zio" %% "zio-cache" % zioCacheVersion,
   "dev.zio" %% "zio-config" % zioConfigVersion,
   "dev.zio" %% "zio-config-typesafe" % zioConfigVersion,
   "dev.zio" %% "zio-config-magnolia" % zioConfigVersion,

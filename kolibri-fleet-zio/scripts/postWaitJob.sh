@@ -1,0 +1,1 @@
+curl -vX POST http://localhost:8080/job -d @testWaitJobDef.json --header "Content-Type: application/json"

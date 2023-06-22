@@ -1,6 +1,8 @@
 {
   "type": "JUST_WAIT",
-  "jobName": "waitingJob",
-  "nrBatches": 10,
-  "durationInMillis": 1000
+  "def": {
+    "jobName": "waitingJob",
+    "nrBatches": 10,
+    "durationInMillis": 1000
+  }
 }

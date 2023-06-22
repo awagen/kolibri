@@ -33,7 +33,7 @@ trait JobStateWriter {
    * After writing job definition and batches, write PROCESS directive into
    * folder to indicate the job is up for processing.
    */
-  def storeJobDefinitionAndBatches(jobDefinition: String): Task[Unit]
+  def storeJobDefinitionAndBatches(jobDefinition: String, jobSubFolder: String): Task[Unit]
 
   /**
    * Persist batch as in "open" state, e.g to be claimed by any node.

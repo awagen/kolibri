@@ -41,17 +41,17 @@ case class FileStorageJobStateWriter(writer: Writer[String, String, _]) extends 
     })
   }
 
-  override def storeJobDefinitionAndBatches(jobDefinition: String): Task[Unit] = {
+  override def storeJobDefinitionAndBatches(jobDefinition: String, jobSubFolder: String): Task[Unit] = {
     for {
       jobDef <- ZIO.attempt(jobDefinition.parseJson.convertTo[JobDefinition[_, _, _ <: WithCount]])
-      _ <- storeJobDefinition(jobDefinition, s"${jobDef.jobName}_${System.currentTimeMillis()}")
-      batchStorageResult <- storeBatchFilesForJob(jobDef)
+      _ <- storeJobDefinition(jobDefinition, jobSubFolder)
+      batchStorageResult <- storeBatchFilesForJob(jobDef, jobSubFolder)
     } yield batchStorageResult
   }
 
-  private[this] def storeJobDefinition(jobDefinition: String, jobName: String): Task[Unit] = {
+  private[this] def storeJobDefinition(jobDefinition: String, jobSubFolder: String): Task[Unit] = {
     ZIO.attemptBlockingIO({
-      val writePath = jobNameToJobDefinitionFile(jobName)
+      val writePath = jobNameToJobDefinitionFile(jobSubFolder)
       writer.write(jobDefinition, writePath)
     }).flatMap({
       case Left(e) => ZIO.fail(e)
@@ -59,11 +59,11 @@ case class FileStorageJobStateWriter(writer: Writer[String, String, _]) extends 
     })
   }
 
-  private[this] def storeBatchFilesForJob(jobDefinition: JobDefinition[_, _, _]): Task[Unit] = {
+  private[this] def storeBatchFilesForJob(jobDefinition: JobDefinition[_, _, _], jobSubFolder: String): Task[Unit] = {
     ZIO.attemptBlockingIO({
       val numBatches = jobDefinition.batches.size
       Range(0, numBatches, 1).foreach(batchNr => {
-        val fileName = jobNameAndBatchNrToBatchFile(jobDefinition.jobName, batchNr)
+        val fileName = jobNameAndBatchNrToBatchFile(jobSubFolder, batchNr)
         writer.write("", fileName)
       })
     })
