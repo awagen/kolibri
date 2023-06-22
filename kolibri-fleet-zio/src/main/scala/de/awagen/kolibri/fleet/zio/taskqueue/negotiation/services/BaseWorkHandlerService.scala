@@ -374,16 +374,23 @@ case class BaseWorkHandlerService[U <: TaggedWithType with DataPoint[Any], V <: 
       _ <- addTasksToHistory(addedToQueue.filter(x => x.isRight).map(x => x.toOption.get), addedBatchesHistoryRef)
 
       // fill empty slots for processing with tasks from queue, see processNextBatch
-      nrOpenProcessSlots <- processIdToAggregatorRef.get
-        .map(x => x.toSet.count(_ => true))
-        .map(runningJobCount => AppProperties.config.maxNrJobsProcessing - runningJobCount)
-      elementsInQueue <- queue.size
-      _ <- ZIO.loop(math.min(elementsInQueue, nrOpenProcessSlots))(_ > 0, _ - 1)(_ => processNextBatch)
+      nrOpenProcessSlots <- getNrOpenProcessSlots
+      _ <- ZIO.loop(nrOpenProcessSlots)(_ > 0, _ - 1)(_ => processNextBatch)
 
       // clean up loaded resources that are not needed anymore
       _ <- cleanUpGlobalResources
 
     } yield ()
+  }
+
+  private def getNrOpenProcessSlots: ZIO[Any, Nothing, Int] = {
+    for {
+      nrOpenSlots <- processIdToAggregatorRef.get
+        .map(x => x.toSet.count(_ => true))
+        .map(runningJobCount => AppProperties.config.maxNrJobsProcessing - runningJobCount)
+      elementsInQueue <- queue.size
+      freeBatchProcessCapacity <- ZIO.succeed(math.min(elementsInQueue, nrOpenSlots))
+    } yield freeBatchProcessCapacity
   }
 
   /**

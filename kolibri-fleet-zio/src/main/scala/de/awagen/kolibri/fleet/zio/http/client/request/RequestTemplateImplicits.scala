@@ -19,6 +19,7 @@ package de.awagen.kolibri.fleet.zio.http.client.request
 
 import de.awagen.kolibri.definitions.domain.jobdefinitions.provider.Credentials
 import de.awagen.kolibri.definitions.http.client.request.RequestTemplate
+import zio.http.Path.Segment
 import zio.http._
 import zio.{Chunk, ZIO}
 
@@ -46,7 +47,7 @@ object RequestTemplateImplicits {
             ),
             method = Method.fromString(template.httpMethod),
             url = new URL(
-              path = Path.decode(s"$host/${template.query}"),
+              path = Path(Vector(Segment(host), Segment(template.query.stripPrefix("/")))),
               queryParams = QueryParams(template.parameters.map(x => (x._1, Chunk.fromIterable(x._2))))
             ),
             version = protocolMapping.getOrElse(template.protocol, Version.`HTTP/1.1`),
