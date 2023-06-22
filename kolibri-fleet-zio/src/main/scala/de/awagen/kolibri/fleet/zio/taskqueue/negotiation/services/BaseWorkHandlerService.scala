@@ -117,9 +117,10 @@ object BaseWorkHandlerService {
       .runCollect
   } yield completedProcesses
 
-  // TODO: this is not worth much since any instance would have different history.
-  // we will need to load existing jobs (open and done) and check if we want to allow placing it
-  // also might wanna have process that checks whether same jobs were added in a too close timely manner
+  /**
+   * adding tasks to history. The history is just a safe-guard against adding single batches multiple times in
+   * case state updating failed for some reason and thus the status of planned tasks fail to be updated.
+   */
   private def addTasksToHistory(tasks: Seq[ProcessId], historyRef: Ref[Seq[ProcessId]]): ZIO[Any, Nothing, Unit] = {
     ZStream.fromIterable(tasks)
       .foreach(task => {
