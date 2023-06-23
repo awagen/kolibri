@@ -17,7 +17,7 @@
 
 package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer
 
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.ClaimTopics.ClaimTopic
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.TaskTopics.TaskTopic
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ClaimStates.Claim
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ProcessId
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ClaimStatus.ClaimFilingStatus.ClaimFilingStatus
@@ -25,7 +25,7 @@ import zio.Task
 
 trait ClaimWriter {
 
-  def fileClaim(processId: ProcessId, claimTopic: ClaimTopic): Task[ClaimFilingStatus]
+  def fileClaim(processId: ProcessId, claimTopic: TaskTopic): Task[ClaimFilingStatus]
 
   def writeTaskToProgressFolder(processId: ProcessId): Task[Any]
 

@@ -17,7 +17,7 @@
 
 package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state
 
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.ClaimTopics.ClaimTopic
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.TaskTopics.TaskTopic
 
 object ClaimStates {
 
@@ -25,6 +25,6 @@ object ClaimStates {
                    batchNr: Int,
                    nodeId: String,
                    timeClaimedInMillis: Long,
-                   claimTopic: ClaimTopic)
+                   claimTopic: TaskTopic)
 
 }

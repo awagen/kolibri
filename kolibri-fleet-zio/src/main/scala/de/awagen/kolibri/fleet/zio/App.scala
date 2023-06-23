@@ -18,7 +18,7 @@
 package de.awagen.kolibri.fleet.zio
 
 import de.awagen.kolibri.fleet.zio.config.di.ZioDIConfig
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.ClaimTopics
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.TaskTopics
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.{ClaimReader, JobStateReader, WorkStateReader}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer.{ClaimWriter, FileStorageJobStateWriter, WorkStateWriter}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services.{ClaimService, WorkHandlerService}
@@ -45,15 +45,15 @@ object App extends ZIOAppDefault {
       openJobsState <- jobStateReaderService.fetchOpenJobState
       allProcessingClaims <- claimService.getAllClaims(
         openJobsState.jobStateSnapshots.keySet,
-        ClaimTopics.JobTaskProcessingClaim)
+        TaskTopics.JobTaskProcessingTask)
       allProcessingClaimHashes <- ZIO.succeed(allProcessingClaims.map(x => x.nodeId))
       // manage claiming of job wrap up
-      _ <- claimService.manageClaims(ClaimTopics.JobWrapUpClaim)
+      _ <- claimService.manageClaims(TaskTopics.JobWrapUpTask)
       // handle claimed task reset claims per node hash
       _ <- ZStream.fromIterable(allProcessingClaimHashes)
-        .foreach(hash => claimService.manageClaims(ClaimTopics.JobTaskResetClaim(hash)))
+        .foreach(hash => claimService.manageClaims(TaskTopics.JobTaskResetTask(hash)))
       // manage claiming of new processing tasks
-      _ <- claimService.manageClaims(ClaimTopics.JobTaskProcessingClaim)
+      _ <- claimService.manageClaims(TaskTopics.JobTaskProcessingTask)
       // handle processing of claimed tasks
       _ <- workHandlerService.manageBatches(openJobsState)
       // persist the updated status of the batches processed

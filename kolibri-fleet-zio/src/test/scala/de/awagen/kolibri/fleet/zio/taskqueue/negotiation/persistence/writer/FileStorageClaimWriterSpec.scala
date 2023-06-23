@@ -18,7 +18,7 @@
 package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer
 
 import de.awagen.kolibri.fleet.zio.io.json.ProcessingStateJsonProtocol.processingStateFormat
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.ClaimTopics
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.TaskTopics
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state._
 import de.awagen.kolibri.fleet.zio.testutils.TestObjects.{claimWriter, fileWriterMock}
 import org.mockito.Mockito.{times, verify}
@@ -35,21 +35,21 @@ object FileStorageClaimWriterSpec extends ZIOSpecDefault {
       val writerMock = fileWriterMock
       val writer = claimWriter(writerMock)
       for {
-        _ <- writer.fileClaim(ProcessId("testJob1_3434839787", 1), ClaimTopics.JobTaskProcessingClaim)
-        _ <- writer.fileClaim(ProcessId("testJob1_3434839787", 2), ClaimTopics.JobTaskProcessingClaim)
-        _ <- writer.fileClaim(ProcessId("testJob1_3434839787", 3), ClaimTopics.JobTaskProcessingClaim)
+        _ <- writer.fileClaim(ProcessId("testJob1_3434839787", 1), TaskTopics.JobTaskProcessingTask)
+        _ <- writer.fileClaim(ProcessId("testJob1_3434839787", 2), TaskTopics.JobTaskProcessingTask)
+        _ <- writer.fileClaim(ProcessId("testJob1_3434839787", 3), TaskTopics.JobTaskProcessingTask)
       } yield assert({
         verify(writerMock, times(1)).write(
           ArgumentMatchers.eq(""),
-          ArgumentMatchers.startsWith(s"jobs/open/testJob1_3434839787/tasks/claims/JOB_TASK_PROCESSING_CLAIM__testJob1_3434839787__1__"),
+          ArgumentMatchers.startsWith(s"jobs/open/testJob1_3434839787/tasks/claims/JOB_TASK_PROCESSING__testJob1_3434839787__1__"),
         )
         verify(writerMock, times(1)).write(
           ArgumentMatchers.eq(""),
-          ArgumentMatchers.startsWith(s"jobs/open/testJob1_3434839787/tasks/claims/JOB_TASK_PROCESSING_CLAIM__testJob1_3434839787__2__"),
+          ArgumentMatchers.startsWith(s"jobs/open/testJob1_3434839787/tasks/claims/JOB_TASK_PROCESSING__testJob1_3434839787__2__"),
         )
         verify(writerMock, times(1)).write(
           ArgumentMatchers.eq(""),
-          ArgumentMatchers.startsWith(s"jobs/open/testJob1_3434839787/tasks/claims/JOB_TASK_PROCESSING_CLAIM__testJob1_3434839787__3__"),
+          ArgumentMatchers.startsWith(s"jobs/open/testJob1_3434839787/tasks/claims/JOB_TASK_PROCESSING__testJob1_3434839787__3__"),
         )
       })(Assertion.assertion("all true")(_ => true))
     },

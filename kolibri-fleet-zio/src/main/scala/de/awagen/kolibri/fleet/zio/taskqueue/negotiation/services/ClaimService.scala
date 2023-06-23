@@ -17,7 +17,7 @@
 
 package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services
 
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.ClaimTopics.ClaimTopic
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.TaskTopics.TaskTopic
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ClaimStates.Claim
 import zio.Task
 
@@ -28,8 +28,8 @@ trait ClaimService {
    * if resources available, verifying and exercising claims).
    * This function would usually be the only call that needs to be exposed.
    */
-  def manageClaims(claimTopic: ClaimTopic): Task[Unit]
+  def manageClaims(taskTopic: TaskTopic): Task[Unit]
 
-  def getAllClaims(jobIds: Set[String], claimTopic: ClaimTopic): Task[Set[Claim]]
+  def getAllClaims(jobIds: Set[String], taskTopic: TaskTopic): Task[Set[Claim]]
 
 }

@@ -17,7 +17,7 @@
 
 package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader
 
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.ClaimTopics
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.TaskTopics
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ClaimStates._
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ClaimStatus.ClaimVerifyStatus
 import de.awagen.kolibri.fleet.zio.testutils.TestObjects.claimReader
@@ -32,14 +32,14 @@ object FileStorageClaimReaderSpec extends ZIOSpecDefault {
       // given
       val reader = claimReader
       val expectedClaimSet = Set(
-        Claim("testJob1_3434839787", 2, "abc234", 1683845333850L, ClaimTopics.JobTaskProcessingClaim),
-        Claim("testJob1_3434839787", 2, "other1", 1703845333850L, ClaimTopics.JobTaskProcessingClaim),
-        Claim("testJob1_3434839787", 2, "other2", 1713845333850L, ClaimTopics.JobTaskProcessingClaim),
-        Claim("testJob1_3434839787", 3, "other1", 1683845333850L, ClaimTopics.JobTaskProcessingClaim)
+        Claim("testJob1_3434839787", 2, "abc234", 1683845333850L, TaskTopics.JobTaskProcessingTask),
+        Claim("testJob1_3434839787", 2, "other1", 1703845333850L, TaskTopics.JobTaskProcessingTask),
+        Claim("testJob1_3434839787", 2, "other2", 1713845333850L, TaskTopics.JobTaskProcessingTask),
+        Claim("testJob1_3434839787", 3, "other1", 1683845333850L, TaskTopics.JobTaskProcessingTask)
       )
       // when, then
       for {
-        claims <- reader.getAllClaims(Set("testJob1_3434839787"), ClaimTopics.JobTaskProcessingClaim)
+        claims <- reader.getAllClaims(Set("testJob1_3434839787"), TaskTopics.JobTaskProcessingTask)
       } yield assert(claims)(Assertion.assertion("reads all claims")(entries => {
         entries.equals(expectedClaimSet)
       }))
@@ -48,8 +48,8 @@ object FileStorageClaimReaderSpec extends ZIOSpecDefault {
     test("verifyBatchClaim") {
       val reader = claimReader
       for {
-        claimResult1 <- reader.verifyBatchClaim("testJob1_3434839787", 2, ClaimTopics.JobTaskProcessingClaim)
-        claimResult2 <- reader.verifyBatchClaim("testJob1_3434839787", 3, ClaimTopics.JobTaskProcessingClaim)
+        claimResult1 <- reader.verifyBatchClaim("testJob1_3434839787", 2, TaskTopics.JobTaskProcessingTask)
+        claimResult2 <- reader.verifyBatchClaim("testJob1_3434839787", 3, TaskTopics.JobTaskProcessingTask)
       } yield assert(claimResult1)(Assertion.equalTo(ClaimVerifyStatus.CLAIM_ACCEPTED)) &&
         assert(claimResult2)(Assertion.equalTo(ClaimVerifyStatus.NODE_CLAIM_DOES_NOT_EXIST))
     }

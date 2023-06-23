@@ -17,54 +17,77 @@
 
 package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader
 
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.ClaimTopics.JobTaskResetClaim.typePrefix
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.ClaimTopics._
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.TaskTopics.JobTaskResetTask.typePrefix
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.TaskTopics._
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ClaimStates.Claim
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.JobStates.OpenJobsSnapshot
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ClaimStatus.ClaimVerifyStatus.ClaimVerifyStatus
 import zio.Task
 
 
 object ClaimReader {
 
-  object ClaimTopics {
+  object TaskTopics {
 
-    sealed trait ClaimTopic
+    sealed trait TaskTopic
 
-    case object JobTaskProcessingClaim extends ClaimTopic {
+    /**
+     * Topic for processing of a batch of the given job
+     */
+    case object JobTaskProcessingTask extends TaskTopic {
 
-      val id: String = "JOB_TASK_PROCESSING_CLAIM"
-
-      override def toString: String = id
-
-    }
-
-    case object JobWrapUpClaim extends ClaimTopic {
-
-      val id: String = "JOB_WRAP_UP_CLAIM"
+      val id: String = "JOB_TASK_PROCESSING"
 
       override def toString: String = id
 
     }
 
-    object JobTaskResetClaim {
+    /**
+     * Topic for job wrap up task (meaning moving the job to done)
+     */
+    case object JobWrapUpTask extends TaskTopic {
+
+      val id: String = "JOB_WRAP_UP"
+
+      override def toString: String = id
+
+    }
+
+    /**
+     * Task for resetting a batch processing state, that is: move batch back to open state and remove the
+     * in-progress state
+     */
+    object JobTaskResetTask {
 
       val argumentDelimiter = "-"
-      val typePrefix = "JOB_TASK_RESET_CLAIM"
+      val typePrefix = "JOB_TASK_RESET"
 
-      def fromString(str: String): JobTaskResetClaim = {
-        JobTaskResetClaim(str.split(argumentDelimiter)(1))
+      def fromString(str: String): JobTaskResetTask = {
+        JobTaskResetTask(str.split(argumentDelimiter)(1))
       }
 
     }
 
-    sealed case class JobTaskResetClaim(nodeHash: String) extends ClaimTopic {
+    sealed case class JobTaskResetTask(nodeHash: String) extends TaskTopic {
 
       override def toString: String = s"$typePrefix-$nodeHash"
 
     }
 
-    case object Unknown extends ClaimTopic {
+    /**
+     * Post processing if any is defined, e.g aggregating sub-results or the like
+     */
+    case object JobPostProcessing extends TaskTopic {
+
+      val id: String = "JOB_POST_PROCESSING"
+
+      override def toString: String = id
+
+    }
+
+    /**
+     * Placeholder which basically corresponds to no task
+     */
+    case object Unknown extends TaskTopic {
 
       val id: String = "UNKNOWN"
 
@@ -74,10 +97,10 @@ object ClaimReader {
 
   }
 
-  def stringToClaimTopic(str: String): ClaimTopic = str match {
-    case JobTaskProcessingClaim.id => JobTaskProcessingClaim
-    case JobWrapUpClaim.id => JobWrapUpClaim
-    case v if v.startsWith(JobTaskResetClaim.typePrefix) => JobTaskResetClaim.fromString(str)
+  def stringToClaimTopic(str: String): TaskTopic = str match {
+    case JobTaskProcessingTask.id => JobTaskProcessingTask
+    case JobWrapUpTask.id => JobWrapUpTask
+    case v if v.startsWith(JobTaskResetTask.typePrefix) => JobTaskResetTask.fromString(str)
     case _ => Unknown
   }
 
@@ -85,15 +108,15 @@ object ClaimReader {
 
 trait ClaimReader {
 
-  def getAllClaims(jobIds: Set[String], claimTopic: ClaimTopic): Task[Set[Claim]]
+  def getAllClaims(jobIds: Set[String], taskTopic: TaskTopic): Task[Set[Claim]]
 
-  def getClaimsForJob(jobId: String, claimTopic: ClaimTopic): Task[Seq[Claim]]
+  def getClaimsForJob(jobId: String, taskTopic: TaskTopic): Task[Seq[Claim]]
 
-  def getClaimsForBatch(jobId: String, batchNr: Int, claimTopic: ClaimTopic): Task[Set[Claim]]
+  def getClaimsForBatch(jobId: String, batchNr: Int, taskTopic: TaskTopic): Task[Set[Claim]]
 
-  def getClaimsByCurrentNode(claimTopic: ClaimTopic, jobIds: Set[String]): Task[Set[Claim]]
+  def getClaimsByCurrentNode(taskTopic: TaskTopic, jobIds: Set[String]): Task[Set[Claim]]
 
-  def verifyBatchClaim(jobId: String, batchNr: Int, claimTopic: ClaimTopic): Task[ClaimVerifyStatus]
+  def verifyBatchClaim(jobId: String, batchNr: Int, taskTopic: TaskTopic): Task[ClaimVerifyStatus]
 
 
 

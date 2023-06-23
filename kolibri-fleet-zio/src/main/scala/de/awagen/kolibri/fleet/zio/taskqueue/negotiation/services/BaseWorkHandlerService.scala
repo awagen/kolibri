@@ -26,7 +26,7 @@ import de.awagen.kolibri.definitions.io.json.ResourceJsonProtocol.AnyResourceFor
 import de.awagen.kolibri.fleet.zio.config.AppProperties
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobBatch
 import de.awagen.kolibri.fleet.zio.resources.NodeResourceProvider
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.ClaimTopics
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.TaskTopics
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.{ClaimReader, WorkStateReader}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer.WorkStateWriter
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.processing.TaskWorker
@@ -404,7 +404,7 @@ case class BaseWorkHandlerService[U <: TaggedWithType with DataPoint[Any], V <: 
       jobsWithResourceMappings <- resourceToJobIdsRef.get.map(x => x.values.flatten.toSet)
       runningJobs <- processIdToAggregatorRef.get.map(x => x.keySet.map(y => y.jobId))
       // for jobs with current resource assignment, get those jobs for which the current node has any claim filed
-      jobsWithClaims <- claimReader.getClaimsByCurrentNode(ClaimTopics.JobTaskProcessingClaim, jobsWithResourceMappings)
+      jobsWithClaims <- claimReader.getClaimsByCurrentNode(TaskTopics.JobTaskProcessingTask, jobsWithResourceMappings)
         .map(x => x.map(y => y.jobId))
       // remove all resource - jobName assignments for jobs that are neither running anymore nor part of any claim
       _ <- ZStream.fromIterable(jobsWithResourceMappings -- runningJobs -- jobsWithClaims)

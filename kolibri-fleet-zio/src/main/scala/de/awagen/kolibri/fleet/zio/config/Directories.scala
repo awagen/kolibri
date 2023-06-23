@@ -21,7 +21,7 @@ import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.fleet.zio.config.AppProperties.config
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.format.FileFormats.{ClaimFileNameFormat, InProgressTaskFileNameFormat}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.format.NameFormats.Parts.JOB_ID
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.ClaimTopics.ClaimTopic
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.TaskTopics.TaskTopic
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ClaimStates._
 
 /**
@@ -55,7 +55,7 @@ object Directories {
       s"${jobSubFolder(jobId, config.perJobClaimBaseFolder, isOpenJob)}"
     }
 
-    def getFullFilePathForClaimFile(jobId: String, batchNr: Int, claimTopic: ClaimTopic): String = {
+    def getFullFilePathForClaimFile(jobId: String, batchNr: Int, claimTopic: TaskTopic): String = {
       val fileName = ClaimFileNameFormat.getFileName(
         Claim(
           jobId,

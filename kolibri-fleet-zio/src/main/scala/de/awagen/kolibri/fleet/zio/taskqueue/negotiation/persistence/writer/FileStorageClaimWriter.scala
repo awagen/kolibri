@@ -23,7 +23,7 @@ import de.awagen.kolibri.fleet.zio.config.Directories.InProgressTasks.getInProgr
 import de.awagen.kolibri.fleet.zio.config.Directories.OpenTasks
 import de.awagen.kolibri.fleet.zio.io.json.ProcessingStateJsonProtocol
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.format.FileFormats.ClaimFileNameFormat
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.ClaimTopics.ClaimTopic
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.TaskTopics.TaskTopic
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ClaimStates.Claim
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state._
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ClaimStatus.ClaimFilingStatus
@@ -39,7 +39,7 @@ case class FileStorageClaimWriter(writer: Writer[String, String, _]) extends Cla
    * NOTE that jobId here means [jobName]_[timePlacedInMillis]
    */
   override def fileClaim(processId: ProcessId,
-                         claimTopic: ClaimTopic): Task[ClaimFilingStatus] = {
+                         claimTopic: TaskTopic): Task[ClaimFilingStatus] = {
     // write claim
     for {
       claimPath <- ZIO.attempt(getFullFilePathForClaimFile(processId.jobId, processId.batchNr, claimTopic))
