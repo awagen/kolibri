@@ -72,6 +72,7 @@ object App extends ZIOAppDefault {
       ZioDIConfig.claimWriterLayer >+>
       ZioDIConfig.workStateReaderLayer >+>
       ZioDIConfig.workStateWriterLayer >+>
+      ZioDIConfig.taskOverviewServiceLayer >+>
       ZioDIConfig.claimServiceLayer >+>
       ZioDIConfig.workHandlerServiceLayer
 

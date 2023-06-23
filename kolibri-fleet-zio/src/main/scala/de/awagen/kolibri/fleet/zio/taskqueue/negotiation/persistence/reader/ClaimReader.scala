@@ -27,7 +27,11 @@ object ClaimReader {
 
   object TaskTopics {
 
-    sealed trait TaskTopic
+    sealed trait TaskTopic {
+
+      def id: String
+
+    }
 
     /**
      * Topic for processing of a batch of the given job
@@ -67,6 +71,8 @@ object ClaimReader {
     }
 
     sealed case class JobTaskResetTask(nodeHash: String) extends TaskTopic {
+
+      val id: String = typePrefix
 
       override def toString: String = s"$typePrefix-$nodeHash"
 
