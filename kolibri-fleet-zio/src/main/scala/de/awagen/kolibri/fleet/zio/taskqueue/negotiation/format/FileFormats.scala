@@ -20,8 +20,8 @@ package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.format
 import de.awagen.kolibri.datatypes.mutable.stores.{TypeTaggedMap, TypedMapStore, WeaklyTypedMap}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.format.NameFormats.FileNameFormat
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.format.NameFormats.Parts.{BATCH_NR, CREATION_TIME_IN_MILLIS, JOB_ID, NODE_HASH, TOPIC}
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.stringToClaimTopic
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ClaimStates.Claim
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.stringToTaskTopic
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.TaskStates.Task
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ProcessId
 
 import scala.collection.mutable
@@ -59,9 +59,9 @@ object FileFormats {
 
   case object ClaimFileNameFormat extends FileNameFormat(Seq(TOPIC, JOB_ID, BATCH_NR, CREATION_TIME_IN_MILLIS, NODE_HASH), "__") {
 
-    def getFileName(claim: Claim): String = {
+    def getFileName(claim: Task): String = {
       val map: TypeTaggedMap = TypedMapStore(mutable.Map(
-        TOPIC.namedClassTyped -> claim.claimTopic.toString,
+        TOPIC.namedClassTyped -> claim.taskTopic.toString,
         JOB_ID.namedClassTyped -> claim.jobId,
         BATCH_NR.namedClassTyped -> claim.batchNr,
         CREATION_TIME_IN_MILLIS.namedClassTyped -> claim.timeClaimedInMillis,
@@ -70,15 +70,15 @@ object FileFormats {
       format(map)
     }
 
-    def claimFromIdentifier(identifier: String): Claim = {
+    def claimFromIdentifier(identifier: String): Task = {
       val fields = ClaimFileNameFormat.parse(identifier.split("/").last)
-      Claim(
+      Task(
         fields.get[String](JOB_ID.namedClassTyped.name).get,
         fields.get[Int](BATCH_NR.namedClassTyped.name).get,
         fields.get[String](NODE_HASH.namedClassTyped.name).get,
         fields.get[Long](CREATION_TIME_IN_MILLIS.namedClassTyped.name).get,
         fields.get[String](TOPIC.namedClassTyped.name)
-          .map(x => stringToClaimTopic(x)).get
+          .map(x => stringToTaskTopic(x)).get
       )
     }
   }

@@ -18,19 +18,18 @@
 package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer
 
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.TaskTopics.TaskTopic
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ClaimStates.Claim
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.TaskStates.Task
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ProcessId
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ClaimStatus.ClaimFilingStatus.ClaimFilingStatus
-import zio.Task
 
 trait ClaimWriter {
 
-  def fileClaim(processId: ProcessId, claimTopic: TaskTopic): Task[ClaimFilingStatus]
+  def fileClaim(processId: ProcessId, taskTopic: TaskTopic): zio.Task[ClaimFilingStatus]
 
-  def writeTaskToProgressFolder(processId: ProcessId): Task[Any]
+  def writeTaskToProgressFolder(processId: ProcessId): zio.Task[Any]
 
-  def removeClaims(existingClaimFiles: Set[Claim], claimURIFilter: Claim => Boolean): Task[Unit]
+  def removeClaims(existingClaims: Set[Task], claimURIFilter: Task => Boolean): zio.Task[Unit]
 
-  def exerciseBatchClaim(process: ProcessId): Task[Unit]
+  def exerciseBatchClaim(process: ProcessId): zio.Task[Unit]
 
 }

@@ -19,9 +19,8 @@ package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader
 
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.TaskTopics.JobTaskResetTask.typePrefix
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.TaskTopics._
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ClaimStates.Claim
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.TaskStates.Task
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ClaimStatus.ClaimVerifyStatus.ClaimVerifyStatus
-import zio.Task
 
 
 object ClaimReader {
@@ -97,7 +96,7 @@ object ClaimReader {
 
   }
 
-  def stringToClaimTopic(str: String): TaskTopic = str match {
+  def stringToTaskTopic(str: String): TaskTopic = str match {
     case JobTaskProcessingTask.id => JobTaskProcessingTask
     case JobWrapUpTask.id => JobWrapUpTask
     case v if v.startsWith(JobTaskResetTask.typePrefix) => JobTaskResetTask.fromString(str)
@@ -108,15 +107,15 @@ object ClaimReader {
 
 trait ClaimReader {
 
-  def getAllClaims(jobIds: Set[String], taskTopic: TaskTopic): Task[Set[Claim]]
+  def getAllClaims(jobIds: Set[String], taskTopic: TaskTopic): zio.Task[Set[Task]]
 
-  def getClaimsForJob(jobId: String, taskTopic: TaskTopic): Task[Seq[Claim]]
+  def getClaimsForJob(jobId: String, taskTopic: TaskTopic): zio.Task[Seq[Task]]
 
-  def getClaimsForBatch(jobId: String, batchNr: Int, taskTopic: TaskTopic): Task[Set[Claim]]
+  def getClaimsForBatch(jobId: String, batchNr: Int, taskTopic: TaskTopic): zio.Task[Set[Task]]
 
-  def getClaimsByCurrentNode(taskTopic: TaskTopic, jobIds: Set[String]): Task[Set[Claim]]
+  def getClaimsByCurrentNode(taskTopic: TaskTopic, jobIds: Set[String]): zio.Task[Set[Task]]
 
-  def verifyBatchClaim(jobId: String, batchNr: Int, taskTopic: TaskTopic): Task[ClaimVerifyStatus]
+  def verifyBatchClaim(jobId: String, batchNr: Int, taskTopic: TaskTopic): zio.Task[ClaimVerifyStatus]
 
 
 

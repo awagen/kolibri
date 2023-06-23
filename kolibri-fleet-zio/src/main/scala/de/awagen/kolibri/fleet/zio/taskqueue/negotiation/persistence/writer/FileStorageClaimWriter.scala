@@ -24,12 +24,12 @@ import de.awagen.kolibri.fleet.zio.config.Directories.OpenTasks
 import de.awagen.kolibri.fleet.zio.io.json.ProcessingStateJsonProtocol
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.format.FileFormats.ClaimFileNameFormat
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.TaskTopics.TaskTopic
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ClaimStates.Claim
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.TaskStates.Task
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state._
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ClaimStatus.ClaimFilingStatus
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ClaimStatus.ClaimFilingStatus.ClaimFilingStatus
 import de.awagen.kolibri.storage.io.writer.Writers.Writer
-import zio.{Task, ZIO}
+import zio.ZIO
 
 
 case class FileStorageClaimWriter(writer: Writer[String, String, _]) extends ClaimWriter {
@@ -39,10 +39,10 @@ case class FileStorageClaimWriter(writer: Writer[String, String, _]) extends Cla
    * NOTE that jobId here means [jobName]_[timePlacedInMillis]
    */
   override def fileClaim(processId: ProcessId,
-                         claimTopic: TaskTopic): Task[ClaimFilingStatus] = {
+                         taskTopic: TaskTopic): zio.Task[ClaimFilingStatus] = {
     // write claim
     for {
-      claimPath <- ZIO.attempt(getFullFilePathForClaimFile(processId.jobId, processId.batchNr, claimTopic))
+      claimPath <- ZIO.attempt(getFullFilePathForClaimFile(processId.jobId, processId.batchNr, taskTopic))
       _ <- ZIO.logDebug(s"writing claim to path: $claimPath")
       persistResult <- ZIO.attemptBlockingIO(writer.write("", claimPath))
       result <- ZIO.fromEither(persistResult).map(_ => ClaimFilingStatus.PERSIST_SUCCESS)
@@ -56,7 +56,7 @@ case class FileStorageClaimWriter(writer: Writer[String, String, _]) extends Cla
    * Note that when the processing has not yet started, the information about number of elements
    * and the like might be at default values (e.g 0).
    */
-  override def writeTaskToProgressFolder(processId: ProcessId): Task[Any] = {
+  override def writeTaskToProgressFolder(processId: ProcessId): zio.Task[Any] = {
     (for {
       writePath <- ZIO.attempt(getInProgressFilePathForJob(
         processId.jobId,
@@ -93,7 +93,7 @@ case class FileStorageClaimWriter(writer: Writer[String, String, _]) extends Cla
    * is then generated before deletion. This makes sure the basepath of the used writer is
    * taken into account (we could also do by deleting any basepath suffix in the paths)
    */
-  override def removeClaims(existingClaims: Set[Claim], claimURIFilter: Claim => Boolean): Task[Unit] = {
+  override def removeClaims(existingClaims: Set[Task], claimURIFilter: Task => Boolean): zio.Task[Unit] = {
     for {
       _ <- ZIO.logDebug(s"Available claims: $existingClaims")
       claimsToDelete <- ZIO.attempt({
@@ -110,7 +110,7 @@ case class FileStorageClaimWriter(writer: Writer[String, String, _]) extends Cla
     } yield deletionResult
   }
 
-  private def removeFile(file: String): Task[Any] = {
+  private def removeFile(file: String): zio.Task[Any] = {
     ZIO.attemptBlockingIO(writer.delete(file))
       .flatMap({
         case Left(e) => ZIO.fail(e)
@@ -131,7 +131,7 @@ case class FileStorageClaimWriter(writer: Writer[String, String, _]) extends Cla
    * 1) write process status file with some initial information
    * 2) remove the file indicating that the batch is in open state
    */
-  override def exerciseBatchClaim(processId: ProcessId): Task[Unit] = {
+  override def exerciseBatchClaim(processId: ProcessId): zio.Task[Unit] = {
     for {
       _ <- writeTaskToProgressFolder(processId)
       openTaskFile <- ZIO.succeed(s"${OpenTasks.jobOpenTasksSubFolder(processId.jobId, isOpenJob = true)}/${processId.batchNr}")

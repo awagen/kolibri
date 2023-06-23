@@ -19,12 +19,12 @@ package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state
 
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.TaskTopics.TaskTopic
 
-object ClaimStates {
+object TaskStates {
 
-  case class Claim(jobId: String,
-                   batchNr: Int,
-                   nodeId: String,
-                   timeClaimedInMillis: Long,
-                   claimTopic: TaskTopic)
+  case class Task(jobId: String,
+                  batchNr: Int,
+                  nodeId: String,
+                  timeClaimedInMillis: Long,
+                  taskTopic: TaskTopic)
 
 }

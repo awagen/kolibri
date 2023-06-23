@@ -18,7 +18,7 @@
 package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader
 
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.TaskTopics
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ClaimStates._
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.TaskStates._
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ClaimStatus.ClaimVerifyStatus
 import de.awagen.kolibri.fleet.zio.testutils.TestObjects.claimReader
 import zio.Scope
@@ -32,10 +32,10 @@ object FileStorageClaimReaderSpec extends ZIOSpecDefault {
       // given
       val reader = claimReader
       val expectedClaimSet = Set(
-        Claim("testJob1_3434839787", 2, "abc234", 1683845333850L, TaskTopics.JobTaskProcessingTask),
-        Claim("testJob1_3434839787", 2, "other1", 1703845333850L, TaskTopics.JobTaskProcessingTask),
-        Claim("testJob1_3434839787", 2, "other2", 1713845333850L, TaskTopics.JobTaskProcessingTask),
-        Claim("testJob1_3434839787", 3, "other1", 1683845333850L, TaskTopics.JobTaskProcessingTask)
+        Task("testJob1_3434839787", 2, "abc234", 1683845333850L, TaskTopics.JobTaskProcessingTask),
+        Task("testJob1_3434839787", 2, "other1", 1703845333850L, TaskTopics.JobTaskProcessingTask),
+        Task("testJob1_3434839787", 2, "other2", 1713845333850L, TaskTopics.JobTaskProcessingTask),
+        Task("testJob1_3434839787", 3, "other1", 1683845333850L, TaskTopics.JobTaskProcessingTask)
       )
       // when, then
       for {
