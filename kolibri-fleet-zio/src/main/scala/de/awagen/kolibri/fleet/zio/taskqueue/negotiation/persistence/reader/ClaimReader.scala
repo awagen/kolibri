@@ -113,13 +113,15 @@ object ClaimReader {
 
 trait ClaimReader {
 
-  def getAllClaims(jobIds: Set[String], taskTopic: TaskTopic): zio.Task[Set[Task]]
+  def getAllClaims(jobIds: Set[String]): zio.Task[Set[Task]]
 
-  def getClaimsForJob(jobId: String, taskTopic: TaskTopic): zio.Task[Seq[Task]]
+  def getAllClaimsForTopicAndJobIds(jobIds: Set[String], taskTopic: TaskTopic): zio.Task[Set[Task]]
 
-  def getClaimsForBatch(jobId: String, batchNr: Int, taskTopic: TaskTopic): zio.Task[Set[Task]]
+  def getClaimsForJobAndTopic(jobId: String, taskTopic: TaskTopic): zio.Task[Seq[Task]]
 
-  def getClaimsByCurrentNode(taskTopic: TaskTopic, jobIds: Set[String]): zio.Task[Set[Task]]
+  def getClaimsForBatchAndTopic(jobId: String, batchNr: Int, taskTopic: TaskTopic): zio.Task[Set[Task]]
+
+  def getClaimsByCurrentNodeForTopicAndJobIds(taskTopic: TaskTopic, jobIds: Set[String]): zio.Task[Set[Task]]
 
   def verifyBatchClaim(jobId: String, batchNr: Int, taskTopic: TaskTopic): zio.Task[ClaimVerifyStatus]
 

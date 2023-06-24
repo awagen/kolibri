@@ -36,4 +36,9 @@ trait JobStateReader {
    */
   def fetchOpenJobState: Task[OpenJobsSnapshot]
 
+  /**
+   * Only find the jobIds of open (unfinished) jobs
+   */
+  def getOpenJobIds: Task[Set[String]]
+
 }

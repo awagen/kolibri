@@ -17,8 +17,8 @@
 
 package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader
 
-import de.awagen.kolibri.fleet.zio.config.AppProperties
 import de.awagen.kolibri.fleet.zio.config.Directories.Claims._
+import de.awagen.kolibri.fleet.zio.config.{AppProperties, Directories}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.format.FileFormats.ClaimFileNameFormat
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.TaskTopics.TaskTopic
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.FileStorageClaimReader.ClaimOrdering
@@ -26,8 +26,8 @@ import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.TaskStates.Task
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ClaimStatus.ClaimVerifyStatus
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ClaimStatus.ClaimVerifyStatus.ClaimVerifyStatus
 import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, Reader}
-import zio.stream.ZStream
 import zio.ZIO
+import zio.stream.ZStream
 
 
 object FileStorageClaimReader {
@@ -67,35 +67,37 @@ case class FileStorageClaimReader(filterToOverviewReader: (String => Boolean) =>
 
   private[this] val overviewReader: DataOverviewReader = filterToOverviewReader(_ => true)
 
-  override def getAllClaims(jobIds: Set[String], taskTopic: TaskTopic): zio.Task[Set[Task]] =
+  override def getAllClaimsForTopicAndJobIds(jobIds: Set[String], taskTopic: TaskTopic): zio.Task[Set[Task]] =
     ZStream.fromIterable(jobIds)
-      .mapZIO(jobId => getClaimsForJob(jobId, taskTopic))
-      .runFold[Set[Task]](Set.empty)((oldSet, newItem) => {oldSet ++ newItem.toSet})
+      .mapZIO(jobId => getClaimsForJobAndTopic(jobId, taskTopic))
+      .runFold[Set[Task]](Set.empty)((oldSet, newItem) => {
+        oldSet ++ newItem.toSet
+      })
 
   /**
    * Over all currently registered jobs, find the claims filed by this node
    */
-  override def getClaimsByCurrentNode(taskTopic: TaskTopic, jobIds: Set[String]): zio.Task[Set[Task]] = {
-      ZStream.fromIterable(jobIds)
-        .mapZIO(job => {
-          getClaimsForJob(job, taskTopic)
-            .map(seq => seq.filter(x => x.nodeId == AppProperties.config.node_hash))
-        })
-        .runFold(Set.empty[Task])((oldSet, newValue) => oldSet ++ newValue)
+  override def getClaimsByCurrentNodeForTopicAndJobIds(taskTopic: TaskTopic, jobIds: Set[String]): zio.Task[Set[Task]] = {
+    ZStream.fromIterable(jobIds)
+      .mapZIO(job => {
+        getClaimsForJobAndTopic(job, taskTopic)
+          .map(seq => seq.filter(x => x.nodeId == AppProperties.config.node_hash))
+      })
+      .runFold(Set.empty[Task])((oldSet, newValue) => oldSet ++ newValue)
   }
 
   /**
    * Get all full claim paths for the passed jobId and the given claimTopic
    */
-  override def getClaimsForJob(jobId: String, taskTopic: TaskTopic): zio.Task[Seq[Task]] = ZIO.attemptBlockingIO {
+  override def getClaimsForJobAndTopic(jobId: String, taskTopic: TaskTopic): zio.Task[Seq[Task]] = ZIO.attemptBlockingIO {
     overviewReader
       .listResources(jobClaimSubFolder(jobId, isOpenJob = true), _ => true)
       .map(filename => ClaimFileNameFormat.claimFromIdentifier(filename.split("/").last))
       .filter(claim => claim.taskTopic == taskTopic)
   }
 
-  override def getClaimsForBatch(jobId: String, batchNr: Int, taskTopic: TaskTopic): zio.Task[Set[Task]] = {
-    getClaimsForJob(jobId, taskTopic)
+  override def getClaimsForBatchAndTopic(jobId: String, batchNr: Int, taskTopic: TaskTopic): zio.Task[Set[Task]] = {
+    getClaimsForJobAndTopic(jobId, taskTopic)
       .map(claimSeq => claimSeq.filter(claim => claim.batchNr == batchNr).toSet)
   }
 
@@ -110,14 +112,14 @@ case class FileStorageClaimReader(filterToOverviewReader: (String => Boolean) =>
    * indicates that the node can start moving the planned task to in-progress folder
    * to be picked up by the WorkHandler.
    */
-  override def verifyBatchClaim(jobId: String, batchNr: Int, taskTopic: TaskTopic): zio.Task[ClaimVerifyStatus] =  {
+  override def verifyBatchClaim(jobId: String, batchNr: Int, taskTopic: TaskTopic): zio.Task[ClaimVerifyStatus] = {
     val node_hash = AppProperties.config.node_hash
     implicit val ordering: Ordering[Task] = ClaimOrdering
     for {
-      claimNodeHashesSortedByTimestamp <- getClaimsForBatch(jobId, batchNr, taskTopic)
+      claimNodeHashesSortedByTimestamp <- getClaimsForBatchAndTopic(jobId, batchNr, taskTopic)
         .map(claims => claims.toSeq.sorted.map(x => x.nodeId))
       nodeHadFiledClaim <- ZIO.succeed(claimNodeHashesSortedByTimestamp.contains(node_hash))
-      nodeClaimIsFirst <-  ZIO.succeed(claimNodeHashesSortedByTimestamp.head == node_hash)
+      nodeClaimIsFirst <- ZIO.succeed(claimNodeHashesSortedByTimestamp.head == node_hash)
     } yield (nodeHadFiledClaim, nodeClaimIsFirst, claimNodeHashesSortedByTimestamp.nonEmpty) match {
       case (_, _, false) => ClaimVerifyStatus.NO_CLAIM_EXISTS
       case (false, _, true) => ClaimVerifyStatus.NODE_CLAIM_DOES_NOT_EXIST
@@ -127,4 +129,28 @@ case class FileStorageClaimReader(filterToOverviewReader: (String => Boolean) =>
 
   }
 
+  /**
+   * Get all existing claims for the passed job ids
+   */
+  override def getAllClaims(jobIds: Set[String]): zio.Task[Set[Task]] = {
+    for {
+      claimSubFolders <- ZStream.fromIterable(jobIds)
+        .map(jobId => Directories.Claims.jobClaimSubFolder(jobId, isOpenJob = true))
+        .runCollect
+      claimFiles <- ZStream.fromIterable(claimSubFolders)
+        .flatMap(folder => ZStream.fromIterable(overviewReader.listResources(folder, _ => true)))
+        .runCollect
+      tasks <- ZStream.fromIterable(claimFiles)
+        .mapZIO(file => ZIO.attempt(ClaimFileNameFormat.claimFromIdentifier(file.split("/").last)))
+        .either
+        .filterZIO({
+          case Left(e) =>
+            ZIO.logWarning(s"""Exception trying to parse claim file name:\n${e.getStackTrace.mkString("\n")}""") *>
+              ZIO.succeed(false)
+          case Right(_) => ZIO.succeed(true)
+        })
+        .map(x => x.toOption.get)
+        .runCollect
+    } yield tasks.toSet
+  }
 }

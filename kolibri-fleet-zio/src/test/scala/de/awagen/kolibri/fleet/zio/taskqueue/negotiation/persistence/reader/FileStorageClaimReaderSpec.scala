@@ -39,7 +39,7 @@ object FileStorageClaimReaderSpec extends ZIOSpecDefault {
       )
       // when, then
       for {
-        claims <- reader.getAllClaims(Set("testJob1_3434839787"), TaskTopics.JobTaskProcessingTask)
+        claims <- reader.getAllClaimsForTopicAndJobIds(Set("testJob1_3434839787"), TaskTopics.JobTaskProcessingTask)
       } yield assert(claims)(Assertion.assertion("reads all claims")(entries => {
         entries.equals(expectedClaimSet)
       }))

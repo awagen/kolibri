@@ -32,8 +32,10 @@ object Directories {
   val JOB_DEFINITION_FILENAME = "job.json"
 
   object JobTopLevel {
+    def topLevelOpenJobFolder: String = s"${config.openJobBaseFolder}"
+
     def folderForJob(jobId: String, isOpenJob: Boolean): String = {
-      if (isOpenJob) s"${config.openJobBaseFolder}/$jobId"
+      if (isOpenJob) s"$topLevelOpenJobFolder/$jobId"
       else s"${config.doneJobBaseFolder}/$jobId"
     }
 

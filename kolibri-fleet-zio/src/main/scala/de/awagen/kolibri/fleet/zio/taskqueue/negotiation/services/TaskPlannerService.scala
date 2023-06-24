@@ -17,11 +17,10 @@
 
 package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services
 
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.JobStates.OpenJobsSnapshot
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.TaskStates.Task
 
 trait TaskPlannerService {
 
-  def planTasks(tasks: Seq[Task], openJobsSnapshot: OpenJobsSnapshot): zio.Task[Unit]
+  def planTasks(tasks: Seq[Task]): zio.Task[Unit]
 
 }

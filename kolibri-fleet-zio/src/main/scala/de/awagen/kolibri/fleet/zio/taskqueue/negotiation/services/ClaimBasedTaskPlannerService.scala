@@ -119,7 +119,7 @@ case class ClaimBasedTaskPlannerService(claimReader: ClaimReader,
   private[services] def deleteAllClaimsForMatchingJobAndBatchAndTaskTopic(task: Task): zio.Task[Unit] = {
     for {
       // get all claims for the same job / batch / taskTopic combination as the passed claim
-      existingClaimsForBatch <- claimReader.getClaimsForBatch(task.jobId, task.batchNr, task.taskTopic)
+      existingClaimsForBatch <- claimReader.getClaimsForBatchAndTopic(task.jobId, task.batchNr, task.taskTopic)
       // first delete claims belonging to other nodes to avoid a claim for another node remaining if the winner
       // claim is already deleted
       _ <- claimUpdater.removeClaims(existingClaimsForBatch, x => !isCurrentNodeClaim(x))
@@ -159,10 +159,10 @@ case class ClaimBasedTaskPlannerService(claimReader: ClaimReader,
         } yield ()
       case TaskTopics.JobWrapUpTask =>
         for {
+          // remove all claims (before moving the folder for a clean claim state)
+          _ <- deleteAllClaimsForMatchingJobAndBatchAndTaskTopic(claim)
           // wrap up whole job by moving the full job folder to done state
           _ <- jobStateWriter.moveToDone(claim.jobId)
-          // remove all claims
-          _ <- deleteAllClaimsForMatchingJobAndBatchAndTaskTopic(claim)
         } yield ()
       case _ =>
         for {
@@ -183,14 +183,14 @@ case class ClaimBasedTaskPlannerService(claimReader: ClaimReader,
    * For specific task topic, calculate the number of additional tasks that can be claimed before
    * reaching the defined limit
    */
-  private[services] def limitForTaskType(taskTopic: TaskTopic, openJobsSnapshot: OpenJobsSnapshot): zio.Task[ClaimLimit] = {
+  private[services] def limitForTaskType(taskTopic: TaskTopic): zio.Task[ClaimLimit] = {
     taskTopic match {
       case TaskTopics.JobTaskProcessingTask =>
         for {
           // open job ids used to limit the retrieved state data to
-          jobIds <- ZIO.succeed(openJobsSnapshot.jobStateSnapshots.values.map(x => x.jobId).toSet)
+          jobIds <- jobStateReader.getOpenJobIds
           // Set[Claim] representing the claims made by the current node
-          existingClaimsForNode <- claimReader.getClaimsByCurrentNode(
+          existingClaimsForNode <- claimReader.getClaimsByCurrentNodeForTopicAndJobIds(
             TaskTopics.JobTaskProcessingTask,
             jobIds
           )
@@ -216,9 +216,8 @@ case class ClaimBasedTaskPlannerService(claimReader: ClaimReader,
    * and for those that do not yet have a claim, file the claim.
    *
    * @param tasks            - list of tasks for which to file a claim (if not yet existing)
-   * @param openJobsSnapshot - snapshot of open jobs state
    */
-  private[services] def fillUpClaims(tasks: Seq[Task], openJobsSnapshot: OpenJobsSnapshot): ZIO[Any, Throwable, Unit] = {
+  private[services] def fillUpClaims(tasks: Seq[Task]): ZIO[Any, Throwable, Unit] = {
     for {
       // mapping of task topic to jobIds to query existing claims more specifically
       topicAndJobIdsWithOpenTasks <- ZStream.fromIterable(tasks)
@@ -227,13 +226,13 @@ case class ClaimBasedTaskPlannerService(claimReader: ClaimReader,
           oldMap + (newTuple._1 -> (oldMap.getOrElse(newTuple._1, Set.empty) + newTuple._2))
         })
       // jobs that already have a respective claim filed by some node
-      jobsWithExistingWrapUpClaims <- ZStream.fromIterable(topicAndJobIdsWithOpenTasks.toSeq)
-        .mapZIO(tuple => claimReader.getAllClaims(tuple._2, tuple._1))
+      allClaimsForTopicsAndJobs <- ZStream.fromIterable(topicAndJobIdsWithOpenTasks.toSeq)
+        .mapZIO(tuple => claimReader.getAllClaimsForTopicAndJobIds(tuple._2, tuple._1))
         .runFold(Seq.empty[Task])((oldSet, newEntry) => oldSet ++ newEntry)
       // filtering out those claims we do not need to file anymore
       filteredTasksByTopic <- ZIO.attempt({
         tasks
-          .filter(task => !jobsWithExistingWrapUpClaims.exists(y => {
+          .filter(task => !allClaimsForTopicsAndJobs.exists(y => {
             y.jobId == task.jobId && y.batchNr == task.batchNr && y.taskTopic.id == task.taskTopic.id
           }))
           .foldLeft(Map.empty[TaskTopic, Seq[Task]])((oldMap, newEntry) => {
@@ -244,11 +243,13 @@ case class ClaimBasedTaskPlannerService(claimReader: ClaimReader,
       // and file a claim for all tasks within the defined limits
       _ <- ZStream.fromIterable(filteredTasksByTopic.toSeq).foreach(topicAndTasks => {
         for {
-          limit <- limitForTaskType(topicAndTasks._1, openJobsSnapshot).map({
+          limit <- limitForTaskType(topicAndTasks._1).map({
             case Unlimited => 10000
             case Limit(value) => value
           })
-          _ <- ZStream.fromIterable(topicAndTasks._2.take(limit)).foreach(task => fileClaim(task))
+          _ <- ZStream.fromIterable(topicAndTasks._2.take(limit)).foreach(task => {
+            ZIO.logInfo(s"filing claim for task: $task") *> fileClaim(task)
+          })
         } yield ()
 
       })
@@ -264,7 +265,7 @@ case class ClaimBasedTaskPlannerService(claimReader: ClaimReader,
     for {
       ignoreJobIdsOnThisNode <- ZIO.succeed(openJobsSnapshot.jobsToBeIgnoredOnThisNode.map(x => x.jobId))
       // extract all (jobId, batchNr) tuples of claims currently filed for the node
-      claimsByCurrentNode <- claimReader.getClaimsByCurrentNode(taskTopic, openJobsSnapshot.jobStateSnapshots.values.map(x => x.jobId).toSet)
+      claimsByCurrentNode <- claimReader.getClaimsByCurrentNodeForTopicAndJobIds(taskTopic, openJobsSnapshot.jobStateSnapshots.values.map(x => x.jobId).toSet)
       //verify each claim
       // remove the claims that are not needed anymore (only for this particular node)
       claimsToBeRemoved <- ZIO.succeed(claimsByCurrentNode.filter(x => ignoreJobIdsOnThisNode.contains(x.jobId)))
@@ -287,6 +288,7 @@ case class ClaimBasedTaskPlannerService(claimReader: ClaimReader,
       remainingClaimsByCurrentNode <- cleanupClaimsAndReturnRemaining(openJobsSnapshot, taskTopic)
       // verifying remaining claims by this node
       verifiedClaims <- verifyClaimsAndReturnSuccessful(remainingClaimsByCurrentNode, taskTopic)
+      _ <- ZIO.logDebug(s"Verified claims: $verifiedClaims")
       // Now exercise all verified claims
       _ <- exerciseClaims(verifiedClaims)
     } yield ()
@@ -295,25 +297,14 @@ case class ClaimBasedTaskPlannerService(claimReader: ClaimReader,
   /**
    * Derive all currently known nodes to compose complete list of topics to handle
    * and manage corresponding existing claims
+   *
+   * NOTE: added a limitation here to limit existing claim verification and execution on topics of the passed tasks
+   * since otherwise we would execute a claim in the same run the claim was created, which fucks up the round-based
+   * logic
    */
-  private[services] def findClaimTopicsAndManageExistingClaims(openJobsSnapshot: OpenJobsSnapshot): zio.Task[Unit] = {
+  private[services] def findClaimTopicsAndManageExistingClaims(topics: Set[TaskTopic]): zio.Task[Unit] = {
     for {
-      // find all known nodes as per persisted state to be able
-      // to compose all topics to handle (some of the topics are node-specific)
-      allKnownNodes <- ZStream.fromIterableZIO(
-        workStateReader.getInProgressStateForAllNodes(openJobsSnapshot.jobStateSnapshots.keySet)
-          .map(x => x.values.flatMap(y => y.values).flatten.toSet)
-      )
-        .map(state => state.processingInfo.processingNode)
-        .runCollect
-      // derive all topics to handle (general and node-based ones)
-      allTopicsToHandle <- ZIO.succeed(Set(
-        TaskTopics.JobTaskProcessingTask,
-        TaskTopics.JobWrapUpTask) ++
-        allKnownNodes.map(nodeId => TaskTopics.JobTaskResetTask(nodeId))
-      )
-      // handle existing claims for all topics
-      _ <- ZStream.fromIterable(allTopicsToHandle)
+      _ <- ZStream.fromIterable(topics)
         .foreach(topic => manageExistingClaims(topic))
     } yield ()
   }
@@ -321,12 +312,33 @@ case class ClaimBasedTaskPlannerService(claimReader: ClaimReader,
   /**
    * Handles existing claims and files new ones in case there is demand to file more
    */
-  override def planTasks(tasks: Seq[Task], openJobsSnapshot: OpenJobsSnapshot): zio.Task[Unit] = {
+  override def planTasks(tasks: Seq[Task]): zio.Task[Unit] = {
     for {
       // find all topics to handle and take measures based on existing claims
-      _ <- findClaimTopicsAndManageExistingClaims(openJobsSnapshot)
+      _ <- ZIO.logInfo(s"""planTasks call on tasks:\n ${tasks.mkString("\n")}""")
+      allTaskTopics <- ZIO.succeed(tasks.map(x => x.taskTopic))
+      allTaskTopicIds <- ZStream.fromIterable(allTaskTopics).map(x => x.id).runCollect
+      allJobIds <- jobStateReader.getOpenJobIds
+      existingClaimsForTopics <- ZStream.fromIterableZIO(
+        claimReader.getAllClaims(allJobIds)
+      )
+        .filter(x => allTaskTopicIds.contains(x.taskTopic.id))
+        // setting time claimed to 0 for purpose of comparison
+        .map(x => x.copy(timeClaimedInMillis = 0))
+        .runCollect
+      _ <- findClaimTopicsAndManageExistingClaims(
+        tasks.map(task => task.taskTopic).toSet ++ existingClaimsForTopics.map(x => x.taskTopic)
+      )
       // fill claims for given tasks
-      _ <- fillUpClaims(tasks, openJobsSnapshot)
+      // since the passed tasks might have already seen a claim
+      // we filter those out here to avoid double claiming
+      unclaimedTasks <- ZIO.succeed(tasks.filter(task => {
+        // resetting timestamp of task for comparison purposes
+        !existingClaimsForTopics.contains(task.copy(timeClaimedInMillis = 0))
+      }))
+      _ <- ZIO.logInfo(s"""Existing claims for topics:\n${existingClaimsForTopics.mkString("\n")}""")
+      _ <- ZIO.logInfo(s"""Unclaimed topics:\n${unclaimedTasks.mkString("\n")}""")
+      _ <- fillUpClaims(unclaimedTasks)
     } yield ()
   }
 

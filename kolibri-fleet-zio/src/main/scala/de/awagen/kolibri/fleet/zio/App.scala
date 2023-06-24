@@ -26,13 +26,13 @@ import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, Reader}
 import de.awagen.kolibri.storage.io.writer.Writers
 import zio._
 import zio.http._
-import zio.logging.LogFormat
 import zio.logging.backend.SLF4J
 import zio.stream.ZStream
 
 object App extends ZIOAppDefault {
 
-  override val bootstrap: ZLayer[Any, Nothing, Unit] = SLF4J.slf4j(LogLevel.Info, LogFormat.colored)
+  override val bootstrap: ZLayer[Any, Any, Unit] =
+    Runtime.removeDefaultLoggers >>> SLF4J.slf4j
 
   /**
    * Effect taking care of claim and work management
@@ -58,9 +58,14 @@ object App extends ZIOAppDefault {
         .flatMap(nodeHash => ZStream.fromIterableZIO(taskOverviewService.getTaskResetTasks(processingStates, nodeHash)))
         .runCollect
 
-      _ <- taskPlannerService.planTasks(taskResetTasks, openJobsState)
-      _ <- taskPlannerService.planTasks(batchProcessingTasks, openJobsState)
-      _ <- taskPlannerService.planTasks(jobToDoneTasks, openJobsState)
+      _ <- ZIO.logInfo(s"APP: Open tasks for planning:")
+      _ <- ZIO.logInfo(s"""- TASK RESET TASK:\n${taskResetTasks.mkString("\n")}""")
+      _ <- ZIO.logInfo(s"""- TASK PROCESSING TASKS:\n${batchProcessingTasks.mkString("\n")}""")
+      _ <- ZIO.logInfo(s"""- JOB TO DONE TASKS:\n${jobToDoneTasks.mkString("\n")}""")
+
+      _ <- taskPlannerService.planTasks(taskResetTasks)
+      _ <- taskPlannerService.planTasks(batchProcessingTasks)
+      _ <- taskPlannerService.planTasks(jobToDoneTasks)
 
       // handle processing tasks
       _ <- workHandlerService.manageBatches(openJobsState)
@@ -89,8 +94,7 @@ object App extends ZIOAppDefault {
     val fixed = Schedule.fixed(30 seconds)
     (for {
       _ <- ZIO.logInfo("Application started!")
-      _ <- taskWorkerApp
-      _ <- taskWorkerApp.repeat(fixed).delay(30 seconds).fork
+      _ <- taskWorkerApp.repeat(fixed).fork
       jobStateCache <- ServerEndpoints.openJobStateCache
       _ <- Server.serve(ServerEndpoints.jobPostingEndpoints ++ ServerEndpoints.statusEndpoints(jobStateCache))
       _ <- ZIO.logInfo("Application is about to exit!")

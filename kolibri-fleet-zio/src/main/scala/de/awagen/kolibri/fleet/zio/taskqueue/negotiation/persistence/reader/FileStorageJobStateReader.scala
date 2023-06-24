@@ -19,6 +19,7 @@ package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader
 
 import de.awagen.kolibri.datatypes.types.Types.WithCount
 import de.awagen.kolibri.fleet.zio.config.AppProperties.config
+import de.awagen.kolibri.fleet.zio.config.Directories
 import de.awagen.kolibri.fleet.zio.config.Directories.JobTopLevel.jobNameToJobDefinitionFile
 import de.awagen.kolibri.fleet.zio.config.Directories._
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobDefinition
@@ -183,4 +184,11 @@ case class FileStorageJobStateReader(overviewReader: DataOverviewReader,
 
   }
 
+  /**
+   * Only find the jobIds of open (unfinished) jobs
+   */
+  override def getOpenJobIds: Task[Set[String]] = {
+    ZIO.attemptBlockingIO(overviewReader.listResources(Directories.JobTopLevel.topLevelOpenJobFolder, _ => true)
+      .map(x => x.split("/").last).toSet)
+  }
 }

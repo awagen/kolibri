@@ -72,7 +72,7 @@ case class BaseTaskOverviewService(jobStateReader: JobStateReader,
       overdueProcessingStates <- ZStream.fromIterable(processingStates)
         .filter(state => {
           val timeUpdated: Long = ProcessingStateUtils.timeStringToTimeInMillis(state.processingInfo.lastUpdate)
-          val timeHasElapsed: Boolean = currentTimeInMillis - timeUpdated > AppProperties.config.maxTimeBetweenProgressUpdatesInSeconds
+          val timeHasElapsed: Boolean = (currentTimeInMillis - timeUpdated) / 1000.0 > AppProperties.config.maxTimeBetweenProgressUpdatesInSeconds
           state.processingInfo.processingNode == nodeHash && timeHasElapsed
         })
         .runCollect
