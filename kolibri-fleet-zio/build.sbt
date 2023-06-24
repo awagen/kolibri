@@ -46,9 +46,6 @@ assemblyMergeStrategy in assembly := {
     oldStrategy(x)
 }
 
-compile / logLevel := Level.Error
-test / logLevel := Level.Error
-
 name := "kolibri-fleet-zio"
 libraryDependencies ++= Seq(
   //scala test framework (http://www.scalatest.org/install)
