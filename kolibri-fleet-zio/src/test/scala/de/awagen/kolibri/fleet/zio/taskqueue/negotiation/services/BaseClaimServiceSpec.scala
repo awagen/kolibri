@@ -36,7 +36,7 @@ object BaseClaimServiceSpec extends ZIOSpecDefault {
       val claimH = claimService(writerMock, jobStateReaderSpy)
       // when, then
       for {
-        _ <- claimH.manageClaims(TaskTopics.JobTaskProcessingTask)
+        _ <- claimH.manageExistingClaims(TaskTopics.JobTaskProcessingTask)
       } yield assert(true)(Assertion.assertion("true")(_ => true))
     }
   )

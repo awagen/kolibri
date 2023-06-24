@@ -17,11 +17,11 @@
 
 package de.awagen.kolibri.fleet.zio
 
+import de.awagen.kolibri.fleet.zio.config.AppProperties
 import de.awagen.kolibri.fleet.zio.config.di.ZioDIConfig
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.TaskTopics
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.{ClaimReader, JobStateReader, WorkStateReader}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer.{ClaimWriter, FileStorageJobStateWriter, WorkStateWriter}
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services.{ClaimService, WorkHandlerService}
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services.{TaskOverviewService, TaskPlannerService, WorkHandlerService}
 import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, Reader}
 import de.awagen.kolibri.storage.io.writer.Writers
 import zio._
@@ -37,31 +37,39 @@ object App extends ZIOAppDefault {
   /**
    * Effect taking care of claim and work management
    */
-  val taskWorkerApp: ZIO[JobStateReader with ClaimService with WorkHandlerService, Throwable, Unit] = {
+  val taskWorkerApp: ZIO[JobStateReader with WorkStateReader with TaskPlannerService with TaskOverviewService with WorkHandlerService, Throwable, Unit] = {
     for {
-      jobStateReaderService <- ZIO.service[JobStateReader]
-      claimService <- ZIO.service[ClaimService]
+      jobStateReader <- ZIO.service[JobStateReader]
+      workStateReader <- ZIO.service[WorkStateReader]
+      taskOverviewService <- ZIO.service[TaskOverviewService]
+      taskPlannerService <- ZIO.service[TaskPlannerService]
       workHandlerService <- ZIO.service[WorkHandlerService]
-      openJobsState <- jobStateReaderService.fetchOpenJobState
-      allProcessingClaims <- claimService.getAllClaims(
-        openJobsState.jobStateSnapshots.keySet,
-        TaskTopics.JobTaskProcessingTask)
-      allProcessingClaimHashes <- ZIO.succeed(allProcessingClaims.map(x => x.nodeId))
-      // manage claiming of job wrap up
-      _ <- claimService.manageClaims(TaskTopics.JobWrapUpTask)
-      // handle claimed task reset claims per node hash
-      _ <- ZStream.fromIterable(allProcessingClaimHashes)
-        .foreach(hash => claimService.manageClaims(TaskTopics.JobTaskResetTask(hash)))
-      // manage claiming of new processing tasks
-      _ <- claimService.manageClaims(TaskTopics.JobTaskProcessingTask)
-      // handle processing of claimed tasks
+      openJobsState <- jobStateReader.fetchOpenJobState
+
+      // getting next tasks to do from the distinct task topics
+      jobToDoneTasks <- taskOverviewService.getJobToDoneTasks(openJobsState)
+      batchProcessingTasks <- taskOverviewService.getBatchProcessingTasks(
+        openJobsState,
+        AppProperties.config.maxNrJobsClaimed
+      )
+      processingStates <- workStateReader.getInProgressStateForAllNodes(openJobsState.jobStateSnapshots.keySet)
+        .map(x => x.values.flatMap(y => y.values).flatten.toSet)
+      taskResetTasks <- ZStream.fromIterable(processingStates.map(x => x.processingInfo.processingNode))
+        .flatMap(nodeHash => ZStream.fromIterableZIO(taskOverviewService.getTaskResetTasks(processingStates, nodeHash)))
+        .runCollect
+
+      _ <- taskPlannerService.planTasks(taskResetTasks, openJobsState)
+      _ <- taskPlannerService.planTasks(batchProcessingTasks, openJobsState)
+      _ <- taskPlannerService.planTasks(jobToDoneTasks, openJobsState)
+
+      // handle processing tasks
       _ <- workHandlerService.manageBatches(openJobsState)
       // persist the updated status of the batches processed
       _ <- workHandlerService.updateProcessStates
     } yield ()
   }
 
-  val combinedLayer: ZLayer[Any, Nothing, Writers.Writer[String, String, _] with Reader[String, Seq[String]] with DataOverviewReader with ((String => Boolean) => DataOverviewReader) with JobStateReader with FileStorageJobStateWriter with ClaimReader with ClaimWriter with WorkStateReader with WorkStateWriter with ClaimService with WorkHandlerService] =
+  val combinedLayer: ZLayer[Any, Nothing, Writers.Writer[String, String, _] with Reader[String, Seq[String]] with DataOverviewReader with ((String => Boolean) => DataOverviewReader) with JobStateReader with FileStorageJobStateWriter with ClaimReader with ClaimWriter with WorkStateReader with WorkStateWriter with TaskPlannerService with TaskOverviewService with WorkHandlerService] =
     ZioDIConfig.writerLayer >+>
       ZioDIConfig.readerLayer >+>
       ZioDIConfig.overviewReaderLayer >+>
@@ -73,7 +81,7 @@ object App extends ZIOAppDefault {
       ZioDIConfig.workStateReaderLayer >+>
       ZioDIConfig.workStateWriterLayer >+>
       ZioDIConfig.taskOverviewServiceLayer >+>
-      ZioDIConfig.claimServiceLayer >+>
+      ZioDIConfig.taskPlannerServiceLayer >+>
       ZioDIConfig.workHandlerServiceLayer
 
 

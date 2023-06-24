@@ -24,9 +24,9 @@ import de.awagen.kolibri.datatypes.values.aggregation.immutable.Aggregators
 import de.awagen.kolibri.definitions.directives.Resource
 import de.awagen.kolibri.fleet.zio.config.{AppConfig, AppProperties}
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.{ClaimReader, FileStorageClaimReader, FileStorageJobStateReader, FileStorageWorkStateReader, JobStateReader, WorkStateReader}
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer.{ClaimWriter, FileStorageClaimWriter, FileStorageJobStateWriter, FileStorageWorkStateWriter, JobStateWriter, WorkStateWriter}
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services.{BaseClaimService, BaseTaskOverviewService, BaseWorkHandlerService, ClaimService, TaskOverviewService, WorkHandlerService}
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader._
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer._
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services._
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ProcessId
 import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, Reader}
 import de.awagen.kolibri.storage.io.writer.Writers._
@@ -94,7 +94,7 @@ object ZioDIConfig {
     } yield BaseTaskOverviewService(jobStateReader, workStateReader)
   }
 
-  val claimServiceLayer: ZLayer[ClaimReader with ClaimWriter with WorkStateReader with WorkStateWriter with JobStateReader with JobStateWriter with TaskOverviewService, Nothing, ClaimService] = ZLayer {
+  val taskPlannerServiceLayer: ZLayer[ClaimReader with ClaimWriter with WorkStateReader with WorkStateWriter with JobStateReader with JobStateWriter, Nothing, TaskPlannerService] = ZLayer {
     for {
       claimReader <- ZIO.service[ClaimReader]
       claimWriter <- ZIO.service[ClaimWriter]
@@ -102,8 +102,7 @@ object ZioDIConfig {
       workStateWriter <- ZIO.service[WorkStateWriter]
       jobStateReader <- ZIO.service[JobStateReader]
       jobStateWriter <- ZIO.service[JobStateWriter]
-      taskOverviewService <- ZIO.service[TaskOverviewService]
-    } yield BaseClaimService(claimReader, claimWriter, workStateReader, workStateWriter, jobStateReader, jobStateWriter, taskOverviewService)
+    } yield ClaimBasedTaskPlannerService(claimReader, claimWriter, workStateReader, workStateWriter, jobStateReader, jobStateWriter)
   }
 
   val workHandlerServiceLayer: ZLayer[ClaimReader with WorkStateReader with WorkStateWriter, Nothing, WorkHandlerService] = ZLayer {

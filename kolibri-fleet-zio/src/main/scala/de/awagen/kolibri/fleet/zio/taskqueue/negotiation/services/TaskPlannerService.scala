@@ -17,18 +17,11 @@
 
 package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services
 
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.TaskTopics.TaskTopic
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.JobStates.OpenJobsSnapshot
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.TaskStates.Task
 
-trait ClaimService {
+trait TaskPlannerService {
 
-  /**
-   * Manage the state of current claims (e.g filing new ones for open jobs
-   * if resources available, verifying and exercising claims).
-   * This function would usually be the only call that needs to be exposed.
-   */
-  def manageClaims(taskTopic: TaskTopic): zio.Task[Unit]
-
-  def getAllClaims(jobIds: Set[String], taskTopic: TaskTopic): zio.Task[Set[Task]]
+  def planTasks(tasks: Seq[Task], openJobsSnapshot: OpenJobsSnapshot): zio.Task[Unit]
 
 }

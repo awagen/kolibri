@@ -29,7 +29,7 @@ import de.awagen.kolibri.fleet.zio.execution.aggregation.Aggregators.countingAgg
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.directives.JobDirectives
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.{FileStorageClaimReader, FileStorageJobStateReader, FileStorageWorkStateReader, JobStateReader}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer.{FileStorageClaimWriter, FileStorageJobStateWriter, FileStorageWorkStateWriter, JobStateWriter}
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services.{BaseClaimService, BaseTaskOverviewService, BaseWorkHandlerService}
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services.{ClaimBasedTaskPlannerService, BaseTaskOverviewService, BaseWorkHandlerService}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.JobStates.{JobStateSnapshot, OpenJobsSnapshot}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ProcessingStatus.ProcessingStatus
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state._
@@ -94,15 +94,7 @@ object TestObjects {
     workStateReader
   )
 
-  def claimService(writer: FileWriter[String, Unit], jobStateReaderInst: JobStateReader = jobStateReader(baseResourceFolder)) = BaseClaimService(
-    claimReader,
-    claimWriter(writer),
-    workStateReader,
-    workStateWriter(writer),
-    jobStateReaderInst,
-    jobStateWriter(writer),
-    taskOverviewService(jobStateReaderInst)
-  )
+  def claimService(writer: FileWriter[String, Unit], jobStateReaderInst: JobStateReader = jobStateReader(baseResourceFolder)) = ClaimBasedTaskPlannerService(claimReader, claimWriter(writer), workStateReader, workStateWriter(writer), jobStateReaderInst, jobStateWriter(writer))
 
   def workHandler[U <: TaggedWithType with DataPoint[Any], V <: WithCount](writer: FileWriter[String, Unit],
                                                                            jobBatchQueueSize: Int = 5,

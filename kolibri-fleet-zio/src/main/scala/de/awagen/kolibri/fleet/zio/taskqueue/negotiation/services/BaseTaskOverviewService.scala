@@ -21,7 +21,7 @@ import de.awagen.kolibri.fleet.zio.config.AppProperties
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.TaskTopics
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.TaskTopics.TaskTopic
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.{JobStateReader, WorkStateReader}
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services.BaseClaimService.DUMMY_BATCH_NR
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services.ClaimBasedTaskPlannerService.DUMMY_BATCH_NR
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.JobStates.OpenJobsSnapshot
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.TaskStates._
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.{ProcessId, ProcessingState, ProcessingStateUtils}
@@ -80,7 +80,7 @@ case class BaseTaskOverviewService(jobStateReader: JobStateReader,
         processIdToTask(
           state.stateId,
           TaskTopics.JobTaskResetTask(state.processingInfo.processingNode),
-          state.processingInfo.processingNode,
+          state.processingInfo.processingNode
         ))
         .runCollect
     } yield resetTasks
