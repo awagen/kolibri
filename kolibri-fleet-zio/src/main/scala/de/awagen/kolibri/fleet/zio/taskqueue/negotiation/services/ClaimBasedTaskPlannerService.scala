@@ -204,7 +204,6 @@ case class ClaimBasedTaskPlannerService(claimReader: ClaimReader,
             val nrOfFiledClaims = existingClaimsForNode.count(_ => true)
             math.max(0, maxNrJobsClaimed - (nrOfInProgressFiles + nrOfFiledClaims))
           })
-          _ <- ZIO.logDebug(s"Nr of claimable batches: $numberOfNewlyClaimableBatches")
         } yield Limit(numberOfNewlyClaimableBatches)
       case _ => ZIO.succeed(Unlimited)
     }
@@ -247,10 +246,9 @@ case class ClaimBasedTaskPlannerService(claimReader: ClaimReader,
             case Unlimited => 10000
             case Limit(value) => value
           })
-          _ <- ZIO.logDebug(s"Limit for claimable tasks: $limit")
-          _ <- ZStream.fromIterable(topicAndTasks._2.take(limit)).foreach(task => {
-            ZIO.logInfo(s"filing claim for task: $task") *> fileClaim(task)
-          })
+          tasksToClaim <- ZIO.succeed(topicAndTasks._2.take(limit))
+          _ <- ZIO.logInfo(s"""Claiming tasks (Limit: $limit):\n${tasksToClaim.mkString("\n")}""")
+          _ <- ZStream.fromIterable(tasksToClaim).foreach(task => fileClaim(task))
         } yield ()
 
       })
@@ -289,7 +287,7 @@ case class ClaimBasedTaskPlannerService(claimReader: ClaimReader,
       remainingClaimsByCurrentNode <- cleanupClaimsAndReturnRemaining(openJobsSnapshot, taskTopic)
       // verifying remaining claims by this node
       verifiedClaims <- verifyClaimsAndReturnSuccessful(remainingClaimsByCurrentNode, taskTopic)
-      _ <- ZIO.logDebug(s"Verified claims: $verifiedClaims")
+      _ <- ZIO.when(verifiedClaims.nonEmpty)(ZIO.logInfo(s"""Executing verified claims:\n${verifiedClaims.mkString("\n")}"""))
       // Now exercise all verified claims
       _ <- exerciseClaims(verifiedClaims)
     } yield ()
@@ -316,7 +314,7 @@ case class ClaimBasedTaskPlannerService(claimReader: ClaimReader,
   override def planTasks(tasks: Seq[Task]): zio.Task[Unit] = {
     for {
       // find all topics to handle and take measures based on existing claims
-      _ <- ZIO.logInfo(s"""planTasks call on tasks:\n ${tasks.mkString("\n")}""")
+      _ <- ZIO.logDebug(s"""Planning open tasks:\n ${tasks.mkString("\n")}""")
       allTaskTopics <- ZIO.succeed(tasks.map(x => x.taskTopic))
       allTaskTopicIds <- ZStream.fromIterable(allTaskTopics).map(x => x.id).runCollect
       allJobIds <- jobStateReader.getOpenJobIds
@@ -337,8 +335,8 @@ case class ClaimBasedTaskPlannerService(claimReader: ClaimReader,
         // resetting timestamp of task for comparison purposes
         !existingClaimsForTopics.contains(task.copy(timeClaimedInMillis = 0))
       }))
-      _ <- ZIO.logInfo(s"""Existing claims for topics:\n${existingClaimsForTopics.mkString("\n")}""")
-      _ <- ZIO.logInfo(s"""Unclaimed topics:\n${unclaimedTasks.mkString("\n")}""")
+      _ <- ZIO.when(existingClaimsForTopics.nonEmpty)(ZIO.logDebug(s"""Existing claims for topics:\n${existingClaimsForTopics.mkString("\n")}"""))
+      _ <- ZIO.when(unclaimedTasks.nonEmpty)(ZIO.logDebug(s"""Adding claims for topics:\n${unclaimedTasks.mkString("\n")}"""))
       _ <- fillUpClaims(unclaimedTasks)
     } yield ()
   }

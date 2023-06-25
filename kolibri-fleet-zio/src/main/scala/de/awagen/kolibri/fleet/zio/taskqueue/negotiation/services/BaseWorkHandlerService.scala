@@ -167,6 +167,7 @@ case class BaseWorkHandlerService[U <: TaggedWithType with DataPoint[Any], V <: 
       existingProcessStatesForJobs <- workStateReader.getInProgressStateForCurrentNode(currentOpenJobIds)
       // interrupt all running processes for which there is no progress state persisted
       fiberInterruptResults <- compareRunningBatchesWithSnapshotAndInterruptIfIndicated(existingProcessStatesForJobs.values.flatten.map(x => x.stateId).toSeq, processToFiberMapping)
+      _ <- ZIO.when(fiberInterruptResults.nonEmpty)(ZIO.logInfo(s"Cleaning up processes: ${fiberInterruptResults.map(x => x._1)}"))
       // remove the cancelled processIds from the aggregator and fiber mappings
       _ <- removeKeysFromMappings(fiberInterruptResults.map(x => x._1).toSet, Seq(processIdToFiberRef, processIdToAggregatorRef).map(x => x.asInstanceOf[Ref[Map[ProcessId, Any]]]))
     } yield ()
@@ -250,6 +251,7 @@ case class BaseWorkHandlerService[U <: TaggedWithType with DataPoint[Any], V <: 
    */
   private def addTasksToQueue(tasksToAdd: Seq[JobBatch[_, _, _ <: WithCount]], plannedTasks: Seq[ProcessId]): ZIO[Any, Throwable, Seq[ProcessId]] = {
     for {
+      _ <- ZIO.when(tasksToAdd.nonEmpty)(ZIO.logDebug(s"""Adding tasks to queue: ${tasksToAdd.map(x => ProcessId(x.job.jobName, x.batchNr)).mkString(",")}"""))
       queueAddResult <- {
         DataTypeUtils.addElementsToQueue(tasksToAdd, queue).map(x => {
           val onlySuccesses = x.filter(identity)
@@ -311,7 +313,7 @@ case class BaseWorkHandlerService[U <: TaggedWithType with DataPoint[Any], V <: 
         AppProperties.config.node_hash)
       res <- ZIO.ifZIO(ZIO.succeed(processingStateForJobOpt.nonEmpty))(
         onTrue = {
-          for {
+          val processingEffect = for {
             _ <- persistProcessingStateUpdate(
               Seq(processingStateForJobOpt.get),
               ProcessingStatus.IN_PROGRESS
@@ -325,6 +327,7 @@ case class BaseWorkHandlerService[U <: TaggedWithType with DataPoint[Any], V <: 
                     oldMap + (ProcessId(job.job.jobName, job.batchNr) -> aggAndFiber._2))
               })
           } yield true
+          ZIO.logInfo(s"Starting processing job '${job.job.jobName}', batch ${job.batchNr}") *> processingEffect
         },
         onFalse = ZIO.succeed(false)
       )
@@ -365,10 +368,12 @@ case class BaseWorkHandlerService[U <: TaggedWithType with DataPoint[Any], V <: 
       // state (means: persisting the current state with updated timestamp)
       _ <- updateProcessStates
       // move / delete the completed batches
+      _ <- ZIO.when(completedProcessIds.nonEmpty)(ZIO.logInfo(s"Completed processes: $completedProcessIds"))
       _ <- moveInProgressFileToDoneAndCleanupBatches(completedProcessIds)
 
       // pick the tasks in PLANNED state for the current node
       plannedTasksForNode <- pullPlannedTasks(openJobSnapshot)
+      _ <- ZIO.when(plannedTasksForNode.nonEmpty)(ZIO.logInfo(s"""Adding planned tasks to queue:\n${plannedTasksForNode.map(x => x.processingState.stateId).mkString("\n")}"""))
       // for planned tasks try to change processing status to queued and add to queue
       addedToQueue <- movePlannedJobsToQueued(plannedTasksForNode)
       // add the tasks added to queue to history record
@@ -376,7 +381,10 @@ case class BaseWorkHandlerService[U <: TaggedWithType with DataPoint[Any], V <: 
 
       // fill empty slots for processing with tasks from queue, see processNextBatch
       nrOpenProcessSlots <- getNrOpenProcessSlots
-      _ <- ZIO.loop(nrOpenProcessSlots)(_ > 0, _ - 1)(_ => processNextBatch)
+      elementsInQueue <- queue.size
+      numItemsToPullIntoProcessing <- ZIO.succeed(math.max(0, math.min(elementsInQueue, nrOpenProcessSlots)))
+      _ <- ZIO.when(numItemsToPullIntoProcessing > 0)(ZIO.logInfo(s"Filling open processing slots - capacity: $nrOpenProcessSlots, available queued tasks: $elementsInQueue, items to pull from queue to processing: $numItemsToPullIntoProcessing"))
+      _ <- ZIO.loop(numItemsToPullIntoProcessing)(_ > 0, _ - 1)(_ => processNextBatch)
 
       // clean up loaded resources that are not needed anymore
       _ <- cleanUpGlobalResources
@@ -384,14 +392,16 @@ case class BaseWorkHandlerService[U <: TaggedWithType with DataPoint[Any], V <: 
     } yield ()
   }
 
+  /**
+   * Get nr of open slots for processing.
+   * This nr of tasks could at max be pulled from queue and started processing.
+   */
   private def getNrOpenProcessSlots: ZIO[Any, Nothing, Int] = {
     for {
       nrOpenSlots <- processIdToAggregatorRef.get
         .map(x => x.toSet.count(_ => true))
         .map(runningJobCount => AppProperties.config.maxNrJobsProcessing - runningJobCount)
-      elementsInQueue <- queue.size
-      freeBatchProcessCapacity <- ZIO.succeed(math.min(elementsInQueue, nrOpenSlots))
-    } yield freeBatchProcessCapacity
+    } yield nrOpenSlots
   }
 
   /**
