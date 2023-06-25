@@ -34,16 +34,14 @@ object App extends ZIOAppDefault {
   override val bootstrap: ZLayer[Any, Any, Unit] =
     Runtime.removeDefaultLoggers >>> SLF4J.slf4j
 
-  /**
-   * Effect taking care of claim and work management
-   */
-  val taskWorkerApp: ZIO[JobStateReader with WorkStateReader with TaskPlannerService with TaskOverviewService with WorkHandlerService, Throwable, Unit] = {
+  val planTasksEffect: ZIO[JobStateReader with TaskPlannerService with WorkStateReader with TaskOverviewService, Throwable, Unit] = {
     for {
-      jobStateReader <- ZIO.service[JobStateReader]
-      workStateReader <- ZIO.service[WorkStateReader]
       taskOverviewService <- ZIO.service[TaskOverviewService]
+      workStateReader <- ZIO.service[WorkStateReader]
       taskPlannerService <- ZIO.service[TaskPlannerService]
-      workHandlerService <- ZIO.service[WorkHandlerService]
+      jobStateReader <- ZIO.service[JobStateReader]
+
+      // fetch current job state
       openJobsState <- jobStateReader.fetchOpenJobState
 
       // getting next tasks to do from the distinct task topics
@@ -58,19 +56,36 @@ object App extends ZIOAppDefault {
         .flatMap(nodeHash => ZStream.fromIterableZIO(taskOverviewService.getTaskResetTasks(processingStates, nodeHash)))
         .runCollect
 
-      _ <- ZIO.logInfo(s"APP: Open tasks for planning:")
-      _ <- ZIO.logInfo(s"""- TASK RESET TASK:\n${taskResetTasks.mkString("\n")}""")
-      _ <- ZIO.logInfo(s"""- TASK PROCESSING TASKS:\n${batchProcessingTasks.mkString("\n")}""")
-      _ <- ZIO.logInfo(s"""- JOB TO DONE TASKS:\n${jobToDoneTasks.mkString("\n")}""")
+      _ <- ZIO.logDebug(s"APP: Open tasks for planning:")
+      _ <- ZIO.logDebug(s"""### TASK RESET TASK:\n${taskResetTasks.mkString("\n")}""")
+      _ <- ZIO.logDebug(s"""### TASK PROCESSING TASKS:\n${batchProcessingTasks.mkString("\n")}""")
+      _ <- ZIO.logDebug(s"""###JOB TO DONE TASKS:\n${jobToDoneTasks.mkString("\n")}""")
 
       _ <- taskPlannerService.planTasks(taskResetTasks)
       _ <- taskPlannerService.planTasks(batchProcessingTasks)
       _ <- taskPlannerService.planTasks(jobToDoneTasks)
 
-      // handle processing tasks
-      _ <- workHandlerService.manageBatches(openJobsState)
-      // persist the updated status of the batches processed
-      _ <- workHandlerService.updateProcessStates
+    } yield ()
+  }
+
+  /**
+   * Effect taking care of claim and work management
+   */
+  val taskWorkerApp: ZIO[JobStateReader with WorkStateReader with TaskPlannerService with TaskOverviewService with WorkHandlerService, Throwable, Unit] = {
+    for {
+      jobStateReader <- ZIO.service[JobStateReader]
+      workHandlerService <- ZIO.service[WorkHandlerService]
+
+      // fetch current job state and update processing state for batches
+      openJobsState1 <- jobStateReader.fetchOpenJobState
+      _ <- workHandlerService.manageBatches(openJobsState1)
+
+      // plan tasks, e.g file claims (if claim-based), move tasks from open to in-progress (as state PLANNED)
+      _ <- planTasksEffect
+
+      // fetch current job state and update processing state for batches
+      openJobsState2 <- jobStateReader.fetchOpenJobState
+      _ <- workHandlerService.manageBatches(openJobsState2)
     } yield ()
   }
 

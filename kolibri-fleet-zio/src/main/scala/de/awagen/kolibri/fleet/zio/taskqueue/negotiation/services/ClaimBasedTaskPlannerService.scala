@@ -247,6 +247,7 @@ case class ClaimBasedTaskPlannerService(claimReader: ClaimReader,
             case Unlimited => 10000
             case Limit(value) => value
           })
+          _ <- ZIO.logDebug(s"Limit for claimable tasks: $limit")
           _ <- ZStream.fromIterable(topicAndTasks._2.take(limit)).foreach(task => {
             ZIO.logInfo(s"filing claim for task: $task") *> fileClaim(task)
           })
