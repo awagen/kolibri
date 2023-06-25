@@ -21,6 +21,7 @@ import de.awagen.kolibri.datatypes.immutable.stores.TypeTaggedMap
 import de.awagen.kolibri.datatypes.types.ClassTyped
 import de.awagen.kolibri.definitions.processing.ProcessingMessages.ProcessingMessage
 import de.awagen.kolibri.definitions.processing.failure.TaskFailType
+import zio.stream.ZStream
 import zio.{Task, ZIO}
 
 
@@ -43,43 +44,27 @@ case class ZIOSimpleTaskExecution[+T](initData: TypeTaggedMap,
    * first task failed.
    */
   override def processAllTasks: zio.Task[(TypeTaggedMap, Seq[ExecutionState])] = {
-    val foldStartState: Task[(TypeTaggedMap, Seq[ExecutionState])] = tasks.head.task(initData)
-      .flatMap({
-        case e if e.keySet.contains(tasks.head.failKey) =>
-          for {
-            _ <- ZIO.logWarning(s"Task '1' failed with fail reason: ${e.get(tasks.head.failKey)}")
-            result <- ZIO.succeed(e, Seq(Failed(0, e.get(tasks.head.failKey).get.data)))
-          } yield result
-        case e =>
-          for {
-            _ <- ZIO.logInfo("Task '1' succeeded")
-            result <- ZIO.succeed((e, Seq(Success)))
-          } yield result
+    ZStream.fromIterable(tasks)
+      .runFoldZIO((initData, Seq.empty[ExecutionState]))({
+        case state if state._1._2.exists(x => x.isInstanceOf[Failed]) =>
+          ZIO.succeed(state._1)
+        case state =>
+          val currentTask = state._2
+          val currentTaskIndex = state._1._2.size
+          currentTask.task(state._1._1)
+          .flatMap({
+            case updatedMap if updatedMap.keySet.contains(tasks(currentTaskIndex).failKey) =>
+              for {
+                processedTask <- ZIO.attempt(tasks(currentTaskIndex))
+                _ <- ZIO.logWarning(s"Task (index $currentTaskIndex) failed with fail reason: ${updatedMap.get(processedTask.failKey)}")
+                result <- ZIO.succeed((updatedMap, state._1._2 ++ Seq(Failed(currentTaskIndex, updatedMap.get(processedTask.failKey).get.data))))
+              } yield result
+            case updatedMap =>
+              for {
+                _ <- ZIO.logDebug(s"Task (index $currentTaskIndex) succeeded")
+                result <- ZIO.succeed((updatedMap, state._1._2 ++ Seq(Success)))
+              } yield result
+          })
       })
-    val execution: Task[(TypeTaggedMap, Seq[ExecutionState])] = tasks.tail
-      .foldLeft(foldStartState)((state, task) => {
-        state.flatMap({
-          case e if e._2.exists(x => x.isInstanceOf[Failed]) =>
-            ZIO.succeed(e)
-          case e =>
-            task.task(e._1).flatMap({
-              case v if v.keySet.contains(task.failKey) =>
-                for {
-                  _ <- ZIO.logWarning(s"State '$v' contains failKey '${task.failKey}'")
-                  _ <- ZIO.logWarning(s"Task '${e._2.size + 1}' failed with fail reason: ${v.get(task.failKey)}")
-                  result <- {
-                    // TODO: the index in the Failed is wrong, correct with actual nr of task
-                    ZIO.succeed((v, e._2 ++ Seq(Failed(0, v.get(task.failKey).get.data))))
-                  }
-                } yield result
-              case v =>
-                for {
-                  _ <- ZIO.logInfo(s"Task '${e._2.size + 1}' succeeded")
-                  result <- ZIO.succeed((v, e._2 ++ Seq(Success)))
-                } yield result
-            })
-        })
-      })
-    execution
   }
 }
