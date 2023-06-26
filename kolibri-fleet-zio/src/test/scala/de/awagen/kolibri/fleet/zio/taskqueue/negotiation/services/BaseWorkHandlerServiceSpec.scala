@@ -114,7 +114,9 @@ object BaseWorkHandlerServiceSpec extends ZIOSpecDefault {
             TestObjects.processingState2, batch1StateChange1.processingInfo.lastUpdate, ProcessingStatus.PLANNED
           ) &&
           batch1StateChange2 == TestObjects.copyProcessingStateWithAdjustedTimeAndState(
-            TestObjects.processingState2, batch1StateChange2.processingInfo.lastUpdate, ProcessingStatus.QUEUED
+            TestObjects.processingState2.copy(processingInfo = TestObjects.processingState2.processingInfo.copy(numItemsTotal = -1)),
+            batch1StateChange2.processingInfo.lastUpdate,
+            ProcessingStatus.QUEUED
           ) &&
           batch1StateChange3 == TestObjects.copyProcessingStateWithAdjustedTimeAndState(
             TestObjects.processingState2, batch1StateChange2.processingInfo.lastUpdate, ProcessingStatus.IN_PROGRESS

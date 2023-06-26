@@ -64,7 +64,7 @@ object FileStorageClaimWriterSpec extends ZIOSpecDefault {
         ),
         ProcessingInfo(
           ProcessingStatus.PLANNED,
-          0,
+          -1,
           0,
           "abc234",
           ProcessingStateUtils.timeInMillisToFormattedTime(1703845333850L)

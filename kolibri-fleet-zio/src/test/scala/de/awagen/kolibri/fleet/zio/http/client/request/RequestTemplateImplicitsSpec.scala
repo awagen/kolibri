@@ -27,7 +27,7 @@ import zio.http.{Client, Request, Response}
 import zio.test._
 import zio.{Scope, ZIO, ZLayer}
 
-object RequestTemplateImplicitsSpec extends ZIOSpecDefault  {
+object RequestTemplateImplicitsSpec extends ZIOSpecDefault {
 
   override def spec: Spec[TestEnvironment with Scope, Any] = suite("RequestTemplateImplicitsSpec")(
 
@@ -54,7 +54,7 @@ object RequestTemplateImplicitsSpec extends ZIOSpecDefault  {
         verify(clientMock, times(1)).request(requestCaptor.capture())(ArgumentMatchers.any(), ArgumentMatchers.any())
         requestCaptor.getValue
       })(Assertion.assertion[Request]("correct request")(request => {
-        request.url.path.toString == s"$testHost/$testContextPath?p1=v1" &&
+        request.url.encode == s"$testHost/$testContextPath?p1=v1" &&
           request.headers.toSeq.exists(x => x.headerName == "testHeader1")
       }))
     }
