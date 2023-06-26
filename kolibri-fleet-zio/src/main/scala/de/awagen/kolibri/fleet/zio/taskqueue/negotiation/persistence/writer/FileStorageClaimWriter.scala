@@ -69,7 +69,9 @@ case class FileStorageClaimWriter(writer: Writer[String, String, _]) extends Cla
           processId,
           ProcessingInfo(
             ProcessingStatus.PLANNED,
-            0,
+            // for now we add a dummy count here, which needs to be correctly updated
+            // when the PLANNED task is queued
+            -1,
             0,
             AppProperties.config.node_hash,
             ProcessingStateUtils.timeInMillisToFormattedTime(System.currentTimeMillis())

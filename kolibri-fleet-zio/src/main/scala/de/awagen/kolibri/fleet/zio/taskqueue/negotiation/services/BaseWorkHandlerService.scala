@@ -225,11 +225,24 @@ case class BaseWorkHandlerService[U <: TaggedWithType with DataPoint[Any], V <: 
 
   /**
    * Handling planned task by updating its processing status to state "QUEUED" and then adding the task to the
-   * queue. If updating the processing status fails, the task will not be added to the queue for further processing
+   * queue. If updating the processing status fails, the task will not be added to the queue for further processing.
+   * Note that the number of elements to be processed in total is also filled in here
    */
   private def changeStateToQueuedAndAddToQueue(batchAndProcessingState: BatchAndProcessingState): Task[ProcessId] = {
     for {
-      _ <- persistProcessingStateUpdate(Seq(batchAndProcessingState.processingState), ProcessingStatus.QUEUED).map(x => x.head).flatMap({
+      // extract the nr of elements to be processed in the batch
+      numElementsInBatch <- ZIO.attempt(
+        batchAndProcessingState.batch.job.batches
+          .get(batchAndProcessingState.processingState.stateId.batchNr)
+          .map(x => x.data.size).getOrElse(-1)
+      )
+      // update the processingState with information about the contained elements to be processed
+      // (NOTE: this could be done before reaching the PLANNED state here, yet the task planners are
+      // reasoning without necessary needing to connect to details of execution, thus we initialize the info here)
+      processingStateWithElementCount <- ZIO.attempt(
+        batchAndProcessingState.processingState.copy(processingInfo = batchAndProcessingState.processingState.processingInfo.copy(numItemsTotal = numElementsInBatch))
+      )
+      _ <- persistProcessingStateUpdate(Seq(processingStateWithElementCount), ProcessingStatus.QUEUED).map(x => x.head).flatMap({
         case true => ZIO.succeed(true)
         case false => ZIO.fail(new RuntimeException("Could not change processing state"))
       })
