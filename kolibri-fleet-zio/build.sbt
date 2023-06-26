@@ -14,6 +14,10 @@ val zioHttpVersion = "3.0.0-RC1"
 val zioMetricsConnectorsVersion = "2.0.8"
 val mockitoVersion = "3.2.10.0"
 
+// defining fixed env vars for test scope
+envVars in Test := Map("PROFILE" -> "test")
+envVars in IntegrationTest := Map("PROFILE" -> "test")
+
 // scoverage plugin setting to exclude classes from coverage report
 coverageExcludedPackages := ""
 
@@ -25,8 +29,6 @@ assemblyMergeStrategy in assembly := {
   // from a dependency
   case x if "application.*\\.conf".r.findFirstMatchIn(x.split("/").last).nonEmpty =>
     MergeStrategy.last
-  case x if x.endsWith("logback.xml") && !x.contains("kolibri-fleet-zio") =>
-    MergeStrategy.discard
   case x if x.endsWith("logback.xml") =>
     MergeStrategy.last
   case "module-info.class" => MergeStrategy.discard
@@ -41,6 +43,11 @@ assemblyMergeStrategy in assembly := {
   case reference if reference.contains("reference.conf") =>
     // Keep the content for all reference.conf files
     MergeStrategy.concat
+  case x if x.endsWith(".proto") =>
+    MergeStrategy.first
+  // same class conflicts (too general but resolving for now)
+  case x if x.endsWith(".class") =>
+    MergeStrategy.first
   case x =>
     // For all the other files, use the default sbt-assembly merge strategy
     val oldStrategy = (assemblyMergeStrategy in assembly).value
@@ -77,6 +84,7 @@ testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")
 libraryDependencies := {
   libraryDependencies.value :+ ("de.awagen.kolibri" %% "kolibri-definitions" % version.value)
 }
+mainClass in assembly := Some("de.awagen.kolibri.fleet.zio.App")
 
 // ---- start settings for publishing to mvn central
 // (needs to fully be in build.sbt of sub-project, also the non-project-specific parts)

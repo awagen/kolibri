@@ -24,5 +24,5 @@ object EnvVariableKeys extends Enumeration {
   }
 
   val PROFILE: Val = Val("PROFILE", "local")
-  val HTTP_SERVER_PORT: Val = Val("HTTP_SERVER_PORT", "8000")
+  val HTTP_SERVER_PORT: Val = Val("HTTP_SERVER_PORT", "8080")
 }

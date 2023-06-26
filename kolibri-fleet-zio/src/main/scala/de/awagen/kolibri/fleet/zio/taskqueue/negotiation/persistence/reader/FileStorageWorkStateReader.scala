@@ -99,7 +99,7 @@ case class FileStorageWorkStateReader(filterToOverviewReader: (String => Boolean
           processId.batchNr, nodeHash)
         Some(reader.read(inProgressFilePath).mkString("\n"))
       }).catchAll(ex =>
-        ZIO.logWarning(s"Could not read in-progress file for processId '$processId':\n$ex")
+        ZIO.logDebug(s"Could not read in-progress file for processId '$processId':\n$ex")
           *> ZIO.succeed(None)
       )
       processingState <- ZIO.attempt({

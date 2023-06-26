@@ -75,3 +75,9 @@ The commands to generate the reports are as follows:
 Its also possible to enable coverage for each build via sbt setting ```coverageEnabled := true```.
 For more settings (such as minimal coverage criteria for build to succeed), see above-referenced project page.
 
+
+## Build jar, build docker image, startup local
+
+- build jar (from root folder; find it in target folder of kolibri-fleet-zio sub-folder afterwards): ```./scripts/buildKolibriFleetZIOJar.sh```
+- build docker image for local usage (kolibri-fleet-zio sub-folder): ```docker build . -t kolibri-fleet-zio:0.1.5```
+- startup via docker-compose (kolibri-fleet-zio sub-folder): ```docker-compose up```

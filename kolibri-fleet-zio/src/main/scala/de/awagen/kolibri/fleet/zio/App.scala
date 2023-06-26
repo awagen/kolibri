@@ -18,6 +18,7 @@
 package de.awagen.kolibri.fleet.zio
 
 import de.awagen.kolibri.fleet.zio.config.AppProperties
+import de.awagen.kolibri.fleet.zio.config.AppProperties.config.http_server_port
 import de.awagen.kolibri.fleet.zio.config.di.ZioDIConfig
 import de.awagen.kolibri.fleet.zio.metrics.Metrics.MetricTypes.taskManageCycleInvokeCount
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.{JobStateReader, WorkStateReader}
@@ -121,6 +122,6 @@ object App extends ZIOAppDefault {
       _ <- Server.serve(ServerEndpoints.jobPostingEndpoints ++ ServerEndpoints.statusEndpoints(jobStateCache) ++ ServerEndpoints.prometheusEndpoint)
       _ <- ZIO.logInfo("Application is about to exit!")
     } yield ())
-      .provide(Server.default >+> combinedLayer)
+      .provide(Server.defaultWithPort(http_server_port) >+> combinedLayer)
   }
 }
