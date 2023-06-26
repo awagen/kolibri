@@ -41,6 +41,7 @@ import de.awagen.kolibri.definitions.usecase.searchopt.metrics.MetricRowFunction
 import de.awagen.kolibri.definitions.usecase.searchopt.parse.ParsingConfig
 import de.awagen.kolibri.fleet.zio.config.AppProperties
 import de.awagen.kolibri.fleet.zio.execution.JobMessagesImplicits.RequestAndParsingResultTaggerConfig
+import de.awagen.kolibri.fleet.zio.execution.TaskFactory.RequestJsonAndParseValuesTask.liveHttpClient
 import de.awagen.kolibri.fleet.zio.http.client.request.RequestTemplateImplicits.RequestTemplateToZIOHttpRequest
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.processing.TaskWorker.INITIAL_DATA_KEY
 import play.api.libs.json.Json
@@ -63,6 +64,15 @@ object TaskFactory {
     val HTTP_URL_PREFIX = "http"
     val HTTP_1_1_PROTOCOL_ID = "HTTP/1.1"
 
+    val liveHttpClient: ZLayer[Any, Throwable, Client] = {
+      implicit val trace: Trace = Trace.empty
+      (
+        ZLayer.succeed(Config.default.withDynamicConnectionPool(10, 100, zio.Duration(10, TimeUnit.MINUTES))) ++
+          ZLayer.succeed(NettyConfig.default) ++
+          DnsResolver.default
+        ) >>> Client.live
+    }
+
   }
 
   /**
@@ -78,14 +88,7 @@ object TaskFactory {
                                            fixedParams: Map[String, Seq[String]],
                                            httpMethod: String = HttpMethod.GET.toString,
                                            // default value of http client utilizes dynamic connection pool
-                                           httpClient: ZLayer[Any, Throwable, Client] = {
-                                             implicit val trace: Trace = Trace.empty
-                                             (
-                                               ZLayer.succeed(Config.default.withDynamicConnectionPool(10, 100, zio.Duration(10, TimeUnit.MINUTES))) ++
-                                                 ZLayer.succeed(NettyConfig.default) ++
-                                                 DnsResolver.default
-                                               ) >>> Client.live
-                                           },
+                                           httpClient: ZLayer[Any, Throwable, Client] = liveHttpClient,
                                            successKeyName: String = "parsedValueMap",
                                            failKeyName: String = "parseFail") extends ZIOTask[WeaklyTypedMap[String]] {
 
@@ -103,7 +106,7 @@ object TaskFactory {
       .withProtocol(HTTP_1_1_PROTOCOL_ID)
       .withParams(fixedParams)
 
-    override def task(map: TypeTaggedMap): Task[TypeTaggedMap] = {
+    override def task(map: TypeTaggedMap): Task[TypeTaggedMap] = ZIO.logDebug(s"request and parsing task input data: $map, \n value for key '$requestTemplateBuilderModifierKey': ${map.get(requestTemplateBuilderModifierKey)}: ") *>  {
       // compose the request template
       val modifier: RequestTemplateBuilderModifier = map.get(requestTemplateBuilderModifierKey).get
       val requestTemplate: RequestTemplate = modifier.apply(initRequestTemplateBuilder).build()

@@ -19,9 +19,10 @@ package de.awagen.kolibri.fleet.zio.http.client.request
 
 import de.awagen.kolibri.definitions.domain.jobdefinitions.provider.Credentials
 import de.awagen.kolibri.definitions.http.client.request.RequestTemplate
-import zio.http.Path.Segment
+import zio.ZIO
 import zio.http._
-import zio.{Chunk, ZIO}
+
+import java.net.URI
 
 object RequestTemplateImplicits {
 
@@ -46,10 +47,7 @@ object RequestTemplateImplicits {
                   .getOrElse(Seq.empty)
             ),
             method = Method.fromString(template.httpMethod),
-            url = new URL(
-              path = Path(Vector(Segment(host), Segment(template.query.stripPrefix("/")))),
-              queryParams = QueryParams(template.parameters.map(x => (x._1, Chunk.fromIterable(x._2))))
-            ),
+            url = URL.fromURI(new URI(s"${host.stripSuffix("/")}/${template.query.stripPrefix("/")}")).get,
             version = protocolMapping.getOrElse(template.protocol, Version.`HTTP/1.1`),
             remoteAddress = None
           ))

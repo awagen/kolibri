@@ -28,11 +28,15 @@ import de.awagen.kolibri.datatypes.values.aggregation.immutable.Aggregators.TagK
 import de.awagen.kolibri.definitions.http.client.request.RequestTemplate
 import de.awagen.kolibri.definitions.processing.JobMessages.{QueryBasedSearchEvaluationDefinition, SearchEvaluationDefinition}
 import de.awagen.kolibri.definitions.processing.ProcessingMessages.ProcessingMessage
+import de.awagen.kolibri.definitions.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
 import de.awagen.kolibri.definitions.usecase.searchopt.jobdefinitions.parts.BatchGenerators.batchByGeneratorAtIndex
 import de.awagen.kolibri.definitions.usecase.searchopt.jobdefinitions.parts.ReservedStorageKeys.REQUEST_TEMPLATE_STORAGE_KEY
 import de.awagen.kolibri.fleet.zio.config.AppConfig
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.BatchAggregationInfo
+import de.awagen.kolibri.fleet.zio.execution.TaskFactory.RequestJsonAndParseValuesTask.liveHttpClient
 import de.awagen.kolibri.fleet.zio.execution.TaskFactory._
+import zio.ZLayer
+import zio.http.Client
 
 import scala.util.Random
 
@@ -49,7 +53,7 @@ object JobMessagesImplicits {
 
   implicit class SearchEvaluationImplicits(eval: SearchEvaluationDefinition) extends ZIOJobDefinitionConvertible {
 
-    def getTaskSequenceForSearchEval: Seq[ZIOTask[_]] = {
+    def getTaskSequenceForSearchEval(httpClient: ZLayer[Any, Throwable, Client] = liveHttpClient): Seq[ZIOTask[_]] = {
       val random = new util.Random()
       // configuration for initial tagging based on the request template
       val requestTemplateTagger: SerializableConsumer[ProcessingMessage[RequestTemplate]] =
@@ -68,6 +72,7 @@ object JobMessagesImplicits {
         contextPath = eval.contextPath,
         fixedParams = eval.fixedParams,
         httpMethod = eval.httpMethod.toString,
+        httpClient = httpClient,
         successKeyName = "1-parsedValueMap",
         failKeyName = "1-parseFail"
       )
@@ -83,29 +88,38 @@ object JobMessagesImplicits {
       Seq(requestTask, metricCalculationTask)
     }
 
-    override def toJobDef: JobDefinitions.JobDefinition[_, _, _ <: WithCount] = {
-      val taskSequence = getTaskSequenceForSearchEval
-      val metricRowResultKey = taskSequence.last.successKey.asInstanceOf[ClassTyped[ProcessingMessage[MetricRow]]]
-      JobDefinitions.JobDefinition(
-        eval.jobName,
-        eval.resourceDirectives,
-        batchByGeneratorAtIndex(batchByIndex = eval.batchByIndex).apply(eval.requestTemplateModifiers),
-        getTaskSequenceForSearchEval,
-        BatchAggregationInfo[MetricRow, MetricAggregation[Tag]](
-          successKey = metricRowResultKey,
-          batchAggregatorSupplier = () => new TagKeyMetricAggregationPerClassAggregator(
-            aggregationState = MetricAggregation.empty[Tag](identity),
-            ignoreIdDiff = false
-          ),
-          writer = AppConfig.persistenceModule.persistenceDIModule.immutableMetricAggregationWriter(
-            subFolder = eval.jobName,
-            x => {
-              val randomAdd: String = Random.alphanumeric.take(5).mkString
-              s"${x.toString()}-$randomAdd"
-            }
+    def httpClientToJobDef(httpClient: ZLayer[Any, Throwable, Client]): JobDefinitions.JobDefinition[RequestTemplateBuilderModifier, MetricRow, MetricAggregation[Tag]] = {
+        val taskSequence = getTaskSequenceForSearchEval(httpClient)
+        val metricRowResultKey = taskSequence.last.successKey.asInstanceOf[ClassTyped[ProcessingMessage[MetricRow]]]
+        JobDefinitions.JobDefinition(
+          eval.jobName,
+          eval.resourceDirectives,
+          batchByGeneratorAtIndex(batchByIndex = eval.batchByIndex).apply(eval.requestTemplateModifiers),
+          getTaskSequenceForSearchEval(httpClient),
+          BatchAggregationInfo[MetricRow, MetricAggregation[Tag]](
+            successKey = metricRowResultKey,
+            batchAggregatorSupplier = () => new TagKeyMetricAggregationPerClassAggregator(
+              aggregationState = MetricAggregation.empty[Tag](identity),
+              ignoreIdDiff = false
+            ),
+            writer = AppConfig.persistenceModule.persistenceDIModule.immutableMetricAggregationWriter(
+              subFolder = eval.jobName,
+              x => {
+                val randomAdd: String = Random.alphanumeric.take(5).mkString
+                s"${x.toString()}-$randomAdd"
+              }
+            )
           )
         )
-      )
+      }
+
+    /**
+     * NOTE: explicit types here in the job definition are important since the input type will be used as type
+     * of the initial data point to start the computation. Thus if we write another type such as _ or Any,
+     * the key value will not be found since the specifically typed key and the derived key do not match
+     */
+    override def toJobDef: JobDefinitions.JobDefinition[RequestTemplateBuilderModifier, MetricRow, MetricAggregation[Tag]] = {
+      httpClientToJobDef(liveHttpClient)
     }
   }
 
