@@ -22,6 +22,7 @@ import de.awagen.kolibri.fleet.zio.config.AppProperties.config.http_server_port
 import de.awagen.kolibri.fleet.zio.config.di.ZioDIConfig
 import de.awagen.kolibri.fleet.zio.metrics.Metrics.MetricTypes.taskManageCycleInvokeCount
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.{JobStateReader, WorkStateReader}
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer.NodeStateWriter
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services.{TaskOverviewService, TaskPlannerService, WorkHandlerService}
 import zio._
 import zio.http._
@@ -90,6 +91,13 @@ object App extends ZIOAppDefault {
     } yield ()
   }
 
+  val nodeStateUpdateEffect: ZIO[NodeStateWriter, Throwable, Unit] = {
+    for {
+      nodeStateWriter <- ZIO.service[NodeStateWriter]
+      _ <- nodeStateWriter.persistStatusUpdate
+    } yield ()
+  }
+
   val combinedLayer =
     ZioDIConfig.writerLayer >+>
       ZioDIConfig.readerLayer >+>
@@ -104,6 +112,8 @@ object App extends ZIOAppDefault {
       ZioDIConfig.taskOverviewServiceLayer >+>
       ZioDIConfig.taskPlannerServiceLayer >+>
       ZioDIConfig.workHandlerServiceLayer >+>
+      ZioDIConfig.nodeStateReaderLayer >+>
+      ZioDIConfig.nodeStateWriterLayer >+>
       // configs for metric backends
       ZLayer.succeed(MetricsConfig(5.seconds)) >+>
       // The prometheus reporting layer
@@ -114,12 +124,19 @@ object App extends ZIOAppDefault {
 
 
   override val run: ZIO[Any, Throwable, Any] = {
-    val fixed = Schedule.fixed(30 seconds)
+    val fixed1 = Schedule.fixed(20 seconds)
+    val fixed2 = Schedule.fixed(10 seconds)
     (for {
       _ <- ZIO.logInfo("Application started!")
-      _ <- (taskWorkerApp @@ taskManageCycleInvokeCount).repeat(fixed).fork
+      _ <- (taskWorkerApp @@ taskManageCycleInvokeCount).repeat(fixed1).fork
+      _ <- nodeStateUpdateEffect.repeat(fixed2).fork
       jobStateCache <- ServerEndpoints.openJobStateCache
-      _ <- Server.serve(ServerEndpoints.jobPostingEndpoints ++ ServerEndpoints.statusEndpoints(jobStateCache) ++ ServerEndpoints.prometheusEndpoint)
+      _ <- Server.serve(
+        ServerEndpoints.jobPostingEndpoints ++
+          ServerEndpoints.statusEndpoints(jobStateCache) ++
+          ServerEndpoints.prometheusEndpoint ++
+          ServerEndpoints.nodeStateEndpoint
+      )
       _ <- ZIO.logInfo("Application is about to exit!")
     } yield ())
       .provide(Server.defaultWithPort(http_server_port) >+> combinedLayer)

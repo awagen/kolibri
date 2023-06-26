@@ -23,10 +23,11 @@ import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobDefinition
 import de.awagen.kolibri.fleet.zio.io.json.JobDefinitionJsonProtocol.JobDefinitionFormat
 import de.awagen.kolibri.fleet.zio.io.json.ProcessingStateJsonProtocol.jsonFormat2
 import de.awagen.kolibri.fleet.zio.resources.NodeResourceProvider
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.{FileStorageJobStateReader, JobStateReader}
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.{FileStorageJobStateReader, JobStateReader, NodeStateReader}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer.JobStateWriter
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.JobStates.OpenJobsSnapshot
-import spray.json.DefaultJsonProtocol.{StringJsonFormat, immSetFormat}
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.NodeUtilizationStates.NodeUtilizationStatesImplicits.nodeUtilizationStateFormat
+import spray.json.DefaultJsonProtocol.{StringJsonFormat, immSeqFormat, immSetFormat}
 import spray.json._
 import zio.cache.{Cache, Lookup}
 import zio.http._
@@ -124,8 +125,20 @@ object ServerEndpoints {
       )
   }
 
-  val prometheusEndpoint: Http[PrometheusPublisher, Nothing, Request, Response] = Http.collectZIO[Request] { case Method.GET -> !! / "metrics" =>
-    ZIO.serviceWithZIO[PrometheusPublisher](_.get.map(Response.text))
+  val nodeStateEndpoint: Http[NodeStateReader, Nothing, Request, Response] = Http.collectZIO[Request] {
+    case Method.GET -> !! / "nodes" / "state" =>
+      for {
+        stateReader <- ZIO.service[NodeStateReader]
+        states <- stateReader.readNodeStates.catchAll(throwable => {
+          ZIO.logError(s"Error trying to read node states:\n${throwable.getStackTrace.mkString("\n")}") *>
+            ZIO.succeed(Seq.empty)
+        })
+      } yield Response.text(states.toJson.toString())
+  }
+
+  val prometheusEndpoint: Http[PrometheusPublisher, Nothing, Request, Response] = Http.collectZIO[Request] {
+    case Method.GET -> !! / "metrics" =>
+      ZIO.serviceWithZIO[PrometheusPublisher](_.get.map(Response.text))
   }
 
 }

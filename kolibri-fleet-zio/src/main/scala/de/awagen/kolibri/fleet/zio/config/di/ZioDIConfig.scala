@@ -127,5 +127,18 @@ object ZioDIConfig {
     )
   }
 
+  val nodeStateReaderLayer: ZLayer[DataOverviewReader with Reader[String, Seq[String]], Nothing, NodeStateReader] = ZLayer {
+    for {
+      overviewReader <- ZIO.service[DataOverviewReader]
+      contentReader <- ZIO.service[Reader[String, Seq[String]]]
+    } yield FileStorageNodeStateReader(contentReader, overviewReader)
+  }
+
+  val nodeStateWriterLayer: ZLayer[Writer[String, String, _], Nothing, NodeStateWriter] = ZLayer {
+    for {
+      writer <- ZIO.service[Writer[String, String, _]]
+    } yield FileStorageNodeStateWriter(writer)
+  }
+
 
 }

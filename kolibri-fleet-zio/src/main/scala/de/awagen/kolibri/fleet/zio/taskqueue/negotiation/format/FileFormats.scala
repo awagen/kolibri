@@ -43,6 +43,12 @@ object FileFormats {
     }
   }
 
+  case object NodeHealthFileNameFormat extends FileNameFormat(Seq(NODE_HASH), "__") {
+    def getFileName(nodeHash: String): String = {
+      this.format(TypedMapStore(mutable.Map(NODE_HASH.namedClassTyped -> nodeHash)))
+    }
+  }
+
   case object InProgressTaskFileNameFormat extends FileNameFormat(Seq(BATCH_NR), "__") {
     def getFileName(batchNr: Int): String = {
       this.format(TypedMapStore(mutable.Map(

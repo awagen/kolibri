@@ -110,6 +110,12 @@ object Directories {
     }
   }
 
+  object NodeStates {
+
+    def nodeStateBaseFolder: String = AppProperties.config.nodeHealthBaseFolder
+
+  }
+
   def jobSubFolder(jobId: String, subFolder: String, isOpenJob: Boolean): String = {
     s"${JobTopLevel.folderForJob(jobId, isOpenJob)}/$subFolder"
   }

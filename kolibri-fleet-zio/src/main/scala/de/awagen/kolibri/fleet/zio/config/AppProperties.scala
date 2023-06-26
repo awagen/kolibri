@@ -168,6 +168,8 @@ object AppProperties {
     // --- jobs folder relative to readers / writers base folder
     // base folder where jobs are stored
     val jobBaseFolder: String = baseConfig.getString("kolibri.job.basefolder").stripPrefix("/").stripSuffix("/")
+    // base folder for node health
+    val nodeHealthBaseFolder: String = baseConfig.getString("kolibri.nodeHealthBaseFolder").stripPrefix("/").stripSuffix("/")
     // the base folder where the open (not yet fully processed) jobs are stored (every job has own folder
     // named by [jobName]_[timePlacedInMillis]
     val openJobBaseFolder: String = s"$jobBaseFolder/${baseConfig.getString("kolibri.job.openJobsSubfolder").stripPrefix("/").stripSuffix("/")}"
