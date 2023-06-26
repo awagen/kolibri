@@ -29,8 +29,8 @@ object ClusterStates {
                      nrProcessors: Int)
 
   case class CapacityInfo(loadCapacity: Double,
-                          heapCapactiy: Double,
-                          cpuCapactiy: Double,
+                          heapCapacity: Double,
+                          cpuCapacity: Double,
                           mixCapacity: Double)
 
 

@@ -30,6 +30,7 @@ import spray.json.DefaultJsonProtocol.{StringJsonFormat, immSetFormat}
 import spray.json._
 import zio.cache.{Cache, Lookup}
 import zio.http._
+import zio.metrics.connectors.prometheus.PrometheusPublisher
 import zio.stream.ZStream
 import zio.{Task, ZIO, durationInt}
 
@@ -121,6 +122,10 @@ object ServerEndpoints {
         ZIO.logWarning(s"Error on posting job:\n$throwable")
           *> ZIO.succeed(Response.text(s"Failed posting job"))
       )
+  }
+
+  val prometheusEndpoint: Http[PrometheusPublisher, Nothing, Request, Response] = Http.collectZIO[Request] { case Method.GET -> !! / "metrics" =>
+    ZIO.serviceWithZIO[PrometheusPublisher](_.get.map(Response.text))
   }
 
 }

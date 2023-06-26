@@ -19,14 +19,14 @@ package de.awagen.kolibri.fleet.zio
 
 import de.awagen.kolibri.fleet.zio.config.AppProperties
 import de.awagen.kolibri.fleet.zio.config.di.ZioDIConfig
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.{ClaimReader, JobStateReader, WorkStateReader}
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer.{ClaimWriter, FileStorageJobStateWriter, WorkStateWriter}
+import de.awagen.kolibri.fleet.zio.metrics.Metrics.MetricTypes.taskManageCycleInvokeCount
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.{JobStateReader, WorkStateReader}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services.{TaskOverviewService, TaskPlannerService, WorkHandlerService}
-import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, Reader}
-import de.awagen.kolibri.storage.io.writer.Writers
 import zio._
 import zio.http._
 import zio.logging.backend.SLF4J
+import zio.metrics.connectors.{MetricsConfig, prometheus}
+import zio.metrics.jvm.DefaultJvmMetrics
 import zio.stream.ZStream
 
 object App extends ZIOAppDefault {
@@ -89,7 +89,7 @@ object App extends ZIOAppDefault {
     } yield ()
   }
 
-  val combinedLayer: ZLayer[Any, Nothing, Writers.Writer[String, String, _] with Reader[String, Seq[String]] with DataOverviewReader with ((String => Boolean) => DataOverviewReader) with JobStateReader with FileStorageJobStateWriter with ClaimReader with ClaimWriter with WorkStateReader with WorkStateWriter with TaskPlannerService with TaskOverviewService with WorkHandlerService] =
+  val combinedLayer =
     ZioDIConfig.writerLayer >+>
       ZioDIConfig.readerLayer >+>
       ZioDIConfig.overviewReaderLayer >+>
@@ -102,16 +102,23 @@ object App extends ZIOAppDefault {
       ZioDIConfig.workStateWriterLayer >+>
       ZioDIConfig.taskOverviewServiceLayer >+>
       ZioDIConfig.taskPlannerServiceLayer >+>
-      ZioDIConfig.workHandlerServiceLayer
+      ZioDIConfig.workHandlerServiceLayer >+>
+      // configs for metric backends
+      ZLayer.succeed(MetricsConfig(5.seconds)) >+>
+      // The prometheus reporting layer
+      prometheus.publisherLayer >+>
+      prometheus.prometheusLayer >+>
+      // Default JVM Metrics
+      DefaultJvmMetrics.live.unit
 
 
   override val run: ZIO[Any, Throwable, Any] = {
     val fixed = Schedule.fixed(30 seconds)
     (for {
       _ <- ZIO.logInfo("Application started!")
-      _ <- taskWorkerApp.repeat(fixed).fork
+      _ <- (taskWorkerApp @@ taskManageCycleInvokeCount).repeat(fixed).fork
       jobStateCache <- ServerEndpoints.openJobStateCache
-      _ <- Server.serve(ServerEndpoints.jobPostingEndpoints ++ ServerEndpoints.statusEndpoints(jobStateCache))
+      _ <- Server.serve(ServerEndpoints.jobPostingEndpoints ++ ServerEndpoints.statusEndpoints(jobStateCache) ++ ServerEndpoints.prometheusEndpoint)
       _ <- ZIO.logInfo("Application is about to exit!")
     } yield ())
       .provide(Server.default >+> combinedLayer)
