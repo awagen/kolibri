@@ -106,6 +106,8 @@ object App extends ZIOAppDefault {
     ZioDIConfig.writerLayer >+>
       ZioDIConfig.readerLayer >+>
       ZioDIConfig.overviewReaderLayer >+>
+      ZioDIConfig.nodeStateReaderLayer >+>
+      ZioDIConfig.nodeStateWriterLayer >+>
       ZioDIConfig.fileFilterToOverViewFuncLayer >+>
       ZioDIConfig.jobStateReaderLayer >+>
       ZioDIConfig.jobStateWriterLayer >+>
@@ -116,8 +118,6 @@ object App extends ZIOAppDefault {
       ZioDIConfig.taskOverviewServiceLayer >+>
       ZioDIConfig.taskPlannerServiceLayer >+>
       ZioDIConfig.workHandlerServiceLayer >+>
-      ZioDIConfig.nodeStateReaderLayer >+>
-      ZioDIConfig.nodeStateWriterLayer >+>
       // configs for metric backends
       ZLayer.succeed(MetricsConfig(5.seconds)) >+>
       // The prometheus reporting layer
