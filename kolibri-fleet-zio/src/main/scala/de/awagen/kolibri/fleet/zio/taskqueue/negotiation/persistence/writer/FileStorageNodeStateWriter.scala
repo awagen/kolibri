@@ -59,7 +59,10 @@ case class FileStorageNodeStateWriter(writer: Writer[String, String, _]) extends
   }
 
   override def removeNodeState(nodeHash: String): Task[Unit] = {
-    ZIO.fromEither(writer.delete(Directories.NodeStates.nodeStateFile(nodeHash)))
-      .map(_ => ())
+    for {
+      stateFile <- ZIO.succeed(Directories.NodeStates.nodeStateFile(nodeHash))
+      _ <- ZIO.logDebug(s"deleting file: $stateFile")
+      _ <- ZIO.fromEither(writer.delete(stateFile))
+    } yield ()
   }
 }

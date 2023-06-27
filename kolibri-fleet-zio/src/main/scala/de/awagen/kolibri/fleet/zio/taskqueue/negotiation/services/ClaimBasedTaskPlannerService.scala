@@ -172,7 +172,11 @@ case class ClaimBasedTaskPlannerService(claimReader: ClaimReader,
         } yield ()
       case TaskTopics.NodeHealthRemovalTask(nodeHash) =>
         // simply remove the node health file
-        nodeStateWriter.removeNodeState(nodeHash)
+        for {
+          _ <- ZIO.logInfo(s"removing health state for node: $nodeHash")
+          _ <- nodeStateWriter.removeNodeState(nodeHash)
+          _ <- deleteAllClaimsForMatchingJobAndBatchAndTaskTopic(claim)
+        } yield ()
       case TaskTopics.JobWrapUpTask =>
         for {
           // remove all claims (before moving the folder for a clean claim state)
@@ -230,7 +234,7 @@ case class ClaimBasedTaskPlannerService(claimReader: ClaimReader,
    * Compare already existing claims which those that need filing as per the passed tasks,
    * and for those that do not yet have a claim, file the claim.
    *
-   * @param tasks            - list of tasks for which to file a claim (if not yet existing)
+   * @param tasks - list of tasks for which to file a claim (if not yet existing)
    */
   private[services] def fillUpClaims(tasks: Seq[Task]): ZIO[Any, Throwable, Unit] = {
     for {
@@ -275,12 +279,16 @@ case class ClaimBasedTaskPlannerService(claimReader: ClaimReader,
   /**
    * Get those jobIds that shall be ignored on the current node and those claims already filed which correspond
    * to any of those jobIds and remove those. Return the remaining claims which still hold.
+   *
+   * NOTE: we also add DUMMY_JOB here to looked at job folders, since
+   * this is used to represent some side task, not normal batches, and thus
+   * we wont normally see processing directives (prefix "KDIR_")
    */
   private[services] def cleanupClaimsAndReturnRemaining(openJobsSnapshot: OpenJobsSnapshot, taskTopic: TaskTopic): zio.Task[Set[Task]] = {
     for {
       ignoreJobIdsOnThisNode <- ZIO.succeed(openJobsSnapshot.jobsToBeIgnoredOnThisNode.map(x => x.jobId))
       // extract all (jobId, batchNr) tuples of claims currently filed for the node
-      claimsByCurrentNode <- claimReader.getClaimsByCurrentNodeForTopicAndJobIds(taskTopic, openJobsSnapshot.jobStateSnapshots.values.map(x => x.jobId).toSet)
+      claimsByCurrentNode <- claimReader.getClaimsByCurrentNodeForTopicAndJobIds(taskTopic, openJobsSnapshot.jobStateSnapshots.values.map(x => x.jobId).toSet ++ Set(DUMMY_JOB))
       //verify each claim
       // remove the claims that are not needed anymore (only for this particular node)
       claimsToBeRemoved <- ZIO.succeed(claimsByCurrentNode.filter(x => ignoreJobIdsOnThisNode.contains(x.jobId)))

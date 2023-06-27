@@ -118,7 +118,7 @@ object Directories {
      * Get relative path for node state file
      */
     def nodeStateFile(nodeHash: String): String = {
-      s"${Directories.NodeStates.nodeStateBaseFolder.stripSuffix("/")}/$nodeHash}"
+      s"${Directories.NodeStates.nodeStateBaseFolder.stripSuffix("/")}/$nodeHash"
     }
 
   }

@@ -72,9 +72,9 @@ object ClaimReader {
 
     sealed case class JobTaskResetTask(nodeHash: String) extends TaskTopic {
 
-      val id: String = typePrefix
+      val id: String = JobTaskResetTask.typePrefix
 
-      override def toString: String = s"$typePrefix-$nodeHash"
+      override def toString: String = s"${JobTaskResetTask.typePrefix}-$nodeHash"
 
     }
 
@@ -89,11 +89,23 @@ object ClaimReader {
 
     }
 
+    object NodeHealthRemovalTask {
+
+      val argumentDelimiter = "-"
+      val typePrefix = "NODE_HEALTH_REMOVE"
+
+      def fromString(str: String): NodeHealthRemovalTask = {
+        NodeHealthRemovalTask(str.split(argumentDelimiter)(1))
+      }
+
+    }
+
     sealed case class NodeHealthRemovalTask(nodeHash: String) extends TaskTopic {
 
-      val id: String = "NODE_HEALTH_REMOVE"
+      val id: String = NodeHealthRemovalTask.typePrefix
 
-      override def toString: String = id
+      override def toString: String = s"${NodeHealthRemovalTask.typePrefix}-$nodeHash"
+
     }
 
     /**
@@ -113,6 +125,7 @@ object ClaimReader {
     case JobTaskProcessingTask.id => JobTaskProcessingTask
     case JobWrapUpTask.id => JobWrapUpTask
     case v if v.startsWith(JobTaskResetTask.typePrefix) => JobTaskResetTask.fromString(str)
+    case v if v.startsWith(NodeHealthRemovalTask.typePrefix) => NodeHealthRemovalTask.fromString(str)
     case _ => Unknown
   }
 

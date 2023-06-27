@@ -115,7 +115,8 @@ case class BaseTaskOverviewService(jobStateReader: JobStateReader,
         .map(healthState => {
           (healthState.nodeId, timeStringToTimeInMillis(healthState.lastUpdate))
         })
-        .filter(x => (x._2 - System.currentTimeMillis()) / 1000.0 > AppProperties.config.maxTimeBetweenHealthUpdatesInSeconds)
+        .map(x => (x._1, (System.currentTimeMillis() - x._2) / 1000.0))
+        .filter(x => x._2 > AppProperties.config.maxTimeBetweenHealthUpdatesInSeconds)
         .map(x => {
           processIdToTask(
             ProcessId(DUMMY_JOB, DUMMY_BATCH_NR),
@@ -123,6 +124,7 @@ case class BaseTaskOverviewService(jobStateReader: JobStateReader,
             AppProperties.config.node_hash
           )
         })
+        .tap(task => ZIO.logDebug(s"node health remove task: $task"))
         .runCollect
     } yield tasks
   }
