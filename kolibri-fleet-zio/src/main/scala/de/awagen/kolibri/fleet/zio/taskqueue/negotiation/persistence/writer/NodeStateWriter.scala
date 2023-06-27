@@ -23,4 +23,6 @@ trait NodeStateWriter {
 
   def persistStatusUpdate: Task[Unit]
 
+  def removeNodeState(nodeHash: String): Task[Unit]
+
 }

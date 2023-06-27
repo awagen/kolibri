@@ -29,4 +29,6 @@ trait TaskOverviewService {
 
   def getBatchProcessingTasks(openJobsSnapshot: OpenJobsSnapshot, maxNrTasks: Int): zio.Task[Seq[Task]]
 
+  def getNodeHealthRemoveTasks: zio.Task[Seq[Task]]
+
 }

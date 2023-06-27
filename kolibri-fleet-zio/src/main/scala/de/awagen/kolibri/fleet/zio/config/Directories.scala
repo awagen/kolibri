@@ -114,6 +114,13 @@ object Directories {
 
     def nodeStateBaseFolder: String = AppProperties.config.nodeHealthBaseFolder
 
+    /**
+     * Get relative path for node state file
+     */
+    def nodeStateFile(nodeHash: String): String = {
+      s"${Directories.NodeStates.nodeStateBaseFolder.stripSuffix("/")}/$nodeHash}"
+    }
+
   }
 
   def jobSubFolder(jobId: String, subFolder: String, isOpenJob: Boolean): String = {

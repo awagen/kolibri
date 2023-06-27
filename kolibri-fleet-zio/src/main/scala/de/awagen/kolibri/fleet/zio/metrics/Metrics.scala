@@ -35,7 +35,7 @@ object Metrics {
     /**
      * Effect to calculate memory usage.
      *
-     * To set a gauge metric, can just prepend the effect with  '@@ Metric.gauge("kolibri_memory_usage")'
+     * To set a gauge metric, can just prepend the effect with  '@@ Metric.gauge("kolibri_memory_usage")' or similar
      */
     def memoryUsage: ZIO[Any, Nothing, Double] = {
       import java.lang.Runtime._
@@ -47,10 +47,12 @@ object Metrics {
     /**
      * Regarding distinct jvm management beans and provided info:
      * e.g https://www.baeldung.com/java-metrics
+     *
+     * To set gauge metric, can just prepend the effect with '@@ Metric.gauge("kolibri_avg_load")' or similar
      */
     def avgSystemLoad: ZIO[Any, Nothing, Double] = {
       val bean = ManagementFactory.getOperatingSystemMXBean
-      ZIO.succeed(bean.getSystemLoadAverage) @@ Metric.gauge("kolibri_avg_load")
+      ZIO.succeed(bean.getSystemLoadAverage)
     }
 
     def getAvailableProcessors: Task[Int] = {
@@ -59,62 +61,78 @@ object Metrics {
 
     /**
      * Initial usage: heap memory the JVM requests from the OS on startup
+     * Value given in MB
      */
-    def getInitialHeapMemory: Task[Long] = {
+    def getInitialHeapMemory: Task[Double] = {
       ZIO.attempt({
         ManagementFactory.getMemoryMXBean.getHeapMemoryUsage.getInit
-      })
+      }).map(_ / (1024.0 * 1024.0))
     }
 
-    def getInitialNonHeapMemory: Task[Long] = {
+    /**
+     * Value given in MB
+     */
+    def getInitialNonHeapMemory: Task[Double] = {
       ZIO.attempt({
         ManagementFactory.getMemoryMXBean.getNonHeapMemoryUsage.getInit
-      })
+      }).map(_ / (1024.0 * 1024.0))
     }
 
     /**
      * Current non-heap memory used
+     * Value given in MB
      */
-    def getUsedHeapMemory: Task[Long] = {
+    def getUsedHeapMemory: Task[Double] = {
       ZIO.attempt({
         ManagementFactory.getMemoryMXBean.getHeapMemoryUsage.getUsed
-      })
+      }).map(_ / (1024.0 * 1024.0))
     }
 
-    def getUsedNonHeapMemory: Task[Long] = {
+    /**
+     * Value given in MB
+     */
+    def getUsedNonHeapMemory: Task[Double] = {
       ZIO.attempt({
         ManagementFactory.getMemoryMXBean.getNonHeapMemoryUsage.getUsed
-      })
+      }).map(_ / (1024.0 * 1024.0))
     }
 
     /**
-     * Heap memory guaranteed to be available to JVM
+     * Heap memory guaranteed to be available to JVM.
+     * Value given in MB
      */
-    def getCommittedHeapMemory: Task[Long] = {
+    def getCommittedHeapMemory: Task[Double] = {
       ZIO.attempt({
         ManagementFactory.getMemoryMXBean.getHeapMemoryUsage.getCommitted
-      })
-    }
-
-    def getCommittedNonHeapMemory: Task[Long] = {
-      ZIO.attempt({
-        ManagementFactory.getMemoryMXBean.getNonHeapMemoryUsage.getCommitted
-      })
+      }).map(_ / (1024.0 * 1024.0))
     }
 
     /**
-     * Max heap memory available to the JVM
+     * Value given in MB
      */
-    def getMaxHeapMemory: Task[Long] = {
+    def getCommittedNonHeapMemory: Task[Double] = {
       ZIO.attempt({
-        ManagementFactory.getMemoryMXBean.getHeapMemoryUsage.getMax
-      })
+        ManagementFactory.getMemoryMXBean.getNonHeapMemoryUsage.getCommitted
+      }).map(_ / (1024.0 * 1024.0))
     }
 
-    def getMaxNonHeapMemory: Task[Long] = {
+    /**
+     * Max heap memory available to the JVM.
+     * Value given in MB.
+     */
+    def getMaxHeapMemory: Task[Double] = {
+      ZIO.attempt({
+        ManagementFactory.getMemoryMXBean.getHeapMemoryUsage.getMax
+      }).map(_ / (1024.0 * 1024.0))
+    }
+
+    /**
+     * Value given in MB.
+     */
+    def getMaxNonHeapMemory: Task[Double] = {
       ZIO.attempt({
         ManagementFactory.getMemoryMXBean.getNonHeapMemoryUsage.getMax
-      })
+      }).map(_ / (1024.0 * 1024.0))
     }
 
 

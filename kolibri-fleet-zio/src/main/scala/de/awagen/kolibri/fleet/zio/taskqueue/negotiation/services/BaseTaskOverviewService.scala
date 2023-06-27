@@ -19,10 +19,11 @@ package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services
 
 import de.awagen.kolibri.fleet.zio.config.AppProperties
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.TaskTopics
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.TaskTopics.TaskTopic
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.{JobStateReader, WorkStateReader}
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services.ClaimBasedTaskPlannerService.DUMMY_BATCH_NR
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.TaskTopics.{NodeHealthRemovalTask, TaskTopic}
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.{JobStateReader, NodeStateReader, WorkStateReader}
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services.ClaimBasedTaskPlannerService.{DUMMY_BATCH_NR, DUMMY_JOB}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.JobStates.OpenJobsSnapshot
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ProcessingStateUtils.timeStringToTimeInMillis
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.TaskStates._
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.{ProcessId, ProcessingState, ProcessingStateUtils}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.BatchProcessingStates
@@ -30,7 +31,8 @@ import zio.ZIO
 import zio.stream.ZStream
 
 case class BaseTaskOverviewService(jobStateReader: JobStateReader,
-                                   workStateReader: WorkStateReader) extends TaskOverviewService {
+                                   workStateReader: WorkStateReader,
+                                   nodeStateReader: NodeStateReader) extends TaskOverviewService {
 
   private[services] def processIdToTask(processId: ProcessId,
                                         taskTopic: TaskTopic,
@@ -46,7 +48,7 @@ case class BaseTaskOverviewService(jobStateReader: JobStateReader,
   }
 
   /**
-   * TODO: note that this call returns at maximum maxNrTasks tasks corresponding
+   * Note that this call returns at maximum maxNrTasks tasks corresponding
    * to a batch execution.
    * Note that it is on the handling service (e.g claim-based or just executing)
    * to decide how many can actually be used, taking into account
@@ -106,5 +108,22 @@ case class BaseTaskOverviewService(jobStateReader: JobStateReader,
     } yield tasks
   }
 
-
+  override def getNodeHealthRemoveTasks: zio.Task[Seq[Task]] = {
+    for {
+      nodesStates <- nodeStateReader.readNodeStates
+      tasks <- ZStream.fromIterable(nodesStates)
+        .map(healthState => {
+          (healthState.nodeId, timeStringToTimeInMillis(healthState.lastUpdate))
+        })
+        .filter(x => (x._2 - System.currentTimeMillis()) / 1000.0 > AppProperties.config.maxTimeBetweenHealthUpdatesInSeconds)
+        .map(x => {
+          processIdToTask(
+            ProcessId(DUMMY_JOB, DUMMY_BATCH_NR),
+            NodeHealthRemovalTask(x._1),
+            AppProperties.config.node_hash
+          )
+        })
+        .runCollect
+    } yield tasks
+  }
 }

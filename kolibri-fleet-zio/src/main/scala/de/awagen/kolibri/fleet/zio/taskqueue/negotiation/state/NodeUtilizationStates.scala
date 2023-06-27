@@ -23,11 +23,12 @@ object NodeUtilizationStates {
   case class CpuInfo(numCores: Int,
                      cpuLoad: Double)
 
-  case class MemoryInfo(used: Long,
-                        committed: Long,
-                        max: Long)
+  case class MemoryInfo(used: Double,
+                        committed: Double,
+                        max: Double)
 
-  case class NodeUtilizationState(nodeId: String,
+  case class NodeUtilizationState(lastUpdate: String,
+                                  nodeId: String,
                                   cpuInfo: CpuInfo,
                                   heapMemoryInfo: MemoryInfo,
                                   nonHeapMemoryInfo: MemoryInfo)
@@ -39,7 +40,7 @@ object NodeUtilizationStates {
 
     implicit val heapInfoFormat: RootJsonFormat[MemoryInfo] = jsonFormat3(MemoryInfo)
     implicit val cpuInfoFormat: RootJsonFormat[CpuInfo] = jsonFormat2(CpuInfo)
-    implicit val nodeUtilizationStateFormat: RootJsonFormat[NodeUtilizationState] = jsonFormat4(NodeUtilizationState)
+    implicit val nodeUtilizationStateFormat: RootJsonFormat[NodeUtilizationState] = jsonFormat5(NodeUtilizationState)
 
   }
 

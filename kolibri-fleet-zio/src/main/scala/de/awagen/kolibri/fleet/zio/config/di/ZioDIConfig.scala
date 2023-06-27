@@ -87,14 +87,15 @@ object ZioDIConfig {
     } yield FileStorageWorkStateWriter(reader, writer)
   }
 
-  val taskOverviewServiceLayer: ZLayer[WorkStateReader with JobStateReader, Nothing, BaseTaskOverviewService] = ZLayer {
+  val taskOverviewServiceLayer: ZLayer[WorkStateReader with JobStateReader with NodeStateReader, Nothing, BaseTaskOverviewService] = ZLayer {
     for {
       jobStateReader <- ZIO.service[JobStateReader]
       workStateReader <- ZIO.service[WorkStateReader]
-    } yield BaseTaskOverviewService(jobStateReader, workStateReader)
+      nodeStateReader <- ZIO.service[NodeStateReader]
+    } yield BaseTaskOverviewService(jobStateReader, workStateReader, nodeStateReader)
   }
 
-  val taskPlannerServiceLayer: ZLayer[ClaimReader with ClaimWriter with WorkStateReader with WorkStateWriter with JobStateReader with JobStateWriter, Nothing, TaskPlannerService] = ZLayer {
+  val taskPlannerServiceLayer: ZLayer[ClaimReader with ClaimWriter with WorkStateReader with WorkStateWriter with JobStateReader with JobStateWriter with NodeStateWriter, Nothing, TaskPlannerService] = ZLayer {
     for {
       claimReader <- ZIO.service[ClaimReader]
       claimWriter <- ZIO.service[ClaimWriter]
@@ -102,7 +103,8 @@ object ZioDIConfig {
       workStateWriter <- ZIO.service[WorkStateWriter]
       jobStateReader <- ZIO.service[JobStateReader]
       jobStateWriter <- ZIO.service[JobStateWriter]
-    } yield ClaimBasedTaskPlannerService(claimReader, claimWriter, workStateReader, workStateWriter, jobStateReader, jobStateWriter)
+      nodeStateWriter <- ZIO.service[NodeStateWriter]
+    } yield ClaimBasedTaskPlannerService(claimReader, claimWriter, workStateReader, workStateWriter, jobStateReader, jobStateWriter, nodeStateWriter)
   }
 
   val workHandlerServiceLayer: ZLayer[ClaimReader with WorkStateReader with WorkStateWriter, Nothing, WorkHandlerService] = ZLayer {

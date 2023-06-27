@@ -21,7 +21,8 @@ import de.awagen.kolibri.fleet.zio.config.{AppProperties, Directories}
 import de.awagen.kolibri.fleet.zio.metrics.Metrics
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.format.FileFormats.NodeHealthFileNameFormat
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.NodeUtilizationStates.NodeUtilizationStatesImplicits.nodeUtilizationStateFormat
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.NodeUtilizationStates.{CpuInfo, MemoryInfo, NodeUtilizationState}
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.NodeUtilizationStates._
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ProcessingStateUtils
 import de.awagen.kolibri.storage.io.writer.Writers.Writer
 import spray.json.enrichAny
 import zio.{Task, ZIO}
@@ -40,6 +41,7 @@ case class FileStorageNodeStateWriter(writer: Writer[String, String, _]) extends
       nonHeapMax <- Metrics.CalculationsWithMetrics.getMaxNonHeapMemory
       numProcessors <- Metrics.CalculationsWithMetrics.getAvailableProcessors
     } yield NodeUtilizationState(
+      ProcessingStateUtils.timeInMillisToFormattedTime(System.currentTimeMillis()),
       AppProperties.config.node_hash,
       CpuInfo(numProcessors, avgLoad),
       MemoryInfo(heapUsed, heapCommitted, heapMax),
@@ -54,5 +56,10 @@ case class FileStorageNodeStateWriter(writer: Writer[String, String, _]) extends
       nodeStatus <- getNodeStatus
       _ <- ZIO.attemptBlockingIO(writer.write(nodeStatus.toJson.toString(), s"${nodeStateBaseFolder.stripSuffix("/")}/$fileName"))
     } yield ()
+  }
+
+  override def removeNodeState(nodeHash: String): Task[Unit] = {
+    ZIO.fromEither(writer.delete(Directories.NodeStates.nodeStateFile(nodeHash)))
+      .map(_ => ())
   }
 }

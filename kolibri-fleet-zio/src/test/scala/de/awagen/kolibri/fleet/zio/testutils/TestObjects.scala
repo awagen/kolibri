@@ -27,16 +27,16 @@ import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.BatchAggregationInfo
 import de.awagen.kolibri.fleet.zio.execution.ZIOTasks.SimpleWaitTask
 import de.awagen.kolibri.fleet.zio.execution.aggregation.Aggregators.countingAggregator
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.directives.JobDirectives
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.{FileStorageClaimReader, FileStorageJobStateReader, FileStorageWorkStateReader, JobStateReader}
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer.{FileStorageClaimWriter, FileStorageJobStateWriter, FileStorageWorkStateWriter, JobStateWriter}
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services.{ClaimBasedTaskPlannerService, BaseTaskOverviewService, BaseWorkHandlerService}
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader._
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer._
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services.{BaseTaskOverviewService, BaseWorkHandlerService, ClaimBasedTaskPlannerService}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.JobStates.{JobStateSnapshot, OpenJobsSnapshot}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ProcessingStatus.ProcessingStatus
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state._
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.BatchProcessingStates
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.utils.DataTypeUtils
-import de.awagen.kolibri.storage.io.reader.{LocalDirectoryReader, LocalResourceFileReader}
-import de.awagen.kolibri.storage.io.writer.Writers.FileWriter
+import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, LocalDirectoryReader, LocalResourceFileReader}
+import de.awagen.kolibri.storage.io.writer.Writers.{FileWriter, Writer}
 import org.mockito.ArgumentMatchers
 import org.mockito.Mockito.{doNothing, doReturn}
 import org.scalatestplus.mockito.MockitoSugar.mock
@@ -61,10 +61,14 @@ object TestObjects {
     fromClassPath = false
   )
 
-  def jobStateReader(baseFolder: String): JobStateReader = FileStorageJobStateReader(
+  def overviewReader(baseFolder: String): DataOverviewReader = {
     LocalDirectoryReader(
       baseDir = baseFolder,
-      baseFilenameFilter = _ => true),
+      baseFilenameFilter = _ => true)
+  }
+
+  def jobStateReader(baseFolder: String): JobStateReader = FileStorageJobStateReader(
+    overviewReader(baseFolder),
     reader(baseFolder)
   )
 
@@ -84,17 +88,35 @@ object TestObjects {
     reader(baseResourceFolder)
   )
 
-  def workStateWriter(writer: FileWriter[String, Unit]) = FileStorageWorkStateWriter(
+  def workStateWriter(writer: Writer[String, String, Unit]) = FileStorageWorkStateWriter(
     reader(baseResourceFolder),
+    writer
+  )
+
+  def nodeStateReader = FileStorageNodeStateReader(
+    reader(baseResourceFolder),
+    overviewReader(baseResourceFolder)
+  )
+
+  def nodeStateWriter(writer: Writer[String, String, Unit]) = FileStorageNodeStateWriter(
     writer
   )
 
   def taskOverviewService(jobStateReaderInst: JobStateReader = jobStateReader(baseResourceFolder)) = BaseTaskOverviewService(
     jobStateReaderInst,
-    workStateReader
+    workStateReader,
+    nodeStateReader
   )
 
-  def claimService(writer: FileWriter[String, Unit], jobStateReaderInst: JobStateReader = jobStateReader(baseResourceFolder)) = ClaimBasedTaskPlannerService(claimReader, claimWriter(writer), workStateReader, workStateWriter(writer), jobStateReaderInst, jobStateWriter(writer))
+  def claimService(writer: FileWriter[String, Unit], jobStateReaderInst: JobStateReader = jobStateReader(baseResourceFolder)) = ClaimBasedTaskPlannerService(
+    claimReader,
+    claimWriter(writer),
+    workStateReader,
+    workStateWriter(writer),
+    jobStateReaderInst,
+    jobStateWriter(writer),
+    nodeStateWriter(writer)
+  )
 
   def workHandler[U <: TaggedWithType with DataPoint[Any], V <: WithCount](writer: FileWriter[String, Unit],
                                                                            jobBatchQueueSize: Int = 5,

@@ -21,7 +21,7 @@ import de.awagen.kolibri.fleet.zio.config.AppProperties
 import de.awagen.kolibri.fleet.zio.config.AppProperties.config.http_server_port
 import de.awagen.kolibri.fleet.zio.config.di.ZioDIConfig
 import de.awagen.kolibri.fleet.zio.metrics.Metrics.MetricTypes.taskManageCycleInvokeCount
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.{JobStateReader, WorkStateReader}
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.{JobStateReader, NodeStateReader, WorkStateReader}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer.NodeStateWriter
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services.{TaskOverviewService, TaskPlannerService, WorkHandlerService}
 import zio._
@@ -58,6 +58,9 @@ object App extends ZIOAppDefault {
         .flatMap(nodeHash => ZStream.fromIterableZIO(taskOverviewService.getTaskResetTasks(processingStates, nodeHash)))
         .runCollect
 
+      // tasks for cleanup of orphaned node health states
+      nodeStateRemovalTasks <- taskOverviewService.getNodeHealthRemoveTasks
+
       _ <- ZIO.logDebug(s"APP: Open tasks for planning:")
       _ <- ZIO.logDebug(s"""### TASK RESET TASK:\n${taskResetTasks.mkString("\n")}""")
       _ <- ZIO.logDebug(s"""### TASK PROCESSING TASKS:\n${batchProcessingTasks.mkString("\n")}""")
@@ -66,6 +69,7 @@ object App extends ZIOAppDefault {
       _ <- taskPlannerService.planTasks(taskResetTasks)
       _ <- taskPlannerService.planTasks(batchProcessingTasks)
       _ <- taskPlannerService.planTasks(jobToDoneTasks)
+      _ <- taskPlannerService.planTasks(nodeStateRemovalTasks)
 
     } yield ()
   }

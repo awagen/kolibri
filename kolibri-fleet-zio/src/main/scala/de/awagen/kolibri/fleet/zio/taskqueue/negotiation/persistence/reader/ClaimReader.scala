@@ -89,6 +89,13 @@ object ClaimReader {
 
     }
 
+    sealed case class NodeHealthRemovalTask(nodeHash: String) extends TaskTopic {
+
+      val id: String = "NODE_HEALTH_REMOVE"
+
+      override def toString: String = id
+    }
+
     /**
      * Placeholder which basically corresponds to no task
      */

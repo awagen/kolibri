@@ -169,7 +169,7 @@ object AppProperties {
     // base folder where jobs are stored
     val jobBaseFolder: String = baseConfig.getString("kolibri.job.basefolder").stripPrefix("/").stripSuffix("/")
     // base folder for node health
-    val nodeHealthBaseFolder: String = baseConfig.getString("kolibri.nodeHealthBaseFolder").stripPrefix("/").stripSuffix("/")
+    val nodeHealthBaseFolder: String = baseConfig.getString("kolibri.health.nodeHealthBaseFolder").stripPrefix("/").stripSuffix("/")
     // the base folder where the open (not yet fully processed) jobs are stored (every job has own folder
     // named by [jobName]_[timePlacedInMillis]
     val openJobBaseFolder: String = s"$jobBaseFolder/${baseConfig.getString("kolibri.job.openJobsSubfolder").stripPrefix("/").stripSuffix("/")}"
@@ -200,6 +200,7 @@ object AppProperties {
     val maxRetriesPerBatchTask: Int = baseConfig.getInt("kolibri.execution.maxBatchTaskRetries")
 
     val maxTimeBetweenProgressUpdatesInSeconds: Int = baseConfig.getInt("kolibri.execution.maxTimeBetweenUpdatesInSeconds")
+    val maxTimeBetweenHealthUpdatesInSeconds: Int = baseConfig.getInt("kolibri.health.maxTimeBetweenHealthUpdatesInSeconds")
 
   }
 

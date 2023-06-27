@@ -22,7 +22,7 @@ import de.awagen.kolibri.fleet.zio.config.AppProperties.config.maxNrJobsClaimed
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.TaskTopics
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.TaskTopics.TaskTopic
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.{ClaimReader, JobStateReader, WorkStateReader}
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer.{ClaimWriter, JobStateWriter, WorkStateWriter}
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer.{ClaimWriter, JobStateWriter, NodeStateWriter, WorkStateWriter}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services.ClaimBasedTaskPlannerService._
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.JobStates.OpenJobsSnapshot
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ProcessId
@@ -35,6 +35,7 @@ import zio.stream.{ZSink, ZStream}
 object ClaimBasedTaskPlannerService {
 
   val DUMMY_BATCH_NR: Int = -1
+  val DUMMY_JOB: String = "DUMMY"
 
   private def isCurrentNodeClaim(claim: Task): Boolean = {
     claim.nodeId == AppProperties.config.node_hash
@@ -53,7 +54,8 @@ case class ClaimBasedTaskPlannerService(claimReader: ClaimReader,
                                         workStateReader: WorkStateReader,
                                         workStateWriter: WorkStateWriter,
                                         jobStateReader: JobStateReader,
-                                        jobStateWriter: JobStateWriter) extends TaskPlannerService {
+                                        jobStateWriter: JobStateWriter,
+                                        nodeStateWriter: NodeStateWriter) extends TaskPlannerService {
 
   /**
    * Given a range of claims, file all of them (e.g "apply for eligibility to perform the claimed task")
@@ -74,6 +76,15 @@ case class ClaimBasedTaskPlannerService(claimReader: ClaimReader,
   }
 
   /**
+   * Filing claim for removing a health state.
+   * Can happen in case the health state is too old, in which case we need to assume
+   * that the node is down or non-functional
+   */
+  private[services] def fileNodeHealthRemovalClaim(processId: ProcessId, nodeHash: String): zio.Task[ClaimFilingStatus] = {
+    claimUpdater.fileClaim(processId, TaskTopics.NodeHealthRemovalTask(nodeHash))
+  }
+
+  /**
    * Filing claim for moving the batch status data to done
    */
   private[services] def fileJobToDoneClaim(jobId: String): zio.Task[ClaimFilingStatus] = {
@@ -89,6 +100,8 @@ case class ClaimBasedTaskPlannerService(claimReader: ClaimReader,
         fileBatchProcessingClaims(Seq(ProcessId(claim.jobId, claim.batchNr)))
       case TaskTopics.JobTaskResetTask(nodeHash) =>
         fileBatchResetClaim(ProcessId(claim.jobId, claim.batchNr), nodeHash).map(_ => ())
+      case TaskTopics.NodeHealthRemovalTask(nodeHash) =>
+        fileNodeHealthRemovalClaim(ProcessId(claim.jobId, claim.batchNr), nodeHash).map(_ => ())
       case TaskTopics.JobWrapUpTask =>
         fileJobToDoneClaim(claim.jobId).map(_ => ())
     }
@@ -157,6 +170,9 @@ case class ClaimBasedTaskPlannerService(claimReader: ClaimReader,
           // clean up all claims for this particular task
           _ <- deleteAllClaimsForMatchingJobAndBatchAndTaskTopic(claim)
         } yield ()
+      case TaskTopics.NodeHealthRemovalTask(nodeHash) =>
+        // simply remove the node health file
+        nodeStateWriter.removeNodeState(nodeHash)
       case TaskTopics.JobWrapUpTask =>
         for {
           // remove all claims (before moving the folder for a clean claim state)
