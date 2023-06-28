@@ -18,6 +18,8 @@
 package de.awagen.kolibri.fleet.zio.io.json
 
 import de.awagen.kolibri.datatypes.io.json.EnumerationJsonProtocol.EnumerationProtocol
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.requests.RequestMode
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.requests.RequestMode.RequestMode
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ProcessingStatus
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ProcessingStatus.ProcessingStatus
 import spray.json.{DefaultJsonProtocol, DeserializationException, JsString, JsValue}
@@ -30,6 +32,17 @@ object EnumerationJsonProtocol extends DefaultJsonProtocol {
       json match {
         case JsString(txt) => ProcessingStatus.withName(txt)
         case e => throw DeserializationException(s"Expected a value from ProcessingStatus but got value $e")
+      }
+    }
+
+  }
+
+  implicit object requestModeFormat extends EnumerationProtocol[RequestMode] {
+
+    override def read(json: JsValue): RequestMode = {
+      json match {
+        case JsString(txt) => RequestMode.withName(txt)
+        case e => throw DeserializationException(s"Expected a value from RequestMode but got value $e")
       }
     }
 

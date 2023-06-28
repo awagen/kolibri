@@ -34,8 +34,7 @@ import de.awagen.kolibri.definitions.io.json.MetricFunctionJsonProtocol.{MetricF
 import de.awagen.kolibri.definitions.processing.JobMessages.SearchEvaluationDefinition
 import de.awagen.kolibri.definitions.processing.ProcessingMessages.ProcessingMessage
 import de.awagen.kolibri.definitions.processing.modifiers.ParameterValues.{ParameterValuesDefinition, ValueSeqGenDefinition, ValueType}
-import de.awagen.kolibri.definitions.processing.tagging.TaggingConfigurations
-import de.awagen.kolibri.definitions.processing.tagging.TaggingConfigurations.{BaseTaggingConfiguration, EitherThrowableOrTaggedWeaklyTypedMapStore, TaggedMetricRowStore, TaggedRequestTemplateStore}
+import de.awagen.kolibri.definitions.processing.tagging.TaggingConfigurations._
 import de.awagen.kolibri.definitions.resources.ResourceProvider
 import de.awagen.kolibri.definitions.usecase.searchopt.jobdefinitions.parts.ReservedStorageKeys.REQUEST_TEMPLATE_STORAGE_KEY
 import de.awagen.kolibri.definitions.usecase.searchopt.metrics._
@@ -43,7 +42,6 @@ import de.awagen.kolibri.definitions.usecase.searchopt.parse.JsonSelectors.Plain
 import de.awagen.kolibri.definitions.usecase.searchopt.parse.TypedJsonSelectors._
 import de.awagen.kolibri.definitions.usecase.searchopt.parse.{JsonSelectors, ParsingConfig}
 import de.awagen.kolibri.definitions.usecase.searchopt.provider.{FileBasedJudgementProvider, JudgementProvider}
-import de.awagen.kolibri.fleet.zio.execution.JobMessagesImplicits.RequestAndParsingResultTaggerConfig
 import de.awagen.kolibri.fleet.zio.execution.TaskFactory.{CalculateMetricsTask, RequestJsonAndParseValuesTask}
 import de.awagen.kolibri.fleet.zio.resources.NodeResourceProvider
 import de.awagen.kolibri.storage.io.reader.LocalResourceFileReader
@@ -151,7 +149,7 @@ object TaskTestObjects {
 
   // TODO: move the below part to JobDefinitionTestObjects or the like
 
-  def initTaggingConfig(queryParam: String): SerializableConsumer[TaggedRequestTemplateStore] = TaggingConfigurations.requestByParameterTagger(queryParam, AGGREGATION, _ => true, extend = false)
+  def initTaggingConfig(queryParam: String): SerializableConsumer[TaggedRequestTemplateStore] = requestByParameterTagger(queryParam, AGGREGATION, _ => true, extend = false)
 
   val processedTaggerConfig: SerializableConsumer[EitherThrowableOrTaggedWeaklyTypedMapStore] = _ => ()
   val resultTaggerConfig: SerializableConsumer[TaggedMetricRowStore] = _ => ()

@@ -210,4 +210,37 @@ object TaggingConfigurationsJsonProtocol extends DefaultJsonProtocol {
     RESULT_TAGGER_KEY
   )
 
+
+  implicit val requestAndParsingResultTaggerConfigFormat: RootJsonFormat[RequestAndParsingResultTaggerConfig] = jsonFormat2(RequestAndParsingResultTaggerConfig)
+  implicit object RequestAndParsingResultTaggerConfigFormat extends RootJsonFormat[RequestAndParsingResultTaggerConfig] with WithStructDef {
+
+    val REQUEST_TAGGER_KEY = "requestTagger"
+    val PARSING_RESULT_TAGGER_KEY = "parsingResultTagger"
+
+    override def write(obj: RequestAndParsingResultTaggerConfig): JsValue =
+      requestAndParsingResultTaggerConfigFormat.write(obj)
+    override def read(json: JsValue): RequestAndParsingResultTaggerConfig =
+      requestAndParsingResultTaggerConfigFormat.read(json)
+
+    override def structDef: StructDef[_] = NestedFieldSeqStructDef(
+      Seq(
+        FieldDef(
+          StringConstantStructDef(REQUEST_TAGGER_KEY),
+          RequestTemplateTaggerFuncFormat.structDef,
+          required = true,
+          description = "Tagger setting tags based on RequestTemplate."
+        ),
+        FieldDef(
+          StringConstantStructDef(PARSING_RESULT_TAGGER_KEY),
+          MapKeyTaggerFuncFormat.structDef,
+          required = true,
+          description = "Tagger setting tags based on tuple of request and parsing result and request template" +
+            " (Either[Throwable, WeaklyTypedMap[String]], RequestTemplate)."
+        )
+      ),
+      Seq.empty
+    )
+  }
+
+
 }

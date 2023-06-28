@@ -36,11 +36,11 @@ import de.awagen.kolibri.definitions.processing.ProcessingMessages.ProcessingMes
 import de.awagen.kolibri.definitions.processing.failure.TaskFailType
 import de.awagen.kolibri.definitions.processing.failure.TaskFailType.TaskFailType
 import de.awagen.kolibri.definitions.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
+import de.awagen.kolibri.definitions.processing.tagging.TaggingConfigurations.RequestAndParsingResultTaggerConfig
 import de.awagen.kolibri.definitions.usecase.searchopt.jobdefinitions.parts.ReservedStorageKeys.REQUEST_TEMPLATE_STORAGE_KEY
 import de.awagen.kolibri.definitions.usecase.searchopt.metrics.MetricRowFunctions.throwableToMetricRowResponse
 import de.awagen.kolibri.definitions.usecase.searchopt.parse.ParsingConfig
 import de.awagen.kolibri.fleet.zio.config.AppProperties
-import de.awagen.kolibri.fleet.zio.execution.JobMessagesImplicits.RequestAndParsingResultTaggerConfig
 import de.awagen.kolibri.fleet.zio.execution.TaskFactory.RequestJsonAndParseValuesTask.liveHttpClient
 import de.awagen.kolibri.fleet.zio.http.client.request.RequestTemplateImplicits.RequestTemplateToZIOHttpRequest
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.processing.TaskWorker.INITIAL_DATA_KEY

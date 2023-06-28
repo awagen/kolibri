@@ -35,6 +35,7 @@ import de.awagen.kolibri.fleet.zio.config.AppConfig
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.BatchAggregationInfo
 import de.awagen.kolibri.fleet.zio.execution.TaskFactory.RequestJsonAndParseValuesTask.liveHttpClient
 import de.awagen.kolibri.fleet.zio.execution.TaskFactory._
+import de.awagen.kolibri.definitions.processing.tagging.TaggingConfigurations.RequestAndParsingResultTaggerConfig
 import zio.ZLayer
 import zio.http.Client
 
@@ -48,8 +49,6 @@ object JobMessagesImplicits {
 
   }
 
-  case class RequestAndParsingResultTaggerConfig(requestTagger: SerializableConsumer[ProcessingMessage[RequestTemplate]],
-                                                 parsingResultTagger: SerializableConsumer[ProcessingMessage[(Either[Throwable, WeaklyTypedMap[String]], RequestTemplate)]])
 
   implicit class SearchEvaluationImplicits(eval: SearchEvaluationDefinition) extends ZIOJobDefinitionConvertible {
 
