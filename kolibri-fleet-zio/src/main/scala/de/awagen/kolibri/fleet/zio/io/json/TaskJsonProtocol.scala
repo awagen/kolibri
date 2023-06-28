@@ -55,6 +55,11 @@ object TaskJsonProtocol extends DefaultJsonProtocol {
   private[json] val REQUEST_MODE_KEY = "requestMode"
 
 
+  /**
+   * Json format for sequence of task whose success value is WeaklyTypedMap with key-type String.
+   * Sequence is used here to be able to provide multiple tasks if the related execution contains
+   * multiple steps.
+   */
   implicit object SeqTypedMapZIOTaskFormat extends JsonFormat[Seq[ZIOTask[WeaklyTypedMap[String]]]] with WithStructDef {
     override def read(json: JsValue): Seq[ZIOTask[WeaklyTypedMap[String]]] = json match {
       case spray.json.JsObject(fields) => fields(TYPE_KEY).convertTo[String] match {
