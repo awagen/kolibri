@@ -18,8 +18,10 @@
 package de.awagen.kolibri.fleet.zio.io.json
 
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
+import de.awagen.kolibri.datatypes.stores.immutable.MetricRow
 import de.awagen.kolibri.definitions.domain.Connections
-import de.awagen.kolibri.fleet.zio.execution.TaskFactory.RequestJsonAndParseValuesTask
+import de.awagen.kolibri.definitions.usecase.searchopt.metrics.Calculations.JudgementsFromResourceIRMetricsCalculations
+import de.awagen.kolibri.fleet.zio.execution.TaskFactory.{CalculateMetricsTask, RequestJsonAndParseValuesTask}
 import de.awagen.kolibri.fleet.zio.execution.ZIOTask
 import de.awagen.kolibri.fleet.zio.io.json.TaskJsonProtocol._
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.requests.RequestMode
@@ -85,6 +87,50 @@ class TaskJsonProtocolSpec extends UnitTestSpec {
       |"failKeyName": "failTestKey"
       |}""".stripMargin
 
+  val calculateMetricsTaskJson =
+    """
+      |{
+      |  "type": "METRIC_CALCULATION",
+      |  "parsedDataKey": "parsedFields",
+      |  "calculations": [
+      |    {
+      |      "type": "IR_METRICS",
+      |      "queryParamName": "q",
+      |      "productIdsKey": "productIds",
+      |      "judgementsResource": {
+      |        "resourceType": "JUDGEMENT_PROVIDER",
+      |        "identifier": "ident1"
+      |      },
+      |      "metricsCalculation": {
+      |        "metrics": [
+      |          {"name": "DCG_10", "function": {"type": "DCG", "k": 10}},
+      |          {"name": "NDCG_10", "function": {"type": "NDCG", "k": 10}},
+      |          {"name": "PRECISION_k=4&t=0.1", "function": {"type": "PRECISION", "k": 4, "threshold":  0.1}},
+      |          {"name": "RECALL_k=4&t=0.1", "function": {"type": "RECALL", "k": 4, "threshold":  0.1}},
+      |          {"name": "ERR_10", "function": {"type": "ERR", "k": 10}}
+      |        ],
+      |        "judgementHandling": {
+      |          "validations": [
+      |            "EXIST_RESULTS",
+      |            "EXIST_JUDGEMENTS"
+      |          ],
+      |          "handling": "AS_ZEROS"
+      |        }
+      |      }
+      |    }
+      |  ],
+      |  "metricNameToAggregationTypeMapping": {
+      |    "DCG_10": "DOUBLE_AVG",
+      |    "NDCG_10": "DOUBLE_AVG",
+      |    "PRECISION_k=4&t=0.1": "DOUBLE_AVG",
+      |    "RECALL_k=4&t=0.1": "DOUBLE_AVG",
+      |    "ERR_10": "DOUBLE_AVG"
+      |  },
+      |  "excludeParamsFromMetricRow": [],
+      |  "successKeyName": "testSuccessKey1",
+      |  "failKeyName": "testFailKey1"
+      |}""".stripMargin
+
 
   val connection1 = Connections.Connection("test-service-1", 80, useHttps = false, None)
   val connection2 = Connections.Connection("test-service-2", 81, useHttps = false, None)
@@ -106,6 +152,18 @@ class TaskJsonProtocolSpec extends UnitTestSpec {
       taskDefRequestAll(1).connectionSupplier() mustBe connection2
       taskDefRequestAll(2).connectionSupplier() mustBe connection3
       Set(connection1, connection2, connection3).contains(taskDefDistribute.head.connectionSupplier())
+    }
+
+    "correctly parse metrics calculation task" in {
+      // given, when
+      val task = calculateMetricsTaskJson.parseJson.convertTo[ZIOTask[MetricRow]]
+        .asInstanceOf[CalculateMetricsTask]
+      val calculations = task.calculations.asInstanceOf[Seq[JudgementsFromResourceIRMetricsCalculations]]
+      val expectedMetricNames = Set("DCG_10", "NDCG_10", "PRECISION_k=4&t=0.1", "RECALL_k=4&t=0.1", "ERR_10")
+      // then
+      calculations.size mustBe 1
+      calculations.head.names mustBe expectedMetricNames
+      task.metricNameToAggregationTypeMapping.keySet mustBe expectedMetricNames
     }
 
   }
