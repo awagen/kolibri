@@ -18,6 +18,8 @@
 package de.awagen.kolibri.fleet.zio.io.json
 
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
+import de.awagen.kolibri.definitions.domain.Connections
+import de.awagen.kolibri.fleet.zio.execution.TaskFactory.RequestJsonAndParseValuesTask
 import de.awagen.kolibri.fleet.zio.execution.ZIOTask
 import de.awagen.kolibri.fleet.zio.io.json.TaskJsonProtocol._
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.requests.RequestMode
@@ -66,6 +68,11 @@ class TaskJsonProtocolSpec extends UnitTestSpec {
       |    "host": "test-service-2",
       |    "port": 81,
       |    "useHttps": false
+      |  },
+      |  {
+      |    "host": "test-service-3",
+      |    "port": 81,
+      |    "useHttps": false
       |  }
       |],
       |"requestMode": "##REQUEST_MODE_PLACEHOLDER",
@@ -79,15 +86,26 @@ class TaskJsonProtocolSpec extends UnitTestSpec {
       |}""".stripMargin
 
 
+  val connection1 = Connections.Connection("test-service-1", 80, useHttps = false, None)
+  val connection2 = Connections.Connection("test-service-2", 81, useHttps = false, None)
+  val connection3 = Connections.Connection("test-service-3", 81, useHttps = false, None)
+
+
   "TaskJsonProtocol" must {
 
     "correctly parse sequence of request and parse tasks" in {
       // given, when
-      val taskDefRequestAll = requestAndParseTaskJson.replace(REQUEST_MODE_PLACEHOLDER, RequestMode.REQUEST_ALL_CONNECTIONS.toString).parseJson.convertTo[Seq[ZIOTask[WeaklyTypedMap[String]]]]
-      val taskDefDistribute = requestAndParseTaskJson.replace(REQUEST_MODE_PLACEHOLDER, RequestMode.DISTRIBUTE_LOAD.toString).parseJson.convertTo[Seq[ZIOTask[WeaklyTypedMap[String]]]]
+      val taskDefRequestAll: Seq[RequestJsonAndParseValuesTask] = requestAndParseTaskJson.replace(REQUEST_MODE_PLACEHOLDER, RequestMode.REQUEST_ALL_CONNECTIONS.toString).parseJson.convertTo[Seq[ZIOTask[WeaklyTypedMap[String]]]]
+        .asInstanceOf[Seq[RequestJsonAndParseValuesTask]]
+      val taskDefDistribute: Seq[RequestJsonAndParseValuesTask] = requestAndParseTaskJson.replace(REQUEST_MODE_PLACEHOLDER, RequestMode.DISTRIBUTE_LOAD.toString).parseJson.convertTo[Seq[ZIOTask[WeaklyTypedMap[String]]]]
+        .asInstanceOf[Seq[RequestJsonAndParseValuesTask]]
       // then
-      taskDefRequestAll.size mustBe 2
+      taskDefRequestAll.size mustBe 3
       taskDefDistribute.size mustBe 1
+      taskDefRequestAll.head.connectionSupplier() mustBe connection1
+      taskDefRequestAll(1).connectionSupplier() mustBe connection2
+      taskDefRequestAll(2).connectionSupplier() mustBe connection3
+      Set(connection1, connection2, connection3).contains(taskDefDistribute.head.connectionSupplier())
     }
 
   }
