@@ -18,7 +18,7 @@
 package de.awagen.kolibri.definitions.io.json
 
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
-import de.awagen.kolibri.datatypes.values.Calculations.Calculation
+import de.awagen.kolibri.datatypes.values.Calculations.{Calculation, TwoInCalculation}
 import de.awagen.kolibri.definitions.directives.RetrievalDirective
 import de.awagen.kolibri.definitions.resources.{ResourceProvider, RetrievalError}
 import de.awagen.kolibri.definitions.testclasses.UnitTestSpec
@@ -68,6 +68,15 @@ class CalculationsJsonProtocolSpec extends UnitTestSpec {
       |}""".stripMargin.parseJson
 
 
+  val FROM_TWO_MAPS_JACCARD_CALCULATION: JsValue =
+    """{
+      |"type": "JACCARD_SIMILARITY",
+      |"name": "jaccard",
+      |"data1Key": "data1",
+      |"data2Key": "data2"
+      |}""".stripMargin.parseJson
+
+
 
   "FromMapCalculationsDoubleFormat" must {
     "correctly parse Calculation[WeaklyTypedMap[String], Any]" in {
@@ -80,6 +89,13 @@ class CalculationsJsonProtocolSpec extends UnitTestSpec {
     "correctly parse FromMapCalculation[Seq[Boolean], Any]" in {
       val calc = FROM_MAP_SEQ_BOOLEAN_TO_DOUBLE_CALCULATION.convertTo[Calculation[WeaklyTypedMap[String], Any]]
       calc.names mustBe Set("firstTrue")
+    }
+  }
+
+  "FromTwoMapsCalculationFormat" must {
+    "correctly parse jaccard calculation" in {
+      val calc = FROM_TWO_MAPS_JACCARD_CALCULATION.convertTo[TwoInCalculation[WeaklyTypedMap[String], WeaklyTypedMap[String], Any]]
+      calc.names mustBe Set("jaccard")
     }
   }
 

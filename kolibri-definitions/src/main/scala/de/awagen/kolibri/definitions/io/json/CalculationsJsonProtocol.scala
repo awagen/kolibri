@@ -21,32 +21,29 @@ import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
 import de.awagen.kolibri.datatypes.types.JsonStructDefs._
 import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
-import de.awagen.kolibri.datatypes.values.Calculations.Calculation
+import de.awagen.kolibri.datatypes.values.Calculations.{Calculation, TwoInCalculation}
 import de.awagen.kolibri.definitions.directives.Resource
 import de.awagen.kolibri.definitions.io.json.ResourceJsonProtocol.StructDefs.RESOURCE_JUDGEMENT_PROVIDER_STRUCT_DEF
 import de.awagen.kolibri.definitions.io.json.ResourceJsonProtocol.resourceJudgementProviderFormat
 import de.awagen.kolibri.definitions.resources.ResourceProvider
-import de.awagen.kolibri.definitions.usecase.searchopt.io.json.CalculationName.{BINARY_PRECISION_FALSE_AS_YES, BINARY_PRECISION_TRUE_AS_YES, FALSE_COUNT, FIRST_FALSE, FIRST_TRUE, IDENTITY, IR_METRICS, STRING_SEQUENCE_VALUE_OCCURRENCE_HISTOGRAM, TRUE_COUNT}
+import de.awagen.kolibri.definitions.usecase.searchopt.io.json.CalculationName.{BINARY_PRECISION_FALSE_AS_YES, BINARY_PRECISION_TRUE_AS_YES, FALSE_COUNT, FIRST_FALSE, FIRST_TRUE, IDENTITY, IR_METRICS, JACCARD_SIMILARITY, STRING_SEQUENCE_VALUE_OCCURRENCE_HISTOGRAM, TRUE_COUNT}
 import de.awagen.kolibri.definitions.usecase.searchopt.io.json.MetricsCalculationJsonProtocol
 import de.awagen.kolibri.definitions.usecase.searchopt.io.json.MetricsCalculationJsonProtocol.metricsCalculationFormat
 import de.awagen.kolibri.definitions.usecase.searchopt.jobdefinitions.parts.ReservedStorageKeys.REQUEST_TEMPLATE_STORAGE_KEY
 import de.awagen.kolibri.definitions.usecase.searchopt.metrics.Calculations.{FromMapCalculation, JudgementsFromResourceIRMetricsCalculations}
 import de.awagen.kolibri.definitions.usecase.searchopt.metrics.ComputeResultFunctions.{booleanPrecision, countValues, findFirstValue, stringSeqHistogram}
-import de.awagen.kolibri.definitions.usecase.searchopt.metrics.{ComputeResultFunctions, MetricsCalculation}
+import de.awagen.kolibri.definitions.usecase.searchopt.metrics.TwoInComputeResultFunctions.jaccardSimilarity
+import de.awagen.kolibri.definitions.usecase.searchopt.metrics.{Calculations, ComputeResultFunctions, MetricsCalculation}
 import de.awagen.kolibri.definitions.usecase.searchopt.provider.JudgementProvider
 import spray.json.{DefaultJsonProtocol, JsValue, JsonFormat, enrichAny}
 
 object CalculationsJsonProtocol extends DefaultJsonProtocol {
 
   val NAME_KEY = "name"
-  val FUNCTION_TYPE_KEY = "functionType"
-  val IR_METRICS_VALUE = "IR_METRICS"
   val QUERY_PARAM_NAME_KEY = "queryParamName"
   val PRODUCT_IDS_KEY_KEY = "productIdsKey"
-  val JUDGEMENT_PROVIDER_KEY = "judgementProvider"
   val JUDGEMENT_RESOURCE_KEY = "judgementsResource"
   val METRICS_CALCULATION_KEY = "metricsCalculation"
-  val EXCLUDE_PARAMS_KEY = "excludeParams"
 
 }
 
@@ -169,6 +166,55 @@ case class CalculationsJsonProtocol(resourceProvider: ResourceProvider) {
           )
         )
       )
+    }
+  }
+
+  implicit object FromTwoMapsCalculationFormat extends JsonFormat[TwoInCalculation[WeaklyTypedMap[String], WeaklyTypedMap[String], Any]] with WithStructDef {
+
+    val TYPE_KEY = "type"
+    val NAME_KEY = "name"
+    val DATA_1_KEY = "data1Key"
+    val DATA_2_KEY = "data2Key"
+
+    override def read(json: JsValue): TwoInCalculation[WeaklyTypedMap[String], WeaklyTypedMap[String], Any] = json match {
+        case spray.json.JsObject(fields) =>
+          fields(TYPE_KEY).convertTo[String] match {
+            case JACCARD_SIMILARITY.name =>
+              val metricName = fields(NAME_KEY).convertTo[String]
+              val data1Key = fields(DATA_1_KEY).convertTo[String]
+              val data2Key = fields(DATA_2_KEY).convertTo[String]
+              Calculations.FromTwoMapsCalculation(metricName, data1Key, data2Key, jaccardSimilarity)
+          }
+    }
+
+    // TODO: implement
+    override def write(obj: TwoInCalculation[WeaklyTypedMap[String], WeaklyTypedMap[String], Any]): JsValue = ???
+
+    override def structDef: StructDef[_] = {
+      NestedFieldSeqStructDef(
+        Seq(
+          FieldDef(
+            StringConstantStructDef(TYPE_KEY),
+            StringChoiceStructDef(Seq(
+              JACCARD_SIMILARITY.name,
+            )),
+            required = true
+          )
+        ),
+        Seq(
+          ConditionalFields(
+            TYPE_KEY,
+            Map(
+              JACCARD_SIMILARITY.name -> Seq(
+                FieldDef(StringConstantStructDef(NAME_KEY), RegexStructDef(".*".r), required = true),
+                FieldDef(StringConstantStructDef(DATA_1_KEY), RegexStructDef(".*".r), required = true),
+                FieldDef(StringConstantStructDef(DATA_2_KEY), RegexStructDef(".*".r), required = true)
+              )
+            )
+          )
+        )
+      )
+
     }
   }
 

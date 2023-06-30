@@ -35,6 +35,8 @@ object CalculationName extends Enumeration with WithStructDef {
   val BINARY_PRECISION_FALSE_AS_YES = Val("BINARY_PRECISION_FALSE_AS_YES")
   val STRING_SEQUENCE_VALUE_OCCURRENCE_HISTOGRAM = Val("STRING_SEQUENCE_VALUE_OCCURRENCE_HISTOGRAM")
 
+  val JACCARD_SIMILARITY = Val("JACCARD_SIMILARITY")
+
   override def structDef: JsonStructDefs.StructDef[_] =
     StringChoiceStructDef(
       Seq(

@@ -17,24 +17,22 @@
 
 package de.awagen.kolibri.definitions.usecase.searchopt.metrics
 
-import de.awagen.kolibri.definitions.usecase.searchopt.metrics.Calculations.BooleanSeqToDoubleCalculation
-import de.awagen.kolibri.definitions.usecase.searchopt.metrics.ComputeResultFunctions.{countValues, findFirstValue}
-import de.awagen.kolibri.definitions.usecase.searchopt.metrics.PlainMetricValueFunctions.{binarizeBooleanSeq, stringSequenceToPositionOccurrenceCountMap}
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason.missingDataKeyFailReason
 import de.awagen.kolibri.datatypes.stores.immutable.MetricRow
-import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
-import de.awagen.kolibri.datatypes.values.Calculations.{Calculation, ComputeResult, ResultRecord}
+import de.awagen.kolibri.datatypes.types.SerializableCallable.{SerializableFunction1, SerializableFunction2}
+import de.awagen.kolibri.datatypes.values.Calculations.{Calculation, ComputeResult, ResultRecord, TwoInCalculation}
 import de.awagen.kolibri.datatypes.values.MetricValue
 import de.awagen.kolibri.datatypes.values.RunningValues.RunningValue
 import de.awagen.kolibri.definitions.directives.{Resource, RetrievalDirective}
 import de.awagen.kolibri.definitions.http.client.request.RequestTemplate
 import de.awagen.kolibri.definitions.resources.{ResourceProvider, RetrievalError}
-import de.awagen.kolibri.definitions.usecase.searchopt.jobdefinitions.parts.ReservedStorageKeys.REQUEST_TEMPLATE_STORAGE_KEY
+import de.awagen.kolibri.definitions.usecase.searchopt.metrics.PlainMetricValueFunctions.{binarizeBooleanSeq, stringSequenceToPositionOccurrenceCountMap}
 import de.awagen.kolibri.definitions.usecase.searchopt.provider.JudgementProvider
 import org.slf4j.{Logger, LoggerFactory}
 
+import scala.collection.immutable.Seq
 import scala.collection.mutable
 
 
@@ -72,6 +70,30 @@ object Calculations {
   }
 
   /**
+   * Calculation that takes a name for the to-be-calculated value,
+   * two mappings, a key for map1 to retrieve a value for that key from map1,
+   * a key for map2 and a key for map2 to retrieve the value for that key from map2,
+   * and a function that computes the desired value with both values as input.
+   */
+  case class FromTwoMapsCalculation[T, U, V](name: String, dataKey1: String, dataKey2: String, function: (T, U) => ComputeResult[V]) extends TwoInCalculation[WeaklyTypedMap[String], WeaklyTypedMap[String], V] {
+    override def calculation: SerializableFunction2[WeaklyTypedMap[String], WeaklyTypedMap[String], Seq[ResultRecord[V]]] = (tMap1, tMap2) => {
+      val data1: Option[T] = tMap1.get[T](dataKey1)
+      val data2: Option[U] = tMap2.get[U](dataKey2)
+      (data1, data2) match {
+        case (None, None) => Seq(
+          ResultRecord(name, Left(Seq(missingDataKeyFailReason(dataKey1)))),
+          ResultRecord(name, Left(Seq(missingDataKeyFailReason(dataKey2))))
+        )
+        case (None, _) => Seq(ResultRecord(name, Left(Seq(missingDataKeyFailReason(dataKey1)))))
+        case (_, None) => Seq(ResultRecord(name, Left(Seq(missingDataKeyFailReason(dataKey2)))))
+        case (Some(val1), Some(val2)) => Seq(ResultRecord(name, function.apply(val1, val2)))
+      }
+    }
+
+    override def names: Set[String] = Set(name)
+  }
+
+  /**
    * Similar to JudgementBasedMetricsCalculation, yet here this uses judgements as resource, e.g
    * the set of judgements need to be pre-loaded as node resource.
    * One purpose is to unify all calculation definitions purely based on either fields created by result parsing
@@ -104,15 +126,28 @@ object Calculations {
       }
     }
   }
+
 }
 
-object CalculationFunctions {
+object TwoInComputeResultFunctions {
 
-  def booleanFindFirst(names: Set[String], findTrue: Boolean): Calculation[Seq[Boolean], Double] =
-    BooleanSeqToDoubleCalculation(names, seq => Seq(ResultRecord(names.head, findFirstValue(findTrue).apply(seq))))
-
-  def booleanCount(names: Set[String], findTrue: Boolean): Calculation[Seq[Boolean], Double] = {
-    BooleanSeqToDoubleCalculation(names, seq => Seq(ResultRecord(names.head, countValues(findTrue).apply(seq))))
+  /**
+   * Jaccard similarity calculation. lower-cases and trims the inputs before converting to set
+   * for the jaccard calculation.
+   */
+  def jaccardSimilarity: (Seq[String], Seq[String]) => ComputeResult[Double] = {
+    (seq1, seq2) => {
+        val set1 = seq1.map(x => x.toLowerCase.trim).toSet
+        val set2 = seq2.map(x => x.toLowerCase.trim).toSet
+        val union = set1 ++ set2
+        val intersection = set1.intersect(set2)
+        union match {
+          case e if e.isEmpty =>
+            Left(Seq(ComputeFailReason.NO_RESULTS))
+          case _ =>
+            Right(intersection.size / union.size)
+        }
+    }
   }
 
 }

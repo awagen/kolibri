@@ -19,7 +19,7 @@ package de.awagen.kolibri.datatypes.values
 
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason
-import de.awagen.kolibri.datatypes.types.SerializableCallable.{SerializableFunction1, SerializableSupplier}
+import de.awagen.kolibri.datatypes.types.SerializableCallable.{SerializableFunction1, SerializableFunction2, SerializableSupplier}
 import de.awagen.kolibri.datatypes.values.Calculations.ResultRecord
 import de.awagen.kolibri.datatypes.values.RunningValues.{RunningValue, calcErrorRunningValue}
 
@@ -37,6 +37,12 @@ object Calculations {
 
   trait Calculation[In, +Out] extends KolibriSerializable {
     def calculation: SerializableFunction1[In, Seq[ResultRecord[Out]]]
+
+    def names: Set[String]
+  }
+
+  trait TwoInCalculation[In1, In2, +Out] extends KolibriSerializable {
+    def calculation: SerializableFunction2[In1, In2, Seq[ResultRecord[Out]]]
 
     def names: Set[String]
   }
