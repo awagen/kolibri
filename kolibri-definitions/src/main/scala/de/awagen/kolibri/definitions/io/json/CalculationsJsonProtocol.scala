@@ -188,7 +188,7 @@ case class CalculationsJsonProtocol(resourceProvider: ResourceProvider) {
     }
 
     // TODO: implement
-    override def write(obj: TwoInCalculation[WeaklyTypedMap[String], WeaklyTypedMap[String], Any]): JsValue = ???
+    override def write(obj: TwoInCalculation[WeaklyTypedMap[String], WeaklyTypedMap[String], Any]): JsValue = """{}""".toJson
 
     override def structDef: StructDef[_] = {
       NestedFieldSeqStructDef(

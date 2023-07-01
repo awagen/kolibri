@@ -49,8 +49,6 @@ object Calculations {
    */
   case class BooleanSeqToDoubleCalculation(names: Set[String], calculation: SerializableFunction1[Seq[Boolean], Seq[ResultRecord[Double]]]) extends Calculation[Seq[Boolean], Double]
 
-  case class StringSeqToHistogramCalculation(names: Set[String], calculation: SerializableFunction1[Seq[String], Seq[ResultRecord[Map[String, Map[String, Double]]]]]) extends Calculation[Seq[String], Map[String, Map[String, Double]]]
-
   /**
    * Calculation of single result, given a data key to retrieve input data from
    * WeaklyTypedMap.
@@ -132,20 +130,19 @@ object Calculations {
 object TwoInComputeResultFunctions {
 
   /**
-   * Jaccard similarity calculation. lower-cases and trims the inputs before converting to set
-   * for the jaccard calculation.
+   * Jaccard similarity calculation.
    */
-  def jaccardSimilarity: (Seq[String], Seq[String]) => ComputeResult[Double] = {
+  def jaccardSimilarity[T]: (Seq[T], Seq[T]) => ComputeResult[Double] = {
     (seq1, seq2) => {
-        val set1 = seq1.map(x => x.toLowerCase.trim).toSet
-        val set2 = seq2.map(x => x.toLowerCase.trim).toSet
+        val set1 = seq1.toSet
+        val set2 = seq2.toSet
         val union = set1 ++ set2
         val intersection = set1.intersect(set2)
         union match {
           case e if e.isEmpty =>
             Left(Seq(ComputeFailReason.NO_RESULTS))
           case _ =>
-            Right(intersection.size / union.size)
+            Right(intersection.size.toDouble / union.size)
         }
     }
   }
