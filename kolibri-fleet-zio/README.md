@@ -81,3 +81,50 @@ For more settings (such as minimal coverage criteria for build to succeed), see 
 - build jar (from root folder; find it in target folder of kolibri-fleet-zio sub-folder afterwards): ```./scripts/buildKolibriFleetZIOJar.sh```
 - build docker image for local usage (kolibri-fleet-zio sub-folder): ```docker build . -t kolibri-fleet-zio:0.1.5```
 - startup via docker-compose (kolibri-fleet-zio sub-folder): ```docker-compose up```
+
+
+## Notes on local execution with access to AWS account
+One way to enable container access to AWS account (e.g as for writing results into S3 bucket or similar),
+it is enough to mount the local directory where the credentials reside into the root .aws directory in the container,
+by adding to the docker-compose below volume mount (assuming the aws credentials reside in the home folder on the host machine
+within the .aws folder, which is the default location when calling ```aws configure``` (official docs: https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-quickstart.html)):
+```
+volumes:
+  - [path-to-home-on-host-machine]/.aws:/home/kolibri/.aws:ro
+```
+Now configure the AWS_PROFILE env var to any profile name you want to assume (and for which the above mounted folder contains
+credentials). See example within docker-compose.yaml.
+Note that if the configuration file is not in the default location ```~/.aws/config```, additionally the env variable
+```AWS_CONFIG_FILE``` has to be set to the directory within the container where the config file was mounted to.
+
+In case you login via temporary token via sso, check aws doc how to retrieve respective credentials for programmatic
+access (you can go to your sso web interface and select the account and then programmatic access).
+
+## Notes on local execution with access to GCP account
+Analogue to the description of enabling AWS access, which refers to a credentials folder,
+for GCP we have to set the env variable ```GOOGLE_APPLICATION_CREDENTIALS``` to the full path
+to the json service account key file (how to create a service account and respective key file
+you can check in the google cloud documentation, its a matter of a few clicks).
+To make it accessible within docker, you have to mount the directory containing the key file on your local machine
+into the container:
+```
+volumes:
+  - [path-to-dir-containing-key-file-on-local-machine]/:/home/kolibri/gcp:ro
+```
+and then setting env variable
+```
+GOOGLE_APPLICATION_CREDENTIALS: '/home/kolibri/gcp/[sa-key-file-name].json'
+```
+This enables the access for the app running within the docker container.
+To utilize google storage for result reading / writing, a few more env variables are needed:
+```
+GCP_GS_BUCKET: [bucket name without gs:// prefix]
+GCP_GS_PATH: [path from bucket root to append to all paths that are requested]
+GCP_GS_PROJECT_ID: [the project id for which the used service account is defined and for which the gs bucket was created]
+PERSISTENCE_MODE: 'GCP'
+```
+With those settings, execution results are stored and read from google storage bucket.
+
+
+## License
+The kolibri-fleet-zio code is licensed under APL 2.0.
