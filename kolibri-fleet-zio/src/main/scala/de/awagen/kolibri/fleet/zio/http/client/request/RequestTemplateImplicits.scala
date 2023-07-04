@@ -50,7 +50,8 @@ object RequestTemplateImplicits {
             url = URL.fromURI(new URI(s"${host.stripSuffix("/")}/${template.query.stripPrefix("/")}")).get,
             version = protocolMapping.getOrElse(template.protocol, Version.`HTTP/1.1`),
             remoteAddress = None
-          ))
+          )).onError(cause => ZIO.logError(s"error when requesting, cause: ${cause.trace}"))
+        _ <- ZIO.logInfo(s"retrieved request response: $response")
       } yield response
     }
 
