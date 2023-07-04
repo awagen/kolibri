@@ -23,7 +23,7 @@ import de.awagen.kolibri.datatypes.types.NamedClassTyped
 import de.awagen.kolibri.definitions.domain.Connections
 import de.awagen.kolibri.definitions.processing.ProcessingMessages.ProcessingMessage
 import de.awagen.kolibri.definitions.processing.failure.TaskFailType.TaskFailType
-import de.awagen.kolibri.definitions.usecase.searchopt.metrics.Calculations.{FromTwoMapsCalculation, JudgementsFromResourceIRMetricsCalculations}
+import de.awagen.kolibri.definitions.usecase.searchopt.metrics.Calculations.JudgementsFromResourceIRMetricsCalculations
 import de.awagen.kolibri.fleet.zio.execution.TaskFactory.{CalculateMetricsTask, MergeTwoMetricRows, RequestJsonAndParseValuesTask, TwoMapInputCalculation}
 import de.awagen.kolibri.fleet.zio.execution.ZIOTask
 import de.awagen.kolibri.fleet.zio.io.json.TaskJsonProtocol._

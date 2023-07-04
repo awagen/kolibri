@@ -132,11 +132,52 @@ class JobDefinitionJsonProtocolSpec extends UnitTestSpec {
       |     "k1": ["v1", "v2"]
       |   },
       |   "httpMethod": "GET",
-      |   "successKeyName": "successTestKey",
-      |   "failKeyName": "failTestKey"
-      |  }
+      |   "successKeyName": "parsedResults",
+      |   "failKeyName": "parsedResultsFailed"
+      |  },
+      |  {
+      |    "type": "METRIC_CALCULATION",
+      |    "parsedDataKey": "parsedResults",
+      |    "calculations": [
+      |      {
+      |        "type": "IR_METRICS",
+      |        "queryParamName": "q",
+      |        "productIdsKey": "productIds",
+      |        "judgementsResource": {
+      |          "resourceType": "JUDGEMENT_PROVIDER",
+      |          "identifier": "ident1"
+      |      },
+      |      "metricsCalculation": {
+      |        "metrics": [
+      |          {"name": "DCG_10", "function": {"type": "DCG", "k": 10}},
+      |          {"name": "NDCG_10", "function": {"type": "NDCG", "k": 10}},
+      |          {"name": "PRECISION_k=4&t=0.1", "function": {"type": "PRECISION", "k": 4, "threshold":  0.1}},
+      |          {"name": "RECALL_k=4&t=0.1", "function": {"type": "RECALL", "k": 4, "threshold":  0.1}},
+      |          {"name": "ERR_10", "function": {"type": "ERR", "k": 10}}
+      |        ],
+      |        "judgementHandling": {
+      |          "validations": [
+      |            "EXIST_RESULTS",
+      |            "EXIST_JUDGEMENTS"
+      |          ],
+      |          "handling": "AS_ZEROS"
+      |        }
+      |      }
+      |    }
       |  ],
-      |  "metricRowResultKey": "testMetricResult"
+      |  "metricNameToAggregationTypeMapping": {
+      |    "DCG_10": "DOUBLE_AVG",
+      |    "NDCG_10": "DOUBLE_AVG",
+      |    "PRECISION_k=4&t=0.1": "DOUBLE_AVG",
+      |    "RECALL_k=4&t=0.1": "DOUBLE_AVG",
+      |    "ERR_10": "DOUBLE_AVG"
+      |  },
+      |  "excludeParamsFromMetricRow": [],
+      |  "successKeyName": "metricCalculationResults",
+      |  "failKeyName": "metricCalculationFailure"
+      |}
+      |],
+      |"metricRowResultKey": "metricCalculationResults"
       |}
       |}
       |""".stripMargin
