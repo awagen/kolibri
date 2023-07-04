@@ -24,7 +24,7 @@ import de.awagen.kolibri.datatypes.tagging.TagType
 import de.awagen.kolibri.datatypes.tagging.TagType.AGGREGATION
 import de.awagen.kolibri.datatypes.tagging.Tags.StringTag
 import de.awagen.kolibri.datatypes.types.SerializableCallable.{SerializableConsumer, SerializableSupplier}
-import de.awagen.kolibri.datatypes.types.{ClassTyped, JsonTypeCast}
+import de.awagen.kolibri.datatypes.types.{ClassTyped, JsonTypeCast, NamedClassTyped}
 import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType
 import de.awagen.kolibri.definitions.directives.{ExpirePolicy, Resource, ResourceDirectives, ResourceType}
 import de.awagen.kolibri.definitions.domain.Connections.Connection
@@ -42,7 +42,7 @@ import de.awagen.kolibri.definitions.usecase.searchopt.parse.JsonSelectors.Plain
 import de.awagen.kolibri.definitions.usecase.searchopt.parse.TypedJsonSelectors._
 import de.awagen.kolibri.definitions.usecase.searchopt.parse.{JsonSelectors, ParsingConfig}
 import de.awagen.kolibri.definitions.usecase.searchopt.provider.{FileBasedJudgementProvider, JudgementProvider}
-import de.awagen.kolibri.fleet.zio.execution.TaskFactory.{CalculateMetricsTask, RequestJsonAndParseValuesTask}
+import de.awagen.kolibri.fleet.zio.execution.TaskFactory.{CalculateMetricsTask, RequestJsonAndParseValuesTask, TwoMapInputCalculation}
 import de.awagen.kolibri.fleet.zio.resources.NodeResourceProvider
 import de.awagen.kolibri.storage.io.reader.LocalResourceFileReader
 import org.mockito.ArgumentMatchers
@@ -120,6 +120,23 @@ object TaskTestObjects {
       failKeyName = "metricCalculationFail"
     )
   }
+
+  def twoMapInputCalculationTask(): TwoMapInputCalculation = TwoMapInputCalculation(
+    key1 = NamedClassTyped[ProcessingMessage[WeaklyTypedMap[String]]]("input1"),
+    key2 = NamedClassTyped[ProcessingMessage[WeaklyTypedMap[String]]]("input2"),
+    calculations = Seq(
+      Calculations.FromTwoMapsCalculation(
+        "jaccard",
+        "productIds",
+        "productIds",
+        TwoInComputeResultFunctions.jaccardSimilarity
+      )
+    ),
+    metricNameToAggregationTypeMapping = Map("jaccard" -> AggregationType.DOUBLE_AVG),
+    excludeParamsFromMetricRow = Seq.empty,
+    successKeyName = "comparisonMetricsResults",
+    failKeyName = "comparisonFailure"
+  )
 
   def requestTemplate = new RequestTemplateBuilder()
     .withParams(Map("q" -> Seq("q1")))
