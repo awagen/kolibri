@@ -17,17 +17,36 @@
 
 package de.awagen.kolibri.fleet.zio.io.json
 
-import de.awagen.kolibri.datatypes.types.JsonStructDefs.{ConditionalFields, DoubleStructDef, IntStructDef, NestedFieldSeqStructDef, RegexStructDef, StringChoiceStructDef, StringConstantStructDef, StructDef}
+import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
+import de.awagen.kolibri.datatypes.metrics.aggregation.immutable.MetricAggregation
+import de.awagen.kolibri.datatypes.stores.immutable.MetricRow
+import de.awagen.kolibri.datatypes.tagging.Tags.Tag
+import de.awagen.kolibri.datatypes.types.FieldDefinitions._
+import de.awagen.kolibri.datatypes.types.JsonStructDefs._
 import de.awagen.kolibri.datatypes.types.Types.WithCount
+import de.awagen.kolibri.datatypes.types.{NamedClassTyped, WithStructDef}
+import de.awagen.kolibri.datatypes.values.aggregation.immutable.Aggregators.TagKeyMetricAggregationPerClassAggregator
+import de.awagen.kolibri.definitions.directives.ResourceDirectives.ResourceDirective
+import de.awagen.kolibri.definitions.io.json.ParameterValuesJsonProtocol
+import de.awagen.kolibri.definitions.io.json.ResourceDirectiveJsonProtocol.GenericResourceDirectiveFormatStruct
+import de.awagen.kolibri.definitions.processing.ProcessingMessages.ProcessingMessage
+import de.awagen.kolibri.definitions.processing.modifiers.ParameterValues.ParameterValuesImplicits.ParameterValueSeqToRequestBuilderModifier
+import de.awagen.kolibri.definitions.processing.modifiers.ParameterValues.ValueSeqGenDefinition
+import de.awagen.kolibri.definitions.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
+import de.awagen.kolibri.definitions.usecase.searchopt.jobdefinitions.parts.BatchGenerators.batchByGeneratorAtIndex
 import de.awagen.kolibri.fleet.zio.config.AppConfig
-import de.awagen.kolibri.fleet.zio.execution.JobDefinitions
+import de.awagen.kolibri.fleet.zio.config.AppConfig.JsonFormats.parameterValueJsonProtocol.ValueSeqGenDefinitionFormat
+import de.awagen.kolibri.fleet.zio.config.AppConfig.JsonFormats.resourceDirectiveJsonProtocol.GenericResourceDirectiveFormat
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.{BatchAggregationInfo, JobDefinition, simpleWaitJob}
+import de.awagen.kolibri.fleet.zio.execution.JobMessagesImplicits._
 import de.awagen.kolibri.fleet.zio.execution.ZIOTasks.SimpleWaitTask
 import de.awagen.kolibri.fleet.zio.execution.aggregation.Aggregators.countingAggregator
+import de.awagen.kolibri.fleet.zio.execution.{JobDefinitions, ZIOTask}
+import de.awagen.kolibri.fleet.zio.io.json.TaskJsonProtocol._
 import spray.json.{DefaultJsonProtocol, JsValue, JsonFormat, enrichAny}
-import de.awagen.kolibri.fleet.zio.execution.JobMessagesImplicits._
-import de.awagen.kolibri.datatypes.types.FieldDefinitions._
-import de.awagen.kolibri.datatypes.types.WithStructDef
+
+import scala.collection.immutable.Seq
+import scala.util.Random
 
 object JobDefinitionJsonProtocol extends DefaultJsonProtocol {
 
@@ -38,9 +57,17 @@ object JobDefinitionJsonProtocol extends DefaultJsonProtocol {
   private val NR_BATCHES_KEY = "nrBatches"
   private val DURATION_IN_MILLIS_KEY = "durationInMillis"
 
+  private val RESOURCE_DIRECTIVES_KEY = "resourceDirectives"
+  private val REQUEST_PARAMETERS_KEY = "requestParameters"
+  private val TASK_SEQUENCE_KEY = "taskSequence"
+  private val BATCH_BY_INDEX_KEY = "batchByIndex"
+  private val METRIC_ROW_RESULT_KEY = "metricRowResultKey"
+
+
   private val JUST_WAIT_TYPE = "JUST_WAIT"
   private val SEARCH_EVALUATION_TYPE = "SEARCH_EVALUATION"
   private val QUERY_BASED_SEARCH_EVALUATION_TYPE = "QUERY_BASED_SEARCH_EVALUATION"
+  private val REQUESTING_TASK_SEQUENCE_TYPE = "REQUESTING_TASK_SEQUENCE"
 
 
   val simpleWaitStructDef: StructDef[_] =
@@ -68,13 +95,63 @@ object JobDefinitionJsonProtocol extends DefaultJsonProtocol {
       Seq.empty
     )
 
+  val requestingTaskSequenceStructDef: StructDef[_] =
+    NestedFieldSeqStructDef(
+      Seq(
+        FieldDef(
+          StringConstantStructDef(JOB_NAME_KEY),
+          RegexStructDef(".+".r),
+          required = true,
+          description = "Name of the job."
+        ),
+        FieldDef(
+          StringConstantStructDef(RESOURCE_DIRECTIVES_KEY),
+          GenericSeqStructDef(GenericResourceDirectiveFormatStruct.structDef),
+          required = true,
+          description = "Resource directives defining resources that need to be loaded per node before " +
+            "the job can be processed."
+        ),
+        FieldDef(
+          StringConstantStructDef(REQUEST_PARAMETERS_KEY),
+          GenericSeqStructDef(ParameterValuesJsonProtocol.ValueSeqGenDefinitionFormatStruct.structDef),
+          required = true,
+          description = "Allows specification of combinations of url parameters, headers and bodies. " +
+            "Note that standalone values are permutated with every other values, while mappings allow the mapping " +
+            "of values of a key provider to other values that logically belong to that key. Can be used to restrict " +
+            "the number of permutations to those that are actually meaningful."
+        ),
+        FieldDef(
+          StringConstantStructDef(BATCH_BY_INDEX_KEY),
+          IntStructDef,
+          required = true,
+          description = "Index of parameter by which to index. Refers to 0-based index of the respective parameter" +
+            " in the requestParameters setting."
+        ),
+        FieldDef(
+          StringConstantStructDef(TASK_SEQUENCE_KEY),
+          GenericSeqStructDef(ZIOTaskFormat.structDef),
+          required = true,
+          description = "Sequence of tasks to execute. When defining tasks, make sure that data needed in later tasks" +
+            " is generated in tasks coming before."
+        ),
+        FieldDef(
+          StringConstantStructDef(METRIC_ROW_RESULT_KEY),
+          RegexStructDef(".+".r),
+          required = true,
+          description = "Key under which the generated MetricRow is stored. Key can be referenced in tasks defined " +
+            "later in the task sequence."
+        )
+      ),
+      Seq.empty
+    )
+
   val jobDefStructDef: StructDef[_] =
     NestedFieldSeqStructDef(
       Seq(
         FieldDef(
           StringConstantStructDef(TYPE_KEY),
           StringChoiceStructDef(
-            Seq(JUST_WAIT_TYPE, SEARCH_EVALUATION_TYPE, QUERY_BASED_SEARCH_EVALUATION_TYPE)
+            Seq(JUST_WAIT_TYPE, SEARCH_EVALUATION_TYPE, QUERY_BASED_SEARCH_EVALUATION_TYPE, REQUESTING_TASK_SEQUENCE_TYPE)
           ),
           required = true,
           description = "Name of the job"
@@ -104,6 +181,14 @@ object JobDefinitionJsonProtocol extends DefaultJsonProtocol {
               AppConfig.JsonFormats.queryBasedSearchEvaluationJsonProtocol.structDef,
               required = true,
               description = "Job definition for the search evaluation job."
+            )
+          ),
+          REQUESTING_TASK_SEQUENCE_TYPE -> Seq(
+            FieldDef(
+              StringConstantStructDef(DEF_KEY),
+              requestingTaskSequenceStructDef,
+              required = true,
+              description = "Job definition as defined by sequence of tasks."
             )
           )
         ))
@@ -137,6 +222,39 @@ object JobDefinitionJsonProtocol extends DefaultJsonProtocol {
           val defFields = fields(DEF_KEY)
           val searchEvaluationJobDef = AppConfig.JsonFormats.queryBasedSearchEvaluationJsonProtocol.QueryBasedSearchEvaluationFormat.read(defFields)
           searchEvaluationJobDef.toJobDef
+        case REQUESTING_TASK_SEQUENCE_TYPE =>
+          val defFields: Map[String, JsValue] = fields(DEF_KEY).asJsObject.fields
+          val jobName = defFields(JOB_NAME_KEY).convertTo[String]
+          val resourceDirectives = defFields(RESOURCE_DIRECTIVES_KEY).convertTo[Seq[ResourceDirective[_]]]
+          val requestParameters = defFields(REQUEST_PARAMETERS_KEY).convertTo[Seq[ValueSeqGenDefinition[_]]]
+          val modifiers: Seq[IndexedGenerator[RequestTemplateBuilderModifier]] = requestParameters.map(x => x.toState).map(x => x.toSeqGenerator).map(x => x.mapGen(y => y.toModifier))
+          val batchByIndex = defFields(BATCH_BY_INDEX_KEY).convertTo[Int]
+          val modifierBatches = batchByGeneratorAtIndex(batchByIndex = batchByIndex).apply(modifiers)
+          val nestedTaskSequence = defFields(TASK_SEQUENCE_KEY).convertTo[Seq[Seq[ZIOTask[_]]]]
+          val taskSequence = nestedTaskSequence.flatten
+          val metricRowResultKey = defFields(METRIC_ROW_RESULT_KEY).convertTo[String]
+          // For now we assume that result is of type MetricRow
+          val aggregationInfo = BatchAggregationInfo[MetricRow, MetricAggregation[Tag]](
+            successKey = NamedClassTyped[ProcessingMessage[MetricRow]](metricRowResultKey),
+            batchAggregatorSupplier = () => new TagKeyMetricAggregationPerClassAggregator(
+              aggregationState = MetricAggregation.empty[Tag](identity),
+              ignoreIdDiff = false
+            ),
+            writer = AppConfig.persistenceModule.persistenceDIModule.immutableMetricAggregationWriter(
+              subFolder = jobName,
+              x => {
+                val randomAdd: String = Random.alphanumeric.take(5).mkString
+                s"${x.toString()}-$randomAdd"
+              }
+            )
+          )
+          JobDefinition(
+            jobName = jobName,
+            resourceSetup = resourceDirectives,
+            batches = modifierBatches,
+            taskSequence = taskSequence,
+            aggregationInfo = aggregationInfo
+          )
       }
     }
 

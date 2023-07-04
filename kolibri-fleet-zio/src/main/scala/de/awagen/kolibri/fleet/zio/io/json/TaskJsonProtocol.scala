@@ -45,7 +45,7 @@ import de.awagen.kolibri.fleet.zio.execution.{TaskFactory, ZIOTask}
 import de.awagen.kolibri.fleet.zio.io.json.EnumerationJsonProtocol.requestModeFormat
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.requests.RequestMode
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.requests.RequestMode.RequestMode
-import spray.json.{DefaultJsonProtocol, JsValue, JsonFormat}
+import spray.json.{DefaultJsonProtocol, JsValue, JsonFormat, enrichAny}
 
 object TaskJsonProtocol extends DefaultJsonProtocol {
 
@@ -413,5 +413,49 @@ object TaskJsonProtocol extends DefaultJsonProtocol {
     }
   }
 
+  implicit object ZIOTaskFormat extends JsonFormat[Seq[ZIOTask[_]]] with WithStructDef {
+    override def read(json: JsValue): Seq[ZIOTask[_]] = json match {
+      case spray.json.JsObject(fields) => fields(TYPE_KEY).convertTo[String] match {
+        case REQUEST_AND_PARSE_VALUES_TASK_TYPE =>
+          SeqTypedMapZIOTaskFormat.read(json)
+        case e if Set(METRIC_CALCULATION_TASK_TYPE, MAP_COMPARISON_TASK_TYPE, MERGE_METRIC_ROWS_TASK_TYPE).contains(e) =>
+          Seq(MetricRowZIOTaskFormat.read(json))
+      }
+    }
 
+    // TODO
+    override def write(obj: Seq[ZIOTask[_]]): JsValue = """{}""".toJson
+
+    override def structDef: StructDef[_] = NestedFieldSeqStructDef(
+      Seq(
+        FieldDef(
+          StringConstantStructDef(TYPE_KEY),
+          StringChoiceStructDef(
+            Seq(
+              REQUEST_AND_PARSE_VALUES_TASK_TYPE,
+              METRIC_CALCULATION_TASK_TYPE,
+              MAP_COMPARISON_TASK_TYPE,
+              MERGE_METRIC_ROWS_TASK_TYPE
+            )
+          ),
+          required = true,
+          description = "Type of the job"
+        )
+      ),
+      Seq(
+        ConditionalFields(TYPE_KEY, Map(
+          REQUEST_AND_PARSE_VALUES_TASK_TYPE -> SeqTypedMapZIOTaskFormat.structDef.asInstanceOf[NestedFieldSeqStructDef].conditionalFieldsSeq
+          .find(x => x.conditionFieldId == TYPE_KEY).map(x => x.fieldsForConditionValue(REQUEST_AND_PARSE_VALUES_TASK_TYPE)).getOrElse(Seq.empty),
+          METRIC_CALCULATION_TASK_TYPE -> MetricRowZIOTaskFormat.structDef.asInstanceOf[NestedFieldSeqStructDef].conditionalFieldsSeq
+            .find(x => x.conditionFieldId == TYPE_KEY).map(x => x.fieldsForConditionValue(METRIC_CALCULATION_TASK_TYPE)).getOrElse(Seq.empty),
+          MAP_COMPARISON_TASK_TYPE -> MetricRowZIOTaskFormat.structDef.asInstanceOf[NestedFieldSeqStructDef].conditionalFieldsSeq
+            .find(x => x.conditionFieldId == TYPE_KEY).map(x => x.fieldsForConditionValue(MAP_COMPARISON_TASK_TYPE)).getOrElse(Seq.empty),
+          MERGE_METRIC_ROWS_TASK_TYPE -> MetricRowZIOTaskFormat.structDef.asInstanceOf[NestedFieldSeqStructDef].conditionalFieldsSeq
+            .find(x => x.conditionFieldId == TYPE_KEY).map(x => x.fieldsForConditionValue(MERGE_METRIC_ROWS_TASK_TYPE)).getOrElse(Seq.empty)
+        ))
+      )
+    )
   }
+
+
+}
