@@ -19,9 +19,12 @@ package de.awagen.kolibri.fleet.zio.io.json
 
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.datatypes.stores.immutable.MetricRow
+import de.awagen.kolibri.datatypes.types.NamedClassTyped
 import de.awagen.kolibri.definitions.domain.Connections
-import de.awagen.kolibri.definitions.usecase.searchopt.metrics.Calculations.JudgementsFromResourceIRMetricsCalculations
-import de.awagen.kolibri.fleet.zio.execution.TaskFactory.{CalculateMetricsTask, RequestJsonAndParseValuesTask}
+import de.awagen.kolibri.definitions.processing.ProcessingMessages.ProcessingMessage
+import de.awagen.kolibri.definitions.processing.failure.TaskFailType.TaskFailType
+import de.awagen.kolibri.definitions.usecase.searchopt.metrics.Calculations.{FromTwoMapsCalculation, JudgementsFromResourceIRMetricsCalculations}
+import de.awagen.kolibri.fleet.zio.execution.TaskFactory.{CalculateMetricsTask, MergeTwoMetricRows, RequestJsonAndParseValuesTask, TwoMapInputCalculation}
 import de.awagen.kolibri.fleet.zio.execution.ZIOTask
 import de.awagen.kolibri.fleet.zio.io.json.TaskJsonProtocol._
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.requests.RequestMode
@@ -131,6 +134,38 @@ class TaskJsonProtocolSpec extends UnitTestSpec {
       |  "failKeyName": "testFailKey1"
       |}""".stripMargin
 
+  val twoMapInputTask =
+    """
+      |{
+      |"type": "MAP_COMPARISON",
+      |"input1": "inputKey1",
+      |"input2": "inputKey2",
+      |"calculations": [{
+      |  "type": "JACCARD_SIMILARITY",
+      |  "name": "jaccard",
+      |  "data1Key": "key1",
+      |  "data2Key": "key2"
+      |}],
+      |"metricNameToAggregationTypeMapping": {
+      |    "jaccard": "DOUBLE_AVG"
+      |},
+      |"excludeParamsFromMetricRow": [],
+      |"successKeyName": "twoMapInSuccessKey",
+      |"failKeyName": "twoMapInFailKey"
+      |}
+      |""".stripMargin
+
+  val mergeTwoRowsTask =
+    """
+      |{
+      |"type": "MERGE_METRIC_ROWS",
+      |"input1": "inputKey1",
+      |"input2": "inputKey2",
+      |"successKeyName": "mergeTwoRowsSuccessKey",
+      |"failKeyName": "mergeTwoRowsFailKey"
+      |}
+      |""".stripMargin
+
 
   val connection1 = Connections.Connection("test-service-1", 80, useHttps = false, None)
   val connection2 = Connections.Connection("test-service-2", 81, useHttps = false, None)
@@ -164,6 +199,26 @@ class TaskJsonProtocolSpec extends UnitTestSpec {
       calculations.size mustBe 1
       calculations.head.names mustBe expectedMetricNames
       task.metricNameToAggregationTypeMapping.keySet mustBe expectedMetricNames
+    }
+
+    "correctly parse two map input calculation" in {
+      // given, when
+      val task = twoMapInputTask.parseJson.convertTo[ZIOTask[MetricRow]]
+        .asInstanceOf[TwoMapInputCalculation]
+      // then
+      task.calculations.size mustBe 1
+      task.calculations.flatMap(x => x.names).toSet mustBe Set("jaccard")
+    }
+
+    "correctly parse merge-two-metric-rows task" in {
+      // given, when
+      val task = mergeTwoRowsTask.parseJson.convertTo[ZIOTask[MetricRow]]
+        .asInstanceOf[MergeTwoMetricRows]
+      // then
+      task.key1 mustBe NamedClassTyped[ProcessingMessage[MetricRow]]("inputKey1")
+      task.key2 mustBe NamedClassTyped[ProcessingMessage[MetricRow]]("inputKey2")
+      task.successKey mustBe NamedClassTyped[ProcessingMessage[MetricRow]]("mergeTwoRowsSuccessKey")
+      task.failKey mustBe NamedClassTyped[ProcessingMessage[TaskFailType]]("mergeTwoRowsFailKey")
     }
 
   }
