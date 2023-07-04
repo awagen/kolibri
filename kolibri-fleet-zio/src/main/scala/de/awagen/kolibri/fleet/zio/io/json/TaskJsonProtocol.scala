@@ -23,7 +23,7 @@ import de.awagen.kolibri.datatypes.stores.immutable.MetricRow
 import de.awagen.kolibri.datatypes.types.FieldDefinitions._
 import de.awagen.kolibri.datatypes.types.JsonStructDefs._
 import de.awagen.kolibri.datatypes.types.{JsonStructDefs, NamedClassTyped, WithStructDef}
-import de.awagen.kolibri.datatypes.values.Calculations.Calculation
+import de.awagen.kolibri.datatypes.values.Calculations.{Calculation, TwoInCalculation}
 import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType.AggregationType
 import de.awagen.kolibri.definitions.domain.Connections.Connection
 import de.awagen.kolibri.definitions.http.HttpMethod
@@ -39,8 +39,8 @@ import de.awagen.kolibri.definitions.usecase.searchopt.io.json.ParsingConfigJson
 import de.awagen.kolibri.definitions.usecase.searchopt.jobdefinitions.parts.ReservedStorageKeys.REQUEST_TEMPLATE_STORAGE_KEY
 import de.awagen.kolibri.definitions.usecase.searchopt.parse.ParsingConfig
 import de.awagen.kolibri.fleet.zio.config.AppConfig
-import de.awagen.kolibri.fleet.zio.config.AppConfig.JsonFormats.calculationsJsonProtocol.FromMapCalculationsFormat
-import de.awagen.kolibri.fleet.zio.execution.TaskFactory.RequestJsonAndParseValuesTask
+import de.awagen.kolibri.fleet.zio.config.AppConfig.JsonFormats.calculationsJsonProtocol.{FromMapCalculationsFormat, FromTwoMapsCalculationFormat}
+import de.awagen.kolibri.fleet.zio.execution.TaskFactory.{MergeTwoMetricRows, RequestJsonAndParseValuesTask}
 import de.awagen.kolibri.fleet.zio.execution.{TaskFactory, ZIOTask}
 import de.awagen.kolibri.fleet.zio.io.json.EnumerationJsonProtocol.requestModeFormat
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.requests.RequestMode
@@ -52,6 +52,8 @@ object TaskJsonProtocol extends DefaultJsonProtocol {
   private[json] val TYPE_KEY = "type"
   private[json] val REQUEST_AND_PARSE_VALUES_TASK_TYPE = "REQUEST_PARSE"
   private[json] val METRIC_CALCULATION_TASK_TYPE = "METRIC_CALCULATION"
+  private[json] val MAP_COMPARISON_TASK_TYPE = "MAP_COMPARISON"
+  private[json] val MERGE_METRIC_ROWS_TASK_TYPE = "MERGE_METRIC_ROWS"
   private[json] val PARSING_CONFIG_KEY = "parsingConfig"
   private[json] val REQUEST_AND_PARSING_RESULT_TAGGER_KEY = "taggingConfig"
   private[json] val CONNECTIONS_KEY = "connections"
@@ -61,6 +63,9 @@ object TaskJsonProtocol extends DefaultJsonProtocol {
   private[json] val SUCCESS_KEY_NAME_KEY = "successKeyName"
   private[json] val FAIL_KEY_NAME_KEY = "failKeyName"
   private[json] val REQUEST_MODE_KEY = "requestMode"
+
+  private[json] val INPUT_KEY_1 = "input1"
+  private[json] val INPUT_KEY_2 = "input2"
 
   private[json] val PARSED_DATA_KEY_NAME_KEY = "parsedDataKey"
   private[json] val CALCULATIONS_KEY = "calculations"
@@ -244,6 +249,34 @@ object TaskJsonProtocol extends DefaultJsonProtocol {
             successKeyName = successKeyName,
             failKeyName = failKeyName
           )
+        case MAP_COMPARISON_TASK_TYPE =>
+          val inputKey1 = NamedClassTyped[ProcessingMessage[WeaklyTypedMap[String]]](fields(INPUT_KEY_1).convertTo[String])
+          val inputKey2 = NamedClassTyped[ProcessingMessage[WeaklyTypedMap[String]]](fields(INPUT_KEY_2).convertTo[String])
+          val twoInputCalculations = fields(CALCULATIONS_KEY).convertTo[Seq[TwoInCalculation[WeaklyTypedMap[String], WeaklyTypedMap[String], Any]]]
+          val metricTypeMapping = fields(METRIC_NAME_TO_AGGREGATION_TYPE_MAPPING_KEY).convertTo[Map[String, AggregationType]]
+          val excludeParamsFromMetricRow = fields(EXCLUDE_PARAMS_FROM_METRIC_ROW_KEY).convertTo[Seq[String]]
+          val successKeyName = fields.get(SUCCESS_KEY_NAME_KEY).map(x => x.convertTo[String]).getOrElse("twoMapInputMetricsRow")
+          val failKeyName = fields.get(FAIL_KEY_NAME_KEY).map(x => x.convertTo[String]).getOrElse("twoMapInputMetricsCalculationFail")
+          TaskFactory.TwoMapInputCalculation(
+            key1 = inputKey1,
+            key2 = inputKey2,
+            calculations = twoInputCalculations,
+            metricNameToAggregationTypeMapping = metricTypeMapping,
+            excludeParamsFromMetricRow = excludeParamsFromMetricRow,
+            successKeyName = successKeyName,
+            failKeyName = failKeyName
+          )
+        case MERGE_METRIC_ROWS_TASK_TYPE =>
+          val inputKey1 = NamedClassTyped[ProcessingMessage[MetricRow]](fields(INPUT_KEY_1).convertTo[String])
+          val inputKey2 = NamedClassTyped[ProcessingMessage[MetricRow]](fields(INPUT_KEY_2).convertTo[String])
+          val successKeyName = fields.get(SUCCESS_KEY_NAME_KEY).map(x => x.convertTo[String]).getOrElse("mergeTwoRowsResult")
+          val failKeyName = fields.get(FAIL_KEY_NAME_KEY).map(x => x.convertTo[String]).getOrElse("failedToMergeRows")
+          MergeTwoMetricRows(
+            key1 = inputKey1,
+            key2 = inputKey2,
+            successKeyName = successKeyName,
+            failKeyName = failKeyName
+          )
       }
     }
 
@@ -256,10 +289,28 @@ object TaskJsonProtocol extends DefaultJsonProtocol {
           FieldDef(
             StringConstantStructDef(TYPE_KEY),
             StringChoiceStructDef(
-              Seq(METRIC_CALCULATION_TASK_TYPE)
+              Seq(
+                METRIC_CALCULATION_TASK_TYPE,
+                MAP_COMPARISON_TASK_TYPE,
+                MERGE_METRIC_ROWS_TASK_TYPE
+              )
             ),
             required = true,
             description = "Type of the job"
+          ),
+          FieldDef(
+            StringConstantStructDef(SUCCESS_KEY_NAME_KEY),
+            RegexStructDef(".+".r),
+            required = false,
+            description = "The success key name to store computed result under if compute is successful." +
+              " If not set, default will be used."
+          ),
+          FieldDef(
+            StringConstantStructDef(FAIL_KEY_NAME_KEY),
+            RegexStructDef(".+".r),
+            required = false,
+            description = "The fail key name to store computed TaskFailType under if compute is NOT successful." +
+              "  If not set, default will be used."
           )
         ),
         Seq(
@@ -297,21 +348,64 @@ object TaskJsonProtocol extends DefaultJsonProtocol {
                   "as specified in the fixedParams setting are excluded by default, yet parameters that are added " +
                   "in the requestParameters setting will need to be excluded by entering the names of the parameters here, " +
                   "otherwise the aggregation might be too granular."
-              ),
-              FieldDef(
-                StringConstantStructDef(SUCCESS_KEY_NAME_KEY),
-                RegexStructDef(".+".r),
-                required = false,
-                description = "The success key name to store computed result under if compute is successful." +
-                  " If not set, default will be used."
-              ),
-              FieldDef(
-                StringConstantStructDef(FAIL_KEY_NAME_KEY),
-                RegexStructDef(".+".r),
-                required = false,
-                description = "The fail key name to store computed TaskFailType under if compute is NOT successful." +
-                  "  If not set, default will be used."
               )
+            ),
+            MAP_COMPARISON_TASK_TYPE -> Seq(
+              FieldDef(
+                StringConstantStructDef(INPUT_KEY_1),
+                RegexStructDef(".+".r),
+                required = true,
+                description = "The key under which the first input argument (of type ProcessingMessage[WeaklyTypedMap[String]])" +
+                  " is stored."
+              ),
+              FieldDef(
+                StringConstantStructDef(INPUT_KEY_2),
+                RegexStructDef(".+".r),
+                required = true,
+                description = "The key under which the second input argument (of type ProcessingMessage[WeaklyTypedMap[String]])" +
+                  " is stored."
+              ),
+              FieldDef(
+                StringConstantStructDef(CALCULATIONS_KEY),
+                GenericSeqStructDef(
+                  AppConfig.JsonFormats.calculationsJsonProtocol.FromTwoMapsCalculationFormat.structDef
+                ),
+                required = true,
+                description = "Calculations to be computed given the two inputs. This can be jaccard similarity" +
+                  " metric based on parsed result sequence or other pre-defined methods."
+              ),
+              FieldDef(
+                StringConstantStructDef(METRIC_NAME_TO_AGGREGATION_TYPE_MAPPING_KEY),
+                MapStructDef(StringStructDef, aggregateTypeFormat.structDef),
+                required = true,
+                description = "Mapping of metric names to aggregation type."
+              ),
+              FieldDef(
+                StringConstantStructDef(EXCLUDE_PARAMS_FROM_METRIC_ROW_KEY),
+                StringSeqStructDef,
+                required = true,
+                description = "The results are aggregated based on non-metric fields in the result files. All fixed parameters " +
+                  "as specified in the fixedParams setting are excluded by default, yet parameters that are added " +
+                  "in the requestParameters setting will need to be excluded by entering the names of the parameters here, " +
+                  "otherwise the aggregation might be too granular."
+              )
+            ),
+            MERGE_METRIC_ROWS_TASK_TYPE -> Seq(
+              FieldDef(
+                StringConstantStructDef(INPUT_KEY_1),
+                RegexStructDef(".+".r),
+                required = true,
+                description = "The key under which the first input argument (of type ProcessingMessage[MetricRow])" +
+                  " is stored."
+              ),
+              FieldDef(
+                StringConstantStructDef(INPUT_KEY_2),
+                RegexStructDef(".+".r),
+                required = true,
+                description = "The key under which the second input argument (of type ProcessingMessage[MetricRow])" +
+                  " is stored."
+              ),
+
             )
           ))
         )

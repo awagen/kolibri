@@ -307,8 +307,8 @@ object TaskFactory {
                                     calculations: Seq[TwoInCalculation[WeaklyTypedMap[String], WeaklyTypedMap[String], Any]],
                                     metricNameToAggregationTypeMapping: Map[String, AggregationType],
                                     excludeParamsFromMetricRow: Seq[String],
-                                    successKeyName: String = "metricsRow",
-                                    failKeyName: String = "metricsCalculationFail") extends ZIOTask[MetricRow] {
+                                    successKeyName: String = "twoMapInputMetricsRow",
+                                    failKeyName: String = "twoMapInputMetricsCalculationFail") extends ZIOTask[MetricRow] {
     override def prerequisiteKeys: Seq[ClassTyped[Any]] = Seq(key1, key2)
 
     override def successKey: ClassTyped[ProcessingMessage[MetricRow]] = NamedClassTyped[ProcessingMessage[MetricRow]](successKeyName)
@@ -355,8 +355,8 @@ object TaskFactory {
    */
   case class MergeTwoMetricRows(key1: ClassTyped[ProcessingMessage[MetricRow]],
                                 key2: ClassTyped[ProcessingMessage[MetricRow]],
-                                successKeyName: String,
-                                failKeyName: String) extends ZIOTask[MetricRow] {
+                                successKeyName: String = "mergeTwoRowsResult",
+                                failKeyName: String = "failedToMergeRows") extends ZIOTask[MetricRow] {
     override def prerequisiteKeys: Seq[ClassTyped[Any]] = Seq(key1, key2)
 
     override def successKey: ClassTyped[ProcessingMessage[MetricRow]] = NamedClassTyped[ProcessingMessage[MetricRow]](successKeyName)
