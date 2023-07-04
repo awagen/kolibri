@@ -367,7 +367,10 @@ object TaskFactory {
       val mergeEffect = for {
         row1 <- ZIO.attempt(map.get(key1).get)
         row2 <- ZIO.attempt(map.get(key2).get)
-        mergedRow <- ZIO.attempt(row1.data.addRecordAndIncreaseSampleCount(row2.data))
+        mergedRow <- ZStream.fromIterable(row2.data.metricValues)
+          .runFold(row1.data)((oldRow, newMetric) => {
+            oldRow.addMetricDontChangeCountStore(newMetric)
+          })
         processingMessageResult <- ZIO.succeed(ProcessingMessages.Corn(mergedRow))
         _ <- ZIO.attempt({
           processingMessageResult.takeOverTags(row1)

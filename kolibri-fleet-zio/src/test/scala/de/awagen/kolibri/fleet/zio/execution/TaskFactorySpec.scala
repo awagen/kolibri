@@ -21,12 +21,13 @@ import de.awagen.kolibri.datatypes.immutable.stores.TypedMapStore
 import de.awagen.kolibri.datatypes.mutable.stores.{BaseWeaklyTypedMap, WeaklyTypedMap}
 import de.awagen.kolibri.datatypes.stores.immutable.MetricRow
 import de.awagen.kolibri.datatypes.types.NamedClassTyped
+import de.awagen.kolibri.datatypes.values.MetricValue
 import de.awagen.kolibri.definitions.processing.ProcessingMessages
 import de.awagen.kolibri.definitions.processing.ProcessingMessages.ProcessingMessage
 import de.awagen.kolibri.definitions.processing.modifiers.RequestTemplateBuilderModifiers
 import de.awagen.kolibri.fleet.zio.execution.TaskFactory.RequestJsonAndParseValuesTask
 import de.awagen.kolibri.fleet.zio.execution.TaskFactory.RequestJsonAndParseValuesTask.requestTemplateBuilderModifierKey
-import de.awagen.kolibri.fleet.zio.execution.TaskTestObjects.{parsingConfig, twoMapInputCalculationTask}
+import de.awagen.kolibri.fleet.zio.execution.TaskTestObjects.{mergeTwoMetricRowsTask, parsingConfig, twoMapInputCalculationTask}
 import de.awagen.kolibri.fleet.zio.resources.NodeResourceProvider
 import zio.http.Client
 import zio.test._
@@ -98,7 +99,32 @@ object TaskFactorySpec extends ZIOSpecDefault {
         val metricRowPM = result.get[ProcessingMessage[MetricRow]](resultKey).get
         metricRowPM.data.metrics("jaccard").biValue.value2.value == 0.60
       }))
-    }
+    },
 
+    test("Merge two metric rows into one"){
+      // given
+      val mergeTask = mergeTwoMetricRowsTask()
+      val metricsSuccess1: MetricValue[Double] = MetricValue.createDoubleAvgSuccessSample("metrics1", 0.2, 1.0)
+      val metricsSuccess2: MetricValue[Double] = MetricValue.createDoubleAvgSuccessSample("metrics2", 0.4, 1.0)
+      val metricsSuccess3: MetricValue[Double] = MetricValue.createDoubleAvgSuccessSample("metrics3", 0.1, 1.0)
+      val metricRow1 = MetricRow.emptyForParams(Map("p1" -> Seq("v1")))
+      val updatedMetricRow1 = metricRow1.addFullMetricsSampleAndIncreaseSampleCount(metricsSuccess1, metricsSuccess2)
+      val metricRow2 = MetricRow.emptyForParams(Map("p1" -> Seq("v1")))
+      val updatedMetricRow2 = metricRow2.addFullMetricsSampleAndIncreaseSampleCount(metricsSuccess3)
+      val initialMap = TypedMapStore(Map(
+        NamedClassTyped[ProcessingMessage[MetricRow]]("input1") -> ProcessingMessages.Corn(updatedMetricRow1),
+        NamedClassTyped[ProcessingMessage[MetricRow]]("input2") -> ProcessingMessages.Corn(updatedMetricRow2)
+      ))
+      // when, then
+      for {
+        result <- mergeTask.task(initialMap)
+        _ <- ZIO.logDebug(s"result: $result")
+      } yield assert(result.get(NamedClassTyped[ProcessingMessage[MetricRow]]("metricComparisonResult")) .get)(Assertion.assertion("correct merged result")(metricRowPM => {
+        metricRowPM.data.metrics.keySet == Set("metrics1", "metrics2", "metrics3") &&
+          metricRowPM.data.metrics("metrics1").biValue.value2.numSamples == 1 &&
+          metricRowPM.data.metrics("metrics2").biValue.value2.numSamples == 1 &&
+          metricRowPM.data.metrics("metrics3").biValue.value2.numSamples == 1
+      }))
+    }
   )
 }

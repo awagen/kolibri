@@ -42,7 +42,7 @@ import de.awagen.kolibri.definitions.usecase.searchopt.parse.JsonSelectors.Plain
 import de.awagen.kolibri.definitions.usecase.searchopt.parse.TypedJsonSelectors._
 import de.awagen.kolibri.definitions.usecase.searchopt.parse.{JsonSelectors, ParsingConfig}
 import de.awagen.kolibri.definitions.usecase.searchopt.provider.{FileBasedJudgementProvider, JudgementProvider}
-import de.awagen.kolibri.fleet.zio.execution.TaskFactory.{CalculateMetricsTask, RequestJsonAndParseValuesTask, TwoMapInputCalculation}
+import de.awagen.kolibri.fleet.zio.execution.TaskFactory.{CalculateMetricsTask, MergeTwoMetricRows, RequestJsonAndParseValuesTask, TwoMapInputCalculation}
 import de.awagen.kolibri.fleet.zio.resources.NodeResourceProvider
 import de.awagen.kolibri.storage.io.reader.LocalResourceFileReader
 import org.mockito.ArgumentMatchers
@@ -136,6 +136,13 @@ object TaskTestObjects {
     excludeParamsFromMetricRow = Seq.empty,
     successKeyName = "comparisonMetricsResults",
     failKeyName = "comparisonFailure"
+  )
+
+  def mergeTwoMetricRowsTask(): MergeTwoMetricRows = MergeTwoMetricRows(
+    key1 = NamedClassTyped[ProcessingMessage[MetricRow]]("input1"),
+    key2 = NamedClassTyped[ProcessingMessage[MetricRow]]("input2"),
+    successKeyName = "metricComparisonResult",
+    failKeyName = "metricComparisonFailure"
   )
 
   def requestTemplate = new RequestTemplateBuilder()
