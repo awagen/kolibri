@@ -49,12 +49,16 @@ import zio.http.ZClient.Config
 import zio.http.netty.NettyConfig
 import zio.http.{Client, DnsResolver}
 import zio.stream.ZStream
-import zio.{Task, Trace, ZIO, ZLayer}
+import zio.{Chunk, Task, Trace, ZIO, ZLayer}
 
 import java.util.Objects
 import java.util.concurrent.TimeUnit
 
 object TaskFactory {
+
+  private def getParamsFromRequestTemplate(requestTemplate: RequestTemplate, excludeParams: Seq[String]): Map[String, Seq[String]] = {
+    Map(requestTemplate.parameters.toSeq.filter(x => !excludeParams.contains(x._1)): _ *)
+  }
 
   object RequestJsonAndParseValuesTask {
 
@@ -134,29 +138,30 @@ object TaskFactory {
     }
 
 
-    override def task(map: TypeTaggedMap): Task[TypeTaggedMap] = ZIO.logDebug(s"request and parsing task input data: $map, \n value for key '$requestTemplateBuilderModifierKey': ${map.get(requestTemplateBuilderModifierKey)}: ") *> {
-      for {
-        // construct request template and execute request and parse relevant fields
-        requestTemplateProcessingMessageAndRequestResult <- requestEffect(map)
-        valueAndTemplate <- ZIO.attempt({
-          requestTemplateProcessingMessageAndRequestResult._1
-            .map(_ => (requestTemplateProcessingMessageAndRequestResult._2, requestTemplateProcessingMessageAndRequestResult._1.data))
-        })
-        // apply tagging
-        _ <- ZIO.attempt(taggingConfig.parsingResultTagger.apply(valueAndTemplate))
-        result <- ZIO.attempt(valueAndTemplate.data match {
-          case (Left(throwable), _) =>
-            val errorResult = ProcessingMessages.BadCorn(TaskFailType.FailedByException(throwable))
-            errorResult.takeOverTags(valueAndTemplate)
-            map.put(failKey, errorResult)._2
-          case (Right(parseResultMap), _) =>
-            parseResultMap.put(REQUEST_TEMPLATE_STORAGE_KEY.name, valueAndTemplate.data._2)
-            val resultMsg = ProcessingMessages.Corn(parseResultMap)
-            resultMsg.takeOverTags(valueAndTemplate)
-            map.put(successKey, resultMsg)._2
-        })
-      } yield result
-    }
+    override def task(map: TypeTaggedMap): Task[TypeTaggedMap] =
+      ZIO.logDebug(s"request and parsing task input data: $map, \n value for key '$requestTemplateBuilderModifierKey': ${map.get(requestTemplateBuilderModifierKey)}: ") *> {
+        for {
+          // construct request template and execute request and parse relevant fields
+          requestTemplateProcessingMessageAndRequestResult <- requestEffect(map)
+          valueAndTemplate <- ZIO.attempt({
+            requestTemplateProcessingMessageAndRequestResult._1
+              .map(_ => (requestTemplateProcessingMessageAndRequestResult._2, requestTemplateProcessingMessageAndRequestResult._1.data))
+          })
+          // apply tagging
+          _ <- ZIO.attempt(taggingConfig.parsingResultTagger.apply(valueAndTemplate))
+          result <- ZIO.attempt(valueAndTemplate.data match {
+            case (Left(throwable), _) =>
+              val errorResult = ProcessingMessages.BadCorn(TaskFailType.FailedByException(throwable))
+              errorResult.takeOverTags(valueAndTemplate)
+              map.put(failKey, errorResult)._2
+            case (Right(parseResultMap), _) =>
+              parseResultMap.put(REQUEST_TEMPLATE_STORAGE_KEY.name, valueAndTemplate.data._2)
+              val resultMsg = ProcessingMessages.Corn(parseResultMap)
+              resultMsg.takeOverTags(valueAndTemplate)
+              map.put(successKey, resultMsg)._2
+          })
+        } yield result
+      }
   }
 
   /**
@@ -189,17 +194,19 @@ object TaskFactory {
 
     override def failKey: ClassTyped[ProcessingMessage[TaskFailType]] = NamedClassTyped[ProcessingMessage[TaskFailType]](failKeyName)
 
-    private def calculateMetrics(parsedFields: ProcessingMessage[WeaklyTypedMap[String]]): Seq[MetricValue[Any]] = {
-      calculations
-        .flatMap(x => {
+    private def calculateMetrics(parsedFields: ProcessingMessage[WeaklyTypedMap[String]]): Task[Chunk[MetricValue[Any]]] = {
+      ZStream.fromIterable(calculations)
+        .mapZIO(x => ZIO.attempt {
           // ResultRecord is only combination of name and Either[Seq[ComputeFailReason], T]
           val values: Seq[ResultRecord[Any]] = x.calculation.apply(parsedFields.data)
           resultRecordsToMetricValues(values, metricNameToAggregationTypeMapping)
         })
+        .runCollect
+        .map(x => x.flatten)
     }
 
     private def metricValuesToMetricRow(metricValues: Seq[MetricValue[_]],
-                                        metricRowParams: Map[String, Seq[String]]): MetricRow = {
+                                        metricRowParams: Map[String, Seq[String]]): Task[MetricRow] = ZIO.attempt {
       MetricRow.emptyForParams(params = metricRowParams)
         .addFullMetricsSampleAndIncreaseSampleCount(metricValues: _*)
     }
@@ -211,14 +218,14 @@ object TaskFactory {
     override def task(map: TypeTaggedMap): Task[TypeTaggedMap] = {
       val parsedFieldsOpt: Option[ProcessingMessage[WeaklyTypedMap[String]]] = map.get(requestAndParseSuccessKey)
       val requestTemplateOpt: Option[RequestTemplate] = parsedFieldsOpt.flatMap(x => x.data.get[RequestTemplate](requestTemplateKey))
-      val metricRowParamsOpt: Option[Map[String, Seq[String]]] = requestTemplateOpt.map(x => Map(x.parameters.toSeq.filter(x => !excludeParamsFromMetricRow.contains(x._1)): _ *))
+      val metricRowParamsOpt: Option[Map[String, Seq[String]]] = requestTemplateOpt.map(x => getParamsFromRequestTemplate(x, excludeParamsFromMetricRow))
       val computeResult = for {
         parsedFields <- ZIO.attempt(parsedFieldsOpt.get)
         currentTags <- ZIO.attempt(parsedFields.getTagsForType(TagType.AGGREGATION))
         metricRowParams <- ZIO.attempt(metricRowParamsOpt.get)
-        singleResults <- ZIO.attempt(calculateMetrics(parsedFields))
+        singleResults <- calculateMetrics(parsedFields)
         _ <- ZIO.logDebug(s"single results: $singleResults")
-        metricRow <- ZIO.attempt(metricValuesToMetricRow(singleResults, metricRowParams))
+        metricRow <- metricValuesToMetricRow(singleResults, metricRowParams)
         _ <- ZIO.logDebug(s"computed metric values for aggregation tags '$currentTags': '$metricRow'")
         processingMessageResult <- ZIO.attempt(tagger.apply(ProcessingMessages.Corn(metricRow).withTags(TagType.AGGREGATION, currentTags)))
       } yield processingMessageResult
@@ -229,7 +236,7 @@ object TaskFactory {
         // try to map the throwable to a MetricRow result containing info about the failure
         .catchAll(throwable =>
           ZIO.logError(s"metric calculation failed, exception:\n${throwable.getStackTrace.mkString("\n")}") *>
-            wrapThrowableInMetricRowResult(map, throwable, calculations, metricRowParamsOpt.get)
+            wrapThrowableInMetricRowResult(map, throwable, calculations, metricRowParamsOpt.get, requestAndParseSuccessKey)
               // if the mapping to a MetricRow object with the failure information fails,
               // we declare the task as failed
               .catchAll(throwable =>
@@ -242,9 +249,10 @@ object TaskFactory {
     private def wrapThrowableInMetricRowResult(map: TypeTaggedMap,
                                                throwable: Throwable,
                                                calculations: Seq[Calculation[WeaklyTypedMap[String], Any]],
-                                               metricRowParams: Map[String, Seq[String]]): Task[TypeTaggedMap] = {
+                                               metricRowParams: Map[String, Seq[String]],
+                                               keyForTagTakeOver: ClassTyped[ProcessingMessage[Any]]): Task[TypeTaggedMap] = {
       ZIO.attempt {
-        val parsedFieldsOpt: Option[ProcessingMessage[WeaklyTypedMap[String]]] = map.get(requestAndParseSuccessKey)
+        val parsedFieldsOpt: Option[ProcessingMessage[Any]] = map.get(keyForTagTakeOver)
         // need to add paramNames here to set the fail reasons for each
         val allParamNames: Set[String] = calculations.flatMap(x => x.names).toSet
         // check if we know rhe right running value mapping, otherwise need to ignore the metric
@@ -282,11 +290,23 @@ object TaskFactory {
   }
 
 
-  // TODO: we would still need a merge task for two MetricRow tasks
+  /**
+   * Task allowing calculations that include two WeaklyTypedMap[String] instances, e.g as in the case of comparing
+   * parsed results for two distinct endpoints or the like.
+   * @param key1 - key holding the first input result
+   * @param key2 - key holding the second input result
+   * @param calculations - calculations using two inputs of type WeaklyTypedMap[String] to compute metrics
+   * @param metricNameToAggregationTypeMapping: mapping of metric name to aggregation type
+   * @param excludeParamsFromMetricRow: name of parameters to exclude when composing the MetricRow result
+   * @param successKeyName: key name under which to store the ProcessingMessage[MetricRow] result in case of
+   * successful computation
+   * @param failKeyName: key name under which to store the fail reasons in case computation was not successful
+   */
   case class TwoMapInputCalculation(key1: ClassTyped[ProcessingMessage[WeaklyTypedMap[String]]],
                                     key2: ClassTyped[ProcessingMessage[WeaklyTypedMap[String]]],
                                     calculations: Seq[TwoInCalculation[WeaklyTypedMap[String], WeaklyTypedMap[String], Any]],
                                     metricNameToAggregationTypeMapping: Map[String, AggregationType],
+                                    excludeParamsFromMetricRow: Seq[String],
                                     successKeyName: String = "metricsRow",
                                     failKeyName: String = "metricsCalculationFail") extends ZIOTask[MetricRow] {
     override def prerequisiteKeys: Seq[ClassTyped[Any]] = Seq(key1, key2)
@@ -295,23 +315,44 @@ object TaskFactory {
 
     override def failKey: ClassTyped[ProcessingMessage[TaskFailType]] = NamedClassTyped[ProcessingMessage[TaskFailType]](failKeyName)
 
-    // TODO: make sure to preserve the tags and take care of fail case, e.g store value under failKey
     override def task(map: TypeTaggedMap): Task[TypeTaggedMap] = {
-      for {
+      val calculateAndUpdateMapEffect = for {
         map1 <- ZIO.attempt(map.get(key1).get)
         map2 <- ZIO.attempt(map.get(key2).get)
         calcResults <- ZStream.fromIterable(calculations)
           .flatMap(calc => ZStream.fromIterable(calc.calculation.apply(map1.data, map2.data)))
           .runCollect
-        requestParams <- ZIO.succeed(map1.data.get[RequestTemplate](REQUEST_TEMPLATE_STORAGE_KEY.name).map(x => x.parameters).getOrElse(Map.empty))
+        requestParams <- ZIO.succeed(map1.data.get[RequestTemplate](REQUEST_TEMPLATE_STORAGE_KEY.name).map(x => {
+          getParamsFromRequestTemplate(x, excludeParamsFromMetricRow)
+        }).getOrElse(Map.empty))
         metricRow <- ZIO.succeed(MetricRow.emptyForParams(requestParams))
         metricValues <- ZIO.attempt(resultRecordsToMetricValues(calcResults, metricNameToAggregationTypeMapping))
         updatedMetricRow <- ZIO.attempt(metricRow.addFullMetricsSampleAndIncreaseSampleCount(metricValues: _*))
-        updatedMap <- ZIO.attempt(map.put(successKey, ProcessingMessages.Corn(updatedMetricRow))._2)
+        resultProcessingMessage <- ZIO.succeed(ProcessingMessages.Corn(updatedMetricRow))
+        // take over tags from both inputs
+        _ <- ZIO.attempt({
+          resultProcessingMessage.takeOverTags(map1)
+          resultProcessingMessage.takeOverTags(map2)
+        })
+        updatedMap <- ZIO.attempt(map.put(successKey, resultProcessingMessage)._2)
       } yield updatedMap
+      calculateAndUpdateMapEffect.catchAll(throwable => {
+        ZIO.logError(s"metric calculation failed, exception:\n${throwable.getStackTrace.mkString("\n")}") *>
+          ZIO.succeed(map.put(failKey, ProcessingMessages.BadCorn(TaskFailType.FailedByException(throwable)))._2)
+      })
     }
   }
 
+  /**
+   * Simple task that merges the results of two instances of tye ProcessingMessage[MetricRow] into another one.
+   * The merged result is stored as ProcessingMessage[MetricRow] for key of name successKeyName,
+   * with preserved tags from both merged instances
+   *
+   * @param key1 - key of the first ProcessingMessage[MetricRow], containing the first MetricRow to merge
+   * @param key2 - key of the first ProcessingMessage[MetricRow], containing the second MetricRow to merge
+   * @param successKeyName - name of the key to store the merged ProcessingMessage[MetricRow] under
+   * @param failKeyName - name of key to store fail reasons under in case of failed task
+   */
   case class MergeTwoMetricRows(key1: ClassTyped[ProcessingMessage[MetricRow]],
                                 key2: ClassTyped[ProcessingMessage[MetricRow]],
                                 successKeyName: String,
@@ -322,14 +363,22 @@ object TaskFactory {
 
     override def failKey: ClassTyped[ProcessingMessage[TaskFailType]] = NamedClassTyped[ProcessingMessage[TaskFailType]](failKeyName)
 
-    // TODO: preserve tags and take care of fail case, e.g store value under failKey
     override def task(map: TypeTaggedMap): Task[TypeTaggedMap] = {
-      for {
+      val mergeEffect = for {
         row1 <- ZIO.attempt(map.get(key1).get)
         row2 <- ZIO.attempt(map.get(key2).get)
         mergedRow <- ZIO.attempt(row1.data.addRecordAndIncreaseSampleCount(row2.data))
+        processingMessageResult <- ZIO.succeed(ProcessingMessages.Corn(mergedRow))
+        _ <- ZIO.attempt({
+          processingMessageResult.takeOverTags(row1)
+          processingMessageResult.takeOverTags(row2)
+        })
         updatedMap <- ZIO.attempt(map.put(successKey, ProcessingMessages.Corn(mergedRow))._2)
       } yield updatedMap
+      mergeEffect.catchAll(throwable => {
+        ZIO.logError(s"metricRow merging failed, exception:\n${throwable.getStackTrace.mkString("\n")}") *>
+          ZIO.succeed(map.put(failKey, ProcessingMessages.BadCorn(TaskFailType.FailedByException(throwable)))._2)
+      })
     }
   }
 

@@ -74,7 +74,7 @@ object TaskFactorySpec extends ZIOSpecDefault {
       // when, then
       for {
         result <- metricTask.task(initialMap)
-        _ <- ZIO.logInfo(s"result: $result")
+        _ <- ZIO.logDebug(s"result: $result")
       } yield assertTrue(result.get(metricTask.successKey).nonEmpty)
 
     }
