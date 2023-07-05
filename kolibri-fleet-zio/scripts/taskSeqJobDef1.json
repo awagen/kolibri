@@ -49,7 +49,7 @@
             {
               "name": "productIds",
               "castType": "STRING",
-              "selector": "\\ data \\ products \\\\ productId"
+              "selector": "\\ response \\ docs \\\\ product_id"
             }
           ]
         },
@@ -75,7 +75,7 @@
             "useHttps": false
           }
         ],
-        "requestMode": "REQUEST_ALL_CONNECTIONS",
+        "requestMode": "DISTRIBUTE_LOAD",
         "contextPath": "search",
         "fixedParams": {
           "k1": [
@@ -89,7 +89,7 @@
       },
       {
         "type": "METRIC_CALCULATION",
-        "parsedDataKey": "parsedResults",
+        "parsedDataKey": "successTestKey",
         "calculations": [
           {
             "type": "IR_METRICS",

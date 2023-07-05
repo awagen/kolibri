@@ -195,6 +195,10 @@ object JobDefinitionJsonProtocol extends DefaultJsonProtocol {
       )
     )
 
+  // TODO: apparently having a generic format without defining the input element type will lead to
+  // the TypeTaggedMap not retrieving the key properly due do missing TypeTag.
+  // Thus either explicitly provide formats defining the input type OR
+  // switch to a less type-restrictive map, such as WeaklyTypedMap[String]
   implicit object JobDefinitionFormat extends JsonFormat[JobDefinition[_, _, _ <: WithCount]] with WithStructDef {
     override def read(json: JsValue): JobDefinition[_, _, _ <: WithCount] = json match {
       case spray.json.JsObject(fields) => fields(TYPE_KEY).convertTo[String] match {
@@ -255,6 +259,8 @@ object JobDefinitionJsonProtocol extends DefaultJsonProtocol {
             taskSequence = taskSequence,
             aggregationInfo = aggregationInfo
           )
+            // NOTE: casting it here does not help against the above loss of type tag, the info gets lost due to generic type of the format
+            .asInstanceOf[JobDefinition[RequestTemplateBuilderModifier, MetricRow, MetricAggregation[Tag]]]
       }
     }
 

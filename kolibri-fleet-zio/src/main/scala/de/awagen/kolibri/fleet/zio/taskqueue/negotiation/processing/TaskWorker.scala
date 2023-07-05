@@ -78,13 +78,27 @@ object TaskWorker extends Worker {
       _ <- prepareGlobalResources(jobBatch.job.resourceSetup)
       aggregatorRef <- Ref.make(aggregator)
       computeResultFiber <- ZStream.fromIterable(jobBatch.job.batches.get(jobBatch.batchNr).get.data)
-        .mapZIO(dataPoint => ZIOSimpleTaskExecution(
-          TypedMapStore(Map(NamedClassTyped[T](INITIAL_DATA_KEY) -> dataPoint)),
-          jobBatch.job.taskSequence)
-          // we explicitly lift possible errors to an Either, to avoid the
-          // stream from stopping. The distinct cases can then separately be
-          // aggregated
-          .processAllTasks.either
+        .mapZIO(dataPoint =>
+          for {
+            _ <- ZIO.logDebug(s"trying to process data point: $dataPoint")
+            dataKey <- ZIO.succeed(NamedClassTyped[T](INITIAL_DATA_KEY))
+            mapStore <- ZIO.attempt({
+              TypedMapStore(Map(dataKey -> dataPoint))
+            })
+            _ <- ZIO.logDebug(s"value map: $mapStore")
+            _ <- ZIO.logDebug(s"value under data key: ${mapStore.get(dataKey)}")
+            _ <- ZIO.when(mapStore.get(dataKey).isEmpty)(
+              ZIO.logWarning(s"There is a type mismatch of data point and data key, processing the element '$dataPoint' will not work")
+            )
+            result <- ZIOSimpleTaskExecution(
+              mapStore,
+              jobBatch.job.taskSequence
+            )
+              // we explicitly lift possible errors to an Either, to avoid the
+              // stream from stopping. The distinct cases can then separately be
+              // aggregated
+              .processAllTasks.either
+          } yield result
         )
         .mapZIOParUnordered(maxParallelItemsPerBatch)(element =>
           for {

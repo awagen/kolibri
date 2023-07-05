@@ -36,22 +36,28 @@ object RequestTemplateImplicits {
     def toZIOHttpRequest(host: String, credentialsOpt: Option[Credentials]): ZIO[Client, Throwable, Response] = {
       for {
         httpClient <- ZIO.service[Client]
-        response <- httpClient.request(
+        bodyContent <- ZIO.succeed(Body.fromCharSequence(template.body))
+        headers <- ZIO.succeed({
+          Headers(
+            (template.getContextHeaders ++ template.headers).map(x => Header.Custom(x._1, x._2)) ++
+              // add basic auth if credentials passed as argument
+              credentialsOpt
+                .map(cred => Seq(Header.Authorization.Basic(username = cred.username, password = cred.password)))
+                .getOrElse(Seq.empty)
+          )
+        })
+        request <- ZIO.succeed(
           Request(
-            body = Body.fromCharSequence(template.body),
-            headers = Headers(
-              (template.getContextHeaders ++ template.headers).map(x => Header.Custom(x._1, x._2)) ++
-                // add basic auth if credentials passed as argument
-                credentialsOpt
-                  .map(cred => Seq(Header.Authorization.Basic(username = cred.username, password = cred.password)))
-                  .getOrElse(Seq.empty)
-            ),
+            body = bodyContent,
+            headers = headers,
             method = Method.fromString(template.httpMethod),
             url = URL.fromURI(new URI(s"${host.stripSuffix("/")}/${template.query.stripPrefix("/")}")).get,
             version = protocolMapping.getOrElse(template.protocol, Version.`HTTP/1.1`),
             remoteAddress = None
-          )).onError(cause => ZIO.logError(s"error when requesting, cause: ${cause.trace}"))
-        _ <- ZIO.logInfo(s"retrieved request response: $response")
+          )
+        )
+        _ <- ZIO.logDebug(s"request: $request")
+        response <- httpClient.request(request).onError(cause => ZIO.logError(s"error when requesting, cause: ${cause.trace}"))
       } yield response
     }
 
