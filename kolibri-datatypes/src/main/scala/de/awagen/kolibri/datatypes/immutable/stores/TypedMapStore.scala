@@ -16,7 +16,7 @@
 
 package de.awagen.kolibri.datatypes.immutable.stores
 
-import de.awagen.kolibri.datatypes.types.ClassTyped
+import de.awagen.kolibri.datatypes.types.{ClassTyped, NamedClassTyped}
 import org.slf4j.LoggerFactory
 
 import scala.reflect.runtime.universe._
@@ -47,5 +47,25 @@ case class TypedMapStore(map: scala.collection.immutable.Map[ClassTyped[Any], An
 
   override def remove[T](key: ClassTyped[T]): (Option[T], TypeTaggedMap) = {
     (map.get(key).map(key.castFunc.apply), TypedMapStore(map.filter(x => !x._1.equals(key))))
+  }
+
+  override def getWithTypeCastFallback[V](key: ClassTyped[V]): Option[V] = {
+    try {
+      get(key) match {
+        case v@Some(_) => v
+        // fall back trying to map a non-typed value to the actual type
+        case None if key.isInstanceOf[NamedClassTyped[Any]] =>
+          val keyWithCorrectNameOpt = map.keys
+            .find(x => x.isInstanceOf[NamedClassTyped[Any]])
+            .find(x => x.asInstanceOf[NamedClassTyped[Any]].name == key.asInstanceOf[NamedClassTyped[Any]].name)
+          keyWithCorrectNameOpt.flatMap(key => {
+            map.get(key).map(x => x.asInstanceOf[V])
+          })
+        case _ => None
+      }
+    }
+    catch {
+      case _: Exception => None
+    }
   }
 }

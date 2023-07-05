@@ -114,22 +114,12 @@ object TaskFactory {
     private def composeAndTagRequestTemplateProcessingMessage(map: TypeTaggedMap): Task[ProcessingMessage[RequestTemplate]] = {
       for {
         // compose the request template
-        _ <- ZIO.when(map.get(requestTemplateBuilderModifierKey).isEmpty && map.keys.filter(x => x.isInstanceOf[NamedClassTyped[Any]]).exists(x => x.asInstanceOf[NamedClassTyped[Any]].name == requestTemplateBuilderModifierKey.name))(
+        modifierOpt <- ZIO.attempt(map.getWithTypeCastFallback(requestTemplateBuilderModifierKey))
+        _ <- ZIO.when(modifierOpt.isEmpty)(
           ZIO.logWarning(s"Key '$requestTemplateBuilderModifierKey' is not available in passed map '$map', computation will fail.") *>
             ZIO.logWarning(s"Map only has key-value pairs: '${map.keys.map(x => (x.asInstanceOf[NamedClassTyped[_]].name, map.get(x).map(x => x.getClass)))}'")
         )
-        modifier <- ZIO.attempt({
-          val opt = map.get(requestTemplateBuilderModifierKey) match {
-            case v@Some(_) => v
-            // fall back trying to map a non-typed value to the actual type
-            case None =>
-              val keyWithCorrectNameOpt = map.keys.find(x => x.asInstanceOf[NamedClassTyped[Any]].name == requestTemplateBuilderModifierKey.name)
-              keyWithCorrectNameOpt.flatMap(key => {
-                map.get(key).map(x => x.asInstanceOf[RequestTemplateBuilderModifier])
-              })
-          }
-          opt.get
-        })
+        modifier <- ZIO.attempt(modifierOpt.get)
         _ <- ZIO.logDebug(s"request modifier: $modifier")
         requestTemplate <- ZIO.attempt(modifier.apply(initRequestTemplateBuilder).build())
         _ <- ZIO.logDebug(s"request template: $requestTemplate")

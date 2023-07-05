@@ -33,6 +33,15 @@ trait TypeTaggedMap extends KolibriSerializable {
 
   def get[V](key: ClassTyped[V]): Option[V]
 
+  /**
+   * In case the key does not directly return a value, try using most generic type (Any) to retrieve the key value
+   * (in case of NamedClassTyped only and only if of same name as passed key) and cast to the needed type.
+   *
+   * NOTE: its a workaround of situations where TypeTag is set to too generic type, e.g in case of generic type format
+   * casting to Any type thus not providing specific type information.
+   */
+  def getWithTypeCastFallback[V](key: ClassTyped[V]): Option[V]
+
   def keys: Iterable[ClassTyped[Any]]
 
   def keySet: collection.Set[ClassTyped[Any]]
