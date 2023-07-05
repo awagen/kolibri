@@ -229,6 +229,7 @@ object JobDefinitionJsonProtocol extends DefaultJsonProtocol {
         case REQUESTING_TASK_SEQUENCE_TYPE =>
           val defFields: Map[String, JsValue] = fields(DEF_KEY).asJsObject.fields
           val jobName = defFields(JOB_NAME_KEY).convertTo[String]
+          val currentTimeInMillis = System.currentTimeMillis()
           val resourceDirectives = defFields(RESOURCE_DIRECTIVES_KEY).convertTo[Seq[ResourceDirective[_]]]
           val requestParameters = defFields(REQUEST_PARAMETERS_KEY).convertTo[Seq[ValueSeqGenDefinition[_]]]
           val modifiers: Seq[IndexedGenerator[RequestTemplateBuilderModifier]] = requestParameters.map(x => x.toState).map(x => x.toSeqGenerator).map(x => x.mapGen(y => y.toModifier))
@@ -245,7 +246,7 @@ object JobDefinitionJsonProtocol extends DefaultJsonProtocol {
               ignoreIdDiff = false
             ),
             writer = AppConfig.persistenceModule.persistenceDIModule.immutableMetricAggregationWriter(
-              subFolder = jobName,
+              subFolder = s"${jobName}_$currentTimeInMillis",
               x => {
                 val randomAdd: String = Random.alphanumeric.take(5).mkString
                 s"${x.toString()}-$randomAdd"
