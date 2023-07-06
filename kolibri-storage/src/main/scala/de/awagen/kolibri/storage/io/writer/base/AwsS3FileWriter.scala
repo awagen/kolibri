@@ -17,7 +17,7 @@
 package de.awagen.kolibri.storage.io.writer.base
 
 import com.amazonaws.regions.Regions
-import com.amazonaws.services.s3.model.{ObjectMetadata, PutObjectRequest, PutObjectResult}
+import com.amazonaws.services.s3.model.{DeleteObjectRequest, ObjectMetadata, PutObjectRequest, PutObjectResult}
 import com.amazonaws.services.s3.{AmazonS3, AmazonS3ClientBuilder}
 import com.amazonaws.{AmazonServiceException, SdkClientException}
 import de.awagen.kolibri.storage.io.reader.ReaderUtils.normalizeBucketPath
@@ -27,6 +27,7 @@ import org.slf4j.{Logger, LoggerFactory}
 
 import java.nio.charset.StandardCharsets
 import java.util.Objects
+import scala.jdk.javaapi.CollectionConverters
 
 
 case class AwsS3FileWriter(bucketName: String,
@@ -85,12 +86,81 @@ case class AwsS3FileWriter(bucketName: String,
     }
   }
 
-  // TODO: implement
-  override def delete(targetIdentifier: String): Either[Exception, PutObjectResult] = ???
+  override def delete(targetIdentifier: String): Either[Exception, Unit] = {
+    try {
+      val path = s"$dirPathNormalized$targetIdentifier".stripSuffix(delimiter)
+      logger.debug(s"Trying to delete path '$path' in bucket $bucketName")
+      Right(s3Client.deleteObject(new DeleteObjectRequest(bucketName, path)))
+    }
+    catch {
+      case e: AmazonServiceException =>
+        // call transmitted correctly, but S3 could not process it
+        logger.error("S3 failed to process delete request", e)
+        Left(e)
+      case e: SdkClientException =>
+        // S3 not reachable, or client unable to parse response from S3
+        logger.error("S3 not reachable or unable to client unable to parse response of delete request", e)
+        Left(e)
+    }
+  }
 
-  // TODO: implement
-  override def copyDirectory(dirPath: String, toDirPath: String): Unit = ???
+  private def deleteObjectsWithPrefix(objectPrefix: String): Unit = {
+    try {
+      val files = listFilesWithPrefix(objectPrefix)
+      files.foreach(file => {
+        s3Client.deleteObject(new DeleteObjectRequest(bucketName, file))
+      })
+    }
+    catch {
+      case e: AmazonServiceException =>
+        // call transmitted correctly, but S3 could not process it
+        logger.error("S3 failed to process delete request", e)
+        throw e
+      case e: SdkClientException =>
+        // S3 not reachable, or client unable to parse response from S3
+        logger.error("S3 not reachable or unable to client unable to parse response of delete request", e)
+        throw e
+    }
+  }
 
-  // TODO: implement
-  override def moveDirectory(dirPath: String, toDirPath: String): Unit = ???
+  /**
+   * Lists the directory contents in the passed path. Path is relative to the
+   * base bath defined for the app. The returned files start with the base path,
+   * but do not contain the bucket
+   */
+  private def listFilesWithPrefix(prefix: String): Seq[String] = {
+    val objectPrefix = s"$dirPathNormalized$prefix".stripSuffix(delimiter)
+    val objectSummaries = CollectionConverters.asScala(s3Client.listObjects(bucketName, objectPrefix).getObjectSummaries).toSeq
+    objectSummaries.map(x => x.getKey)
+  }
+
+  // we pick all objects with the prefix of the folder
+  // and copy each one (see https://stackoverflow.com/questions/12518524/amazon-s3-copy-the-directory-to-another-directory)
+  override def copyDirectory(dirPath: String, toDirPath: String): Unit = {
+    try {
+      val fromDirPrefix = s"$dirPathNormalized$dirPath".stripSuffix(delimiter)
+      val containedFiles = listFilesWithPrefix(dirPath)
+      val newDirPrefix = s"$dirPathNormalized$toDirPath".stripSuffix(delimiter)
+      containedFiles.foreach(file => {
+        val newFile = file.replace(fromDirPrefix, newDirPrefix)
+        logger.debug(s"trying to copy '$file' to '$newFile' for bucket '$bucketName'")
+        s3Client.copyObject(bucketName, file, bucketName, newFile)
+      })
+    }
+    catch {
+      case e: AmazonServiceException =>
+        // call transmitted correctly, but S3 could not process it
+        logger.error("S3 failed to process copy request", e)
+        throw e
+      case e: SdkClientException =>
+        // S3 not reachable, or client unable to parse response from S3
+        logger.error("S3 not reachable or unable to client unable to parse response of copy request", e)
+        throw e
+    }
+  }
+
+  override def moveDirectory(dirPath: String, toDirPath: String): Unit = {
+    copyDirectory(dirPath, toDirPath)
+    deleteObjectsWithPrefix(dirPath)
+  }
 }

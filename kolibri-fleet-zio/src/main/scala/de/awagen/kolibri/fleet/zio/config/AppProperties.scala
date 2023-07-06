@@ -121,8 +121,6 @@ object AppProperties {
 
     val localPersistenceWriteBasePath: Option[String] = safeGetString("kolibri.persistence.local.writeBasePath")
 
-    val localPersistenceWriteResultsSubPath: Option[String] = safeGetString("kolibri.persistence.local.writeResultsSubPath")
-
     val localPersistenceReadBasePath: Option[String] = safeGetString("kolibri.persistence.local.readBasePath")
 
     val localResourceReadBasePath: Option[String] = safeGetString("kolibri.persistence.local.resources.readBasePath")

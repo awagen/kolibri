@@ -130,7 +130,7 @@ object TestJobDefinitions {
         val resultString = data.map.keys.map(x => s"$x\t${data.map(x).numSamples}\t${data.map(x).value.toString}").toSeq.mkString("\n")
         fileWriter.write(resultString, "dartThrowResult.txt")
       }
-      override def delete(targetIdentifier: Tag): Either[Exception, Any] = {
+      override def delete(targetIdentifier: Tag): Either[Exception, Unit] = {
         throw new IllegalAccessException("no deletion allowed here")
       }
 

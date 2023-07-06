@@ -35,7 +35,7 @@ object JobDefinitions {
     new Writer[W, Tags.Tag, Any] {
       override def write(data: W, targetIdentifier: Tags.Tag): Either[Exception, Any] = Right(())
 
-      override def delete(targetIdentifier: Tags.Tag): Either[Exception, Any] = Right(())
+      override def delete(targetIdentifier: Tags.Tag): Either[Exception, Unit] = Right(())
 
       override def copyDirectory(dirPath: String, toDirPath: String): Unit = ()
 

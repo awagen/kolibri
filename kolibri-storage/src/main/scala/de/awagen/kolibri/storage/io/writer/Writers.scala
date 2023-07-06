@@ -15,7 +15,7 @@ object Writers {
 
     def write(data: U, targetIdentifier: V): Either[Exception, W]
 
-    def delete(targetIdentifier: V): Either[Exception, W]
+    def delete(targetIdentifier: V): Either[Exception, Unit]
 
     def copyDirectory(dirPath: String, toDirPath: String): Unit
 

@@ -85,7 +85,7 @@ object Modules {
           mutableMetricAggregationWriter.write(mutableAggregation, targetIdentifier)
         }
 
-        override def delete(targetIdentifier: Tags.Tag): Either[Exception, Any] = {
+        override def delete(targetIdentifier: Tags.Tag): Either[Exception, Unit] = {
           mutableMetricAggregationWriter.delete(targetIdentifier)
         }
 

@@ -60,7 +60,7 @@ class AwsPersistenceModule extends PersistenceDIModule with tagging.Tag[AWS_MODU
                                        tagToDataIdentifierFunc: Tags.Tag => String): Writer[MetricAggregation[Tags.Tag], Tags.Tag, Any] = Writer.awsMetricAggregationWriter(
     AppProperties.config.metricDocumentFormats,
     AppProperties.config.awsS3Bucket.get,
-    AppProperties.config.awsS3BucketPath.get,
+    s"${AppProperties.config.awsS3BucketPath.get.trim.stripSuffix("/")}/${AppProperties.config.outputResultsPath.get}",
     subFolder,
     tagToDataIdentifierFunc
   )

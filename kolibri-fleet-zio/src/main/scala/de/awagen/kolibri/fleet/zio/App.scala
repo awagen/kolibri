@@ -21,7 +21,7 @@ import de.awagen.kolibri.fleet.zio.config.AppProperties
 import de.awagen.kolibri.fleet.zio.config.AppProperties.config.http_server_port
 import de.awagen.kolibri.fleet.zio.config.di.ZioDIConfig
 import de.awagen.kolibri.fleet.zio.metrics.Metrics.MetricTypes.taskManageCycleInvokeCount
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.{JobStateReader, NodeStateReader, WorkStateReader}
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.{JobStateReader, WorkStateReader}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer.NodeStateWriter
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services.{TaskOverviewService, TaskPlannerService, WorkHandlerService}
 import zio._
@@ -36,8 +36,12 @@ object App extends ZIOAppDefault {
   override val bootstrap: ZLayer[Any, Any, Unit] =
     Runtime.removeDefaultLoggers >>> SLF4J.slf4j
 
+  // TODO: one problem here is if the workers fail in initial stages of a task
+  //  (such as resource creation where no result type is yet generated),
+  // then it seems no update follows and the tasks are revoked from their
+  // current nodes and put to open again, which leads to a loop --> FIX!!
   val planTasksEffect: ZIO[JobStateReader with TaskPlannerService with WorkStateReader with TaskOverviewService, Throwable, Unit] = {
-    for {
+    (for {
       taskOverviewService <- ZIO.service[TaskOverviewService]
       workStateReader <- ZIO.service[WorkStateReader]
       taskPlannerService <- ZIO.service[TaskPlannerService]
@@ -70,8 +74,7 @@ object App extends ZIOAppDefault {
       _ <- taskPlannerService.planTasks(batchProcessingTasks)
       _ <- taskPlannerService.planTasks(jobToDoneTasks)
       _ <- taskPlannerService.planTasks(nodeStateRemovalTasks)
-
-    } yield ()
+    } yield ()).onError(cause => ZIO.logError(s"Error executing planTaskEffect:\n${cause.trace.prettyPrint}"))
   }
 
   /**

@@ -37,7 +37,7 @@ case class FileStorageJobStateWriter(writer: Writer[String, String, _]) extends 
   override def moveToDone(jobDirectoryName: String): Task[Unit] = {
     ZIO.attemptBlockingIO({
       val jobProcessingDir = JobTopLevel.folderForJob(jobDirectoryName, isOpenJob = true)
-      writer.moveDirectory(jobProcessingDir, config.doneJobBaseFolder)
+      writer.moveDirectory(jobProcessingDir, s"${config.doneJobBaseFolder}/$jobDirectoryName")
     })
   }
 

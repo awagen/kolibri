@@ -21,8 +21,7 @@ import com.softwaremill.tagging
 import de.awagen.kolibri.datatypes.metrics.aggregation.mutable.MetricAggregation
 import de.awagen.kolibri.datatypes.tagging.Tags
 import de.awagen.kolibri.definitions.usecase.searchopt.jobdefinitions.parts.Writer
-import de.awagen.kolibri.fleet.zio.config.AppProperties
-import de.awagen.kolibri.fleet.zio.config.AppProperties.config.localPersistenceWriteResultsSubPath
+import de.awagen.kolibri.fleet.zio.config.AppProperties._
 import de.awagen.kolibri.fleet.zio.config.di.modules.Modules.{LOCAL_MODULE, PersistenceDIModule}
 import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, LocalDirectoryReader, LocalResourceFileReader, Reader}
 import de.awagen.kolibri.storage.io.writer.Writers.{FileWriter, Writer}
@@ -31,27 +30,27 @@ import de.awagen.kolibri.storage.io.writer.base.LocalDirectoryFileWriter
 
 class LocalPersistenceModule extends PersistenceDIModule with tagging.Tag[LOCAL_MODULE] {
 
-  assert(AppProperties.config.localPersistenceWriteBasePath.isDefined, "no local persistence dir defined")
+  assert(config.localPersistenceWriteBasePath.isDefined, "no local persistence dir defined")
 
   lazy val writer: FileWriter[String, _] =
-    LocalDirectoryFileWriter(directory = AppProperties.config.localPersistenceWriteBasePath.get)
+    LocalDirectoryFileWriter(directory = config.localPersistenceWriteBasePath.get)
 
   lazy val reader: Reader[String, Seq[String]] =
     LocalResourceFileReader(
-      basePath = AppProperties.config.localPersistenceReadBasePath.get,
+      basePath = config.localPersistenceReadBasePath.get,
       delimiterAndPosition = None,
       fromClassPath = false
     )
 
   override def dataOverviewReader(fileFilter: String => Boolean): DataOverviewReader = LocalDirectoryReader(
-    baseDir = AppProperties.config.localPersistenceReadBasePath.get,
+    baseDir = config.localPersistenceReadBasePath.get,
     baseFilenameFilter = fileFilter)
 
 
   def metricAggregationWriter(subFolder: String,
                               tagToDataIdentifierFunc: Tags.Tag => String): Writer[MetricAggregation[Tags.Tag], Tags.Tag, Any] = Writer.localMetricAggregationWriter(
-    AppProperties.config.metricDocumentFormats,
-    s"${AppProperties.config.localPersistenceWriteBasePath.get.trim.stripSuffix("/")}/${localPersistenceWriteResultsSubPath.get.stripPrefix("/")}",
+    config.metricDocumentFormats,
+    s"${config.localPersistenceWriteBasePath.get.trim.stripSuffix("/")}/${config.outputResultsPath.get.stripPrefix("/")}",
     subFolder,
     tagToDataIdentifierFunc
   )

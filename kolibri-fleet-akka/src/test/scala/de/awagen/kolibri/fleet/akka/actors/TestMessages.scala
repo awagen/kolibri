@@ -192,7 +192,7 @@ object TestMessages {
   val testWriter: Writer[MapWithCount[Tag, Double], Tag, Any] = new Writer[MapWithCount[Tag, Double], Tag, Any] {
     override def write(data: MapWithCount[Tag, Double], targetIdentifier: Tag): Either[Exception, Any] = Right(())
 
-    override def delete(targetIdentifier: Tag): Either[Exception, Any] = throw new IllegalAccessException("deletions not allowed here")
+    override def delete(targetIdentifier: Tag): Either[Exception, Unit] = throw new IllegalAccessException("deletions not allowed here")
 
     override def copyDirectory(dirPath: String, toDirPath: String): Unit = throw new IllegalAccessException("directory copying not allowed here")
 
@@ -261,7 +261,7 @@ object TestMessages {
       writer = new Writer[WithCount, Tag, Any] {
         override def write(data: WithCount, targetIdentifier: Tag): Either[Exception, Any] = Right(())
 
-        override def delete(targetIdentifier: Tag): Either[Exception, Any] = throw new IllegalAccessException("no deletion allowed here")
+        override def delete(targetIdentifier: Tag): Either[Exception, Unit] = throw new IllegalAccessException("no deletion allowed here")
 
         override def copyDirectory(dirPath: String, toDirPath: String): Unit = throw new IllegalAccessException("directory copying not allowed here")
 

@@ -135,6 +135,7 @@ case class ClaimBasedTaskPlannerService(claimReader: ClaimReader,
       existingClaimsForBatch <- claimReader.getClaimsForBatchAndTopic(task.jobId, task.batchNr, task.taskTopic)
       // first delete claims belonging to other nodes to avoid a claim for another node remaining if the winner
       // claim is already deleted
+      _ <- ZIO.logDebug(s"Trying to delete existing claims: $existingClaimsForBatch")
       _ <- claimUpdater.removeClaims(existingClaimsForBatch, x => !isCurrentNodeClaim(x))
       // also delete the claim of the current node (the one who won the claim)
       _ <- claimUpdater.removeClaims(existingClaimsForBatch, isCurrentNodeClaim)

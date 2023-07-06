@@ -59,7 +59,7 @@ case class BaseMetricDocumentWriter(writer: Writer[String, String, Any],
   }
 
   // TODO: implement
-  override def delete(targetIdentifier: Tag): Either[Exception, Any] = ???
+  override def delete(targetIdentifier: Tag): Either[Exception, Unit] = ???
 
   // TODO: implement
   override def copyDirectory(dirPath: String, toDirPath: String): Unit = ???
