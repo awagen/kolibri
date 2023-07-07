@@ -1,84 +1,74 @@
 /**
-  * Copyright 2021 Andreas Wagenmann
-  *
-  * Licensed under the Apache License, Version 2.0 (the "License");
-  * you may not use this file except in compliance with the License.
-  * You may obtain a copy of the License at
-  *
-  * http://www.apache.org/licenses/LICENSE-2.0
-  *
-  * Unless required by applicable law or agreed to in writing, software
-  * distributed under the License is distributed on an "AS IS" BASIS,
-  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  * See the License for the specific language governing permissions and
-  * limitations under the License.
-  */
+ * Copyright 2021 Andreas Wagenmann
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 
-package de.awagen.kolibri.fleet.akka.usecase.searchopt.metrics
+package de.awagen.kolibri.fleet.zio.execution
 
-import akka.actor.ActorRef
-import akka.pattern.ask
-import akka.testkit.TestKit
 import akka.util.Timeout
 import de.awagen.kolibri.datatypes.mutable.stores.{BaseWeaklyTypedMap, WeaklyTypedMap}
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSupplier
 import de.awagen.kolibri.datatypes.utils.MathUtils
 import de.awagen.kolibri.datatypes.values.Calculations.{ComputeResult, ResultRecord}
 import de.awagen.kolibri.definitions.directives.{Resource, ResourceDirectives, ResourceType}
+import de.awagen.kolibri.definitions.http.client.request.RequestTemplate
 import de.awagen.kolibri.definitions.io.json.MetricFunctionJsonProtocol.{MetricFunction, MetricType}
-import de.awagen.kolibri.definitions.resources.{ResourceAlreadyExists, ResourceOK}
 import de.awagen.kolibri.definitions.usecase.searchopt.jobdefinitions.parts.ReservedStorageKeys._
 import de.awagen.kolibri.definitions.usecase.searchopt.metrics.Calculations._
 import de.awagen.kolibri.definitions.usecase.searchopt.metrics.{IRMetricFunctions, JudgementHandlingStrategy, Metric, MetricsCalculation}
-import de.awagen.kolibri.definitions.usecase.searchopt.provider.JudgementProvider
-import de.awagen.kolibri.fleet.akka.actors.KolibriTestKitNoCluster
-import de.awagen.kolibri.fleet.akka.actors.clusterinfo.ResourceToJobMappingClusterStateManagerActor
-import de.awagen.kolibri.fleet.akka.actors.clusterinfo.ResourceToJobMappingClusterStateManagerActor.{ProcessResourceDirectives, ProcessedResourceDirectives}
-import de.awagen.kolibri.fleet.akka.cluster.ClusterNodeObj
-import de.awagen.kolibri.fleet.akka.config.AppConfig.filepathToJudgementProvider
-import de.awagen.kolibri.fleet.akka.usecase.searchopt.metrics.CalculationsTestHelper._
-import de.awagen.kolibri.fleet.akka.utils.JudgementInfoTestHelper.judgementsToSuccessJudgementInfo
-import org.scalatest.BeforeAndAfterAll
-import org.scalatest.matchers.must.Matchers
-import org.scalatest.wordspec.AnyWordSpecLike
-import org.slf4j.{Logger, LoggerFactory}
+import de.awagen.kolibri.definitions.usecase.searchopt.provider.{JudgementInfo, JudgementProvider}
+import de.awagen.kolibri.fleet.zio.config.AppConfig.filepathToJudgementProvider
+import de.awagen.kolibri.fleet.zio.execution.CalculationsSpec._
+import de.awagen.kolibri.fleet.zio.resources.NodeResourceProvider
+import de.awagen.kolibri.fleet.zio.testclasses.UnitTestSpec
 
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.global
 import scala.concurrent.duration._
-import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.concurrent.{Await, ExecutionContext, Promise}
 
 
-class CalculationsSpec extends KolibriTestKitNoCluster
-  with AnyWordSpecLike
-  with Matchers
-  with BeforeAndAfterAll {
+object CalculationsSpec {
 
-  private[this] val logger: Logger = LoggerFactory.getLogger(this.getClass)
-
-  override val invokeBeforeAllAndAfterAllEvenIfNoTestsAreExpected = true
-
-  var localResourceManagerActor: ActorRef = _
-
-  override protected def afterAll(): Unit = {
-    super.afterAll()
-    TestKit.shutdownActorSystem(system)
+  def judgementsToSuccessJudgementInfo(judgements: Seq[Double]): JudgementInfo = {
+    JudgementInfo(
+      "testQuery",
+      products = judgements.indices.map(index => s"p$index"),
+      judgements,
+      judgements.sorted.reverse,
+      Seq.empty
+    )
   }
 
-  override protected def beforeAll(): Unit = {
-    // creating without subscribeToReplicationMessages to avoid errors due to ClusterNode App not started
-    // (we are using a test actor system here)
-    localResourceManagerActor = system.actorOf(ResourceToJobMappingClusterStateManagerActor.props(
-      ClusterNodeObj.LOCAL_RESOURCES_ACTOR_NAME,
-      subscribeToReplicationMessages = false))
+  def requestTemplateForQuery(query: String): RequestTemplate = {
+    RequestTemplate("/", Map(QUERY_PARAM -> Seq(query)), Seq.empty)
   }
 
+  val CALCULATION_NAME = "testCalc"
+  val QUERY_PARAM = "q"
+  val REQUEST_TEMPLATE_KEY = "template"
+  val PRODUCT_IDS_KEY = "pids"
+  val NDCG2_NAME = "NDCG_2"
+  val NDCG5_NAME = "NDCG_5"
+  val NDCG10_NAME = "NDCG_10"
 
-  /**
-   * TODO: unify this with FlowSpec, where judgement resources are loaded the same way
-   */
-  def prepareJudgementResource(): Unit = {
+}
+
+class CalculationsSpec extends UnitTestSpec {
+
+  def prepareJudgementResource(implicit ec: ExecutionContext): Unit = {
     val judgementSupplier = new SerializableSupplier[JudgementProvider[Double]] {
       override def apply(): JudgementProvider[Double] = {
         filepathToJudgementProvider("data/calculations_test_judgements.txt")
@@ -89,14 +79,8 @@ class CalculationsSpec extends KolibriTestKitNoCluster
       Resource(ResourceType.JUDGEMENT_PROVIDER, "judgements1")
     )
     implicit val timeout: Timeout = 5 seconds
-    val resourceAskMsg = ProcessResourceDirectives(Seq(judgementResourceDirective), "testJob1")
-    val resourceAsk: Future[Any] = localResourceManagerActor ? resourceAskMsg
-    val resourcePrepareResult: ProcessedResourceDirectives = Await.result(resourceAsk, timeout.duration).asInstanceOf[ProcessedResourceDirectives]
-    logger.info(s"resource directive processing results: ${resourcePrepareResult.states}")
-    val mustStopExecution: Boolean = resourcePrepareResult.states.exists(state => !Seq(ResourceOK, ResourceAlreadyExists).contains(state))
-    if (mustStopExecution) {
-      throw new RuntimeException("could not load judgement resource")
-    }
+    val resourceAsk: Promise[Any] = NodeResourceProvider.createResource(judgementResourceDirective)
+    Await.result(resourceAsk.future, timeout.duration)
   }
 
 
@@ -106,9 +90,9 @@ class CalculationsSpec extends KolibriTestKitNoCluster
 
     "correctly calculate metrics" in {
       // given
-      prepareJudgementResource()
+      prepareJudgementResource
       val calculation = JudgementsFromResourceIRMetricsCalculations(
-        PRODUCT_IDS_KEY,
+        "pids",
         REQUEST_TEMPLATE_STORAGE_KEY.name,
         "q",
         Resource(ResourceType.JUDGEMENT_PROVIDER, "judgements1"),
@@ -120,7 +104,7 @@ class CalculationsSpec extends KolibriTestKitNoCluster
           ),
           JudgementHandlingStrategy.EXIST_RESULTS_AND_JUDGEMENTS_MISSING_AS_ZEROS
         ),
-        ClusterNodeObj
+        NodeResourceProvider
       )
       val inputData: WeaklyTypedMap[String] = BaseWeaklyTypedMap(mutable.Map.empty)
       inputData.put(REQUEST_TEMPLATE_STORAGE_KEY.name, requestTemplateForQuery("q0"))
