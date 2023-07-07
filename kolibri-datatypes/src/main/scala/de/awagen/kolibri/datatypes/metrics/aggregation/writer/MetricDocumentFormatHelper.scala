@@ -18,7 +18,7 @@
 package de.awagen.kolibri.datatypes.metrics.aggregation.writer
 
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason
-import de.awagen.kolibri.datatypes.stores.MetricDocument
+import de.awagen.kolibri.datatypes.stores.mutable.MetricDocument
 import de.awagen.kolibri.datatypes.values.Calculations.ResultRecord
 import de.awagen.kolibri.datatypes.values.{BiRunningValue, MetricValue, RunningValues}
 import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType

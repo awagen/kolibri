@@ -25,6 +25,14 @@ import scala.reflect.runtime.universe._
 
 class TypedMapStoreSpec extends UnitTestSpec {
 
+  object TestObjects {
+
+    sealed trait Container[+T]
+
+    case class Value1[+T](value: T) extends Container[T]
+
+  }
+
   "TypedMapStore" should {
 
     "correctly provide type check for data" in {
@@ -71,6 +79,16 @@ class TypedMapStoreSpec extends UnitTestSpec {
       // then
       map.get(key).get mustBe "1,2,3"
 
+    }
+
+    "correctly cover subtypes" in {
+      // given
+      var map: TypeTaggedMap = TypedMapStore(Map.empty)
+      val key = ClassTyped[TestObjects.Container[Unit]]
+      // when
+      map = map.put(key, TestObjects.Value1(()))._2
+      // then
+      map.get(key).get mustBe TestObjects.Value1(())
     }
   }
 

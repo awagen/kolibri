@@ -1,0 +1,149 @@
+{
+  "jobName": "testJob",
+  "requestTasks": 6,
+  "fixedParams": {
+    "k1": [
+      "v1",
+      "v2"
+    ],
+    "k2": [
+      "v3"
+    ]
+  },
+  "contextPath": "search",
+  "httpMethod": "GET",
+  "connections": [
+    {
+      "host": "response-juggler",
+      "port": 81,
+      "useHttps": false
+    }
+  ],
+  "resourceDirectives": [
+    {
+      "type": "JUDGEMENT_PROVIDER",
+      "values": {
+        "resource": {
+          "resourceType": "JUDGEMENT_PROVIDER",
+          "identifier": "ident1"
+        },
+        "supplier": {
+          "type": "JUDGEMENTS_FROM_FILE",
+          "file": "/app/test-files/test-judgements/test_judgements.txt"
+        }
+      }
+    }
+  ],
+  "requestParameters": [
+    {
+      "type": "STANDALONE",
+      "values": {
+        "type": "FROM_ORDERED_VALUES_TYPE",
+        "values_type": "URL_PARAMETER",
+        "values": {
+          "type": "FROM_FILES_LINES_TYPE",
+          "name": "q",
+          "file": "test-paramfiles/test_queries.txt"
+        }
+      }
+    },
+    {
+      "type": "STANDALONE",
+      "values": {
+        "type": "FROM_ORDERED_VALUES_TYPE",
+        "values_type": "URL_PARAMETER",
+        "values": {
+          "type": "FROM_VALUES_TYPE",
+          "name": "a1",
+          "values": [
+            "0.45",
+            "0.32"
+          ]
+        }
+      }
+    },
+    {
+      "type": "STANDALONE",
+      "values": {
+        "type": "FROM_ORDERED_VALUES_TYPE",
+        "values_type": "URL_PARAMETER",
+        "values": {
+          "type": "FROM_RANGE_TYPE",
+          "name": "o",
+          "start": 0.0,
+          "end": 2000.0,
+          "stepSize": 1.0
+        }
+      }
+    }
+  ],
+  "batchByIndex": 0,
+  "parsingConfig": {
+    "selectors": [
+      {
+        "name": "productIds",
+        "castType": "STRING",
+        "selector": "\\ response \\ docs \\\\ product_id"
+      }
+    ]
+  },
+  "excludeParamColumns": [
+    "q"
+  ],
+  "taggingConfiguration": {
+    "initTagger": {
+      "type": "REQUEST_PARAMETER",
+      "parameter": "q",
+      "extend": false
+    },
+    "processedTagger": {
+      "type": "NOTHING"
+    },
+    "resultTagger": {
+      "type": "NOTHING"
+    }
+  },
+  "requestTemplateStorageKey": "requestTemplate",
+  "calculations": [
+    {
+      "type": "IR_METRICS",
+      "queryParamName": "q",
+      "productIdsKey": "productIds",
+      "judgementsResource": {
+        "resourceType": "JUDGEMENT_PROVIDER",
+        "identifier": "ident1"
+      },
+      "metricsCalculation": {
+        "metrics": [
+          {"name": "DCG_10", "function": {"type": "DCG", "k": 10}},
+          {"name": "NDCG_10", "function": {"type": "NDCG", "k": 10}},
+          {"name": "PRECISION_k=4&t=0.1", "function": {"type": "PRECISION", "k": 4, "threshold":  0.1}},
+          {"name": "RECALL_k=4&t=0.1", "function": {"type": "RECALL", "k": 4, "threshold":  0.1}},
+          {"name": "ERR_10", "function": {"type": "ERR", "k": 10}}
+        ],
+        "judgementHandling": {
+          "validations": [
+            "EXIST_RESULTS",
+            "EXIST_JUDGEMENTS"
+          ],
+          "handling": "AS_ZEROS"
+        }
+      }
+    }
+  ],
+  "allowedTimePerElementInMillis": 1000,
+  "allowedTimePerBatchInSeconds": 6000,
+  "allowedTimeForJobInSeconds": 720000,
+  "expectResultsFromBatchCalculations": false,
+  "wrapUpFunction": {
+    "type": "AGGREGATE_FROM_DIR_BY_REGEX",
+    "weightProvider": {
+      "type": "CONSTANT",
+      "weight": 1.0
+    },
+    "regex": ".*[(]q=.+[)].*",
+    "outputFilename": "(ALL1)",
+    "readSubDir": "k8s-test-results/testJob",
+    "writeSubDir": "k8s-test-results/testJob"
+  }
+}

@@ -18,14 +18,16 @@ package de.awagen.kolibri.datatypes.values.aggregation
 
 import de.awagen.kolibri.datatypes.functions.GeneralSerializableFunctions._
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricsHelper.{metricRecord1, metricRecord2, metricRecord3, metricRecord4}
-import de.awagen.kolibri.datatypes.stores.{MetricDocument, MetricRow}
+import de.awagen.kolibri.datatypes.stores.immutable.MetricRow
+import de.awagen.kolibri.datatypes.stores.mutable.MetricDocument
 import de.awagen.kolibri.datatypes.tagging.TagType.AGGREGATION
 import de.awagen.kolibri.datatypes.tagging.TaggedWithType
 import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}
 import de.awagen.kolibri.datatypes.testclasses.UnitTestSpec
 import de.awagen.kolibri.datatypes.utils.MathUtils
 import de.awagen.kolibri.datatypes.values.DataPoint
-import de.awagen.kolibri.datatypes.values.aggregation.Aggregators.{Aggregator, TagKeyMetricDocumentPerClassAggregator, TagKeyRunningDoubleAvgPerClassAggregator}
+import de.awagen.kolibri.datatypes.values.aggregation.immutable.AggregateValue
+import de.awagen.kolibri.datatypes.values.aggregation.mutable.Aggregators.{Aggregator, TagKeyMetricDocumentPerClassAggregator, TagKeyRunningDoubleAvgPerClassAggregator}
 
 
 class AggregatorsSpec extends UnitTestSpec {

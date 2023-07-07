@@ -1,0 +1,179 @@
+{
+  "type": "REQUESTING_TASK_SEQUENCE",
+  "def": {
+    "jobName": "taskSequenceTestJob",
+    "resourceDirectives": [
+      {
+        "type": "JUDGEMENT_PROVIDER",
+        "values": {
+          "resource": {
+            "resourceType": "JUDGEMENT_PROVIDER",
+            "identifier": "ident1"
+          },
+          "supplier": {
+            "type": "JUDGEMENTS_FROM_FILE",
+            "file": "data/test_judgements.txt"
+          }
+        }
+      }
+    ],
+    "requestParameters": [
+      {
+        "type": "STANDALONE",
+        "values": {
+          "name": "q",
+          "values_type": "URL_PARAMETER",
+          "values": {
+            "type": "FROM_ORDERED_VALUES_TYPE",
+            "values": {
+              "type": "FROM_VALUES_TYPE",
+              "name": "q",
+              "values": [
+                "q1",
+                "q2",
+                "q3",
+                "q4",
+                "q5"
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "batchByIndex": 0,
+    "taskSequence": [
+      {
+        "type": "REQUEST_PARSE",
+        "parsingConfig": {
+          "selectors": [
+            {
+              "name": "productIds",
+              "castType": "STRING",
+              "selector": "\\ response \\ docs \\\\ product_id"
+            }
+          ]
+        },
+        "taggingConfig": {
+          "requestTagger": {
+            "type": "REQUEST_PARAMETER",
+            "parameter": "q",
+            "extend": false
+          },
+          "parsingResultTagger": {
+            "type": "NOTHING"
+          }
+        },
+        "connections": [
+          {
+            "host": "search-service-1",
+            "port": 80,
+            "useHttps": false
+          },
+          {
+            "host": "search-service-2",
+            "port": 81,
+            "useHttps": false
+          }
+        ],
+        "requestMode": "DISTRIBUTE_LOAD",
+        "contextPath": "search",
+        "fixedParams": {
+          "k1": [
+            "v1",
+            "v2"
+          ]
+        },
+        "httpMethod": "GET",
+        "successKeyName": "successTestKey",
+        "failKeyName": "failTestKey"
+      },
+      {
+        "type": "METRIC_CALCULATION",
+        "parsedDataKey": "successTestKey",
+        "calculations": [
+          {
+            "type": "IR_METRICS",
+            "queryParamName": "q",
+            "productIdsKey": "productIds",
+            "judgementsResource": {
+              "resourceType": "JUDGEMENT_PROVIDER",
+              "identifier": "ident1"
+            },
+            "metricsCalculation": {
+              "metrics": [
+                {
+                  "name": "DCG_10",
+                  "function": {
+                    "type": "DCG",
+                    "k": 10
+                  }
+                },
+                {
+                  "name": "NDCG_10",
+                  "function": {
+                    "type": "NDCG",
+                    "k": 10
+                  }
+                },
+                {
+                  "name": "PRECISION_k=4&t=0.1",
+                  "function": {
+                    "type": "PRECISION",
+                    "k": 4,
+                    "threshold": 0.1
+                  }
+                },
+                {
+                  "name": "RECALL_k=4&t=0.1",
+                  "function": {
+                    "type": "RECALL",
+                    "k": 4,
+                    "threshold": 0.1
+                  }
+                },
+                {
+                  "name": "ERR_10",
+                  "function": {
+                    "type": "ERR",
+                    "k": 10
+                  }
+                }
+              ],
+              "judgementHandling": {
+                "validations": [
+                  "EXIST_RESULTS",
+                  "EXIST_JUDGEMENTS"
+                ],
+                "handling": "AS_ZEROS"
+              }
+            }
+          }
+        ],
+        "metricNameToAggregationTypeMapping": {
+          "DCG_10": "DOUBLE_AVG",
+          "NDCG_10": "DOUBLE_AVG",
+          "PRECISION_k=4&t=0.1": "DOUBLE_AVG",
+          "RECALL_k=4&t=0.1": "DOUBLE_AVG",
+          "ERR_10": "DOUBLE_AVG"
+        },
+        "excludeParamsFromMetricRow": ["q"],
+        "successKeyName": "metricCalculationResults",
+        "failKeyName": "metricCalculationFailure"
+      }
+    ],
+    "metricRowResultKey": "metricCalculationResults",
+    "wrapUpActions": [
+      {
+        "type": "AGGREGATE_FROM_DIR_BY_REGEX",
+        "weightProvider": {
+          "type": "CONSTANT",
+          "weight": 1.0
+        },
+        "regex": ".*[(]q=.+[)]-.*",
+        "outputFilename": "(ALL1)",
+        "readSubDir": "test-results/taskSequenceTestJob_1688716816208",
+        "writeSubDir": "test-results/taskSequenceTestJob_1688716816208"
+      }
+    ]
+  }
+}

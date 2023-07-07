@@ -23,14 +23,15 @@ import de.awagen.kolibri.datatypes.io.json.EnumerationJsonProtocol.aggregateType
 import de.awagen.kolibri.datatypes.io.json.TimeStampJsonProtocol.TimeStampFormat
 import de.awagen.kolibri.datatypes.metrics.aggregation.writer.JsonMetricDocumentFormat.{DataSet, DataSetBuilder, Document, DocumentBuilder, EntriesBuilder, jsonDocumentFormat}
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason
-import de.awagen.kolibri.datatypes.stores.MetricDocument.ParamMap
-import de.awagen.kolibri.datatypes.stores.MetricRow.ResultCountStore
-import de.awagen.kolibri.datatypes.stores.{MetricDocument, MetricRow}
+import de.awagen.kolibri.datatypes.stores.immutable.MetricRow
+import de.awagen.kolibri.datatypes.stores.immutable.MetricRow.ResultCountStore
+import de.awagen.kolibri.datatypes.stores.mutable.MetricDocument
+import de.awagen.kolibri.datatypes.stores.mutable.MetricDocument.ParamMap
 import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}
 import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType
 import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType.AggregationType
 import de.awagen.kolibri.datatypes.values.RunningValues.RunningValue
-import de.awagen.kolibri.datatypes.values.aggregation.AggregateValue
+import de.awagen.kolibri.datatypes.values.aggregation.immutable.AggregateValue
 import de.awagen.kolibri.datatypes.values.{MetricValue, RunningValues}
 import org.slf4j.LoggerFactory
 import spray.json.DefaultJsonProtocol.{DoubleJsonFormat, IntJsonFormat, StringJsonFormat, immSeqFormat, jsonFormat3, jsonFormat5, jsonFormat7, mapFormat}
@@ -232,8 +233,8 @@ class JsonMetricDocumentFormat() extends MetricDocumentFormat {
         // NOTE: those might be incorrect in case rows do not contain the same metrics,
         // since they do not distinguish by metric type,
         // yet usually we should have all metrics in all rows
-        entriesBuilder.setSuccessCount(metricsForParameters.countStore.successCount)
-        entriesBuilder.setFailCount(metricsForParameters.countStore.failCount)
+        entriesBuilder.setSuccessCount(metricsForParameters.countStore.successes)
+        entriesBuilder.setFailCount(metricsForParameters.countStore.fails)
       })
 
       // for each metric extracting data for the current setting of parameters

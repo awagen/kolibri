@@ -1,0 +1,15 @@
+global:
+  scrape_interval: 30s
+  scrape_timeout: 10s
+
+rule_files:
+  - alert.yml
+
+scrape_configs:
+  - job_name: services
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - 'kolibri-zio-1:8001'
+          - 'kolibri-zio-2:8002'
+

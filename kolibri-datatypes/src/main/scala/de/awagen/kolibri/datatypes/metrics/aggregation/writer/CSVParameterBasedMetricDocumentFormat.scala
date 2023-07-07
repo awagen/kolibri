@@ -19,7 +19,8 @@ package de.awagen.kolibri.datatypes.metrics.aggregation.writer
 import de.awagen.kolibri.datatypes.io.json.AnyJsonProtocol.AnyJsonFormat
 import de.awagen.kolibri.datatypes.metrics.aggregation.writer.CSVParameterBasedMetricDocumentFormat._
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason
-import de.awagen.kolibri.datatypes.stores.{MetricDocument, MetricRow}
+import de.awagen.kolibri.datatypes.stores.immutable.MetricRow
+import de.awagen.kolibri.datatypes.stores.mutable.MetricDocument
 import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}
 import de.awagen.kolibri.datatypes.values.Calculations.ResultRecord
 import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType

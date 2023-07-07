@@ -1,0 +1,13 @@
+{
+    "stateId": {
+        "jobId": "testJob1_3434839787",
+        "batchNr": 1
+    },
+    "processingInfo": {
+        "processingStatus": "PLANNED",
+        "numItemsTotal": 100,
+        "numItemsProcessed": 0,
+        "processingNode": "abc234",
+        "lastUpdate": "2023-01-01 01:02:03"
+    }
+}

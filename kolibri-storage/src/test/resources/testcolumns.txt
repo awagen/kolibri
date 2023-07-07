@@ -1,0 +1,6 @@
+term1   product1    1   0.19
+term2   product1    6   0.20
+term3   product1    3   0.11
+term3   product2    1   0.21
+term1   product5    9   0.19
+term4   product10   1   0.36
