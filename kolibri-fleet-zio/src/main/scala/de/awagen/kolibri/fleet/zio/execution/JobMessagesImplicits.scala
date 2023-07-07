@@ -108,7 +108,8 @@ object JobMessagesImplicits {
                 s"${x.toString()}-$randomAdd"
               }
             )
-          )
+          ),
+          eval.wrapUpFunction.map(x => Seq(x)).getOrElse(Seq.empty)
         )
       }
 

@@ -17,6 +17,7 @@
 
 package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services
 
+import de.awagen.kolibri.definitions.processing.execution.functions.Execution
 import de.awagen.kolibri.fleet.zio.config.AppProperties
 import de.awagen.kolibri.fleet.zio.config.AppProperties.config.maxNrJobsClaimed
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.TaskTopics
@@ -29,6 +30,7 @@ import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ProcessId
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.TaskStates.Task
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ClaimStatus.ClaimFilingStatus.ClaimFilingStatus
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ClaimStatus.ClaimVerifyStatus
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.JobDefinitionLoadStates._
 import zio.ZIO
 import zio.stream.{ZSink, ZStream}
 
@@ -180,6 +182,20 @@ case class ClaimBasedTaskPlannerService(claimReader: ClaimReader,
         } yield ()
       case TaskTopics.JobWrapUpTask =>
         for {
+          // first execute any wrapUp actions if defined
+          wrapUpActions <- ZIO.attemptBlockingIO({
+            jobStateReader.loadJobDefinitionByJobDirectoryName(claim.jobId) match {
+              case Loaded(jobDefinition) =>
+                jobDefinition.wrapUpActions
+              case InvalidJobDefinition =>
+                Seq.empty[Execution[Any]]
+            }
+          })
+          // try to execute all found actions
+          _ <- ZStream.fromIterable(wrapUpActions)
+            .mapZIO(action => ZIO.fromEither(action.execute))
+            .mapError(failType => new RuntimeException(s"Failed with failType '$failType'"))
+            .runDrain
           // remove all claims (before moving the folder for a clean claim state)
           _ <- deleteAllClaimsForMatchingJobAndBatchAndTaskTopic(claim)
           // wrap up whole job by moving the full job folder to done state

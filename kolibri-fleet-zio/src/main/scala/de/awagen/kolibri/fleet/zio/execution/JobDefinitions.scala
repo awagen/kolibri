@@ -26,6 +26,7 @@ import de.awagen.kolibri.datatypes.values.aggregation.immutable.Aggregators.Aggr
 import de.awagen.kolibri.definitions.directives.ResourceDirectives.ResourceDirective
 import de.awagen.kolibri.definitions.domain.jobdefinitions.Batch
 import de.awagen.kolibri.definitions.processing.ProcessingMessages.ProcessingMessage
+import de.awagen.kolibri.definitions.processing.execution.functions.Execution
 import de.awagen.kolibri.fleet.zio.execution.ZIOTasks.SimpleWaitTask
 import de.awagen.kolibri.storage.io.writer.Writers.Writer
 
@@ -69,7 +70,8 @@ object JobDefinitions {
                                                   resourceSetup: Seq[ResourceDirective[_]],
                                                   batches: IndexedGenerator[Batch[T]],
                                                   taskSequence: Seq[ZIOTask[_]],
-                                                  aggregationInfo: BatchAggregationInfo[V, W])
+                                                  aggregationInfo: BatchAggregationInfo[V, W],
+                                                  wrapUpActions: Seq[Execution[Any]] = Seq.empty)
 
   def simpleWaitJob(jobName: String,
                     nrBatches: Int,

@@ -30,11 +30,13 @@ import de.awagen.kolibri.definitions.directives.ResourceDirectives.ResourceDirec
 import de.awagen.kolibri.definitions.io.json.ParameterValuesJsonProtocol
 import de.awagen.kolibri.definitions.io.json.ResourceDirectiveJsonProtocol.GenericResourceDirectiveFormatStruct
 import de.awagen.kolibri.definitions.processing.ProcessingMessages.ProcessingMessage
+import de.awagen.kolibri.definitions.processing.execution.functions.Execution
 import de.awagen.kolibri.definitions.processing.modifiers.ParameterValues.ParameterValuesImplicits.ParameterValueSeqToRequestBuilderModifier
 import de.awagen.kolibri.definitions.processing.modifiers.ParameterValues.ValueSeqGenDefinition
 import de.awagen.kolibri.definitions.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
 import de.awagen.kolibri.definitions.usecase.searchopt.jobdefinitions.parts.BatchGenerators.batchByGeneratorAtIndex
 import de.awagen.kolibri.fleet.zio.config.AppConfig
+import de.awagen.kolibri.fleet.zio.config.AppConfig.JsonFormats.executionFormat
 import de.awagen.kolibri.fleet.zio.config.AppConfig.JsonFormats.parameterValueJsonProtocol.ValueSeqGenDefinitionFormat
 import de.awagen.kolibri.fleet.zio.config.AppConfig.JsonFormats.resourceDirectiveJsonProtocol.GenericResourceDirectiveFormat
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.{BatchAggregationInfo, JobDefinition, simpleWaitJob}
@@ -62,6 +64,7 @@ object JobDefinitionJsonProtocol extends DefaultJsonProtocol {
   private val TASK_SEQUENCE_KEY = "taskSequence"
   private val BATCH_BY_INDEX_KEY = "batchByIndex"
   private val METRIC_ROW_RESULT_KEY = "metricRowResultKey"
+  private val WRAP_UP_ACTIONS_KEY = "wrapUpActions"
 
 
   private val JUST_WAIT_TYPE = "JUST_WAIT"
@@ -238,6 +241,7 @@ object JobDefinitionJsonProtocol extends DefaultJsonProtocol {
           val nestedTaskSequence = defFields(TASK_SEQUENCE_KEY).convertTo[Seq[Seq[ZIOTask[_]]]]
           val taskSequence = nestedTaskSequence.flatten
           val metricRowResultKey = defFields(METRIC_ROW_RESULT_KEY).convertTo[String]
+          val wrapUpActions = defFields.get(WRAP_UP_ACTIONS_KEY).map(x => x.convertTo[Seq[Execution[Any]]]).getOrElse(Seq.empty)
           // For now we assume that result is of type MetricRow
           val aggregationInfo = BatchAggregationInfo[MetricRow, MetricAggregation[Tag]](
             successKey = NamedClassTyped[ProcessingMessage[MetricRow]](metricRowResultKey),
@@ -258,7 +262,8 @@ object JobDefinitionJsonProtocol extends DefaultJsonProtocol {
             resourceSetup = resourceDirectives,
             batches = modifierBatches,
             taskSequence = taskSequence,
-            aggregationInfo = aggregationInfo
+            aggregationInfo = aggregationInfo,
+            wrapUpActions = wrapUpActions
           )
             // NOTE: casting it here does not help against the above loss of type tag, the info gets lost due to generic type of the format
             .asInstanceOf[JobDefinition[RequestTemplateBuilderModifier, MetricRow, MetricAggregation[Tag]]]

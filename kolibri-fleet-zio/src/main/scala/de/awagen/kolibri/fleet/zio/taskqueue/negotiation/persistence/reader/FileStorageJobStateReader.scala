@@ -66,7 +66,7 @@ case class FileStorageJobStateReader(overviewReader: DataOverviewReader,
 
   import FileStorageJobStateReader._
 
-  private[reader] def loadJobDefinitionByJobDirectoryName(jobDirName: String): JobDefinitionLoadStatus = {
+  override def loadJobDefinitionByJobDirectoryName(jobDirName: String): JobDefinitionLoadStatus = {
     val jobDefPath = jobNameToJobDefinitionFile(jobDirName)
     val jobDefFileContent = reader.read(jobDefPath).mkString("\n")
     var jobState: JobDefinitionLoadStatus = InvalidJobDefinition
@@ -79,7 +79,7 @@ case class FileStorageJobStateReader(overviewReader: DataOverviewReader,
     jobState
   }
 
-  private[reader] def loadJobLevelDirectivesByJobDirectoryName(jobDirName: String): Set[JobDirective] = {
+  override def loadJobLevelDirectivesByJobDirectoryName(jobDirName: String): Set[JobDirective] = {
     val directory = JobTopLevel.folderForJob(jobDirName, isOpenJob = true)
     overviewReader.listResources(directory, x => x.split("/").last.startsWith(JobDirectives.JOB_DIRECTIVE_PREFIX))
       .map(x => x.split("/").last).map(JobDirective.parse).toSet
