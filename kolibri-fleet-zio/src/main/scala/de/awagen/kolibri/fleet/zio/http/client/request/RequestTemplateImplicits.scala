@@ -57,7 +57,8 @@ object RequestTemplateImplicits {
           )
         )
         _ <- ZIO.logDebug(s"request: $request")
-        response <- httpClient.request(request).onError(cause => ZIO.logError(s"error when requesting, cause: ${cause.trace}"))
+        response <- httpClient.request(request)
+          .onError(cause => ZIO.logError(s"error when requesting\nmsg: '${cause.failureOption.map(x => x.getMessage).getOrElse("")}'\ncause: ${cause.trace.prettyPrint}"))
       } yield response
     }
 

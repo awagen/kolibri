@@ -1,1 +1,1 @@
-curl -vX POST http://localhost:8002/job -d @taskSeqJobDef1.json --header "Content-Type: application/json"
+curl -vX POST http://localhost:8001/job -d @taskSeqJobDef1.json --header "Content-Type: application/json"
