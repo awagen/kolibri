@@ -18,9 +18,9 @@ E stands for error type and A stands for the success type.
 Reference to a fiber runtime can be created by calling one of the variants of ```.fork``` on a created
 effect. A fiber provides an ```.interrupt``` method, which in general allows interrupting any fiber.
 Yet that does not mean the computation (effect) wrapped into the ZIO.effect from which the fiber reference
-was retrieved is also interrupted. 
+was retrieved is also interrupted.
 That is, if we call interrupt on a fiber that wraps a blocking operation such as ```Thread.sleep```,
-the blocking operation will just go on (and make your tests based on assuming interruptibility take 
+the blocking operation will just go on (and make your tests based on assuming interruptibility take
 a long time). Options allowing interruption of the underlying effect are:
 - ```.attemptBlockingInterrupt```, such as in
 ```
@@ -61,7 +61,7 @@ for {
     .fork
 } yield ()
 ```
-This comes with the drawback that we have to implement the cancelling manually, such as 
+This comes with the drawback that we have to implement the cancelling manually, such as
 by changing an atomic reference value.
 
 
@@ -81,7 +81,13 @@ For more settings (such as minimal coverage criteria for build to succeed), see 
 - build jar (from root folder; find it in target folder of kolibri-fleet-zio sub-folder afterwards): ```./scripts/buildKolibriFleetZIOJar.sh```
 - build docker image for local usage (kolibri-fleet-zio sub-folder): ```docker build . -t kolibri-fleet-zio:0.1.5```
 - startup via docker-compose (kolibri-fleet-zio sub-folder): ```docker-compose up```
-
+- to consider when starting up prometheus / response-juggler as defined in the docker-compose file (otherwise just comment out):
+  - for prometheus to start up, create folder named ```data``` in prometheus folder before executing docker-compose up.
+  - response-juggler is started up as an easy mock of a search system, to test the workflow or requesting,
+    parsing and computation steps. The type of data returned is configured via environment variables.
+    For details check the repo ```https://github.com/awagen/response-juggler```.
+    Make sure that the config is set such that it contains the same product_ids that are used within
+    the judgement file referenced in the job definition in case you want to test calculations of IR metrics.
 
 ## Notes on local execution with access to AWS account
 One way to enable container access to AWS account (e.g as for writing results into S3 bucket or similar),
@@ -95,7 +101,8 @@ volumes:
 Now configure the AWS_PROFILE env var to any profile name you want to assume (and for which the above mounted folder contains
 credentials). See example within docker-compose.yaml.
 Note that if the configuration file is not in the default location ```~/.aws/config```, additionally the env variable
-```AWS_CONFIG_FILE``` has to be set to the directory within the container where the config file was mounted to.
+```AWS_CONFIG_FILE``` has to be set to the absolute location within the container where the config file was mounted to
+(```e.g /home/kolibri/.aws/credentials ```).
 
 In case you login via temporary token via sso, check aws doc how to retrieve respective credentials for programmatic
 access (you can go to your sso web interface and select the account and then programmatic access).
@@ -124,6 +131,35 @@ GCP_GS_PROJECT_ID: [the project id for which the used service account is defined
 PERSISTENCE_MODE: 'GCP'
 ```
 With those settings, execution results are stored and read from google storage bucket.
+
+
+## Few notes on the use of TypeTaggedMap
+In case TypeTaggedMap (such as implementation TypedMapStore) is used as type safe map, note that you might see error messages
+indicating a type mismatch of the type that is assumed and the data parsed in case the parsing
+is stored in a variable of generic type Seq[_], e.g where error message will include scala.collection.*.colon::colon as bit unclear description.
+This refers to the unclear type of Seq[_], so you should parse to specific known types in those cases, e.g two samples where the first will yield
+error and the second will be fine (the below assumes that the seqSelector selects a Seq[JsValue] from the JsValue input and casts the single
+elements to type String, while seqSelector.classTyped is of type ClassTyped[Seq[String]]):
+```
+val value: Seq[_] = seqSelector.select(jsValue)
+typedMap.put(seqSelector.classTyped, value)
+```
+
+```
+val value: Seq[String] = seqSelector.select(jsValue).asInstanceOf[Seq[String]]
+typedMap.put(seqSelector.classTyped, value)
+```
+
+## A few notes on play json lib vs spray json lib
+In the project you will currently find both spray json lib for json parsing and the play json lib.
+At the moment incoming requests (e.g job definitions in json format and so on) are handled by the spray lib,
+while selectors in the parsed responses when requesting another service (e.g look at the job definitions for the
+search optimization use case) are handled with the play lib. This has origin in better out of the box functionality of the
+play lib when parsing elements from a json, single or recursive.
+For spray there is an additional library providing this functionality (https://github.com/jrudolph/json-lenses),
+which seems to even provide more functionality. For this sake you can expect the play json lib will be removed in
+further iterations for the sake of only using spray or an alternative.
+
 
 
 ## License
