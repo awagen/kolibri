@@ -162,6 +162,9 @@ object AppProperties {
       .map(x => x.trim).filter(x => x.nonEmpty)
     val allowedRequestTargetContextPaths: Seq[String] = baseConfig.getString("kolibri.request.target.allowedContextPaths").split(",")
 
+    val connectionPoolSizeMin: Int = baseConfig.getInt("kolibri.request.connectionPoolSizeMin")
+    val connectionPoolSizeMax: Int = baseConfig.getInt("kolibri.request.connectionPoolSizeMax")
+    val connectionTTLInSeconds: Int = baseConfig.getInt("kolibri.request.connectionTTLInSeconds")
 
     // --- jobs folder relative to readers / writers base folder
     // base folder where jobs are stored

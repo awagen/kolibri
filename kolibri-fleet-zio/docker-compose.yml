@@ -39,7 +39,7 @@ services:
       RUNNING_TASK_PER_JOB_MAX_COUNT: 20
       RUNNING_TASK_PER_JOB_DEFAULT_COUNT: 3
       MAX_NR_BATCH_RETRIES: 2
-      PERSISTENCE_MODE: 'AWS'
+      PERSISTENCE_MODE: 'CLASS'
       PERSISTENCE_MODULE_CLASS: 'de.awagen.kolibri.fleet.zio.config.di.modules.persistence.LocalPersistenceModule'
       AWS_PROFILE: 'developer'
       AWS_S3_BUCKET: 'kolibri-dev'
@@ -66,6 +66,10 @@ services:
       MAX_RESOURCE_DIRECTIVES_LOAD_TIME_IN_MINUTES: 10
       BATCH_STATE_UPDATE_INITIAL_DELAY_IN_SECONDS: 2
       BATCH_STATE_UPDATE_INTERVAL_IN_SECONDS: 10
+      MAX_PARALLEL_ITEMS_PER_BATCH: 200
+      CONNECTION_POOL_SIZE_MIN: 100
+      CONNECTION_POOL_SIZE_MAX: 500
+      CONNECTION_TTL_IN_SECONDS: 3600
     volumes:
       - ./tmp_data:/app/test-files
       - ${HOME}/.aws/credentials:/home/kolibri/.aws/credentials:ro
@@ -87,7 +91,7 @@ services:
       RUNNING_TASK_PER_JOB_MAX_COUNT: 20
       RUNNING_TASK_PER_JOB_DEFAULT_COUNT: 3
       MAX_NR_BATCH_RETRIES: 2
-      PERSISTENCE_MODE: 'AWS'
+      PERSISTENCE_MODE: 'CLASS'
       PERSISTENCE_MODULE_CLASS: 'de.awagen.kolibri.fleet.zio.config.di.modules.persistence.LocalPersistenceModule'
       AWS_PROFILE: 'developer'
       AWS_S3_BUCKET: 'kolibri-dev'
@@ -114,6 +118,10 @@ services:
       MAX_RESOURCE_DIRECTIVES_LOAD_TIME_IN_MINUTES: 10
       BATCH_STATE_UPDATE_INITIAL_DELAY_IN_SECONDS: 2
       BATCH_STATE_UPDATE_INTERVAL_IN_SECONDS: 10
+      MAX_PARALLEL_ITEMS_PER_BATCH: 200
+      CONNECTION_POOL_SIZE_MIN: 100
+      CONNECTION_POOL_SIZE_MAX: 500
+      CONNECTION_TTL_IN_SECONDS: 3600
     volumes:
       - ./tmp_data:/app/test-files
       - ${HOME}/.aws/credentials:/home/kolibri/.aws/credentials:ro

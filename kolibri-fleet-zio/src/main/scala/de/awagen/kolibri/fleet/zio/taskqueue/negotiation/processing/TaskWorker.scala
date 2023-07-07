@@ -78,7 +78,7 @@ object TaskWorker extends Worker {
       _ <- prepareGlobalResources(jobBatch.job.resourceSetup)
       aggregatorRef <- Ref.make(aggregator)
       computeResultFiber <- ZStream.fromIterable(jobBatch.job.batches.get(jobBatch.batchNr).get.data)
-        .mapZIO(dataPoint =>
+        .mapZIOParUnordered(maxParallelItemsPerBatch)(dataPoint =>
           for {
             _ <- ZIO.logDebug(s"trying to process data point: $dataPoint")
             dataKey <- ZIO.succeed(NamedClassTyped[T](INITIAL_DATA_KEY))
@@ -100,7 +100,7 @@ object TaskWorker extends Worker {
               .processAllTasks.either
           } yield result
         )
-        .mapZIOParUnordered(maxParallelItemsPerBatch)(element =>
+        .mapZIO(element =>
           for {
             // aggregate update step
             _ <- element match {

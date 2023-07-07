@@ -41,6 +41,7 @@ import de.awagen.kolibri.definitions.usecase.searchopt.jobdefinitions.parts.Rese
 import de.awagen.kolibri.definitions.usecase.searchopt.metrics.MetricRowFunctions.throwableToMetricRowResponse
 import de.awagen.kolibri.definitions.usecase.searchopt.parse.ParsingConfig
 import de.awagen.kolibri.fleet.zio.config.AppProperties
+import de.awagen.kolibri.fleet.zio.config.AppProperties.config.{connectionPoolSizeMax, connectionPoolSizeMin, connectionTTLInSeconds}
 import de.awagen.kolibri.fleet.zio.execution.TaskFactory.RequestJsonAndParseValuesTask.liveHttpClient
 import de.awagen.kolibri.fleet.zio.http.client.request.RequestTemplateImplicits.RequestTemplateToZIOHttpRequest
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.processing.TaskWorker.INITIAL_DATA_KEY
@@ -72,7 +73,7 @@ object TaskFactory {
     val liveHttpClient: ZLayer[Any, Throwable, Client] = {
       implicit val trace: Trace = Trace.empty
       (
-        ZLayer.succeed(Config.default.withDynamicConnectionPool(10, 100, zio.Duration(10, TimeUnit.MINUTES))) ++
+        ZLayer.succeed(Config.default.withDynamicConnectionPool(connectionPoolSizeMin, connectionPoolSizeMax, zio.Duration(connectionTTLInSeconds, TimeUnit.SECONDS))) ++
           ZLayer.succeed(NettyConfig.default) ++
           DnsResolver.default
         ) >>> Client.live
