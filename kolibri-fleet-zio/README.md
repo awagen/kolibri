@@ -160,6 +160,28 @@ For spray there is an additional library providing this functionality (https://g
 which seems to even provide more functionality. For this sake you can expect the play json lib will be removed in
 further iterations for the sake of only using spray or an alternative.
 
+## Endpoints: CORS
+In the definition of the server endpoints (e.g object ServerEndpoints)
+you will find an example cors config. Given such a config, any
+endpoint can be made to apply this policy via suffixing it with ```@@ cors(corsConfig)```.
+
+## Endpoints and example responses
+- ```/health```: status endpoint. Returns some ignorable text. Important part here is the status code.
+- ```/resources/global```: returns a list of resources currently loaded (such as judgement lists and the like) on a (limited to single nodes) global level, e.g 
+without taking into account further assignments such as the job they are used for.
+Example response:
+```json
+
+```
+
+- ```/jobs/open```: Returns list of currently non-completed jobs.
+Example response:
+```json
+{"data":"[{\"batchCountPerState\":{\"OPEN\":5},\"jobId\":\"taskSequenceTestJob2_1688826018090\",\"jobLevelDirectives\":[{\"type\":\"PROCESS\"}],\"timePlacedInMillis\":1688826018090}]","errorMessage":""}
+```
+
+
+
 
 
 ## License

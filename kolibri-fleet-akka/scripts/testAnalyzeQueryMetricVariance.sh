@@ -1,1 +1,0 @@
-curl -vX POST http://localhost:8000/execution -d @testAnalyzeQueryMetricVariance.json --header "Content-Type: application/json"

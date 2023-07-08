@@ -59,11 +59,7 @@ object AppProperties {
 
     val baseConfig: Config = loadConfig(profile)
 
-    final val applicationName: String = baseConfig.getString("kolibri.appName")
-
     val http_server_port: Int = HTTP_SERVER_PORT.value.toInt
-
-    val requestParallelism: Int = baseConfig.getInt("kolibri.request.parallelism")
 
     val batchStateUpdateInitialDelayInSeconds = baseConfig.getInt("kolibri.job.batchStateUpdateInitialDelayInSeconds")
     val batchStateUpdateIntervalInSeconds = baseConfig.getInt("kolibri.job.batchStateUpdateIntervalInSeconds")

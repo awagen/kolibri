@@ -1,1 +1,0 @@
-curl -vX POST http://localhost:80/search_eval_no_ser -d @testSearchEvalQueryFromFileKindCluster.json --header "Content-Type: application/json"
