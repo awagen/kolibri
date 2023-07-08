@@ -19,17 +19,17 @@ package de.awagen.kolibri.fleet.zio
 
 import de.awagen.kolibri.datatypes.types.Types.WithCount
 import de.awagen.kolibri.definitions.io.json.ResourceJsonProtocol.AnyResourceFormat
+import de.awagen.kolibri.fleet.zio.ServerEndpoints.ResponseContentProtocol.responseContentFormat
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobDefinition
 import de.awagen.kolibri.fleet.zio.io.json.JobDefinitionJsonProtocol.JobDefinitionFormat
 import de.awagen.kolibri.fleet.zio.io.json.JobDirectivesJsonProtocol.JobDirectivesFormat
-import de.awagen.kolibri.fleet.zio.io.json.ProcessingStateJsonProtocol.jsonFormat2
 import de.awagen.kolibri.fleet.zio.resources.NodeResourceProvider
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.directives.JobDirectives.JobDirective
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.{FileStorageJobStateReader, JobStateReader, NodeStateReader}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer.JobStateWriter
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.JobStates.{JobStateSnapshot, OpenJobsSnapshot}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.NodeUtilizationStates.NodeUtilizationStatesImplicits.nodeUtilizationStateFormat
-import spray.json.DefaultJsonProtocol.{IntJsonFormat, LongJsonFormat, StringJsonFormat, immSeqFormat, immSetFormat, iterableFormat, jsonFormat4, mapFormat, rootFormat}
+import spray.json.DefaultJsonProtocol._
 import spray.json._
 import zio.cache.{Cache, Lookup}
 import zio.http.Header.{AccessControlAllowMethods, AccessControlAllowOrigin}
@@ -97,12 +97,12 @@ object ServerEndpoints {
       (for {
         resources <- ZIO.attempt(NodeResourceProvider.listResources)
         _ <- ZIO.logDebug(s"global resources: $resources")
-        resourcesJson <- ZIO.attempt(resources.toJson.toString())
-      } yield Response.text(resourcesJson))
+        resourcesJson <- ZIO.attempt(ResponseContent(resources, "").toJson.toString())
+      } yield Response.json(resourcesJson))
         .onError(cause => {
           ZIO.logError(s"error retrieving global resources:\nmsg: ${cause.failureOption.map(x => x.getMessage).getOrElse("")}\n${cause.trace.prettyPrint}")
         })
-        .catchAll(_ => ZIO.succeed(Response.text("failed retrieving global resources")))
+        .catchAll(_ => ZIO.succeed(Response.json(ResponseContent("", "failed retrieving global resources").toJson.convertTo[String])))
     case Method.GET -> !! / "jobs" / "open" =>
       for {
         jobStateEither <- jobStateCache.get(JOB_STATE_CACHE_KEY).either
@@ -115,18 +115,17 @@ object ServerEndpoints {
                 })
               })
               _ <- ZIO.logDebug(s"Job data: $jobData")
-              jobDataStr <- ZIO.attempt(jobData.toJson.toString())
+              responseContent <- ZIO.attempt(ResponseContent(jobData, "").toJson.toString())
                 .onError(cause => {
                   ZIO.logError(s"Failed to write job snapshot state:\nmsg: ${cause.failureOption.map(x => x.getMessage)}, trace:\n${cause.trace.prettyPrint}")
                 })
-              responseContent <- ZIO.attempt(ResponseContent(jobDataStr, "").toJson.toString())
               _ <- ZIO.logDebug(s"found files: $jobData, content: $responseContent")
-            } yield Response.text(responseContent)
+            } yield Response.json(responseContent)
           case Left(_) =>
             for {
               _ <- ZIO.logError(s"Retrieving job state failed with error:\n${jobStateEither.swap.toOption.get}")
               responseContent <- ZIO.attempt(ResponseContent("", "Failed retrieving registered jobs").toJson.toString())
-            } yield Response.text(responseContent).withStatus(Status.InternalServerError)
+            } yield Response.json(responseContent).withStatus(Status.InternalServerError)
 
         }
       } yield result
@@ -136,9 +135,11 @@ object ServerEndpoints {
         ZIO.succeed(Response.text(ResponseContent("", "failed loading data").toJson.toString()).withStatus(Status.InternalServerError)))
 
 
-  case class ResponseContent(data: String, errorMessage: String)
+  case class ResponseContent[T](data: T, errorMessage: String)
 
-  implicit val responseContentFormat: RootJsonFormat[ResponseContent] = jsonFormat2(ResponseContent)
+  object ResponseContentProtocol extends DefaultJsonProtocol {
+    implicit def responseContentFormat[T: JsonFormat]: RootJsonFormat[ResponseContent[T]] = jsonFormat2(ResponseContent.apply[T])
+  }
 
 
   val jobPostingEndpoints = Http.collectZIO[Request] {

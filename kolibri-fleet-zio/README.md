@@ -171,14 +171,13 @@ endpoint can be made to apply this policy via suffixing it with ```@@ cors(corsC
 without taking into account further assignments such as the job they are used for.
 Example response:
 ```json
-
+{"data":[{"resourceType":"JUDGEMENT_PROVIDER","identifier":"ident1"}],"errorMessage":""}
 ```
 
 - ```/jobs/open```: Returns list of currently non-completed jobs.
 Example response:
 ```json
-{"data":"[{\"batchCountPerState\":{\"OPEN\":5},\"jobId\":\"taskSequenceTestJob2_1688826018090\",\"jobLevelDirectives\":[{\"type\":\"PROCESS\"}],\"timePlacedInMillis\":1688826018090}]","errorMessage":""}
-```
+{"data":[{"batchCountPerState":{"INPROGRESS_abc1":5},"jobId":"taskSequenceTestJob2_1688830485073","jobLevelDirectives":[{"type":"PROCESS"}],"timePlacedInMillis":1688830485073}],"errorMessage":""}```
 
 
 

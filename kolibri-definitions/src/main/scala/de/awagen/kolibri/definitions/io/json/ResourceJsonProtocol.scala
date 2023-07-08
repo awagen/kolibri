@@ -24,7 +24,7 @@ import de.awagen.kolibri.definitions.directives.{Resource, ResourceType}
 import de.awagen.kolibri.definitions.io.json.EnumerationJsonProtocol.{resourceTypeGeneratorStringFormat, resourceTypeJudgementProviderFormat, resourceTypeMapStringDoubleFormat, resourceTypeMapStringGeneratorStringFormat}
 import de.awagen.kolibri.definitions.usecase.searchopt.provider.JudgementProvider
 import spray.json.DefaultJsonProtocol.{StringJsonFormat, jsonFormat2}
-import spray.json.{JsValue, JsonFormat, RootJsonFormat, enrichAny}
+import spray.json._
 
 object ResourceJsonProtocol {
 
@@ -51,11 +51,10 @@ object ResourceJsonProtocol {
       }
     }
 
-    override def write(obj: Resource[Any]): JsValue =
-      s"""{
-        |"$RESOURCE_TYPE_KEY": "${obj.resourceType.toString().toUpperCase}",
-        |"$IDENTIFIER_KEY": "${obj.identifier}"
-        |}""".toJson
+    override def write(obj: Resource[Any]): JsValue = JsObject(Map(
+      RESOURCE_TYPE_KEY -> JsString(obj.resourceType.toString().toUpperCase),
+      IDENTIFIER_KEY -> JsString(obj.identifier)
+    ))
 
   }
 
