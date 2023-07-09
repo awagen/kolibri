@@ -34,7 +34,12 @@ object ProcessingStatus extends Enumeration {
 
 object ProcessingStateUtils {
   val DATE_PATTERN = "yyyy-MM-dd HH:mm:ss"
+  val DATE_NO_TIME_PATTERN = "yyyy-MM-dd"
   val DATE_FORMATTER: DateTimeFormatter = DateTimeFormat.forPattern(DATE_PATTERN)
+
+  def timeInMillisToFormattedDate(timeInMillis: Long): String = {
+    new DateTime(timeInMillis).toString(DATE_NO_TIME_PATTERN)
+  }
 
   def timeInMillisToFormattedTime(timeInMillis: Long): String = {
     new DateTime(timeInMillis).toString(DATE_FORMATTER)

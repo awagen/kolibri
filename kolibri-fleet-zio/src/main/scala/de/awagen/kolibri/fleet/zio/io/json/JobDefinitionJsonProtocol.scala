@@ -35,7 +35,7 @@ import de.awagen.kolibri.definitions.processing.modifiers.ParameterValues.Parame
 import de.awagen.kolibri.definitions.processing.modifiers.ParameterValues.ValueSeqGenDefinition
 import de.awagen.kolibri.definitions.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
 import de.awagen.kolibri.definitions.usecase.searchopt.jobdefinitions.parts.BatchGenerators.batchByGeneratorAtIndex
-import de.awagen.kolibri.fleet.zio.config.AppConfig
+import de.awagen.kolibri.fleet.zio.config.{AppConfig, AppProperties}
 import de.awagen.kolibri.fleet.zio.config.AppConfig.JsonFormats.executionFormat
 import de.awagen.kolibri.fleet.zio.config.AppConfig.JsonFormats.parameterValueJsonProtocol.ValueSeqGenDefinitionFormat
 import de.awagen.kolibri.fleet.zio.config.AppConfig.JsonFormats.resourceDirectiveJsonProtocol.GenericResourceDirectiveFormat
@@ -45,6 +45,7 @@ import de.awagen.kolibri.fleet.zio.execution.ZIOTasks.SimpleWaitTask
 import de.awagen.kolibri.fleet.zio.execution.aggregation.Aggregators.countingAggregator
 import de.awagen.kolibri.fleet.zio.execution.{JobDefinitions, ZIOTask}
 import de.awagen.kolibri.fleet.zio.io.json.TaskJsonProtocol._
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ProcessingStateUtils
 import spray.json.{DefaultJsonProtocol, JsValue, JsonFormat, enrichAny}
 
 import scala.collection.immutable.Seq
@@ -249,13 +250,16 @@ object JobDefinitionJsonProtocol extends DefaultJsonProtocol {
               aggregationState = MetricAggregation.empty[Tag](identity),
               ignoreIdDiff = false
             ),
-            writer = AppConfig.persistenceModule.persistenceDIModule.immutableMetricAggregationWriter(
-              subFolder = s"${jobName}_$currentTimeInMillis",
-              x => {
-                val randomAdd: String = Random.alphanumeric.take(5).mkString
-                s"${x.toString()}-$randomAdd"
-              }
-            )
+            writer = {
+              val currentDay = ProcessingStateUtils.timeInMillisToFormattedDate(currentTimeInMillis)
+              AppConfig.persistenceModule.persistenceDIModule.immutableMetricAggregationWriter(
+                subFolder = s"${currentDay}/${jobName}",
+                x => {
+                  val randomAdd: String = Random.alphanumeric.take(5).mkString
+                  s"${x.toString()}-${AppProperties.config.node_hash}-$randomAdd"
+                }
+              )
+            }
           )
           JobDefinition(
             jobName = jobName,
