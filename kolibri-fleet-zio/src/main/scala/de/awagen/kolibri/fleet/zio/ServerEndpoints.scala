@@ -41,6 +41,8 @@ import zio.metrics.connectors.prometheus.PrometheusPublisher
 import zio.stream.ZStream
 import zio.{Task, ZIO, durationInt}
 
+import java.nio.charset.Charset
+
 
 object ServerEndpoints {
 
@@ -90,6 +92,49 @@ object ServerEndpoints {
                                      batchCountPerState: Map[String, Int])
 
   implicit val jobStateSnapshotReducedFormat: RootJsonFormat[JobStateSnapshotReduced] = rootFormat(jsonFormat4(JobStateSnapshotReduced.apply))
+
+  def directiveEndpoints = Http.collectZIO[Request] {
+    case Method.DELETE -> !! / "jobs" / jobId / "directives" / "all"   =>
+      (for {
+        jobStateWriter <- ZIO.service[JobStateWriter]
+        _ <- jobStateWriter.removeAllDirectives(jobId)
+        response <- ZIO.succeed(Response.json(ResponseContent(true, "").toJson.toString()))
+      } yield response)
+        .onError(cause => {
+          ZIO.logError(s"error deleting all job level directives for job '$jobId':\nmsg: ${cause.failureOption.map(x => x.getMessage).getOrElse("")}\nCause: ${cause.trace.prettyPrint}")
+        })
+        .catchAll(_ => {
+          ZIO.succeed(Response.json(ResponseContent("", s"failed to delete all job level directives for job '$jobId'").toJson.convertTo[String]).withStatus(Status.InternalServerError))
+        })
+    case req@Method.DELETE -> !! / "jobs" / jobId / "directives" =>
+      (for {
+        jobStateWriter <- ZIO.service[JobStateWriter]
+        bodyStr <- req.body.asString(Charset.forName("UTF-8"))
+        parsedDirectives <- ZIO.attempt(bodyStr.parseJson.convertTo[Seq[JobDirective]])
+        _ <- jobStateWriter.removeDirectives(jobId, parsedDirectives.toSet)
+        response <- ZIO.succeed(Response.json(ResponseContent(true, "").toJson.toString()))
+      } yield response)
+        .onError(cause => {
+          ZIO.logError(s"error deleting passed set of job level directives for job '$jobId':\nmsg: ${cause.failureOption.map(x => x.getMessage).getOrElse("")}\nCause: ${cause.trace.prettyPrint}")
+        })
+        .catchAll(_ => {
+          ZIO.succeed(Response.json(ResponseContent("", s"failed to delete passed set of job level directives for job '$jobId'").toJson.convertTo[String]).withStatus(Status.InternalServerError))
+        })
+    case req@Method.POST -> !! / "jobs" / jobId / "directives" =>
+      (for {
+        jobStateWriter <- ZIO.service[JobStateWriter]
+        bodyStr <- req.body.asString(Charset.forName("UTF-8"))
+        parsedDirectives <- ZIO.attempt(bodyStr.parseJson.convertTo[Seq[JobDirective]])
+        _ <- jobStateWriter.writeDirectives(jobId, parsedDirectives.toSet)
+        response <- ZIO.succeed(Response.json(ResponseContent(true, "").toJson.toString()))
+      } yield response)
+        .onError(cause => {
+          ZIO.logError(s"error persisting passed set of job level directives for job '$jobId':\nmsg: ${cause.failureOption.map(x => x.getMessage).getOrElse("")}\nCause: ${cause.trace.prettyPrint}")
+        })
+        .catchAll(_ => {
+          ZIO.succeed(Response.json(ResponseContent("", s"failed to persist passed set of job level directives for job '$jobId'").toJson.convertTo[String]).withStatus(Status.InternalServerError))
+        })
+  }@@ cors(corsConfig)
 
   def batchStatusEndpoints(jobStateCache: Cache[String, Throwable, OpenJobsSnapshot]) = Http.collectZIO[Request] {
     case Method.GET -> !! / "jobs" / "batches" =>

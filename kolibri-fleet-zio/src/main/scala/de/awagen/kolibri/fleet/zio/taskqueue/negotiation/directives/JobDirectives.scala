@@ -20,7 +20,13 @@ package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.directives
 import java.util.Objects
 
 /**
- *
+ * Job level directives indicating what to do with the job. Options include:
+ * - PROCESS: let all available nodes take part in the computation
+ * - STOP_PROCESSING: let no node take part in the computation (e.g stop processing). Right now equivalent
+ * to no directive at all, since this would also not have any node take part in the computation
+ * (needs an explicit "GO" in the form of a general PROCESS or ONLY_NODE)
+ * - ONLY_NODE: restrict processing to a single node as defined by its node hash
+ * - UNKNOWN: unknown directive, no effect
  */
 object JobDirectives {
 

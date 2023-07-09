@@ -17,6 +17,7 @@
 
 package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer
 
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.directives.JobDirectives.JobDirective
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ProcessId
 import zio.Task
 
@@ -39,6 +40,21 @@ trait JobStateWriter {
    * Persist batch as in "open" state, e.g to be claimed by any node.
    */
   def writeBatchToOpen(processId: ProcessId): Task[Unit]
+
+  /**
+   * Remove all directives currently present for the jobId
+   */
+  def removeAllDirectives(jobId: String): Task[Unit]
+
+  /**
+   * Remove passed directives for the given jobId
+   */
+  def removeDirectives(jobId: String, directives: Set[JobDirective]): Task[Unit]
+
+  /**
+   * Write passed directives for the given jobId
+   */
+  def writeDirectives(jobId: String, directives: Set[JobDirective]): Task[Unit]
 
 
 }

@@ -51,11 +51,12 @@ object ZioDIConfig {
     } yield FileStorageJobStateReader(overviewReader, fileReader)
   }
 
-  val jobStateWriterLayer: ZLayer[Writer[String, String, _], Nothing, FileStorageJobStateWriter] =
+  val jobStateWriterLayer: ZLayer[Writer[String, String, _] with JobStateReader, Nothing, FileStorageJobStateWriter] =
     ZLayer {
       for {
         writer <- ZIO.service[Writer[String, String, _]]
-      } yield FileStorageJobStateWriter(writer)
+        jobStateReader <- ZIO.service[JobStateReader]
+      } yield FileStorageJobStateWriter(writer, jobStateReader)
     }
 
   val fileFilterToOverViewFuncLayer: ULayer[(String => Boolean) => DataOverviewReader] =

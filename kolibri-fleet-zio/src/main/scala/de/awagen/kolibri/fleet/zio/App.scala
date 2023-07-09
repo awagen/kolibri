@@ -143,7 +143,8 @@ object App extends ZIOAppDefault {
           ServerEndpoints.statusEndpoints(jobStateCache) ++
           ServerEndpoints.batchStatusEndpoints(jobStateCache) ++
           ServerEndpoints.prometheusEndpoint ++
-          ServerEndpoints.nodeStateEndpoint
+          ServerEndpoints.nodeStateEndpoint ++
+          ServerEndpoints.directiveEndpoints
       )
       _ <- ZIO.logInfo("Application is about to exit!")
     } yield ())

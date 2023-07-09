@@ -24,12 +24,17 @@ import de.awagen.kolibri.fleet.zio.config.Directories.JobTopLevel.jobNameToJobDe
 import de.awagen.kolibri.fleet.zio.config.Directories.OpenTasks.jobNameAndBatchNrToBatchFile
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobDefinition
 import de.awagen.kolibri.fleet.zio.io.json.JobDefinitionJsonProtocol.JobDefinitionFormat
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.directives.JobDirectives
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.directives.JobDirectives.JobDirective
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.JobStateReader
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ProcessId
 import de.awagen.kolibri.storage.io.writer.Writers.Writer
 import spray.json._
+import zio.stream.ZStream
 import zio.{Task, ZIO}
 
-case class FileStorageJobStateWriter(writer: Writer[String, String, _]) extends JobStateWriter {
+case class FileStorageJobStateWriter(writer: Writer[String, String, _],
+                                     jobStateReader: JobStateReader) extends JobStateWriter {
 
   /**
    * Move full job directory from folder for jobs to be completed to folder containing completed jobs
@@ -77,5 +82,60 @@ case class FileStorageJobStateWriter(writer: Writer[String, String, _]) extends 
       case Left(e) => ZIO.fail(e)
       case Right(v) => ZIO.succeed(v)
     })
+  }
+
+  /**
+   * Remove all directives currently present for the jobId
+   */
+  override def removeAllDirectives(jobId: String): Task[Unit] = {
+    for {
+      directives <- ZIO.attempt(jobStateReader.loadJobLevelDirectivesByJobDirectoryName(jobId))
+      _ <- ZIO.logInfo(s"Found directives for deletion for jobId '$jobId': $directives")
+      _ <- removeDirectives(jobId, directives)
+    } yield ()
+  }
+
+  /**
+   * Remove passed directives for the given jobId
+   */
+  override def removeDirectives(jobId: String, directives: Set[JobDirectives.JobDirective]): Task[Unit] = {
+    ZStream.fromIterable(directives)
+      .mapZIO(directive => {
+        for {
+          directiveFile <- ZIO.succeed(s"${JobTopLevel.folderForJob(jobId, isOpenJob = true)}/${JobDirective.toString(directive)}")
+          _ <- ZIO.logInfo(s"Trying to delete job directive file: $directiveFile")
+          deleteResult <- ZIO.attempt(writer.delete(directiveFile))
+          _ <- ZIO.whenCase(deleteResult)({
+            case Right(_) =>
+              ZIO.logInfo(s"Succeeded deleting job directive file '$directiveFile''")
+            case Left(throwable) =>
+              ZIO.logWarning(s"Failed deleting job directive file '$directiveFile':\nexception: $throwable")
+          })
+        } yield ()
+      })
+      .runDrain
+  }
+
+  /**
+   * Write passed directives for the given jobId
+   */
+  override def writeDirectives(jobId: String, directives: Set[JobDirectives.JobDirective]): Task[Unit] = {
+    for {
+      jobTopLevelDirectory <- ZIO.succeed(s"${JobTopLevel.folderForJob(jobId, isOpenJob = true)}")
+      _ <- ZStream.fromIterable(directives)
+        .foreach(directive => {
+          for {
+            writePath <- ZIO.succeed(s"$jobTopLevelDirectory/${JobDirective.toString(directive)}")
+            _ <- ZIO.logInfo(s"Trying to write directive to path '$writePath''")
+            writeResult <- ZIO.attempt(writer.write("", writePath))
+            _ <- ZIO.whenCase(writeResult)({
+              case Right(_) =>
+                ZIO.logInfo(s"Succeeded writing job directive file '$writePath''")
+              case Left(throwable) =>
+                ZIO.logWarning(s"Failed deleting job directive file '$writePath':\nexception: $throwable")
+            })
+          } yield ()
+        })
+    } yield ()
   }
 }

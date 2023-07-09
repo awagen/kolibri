@@ -278,6 +278,29 @@ Example response:
 }
 ```
 
+- Deleting all job level directives for a given job (here: ```job_1688902767685```):
+```
+curl -XDELETE localhost:8001/jobs/job_1688902767685/directives/all
+```
+
+- Deleting a set of job level directives for a given job:
+```
+curl -XDELETE --header "Content-Type: application/json" --data '[{"type": "PROCESS" }]' localhost:8001/jobs/job_1688902767685/directives
+```
+
+- Adding list of job level directives for a given job to the persisted state:
+```
+curl -XPOST --header "Content-Type: application/json" --data '[{"type": "PROCESS" }]' localhost:8001/jobs/job_1688902767685/directives
+```
+
+In all the job level directive endpoints the response will be a 200 response code
+with simple ```true``` boolean value as data or an error code with respective
+error message. Example for successful call:
+```
+{"data":true,"errorMessage":""}
+```
+
+
 
 ## License
 The kolibri-fleet-zio code is licensed under APL 2.0.
