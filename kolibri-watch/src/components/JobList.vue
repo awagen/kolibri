@@ -5,9 +5,9 @@
     <thead>
     <tr>
       <th>Job Name</th>
-      <th>Type</th>
-      <th>Start/End</th>
-      <th>Status</th>
+      <th>TimePlaced</th>
+      <th>Directives</th>
+      <th>BatchCount Per Status</th>
       <th>Progress</th>
       <th v-if="showKillButton">Action</th>
     </tr>
@@ -16,9 +16,9 @@
     <!-- list all running jobs -->
     <tr v-for="job in data">
       <td>{{ job.jobId }}</td>
-      <td>{{ job.jobType }}</td>
-      <td>{{ job.startTime }}/{{ job.endTime }}</td>
-      <td>{{ job.resultSummary }}</td>
+      <td>{{ job.timePlaced }}</td>
+      <td>{{ job.directives }}</td>
+      <td>{{ job.batchCountPerState }}</td>
       <td>
         <div class="bar bar-sm">
           <div class="bar-item" role="progressbar" :style="{'width': job.progress + '%'}" aria-valuenow="25"

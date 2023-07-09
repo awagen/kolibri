@@ -610,23 +610,25 @@ let store = createAppStore()
 store.commit("updateServiceUpState")
 store.commit("updateNodeStatus")
 store.commit("updateRunningJobs")
-store.commit("updateJobHistory")
-store.commit("updateAvailableTemplateTypes")
-store.commit("updateAllAvailableTemplateInfos")
-store.commit("updateAvailableDataFiles", 5)
-// initial loading of executionIds for which results are available
-store.commit("updateAvailableResultExecutionIDs")
-// load list of available ir metrics
-store.commit("updateAvailableIRMetrics")
-// load job definition for search evaluation
-store.commit("retrieveJobDefinitions")
+
+
+// store.commit("updateJobHistory")
+// store.commit("updateAvailableTemplateTypes")
+// store.commit("updateAllAvailableTemplateInfos")
+// store.commit("updateAvailableDataFiles", 5)
+// // initial loading of executionIds for which results are available
+// store.commit("updateAvailableResultExecutionIDs")
+// // load list of available ir metrics
+// store.commit("updateAvailableIRMetrics")
+// // load job definition for search evaluation
+// store.commit("retrieveJobDefinitions")
 
 // regular scheduling
 window.setInterval(() => {
     store.commit("updateServiceUpState")
     store.commit("updateNodeStatus")
     store.commit("updateRunningJobs")
-    store.commit("updateJobHistory")
+    // store.commit("updateJobHistory")
 }, store.state.serviceState.statusRefreshIntervalInMs)
 
 

@@ -10,6 +10,7 @@ import {
     templateAllTypeToInfoMapUrl,
     kolibriBaseUrl
 } from '../utils/globalConstants'
+import _ from "lodash";
 
 
 class Response {
@@ -124,11 +125,11 @@ function retrieveAnalysisTopFlop(executionId,
     console.log(data)
     const config = {
         headers: {
-            "Content-Type" : "application/json"
+            "Content-Type": "application/json"
         }
     }
     return axios
-        .post(url, data,  config)
+        .post(url, data, config)
         .then(response => {
             console.info("retrieved top flop results")
             console.log(response)
@@ -150,8 +151,8 @@ function retrieveAnalysisTopFlop(executionId,
  * @param queryParamName
  */
 function retrieveAnalysisVariance(executionId,
-                                 metricName,
-                                 queryParamName) {
+                                  metricName,
+                                  queryParamName) {
     const url = resultAnalysisVarianceUrl
     const data = {
         "type": "ANALYZE_QUERY_METRIC_VARIANCE",
@@ -162,7 +163,7 @@ function retrieveAnalysisVariance(executionId,
     }
     const config = {
         headers: {
-            "Content-Type" : "application/json"
+            "Content-Type": "application/json"
         }
     }
     return axios
@@ -181,12 +182,25 @@ function retrieveJobs(historical, updateFunc) {
     return axios
         .get(url)
         .then(response => {
-            let result = response.data
-            result.forEach(function (item, _) {
-                item["progress"] = Math.round((item["resultSummary"]["nrOfResultsReceived"] / item["resultSummary"]["nrOfBatchesTotal"]) * 100)
-            });
+            let result = response.data.data.map(job => {
+                let date = new Date(job.timePlacedInMillis)
+                let totalBatchCount = _.sum(Object.values(job.batchCountPerState))
+                let finishedBatchesCount = _.sum(
+                    Object.keys(job.batchCountPerState)
+                        .filter(key => !key.toUpperCase().startsWith("OPEN") && !key.toUpperCase().startsWith("INPROGRESS"))
+                        .map(key => job.batchCountPerState[key])
+                )
+                return {
+                    "jobId": job.jobId,
+                    "timePlaced": date.toUTCString(),
+                    "directives": job.jobLevelDirectives,
+                    "batchCountPerState": job.batchCountPerState,
+                    "progress": (Math.round(finishedBatchesCount / totalBatchCount) * 100).toFixed(2)
+                }
+            })
             updateFunc(result)
-        }).catch(_ => {
+        }).catch(throwable => {
+            console.error(throwable)
             updateFunc([])
         })
 }
@@ -225,7 +239,7 @@ function retrieveRequestSamplesForData(dataJson, numSamples) {
     const url = parameterValuesSampleRequestUrl + "?returnNSamples=" + numSamples
     const config = {
         headers: {
-            "Content-Type" : "application/json"
+            "Content-Type": "application/json"
         }
     }
     return axios
@@ -239,7 +253,7 @@ function retrieveRequestSamplesForData(dataJson, numSamples) {
         })
 }
 
-function retrieveAllAvailableIRMetrics(){
+function retrieveAllAvailableIRMetrics() {
     const url = irMetricsAllUrl
     return axios
         .get(url)
@@ -250,11 +264,11 @@ function retrieveAllAvailableIRMetrics(){
         })
 }
 
-function changeReducedToFullMetricsJsonList(dataObj){
+function changeReducedToFullMetricsJsonList(dataObj) {
     const url = irMetricsReducedToFullJsonListUrl
     const config = {
         headers: {
-            "Content-Type" : "application/json"
+            "Content-Type": "application/json"
         }
     }
     return axios
@@ -282,11 +296,13 @@ function retrieveNodeStatus() {
         .then(response => {
             return response.data.map(worker => {
                 let worker_state = {}
-                worker_state["avgLoad"] = worker["cpuInfo"]["loadAvg"].toFixed(2)
-                worker_state["heapUsage"] = (100 * worker["heapInfo"]["heapUsed"] / worker["heapInfo"]["heapCommited"]).toFixed(2) + "%"
-                worker_state["host"] = worker["host"]
-                worker_state["port"] = worker["port"]
-                worker_state["countCPUs"] = worker["cpuInfo"]["nrProcessors"]
+                worker_state["lastUpdate"] = worker["lastUpdate"]
+                worker_state["nodeHash"] = worker["nodeId"]
+                worker_state["cpuCores"] = worker["cpuInfo"]["numCores"]
+                worker_state["cpuLoad"] = worker["cpuInfo"]["cpuLoad"].toFixed(2)
+                worker_state["heapUsed"] = worker["heapMemoryInfo"]["used"].toFixed(2)
+                worker_state["heapMax"] = worker["heapMemoryInfo"]["max"].toFixed(2)
+                worker_state["nonHeapUsed"] = worker["nonHeapMemoryInfo"]["used"].toFixed(2)
                 return worker_state
             });
         }).catch(_ => {
@@ -365,7 +381,7 @@ function handleResponse(responsePromise: Promise<AxiosResponse>): Promise<Respon
         .then(response => {
             return Response.fromAxiosResponse(response)
         })
-        .catch(function(error) {
+        .catch(function (error) {
             if (error.response) {
                 // Request made and server responded
                 return Response.failResponse(error.response.data)
