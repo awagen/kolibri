@@ -160,7 +160,7 @@ For spray there is an additional library providing this functionality (https://g
 which seems to even provide more functionality. For this sake you can expect the play json lib will be removed in
 further iterations for the sake of only using spray or an alternative.
 
-## Endpoints: CORS
+## Endpoints: CORS (see also: https://zio.dev/zio-http/examples/advanced/middleware-cors-handling/)
 In the definition of the server endpoints (e.g object ServerEndpoints)
 you will find an example cors config. Given such a config, any
 endpoint can be made to apply this policy via suffixing it with ```@@ cors(corsConfig)```.
@@ -171,16 +171,112 @@ endpoint can be made to apply this policy via suffixing it with ```@@ cors(corsC
 without taking into account further assignments such as the job they are used for.
 Example response:
 ```json
-{"data":[{"resourceType":"JUDGEMENT_PROVIDER","identifier":"ident1"}],"errorMessage":""}
+{
+  "data": [
+    {
+      "resourceType": "JUDGEMENT_PROVIDER",
+      "identifier": "ident1"
+    }
+  ],
+  "errorMessage": ""
+}
 ```
 
 - ```/jobs/open```: Returns list of currently non-completed jobs.
 Example response:
 ```json
-{"data":[{"batchCountPerState":{"INPROGRESS_abc1":5},"jobId":"taskSequenceTestJob2_1688830485073","jobLevelDirectives":[{"type":"PROCESS"}],"timePlacedInMillis":1688830485073}],"errorMessage":""}```
+{
+  "data": [
+    {
+      "batchCountPerState": {
+        "INPROGRESS_abc1": 5
+      },
+      "jobId": "taskSequenceTestJob2_1688830485073",
+      "jobLevelDirectives": [
+        {
+          "type": "PROCESS"
+        }
+      ],
+      "timePlacedInMillis": 1688830485073
+    }
+  ],
+  "errorMessage": ""
+}
+```
 
-
-
+- ```/jobs/batches```: Returns list of batches currently in process.
+```json
+{
+  "data": [
+    {
+      "processingInfo": {
+        "lastUpdate": "2023-07-09 00:56:22",
+        "numItemsProcessed": 129,
+        "numItemsTotal": 1000,
+        "processingNode": "abc1",
+        "processingStatus": "IN_PROGRESS"
+      },
+      "stateId": {
+        "batchNr": 0,
+        "jobId": "taskSequenceTestJob2_1688864117702"
+      }
+    },
+    {
+      "processingInfo": {
+        "lastUpdate": "2023-07-09 00:56:22",
+        "numItemsProcessed": 129,
+        "numItemsTotal": 1000,
+        "processingNode": "abc1",
+        "processingStatus": "IN_PROGRESS"
+      },
+      "stateId": {
+        "batchNr": 4,
+        "jobId": "taskSequenceTestJob2_1688864117702"
+      }
+    },
+    {
+      "processingInfo": {
+        "lastUpdate": "2023-07-09 00:56:22",
+        "numItemsProcessed": 129,
+        "numItemsTotal": 1000,
+        "processingNode": "abc1",
+        "processingStatus": "IN_PROGRESS"
+      },
+      "stateId": {
+        "batchNr": 3,
+        "jobId": "taskSequenceTestJob2_1688864117702"
+      }
+    },
+    {
+      "processingInfo": {
+        "lastUpdate": "2023-07-09 00:56:22",
+        "numItemsProcessed": 131,
+        "numItemsTotal": 1000,
+        "processingNode": "abc1",
+        "processingStatus": "IN_PROGRESS"
+      },
+      "stateId": {
+        "batchNr": 1,
+        "jobId": "taskSequenceTestJob2_1688864117702"
+      }
+    },
+    {
+      "processingInfo": {
+        "lastUpdate": "2023-07-09 00:56:22",
+        "numItemsProcessed": 128,
+        "numItemsTotal": 1000,
+        "processingNode": "abc1",
+        "processingStatus": "IN_PROGRESS"
+      },
+      "stateId": {
+        "batchNr": 2,
+        "jobId": "taskSequenceTestJob2_1688864117702"
+      }
+    }
+  ],
+  "errorMessage": ""
+}
+```
 
 
 ## License

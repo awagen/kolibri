@@ -24,6 +24,7 @@ import de.awagen.kolibri.datatypes.values.aggregation.immutable.Aggregators
 import de.awagen.kolibri.definitions.directives.Resource
 import de.awagen.kolibri.fleet.zio.config.{AppConfig, AppProperties}
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions
+import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobDefinition
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader._
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer._
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services._
@@ -117,6 +118,7 @@ object ZioDIConfig {
       processIdToAggregatorMappingRef <- Ref.make(Map.empty[ProcessId, Ref[Aggregators.Aggregator[TaggedWithType with DataPoint[Any], WithCount]]])
       processIdToFiberMappingRef <- Ref.make(Map.empty[ProcessId, Fiber.Runtime[Throwable, Unit]])
       resourceToJobIdMappingRef <- Ref.make(Map.empty[Resource[Any], Set[String]])
+      jobIdToJobDefinitionRef <- Ref.make(Map.empty[String, JobDefinition[_, _, _ <: WithCount]])
     } yield BaseWorkHandlerService(
       claimReader,
       workStateReader,
@@ -125,7 +127,8 @@ object ZioDIConfig {
       addedBatchesHistory,
       processIdToAggregatorMappingRef,
       processIdToFiberMappingRef,
-      resourceToJobIdMappingRef
+      resourceToJobIdMappingRef,
+      jobIdToJobDefinitionRef
     )
   }
 

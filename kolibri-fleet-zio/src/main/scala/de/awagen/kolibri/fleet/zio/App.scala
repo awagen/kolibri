@@ -141,6 +141,7 @@ object App extends ZIOAppDefault {
       _ <- Server.serve(
         ServerEndpoints.jobPostingEndpoints ++
           ServerEndpoints.statusEndpoints(jobStateCache) ++
+          ServerEndpoints.batchStatusEndpoints(jobStateCache) ++
           ServerEndpoints.prometheusEndpoint ++
           ServerEndpoints.nodeStateEndpoint
       )

@@ -24,7 +24,7 @@ import de.awagen.kolibri.datatypes.values.aggregation.immutable.Aggregators.Aggr
 import de.awagen.kolibri.definitions.directives.Resource
 import de.awagen.kolibri.definitions.io.json.ResourceJsonProtocol.AnyResourceFormat
 import de.awagen.kolibri.fleet.zio.config.AppProperties
-import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobBatch
+import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.{JobBatch, JobDefinition}
 import de.awagen.kolibri.fleet.zio.resources.NodeResourceProvider
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.TaskTopics
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.{ClaimReader, WorkStateReader}
@@ -150,7 +150,8 @@ case class BaseWorkHandlerService[U <: TaggedWithType with DataPoint[Any], V <: 
                                                                                            addedBatchesHistoryRef: Ref[Seq[ProcessId]],
                                                                                            processIdToAggregatorRef: Ref[Map[ProcessId, Ref[Aggregator[U, V]]]],
                                                                                            processIdToFiberRef: Ref[Map[ProcessId, Fiber.Runtime[Throwable, Unit]]],
-                                                                                           resourceToJobIdsRef: Ref[Map[Resource[Any], Set[String]]]) extends WorkHandlerService {
+                                                                                           resourceToJobIdsRef: Ref[Map[Resource[Any], Set[String]]],
+                                                                                           jobIdToJobDefRef: Ref[Map[String, JobDefinition[_, _, _ <: WithCount]]]) extends WorkHandlerService {
 
   /**
    * Given a current snapshot of the open job state and mapping of ProcessId to Fiber,
@@ -170,6 +171,7 @@ case class BaseWorkHandlerService[U <: TaggedWithType with DataPoint[Any], V <: 
       _ <- ZIO.when(fiberInterruptResults.nonEmpty)(ZIO.logInfo(s"Cleaning up processes: ${fiberInterruptResults.map(x => x._1)}"))
       // remove the cancelled processIds from the aggregator and fiber mappings
       _ <- removeKeysFromMappings(fiberInterruptResults.map(x => x._1).toSet, Seq(processIdToFiberRef, processIdToAggregatorRef).map(x => x.asInstanceOf[Ref[Map[ProcessId, Any]]]))
+      _ <- removeKeysFromMappings(fiberInterruptResults.map(x => x._1.jobId).toSet, Seq(jobIdToJobDefRef).map(x => x.asInstanceOf[Ref[Map[String, Any]]]))
     } yield ()
   }
 
@@ -333,11 +335,17 @@ case class BaseWorkHandlerService[U <: TaggedWithType with DataPoint[Any], V <: 
             )
             _ <- TaskWorker.work(job)
               .forEachZIO(aggAndFiber => {
-                processIdToAggregatorRef.update(oldMap =>
-                  oldMap + (ProcessId(job.job.jobName, job.batchNr) -> aggAndFiber._1.asInstanceOf[Ref[Aggregator[U, V]]])
-                ) *>
-                  processIdToFiberRef.update(oldMap =>
+                for {
+                  _ <- processIdToAggregatorRef.update(oldMap =>
+                    oldMap + (ProcessId(job.job.jobName, job.batchNr) -> aggAndFiber._1.asInstanceOf[Ref[Aggregator[U, V]]])
+                  )
+                  _ <- processIdToFiberRef.update(oldMap =>
                     oldMap + (ProcessId(job.job.jobName, job.batchNr) -> aggAndFiber._2))
+                  jobIdToJobDef <- jobIdToJobDefRef.get
+                  _ <- ZIO.when(!jobIdToJobDef.contains(job.job.jobName))({
+                    jobIdToJobDefRef.update(oldMap => oldMap + (job.job.jobName -> job.job))
+                  })
+                } yield ()
               })
           } yield true
           ZIO.logInfo(s"Starting processing job '${job.job.jobName}', batch ${job.batchNr}") *> processingEffect
@@ -362,6 +370,7 @@ case class BaseWorkHandlerService[U <: TaggedWithType with DataPoint[Any], V <: 
           _ <- workStateWriter.moveToDone(processId, AppProperties.config.node_hash)
           _ <- processIdToAggregatorRef.update(map => map - processId)
           _ <- processIdToFiberRef.update(map => map - processId)
+          _ <- jobIdToJobDefRef.update(map => map - processId.jobId)
         } yield ()
       })
   }
