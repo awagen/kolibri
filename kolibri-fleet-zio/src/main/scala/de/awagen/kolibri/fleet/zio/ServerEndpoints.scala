@@ -134,7 +134,7 @@ object ServerEndpoints {
         .catchAll(_ => {
           ZIO.succeed(Response.json(ResponseContent("", s"failed to persist passed set of job level directives for job '$jobId'").toJson.convertTo[String]).withStatus(Status.InternalServerError))
         })
-  }@@ cors(corsConfig)
+  } @@ cors(corsConfig)
 
   def batchStatusEndpoints(jobStateCache: Cache[String, Throwable, OpenJobsSnapshot]) = Http.collectZIO[Request] {
     case Method.GET -> !! / "jobs" / "batches" =>

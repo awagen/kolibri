@@ -25,8 +25,11 @@
                aria-valuemin="0" aria-valuemax="100"></div>
         </div>
       </td>
-      <td v-if="showKillButton">
+      <td v-if="showKillButton && jobHasStarted(job)">
         <button @click="killJob(job.jobId)" class="btn btn-primary s-circle kill">Kill</button>
+      </td>
+      <td v-if="!jobHasStarted(job)">
+        <button @click="startJob(job.jobId)" class="btn btn-primary s-circle start">Start</button>
       </td>
     </tr>
     </tbody>
@@ -34,9 +37,9 @@
 </template>
 
 <script>
-import {onBeforeUnmount, onMounted} from "vue";
+import {onBeforeUnmount, onMounted, ref} from "vue";
 import axios from "axios";
-import {stopJobUrl} from '../utils/globalConstants'
+import {startJobUrl, stopJobUrl} from '../utils/globalConstants'
 
 export default {
   props: [
@@ -44,16 +47,48 @@ export default {
     'data',
     'showKillButton'
   ],
+
   setup(props) {
 
+    function jobHasStarted(job) {
+      let existingProcessDirectives = job.directives.map(dir => dir.type).filter(type => {
+        type.startsWith("ONLY_NODE") || type.startsWith("PROCESS")
+      })
+      return existingProcessDirectives !== undefined && existingProcessDirectives.length > 0
+    }
+
+    /**
+     * NOTE: right now kill-job just means removing all job level directives out of the
+     * job folder such that no node will pick up any batch of the job.
+     * Batches already running will not be terminated as of now (might change later)
+     */
     function killJob(jobId) {
       console.log("executing killJob")
       return axios
-          .delete(stopJobUrl + '?jobId=' + jobId)
+          .delete(stopJobUrl.replace("#JOB_ID", jobId))
           .then(response => {
             console.info("killJob response: " + response.data)
           }).catch(e => {
             console.info("exception on stopJob call: ")
+            console.log(e)
+          })
+    }
+
+    /**
+     * NOTE: start-job right now simply corresponds to writing the PROCESS-directive
+     * for the job (into the job's folder). This triggers all nodes to pick up the batches.
+     * Right now this does not mean fine-grained control, e.g the directive written will
+     * signal start of processing to all connected nodes. More fine-grained control of
+     * set directives via UI will be added shortly
+     */
+    function startJob(jobId) {
+      console.log("executing startJob")
+      return axios
+          .post(startJobUrl.replace("#JOB_ID", jobId), [{"type": "PROCESS"}])
+          .then(response => {
+            console.info("startJob response: " + response.data)
+          }).catch(e => {
+            console.info("exception on startJob call: ")
             console.log(e)
           })
     }
@@ -64,7 +99,9 @@ export default {
     })
 
     return {
-      killJob
+      killJob,
+      startJob,
+      jobHasStarted
     }
   }
 
@@ -100,6 +137,16 @@ td, th {
 
 .btn.kill:hover {
   background-color: #5c0003;
+}
+
+.btn.start {
+  background-color: darkgreen;
+  color: #9C9C9C;
+  border: none;
+}
+
+.btn.kill:hover {
+  background-color: darkslategray;
 }
 
 .runningJobHeader {
