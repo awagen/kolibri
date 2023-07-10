@@ -12,11 +12,11 @@
           <span class="choice-title">Templates</span>
         </a>
       </li>
-      <li class="tab-item" v-bind:class="{'active':(isActiveCreationView)}">
-        <a href="#" @click.prevent="this.selectDisplay('creation')">
-          <span class="choice-title">Parameter Composer</span>
-        </a>
-      </li>
+<!--      <li class="tab-item" v-bind:class="{'active':(isActiveCreationView)}">-->
+<!--        <a href="#" @click.prevent="this.selectDisplay('creation')">-->
+<!--          <span class="choice-title">Parameter Composer</span>-->
+<!--        </a>-->
+<!--      </li>-->
     </ul>
   </div>
 
@@ -26,9 +26,9 @@
   <template v-if="this.isActiveTemplateView">
     <JobDefinitionByTemplates/>
   </template>
-  <template v-if="this.isActiveCreationView">
-    <DataCreation/>
-  </template>
+<!--  <template v-if="this.isActiveCreationView">-->
+<!--    <DataCreation/>-->
+<!--  </template>-->
 
 </template>
 

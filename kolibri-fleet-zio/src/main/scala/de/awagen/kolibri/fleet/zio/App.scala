@@ -24,6 +24,8 @@ import de.awagen.kolibri.fleet.zio.metrics.Metrics.MetricTypes.taskManageCycleIn
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.{JobStateReader, WorkStateReader}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer.NodeStateWriter
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services.{TaskOverviewService, TaskPlannerService, WorkHandlerService}
+import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, Reader}
+import de.awagen.kolibri.storage.io.writer.Writers.Writer
 import zio._
 import zio.http._
 import zio.logging.backend.SLF4J
@@ -138,13 +140,18 @@ object App extends ZIOAppDefault {
       _ <- (taskWorkerApp @@ taskManageCycleInvokeCount).repeat(fixed1).fork
       _ <- nodeStateUpdateEffect.repeat(fixed2).fork
       jobStateCache <- ServerEndpoints.openJobStateCache
+      dataOverviewReader <- ZIO.service[DataOverviewReader]
+      contentReader <- ZIO.service[Reader[String, Seq[String]]]
+      writer <- ZIO.service[Writer[String, String, _]]
       _ <- Server.serve(
         ServerEndpoints.jobPostingEndpoints ++
           ServerEndpoints.statusEndpoints(jobStateCache) ++
           ServerEndpoints.batchStatusEndpoints(jobStateCache) ++
           ServerEndpoints.prometheusEndpoint ++
           ServerEndpoints.nodeStateEndpoint ++
-          ServerEndpoints.directiveEndpoints
+          ServerEndpoints.directiveEndpoints ++
+          JobDefsServerEndpoints.jobDefEndpoints ++
+          JobTemplatesServerEndpoints.templateEndpoints(dataOverviewReader, contentReader, writer)
       )
       _ <- ZIO.logInfo("Application is about to exit!")
     } yield ())

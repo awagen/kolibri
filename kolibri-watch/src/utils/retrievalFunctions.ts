@@ -312,9 +312,9 @@ function retrieveNodeStatus() {
 
 function retrieveTemplatesForType(typeName) {
     return axios
-        .get(templateOverviewForTypeUrl + "?type=" + typeName)
+        .get(templateOverviewForTypeUrl + "/" + typeName)
         .then(response => {
-            return response.data
+            return response.data.data
         }).catch(_ => {
             return []
         })
@@ -331,12 +331,12 @@ function retrieveAllAvailableTemplateInfos() {
         .get(templateAllTypeToInfoMapUrl)
         .then(response => {
             let data = response.data
-            let templateTypes = Object.keys(data)
+            let templateTypes = Object.keys(data.data)
             let result = {}
             templateTypes.forEach(templateType => {
                 result[templateType] = {}
-                data[templateType].forEach(info => {
-                    result[templateType][info["templateId"]] = JSON.parse(info["content"])
+                data.data[templateType].forEach(info => {
+                    result[templateType][info["templateId"]] = info["content"]
                 })
             })
             return result
@@ -349,7 +349,7 @@ function retrieveTemplateTypes() {
     return axios
         .get(templateTypeUrl)
         .then(response => {
-            return response.data
+            return response.data.data
         }).catch(_ => {
             return []
         })
@@ -412,7 +412,7 @@ function saveTemplate(templateTypeName, templateName, templateContent) {
     if (templateName === "") {
         return Response.failResponse("empty template name, not sending for storage")
     }
-    let url = templateSaveUrl + "?type=" + templateTypeName + "&templateName=" + templateName
+    let url = templateSaveUrl + "/" + templateTypeName + "/" + templateName
     return executeAndHandlePostRequest(url, templateContent)
 }
 
@@ -436,15 +436,15 @@ function postAgainstEndpoint(endpoint, jsonContent) {
  * @param jobDefinitionContent
  */
 function executeJob(typeName, jobDefinitionContent) {
-    let url = templateExecuteUrl + "?type=" + typeName
+    let url = templateExecuteUrl
     return executeAndHandlePostRequest(url, jobDefinitionContent)
 }
 
 function retrieveTemplateContentAndInfo(typeName, templateName) {
     return axios
-        .get(templateContentUrl + "?type=" + typeName + "&identifier=" + templateName)
+        .get(templateContentUrl + "/" + typeName + "/" + templateName)
         .then(response => {
-            return response.data
+            return response.data.data
         }).catch(_ => {
             return {}
         })

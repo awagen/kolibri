@@ -51,10 +51,11 @@ export default {
   setup(props) {
 
     function jobHasStarted(job) {
-      let existingProcessDirectives = job.directives.map(dir => dir.type).filter(type => {
+      let existingProcessDirectives = job.directives.map(dir => dir.type.trim()).filter(type => {
         type.startsWith("ONLY_NODE") || type.startsWith("PROCESS")
       })
-      return existingProcessDirectives !== undefined && existingProcessDirectives.length > 0
+      let hasStarted = existingProcessDirectives !== undefined && existingProcessDirectives.length > 0
+      return hasStarted
     }
 
     /**

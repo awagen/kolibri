@@ -189,9 +189,7 @@ export function createAppStore() {
         mutations: {
             retrieveJobDefinitions(state) {
                 retrieveJobInformation().then(response => {
-                    response.forEach(jobDef => {
-                        console.info("job response: ")
-                        console.log(jobDef)
+                    response.data.forEach(jobDef => {
                         let requiredJobDefObj = jobDef["payloadDef"]
                         let name = jobDef["id"]
                         let shortDescription = jobDef["name"]
@@ -613,15 +611,15 @@ store.commit("updateRunningJobs")
 
 
 // store.commit("updateJobHistory")
-// store.commit("updateAvailableTemplateTypes")
-// store.commit("updateAllAvailableTemplateInfos")
+store.commit("updateAvailableTemplateTypes")
+store.commit("updateAllAvailableTemplateInfos")
 // store.commit("updateAvailableDataFiles", 5)
 // // initial loading of executionIds for which results are available
 // store.commit("updateAvailableResultExecutionIDs")
 // // load list of available ir metrics
 // store.commit("updateAvailableIRMetrics")
 // // load job definition for search evaluation
-// store.commit("retrieveJobDefinitions")
+store.commit("retrieveJobDefinitions")
 
 // regular scheduling
 window.setInterval(() => {
