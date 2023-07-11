@@ -57,7 +57,7 @@ object JobTemplatesServerEndpoints {
   def getJobTemplatesForType(templateType: String, dataOverviewReader: DataOverviewReader): zio.Task[Seq[String]] = {
     for {
       foundJsonFiles <- ZIO.attemptBlockingIO(dataOverviewReader.listResources(s"$jobTemplatePath/$templateType", x => x.endsWith(".json")))
-      _ <- ZIO.logInfo(s"Found files for templateType '$templateType': $foundJsonFiles")
+      _ <- ZIO.logDebug(s"Found files for templateType '$templateType': $foundJsonFiles")
       results <- ZIO.attempt({
         foundJsonFiles
           .map(filepath => filepath.split("/").last)
