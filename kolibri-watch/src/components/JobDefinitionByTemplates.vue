@@ -123,20 +123,6 @@ export default {
       document.getElementById("template-edit-1").value = baseJsonFormatting(this.$store.state.templateState.selectedTemplateFieldPartial)
     },
 
-    getSelectionsAndSaveTemplate() {
-      let templateName = document.getElementById("template-edit-saveto-filename-1").value
-      let typeName = this.$store.state.templateState.selectedTemplateType
-      if (templateName === "") {
-        console.info("empty template name, not sending for storage")
-      }
-      saveTemplate(typeName, templateName, this.$store.state.templateState.selectedTemplateContent)
-    },
-
-    getSelectionAndExecuteJob() {
-      let typeName = this.$store.state.templateState.selectedTemplateType
-      executeJob(typeName, this.$store.state.templateState.selectedTemplateContent)
-    },
-
     applyChanges() {
       let changes = document.getElementById("template-edit-1").value
       this.$store.commit("updateTemplateState", changes)
@@ -235,25 +221,6 @@ textarea.form-input:focus {
 
 .k-half.btn {
   width: 50%;
-}
-
-.k-full.btn {
-  width: 98%;
-  margin-left: 1em;
-  margin-right: 1em;
-}
-
-input#template-edit-saveto-filename-1 {
-  padding-right: 1em;
-  width: 98%;
-}
-
-button#save-template-1 {
-  background-color: darkgreen;
-}
-
-button#run-template-1 {
-  background-color: orange;
 }
 
 .k-value-selector {
