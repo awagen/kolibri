@@ -35,17 +35,17 @@ import de.awagen.kolibri.definitions.processing.modifiers.ParameterValues.Parame
 import de.awagen.kolibri.definitions.processing.modifiers.ParameterValues.ValueSeqGenDefinition
 import de.awagen.kolibri.definitions.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
 import de.awagen.kolibri.definitions.usecase.searchopt.jobdefinitions.parts.BatchGenerators.batchByGeneratorAtIndex
-import de.awagen.kolibri.fleet.zio.config.{AppConfig, AppProperties}
 import de.awagen.kolibri.fleet.zio.config.AppConfig.JsonFormats.executionFormat
 import de.awagen.kolibri.fleet.zio.config.AppConfig.JsonFormats.parameterValueJsonProtocol.ValueSeqGenDefinitionFormat
 import de.awagen.kolibri.fleet.zio.config.AppConfig.JsonFormats.resourceDirectiveJsonProtocol.GenericResourceDirectiveFormat
+import de.awagen.kolibri.fleet.zio.config.{AppConfig, AppProperties}
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.{BatchAggregationInfo, JobDefinition, simpleWaitJob}
 import de.awagen.kolibri.fleet.zio.execution.JobMessagesImplicits._
 import de.awagen.kolibri.fleet.zio.execution.ZIOTasks.SimpleWaitTask
 import de.awagen.kolibri.fleet.zio.execution.aggregation.Aggregators.countingAggregator
 import de.awagen.kolibri.fleet.zio.execution.{JobDefinitions, ZIOTask}
 import de.awagen.kolibri.fleet.zio.io.json.TaskJsonProtocol._
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ProcessingStateUtils
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.utils.DateUtils
 import spray.json.{DefaultJsonProtocol, JsValue, JsonFormat, enrichAny}
 
 import scala.collection.immutable.Seq
@@ -251,7 +251,7 @@ object JobDefinitionJsonProtocol extends DefaultJsonProtocol {
               ignoreIdDiff = false
             ),
             writer = {
-              val currentDay = ProcessingStateUtils.timeInMillisToFormattedDate(currentTimeInMillis)
+              val currentDay = DateUtils.timeInMillisToFormattedDate(currentTimeInMillis)
               AppConfig.persistenceModule.persistenceDIModule.immutableMetricAggregationWriter(
                 subFolder = s"${currentDay}/${jobName}",
                 x => {

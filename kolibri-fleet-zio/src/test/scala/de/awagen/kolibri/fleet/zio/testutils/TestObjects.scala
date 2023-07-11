@@ -34,7 +34,7 @@ import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.JobStates.{JobSta
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ProcessingStatus.ProcessingStatus
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state._
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.BatchProcessingStates
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.utils.DataTypeUtils
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.utils.{DataTypeUtils, DateUtils}
 import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, LocalDirectoryReader, LocalResourceFileReader}
 import de.awagen.kolibri.storage.io.writer.Writers.{FileWriter, Writer}
 import org.mockito.ArgumentMatchers
@@ -187,7 +187,7 @@ object TestObjects {
       100,
       0,
       "abc234",
-      ProcessingStateUtils.timeInMillisToFormattedTime(1703845333850L)
+      DateUtils.timeInMillisToFormattedTime(1703845333850L)
     )
   )
 
@@ -201,7 +201,7 @@ object TestObjects {
       100,
       0,
       "abc234",
-      ProcessingStateUtils.timeInMillisToFormattedTime(1703845333850L)
+      DateUtils.timeInMillisToFormattedTime(1703845333850L)
     )
   )
 

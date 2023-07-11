@@ -19,8 +19,6 @@ package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state
 
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.format.FileFormats.InProgressTaskFileNameFormat
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ProcessingStatus.ProcessingStatus
-import org.joda.time.DateTime
-import org.joda.time.format.{DateTimeFormat, DateTimeFormatter}
 
 
 object ProcessingStatus extends Enumeration {
@@ -30,25 +28,6 @@ object ProcessingStatus extends Enumeration {
   val IN_PROGRESS: Value = Value
   val DONE: Value = Value
   val ABORTED: Value = Value
-}
-
-object ProcessingStateUtils {
-  val DATE_PATTERN = "yyyy-MM-dd HH:mm:ss"
-  val DATE_NO_TIME_PATTERN = "yyyy-MM-dd"
-  val DATE_FORMATTER: DateTimeFormatter = DateTimeFormat.forPattern(DATE_PATTERN)
-
-  def timeInMillisToFormattedDate(timeInMillis: Long): String = {
-    new DateTime(timeInMillis).toString(DATE_NO_TIME_PATTERN)
-  }
-
-  def timeInMillisToFormattedTime(timeInMillis: Long): String = {
-    new DateTime(timeInMillis).toString(DATE_FORMATTER)
-  }
-
-  def timeStringToTimeInMillis(timeStr: String): Long = {
-    DateTime.parse(timeStr, DATE_FORMATTER).toInstant.getMillis
-  }
-
 }
 
 case class ProcessId(jobId: String,

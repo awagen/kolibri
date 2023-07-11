@@ -23,10 +23,11 @@ import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.Clai
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.{JobStateReader, NodeStateReader, WorkStateReader}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services.ClaimBasedTaskPlannerService.{DUMMY_BATCH_NR, DUMMY_JOB}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.JobStates.OpenJobsSnapshot
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ProcessingStateUtils.timeStringToTimeInMillis
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.TaskStates._
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.{ProcessId, ProcessingState, ProcessingStateUtils}
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.{ProcessId, ProcessingState}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.BatchProcessingStates
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.utils.DateUtils
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.utils.DateUtils.timeStringToTimeInMillis
 import zio.ZIO
 import zio.stream.ZStream
 
@@ -73,7 +74,7 @@ case class BaseTaskOverviewService(jobStateReader: JobStateReader,
       // filtering for in-progress states with overdue updates
       overdueProcessingStates <- ZStream.fromIterable(processingStates)
         .filter(state => {
-          val timeUpdated: Long = ProcessingStateUtils.timeStringToTimeInMillis(state.processingInfo.lastUpdate)
+          val timeUpdated: Long = DateUtils.timeStringToTimeInMillis(state.processingInfo.lastUpdate)
           val timeHasElapsed: Boolean = (currentTimeInMillis - timeUpdated) / 1000.0 > AppProperties.config.maxTimeBetweenProgressUpdatesInSeconds
           state.processingInfo.processingNode == nodeHash && timeHasElapsed
         })

@@ -28,6 +28,7 @@ import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.TaskStates.Task
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state._
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ClaimStatus.ClaimFilingStatus
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ClaimStatus.ClaimFilingStatus.ClaimFilingStatus
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.utils.DateUtils
 import de.awagen.kolibri.storage.io.writer.Writers.Writer
 import zio.ZIO
 
@@ -74,7 +75,7 @@ case class FileStorageClaimWriter(writer: Writer[String, String, _]) extends Cla
             -1,
             0,
             AppProperties.config.node_hash,
-            ProcessingStateUtils.timeInMillisToFormattedTime(System.currentTimeMillis())
+            DateUtils.timeInMillisToFormattedTime(System.currentTimeMillis())
           )
         )
         writer.write(

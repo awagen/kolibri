@@ -34,7 +34,7 @@ import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services.BaseWorkHandle
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.JobStates.OpenJobsSnapshot
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ProcessingStatus.ProcessingStatus
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state._
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.utils.DataTypeUtils
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.utils.{DataTypeUtils, DateUtils}
 import spray.json.DefaultJsonProtocol.immSetFormat
 import spray.json.enrichAny
 import zio.stream.ZStream
@@ -289,7 +289,7 @@ case class BaseWorkHandlerService[U <: TaggedWithType with DataPoint[Any], V <: 
   private def persistProcessingStateUpdate(processingStates: Seq[ProcessingState], processingStatus: ProcessingStatus): ZIO[Any, Nothing, Seq[Boolean]] = {
     val updatedState = processingStates.map(x => x.copy(processingInfo = x.processingInfo.copy(
       processingStatus = processingStatus,
-      lastUpdate = ProcessingStateUtils.timeInMillisToFormattedTime(System.currentTimeMillis())
+      lastUpdate = DateUtils.timeInMillisToFormattedTime(System.currentTimeMillis())
     )))
     ZStream.fromIterable(updatedState)
       .mapZIO(workStateWriter.updateInProgressState)
