@@ -138,4 +138,12 @@ case class FileStorageJobStateWriter(writer: Writer[String, String, _],
         })
     } yield ()
   }
+
+  override def removeJobFolder(jobId: String, isOpenJob: Boolean): Task[Unit] = {
+    for {
+      jobTopLevelDirectory <- ZIO.succeed(s"${JobTopLevel.folderForJob(jobId, isOpenJob = isOpenJob)}")
+      _ <- ZIO.logInfo(s"Trying to delete folder: $jobTopLevelDirectory")
+      _ <- ZIO.attemptBlockingIO(writer.deleteDirectory(jobTopLevelDirectory))
+    } yield ()
+  }
 }

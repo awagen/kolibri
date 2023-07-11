@@ -26,10 +26,13 @@
         </div>
       </td>
       <td v-if="showKillButton && jobHasStarted(job)">
-        <button @click="killJob(job.jobId)" class="btn btn-primary s-circle kill">Kill</button>
+        <button @click="stopJob(job.jobId)" class="btn btn-primary s-circle kill">Stop</button>
       </td>
       <td v-if="!jobHasStarted(job)">
         <button @click="startJob(job.jobId)" class="btn btn-primary s-circle start">Start</button>
+      </td>
+      <td>
+        <button @click="deleteOpenJob(job.jobId, true)" class="btn btn-primary s-circle kill">Delete</button>
       </td>
     </tr>
     </tbody>
@@ -39,7 +42,7 @@
 <script>
 import {onBeforeUnmount, onMounted, ref} from "vue";
 import axios from "axios";
-import {startJobUrl, stopJobUrl} from '../utils/globalConstants'
+import {jobDeleteUrl, startJobUrl, stopJobUrl} from '../utils/globalConstants'
 
 export default {
   props: [
@@ -51,10 +54,16 @@ export default {
   setup(props) {
 
     function jobHasStarted(job) {
-      let existingProcessDirectives = job.directives.map(dir => dir.type.trim()).filter(type => {
-        type.startsWith("ONLY_NODE") || type.startsWith("PROCESS")
+      let processDirectives = job.directives.map(dir => dir.type.trim())
+      console.debug(`All process directives for job ${job.jobId}: ${processDirectives}`)
+      let existingProcessDirectives = processDirectives.filter(type => {
+        let isMarkedAsProcessOnSingleNode = type.startsWith("ONLY_NODE")
+        let isMarkedAsProcessOnAllNodes = type.startsWith("PROCESS")
+        return isMarkedAsProcessOnSingleNode || isMarkedAsProcessOnAllNodes
       })
       let hasStarted = existingProcessDirectives !== undefined && existingProcessDirectives.length > 0
+      console.debug(`job ${job.jobId} existing process directives: ${existingProcessDirectives}`)
+      console.debug(`job ${job.jobId} has started: ${hasStarted}`)
       return hasStarted
     }
 
@@ -63,15 +72,27 @@ export default {
      * job folder such that no node will pick up any batch of the job.
      * Batches already running will not be terminated as of now (might change later)
      */
-    function killJob(jobId) {
-      console.log("executing killJob")
+    function stopJob(jobId) {
+      console.debug("executing killJob")
       return axios
           .delete(stopJobUrl.replace("#JOB_ID", jobId))
           .then(response => {
-            console.info("killJob response: " + response.data)
+            console.debug("killJob response: " + JSON.stringify(response.data))
           }).catch(e => {
-            console.info("exception on stopJob call: ")
-            console.log(e)
+            console.debug("exception on stopJob call: ")
+            console.debug(e)
+          })
+    }
+
+    function deleteOpenJob(jobId, isOpenJob) {
+      console.debug(`Deleting open job with id ${jobId}`)
+      return axios
+          .delete(jobDeleteUrl.replace("#JOB_ID", jobId) + "?isOpenJob=" + isOpenJob)
+          .then(response => {
+            console.debug("delete job response: " + JSON.stringify(response.data))
+          }).catch(e => {
+            console.debug("exception on job delete call: ")
+            console.debug(e)
           })
     }
 
@@ -83,14 +104,14 @@ export default {
      * set directives via UI will be added shortly
      */
     function startJob(jobId) {
-      console.log("executing startJob")
+      console.debug("executing startJob")
       return axios
           .post(startJobUrl.replace("#JOB_ID", jobId), [{"type": "PROCESS"}])
           .then(response => {
-            console.info("startJob response: " + response.data)
+            console.debug("startJob response: " + response.data)
           }).catch(e => {
-            console.info("exception on startJob call: ")
-            console.log(e)
+            console.debug("exception on startJob call: ")
+            console.debug(e)
           })
     }
 
@@ -100,8 +121,9 @@ export default {
     })
 
     return {
-      killJob,
+      stopJob,
       startJob,
+      deleteOpenJob,
       jobHasStarted
     }
   }

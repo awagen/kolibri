@@ -33,10 +33,11 @@ object Directories {
 
   object JobTopLevel {
     def topLevelOpenJobFolder: String = s"${config.openJobBaseFolder}"
+    def topLevelDoneJobFolder: String = s"${config.doneJobBaseFolder}"
 
     def folderForJob(jobId: String, isOpenJob: Boolean): String = {
       if (isOpenJob) s"$topLevelOpenJobFolder/$jobId"
-      else s"${config.doneJobBaseFolder}/$jobId"
+      else s"$topLevelDoneJobFolder/$jobId"
     }
 
     /**

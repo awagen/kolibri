@@ -162,6 +162,9 @@ case class AwsS3FileWriter(bucketName: String,
 
   override def moveDirectory(dirPath: String, toDirPath: String): Unit = {
     copyDirectory(dirPath, toDirPath)
-    deleteObjectsWithPrefix(dirPath)
+    deleteDirectory(dirPath)
   }
+
+  override def deleteDirectory(dirPath: String): Unit =
+    deleteObjectsWithPrefix(dirPath)
 }

@@ -41,6 +41,8 @@ object JobDefinitions {
       override def copyDirectory(dirPath: String, toDirPath: String): Unit = ()
 
       override def moveDirectory(dirPath: String, toDirPath: String): Unit = ()
+
+      override def deleteDirectory(dirPath: String): Unit = ()
     }
   }
 

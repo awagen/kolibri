@@ -22,7 +22,7 @@ import de.awagen.kolibri.fleet.zio.config.AppProperties.config.http_server_port
 import de.awagen.kolibri.fleet.zio.config.di.ZioDIConfig
 import de.awagen.kolibri.fleet.zio.metrics.Metrics.MetricTypes.taskManageCycleInvokeCount
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.{JobStateReader, WorkStateReader}
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer.NodeStateWriter
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer.{JobStateWriter, NodeStateWriter}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services.{TaskOverviewService, TaskPlannerService, WorkHandlerService}
 import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, Reader}
 import de.awagen.kolibri.storage.io.writer.Writers.Writer
@@ -143,9 +143,10 @@ object App extends ZIOAppDefault {
       dataOverviewReader <- ZIO.service[DataOverviewReader]
       contentReader <- ZIO.service[Reader[String, Seq[String]]]
       writer <- ZIO.service[Writer[String, String, _]]
+      jobStateWriter <- ZIO.service[JobStateWriter]
       _ <- Server.serve(
         ServerEndpoints.jobPostingEndpoints ++
-          ServerEndpoints.statusEndpoints(jobStateCache) ++
+          ServerEndpoints.statusEndpoints(jobStateCache, jobStateWriter) ++
           ServerEndpoints.batchStatusEndpoints(jobStateCache) ++
           ServerEndpoints.prometheusEndpoint ++
           ServerEndpoints.nodeStateEndpoint ++

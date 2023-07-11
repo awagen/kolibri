@@ -10,6 +10,7 @@ export const jobStateUrl = `${kolibriBaseUrl}/${import.meta.env.VITE_KOLIBRI_JOB
 export const jobBatchStateUrl = `${kolibriBaseUrl}/${import.meta.env.VITE_KOLIBRI_BATCH_STATE_PATH}`
 export const jobHistoryUrl = `${kolibriBaseUrl}/${import.meta.env.VITE_KOLIBRI_JOB_HISTORY_PATH}`
 export const stopJobUrl = `${kolibriBaseUrl}/${import.meta.env.VITE_KOLIBRI_STOP_JOB_PATH}`
+export const jobDeleteUrl = `${kolibriBaseUrl}/${import.meta.env.VITE_KOLIBRI_DELETE_JOB_PATH}`
 export const startJobUrl = `${kolibriBaseUrl}/${import.meta.env.VITE_KOLIBRI_START_JOB_PATH}`
 
 // url to retrieve available data files by type

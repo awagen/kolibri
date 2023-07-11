@@ -59,4 +59,7 @@ case class GcpGSFileWriter(bucketName: String,
 
   // TODO: implement
   override def moveDirectory(dirPath: String, toDirPath: String): Unit = ???
+
+  // TODO: implement
+  override def deleteDirectory(dirPath: String): Unit = ???
 }

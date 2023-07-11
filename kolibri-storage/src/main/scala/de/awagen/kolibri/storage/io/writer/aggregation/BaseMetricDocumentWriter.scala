@@ -66,4 +66,7 @@ case class BaseMetricDocumentWriter(writer: Writer[String, String, Any],
 
   // TODO: implement
   override def moveDirectory(dirPath: String, toDirPath: String): Unit = ???
+
+  // TODO: implement
+  override def deleteDirectory(dirPath: String): Unit = ???
 }

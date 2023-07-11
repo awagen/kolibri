@@ -37,6 +37,14 @@ trait JobStateWriter {
   def storeJobDefinitionAndBatches(jobDefinition: String, jobSubFolder: String): Task[Unit]
 
   /**
+   * Remove a whole folder corresponding to a particular jobId.
+   * Depending on the value of isOpenJob, the particular folder will
+   * either be deleted in the current 'open' job folder or in the historical
+   * 'done' job folder.
+   */
+  def removeJobFolder(jobId: String, isOpenJob: Boolean): Task[Unit]
+
+  /**
    * Persist batch as in "open" state, e.g to be claimed by any node.
    */
   def writeBatchToOpen(processId: ProcessId): Task[Unit]

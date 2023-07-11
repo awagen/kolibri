@@ -94,7 +94,7 @@ object ServerEndpoints {
   implicit val jobStateSnapshotReducedFormat: RootJsonFormat[JobStateSnapshotReduced] = rootFormat(jsonFormat4(JobStateSnapshotReduced.apply))
 
   def directiveEndpoints = Http.collectZIO[Request] {
-    case Method.DELETE -> !! / "jobs" / jobId / "directives" / "all"   =>
+    case Method.DELETE -> !! / "jobs" / jobId / "directives" / "all" =>
       (for {
         jobStateWriter <- ZIO.service[JobStateWriter]
         _ <- jobStateWriter.removeAllDirectives(jobId)
@@ -151,11 +151,12 @@ object ServerEndpoints {
           ZIO.logError(s"error retrieving batch states:\nmsg: ${cause.failureOption.map(x => x.getMessage).getOrElse("")}\nCause: ${cause.trace.prettyPrint}")
         })
         .catchAll(_ => {
-            ZIO.succeed(Response.json(ResponseContent("", "failed retrieving batch states").toJson.convertTo[String]).withStatus(Status.InternalServerError))
+          ZIO.succeed(Response.json(ResponseContent("", "failed retrieving batch states").toJson.convertTo[String]).withStatus(Status.InternalServerError))
         })
   } @@ cors(corsConfig)
 
-  def statusEndpoints(jobStateCache: Cache[String, Throwable, OpenJobsSnapshot]) = (Http.collectZIO[Request] {
+  def statusEndpoints(jobStateCache: Cache[String, Throwable, OpenJobsSnapshot],
+                      jobStateWriter: JobStateWriter) = (Http.collectZIO[Request] {
     case Method.GET -> !! / "health" => ZIO.succeed(Response.text("All good!"))
     case Method.GET -> !! / "resources" / "global" =>
       (for {
@@ -192,9 +193,17 @@ object ServerEndpoints {
 
         }
       } yield result
+    // endpoint to delete a full job folder. Optional url-parameter isOpenJob (boolean)
+    // to determine whether open or historical (done) job shall be deleted
+    case req@Method.DELETE -> !! / "job" / jobId =>
+      for {
+        isOpenJob <- ZIO.attempt(req.url.queryParams.getOrElse("isOpenJob", Seq("true")).head.toBoolean)
+        _ <- jobStateWriter.removeJobFolder(jobId, isOpenJob)
+        response <- ZIO.attempt(Response.json(ResponseContent(true, "").toJson.toString()))
+      } yield response
   } @@ cors(corsConfig))
     .catchAllZIO(throwable =>
-      ZIO.logError(s"Error reading registered jobs:\n${throwable.getStackTrace.mkString("\n")}") *>
+      ZIO.logError(s"Error:\n${throwable.getStackTrace.mkString("\n")}") *>
         ZIO.succeed(Response.json(ResponseContent("", "failed loading data").toJson.toString()).withStatus(Status.InternalServerError)))
 
 
