@@ -65,7 +65,7 @@
         </template>
 
         <!-- Input controls -->
-        <JobTemplateControls></JobTemplateControls>
+        <JobTemplateControls page-id="byStruct"></JobTemplateControls>
 
       </form>
 

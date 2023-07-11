@@ -87,34 +87,8 @@
         Resulting Json
       </h3>
 
-      <div class="form-group">
-        <!-- template save button -->
-        <div class="form-separator"></div>
-        <div class="col-6 col-sm-12">
-          <button type='button' @click="getSelectionsAndSaveTemplate()" class="k-form k-full btn btn-action"
-                  id="save-template-1">
-            SAVE TEMPLATE
-          </button>
-        </div>
-        <div class="col-6 col-sm-12">
-          <button type='button' @click="getSelectionAndExecuteJob()" class="k-form k-full btn btn-action"
-                  id="run-template-1">
-            RUN TEMPLATE
-          </button>
-        </div>
-      </div>
-
-      <!-- Define the new file name to store the edit to -->
-      <div class="form-separator"></div>
-      <div class="form-group">
-        <div class="col-3 col-sm-12">
-          <label class="form-label" for="template-edit-saveto-filename-1">New template filename</label>
-        </div>
-        <div class="col-9 col-sm-12">
-          <input class="form-input k-value-selector" type="text" id="template-edit-saveto-filename-1"
-                 placeholder="New template filename">
-        </div>
-      </div>
+      <!-- Input controls -->
+      <JobTemplateControls page-id="freeEdit"/>
 
       <div class="form-separator"></div>
       <pre id="template-content-display-1" v-html="this.$store.state.templateState.selectedTemplateJsonString"/>
@@ -129,10 +103,12 @@ import {
   executeJob,
   saveTemplate
 } from "../utils/retrievalFunctions";
+import JobTemplateControls from "@/components/partials/JobTemplateControls.vue";
 
 export default {
 
   props: [],
+  components: {JobTemplateControls},
   methods: {
     jobTypeSelectEvent(event) {
       this.$store.commit("updateSelectedTemplateType", event.target.value)
