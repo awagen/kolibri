@@ -9,7 +9,7 @@
       <th>Directives</th>
       <th>BatchCount Per Status</th>
       <th>Progress</th>
-      <th v-if="showKillButton">Action</th>
+      <th>Action</th>
     </tr>
     </thead>
     <tbody>
@@ -25,14 +25,14 @@
                aria-valuemin="0" aria-valuemax="100"></div>
         </div>
       </td>
-      <td v-if="showKillButton && jobHasStarted(job)">
+      <td v-if="showStartStopOptions && jobHasStarted(job)">
         <button @click="stopJob(job.jobId)" class="btn btn-primary s-circle kill">Stop</button>
       </td>
-      <td v-if="!jobHasStarted(job)">
+      <td v-if="showStartStopOptions && !jobHasStarted(job)">
         <button @click="startJob(job.jobId)" class="btn btn-primary s-circle start">Start</button>
       </td>
       <td>
-        <button @click="deleteOpenJob(job.jobId, true)" class="btn btn-primary s-circle kill">Delete</button>
+        <button @click="deleteOpenJob(job.jobId, !isHistoryView)" class="btn btn-primary s-circle kill">Delete</button>
       </td>
     </tr>
     </tbody>
@@ -48,7 +48,8 @@ export default {
   props: [
     'header',
     'data',
-    'showKillButton'
+    'showStartStopOptions',
+    'isHistoryView'
   ],
 
   setup(props) {

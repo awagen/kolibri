@@ -610,7 +610,7 @@ store.commit("updateNodeStatus")
 store.commit("updateRunningJobs")
 
 
-// store.commit("updateJobHistory")
+store.commit("updateJobHistory")
 store.commit("updateAvailableTemplateTypes")
 store.commit("updateAllAvailableTemplateInfos")
 // store.commit("updateAvailableDataFiles", 5)
@@ -626,7 +626,7 @@ window.setInterval(() => {
     store.commit("updateServiceUpState")
     store.commit("updateNodeStatus")
     store.commit("updateRunningJobs")
-    // store.commit("updateJobHistory")
+    store.commit("updateJobHistory")
 }, store.state.serviceState.statusRefreshIntervalInMs)
 
 

@@ -36,7 +36,7 @@ trait JobStateReader {
    * - set job level directives
    * - open jobs
    */
-  def fetchOpenJobState: Task[OpenJobsSnapshot]
+  def fetchJobState(isOpenJob: Boolean): Task[OpenJobsSnapshot]
 
   /**
    * Only find the jobIds of open (unfinished) jobs
@@ -47,11 +47,11 @@ trait JobStateReader {
    * Load job definition for a given job directory name (looks it up in the respective open
    * job folder)
    */
-  def loadJobDefinitionByJobDirectoryName(jobDirName: String): JobDefinitionLoadStatus
+  def loadJobDefinitionByJobDirectoryName(jobDirName: String, isOpenJob: Boolean): JobDefinitionLoadStatus
 
   /**
    * Get job level directives for a given directory name
    */
-  def loadJobLevelDirectivesByJobDirectoryName(jobDirName: String): Set[JobDirective]
+  def loadJobLevelDirectivesByJobDirectoryName(jobDirName: String, isOpenJob: Boolean): Set[JobDirective]
 
 }

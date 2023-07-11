@@ -184,7 +184,7 @@ case class ClaimBasedTaskPlannerService(claimReader: ClaimReader,
         for {
           // first execute any wrapUp actions if defined
           wrapUpActions <- ZIO.attemptBlockingIO({
-            jobStateReader.loadJobDefinitionByJobDirectoryName(claim.jobId) match {
+            jobStateReader.loadJobDefinitionByJobDirectoryName(claim.jobId, isOpenJob = true) match {
               case Loaded(jobDefinition) =>
                 jobDefinition.wrapUpActions
               case InvalidJobDefinition =>
@@ -323,7 +323,7 @@ case class ClaimBasedTaskPlannerService(claimReader: ClaimReader,
    */
   private[services] def manageExistingClaims(taskTopic: TaskTopic): zio.Task[Unit] = {
     for {
-      openJobsSnapshot <- jobStateReader.fetchOpenJobState
+      openJobsSnapshot <- jobStateReader.fetchJobState(true)
       // housekeeping
       remainingClaimsByCurrentNode <- cleanupClaimsAndReturnRemaining(openJobsSnapshot, taskTopic)
       // verifying remaining claims by this node

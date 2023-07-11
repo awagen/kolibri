@@ -50,7 +50,7 @@ object App extends ZIOAppDefault {
       jobStateReader <- ZIO.service[JobStateReader]
 
       // fetch current job state
-      openJobsState <- jobStateReader.fetchOpenJobState
+      openJobsState <- jobStateReader.fetchJobState(true)
 
       // getting next tasks to do from the distinct task topics
       jobToDoneTasks <- taskOverviewService.getJobToDoneTasks(openJobsState)
@@ -88,14 +88,14 @@ object App extends ZIOAppDefault {
       workHandlerService <- ZIO.service[WorkHandlerService]
 
       // fetch current job state and update processing state for batches
-      openJobsState1 <- jobStateReader.fetchOpenJobState
+      openJobsState1 <- jobStateReader.fetchJobState(true)
       _ <- workHandlerService.manageBatches(openJobsState1)
 
       // plan tasks, e.g file claims (if claim-based), move tasks from open to in-progress (as state PLANNED)
       _ <- planTasksEffect
 
       // fetch current job state and update processing state for batches
-      openJobsState2 <- jobStateReader.fetchOpenJobState
+      openJobsState2 <- jobStateReader.fetchJobState(true)
       _ <- workHandlerService.manageBatches(openJobsState2)
     } yield ()
   }
@@ -139,15 +139,16 @@ object App extends ZIOAppDefault {
       _ <- ZIO.logInfo("Application started!")
       _ <- (taskWorkerApp @@ taskManageCycleInvokeCount).repeat(fixed1).fork
       _ <- nodeStateUpdateEffect.repeat(fixed2).fork
-      jobStateCache <- ServerEndpoints.openJobStateCache
+      openJobStateCache <- ServerEndpoints.openJobStateCache
+      doneJobStateCache <- ServerEndpoints.doneJobStateCache
       dataOverviewReader <- ZIO.service[DataOverviewReader]
       contentReader <- ZIO.service[Reader[String, Seq[String]]]
       writer <- ZIO.service[Writer[String, String, _]]
       jobStateWriter <- ZIO.service[JobStateWriter]
       _ <- Server.serve(
         ServerEndpoints.jobPostingEndpoints ++
-          ServerEndpoints.statusEndpoints(jobStateCache, jobStateWriter) ++
-          ServerEndpoints.batchStatusEndpoints(jobStateCache) ++
+          ServerEndpoints.statusEndpoints(openJobStateCache, doneJobStateCache, jobStateWriter) ++
+          ServerEndpoints.batchStatusEndpoints(openJobStateCache) ++
           ServerEndpoints.prometheusEndpoint ++
           ServerEndpoints.nodeStateEndpoint ++
           ServerEndpoints.directiveEndpoints ++

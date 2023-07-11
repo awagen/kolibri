@@ -41,7 +41,7 @@ object FileStorageJobStateReaderSpec extends ZIOSpecDefault {
       val jobKey = "testJob1_3434839787"
       // when, then
       for {
-        openJobsSnapshot <- reader.fetchOpenJobState
+        openJobsSnapshot <- reader.fetchJobState(true)
       } yield assert(openJobsSnapshot.jobStateSnapshots.keySet)(Assertion.equalTo(Set(jobKey))) &&
         assert(openJobsSnapshot.jobStateSnapshots(jobKey).jobId)(Assertion.equalTo(jobKey)) &&
         assert(openJobsSnapshot.jobStateSnapshots(jobKey).timePlacedInMillis)(Assertion.equalTo(3434839787L)) &&

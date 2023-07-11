@@ -43,8 +43,8 @@ object Directories {
     /**
      * Derive the file path to the actual job definition for a job
      */
-    def jobNameToJobDefinitionFile(jobName: String) =
-      s"${JobTopLevel.folderForJob(jobName, isOpenJob = true)}/$JOB_DEFINITION_FILENAME"
+    def jobNameToJobDefinitionFile(jobName: String, isOpenJob: Boolean) =
+      s"${JobTopLevel.folderForJob(jobName, isOpenJob = isOpenJob)}/$JOB_DEFINITION_FILENAME"
   }
 
   object Tasks {

@@ -32,7 +32,7 @@ object BaseClaimServiceSpec extends ZIOSpecDefault {
       // given
       val writerMock = fileWriterMock
       val jobStateReaderSpy = spy(TestObjects.jobStateReader(TestObjects.baseResourceFolder))
-      when(jobStateReaderSpy.fetchOpenJobState).thenReturn(ZIO.succeed(SnapshotSample1.openJobsSnapshot))
+      when(jobStateReaderSpy.fetchJobState(true)).thenReturn(ZIO.succeed(SnapshotSample1.openJobsSnapshot))
       val claimH = claimService(writerMock, jobStateReaderSpy)
       // when, then
       for {

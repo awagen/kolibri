@@ -3,7 +3,7 @@
     <section class="navbar-section">
       <router-link class="btn btn-link" to="/">STATUS</router-link>
       <router-link class="btn btn-link" to="/jobCreation">CREATE</router-link>
-<!--      <router-link class="btn btn-link" to="/history">HISTORY</router-link>-->
+      <router-link class="btn btn-link" to="/history">HISTORY</router-link>
     </section>
     <section class="navbar-center">
       <!-- centered logo or brand -->

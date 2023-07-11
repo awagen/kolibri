@@ -56,7 +56,7 @@ case class FileStorageJobStateWriter(writer: Writer[String, String, _],
 
   private[this] def storeJobDefinition(jobDefinition: String, jobSubFolder: String): Task[Unit] = {
     ZIO.attemptBlockingIO({
-      val writePath = jobNameToJobDefinitionFile(jobSubFolder)
+      val writePath = jobNameToJobDefinitionFile(jobSubFolder, isOpenJob = true)
       writer.write(jobDefinition, writePath)
     }).flatMap({
       case Left(e) => ZIO.fail(e)
@@ -89,7 +89,7 @@ case class FileStorageJobStateWriter(writer: Writer[String, String, _],
    */
   override def removeAllDirectives(jobId: String): Task[Unit] = {
     for {
-      directives <- ZIO.attempt(jobStateReader.loadJobLevelDirectivesByJobDirectoryName(jobId))
+      directives <- ZIO.attempt(jobStateReader.loadJobLevelDirectivesByJobDirectoryName(jobId, isOpenJob = true))
       _ <- ZIO.logInfo(s"Found directives for deletion for jobId '$jobId': $directives")
       _ <- removeDirectives(jobId, directives)
     } yield ()

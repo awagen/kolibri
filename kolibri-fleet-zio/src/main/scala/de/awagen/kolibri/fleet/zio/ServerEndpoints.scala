@@ -53,9 +53,9 @@ object ServerEndpoints {
     allowedMethods = AccessControlAllowMethods(Method.GET, Method.POST, Method.PUT, Method.DELETE)
   )
 
-  private def jobStateRetrieval(jobStateReader: JobStateReader)(key: String): Task[OpenJobsSnapshot] = {
+  private def jobStateRetrieval(jobStateReader: JobStateReader, isOpenJob: Boolean)(key: String): Task[OpenJobsSnapshot] = {
     key match {
-      case JOB_STATE_CACHE_KEY => jobStateReader.fetchOpenJobState
+      case JOB_STATE_CACHE_KEY => jobStateReader.fetchJobState(isOpenJob)
       case _ => ZIO.fail(new RuntimeException("unknown cache key for retrieving open job state"))
     }
   }
@@ -66,7 +66,18 @@ object ServerEndpoints {
       cache <- Cache.make(
         capacity = 10,
         timeToLive = 10.seconds,
-        lookup = Lookup(jobStateRetrieval(reader))
+        lookup = Lookup(jobStateRetrieval(reader, isOpenJob = true))
+      )
+    } yield cache
+  }
+
+  def doneJobStateCache: ZIO[JobStateReader, Nothing, Cache[String, Throwable, OpenJobsSnapshot]] = {
+    for {
+      reader <- ZIO.service[JobStateReader]
+      cache <- Cache.make(
+        capacity = 50,
+        timeToLive = 10.seconds,
+        lookup = Lookup(jobStateRetrieval(reader, isOpenJob = false))
       )
     } yield cache
   }
@@ -155,7 +166,8 @@ object ServerEndpoints {
         })
   } @@ cors(corsConfig)
 
-  def statusEndpoints(jobStateCache: Cache[String, Throwable, OpenJobsSnapshot],
+  def statusEndpoints(openJobStateCache: Cache[String, Throwable, OpenJobsSnapshot],
+                      doneJobStateCache: Cache[String, Throwable, OpenJobsSnapshot],
                       jobStateWriter: JobStateWriter) = (Http.collectZIO[Request] {
     case Method.GET -> !! / "health" => ZIO.succeed(Response.text("All good!"))
     case Method.GET -> !! / "resources" / "global" =>
@@ -170,7 +182,32 @@ object ServerEndpoints {
         .catchAll(_ => ZIO.succeed(Response.json(ResponseContent("", "failed retrieving global resources").toJson.convertTo[String])))
     case Method.GET -> !! / "jobs" / "open" =>
       for {
-        jobStateEither <- jobStateCache.get(JOB_STATE_CACHE_KEY).either
+        jobStateEither <- openJobStateCache.get(JOB_STATE_CACHE_KEY).either
+        result <- jobStateEither match {
+          case Right(jobState) =>
+            for {
+              jobData <- ZIO.attempt({
+                jobState.jobStateSnapshots.values.map(snapshot => {
+                  JobStateSnapshotReduced.fromJobStateSnapshot(snapshot)
+                })
+              })
+              _ <- ZIO.logDebug(s"Job data: $jobData")
+              response <- ZIO.attempt(Response.json(ResponseContent(jobData, "").toJson.toString()))
+                .onError(cause => {
+                  ZIO.logError(s"Failed to write job snapshot state:\nmsg: ${cause.failureOption.map(x => x.getMessage)}, trace:\n${cause.trace.prettyPrint}")
+                })
+            } yield response
+          case Left(_) =>
+            for {
+              _ <- ZIO.logError(s"Retrieving job state failed with error:\n${jobStateEither.swap.toOption.get}")
+              response <- ZIO.attempt(Response.json(ResponseContent("", "Failed retrieving registered jobs").toJson.toString()).withStatus(Status.InternalServerError))
+            } yield response
+
+        }
+      } yield result
+    case Method.GET -> !! / "jobs" / "done" =>
+      for {
+        jobStateEither <- doneJobStateCache.get(JOB_STATE_CACHE_KEY).either
         result <- jobStateEither match {
           case Right(jobState) =>
             for {
@@ -221,7 +258,7 @@ object ServerEndpoints {
         jobStateWriter <- ZIO.service[JobStateWriter]
         jobString <- req.body.asString
         jobDef <- ZIO.attempt(jobString.parseJson.convertTo[JobDefinition[_, _, _ <: WithCount]])
-        jobState <- jobStateReader.fetchOpenJobState
+        jobState <- jobStateReader.fetchJobState(true)
         newJobSubFolder <- ZIO.attempt(s"${jobDef.jobName}_${java.lang.System.currentTimeMillis()}")
         // we extract the jobName and timePlacedInMillis info from the jobId to be able to compare solely on jobName
         existingJobNames <- ZStream.fromIterable(jobState.jobStateSnapshots.keySet)
