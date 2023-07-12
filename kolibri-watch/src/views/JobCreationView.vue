@@ -4,12 +4,12 @@
     <ul class="tab tab-block">
       <li class="tab-item" v-bind:class="{'active':(isActiveInputDefView)}">
         <a href="#" @click.prevent="this.selectDisplay('inputDefinition')">
-          <span class="choice-title">Job Input Selection</span>
+          <span class="choice-title">Form</span>
         </a>
       </li>
       <li class="tab-item" v-bind:class="{'active':(isActiveTemplateView)}">
         <a href="#" @click.prevent="this.selectDisplay('template')">
-          <span class="choice-title">Templates</span>
+          <span class="choice-title">Raw</span>
         </a>
       </li>
 <!--      <li class="tab-item" v-bind:class="{'active':(isActiveCreationView)}">-->

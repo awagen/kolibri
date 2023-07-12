@@ -19,6 +19,7 @@ package de.awagen.kolibri.fleet.zio.http.client.request
 
 import de.awagen.kolibri.definitions.domain.jobdefinitions.provider.Credentials
 import de.awagen.kolibri.definitions.http.client.request.RequestTemplate
+import de.awagen.kolibri.fleet.zio.metrics.Metrics.CalculationsWithMetrics.{countRequests, externalRequestTimer}
 import zio.ZIO
 import zio.http._
 
@@ -57,8 +58,12 @@ object RequestTemplateImplicits {
           )
         )
         _ <- ZIO.logDebug(s"request: $request")
-        response <- httpClient.request(request)
-          .onError(cause => ZIO.logError(s"error when requesting\nmsg: '${cause.failureOption.map(x => x.getMessage).getOrElse("")}'\ncause: ${cause.trace.prettyPrint}"))
+        response <- {
+          (httpClient.request(request)
+              @@ countRequests(request.method.toString(), s"${request.url.host}/${request.url.path.toString()}"))
+            .flatMap(x => ZIO.succeed(x) @@ externalRequestTimer(host, request.url.path.toString(), x.status.code).trackDuration)
+            .onError(cause => ZIO.logError(s"error when requesting\nmsg: '${cause.failureOption.map(x => x.getMessage).getOrElse("")}'\ncause: ${cause.trace.prettyPrint}"))
+        }
       } yield response
     }
 

@@ -17,10 +17,12 @@
 
 package de.awagen.kolibri.fleet.zio.metrics
 
-import zio.{Task, ZIO}
+import zio.metrics.MetricKeyType.Counter
+import zio.{Chunk, Task, ZIO}
 import zio.metrics._
 
 import java.lang.management.ManagementFactory
+import java.time.temporal.ChronoUnit
 
 
 object Metrics {
@@ -135,8 +137,23 @@ object Metrics {
       }).map(_ / (1024.0 * 1024.0))
     }
 
+    def countRequests(method: String, handler: String): Metric[Counter, Any, MetricState.Counter] =
+      Metric.counterInt("count_all_requests").fromConst(1)
+        .tagged(
+          MetricLabel("method", method),
+          MetricLabel("handler", handler)
+        )
 
-
+    def externalRequestTimer(host: String, contextPath: String, responseCode: Int) =
+      Metric.timer(
+        name = "externalRequestTimer",
+        chronoUnit = ChronoUnit.MILLIS,
+        boundaries = Chunk.iterate(10.0, 50)(_ + 10.0)
+      ).tagged(
+        MetricLabel("host", host),
+        MetricLabel("contextPath", contextPath),
+        MetricLabel("responseCode", responseCode.toString)
+      )
   }
 
 

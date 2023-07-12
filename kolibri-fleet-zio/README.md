@@ -89,6 +89,12 @@ For more settings (such as minimal coverage criteria for build to succeed), see 
     Make sure that the config is set such that it contains the same product_ids that are used within
     the judgement file referenced in the job definition in case you want to test calculations of IR metrics.
 
+## Local docker-compose setup
+The docker-compose.yml can be found in the project root. Following setup is provided:
+- prometheus: http://localhost:9000
+- grafana: http://localhost:3000 (user = pw = "admin")
+- 2 kolibri-fleet-zio nodes , with metrics endpoints on http://localhost:8001/metrics, http://localhost:8002/metrics
+
 ## Notes on local execution with access to AWS account
 One way to enable container access to AWS account (e.g as for writing results into S3 bucket or similar),
 it is enough to mount the local directory where the credentials reside into the root .aws directory in the container,
@@ -300,6 +306,8 @@ error message. Example for successful call:
 {"data":true,"errorMessage":""}
 ```
 
+## Collecting Metrics
+- For a list of metric types provided by ZIO, see ```https://zio.dev/reference/observability/metrics/```
 
 
 ## License
