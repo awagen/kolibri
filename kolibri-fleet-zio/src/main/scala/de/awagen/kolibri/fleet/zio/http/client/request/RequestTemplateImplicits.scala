@@ -19,7 +19,7 @@ package de.awagen.kolibri.fleet.zio.http.client.request
 
 import de.awagen.kolibri.definitions.domain.jobdefinitions.provider.Credentials
 import de.awagen.kolibri.definitions.http.client.request.RequestTemplate
-import de.awagen.kolibri.fleet.zio.metrics.Metrics.CalculationsWithMetrics.{countRequests, externalRequestTimer}
+import de.awagen.kolibri.fleet.zio.metrics.Metrics.CalculationsWithMetrics.{countAPIRequests, countExternalRequests, externalRequestTimer}
 import zio.ZIO
 import zio.http._
 
@@ -34,7 +34,7 @@ object RequestTemplateImplicits {
 
   implicit class RequestTemplateToZIOHttpRequest(template: RequestTemplate) {
 
-    def toZIOHttpRequest(host: String, credentialsOpt: Option[Credentials]): ZIO[Client, Throwable, Response] = {
+    def toZIOHttpRequest(host: String, credentialsOpt: Option[Credentials]) = {
       for {
         httpClient <- ZIO.service[Client]
         bodyContent <- ZIO.succeed(Body.fromCharSequence(template.body))
@@ -59,10 +59,13 @@ object RequestTemplateImplicits {
         )
         _ <- ZIO.logDebug(s"request: $request")
         response <- {
-          (httpClient.request(request)
-              @@ countRequests(request.method.toString(), s"${request.url.host}/${request.url.path.toString()}"))
-            .flatMap(x => ZIO.succeed(x) @@ externalRequestTimer(host, request.url.path.toString(), x.status.code).trackDuration)
-            .onError(cause => ZIO.logError(s"error when requesting\nmsg: '${cause.failureOption.map(x => x.getMessage).getOrElse("")}'\ncause: ${cause.trace.prettyPrint}"))
+          (httpClient.request(request) @@ externalRequestTimer(request.method.name, host, request.url.path.toString()).trackDuration)
+            .onError(cause => {
+              (ZIO.logError(s"error when requesting\nmsg: '${cause.failureOption.map(x => x.getMessage).getOrElse("")}'\ncause: ${cause.trace.prettyPrint}") @@ countAPIRequests(request.method.name, s"${request.url.host}/${request.url.path.toString()}") @@ countExternalRequests(request.method.name, host, request.url.path.toString(), Status.InternalServerError.code)) *> ZIO.succeed(())
+            })
+            .flatMap(response => {
+              ZIO.succeed(response) @@ countAPIRequests(request.method.name, s"${request.url.host}/${request.url.path.toString()}") @@ countExternalRequests(request.method.name, host, request.url.path.toString(), response.status.code)
+            })
         }
       } yield response
     }

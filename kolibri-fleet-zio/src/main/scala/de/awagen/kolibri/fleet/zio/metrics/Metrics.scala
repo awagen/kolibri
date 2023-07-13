@@ -137,22 +137,37 @@ object Metrics {
       }).map(_ / (1024.0 * 1024.0))
     }
 
-    def countRequests(method: String, handler: String): Metric[Counter, Any, MetricState.Counter] =
-      Metric.counterInt("count_all_requests").fromConst(1)
+    /**
+     * Counter for requests to API endpoints provided by kolibri-fleet service.
+     */
+    def countAPIRequests(method: String, handler: String): Metric[Counter, Any, MetricState.Counter] =
+      Metric.counterInt("countApiRequests").fromConst(1)
         .tagged(
           MetricLabel("method", method),
           MetricLabel("handler", handler)
         )
 
-    def externalRequestTimer(host: String, contextPath: String, responseCode: Int) =
+    /**
+     * Counter for client requests to external services.
+     */
+    def countExternalRequests(method: String, host: String, contextPath: String, responseCode: Int): Metric[Counter, Any, MetricState.Counter] =
+      Metric.counterInt("countClientRequests").fromConst(1)
+        .tagged(
+          MetricLabel("method", method),
+          MetricLabel("host", host),
+          MetricLabel("contextPath", contextPath),
+          MetricLabel("responseCode", responseCode.toString)
+        )
+
+    def externalRequestTimer(method: String, host: String, contextPath: String): Metric[MetricKeyType.Histogram, zio.Duration, MetricState.Histogram] =
       Metric.timer(
         name = "externalRequestTimer",
         chronoUnit = ChronoUnit.MILLIS,
-        boundaries = Chunk.iterate(10.0, 50)(_ + 10.0)
+        boundaries = Chunk.fromIterable(Seq(2.0, 5.0)) ++ Chunk.iterate(10.0, 100)(_ + 20.0)
       ).tagged(
+        MetricLabel("method", method),
         MetricLabel("host", host),
-        MetricLabel("contextPath", contextPath),
-        MetricLabel("responseCode", responseCode.toString)
+        MetricLabel("contextPath", contextPath)
       )
   }
 

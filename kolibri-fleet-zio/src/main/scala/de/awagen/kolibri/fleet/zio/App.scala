@@ -133,12 +133,12 @@ object App extends ZIOAppDefault {
 
 
   override val run: ZIO[Any, Throwable, Any] = {
-    val fixed1 = Schedule.fixed(20 seconds)
-    val fixed2 = Schedule.fixed(10 seconds)
+    val taskHandleSchedule = Schedule.fixed(20 seconds)
+    val nodeStateUpdateSchedule = Schedule.fixed(10 seconds)
     (for {
       _ <- ZIO.logInfo("Application started!")
-      _ <- (taskWorkerApp @@ taskManageCycleInvokeCount).repeat(fixed1).fork
-      _ <- nodeStateUpdateEffect.repeat(fixed2).fork
+      _ <- (taskWorkerApp @@ taskManageCycleInvokeCount).repeat(taskHandleSchedule).fork
+      _ <- nodeStateUpdateEffect.repeat(nodeStateUpdateSchedule).fork
       openJobStateCache <- ServerEndpoints.openJobStateCache
       doneJobStateCache <- ServerEndpoints.doneJobStateCache
       dataOverviewReader <- ZIO.service[DataOverviewReader]

@@ -23,7 +23,7 @@ import de.awagen.kolibri.fleet.zio.ServerEndpoints.{ResponseContent, corsConfig}
 import de.awagen.kolibri.fleet.zio.config.AppProperties
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobDefinition
 import de.awagen.kolibri.fleet.zio.io.json.JobDefinitionJsonProtocol.JobDefinitionFormat
-import de.awagen.kolibri.fleet.zio.metrics.Metrics.CalculationsWithMetrics.countRequests
+import de.awagen.kolibri.fleet.zio.metrics.Metrics.CalculationsWithMetrics.countAPIRequests
 import de.awagen.kolibri.storage.io.reader.ReaderUtils.safeContentRead
 import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, Reader}
 import de.awagen.kolibri.storage.io.writer.Writers.Writer
@@ -98,7 +98,7 @@ object JobTemplatesServerEndpoints {
       } yield response).catchAll(throwable =>
         ZIO.logError(s"Error reading available job templates:\n${throwable.getStackTrace.mkString("\n")}") *>
           ZIO.succeed(Response.json(ResponseContent("", "failed loading data").toJson.toString()).withStatus(Status.InternalServerError))
-      ) @@ countRequests("GET", "/jobs/templates/types")
+      ) @@ countAPIRequests("GET", "/jobs/templates/types")
     case Method.GET -> !! / "jobs" / "templates" / "types" / "perType" =>
       (for {
         mapping <- getTemplateTypeToAvailableTemplatesMapping(dataOverviewReader, contentReader)
@@ -107,7 +107,7 @@ object JobTemplatesServerEndpoints {
       } yield response).catchAll(throwable =>
         ZIO.logError(s"Error reading template type to available job templates mapping:\n${throwable.getStackTrace.mkString("\n")}") *>
           ZIO.succeed(Response.json(ResponseContent("", s"failed loading data for template type to template mapping").toJson.toString()).withStatus(Status.InternalServerError))
-      ) @@ countRequests("GET", "/jobs/templates/types/perType")
+      ) @@ countAPIRequests("GET", "/jobs/templates/types/perType")
     case Method.GET -> !! / "jobs" / "templates" / "types" / templateType =>
       (for {
         templates <- getJobTemplatesForType(templateType, dataOverviewReader)
@@ -115,7 +115,7 @@ object JobTemplatesServerEndpoints {
       } yield response).catchAll(throwable =>
         ZIO.logError(s"Error reading available job templates for type '$templateType':\n${throwable.getStackTrace.mkString("\n")}") *>
           ZIO.succeed(Response.json(ResponseContent("", s"failed loading data for template type '$templateType'").toJson.toString()).withStatus(Status.InternalServerError))
-      ) @@ countRequests("GET", "/jobs/templates/types/[templateType]")
+      ) @@ countAPIRequests("GET", "/jobs/templates/types/[templateType]")
     case Method.GET -> !! / "jobs" / "templates" / templateType / templateId =>
       ZIO.attemptBlockingIO({
         // retrieve the content of the definition file defined by type and identifier
@@ -138,7 +138,7 @@ object JobTemplatesServerEndpoints {
       }).catchAll(throwable =>
         ZIO.logError(s"Error loading template for type '$templateType' and id '$templateId':\n${throwable.getStackTrace.mkString("\n")}") *>
           ZIO.succeed(Response.json(ResponseContent("", s"failed loading template for type '$templateType' and id '$templateId'").toJson.toString()).withStatus(Status.InternalServerError))
-      ) @@ countRequests("GET", "/jobs/templates/[templateType]/[templateId]")
+      ) @@ countAPIRequests("GET", "/jobs/templates/[templateType]/[templateId]")
     case req@Method.POST -> !! / "jobs" / "templates" / templateType / templateId =>
       val computeEffect = for {
         // validate name and type for template
@@ -186,7 +186,7 @@ object JobTemplatesServerEndpoints {
       computeEffect.catchAll(throwable => {
         ZIO.logError(s"Error reading registered jobs:\n${throwable.getStackTrace.mkString("\n")}") *>
           ZIO.succeed(Response.json(ResponseContent("", "failed persisting job template").toJson.toString()).withStatus(Status.InternalServerError))
-      }) @@ countRequests("POST", "/jobs/templates/[templateType]/[templateId]")
+      }) @@ countAPIRequests("POST", "/jobs/templates/[templateType]/[templateId]")
   } @@ cors(corsConfig)
 
 }
