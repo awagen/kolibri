@@ -10,8 +10,9 @@ val zioJsonVersion = "0.5.0"
 val zioCacheVersion = "0.2.3"
 val zioConfigVersion = "4.0.0-RC14"
 val zioLoggingVersion = "2.1.12"
-val zioHttpVersion = "3.0.0-RC1"
+val zioHttpVersion = "3.0.0-RC2"
 val zioMetricsConnectorsVersion = "2.0.8"
+val zioProfilingVersion = "0.2.1"
 val mockitoVersion = "3.2.10.0"
 
 // defining fixed env vars for test scope
@@ -74,6 +75,9 @@ libraryDependencies ++= Seq(
   "dev.zio" %% "zio-logging-slf4j" % zioLoggingVersion,
   "dev.zio" %% "zio-http" % zioHttpVersion,
   "dev.zio" %% "zio-metrics-connectors" % zioMetricsConnectorsVersion,
+  // https://zio.dev/zio-profiling/
+  "dev.zio" %% "zio-profiling" % zioProfilingVersion,
+  compilerPlugin("dev.zio" %% "zio-profiling-tagging-plugin" % zioProfilingVersion),
   "dev.zio" %% "zio-test-sbt" % zioVersion % Test,
   "dev.zio" %% "zio-test-magnolia" % zioVersion % Test,
   "org.scalatestplus" %% "mockito-3-4" % mockitoVersion % Test

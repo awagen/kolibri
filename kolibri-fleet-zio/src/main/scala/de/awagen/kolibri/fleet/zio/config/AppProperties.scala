@@ -158,6 +158,9 @@ object AppProperties {
       .map(x => x.trim).filter(x => x.nonEmpty)
     val allowedRequestTargetContextPaths: Seq[String] = baseConfig.getString("kolibri.request.target.allowedContextPaths").split(",")
 
+    val appBlockingPoolThreads: Int = baseConfig.getInt("kolibri.blockingPoolThreads")
+    val appNonBlockingPoolThreads: Int = baseConfig.getInt("kolibri.nonBlockingPoolThreads")
+    val nettyHttpClientThreadsMax: Int = baseConfig.getInt("kolibri.netty.httpClientThreadsMax")
     val connectionPoolSizeMin: Int = baseConfig.getInt("kolibri.request.connectionPoolSizeMin")
     val connectionPoolSizeMax: Int = baseConfig.getInt("kolibri.request.connectionPoolSizeMax")
     val connectionTTLInSeconds: Int = baseConfig.getInt("kolibri.request.connectionTTLInSeconds")

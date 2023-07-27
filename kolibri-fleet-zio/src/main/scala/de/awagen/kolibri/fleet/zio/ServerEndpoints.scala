@@ -54,14 +54,14 @@ object ServerEndpoints {
     allowedMethods = AccessControlAllowMethods(Method.GET, Method.POST, Method.PUT, Method.DELETE)
   )
 
-  private def jobStateRetrieval(jobStateReader: JobStateReader, isOpenJob: Boolean)(key: String): Task[OpenJobsSnapshot] = {
+  private def jobStateRetrieval(jobStateReader: JobStateReader, isOpenJob: Boolean)(key: String): ZIO[Client, Throwable, OpenJobsSnapshot] = {
     key match {
       case JOB_STATE_CACHE_KEY => jobStateReader.fetchJobState(isOpenJob)
       case _ => ZIO.fail(new RuntimeException("unknown cache key for retrieving open job state"))
     }
   }
 
-  def openJobStateCache: ZIO[JobStateReader, Nothing, Cache[String, Throwable, OpenJobsSnapshot]] = {
+  def openJobStateCache: ZIO[JobStateReader with Client, Nothing, Cache[String, Throwable, OpenJobsSnapshot]] = {
     for {
       reader <- ZIO.service[JobStateReader]
       cache <- Cache.make(
@@ -72,7 +72,7 @@ object ServerEndpoints {
     } yield cache
   }
 
-  def doneJobStateCache: ZIO[JobStateReader, Nothing, Cache[String, Throwable, OpenJobsSnapshot]] = {
+  def doneJobStateCache: ZIO[JobStateReader with Client, Nothing, Cache[String, Throwable, OpenJobsSnapshot]] = {
     for {
       reader <- ZIO.service[JobStateReader]
       cache <- Cache.make(
@@ -106,7 +106,7 @@ object ServerEndpoints {
   implicit val jobStateSnapshotReducedFormat: RootJsonFormat[JobStateSnapshotReduced] = rootFormat(jsonFormat4(JobStateSnapshotReduced.apply))
 
   def directiveEndpoints = Http.collectZIO[Request] {
-    case Method.DELETE -> !! / "jobs" / jobId / "directives" / "all" =>
+    case Method.DELETE -> Root / "jobs" / jobId / "directives" / "all" =>
       (for {
         jobStateWriter <- ZIO.service[JobStateWriter]
         _ <- jobStateWriter.removeAllDirectives(jobId)
@@ -118,7 +118,7 @@ object ServerEndpoints {
         .catchAll(_ => {
           ZIO.succeed(Response.json(ResponseContent("", s"failed to delete all job level directives for job '$jobId'").toJson.convertTo[String]).withStatus(Status.InternalServerError))
         }) @@ countAPIRequests("DELETE", "/jobs/[jobId]/directives/all")
-    case req@Method.DELETE -> !! / "jobs" / jobId / "directives" =>
+    case req@Method.DELETE -> Root / "jobs" / jobId / "directives" =>
       (for {
         jobStateWriter <- ZIO.service[JobStateWriter]
         bodyStr <- req.body.asString(Charset.forName("UTF-8"))
@@ -132,7 +132,7 @@ object ServerEndpoints {
         .catchAll(_ => {
           ZIO.succeed(Response.json(ResponseContent("", s"failed to delete passed set of job level directives for job '$jobId'").toJson.convertTo[String]).withStatus(Status.InternalServerError))
         }) @@ countAPIRequests("DELETE", "/jobs/[jobId]/directives")
-    case req@Method.POST -> !! / "jobs" / jobId / "directives" =>
+    case req@Method.POST -> Root / "jobs" / jobId / "directives" =>
       (for {
         jobStateWriter <- ZIO.service[JobStateWriter]
         bodyStr <- req.body.asString(Charset.forName("UTF-8"))
@@ -149,7 +149,7 @@ object ServerEndpoints {
   } @@ cors(corsConfig)
 
   def batchStatusEndpoints(jobStateCache: Cache[String, Throwable, OpenJobsSnapshot]) = Http.collectZIO[Request] {
-    case Method.GET -> !! / "jobs" / "batches" =>
+    case Method.GET -> Root / "jobs" / "batches" =>
       (for {
         workStateReader <- ZIO.service[WorkStateReader]
         response <- jobStateCache.get(JOB_STATE_CACHE_KEY)
@@ -170,8 +170,8 @@ object ServerEndpoints {
   def statusEndpoints(openJobStateCache: Cache[String, Throwable, OpenJobsSnapshot],
                       doneJobStateCache: Cache[String, Throwable, OpenJobsSnapshot],
                       jobStateWriter: JobStateWriter) = (Http.collectZIO[Request] {
-    case Method.GET -> !! / "health" => ZIO.succeed(Response.text("All good!"))
-    case Method.GET -> !! / "resources" / "global" =>
+    case Method.GET -> Root / "health" => ZIO.succeed(Response.text("All good!"))
+    case Method.GET -> Root / "resources" / "global" =>
       (for {
         resources <- ZIO.attempt(NodeResourceProvider.listResources)
         _ <- ZIO.logDebug(s"global resources: $resources")
@@ -181,7 +181,7 @@ object ServerEndpoints {
           ZIO.logError(s"error retrieving global resources:\nmsg: ${cause.failureOption.map(x => x.getMessage).getOrElse("")}\n${cause.trace.prettyPrint}")
         })
         .catchAll(_ => ZIO.succeed(Response.json(ResponseContent("", "failed retrieving global resources").toJson.convertTo[String]))) @@ countAPIRequests("GET", "/resources/global")
-    case Method.GET -> !! / "jobs" / "open" =>
+    case Method.GET -> Root / "jobs" / "open" =>
       (for {
         jobStateEither <- openJobStateCache.get(JOB_STATE_CACHE_KEY).either
         result <- jobStateEither match {
@@ -206,7 +206,7 @@ object ServerEndpoints {
 
         }
       } yield result) @@ countAPIRequests("GET", "/jobs/open")
-    case Method.GET -> !! / "jobs" / "done" =>
+    case Method.GET -> Root / "jobs" / "done" =>
       (for {
         jobStateEither <- doneJobStateCache.get(JOB_STATE_CACHE_KEY).either
         result <- jobStateEither match {
@@ -232,7 +232,7 @@ object ServerEndpoints {
       } yield result) @@ countAPIRequests("GET", "/jobs/done")
     // endpoint to delete a full job folder. Optional url-parameter isOpenJob (boolean)
     // to determine whether open or historical (done) job shall be deleted
-    case req@Method.DELETE -> !! / "job" / jobId =>
+    case req@Method.DELETE -> Root / "job" / jobId =>
       (for {
         isOpenJob <- ZIO.attempt(req.url.queryParams.getOrElse("isOpenJob", Seq("true")).head.toBoolean)
         _ <- jobStateWriter.removeJobFolder(jobId, isOpenJob)
@@ -252,12 +252,12 @@ object ServerEndpoints {
 
 
   val jobPostingEndpoints = Http.collectZIO[Request] {
-    case req@Method.POST -> !! / "job" =>
+    case req@Method.POST -> Root / "job" =>
       (for {
         jobStateReader <- ZIO.service[JobStateReader]
         jobStateWriter <- ZIO.service[JobStateWriter]
         jobString <- req.body.asString
-        jobDef <- ZIO.attempt(jobString.parseJson.convertTo[JobDefinition[_, _, _ <: WithCount]])
+        jobDef <- jobString.parseJson.convertTo[ZIO[Client, Throwable, JobDefinition[_, _, _ <: WithCount]]]
         jobState <- jobStateReader.fetchJobState(true)
         newJobSubFolder <- ZIO.attempt(s"${jobDef.jobName}_${java.lang.System.currentTimeMillis()}")
         // we extract the jobName and timePlacedInMillis info from the jobId to be able to compare solely on jobName
@@ -286,7 +286,7 @@ object ServerEndpoints {
   } @@ cors(corsConfig)
 
   val nodeStateEndpoint = Http.collectZIO[Request] {
-    case Method.GET -> !! / "nodes" / "state" =>
+    case Method.GET -> Root / "nodes" / "state" =>
       (for {
         stateReader <- ZIO.service[NodeStateReader]
         states <- stateReader.readNodeStates.catchAll(throwable => {
@@ -297,7 +297,7 @@ object ServerEndpoints {
   } @@ cors(corsConfig)
 
   val prometheusEndpoint = Http.collectZIO[Request] {
-    case Method.GET -> !! / "metrics" =>
+    case Method.GET -> Root / "metrics" =>
       ZIO.serviceWithZIO[PrometheusPublisher](_.get.map(Response.text))
   } @@ cors(corsConfig)
 

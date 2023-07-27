@@ -17,10 +17,9 @@
 
 package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.processing
 
-import de.awagen.kolibri.datatypes.immutable.stores.TypedMapStore
+import de.awagen.kolibri.datatypes.mutable.stores.BaseWeaklyTypedMap
 import de.awagen.kolibri.datatypes.tagging.Tags.StringTag
 import de.awagen.kolibri.datatypes.tagging.{TaggedWithType, Tags}
-import de.awagen.kolibri.datatypes.types.{ClassTyped, NamedClassTyped}
 import de.awagen.kolibri.datatypes.types.Types.WithCount
 import de.awagen.kolibri.datatypes.values.DataPoint
 import de.awagen.kolibri.datatypes.values.aggregation.immutable.Aggregators._
@@ -32,8 +31,10 @@ import de.awagen.kolibri.definitions.processing.failure.TaskFailType.FailedByExc
 import de.awagen.kolibri.fleet.zio.config.AppProperties.config.maxParallelItemsPerBatch
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobBatch
 import de.awagen.kolibri.fleet.zio.execution.{Failed, ZIOSimpleTaskExecution}
+import de.awagen.kolibri.fleet.zio.metrics.Metrics
 import de.awagen.kolibri.fleet.zio.resources.NodeResourceProvider
 import de.awagen.kolibri.storage.io.writer.Writers
+import zio.profiling.causal.CausalProfiler
 import zio.stream.ZStream
 import zio.{Fiber, Ref, Task, UIO, ZIO}
 
@@ -46,9 +47,6 @@ import scala.reflect.runtime.universe._
  * state so far and the Fiber executing it. This allows picking intermediate states / info about processing
  * state from aggregator and interruption of the processing, e.g in case the job was marked to be stopped
  * on the current instance (or all).
- *
- * TODO: might wanna make it a Cancellable, e.g include some atomic reference to some "processing"-flag,
- * which can be used as killswitch (e.g setting to false)
  */
 object TaskWorker extends Worker {
 
@@ -73,7 +71,7 @@ object TaskWorker extends Worker {
   override def work[T: TypeTag, V: TypeTag, W <: WithCount](jobBatch: JobBatch[T, V, W])(implicit tag: TypeTag[W]): Task[(Ref[Aggregator[TaggedWithType with DataPoint[V], W]], Fiber.Runtime[Throwable, Unit])] = {
     val aggregator: Aggregator[TaggedWithType with DataPoint[V], W] = jobBatch.job.aggregationInfo.batchAggregatorSupplier()
     val batchResultWriter: Writers.Writer[W, Tags.Tag, Any] = jobBatch.job.aggregationInfo.writer
-    val successKey: ClassTyped[ProcessingMessage[V]] = jobBatch.job.aggregationInfo.successKey
+    val successKey: String = jobBatch.job.aggregationInfo.successKey
     for {
       _ <- prepareGlobalResources(jobBatch.job.resourceSetup)
       aggregatorRef <- Ref.make(aggregator)
@@ -81,13 +79,14 @@ object TaskWorker extends Worker {
         .mapZIOParUnordered(maxParallelItemsPerBatch)(dataPoint =>
           for {
             _ <- ZIO.logDebug(s"trying to process data point: $dataPoint")
-            dataKey <- ZIO.succeed(NamedClassTyped[T](INITIAL_DATA_KEY))
             mapStore <- ZIO.attempt({
-              TypedMapStore(Map(dataKey -> dataPoint))
+              val map = BaseWeaklyTypedMap.empty
+              map.put(INITIAL_DATA_KEY, dataPoint)
+              map
             })
             _ <- ZIO.logDebug(s"value map: $mapStore")
-            _ <- ZIO.logDebug(s"value under data key: ${mapStore.get(dataKey)}")
-            _ <- ZIO.when(mapStore.get(dataKey).isEmpty)(
+            _ <- ZIO.logDebug(s"value under data key: ${mapStore.get[T](INITIAL_DATA_KEY)}")
+            _ <- ZIO.when(mapStore.get[T](INITIAL_DATA_KEY).isEmpty)(
               ZIO.logWarning(s"There is a type mismatch of data point and data key, processing the element '$dataPoint' will not work")
             )
             result <- ZIOSimpleTaskExecution(
@@ -98,9 +97,16 @@ object TaskWorker extends Worker {
               // stream from stopping. The distinct cases can then separately be
               // aggregated
               .processAllTasks.either
+            _ <- CausalProfiler.progressPoint("Result computed")
           } yield result
         )
-        .mapZIO(element =>
+        .mapZIO(element => {
+          ZIO.succeed(element) @@ Metrics.CalculationsWithMetrics.countFlowElements("requestResultsQueue", in = true)
+        })
+        .mapZIO(element => {
+          ZIO.succeed(element) @@ Metrics.CalculationsWithMetrics.countFlowElements("requestResultsQueue", in = false)
+        })
+        .mapZIOParUnordered(8)(element =>
           for {
             // aggregate update step
             _ <- element match {
@@ -121,13 +127,13 @@ object TaskWorker extends Worker {
                       },
                       // if nothing failed, we just normally consume the result
                       onFalse = {
-                        val computedValueOpt: Option[ProcessingMessage[V]] = v._1.get(successKey)
+                        val computedValueOpt: Option[ProcessingMessage[V]] = v._1.get[ProcessingMessage[V]](successKey)
                         val aggregationEffect: UIO[Unit] = computedValueOpt match {
                           case Some(value) => aggregatorRef.update(x => x.add(value)) *>
                             ZIO.logDebug(s"Aggregating success: ${v._1.get(successKey)}")
                           case None =>
                             ZIO.logWarning(s"no fail key, but missing success key '$successKey'") *>
-                              aggregatorRef.update(x => x.add(ProcessingMessages.BadCorn(TaskFailType.MissingResultKey(successKey))))
+                              aggregatorRef.update(x => x.add(ProcessingMessages.BadCorn(TaskFailType.FailedByException(new RuntimeException(s"Missing result key: $successKey")))))
                         }
                         aggregationEffect
                       }

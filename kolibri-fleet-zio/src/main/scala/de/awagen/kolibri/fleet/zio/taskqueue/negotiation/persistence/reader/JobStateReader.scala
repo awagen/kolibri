@@ -20,7 +20,8 @@ package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.directives.JobDirectives.JobDirective
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.JobStates.OpenJobsSnapshot
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.JobDefinitionLoadStates.JobDefinitionLoadStatus
-import zio.Task
+import zio.{Task, ZIO}
+import zio.http.Client
 
 
 /**
@@ -36,7 +37,7 @@ trait JobStateReader {
    * - set job level directives
    * - open jobs
    */
-  def fetchJobState(isOpenJob: Boolean): Task[OpenJobsSnapshot]
+  def fetchJobState(isOpenJob: Boolean): ZIO[Client, Throwable, OpenJobsSnapshot]
 
   /**
    * Only find the jobIds of open (unfinished) jobs

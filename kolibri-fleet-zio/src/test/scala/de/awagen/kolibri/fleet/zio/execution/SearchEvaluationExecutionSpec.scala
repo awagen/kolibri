@@ -64,10 +64,9 @@ object SearchEvaluationExecutionSpec extends ZIOSpecDefault {
       when(clientMock.request(
         ArgumentMatchers.any()
       )(ArgumentMatchers.any(), ArgumentMatchers.any())).thenReturn(ZIO.succeed(exampleResponse))
-      val clientLayer = ZLayer.succeed(clientMock)
       // when
       for {
-        jobDef <- ZIO.attempt(TaskTestObjects.searchEvaluationDefinition.httpClientToJobDef(clientLayer))
+        jobDef <- TaskTestObjects.searchEvaluationDefinition.toJobDef.provide(ZLayer.succeed(clientMock))
         aggregatorRefAndFiber <- TaskWorker.work(JobBatch(jobDef, 0))
         _ <- aggregatorRefAndFiber._2.join
         aggregatorValue <- aggregatorRefAndFiber._1.get

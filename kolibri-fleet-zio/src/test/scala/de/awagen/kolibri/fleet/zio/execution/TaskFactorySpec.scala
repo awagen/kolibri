@@ -17,7 +17,6 @@
 
 package de.awagen.kolibri.fleet.zio.execution
 
-import de.awagen.kolibri.datatypes.immutable.stores.TypedMapStore
 import de.awagen.kolibri.datatypes.mutable.stores.{BaseWeaklyTypedMap, WeaklyTypedMap}
 import de.awagen.kolibri.datatypes.stores.immutable.MetricRow
 import de.awagen.kolibri.datatypes.types.NamedClassTyped
@@ -43,14 +42,14 @@ object TaskFactorySpec extends ZIOSpecDefault {
 
     test("execute request and parse response") {
       val clientMock: Client = TaskTestObjects.httpClientMock("""{"results": {"field1": "value1"}}""")
-      val initialMap = TypedMapStore(Map(
-        requestTemplateBuilderModifierKey -> RequestTemplateBuilderModifiers
+      val initialMap = BaseWeaklyTypedMap(mutable.Map(
+        requestTemplateBuilderModifierKey.name -> RequestTemplateBuilderModifiers
           .RequestParameterModifier(Map("param1" -> Seq("v1"), "q" -> Seq("q1")), replace = true)
       ))
       val task = TaskTestObjects.requestAndParseTask(clientMock, parsingConfig)
       for {
         value <- task.task(initialMap)
-      } yield assertTrue(value.get(task.successKey).get.data.get[String]("field1").get == "value1")
+      } yield assertTrue(value.get[ProcessingMessage[WeaklyTypedMap[String]]](task.successKey).get.data.get[String]("field1").get == "value1")
     },
 
     test("calculate metrics") {
@@ -62,8 +61,8 @@ object TaskFactorySpec extends ZIOSpecDefault {
         RequestJsonAndParseValuesTask.requestTemplateKey.name -> requestTemplate
       ))
       val initKey = NamedClassTyped[ProcessingMessage[WeaklyTypedMap[String]]]("initValues")
-      val initialMap = TypedMapStore(Map(
-        initKey -> ProcessingMessages.Corn(typedMap),
+      val initialMap = BaseWeaklyTypedMap(mutable.Map(
+        initKey.name -> ProcessingMessages.Corn(typedMap),
       ))
       // prepare directive to load judgement data before metrics calculation will retrieve it
       val judgementFileResourcePath: String = "/data/test_judgements.txt"
@@ -72,7 +71,7 @@ object TaskFactorySpec extends ZIOSpecDefault {
       implicit val ec: ExecutionContext = scala.concurrent.ExecutionContext.global
       // wait till resource is loaded
       Await.result(NodeResourceProvider.createResource(judgementResourceDirective).future, 10 seconds)
-      val metricTask = TaskTestObjects.calculateMetricsTask(initKey, NodeResourceProvider)
+      val metricTask = TaskTestObjects.calculateMetricsTask(initKey.name, NodeResourceProvider)
       // when, then
       for {
         result <- metricTask.task(initialMap)
@@ -86,16 +85,16 @@ object TaskFactorySpec extends ZIOSpecDefault {
       val comparisonTask = twoMapInputCalculationTask()
       val inputMap1 = BaseWeaklyTypedMap(mutable.Map("productIds" -> Seq("p1", "p2", "p4", "p10")))
       val inputMap2 = BaseWeaklyTypedMap(mutable.Map("productIds" -> Seq("p2", "p1", "p11", "p10")))
-      val initialMap = TypedMapStore(Map(
-        NamedClassTyped[ProcessingMessage[WeaklyTypedMap[String]]]("input1") -> ProcessingMessages.Corn(inputMap1),
-        NamedClassTyped[ProcessingMessage[WeaklyTypedMap[String]]]("input2") -> ProcessingMessages.Corn(inputMap2)
+      val initialMap = BaseWeaklyTypedMap(mutable.Map(
+        "input1" -> ProcessingMessages.Corn(inputMap1),
+        "input2" -> ProcessingMessages.Corn(inputMap2)
       ))
       // when, then
       for {
         result <- comparisonTask.task(initialMap)
         _ <- ZIO.logDebug(s"result: $result")
       } yield assert(result)(Assertion.assertion("correct result")(result => {
-        val resultKey = NamedClassTyped[ProcessingMessage[MetricRow]](comparisonTask.successKeyName)
+        val resultKey = comparisonTask.successKeyName
         val metricRowPM = result.get[ProcessingMessage[MetricRow]](resultKey).get
         metricRowPM.data.metrics("jaccard").biValue.value2.value == 0.60
       }))
@@ -111,15 +110,15 @@ object TaskFactorySpec extends ZIOSpecDefault {
       val updatedMetricRow1 = metricRow1.addFullMetricsSampleAndIncreaseSampleCount(metricsSuccess1, metricsSuccess2)
       val metricRow2 = MetricRow.emptyForParams(Map("p1" -> Seq("v1")))
       val updatedMetricRow2 = metricRow2.addFullMetricsSampleAndIncreaseSampleCount(metricsSuccess3)
-      val initialMap = TypedMapStore(Map(
-        NamedClassTyped[ProcessingMessage[MetricRow]]("input1") -> ProcessingMessages.Corn(updatedMetricRow1),
-        NamedClassTyped[ProcessingMessage[MetricRow]]("input2") -> ProcessingMessages.Corn(updatedMetricRow2)
+      val initialMap = BaseWeaklyTypedMap(mutable.Map(
+        "input1" -> ProcessingMessages.Corn(updatedMetricRow1),
+        "input2" -> ProcessingMessages.Corn(updatedMetricRow2)
       ))
       // when, then
       for {
         result <- mergeTask.task(initialMap)
         _ <- ZIO.logDebug(s"result: $result")
-      } yield assert(result.get(NamedClassTyped[ProcessingMessage[MetricRow]]("metricComparisonResult")) .get)(Assertion.assertion("correct merged result")(metricRowPM => {
+      } yield assert(result.get[ProcessingMessage[MetricRow]]("metricComparisonResult") .get)(Assertion.assertion("correct merged result")(metricRowPM => {
         metricRowPM.data.metrics.keySet == Set("metrics1", "metrics2", "metrics3") &&
           metricRowPM.data.metrics("metrics1").biValue.value2.numSamples == 1 &&
           metricRowPM.data.metrics("metrics2").biValue.value2.numSamples == 1 &&

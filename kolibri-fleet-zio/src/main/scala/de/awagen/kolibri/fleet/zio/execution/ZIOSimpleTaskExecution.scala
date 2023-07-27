@@ -17,20 +17,20 @@
 
 package de.awagen.kolibri.fleet.zio.execution
 
-import de.awagen.kolibri.datatypes.immutable.stores.TypeTaggedMap
-import de.awagen.kolibri.datatypes.types.ClassTyped
+import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.definitions.processing.ProcessingMessages.ProcessingMessage
-import de.awagen.kolibri.definitions.processing.failure.TaskFailType
+import de.awagen.kolibri.definitions.processing.failure.TaskFailType.TaskFailType
+import de.awagen.kolibri.fleet.zio.App
+import zio.ZIO
 import zio.stream.ZStream
-import zio.{Task, ZIO}
 
 
-case class ZIOSimpleTaskExecution[+T](initData: TypeTaggedMap,
+case class ZIOSimpleTaskExecution[+T](initData: WeaklyTypedMap[String],
                                       tasks: Seq[ZIOTask[_]]) extends ZIOTaskExecution[T] {
 
   assert(tasks.nonEmpty)
 
-  val allFailKeys: Seq[ClassTyped[ProcessingMessage[TaskFailType.TaskFailType]]] = tasks.map(x => x.failKey)
+  val allFailKeys: Seq[String] = tasks.map(x => x.failKey)
 
 
   override def hasFailed(executionStates: Seq[ExecutionState]): Boolean =
@@ -43,7 +43,7 @@ case class ZIOSimpleTaskExecution[+T](initData: TypeTaggedMap,
    * Execute full sequence of tasks till either all succeeded or
    * first task failed.
    */
-  override def processAllTasks: zio.Task[(TypeTaggedMap, Seq[ExecutionState])] = {
+  override def processAllTasks: zio.Task[(WeaklyTypedMap[String], Seq[ExecutionState])] = {
     ZStream.fromIterable(tasks)
       .runFoldZIO((initData, Seq.empty[ExecutionState]))({
         case state if state._1._2.exists(x => x.isInstanceOf[Failed]) =>
@@ -57,7 +57,7 @@ case class ZIOSimpleTaskExecution[+T](initData: TypeTaggedMap,
               for {
                 processedTask <- ZIO.attempt(tasks(currentTaskIndex))
                 _ <- ZIO.logWarning(s"Task (index $currentTaskIndex) failed with fail reason: ${updatedMap.get(processedTask.failKey)}")
-                result <- ZIO.succeed((updatedMap, state._1._2 ++ Seq(Failed(currentTaskIndex, updatedMap.get(processedTask.failKey).get.data))))
+                result <- ZIO.succeed((updatedMap, state._1._2 ++ Seq(Failed(currentTaskIndex, updatedMap.get[ProcessingMessage[TaskFailType]](processedTask.failKey).get.data))))
               } yield result
             case updatedMap =>
               for {
@@ -66,5 +66,7 @@ case class ZIOSimpleTaskExecution[+T](initData: TypeTaggedMap,
               } yield result
           })
       })
+      // test whether this has any effect on thread utilization
+      .onExecutor(App.nonBlockingExecutor)
   }
 }

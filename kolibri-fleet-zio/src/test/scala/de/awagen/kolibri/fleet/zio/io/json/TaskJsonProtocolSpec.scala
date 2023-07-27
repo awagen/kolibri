@@ -19,10 +19,7 @@ package de.awagen.kolibri.fleet.zio.io.json
 
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.datatypes.stores.immutable.MetricRow
-import de.awagen.kolibri.datatypes.types.NamedClassTyped
 import de.awagen.kolibri.definitions.domain.Connections
-import de.awagen.kolibri.definitions.processing.ProcessingMessages.ProcessingMessage
-import de.awagen.kolibri.definitions.processing.failure.TaskFailType.TaskFailType
 import de.awagen.kolibri.definitions.usecase.searchopt.metrics.Calculations.JudgementsFromResourceIRMetricsCalculations
 import de.awagen.kolibri.fleet.zio.execution.TaskFactory.{CalculateMetricsTask, MergeTwoMetricRows, RequestJsonAndParseValuesTask, TwoMapInputCalculation}
 import de.awagen.kolibri.fleet.zio.execution.ZIOTask
@@ -30,6 +27,8 @@ import de.awagen.kolibri.fleet.zio.io.json.TaskJsonProtocol._
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.requests.RequestMode
 import de.awagen.kolibri.fleet.zio.testclasses.UnitTestSpec
 import spray.json._
+import zio.ZIO
+import zio.http.Client
 
 class TaskJsonProtocolSpec extends UnitTestSpec {
 
@@ -176,9 +175,9 @@ class TaskJsonProtocolSpec extends UnitTestSpec {
 
     "correctly parse sequence of request and parse tasks" in {
       // given, when
-      val taskDefRequestAll: Seq[RequestJsonAndParseValuesTask] = requestAndParseTaskJson.replace(REQUEST_MODE_PLACEHOLDER, RequestMode.REQUEST_ALL_CONNECTIONS.toString).parseJson.convertTo[Seq[ZIOTask[WeaklyTypedMap[String]]]]
+      val taskDefRequestAll: Seq[RequestJsonAndParseValuesTask] = requestAndParseTaskJson.replace(REQUEST_MODE_PLACEHOLDER, RequestMode.REQUEST_ALL_CONNECTIONS.toString).parseJson.convertTo[ZIO[Client, Throwable, Seq[ZIOTask[WeaklyTypedMap[String]]]]]
         .asInstanceOf[Seq[RequestJsonAndParseValuesTask]]
-      val taskDefDistribute: Seq[RequestJsonAndParseValuesTask] = requestAndParseTaskJson.replace(REQUEST_MODE_PLACEHOLDER, RequestMode.DISTRIBUTE_LOAD.toString).parseJson.convertTo[Seq[ZIOTask[WeaklyTypedMap[String]]]]
+      val taskDefDistribute: Seq[RequestJsonAndParseValuesTask] = requestAndParseTaskJson.replace(REQUEST_MODE_PLACEHOLDER, RequestMode.DISTRIBUTE_LOAD.toString).parseJson.convertTo[ZIO[Client, Throwable, Seq[ZIOTask[WeaklyTypedMap[String]]]]]
         .asInstanceOf[Seq[RequestJsonAndParseValuesTask]]
       // then
       taskDefRequestAll.size mustBe 3
@@ -191,7 +190,7 @@ class TaskJsonProtocolSpec extends UnitTestSpec {
 
     "correctly parse metrics calculation task" in {
       // given, when
-      val task = calculateMetricsTaskJson.parseJson.convertTo[ZIOTask[MetricRow]]
+      val task = calculateMetricsTaskJson.parseJson.convertTo[ZIO[Any, Throwable, ZIOTask[MetricRow]]]
         .asInstanceOf[CalculateMetricsTask]
       val calculations = task.calculations.asInstanceOf[Seq[JudgementsFromResourceIRMetricsCalculations]]
       val expectedMetricNames = Set("DCG_10", "NDCG_10", "PRECISION_k=4&t=0.1", "RECALL_k=4&t=0.1", "ERR_10")
@@ -203,7 +202,7 @@ class TaskJsonProtocolSpec extends UnitTestSpec {
 
     "correctly parse two map input calculation" in {
       // given, when
-      val task = twoMapInputTask.parseJson.convertTo[ZIOTask[MetricRow]]
+      val task = twoMapInputTask.parseJson.convertTo[ZIO[Any, Throwable, ZIOTask[MetricRow]]]
         .asInstanceOf[TwoMapInputCalculation]
       // then
       task.calculations.size mustBe 1
@@ -212,13 +211,13 @@ class TaskJsonProtocolSpec extends UnitTestSpec {
 
     "correctly parse merge-two-metric-rows task" in {
       // given, when
-      val task = mergeTwoRowsTask.parseJson.convertTo[ZIOTask[MetricRow]]
+      val task = mergeTwoRowsTask.parseJson.convertTo[ZIO[Any, Throwable, ZIOTask[MetricRow]]]
         .asInstanceOf[MergeTwoMetricRows]
       // then
-      task.key1 mustBe NamedClassTyped[ProcessingMessage[MetricRow]]("inputKey1")
-      task.key2 mustBe NamedClassTyped[ProcessingMessage[MetricRow]]("inputKey2")
-      task.successKey mustBe NamedClassTyped[ProcessingMessage[MetricRow]]("mergeTwoRowsSuccessKey")
-      task.failKey mustBe NamedClassTyped[ProcessingMessage[TaskFailType]]("mergeTwoRowsFailKey")
+      task.key1 mustBe "inputKey1"
+      task.key2 mustBe "inputKey2"
+      task.successKey mustBe "mergeTwoRowsSuccessKey"
+      task.failKey mustBe "mergeTwoRowsFailKey"
     }
 
   }

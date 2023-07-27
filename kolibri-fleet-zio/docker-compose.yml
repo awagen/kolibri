@@ -2,36 +2,46 @@ version: '3.5'
 
 services:
 
-  #  prometheus:
-  #    image: prom/prometheus:v2.28.1
-  #    ports:
-  #      - "9000:9090"
-  #    user: "1000:1000"
-  #    volumes:
-  #      - ./prometheus:/etc/prometheus
-  #      # /prometheus is the default data dir
-  #      - ./prometheus/data:/prometheus
-  #    command: --web.enable-lifecycle  --config.file=/etc/prometheus/prometheus.yaml
-  #
-  #  grafana:
-  #    image: grafana/grafana:8.0.5
-  #    volumes:
-  #      - ./grafana:/var/lib/grafana
-  #    ports:
-  #      - "3000:3000"
-  #    # user setting needed to be set to owner/group of the volume (above grafana folder on host machine)
-  #    user: "1000:1000"
+  prometheus:
+    image: prom/prometheus:v2.28.1
+    cpu_count: 2
+    mem_limit: 512m
+    mem_reservation: 512m
+    ports:
+      - "9000:9090"
+    user: "1000:1000"
+    volumes:
+      - ./prometheus:/etc/prometheus
+      # /prometheus is the default data dir
+      - ./prometheus/data:/prometheus/data
+    command: --web.enable-lifecycle  --config.file=/etc/prometheus/prometheus.yml
+
+  grafana:
+    image: grafana/grafana:8.0.5
+    cpu_count: 2
+    mem_limit: 256m
+    mem_reservation: 256m
+    volumes:
+      - ./grafana:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    # user setting needed to be set to owner/group of the volume (above grafana folder on host machine)
+    user: "1000:1000"
 
   kolibri-zio-1:
     image: kolibri-fleet-zio:0.1.5
+    cpu_count: 12
+    mem_limit: 18432m
+    mem_reservation: 12288m
     ports:
       - "8001:8001"
     user: "1000:1000"
     environment:
       JVM_OPTS: >
-        -XX:+UseG1GC
-        -Xms1024m
-        -Xmx2048m
+        -XX:+UseParallelGC
+        -XX:ParallelGCThreads=2
+        -Xms12288m
+        -Xmx12288m
       PROFILE: prod
       NODE_HASH: "abc1"
       HTTP_SERVER_PORT: 8001
@@ -65,10 +75,15 @@ services:
       MAX_RESOURCE_DIRECTIVES_LOAD_TIME_IN_MINUTES: 10
       BATCH_STATE_UPDATE_INITIAL_DELAY_IN_SECONDS: 2
       BATCH_STATE_UPDATE_INTERVAL_IN_SECONDS: 10
-      MAX_PARALLEL_ITEMS_PER_BATCH: 32
-      CONNECTION_POOL_SIZE_MIN: 10
-      CONNECTION_POOL_SIZE_MAX: 100
+      MAX_PARALLEL_ITEMS_PER_BATCH: 16
+      CONNECTION_POOL_SIZE_MIN: 200
+      CONNECTION_POOL_SIZE_MAX: 200
       CONNECTION_TTL_IN_SECONDS: 1200
+      MAX_NR_JOBS_PROCESSING: 5
+      MAX_NR_JOBS_CLAIMED: 5
+      NETTY_HTTP_CLIENT_THREADS_MAX: 4
+      BLOCKING_POOL_THREADS: 4
+      NON_BLOCKING_POOL_THREADS: 4
     volumes:
       - ./tmp_data:/app/test-files
       - ${HOME}/.aws/credentials:/home/kolibri/.aws/credentials:ro
@@ -132,9 +147,12 @@ services:
   search-service-1:
     image: awagen/response-juggler:0.1.1
     user: "1000:1000"
+    cpu_count: 2
+    mem_reservation: 512m
+    mem_limit: 512m
     environment:
       PORT: 80
-      NUM_CONNECTIONS: 100
+      NUM_CONNECTIONS: 400
       RESPONSE_MAIN_TEMPLATE: "searchresponse.json"
       RESPONSE_PARTIAL_IDENT_DOCS: "{{DOCS}}"
       RESPONSE_PARTIAL_CONTENT_DOCS: "doc_bool_flag.json"
@@ -163,9 +181,12 @@ services:
   search-service-2:
     image: awagen/response-juggler:0.1.1
     user: "1000:1000"
+    cpu_count: 2
+    mem_reservation: 512m
+    mem_limit: 512m
     environment:
       PORT: 81
-      NUM_CONNECTIONS: 100
+      NUM_CONNECTIONS: 400
       RESPONSE_MAIN_TEMPLATE: "searchresponse.json"
       RESPONSE_PARTIAL_IDENT_DOCS: "{{DOCS}}"
       RESPONSE_PARTIAL_CONTENT_DOCS: "doc_bool_flag.json"

@@ -23,7 +23,7 @@ import de.awagen.kolibri.fleet.zio.http.client.request.RequestTemplateImplicits.
 import org.mockito.Mockito.{doReturn, times, verify}
 import org.mockito.{ArgumentCaptor, ArgumentMatchers}
 import org.scalatestplus.mockito.MockitoSugar.mock
-import zio.http.{Client, Request, Response}
+import zio.http.{Client, Request}
 import zio.test._
 import zio.{Scope, ZIO, ZLayer}
 
@@ -46,7 +46,7 @@ object RequestTemplateImplicitsSpec extends ZIOSpecDefault {
       val clientMock = mock[Client]
       doReturn(ZIO.succeed(null)).when(clientMock).request(ArgumentMatchers.any[Request]())(ArgumentMatchers.any(), ArgumentMatchers.any())
 
-      val requestEffect: ZIO[Client, Throwable, Response] = requestTemplate.toZIOHttpRequest(testHost, Option.empty[Credentials])
+      val requestEffect = requestTemplate.toZIOHttpRequest(testHost, Option.empty[Credentials], clientMock)
       for {
         _ <- requestEffect.provide(ZLayer.succeed(clientMock))
       } yield assert({

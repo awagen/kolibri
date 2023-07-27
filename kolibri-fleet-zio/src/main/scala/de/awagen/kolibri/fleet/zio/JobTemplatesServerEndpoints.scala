@@ -29,7 +29,7 @@ import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, Reader}
 import de.awagen.kolibri.storage.io.writer.Writers.Writer
 import spray.json.DefaultJsonProtocol.{BooleanJsonFormat, JsValueFormat, StringJsonFormat, immSeqFormat, jsonFormat3, mapFormat}
 import spray.json._
-import zio.{Task, ZIO}
+import zio.ZIO
 import zio.http.HttpAppMiddleware.cors
 import zio.http._
 import zio.stream.ZStream
@@ -91,7 +91,7 @@ object JobTemplatesServerEndpoints {
   def templateEndpoints(dataOverviewReader: DataOverviewReader,
                         contentReader: Reader[String, Seq[String]],
                         writer: Writer[String, String, _]) = Http.collectZIO[Request] {
-    case Method.GET -> !! / "jobs" / "templates" / "types" =>
+    case Method.GET -> Root / "jobs" / "templates" / "types" =>
       (for {
         result <- getJobTemplateTypes(dataOverviewReader)
         response <- ZIO.attempt(Response.json(ResponseContent(result, "").toJson.toString()))
@@ -99,7 +99,7 @@ object JobTemplatesServerEndpoints {
         ZIO.logError(s"Error reading available job templates:\n${throwable.getStackTrace.mkString("\n")}") *>
           ZIO.succeed(Response.json(ResponseContent("", "failed loading data").toJson.toString()).withStatus(Status.InternalServerError))
       ) @@ countAPIRequests("GET", "/jobs/templates/types")
-    case Method.GET -> !! / "jobs" / "templates" / "types" / "perType" =>
+    case Method.GET -> Root / "jobs" / "templates" / "types" / "perType" =>
       (for {
         mapping <- getTemplateTypeToAvailableTemplatesMapping(dataOverviewReader, contentReader)
         _ <- ZIO.logDebug(s"Found template per type mapping: $mapping")
@@ -108,7 +108,7 @@ object JobTemplatesServerEndpoints {
         ZIO.logError(s"Error reading template type to available job templates mapping:\n${throwable.getStackTrace.mkString("\n")}") *>
           ZIO.succeed(Response.json(ResponseContent("", s"failed loading data for template type to template mapping").toJson.toString()).withStatus(Status.InternalServerError))
       ) @@ countAPIRequests("GET", "/jobs/templates/types/perType")
-    case Method.GET -> !! / "jobs" / "templates" / "types" / templateType =>
+    case Method.GET -> Root / "jobs" / "templates" / "types" / templateType =>
       (for {
         templates <- getJobTemplatesForType(templateType, dataOverviewReader)
         response <- ZIO.attempt(Response.json(ResponseContent(templates, "").toJson.toString()))
@@ -116,7 +116,7 @@ object JobTemplatesServerEndpoints {
         ZIO.logError(s"Error reading available job templates for type '$templateType':\n${throwable.getStackTrace.mkString("\n")}") *>
           ZIO.succeed(Response.json(ResponseContent("", s"failed loading data for template type '$templateType'").toJson.toString()).withStatus(Status.InternalServerError))
       ) @@ countAPIRequests("GET", "/jobs/templates/types/[templateType]")
-    case Method.GET -> !! / "jobs" / "templates" / templateType / templateId =>
+    case Method.GET -> Root / "jobs" / "templates" / templateType / templateId =>
       ZIO.attemptBlockingIO({
         // retrieve the content of the definition file defined by type and identifier
         val filepath = s"$jobTemplatePath/$templateType/$templateId"
@@ -139,7 +139,7 @@ object JobTemplatesServerEndpoints {
         ZIO.logError(s"Error loading template for type '$templateType' and id '$templateId':\n${throwable.getStackTrace.mkString("\n")}") *>
           ZIO.succeed(Response.json(ResponseContent("", s"failed loading template for type '$templateType' and id '$templateId'").toJson.toString()).withStatus(Status.InternalServerError))
       ) @@ countAPIRequests("GET", "/jobs/templates/[templateType]/[templateId]")
-    case req@Method.POST -> !! / "jobs" / "templates" / templateType / templateId =>
+    case req@Method.POST -> Root / "jobs" / "templates" / templateType / templateId =>
       val computeEffect = for {
         // validate name and type for template
         _ <- ZIO.attempt({
@@ -150,7 +150,7 @@ object JobTemplatesServerEndpoints {
         // parse body and try to convert it to JobDefinition. If conversion fails, its not a valid format.
         jsonStr <- for {
           bodyStr <- req.body.asString(Charset.forName("UTF-8"))
-          _ <- ZIO.attempt(bodyStr.parseJson.convertTo[JobDefinition[_, _, _ <: WithCount]])
+          _ <- bodyStr.parseJson.convertTo[ZIO[Client, Throwable, JobDefinition[_, _, _ <: WithCount]]]
         } yield bodyStr
         fullTemplateName <- ZIO.attempt({
           templateId.stripPrefix("/").stripSuffix("/").trim match {

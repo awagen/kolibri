@@ -19,7 +19,8 @@ package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer
 
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.directives.JobDirectives.JobDirective
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ProcessId
-import zio.Task
+import zio.{Task, ZIO}
+import zio.http.Client
 
 trait JobStateWriter {
 
@@ -34,7 +35,7 @@ trait JobStateWriter {
    * After writing job definition and batches, write PROCESS directive into
    * folder to indicate the job is up for processing.
    */
-  def storeJobDefinitionAndBatches(jobDefinition: String, jobSubFolder: String): Task[Unit]
+  def storeJobDefinitionAndBatches(jobDefinition: String, jobSubFolder: String): ZIO[Client, Throwable, Unit]
 
   /**
    * Remove a whole folder corresponding to a particular jobId.

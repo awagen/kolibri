@@ -53,7 +53,7 @@ object JobDefsServerEndpoints {
   implicit val endpointAndStructDefFormat: RootJsonFormat[EndpointDef] = jsonFormat5(EndpointDef)
 
   def jobDefEndpoints = Http.collectZIO[Request] {
-    case Method.GET -> !! / "jobs" / "structs" =>
+    case Method.GET -> Root / "jobs" / "structs" =>
       ZIO.succeed(Response.json(ResponseContent(Seq(Endpoints.taskSequencePostEndpoint), "").toJson.toString())) @@ countAPIRequests("GET", "/jobs/structs")
   } @@ cors(corsConfig)
 

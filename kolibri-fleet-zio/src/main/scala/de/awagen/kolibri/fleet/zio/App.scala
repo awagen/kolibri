@@ -17,8 +17,8 @@
 
 package de.awagen.kolibri.fleet.zio
 
-import de.awagen.kolibri.fleet.zio.config.AppProperties
-import de.awagen.kolibri.fleet.zio.config.AppProperties.config.http_server_port
+import de.awagen.kolibri.fleet.zio.config.{AppProperties, HttpConfig}
+import de.awagen.kolibri.fleet.zio.config.AppProperties.config.{appBlockingPoolThreads, appNonBlockingPoolThreads, connectionPoolSizeMin, http_server_port}
 import de.awagen.kolibri.fleet.zio.config.di.ZioDIConfig
 import de.awagen.kolibri.fleet.zio.metrics.Metrics.MetricTypes.taskManageCycleInvokeCount
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.{JobStateReader, WorkStateReader}
@@ -26,23 +26,34 @@ import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer.{Job
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services.{TaskOverviewService, TaskPlannerService, WorkHandlerService}
 import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, Reader}
 import de.awagen.kolibri.storage.io.writer.Writers.Writer
+import zio.http.ZClient.{Config, customized}
 import zio._
 import zio.http._
+import zio.http.netty.client.NettyClientDriver
+import zio.http.netty.{EventLoopGroups, NettyConfig}
 import zio.logging.backend.SLF4J
 import zio.metrics.connectors.{MetricsConfig, prometheus}
 import zio.metrics.jvm.DefaultJvmMetrics
+import zio.profiling.sampling._
+import zio.profiling.causal._
 import zio.stream.ZStream
+
+import java.util.concurrent.Executors
 
 object App extends ZIOAppDefault {
 
-  override val bootstrap: ZLayer[Any, Any, Unit] =
-    Runtime.removeDefaultLoggers >>> SLF4J.slf4j
+  val blockingExecutor = Executor.fromJavaExecutor(Executors.newFixedThreadPool(appBlockingPoolThreads))
+  val nonBlockingExecutor = Executor.fromJavaExecutor(Executors.newFixedThreadPool(appNonBlockingPoolThreads))
+
+  override val bootstrap: ZLayer[Any, Nothing, Unit] = {
+    Runtime.removeDefaultLoggers >>> SLF4J.slf4j >>> Runtime.setBlockingExecutor(blockingExecutor) >>> Runtime.setExecutor(nonBlockingExecutor)
+  }
 
   // TODO: one problem here is if the workers fail in initial stages of a task
   //  (such as resource creation where no result type is yet generated),
   // then it seems no update follows and the tasks are revoked from their
   // current nodes and put to open again, which leads to a loop --> FIX!!
-  val planTasksEffect: ZIO[JobStateReader with TaskPlannerService with WorkStateReader with TaskOverviewService, Throwable, Unit] = {
+  val planTasksEffect: ZIO[JobStateReader with TaskPlannerService with WorkStateReader with TaskOverviewService with Client, Throwable, Unit] = {
     (for {
       taskOverviewService <- ZIO.service[TaskOverviewService]
       workStateReader <- ZIO.service[WorkStateReader]
@@ -82,7 +93,7 @@ object App extends ZIOAppDefault {
   /**
    * Effect taking care of claim and work management
    */
-  val taskWorkerApp: ZIO[JobStateReader with WorkStateReader with TaskPlannerService with TaskOverviewService with WorkHandlerService, Throwable, Unit] = {
+  val taskWorkerApp: ZIO[JobStateReader with WorkStateReader with TaskPlannerService with TaskOverviewService with WorkHandlerService with Client, Throwable, Unit] = {
     for {
       jobStateReader <- ZIO.service[JobStateReader]
       workHandlerService <- ZIO.service[WorkHandlerService]
@@ -107,8 +118,9 @@ object App extends ZIOAppDefault {
     } yield ()
   }
 
-  val combinedLayer =
-    ZioDIConfig.writerLayer >+>
+  val combinedLayer = {
+    HttpConfig.liveHttpClientLayer >+>
+      ZioDIConfig.writerLayer >+>
       ZioDIConfig.readerLayer >+>
       ZioDIConfig.overviewReaderLayer >+>
       ZioDIConfig.nodeStateReaderLayer >+>
@@ -130,12 +142,13 @@ object App extends ZIOAppDefault {
       prometheus.prometheusLayer >+>
       // Default JVM Metrics
       DefaultJvmMetrics.live.unit
+  }
 
 
   override val run: ZIO[Any, Throwable, Any] = {
     val taskHandleSchedule = Schedule.fixed(20 seconds)
     val nodeStateUpdateSchedule = Schedule.fixed(10 seconds)
-    (for {
+    val effect = (for {
       _ <- ZIO.logInfo("Application started!")
       _ <- (taskWorkerApp @@ taskManageCycleInvokeCount).repeat(taskHandleSchedule).fork
       _ <- nodeStateUpdateEffect.repeat(nodeStateUpdateSchedule).fork
@@ -157,6 +170,22 @@ object App extends ZIOAppDefault {
       )
       _ <- ZIO.logInfo("Application is about to exit!")
     } yield ())
-      .provide(Server.defaultWithPort(http_server_port) >+> combinedLayer)
+    //.provide(Server.defaultWithPort(http_server_port) >+> combinedLayer)
+    //    (for {
+    //      profileResult <- CausalProfiler(iterations = 100)
+    //        .profile(effect.forever)
+    //      _ <- ZIO.logInfo(s"Writing Profile effect")
+    //      writer <- ZIO.service[Writer[String, String, _]]
+    //      _ <- ZIO.attempt(writer.write(profileResult.render, "profile_1.coz"))
+    //    }
+    //    yield profileResult)
+    //      .provide(Server.defaultWithPort(http_server_port) >+> combinedLayer)
+    //    (for {
+    //      profile <- SamplingProfiler().profile(effect)
+    //      _ <- ZIO.logInfo(s"Writing Profile effect")
+    //      writer <- ZIO.service[Writer[String, String, _]]
+    //      _ <- ZIO.attempt(writer.write(profile.stackCollapse.mkString("\n"), "profile.folded"))
+    //    } yield profile).provide(Server.defaultWithPort(http_server_port) >+> combinedLayer)
+    effect.provide(Server.defaultWithPort(http_server_port) >+> combinedLayer)
   }
 }

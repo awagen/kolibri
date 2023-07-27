@@ -22,7 +22,7 @@ import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.datatypes.stores.immutable.MetricRow
 import de.awagen.kolibri.datatypes.types.FieldDefinitions._
 import de.awagen.kolibri.datatypes.types.JsonStructDefs._
-import de.awagen.kolibri.datatypes.types.{JsonStructDefs, NamedClassTyped, WithStructDef}
+import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
 import de.awagen.kolibri.datatypes.values.Calculations.{Calculation, TwoInCalculation}
 import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType.AggregationType
 import de.awagen.kolibri.definitions.domain.Connections.Connection
@@ -46,6 +46,8 @@ import de.awagen.kolibri.fleet.zio.io.json.EnumerationJsonProtocol.requestModeFo
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.requests.RequestMode
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.requests.RequestMode.RequestMode
 import spray.json.{DefaultJsonProtocol, JsValue, JsonFormat, enrichAny}
+import zio.ZIO
+import zio.http.Client
 
 object TaskJsonProtocol extends DefaultJsonProtocol {
 
@@ -78,8 +80,8 @@ object TaskJsonProtocol extends DefaultJsonProtocol {
    * Sequence is used here to be able to provide multiple tasks if the related execution contains
    * multiple steps.
    */
-  implicit object SeqTypedMapZIOTaskFormat extends JsonFormat[Seq[ZIOTask[WeaklyTypedMap[String]]]] with WithStructDef {
-    override def read(json: JsValue): Seq[ZIOTask[WeaklyTypedMap[String]]] = json match {
+  implicit object SeqTypedMapZIOTaskFormat extends JsonFormat[ZIO[Client, Throwable, Seq[ZIOTask[WeaklyTypedMap[String]]]]] with WithStructDef {
+    override def read(json: JsValue): ZIO[Client, Throwable, Seq[ZIOTask[WeaklyTypedMap[String]]]] = json match {
       case spray.json.JsObject(fields) => fields(TYPE_KEY).convertTo[String] match {
         case REQUEST_AND_PARSE_VALUES_TASK_TYPE =>
           val parsingConfig: ParsingConfig = fields(PARSING_CONFIG_KEY).convertTo[ParsingConfig]
@@ -98,18 +100,24 @@ object TaskJsonProtocol extends DefaultJsonProtocol {
             // in case of request all connections mode,
             // we request all connections separately and store results for each
             case RequestMode.REQUEST_ALL_CONNECTIONS =>
-              connections.indices.map(x => {
-                RequestJsonAndParseValuesTask(
-                  parsingConfig = parsingConfig,
-                  taggingConfig = taggingConfig,
-                  connectionSupplier = () => connections(x),
-                  contextPath = contextPath,
-                  fixedParams = fixedParams,
-                  httpMethod = httpMethod.toString,
-                  successKeyName = s"$successKeyName-${x + 1}",
-                  failKeyName = s"$failKeyName-${x + 1}"
-                )
-              })
+              for {
+                httpClient <- ZIO.service[Client]
+                tasks <- ZIO.attempt({
+                  connections.indices.map(x => {
+                    RequestJsonAndParseValuesTask(
+                      parsingConfig = parsingConfig,
+                      taggingConfig = taggingConfig,
+                      connectionSupplier = () => connections(x),
+                      contextPath = contextPath,
+                      fixedParams = fixedParams,
+                      httpMethod = httpMethod.toString,
+                      successKeyName = s"$successKeyName-${x + 1}",
+                      failKeyName = s"$failKeyName-${x + 1}",
+                      httpClient = httpClient
+                    )
+                  })
+                })
+              } yield tasks
             // in case of distribute load mode, we distribute load over all connections,
             // thus only retrieve a single result for each request from any of the nodes
             case RequestMode.DISTRIBUTE_LOAD =>
@@ -118,26 +126,30 @@ object TaskJsonProtocol extends DefaultJsonProtocol {
                 val connectionIndex = random.between(0, connections.length)
                 connections(connectionIndex)
               }
-              Seq(
-                RequestJsonAndParseValuesTask(
-                  parsingConfig = parsingConfig,
-                  taggingConfig = taggingConfig,
-                  connectionSupplier = connectionSupplier,
-                  contextPath = contextPath,
-                  fixedParams = fixedParams,
-                  httpMethod = httpMethod.toString,
-                  successKeyName = successKeyName,
-                  failKeyName = failKeyName
-                )
-              )
-
+              for {
+                httpClient <- ZIO.service[Client]
+                tasks <- ZIO.attempt({
+                  Seq(
+                    RequestJsonAndParseValuesTask(
+                      parsingConfig = parsingConfig,
+                      taggingConfig = taggingConfig,
+                      connectionSupplier = connectionSupplier,
+                      contextPath = contextPath,
+                      fixedParams = fixedParams,
+                      httpMethod = httpMethod.toString,
+                      successKeyName = successKeyName,
+                      failKeyName = failKeyName,
+                      httpClient = httpClient
+                    )
+                  )
+                })
+              } yield tasks
           }
-
       }
     }
 
     // TODO: implement
-    override def write(obj: Seq[ZIOTask[WeaklyTypedMap[String]]]): JsValue = ???
+    override def write(obj: ZIO[Client, Throwable, Seq[ZIOTask[WeaklyTypedMap[String]]]]): JsValue = ???
 
     override def structDef: JsonStructDefs.StructDef[_] = {
       NestedFieldSeqStructDef(
@@ -225,12 +237,11 @@ object TaskJsonProtocol extends DefaultJsonProtocol {
     }
   }
 
-  implicit object MetricRowZIOTaskFormat extends JsonFormat[ZIOTask[MetricRow]] with WithStructDef {
-    override def read(json: JsValue): ZIOTask[MetricRow] = json match {
+  implicit object MetricRowZIOTaskFormat extends JsonFormat[ZIO[Any, Throwable, ZIOTask[MetricRow]]] with WithStructDef {
+    override def read(json: JsValue): ZIO[Any, Throwable, ZIOTask[MetricRow]] = json match {
       case spray.json.JsObject(fields) => fields(TYPE_KEY).convertTo[String] match {
         case METRIC_CALCULATION_TASK_TYPE =>
-          val parsedDataKeyName = fields(PARSED_DATA_KEY_NAME_KEY).convertTo[String]
-          val parsedDataKey = NamedClassTyped[ProcessingMessage[WeaklyTypedMap[String]]](parsedDataKeyName)
+          val parsedDataKey = fields(PARSED_DATA_KEY_NAME_KEY).convertTo[String]
           val requestTemplateKey = REQUEST_TEMPLATE_STORAGE_KEY.name
           val calculations = fields(CALCULATIONS_KEY).convertTo[Seq[Calculation[WeaklyTypedMap[String], Any]]]
           val metricTypeMapping = fields(METRIC_NAME_TO_AGGREGATION_TYPE_MAPPING_KEY).convertTo[Map[String, AggregationType]]
@@ -239,49 +250,55 @@ object TaskJsonProtocol extends DefaultJsonProtocol {
           val tagger: ProcessingMessage[MetricRow] => ProcessingMessage[MetricRow] = identity
           val successKeyName = fields.get(SUCCESS_KEY_NAME_KEY).map(x => x.convertTo[String]).getOrElse("metricsRow")
           val failKeyName = fields.get(FAIL_KEY_NAME_KEY).map(x => x.convertTo[String]).getOrElse("metricsCalculationFail")
-          TaskFactory.CalculateMetricsTask(
-            requestAndParseSuccessKey = parsedDataKey,
-            requestTemplateKey = requestTemplateKey,
-            calculations = calculations,
-            metricNameToAggregationTypeMapping = metricTypeMapping,
-            excludeParamsFromMetricRow = excludeParamsFromMetricRow,
-            tagger = tagger,
-            successKeyName = successKeyName,
-            failKeyName = failKeyName
-          )
+          ZIO.attempt({
+            TaskFactory.CalculateMetricsTask(
+              requestAndParseSuccessKey = parsedDataKey,
+              requestTemplateKey = requestTemplateKey,
+              calculations = calculations,
+              metricNameToAggregationTypeMapping = metricTypeMapping,
+              excludeParamsFromMetricRow = excludeParamsFromMetricRow,
+              tagger = tagger,
+              successKeyName = successKeyName,
+              failKeyName = failKeyName
+            )
+          })
         case MAP_COMPARISON_TASK_TYPE =>
-          val inputKey1 = NamedClassTyped[ProcessingMessage[WeaklyTypedMap[String]]](fields(INPUT_KEY_1).convertTo[String])
-          val inputKey2 = NamedClassTyped[ProcessingMessage[WeaklyTypedMap[String]]](fields(INPUT_KEY_2).convertTo[String])
+          val inputKey1 = fields(INPUT_KEY_1).convertTo[String]
+          val inputKey2 = fields(INPUT_KEY_2).convertTo[String]
           val twoInputCalculations = fields(CALCULATIONS_KEY).convertTo[Seq[TwoInCalculation[WeaklyTypedMap[String], WeaklyTypedMap[String], Any]]]
           val metricTypeMapping = fields(METRIC_NAME_TO_AGGREGATION_TYPE_MAPPING_KEY).convertTo[Map[String, AggregationType]]
           val excludeParamsFromMetricRow = fields(EXCLUDE_PARAMS_FROM_METRIC_ROW_KEY).convertTo[Seq[String]]
           val successKeyName = fields.get(SUCCESS_KEY_NAME_KEY).map(x => x.convertTo[String]).getOrElse("twoMapInputMetricsRow")
           val failKeyName = fields.get(FAIL_KEY_NAME_KEY).map(x => x.convertTo[String]).getOrElse("twoMapInputMetricsCalculationFail")
-          TaskFactory.TwoMapInputCalculation(
-            key1 = inputKey1,
-            key2 = inputKey2,
-            calculations = twoInputCalculations,
-            metricNameToAggregationTypeMapping = metricTypeMapping,
-            excludeParamsFromMetricRow = excludeParamsFromMetricRow,
-            successKeyName = successKeyName,
-            failKeyName = failKeyName
-          )
+          ZIO.attempt({
+            TaskFactory.TwoMapInputCalculation(
+              key1 = inputKey1,
+              key2 = inputKey2,
+              calculations = twoInputCalculations,
+              metricNameToAggregationTypeMapping = metricTypeMapping,
+              excludeParamsFromMetricRow = excludeParamsFromMetricRow,
+              successKeyName = successKeyName,
+              failKeyName = failKeyName
+            )
+          })
         case MERGE_METRIC_ROWS_TASK_TYPE =>
-          val inputKey1 = NamedClassTyped[ProcessingMessage[MetricRow]](fields(INPUT_KEY_1).convertTo[String])
-          val inputKey2 = NamedClassTyped[ProcessingMessage[MetricRow]](fields(INPUT_KEY_2).convertTo[String])
+          val inputKey1 = fields(INPUT_KEY_1).convertTo[String]
+          val inputKey2 = fields(INPUT_KEY_2).convertTo[String]
           val successKeyName = fields.get(SUCCESS_KEY_NAME_KEY).map(x => x.convertTo[String]).getOrElse("mergeTwoRowsResult")
           val failKeyName = fields.get(FAIL_KEY_NAME_KEY).map(x => x.convertTo[String]).getOrElse("failedToMergeRows")
-          MergeTwoMetricRows(
-            key1 = inputKey1,
-            key2 = inputKey2,
-            successKeyName = successKeyName,
-            failKeyName = failKeyName
-          )
+          ZIO.attempt({
+            MergeTwoMetricRows(
+              key1 = inputKey1,
+              key2 = inputKey2,
+              successKeyName = successKeyName,
+              failKeyName = failKeyName
+            )
+          })
       }
     }
 
     // TODO: implement
-    override def write(obj: ZIOTask[MetricRow]): JsValue = ???
+    override def write(obj: ZIO[Any, Throwable, ZIOTask[MetricRow]]): JsValue = ???
 
     override def structDef: StructDef[_] = {
       NestedFieldSeqStructDef(
@@ -413,18 +430,18 @@ object TaskJsonProtocol extends DefaultJsonProtocol {
     }
   }
 
-  implicit object ZIOTaskFormat extends JsonFormat[Seq[ZIOTask[_]]] with WithStructDef {
-    override def read(json: JsValue): Seq[ZIOTask[_]] = json match {
+  implicit object ZIOTaskFormat extends JsonFormat[ZIO[Client, Throwable, Seq[ZIOTask[_]]]] with WithStructDef {
+    override def read(json: JsValue): ZIO[Client, Throwable, Seq[ZIOTask[_]]] = json match {
       case spray.json.JsObject(fields) => fields(TYPE_KEY).convertTo[String] match {
         case REQUEST_AND_PARSE_VALUES_TASK_TYPE =>
           SeqTypedMapZIOTaskFormat.read(json)
         case e if Set(METRIC_CALCULATION_TASK_TYPE, MAP_COMPARISON_TASK_TYPE, MERGE_METRIC_ROWS_TASK_TYPE).contains(e) =>
-          Seq(MetricRowZIOTaskFormat.read(json))
+          MetricRowZIOTaskFormat.read(json).map(x => Seq(x))
       }
     }
 
     // TODO
-    override def write(obj: Seq[ZIOTask[_]]): JsValue = """{}""".toJson
+    override def write(obj: ZIO[Client, Throwable, Seq[ZIOTask[_]]]): JsValue = """{}""".toJson
 
     override def structDef: StructDef[_] = NestedFieldSeqStructDef(
       Seq(
@@ -445,7 +462,7 @@ object TaskJsonProtocol extends DefaultJsonProtocol {
       Seq(
         ConditionalFields(TYPE_KEY, Map(
           REQUEST_AND_PARSE_VALUES_TASK_TYPE -> SeqTypedMapZIOTaskFormat.structDef.asInstanceOf[NestedFieldSeqStructDef].conditionalFieldsSeq
-          .find(x => x.conditionFieldId == TYPE_KEY).map(x => x.fieldsForConditionValue(REQUEST_AND_PARSE_VALUES_TASK_TYPE)).getOrElse(Seq.empty),
+            .find(x => x.conditionFieldId == TYPE_KEY).map(x => x.fieldsForConditionValue(REQUEST_AND_PARSE_VALUES_TASK_TYPE)).getOrElse(Seq.empty),
           METRIC_CALCULATION_TASK_TYPE -> MetricRowZIOTaskFormat.structDef.asInstanceOf[NestedFieldSeqStructDef].conditionalFieldsSeq
             .find(x => x.conditionFieldId == TYPE_KEY).map(x => x.fieldsForConditionValue(METRIC_CALCULATION_TASK_TYPE)).getOrElse(Seq.empty),
           MAP_COMPARISON_TASK_TYPE -> MetricRowZIOTaskFormat.structDef.asInstanceOf[NestedFieldSeqStructDef].conditionalFieldsSeq

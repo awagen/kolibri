@@ -30,6 +30,7 @@ import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.JobS
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ProcessId
 import de.awagen.kolibri.storage.io.writer.Writers.Writer
 import spray.json._
+import zio.http.Client
 import zio.stream.ZStream
 import zio.{Task, ZIO}
 
@@ -46,9 +47,9 @@ case class FileStorageJobStateWriter(writer: Writer[String, String, _],
     })
   }
 
-  override def storeJobDefinitionAndBatches(jobDefinition: String, jobSubFolder: String): Task[Unit] = {
+  override def storeJobDefinitionAndBatches(jobDefinition: String, jobSubFolder: String): ZIO[Client, Throwable, Unit] = {
     for {
-      jobDef <- ZIO.attempt(jobDefinition.parseJson.convertTo[JobDefinition[_, _, _ <: WithCount]])
+      jobDef <- jobDefinition.parseJson.convertTo[ZIO[Client, Throwable, JobDefinition[_, _, _ <: WithCount]]]
       _ <- storeJobDefinition(jobDefinition, jobSubFolder)
       batchStorageResult <- storeBatchFilesForJob(jobDef, jobSubFolder)
     } yield batchStorageResult
