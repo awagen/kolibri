@@ -20,6 +20,7 @@ package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer
 import de.awagen.kolibri.fleet.zio.io.json.ProcessingStateJsonProtocol.processingStateFormat
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.ClaimReader.TaskTopics
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state._
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.utils.DateUtils
 import de.awagen.kolibri.fleet.zio.testutils.TestObjects.{claimWriter, fileWriterMock}
 import org.mockito.Mockito.{times, verify}
 import org.mockito.{ArgumentCaptor, ArgumentMatchers}
@@ -67,7 +68,7 @@ object FileStorageClaimWriterSpec extends ZIOSpecDefault {
           -1,
           0,
           "abc234",
-          ProcessingStateUtils.timeInMillisToFormattedTime(1703845333850L)
+          DateUtils.timeInMillisToFormattedTime(1703845333850L)
         )
       )
       for {

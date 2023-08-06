@@ -23,8 +23,8 @@ import de.awagen.kolibri.datatypes.stores.immutable.MetricRow
 import de.awagen.kolibri.datatypes.tagging.TagType
 import de.awagen.kolibri.datatypes.tagging.TagType.AGGREGATION
 import de.awagen.kolibri.datatypes.tagging.Tags.StringTag
+import de.awagen.kolibri.datatypes.types.JsonTypeCast
 import de.awagen.kolibri.datatypes.types.SerializableCallable.{SerializableConsumer, SerializableSupplier}
-import de.awagen.kolibri.datatypes.types.{ClassTyped, JsonTypeCast, NamedClassTyped}
 import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType
 import de.awagen.kolibri.definitions.directives.{ExpirePolicy, Resource, ResourceDirectives, ResourceType}
 import de.awagen.kolibri.definitions.domain.Connections.Connection
@@ -48,8 +48,8 @@ import de.awagen.kolibri.storage.io.reader.LocalResourceFileReader
 import org.mockito.ArgumentMatchers
 import org.mockito.Mockito.when
 import org.scalatestplus.mockito.MockitoSugar.mock
+import zio.ZIO
 import zio.http.{Client, Request, Response}
-import zio.{ZIO, ZLayer}
 
 object TaskTestObjects {
 
@@ -88,7 +88,7 @@ object TaskTestObjects {
     contextPath,
     fixedParams,
     "GET",
-    ZLayer.succeed(clientMock),
+    clientMock
   )
 
   def metricsCalculation: MetricsCalculation = {
@@ -100,7 +100,7 @@ object TaskTestObjects {
     )
   }
 
-  def calculateMetricsTask(responseKey: ClassTyped[ProcessingMessage[WeaklyTypedMap[String]]],
+  def calculateMetricsTask(responseKey: String,
                            resourceProviderInst: ResourceProvider) = {
     CalculateMetricsTask(
       requestAndParseSuccessKey = responseKey,
@@ -122,8 +122,8 @@ object TaskTestObjects {
   }
 
   def twoMapInputCalculationTask(): TwoMapInputCalculation = TwoMapInputCalculation(
-    key1 = NamedClassTyped[ProcessingMessage[WeaklyTypedMap[String]]]("input1"),
-    key2 = NamedClassTyped[ProcessingMessage[WeaklyTypedMap[String]]]("input2"),
+    key1 = "input1",
+    key2 = "input2",
     calculations = Seq(
       Calculations.FromTwoMapsCalculation(
         "jaccard",
@@ -139,8 +139,8 @@ object TaskTestObjects {
   )
 
   def mergeTwoMetricRowsTask(): MergeTwoMetricRows = MergeTwoMetricRows(
-    key1 = NamedClassTyped[ProcessingMessage[MetricRow]]("input1"),
-    key2 = NamedClassTyped[ProcessingMessage[MetricRow]]("input2"),
+    key1 = "input1",
+    key2 = "input2",
     successKeyName = "metricComparisonResult",
     failKeyName = "metricComparisonFailure"
   )

@@ -36,8 +36,9 @@ import de.awagen.kolibri.fleet.zio.utils.FuncUtils
 import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, Reader}
 import org.slf4j.{Logger, LoggerFactory}
 import spray.json._
+import zio.http.Client
 import zio.stream.ZStream
-import zio.{Task, URIO, ZIO}
+import zio.{Task, ZIO}
 
 import java.io.IOException
 
@@ -66,12 +67,12 @@ case class FileStorageJobStateReader(overviewReader: DataOverviewReader,
 
   import FileStorageJobStateReader._
 
-  override def loadJobDefinitionByJobDirectoryName(jobDirName: String): JobDefinitionLoadStatus = {
-    val jobDefPath = jobNameToJobDefinitionFile(jobDirName)
+  override def loadJobDefinitionByJobDirectoryName(jobDirName: String, isOpenJob: Boolean): JobDefinitionLoadStatus = {
+    val jobDefPath = jobNameToJobDefinitionFile(jobDirName, isOpenJob)
     val jobDefFileContent = reader.read(jobDefPath).mkString("\n")
     var jobState: JobDefinitionLoadStatus = InvalidJobDefinition
     try {
-      jobState = Loaded(jobDefFileContent.parseJson.convertTo[JobDefinition[_, _, _ <: WithCount]])
+      jobState = Loaded(jobDefFileContent.parseJson.convertTo[ZIO[Client, Throwable, JobDefinition[_, _, _ <: WithCount]]])
     }
     catch {
       case e: Exception => logger.warn("Casting file to job definition failed", e)
@@ -79,7 +80,7 @@ case class FileStorageJobStateReader(overviewReader: DataOverviewReader,
     jobState
   }
 
-  override def loadJobLevelDirectivesByJobDirectoryName(jobDirName: String): Set[JobDirective] = {
+  override def loadJobLevelDirectivesByJobDirectoryName(jobDirName: String, isOpenJob: Boolean): Set[JobDirective] = {
     val directory = JobTopLevel.folderForJob(jobDirName, isOpenJob = true)
     overviewReader.listResources(directory, x => x.split("/").last.startsWith(JobDirectives.JOB_DIRECTIVE_PREFIX))
       .map(x => x.split("/").last).map(JobDirective.parse).toSet
@@ -117,32 +118,31 @@ case class FileStorageJobStateReader(overviewReader: DataOverviewReader,
   /**
    * For given job folder name, retrieve current state of batch to processing state mapping
    */
-  private[this] def findBatchesForJobWithState(jobDirName: String): Map[Int, BatchProcessingStatus] = {
-    val openBatchMap = findBatchesInFolderAsState(OpenTasks.jobOpenTasksSubFolder(jobDirName, isOpenJob = true), BatchProcessingStates.Open)
-    val inProgressBatchMap = findInProgressBatches(InProgressTasks.jobTasksInProgressStateSubFolder(jobDirName, isOpenJob = true))
-    val doneBatchMap = findBatchesInFolderAsState(DoneTasks.jobDoneTasksSubFolder(jobDirName, isOpenJob = true), BatchProcessingStates.Done)
+  private def findBatchesForJobWithState(jobDirName: String, isOpenJob: Boolean) = {
+    val openBatchMap = findBatchesInFolderAsState(OpenTasks.jobOpenTasksSubFolder(jobDirName, isOpenJob = isOpenJob), BatchProcessingStates.Open)
+    val inProgressBatchMap = findInProgressBatches(InProgressTasks.jobTasksInProgressStateSubFolder(jobDirName, isOpenJob = isOpenJob))
+    val doneBatchMap = findBatchesInFolderAsState(DoneTasks.jobDoneTasksSubFolder(jobDirName, isOpenJob = isOpenJob), BatchProcessingStates.Done)
     openBatchMap ++ inProgressBatchMap ++ doneBatchMap
   }
 
   /**
    * Given a directory name, fetch info and wrap in JobStateSnapshot
    */
-  private[this] def retrieveOpenJobStateSnapshot(jobDirName: String): URIO[Any, Either[Throwable, JobStateSnapshot]] =
+  private def retrieveJobStateSnapshot(jobDirName: String, isOpenJob: Boolean) =
     (for {
       // job folder is combination of [jobId]_[timePlacedInMillis], here we decompose
       jobNameAndCreationTime <- ZIO.attempt(jobFolderNameToJobIdAndCreationTimeInMillis(jobDirName))
-      jobDefinition <- ZIO.attemptBlocking(loadJobDefinitionByJobDirectoryName(jobDirName))
+      jobDefinition <- ZIO.attemptBlocking(loadJobDefinitionByJobDirectoryName(jobDirName, isOpenJob))
         .flatMap({
           case InvalidJobDefinition => ZIO.fail(new RuntimeException("invalid job definition format"))
-          case Loaded(definition) => ZIO.succeed({
+          case Loaded(definition) =>
             // we replace the orginal job name in the file with the one given by the timestamped folder.
             // note that the job definition itself is not changed, so we will be able to pick it up in whatever
             // job folder it lies
-            definition.copy(jobName = jobDirName)
-          })
+            definition.map(x => x.copy(jobName = jobDirName))
         })
-      jobLevelDirectives <- ZIO.attemptBlocking(loadJobLevelDirectivesByJobDirectoryName(jobDirName))
-      batchStateMapping <- ZIO.attemptBlocking(findBatchesForJobWithState(jobDirName))
+      jobLevelDirectives <- ZIO.attemptBlocking(loadJobLevelDirectivesByJobDirectoryName(jobDirName, isOpenJob))
+      batchStateMapping <- ZIO.attemptBlocking(findBatchesForJobWithState(jobDirName, isOpenJob))
     } yield JobStateSnapshot(
       jobDirName,
       jobNameAndCreationTime._2,
@@ -151,15 +151,18 @@ case class FileStorageJobStateReader(overviewReader: DataOverviewReader,
       batchStateMapping
     )).either
 
-  private[this] def retrieveAllOpenJobStateSnapshots: ZIO[Any, IOException, Seq[JobStateSnapshot]] = {
-    val jobResults: ZIO[Any, IOException, Seq[Either[Throwable, JobStateSnapshot]]] = for {
+  private[this] def retrieveAllJobStateSnapshots(isOpenJob: Boolean): ZIO[Client, IOException, Seq[JobStateSnapshot]] = {
+    val jobResults: ZIO[Client, IOException, Seq[Either[Throwable, JobStateSnapshot]]] = for {
       // retrieve job folder names
-      jobFolderNames <- ZIO.attemptBlockingIO[Seq[String]](overviewReader.listResources(config.openJobBaseFolder, _ => true)
+      jobBaseFolder <- ZIO.succeed({
+        if (isOpenJob) config.openJobBaseFolder else config.doneJobBaseFolder
+      })
+      jobFolderNames <- ZIO.attemptBlockingIO[Seq[String]](overviewReader.listResources(jobBaseFolder, _ => true)
         .map(uri => uri.split("/").last).distinct)
-      _ <- ZIO.logDebug(s"job folder names: $jobFolderNames")
+      _ <- ZIO.logDebug(s"job folder names for isOpenJob '$isOpenJob': $jobFolderNames")
       // parse details out of the folder names (jobName_timeInMillis)
       jobStateSnapshots <- ZStream.fromIterable(jobFolderNames)
-        .mapZIO(folderName => retrieveOpenJobStateSnapshot(folderName))
+        .mapZIO(folderName => retrieveJobStateSnapshot(folderName, isOpenJob))
         .runFold[Seq[Either[Throwable, JobStateSnapshot]]](Seq.empty)((oldSeq, newElement) => oldSeq :+ newElement)
     } yield jobStateSnapshots
     jobResults.map(x => x.filter({
@@ -177,9 +180,9 @@ case class FileStorageJobStateReader(overviewReader: DataOverviewReader,
    * - set job level directives
    * - open jobs
    */
-  override def fetchOpenJobState: Task[OpenJobsSnapshot] = {
+  override def fetchJobState(isOpenJob: Boolean): ZIO[Client, Throwable, OpenJobsSnapshot] = {
     for {
-      jobStateSnapshots <- retrieveAllOpenJobStateSnapshots
+      jobStateSnapshots <- retrieveAllJobStateSnapshots(isOpenJob)
     } yield OpenJobsSnapshot(jobStateSnapshots.map(x => (x.jobId, x)).toMap)
 
   }

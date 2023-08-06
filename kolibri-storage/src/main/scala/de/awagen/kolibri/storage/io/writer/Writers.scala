@@ -21,6 +21,8 @@ object Writers {
 
     def moveDirectory(dirPath: String, toDirPath: String): Unit
 
+    def deleteDirectory(dirPath: String): Unit
+
   }
 
   /**

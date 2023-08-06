@@ -89,6 +89,12 @@ For more settings (such as minimal coverage criteria for build to succeed), see 
     Make sure that the config is set such that it contains the same product_ids that are used within
     the judgement file referenced in the job definition in case you want to test calculations of IR metrics.
 
+## Local docker-compose setup
+The docker-compose.yml can be found in the project root. Following setup is provided:
+- prometheus: http://localhost:9000
+- grafana: http://localhost:3000 (user = pw = "admin")
+- 2 kolibri-fleet-zio nodes , with metrics endpoints on http://localhost:8001/metrics, http://localhost:8002/metrics
+
 ## Notes on local execution with access to AWS account
 One way to enable container access to AWS account (e.g as for writing results into S3 bucket or similar),
 it is enough to mount the local directory where the credentials reside into the root .aws directory in the container,
@@ -160,6 +166,148 @@ For spray there is an additional library providing this functionality (https://g
 which seems to even provide more functionality. For this sake you can expect the play json lib will be removed in
 further iterations for the sake of only using spray or an alternative.
 
+## Endpoints: CORS (see also: https://zio.dev/zio-http/examples/advanced/middleware-cors-handling/)
+In the definition of the server endpoints (e.g object ServerEndpoints)
+you will find an example cors config. Given such a config, any
+endpoint can be made to apply this policy via suffixing it with ```@@ cors(corsConfig)```.
+
+## Endpoints and example responses
+- ```/health```: status endpoint. Returns some ignorable text. Important part here is the status code.
+- ```/resources/global```: returns a list of resources currently loaded (such as judgement lists and the like) on a (limited to single nodes) global level, e.g 
+without taking into account further assignments such as the job they are used for.
+Example response:
+```json
+{
+  "data": [
+    {
+      "resourceType": "JUDGEMENT_PROVIDER",
+      "identifier": "ident1"
+    }
+  ],
+  "errorMessage": ""
+}
+```
+
+- ```/jobs/open```: Returns list of currently non-completed jobs.
+Example response:
+```json
+{
+  "data": [
+    {
+      "batchCountPerState": {
+        "INPROGRESS_abc1": 5
+      },
+      "jobId": "taskSequenceTestJob2_1688830485073",
+      "jobLevelDirectives": [
+        {
+          "type": "PROCESS"
+        }
+      ],
+      "timePlacedInMillis": 1688830485073
+    }
+  ],
+  "errorMessage": ""
+}
+```
+
+- ```/jobs/batches```: Returns list of batches currently in process.
+```json
+{
+  "data": [
+    {
+      "processingInfo": {
+        "lastUpdate": "2023-07-09 00:56:22",
+        "numItemsProcessed": 129,
+        "numItemsTotal": 1000,
+        "processingNode": "abc1",
+        "processingStatus": "IN_PROGRESS"
+      },
+      "stateId": {
+        "batchNr": 0,
+        "jobId": "taskSequenceTestJob2_1688864117702"
+      }
+    },
+    {
+      "processingInfo": {
+        "lastUpdate": "2023-07-09 00:56:22",
+        "numItemsProcessed": 129,
+        "numItemsTotal": 1000,
+        "processingNode": "abc1",
+        "processingStatus": "IN_PROGRESS"
+      },
+      "stateId": {
+        "batchNr": 4,
+        "jobId": "taskSequenceTestJob2_1688864117702"
+      }
+    },
+    {
+      "processingInfo": {
+        "lastUpdate": "2023-07-09 00:56:22",
+        "numItemsProcessed": 129,
+        "numItemsTotal": 1000,
+        "processingNode": "abc1",
+        "processingStatus": "IN_PROGRESS"
+      },
+      "stateId": {
+        "batchNr": 3,
+        "jobId": "taskSequenceTestJob2_1688864117702"
+      }
+    },
+    {
+      "processingInfo": {
+        "lastUpdate": "2023-07-09 00:56:22",
+        "numItemsProcessed": 131,
+        "numItemsTotal": 1000,
+        "processingNode": "abc1",
+        "processingStatus": "IN_PROGRESS"
+      },
+      "stateId": {
+        "batchNr": 1,
+        "jobId": "taskSequenceTestJob2_1688864117702"
+      }
+    },
+    {
+      "processingInfo": {
+        "lastUpdate": "2023-07-09 00:56:22",
+        "numItemsProcessed": 128,
+        "numItemsTotal": 1000,
+        "processingNode": "abc1",
+        "processingStatus": "IN_PROGRESS"
+      },
+      "stateId": {
+        "batchNr": 2,
+        "jobId": "taskSequenceTestJob2_1688864117702"
+      }
+    }
+  ],
+  "errorMessage": ""
+}
+```
+
+- Deleting all job level directives for a given job (here: ```job_1688902767685```):
+```
+curl -XDELETE localhost:8001/jobs/job_1688902767685/directives/all
+```
+
+- Deleting a set of job level directives for a given job:
+```
+curl -XDELETE --header "Content-Type: application/json" --data '[{"type": "PROCESS" }]' localhost:8001/jobs/job_1688902767685/directives
+```
+
+- Adding list of job level directives for a given job to the persisted state:
+```
+curl -XPOST --header "Content-Type: application/json" --data '[{"type": "PROCESS" }]' localhost:8001/jobs/job_1688902767685/directives
+```
+
+In all the job level directive endpoints the response will be a 200 response code
+with simple ```true``` boolean value as data or an error code with respective
+error message. Example for successful call:
+```
+{"data":true,"errorMessage":""}
+```
+
+## Collecting Metrics
+- For a list of metric types provided by ZIO, see ```https://zio.dev/reference/observability/metrics/```
 
 
 ## License

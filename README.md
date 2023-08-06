@@ -22,17 +22,24 @@ Contains implementations for persistence, such as local as well as cloud-based r
 
 ## Kolibri Fleet
 The project was initially based on an Akka-based execution mechanism that allowed node clustering and 
-collaborative execution. This mode is phasing out at the moment, making room for a more loosely coupled mechanism,
+collaborative execution. This has been phased out to make room for a more loosely coupled mechanism,
 using the ZIO framework as processing engine, and based on storage-based definition of what needs to be done,
 while all connected nodes then negotiate who executes what in a claim-based mechanism.
-This opens nice, lean ways of quickly trying out stuff without the need to deploy: the mechanism does not differentiate
+For the last state including the akka-mode, refer to the release tag ```v0.1.5-fleet``` (the tag ```v0.1.5``` represents
+the code base when the akk-based execution mode was still within the kolibri-base project before the split into 
+```kolibri-definitinos``` and ```kolibri-fleet-akka```, while the same tag with ```-fleet``` suffix represents the 
+same functionality but split into above-mentioned sub-projects).
+From tag ```v2.0.0``` on the kolibri-fleet-akka subproject is removed and the documentation on the official doc-website 
+will move to a legacy-subfolder.
+The new mode opens nice, lean ways of quickly trying out stuff without the need to deploy: the mechanism does not differentiate
 between deployed nodes or nodes connected from anywhere (such as your local machine or those of your colleagues), 
 the only thing that matters is that those nodes have access to the persistence configured (such as an S3 bucket).
 
 Note that the official documentation (<https://awagen.github.io/kolibri>) has not yet been adjusted but 
-will be in the upcoming days.
+will be shortly. You will find the legacy-documentation of the akka-based project for now under
+<https://awagen.github.io/kolibri/kolibri-base/>.
 
-Let's have a look at the available fleet implementations.
+Let's have a look at kolibri-fleet-zio.
 
 ### Kolibri Fleet Zio
 Provides api to post new jobs, retrieve node and processing status, provide results to the kolibri-watch UI 
@@ -57,25 +64,6 @@ using the ZIO framework for the service implementation.
 Thus the integration into kolibri-watch is pending, yet expected to be available in a few days.
 The same holds for an example board for grafana such as in the example below for the akka-based project.
 
-
-### Kolibri Fleet Akka ```Deprecated```
-Provides cluster forming, webserver and worker nodes, and batch execution logic based on Akka.
-It can both be run in single node mode as well as in a cluster formation, distinguishing between http server
-and worker node roles (a single node can have both roles).
-
-The project contains the same functionality as in the 0.1.5 release of kolibri-base, yet due to the split
-into kolibri-definitions and kolibri-fleet-* projects the package structure has changed.
-This sub-project is the result of this splitting of the former kolibri-base project and purely focusses on
-akka-based job execution.
-This sub-module will shortly be removed in favor of kolibri-fleet-zio. They both do understand the same job
-definitions, so transitioning should be easy.
-
-Documentation (Legacy): <https://awagen.github.io/kolibri/kolibri-base/>
-
-Grafana Board:
-![KolibriBase Grafana Board](images/Kolibri-Dashboard-Grafana.png?raw=true "KolibriBase Grafana Board")
-
-
 ## Kolibri Watch
 Vue project providing a UI for Kolibri.
 The UI allows to start batch executions based on templates and watch the process for jobs overall
@@ -86,15 +74,36 @@ Future iterations will also include result / analysis visualizations.
 Documentation: <https://awagen.github.io/kolibri/kolibri-watch/>
 
 Status overview of cluster:
-![KolibriWatch Status](images/kolibri-watch-status.png?raw=true "KolibriWatch Status")
-
-Creating job definitions from templates and starting jobs:
-![KolibriWatch Templates](images/kolibri-watch-templates.png?raw=true "KolibriWatch Templates")
+![KolibriWatch Status](images/Status.png?raw=true "KolibriWatch Status")
 
 Finished job history:
-![KolibriWatch History](images/kolibri-watch-finished-jobs.png?raw=true "KolibriWatch Finished Jobs")
+![KolibriWatch History](images/History.png?raw=true "KolibriWatch Finished Jobs")
+
+There are two main options to specify the job to execute:
+
+**1) Creating job definitions from forms defined by structural definitions provided by the kolibri-fleet-zio API.**
+
+Without using a pre-fill of fields by some existing template:
+![KolibriWatch Templates](images/Create_Form_Empty.png?raw=true "KolibriWatch Form1")
+
+Using a pre-fill of fields by some existing template (here a small dummy example for a test job that only waits in each batch):
+![KolibriWatch Templates](images/Create_Form_SmallExample.png?raw=true "KolibriWatch Form2")
+
+A longer example:
+![KolibriWatch Templates](images/Create_Form_FillIn_Template.png?raw=true "KolibriWatch Form3")
 
 
+**2) Raw edit mode of existing templates**
+![KolibriWatch Templates](images/Create_Raw_Template_Edit.png?raw=true "KolibriWatch Form4")
+
+
+Jobs submitted via ```Run Template``` button will only be stored as open job and displayed on the ```Status``` page.
+To start any processing, we still need to place a processing directive, which can be done via ```Start``` button 
+besides the listed job. Note that processing can be stopped via ```Stop``` button when it is marked to be processed.
+Further, the ```Delete``` option removes the whole job definition, effectively stopping any execution on it.
+Note that there will be some delay between ```Stop / Delete``` and the node actually stopping the processing.
+
+  
 ## Subproject Handling
 - executing sbt commands on single projects: include the project sub-path
 in the command, such as ```sbt kolibri-definitions/compile```

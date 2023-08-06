@@ -17,8 +17,10 @@
 
 package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer
 
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.directives.JobDirectives.JobDirective
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ProcessId
-import zio.Task
+import zio.{Task, ZIO}
+import zio.http.Client
 
 trait JobStateWriter {
 
@@ -33,12 +35,35 @@ trait JobStateWriter {
    * After writing job definition and batches, write PROCESS directive into
    * folder to indicate the job is up for processing.
    */
-  def storeJobDefinitionAndBatches(jobDefinition: String, jobSubFolder: String): Task[Unit]
+  def storeJobDefinitionAndBatches(jobDefinition: String, jobSubFolder: String): ZIO[Client, Throwable, Unit]
+
+  /**
+   * Remove a whole folder corresponding to a particular jobId.
+   * Depending on the value of isOpenJob, the particular folder will
+   * either be deleted in the current 'open' job folder or in the historical
+   * 'done' job folder.
+   */
+  def removeJobFolder(jobId: String, isOpenJob: Boolean): Task[Unit]
 
   /**
    * Persist batch as in "open" state, e.g to be claimed by any node.
    */
   def writeBatchToOpen(processId: ProcessId): Task[Unit]
+
+  /**
+   * Remove all directives currently present for the jobId
+   */
+  def removeAllDirectives(jobId: String): Task[Unit]
+
+  /**
+   * Remove passed directives for the given jobId
+   */
+  def removeDirectives(jobId: String, directives: Set[JobDirective]): Task[Unit]
+
+  /**
+   * Write passed directives for the given jobId
+   */
+  def writeDirectives(jobId: String, directives: Set[JobDirective]): Task[Unit]
 
 
 }

@@ -17,10 +17,13 @@
 
 package de.awagen.kolibri.fleet.zio.metrics
 
-import zio.{Task, ZIO}
+import de.awagen.kolibri.fleet.zio.config.AppProperties
+import zio.metrics.MetricKeyType.Counter
+import zio.{Chunk, Task, ZIO}
 import zio.metrics._
 
 import java.lang.management.ManagementFactory
+import java.time.temporal.ChronoUnit
 
 
 object Metrics {
@@ -135,8 +138,59 @@ object Metrics {
       }).map(_ / (1024.0 * 1024.0))
     }
 
+    /**
+     * Counter for elements flowing through certain stage.
+     */
+    def countFlowElements(stage: String, in: Boolean): Metric[Counter, Any, MetricState.Counter] =
+      Metric.counterInt("countFlowElements").fromConst(1)
+        .tagged(
+          MetricLabel("stage", stage),
+          MetricLabel("in", in.toString),
+          MetricLabel("node", AppProperties.config.node_hash)
+        )
 
+    /**
+     * Counter for requests to API endpoints provided by kolibri-fleet service.
+     */
+    def countAPIRequests(method: String, handler: String): Metric[Counter, Any, MetricState.Counter] =
+      Metric.counterInt("countApiRequests").fromConst(1)
+        .tagged(
+          MetricLabel("method", method),
+          MetricLabel("handler", handler),
+          MetricLabel("node", AppProperties.config.node_hash)
+        )
 
+    def methodInvocations(method: String): Metric[Counter, Any, MetricState.Counter] =
+      Metric.counterInt("methodInvocations").fromConst(1)
+        .tagged(
+          MetricLabel("method", method),
+          MetricLabel("node", AppProperties.config.node_hash)
+        )
+
+    /**
+     * Counter for client requests to external services.
+     */
+    def countExternalRequests(method: String, host: String, contextPath: String, responseCode: Int): Metric[Counter, Any, MetricState.Counter] =
+      Metric.counterInt("countClientRequests").fromConst(1)
+        .tagged(
+          MetricLabel("method", method),
+          MetricLabel("host", host),
+          MetricLabel("contextPath", contextPath),
+          MetricLabel("responseCode", responseCode.toString),
+          MetricLabel("node", AppProperties.config.node_hash)
+        )
+
+    def externalRequestTimer(method: String, host: String, contextPath: String): Metric[MetricKeyType.Histogram, zio.Duration, MetricState.Histogram] =
+      Metric.timer(
+        name = "externalRequestTimer",
+        chronoUnit = ChronoUnit.MILLIS,
+        boundaries = Chunk.fromIterable(Seq(2.0, 5.0)) ++ Chunk.iterate(10.0, 100)(_ + 20.0)
+      ).tagged(
+        MetricLabel("method", method),
+        MetricLabel("host", host),
+        MetricLabel("contextPath", contextPath),
+        MetricLabel("node", AppProperties.config.node_hash)
+      )
   }
 
 

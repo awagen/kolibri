@@ -17,19 +17,17 @@
 
 package de.awagen.kolibri.fleet.zio.execution
 
-import de.awagen.kolibri.datatypes.immutable.stores.TypeTaggedMap
-import de.awagen.kolibri.datatypes.types.{ClassTyped, NamedClassTyped}
+import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.definitions.processing.ProcessingMessages._
-import de.awagen.kolibri.definitions.processing.failure.TaskFailType
 import zio.{Task, ZIO}
 
 object ZIOTasks {
 
   object SimpleWaitTask {
 
-    val successKey: ClassTyped[ProcessingMessage[Unit]] = NamedClassTyped[ProcessingMessage[Unit]]("DONE_WAITING")
+    val successKey: String = "DONE_WAITING"
 
-    val failKey: ClassTyped[ProcessingMessage[TaskFailType.TaskFailType]] = NamedClassTyped[ProcessingMessage[TaskFailType.TaskFailType]]("FAILED_WAITING")
+    val failKey: String = "FAILED_WAITING"
 
   }
 
@@ -38,15 +36,16 @@ object ZIOTasks {
    * time
    */
   case class SimpleWaitTask(waitTimeInMillis: Long) extends ZIOTask[Unit] {
-    override def prerequisiteKeys: Seq[ClassTyped[Any]] = Seq.empty
+    override def prerequisiteKeys: Seq[String] = Seq.empty
 
-    override def successKey: ClassTyped[ProcessingMessage[Unit]] = SimpleWaitTask.successKey
+    override def successKey: String = "DONE_WAITING"
 
-    override def failKey: ClassTyped[ProcessingMessage[TaskFailType.TaskFailType]] = SimpleWaitTask.failKey
+    override def failKey: String = "FAILED_WAITING"
 
-    override def task(map: TypeTaggedMap): Task[TypeTaggedMap] = ZIO.attemptBlocking({
+    override def task(map: WeaklyTypedMap[String]): Task[WeaklyTypedMap[String]] = ZIO.attemptBlocking({
       Thread.sleep(waitTimeInMillis)
-      map.put(successKey, Corn(()))._2
+      map.put(successKey, Corn(()))
+      map
     })
   }
 

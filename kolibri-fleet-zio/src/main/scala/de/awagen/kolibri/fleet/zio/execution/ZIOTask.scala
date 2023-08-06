@@ -17,11 +17,8 @@
 
 package de.awagen.kolibri.fleet.zio.execution
 
-import de.awagen.kolibri.datatypes.immutable.stores.TypeTaggedMap
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
-import de.awagen.kolibri.datatypes.types.ClassTyped
-import de.awagen.kolibri.definitions.processing.ProcessingMessages.ProcessingMessage
-import de.awagen.kolibri.definitions.processing.failure.TaskFailType.TaskFailType
+import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 
 
 /**
@@ -34,16 +31,16 @@ import de.awagen.kolibri.definitions.processing.failure.TaskFailType.TaskFailTyp
  */
 trait ZIOTask[+T] extends KolibriSerializable {
 
-  def prerequisiteKeys: Seq[ClassTyped[Any]]
+  def prerequisiteKeys: Seq[String]
 
-  def getMissingPrerequisiteKeys(map: TypeTaggedMap): Seq[ClassTyped[_]] = prerequisiteKeys
+  def getMissingPrerequisiteKeys(map: WeaklyTypedMap[String]): Seq[String] = prerequisiteKeys
     .filter(x => !map.keySet.contains(x))
 
-  def successKey: ClassTyped[ProcessingMessage[T]]
+  def successKey: String
 
-  def failKey: ClassTyped[ProcessingMessage[TaskFailType]]
+  def failKey: String
 
-  def task(map: TypeTaggedMap): zio.Task[TypeTaggedMap]
+  def task(map: WeaklyTypedMap[String]): zio.Task[WeaklyTypedMap[String]]
 
 
 

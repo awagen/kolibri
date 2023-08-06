@@ -20,7 +20,8 @@ package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.directives.JobDirectives.JobDirective
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.JobStates.OpenJobsSnapshot
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.JobDefinitionLoadStates.JobDefinitionLoadStatus
-import zio.Task
+import zio.{Task, ZIO}
+import zio.http.Client
 
 
 /**
@@ -36,7 +37,7 @@ trait JobStateReader {
    * - set job level directives
    * - open jobs
    */
-  def fetchOpenJobState: Task[OpenJobsSnapshot]
+  def fetchJobState(isOpenJob: Boolean): ZIO[Client, Throwable, OpenJobsSnapshot]
 
   /**
    * Only find the jobIds of open (unfinished) jobs
@@ -47,11 +48,11 @@ trait JobStateReader {
    * Load job definition for a given job directory name (looks it up in the respective open
    * job folder)
    */
-  def loadJobDefinitionByJobDirectoryName(jobDirName: String): JobDefinitionLoadStatus
+  def loadJobDefinitionByJobDirectoryName(jobDirName: String, isOpenJob: Boolean): JobDefinitionLoadStatus
 
   /**
    * Get job level directives for a given directory name
    */
-  def loadJobLevelDirectivesByJobDirectoryName(jobDirName: String): Set[JobDirective]
+  def loadJobLevelDirectivesByJobDirectoryName(jobDirName: String, isOpenJob: Boolean): Set[JobDirective]
 
 }

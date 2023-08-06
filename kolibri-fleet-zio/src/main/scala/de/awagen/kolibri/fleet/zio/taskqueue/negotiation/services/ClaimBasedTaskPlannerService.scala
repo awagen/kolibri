@@ -32,6 +32,7 @@ import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ClaimStatus.Clai
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.ClaimStatus.ClaimVerifyStatus
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.JobDefinitionLoadStates._
 import zio.ZIO
+import zio.http.Client
 import zio.stream.{ZSink, ZStream}
 
 object ClaimBasedTaskPlannerService {
@@ -156,7 +157,7 @@ case class ClaimBasedTaskPlannerService(claimReader: ClaimReader,
    * - Unknown: do nothing
    *
    */
-  private[services] def exerciseClaim(claim: Task): zio.Task[Unit] = {
+  private[services] def exerciseClaim(claim: Task): ZIO[Client, Throwable, Unit] = {
     claim.taskTopic match {
       case TaskTopics.JobTaskProcessingTask =>
         for {
@@ -183,14 +184,15 @@ case class ClaimBasedTaskPlannerService(claimReader: ClaimReader,
       case TaskTopics.JobWrapUpTask =>
         for {
           // first execute any wrapUp actions if defined
-          wrapUpActions <- ZIO.attemptBlockingIO({
-            jobStateReader.loadJobDefinitionByJobDirectoryName(claim.jobId) match {
-              case Loaded(jobDefinition) =>
-                jobDefinition.wrapUpActions
-              case InvalidJobDefinition =>
-                Seq.empty[Execution[Any]]
-            }
+          jobDefLoadStatus <- ZIO.attemptBlockingIO({
+            jobStateReader.loadJobDefinitionByJobDirectoryName(claim.jobId, isOpenJob = true)
           })
+          wrapUpActions <- jobDefLoadStatus match {
+              case Loaded(jobDefinition) =>
+                jobDefinition.map(x => x.wrapUpActions)
+              case InvalidJobDefinition =>
+                ZIO.succeed(Seq.empty[Execution[Any]])
+            }
           // try to execute all found actions
           _ <- ZStream.fromIterable(wrapUpActions)
             .mapZIO(action => ZIO.fromEither(action.execute))
@@ -212,7 +214,7 @@ case class ClaimBasedTaskPlannerService(claimReader: ClaimReader,
   /**
    * Exercise the given claims. This usually involves changes to the persisted processing state.
    */
-  private[services] def exerciseClaims(claims: Seq[Task]): zio.Task[Unit] = {
+  private[services] def exerciseClaims(claims: Seq[Task]): ZIO[Client, Throwable, Unit] = {
     ZStream.fromIterable(claims).foreach(claimInfo => exerciseClaim(claimInfo))
   }
 
@@ -321,9 +323,9 @@ case class ClaimBasedTaskPlannerService(claimReader: ClaimReader,
    * 1 - verify existing claims
    * 2 - exercise the tasks that the node claimed successfully
    */
-  private[services] def manageExistingClaims(taskTopic: TaskTopic): zio.Task[Unit] = {
+  private[services] def manageExistingClaims(taskTopic: TaskTopic): ZIO[Client, Throwable, Unit] = {
     for {
-      openJobsSnapshot <- jobStateReader.fetchOpenJobState
+      openJobsSnapshot <- jobStateReader.fetchJobState(true)
       // housekeeping
       remainingClaimsByCurrentNode <- cleanupClaimsAndReturnRemaining(openJobsSnapshot, taskTopic)
       // verifying remaining claims by this node
@@ -342,7 +344,7 @@ case class ClaimBasedTaskPlannerService(claimReader: ClaimReader,
    * since otherwise we would execute a claim in the same run the claim was created, which fucks up the round-based
    * logic
    */
-  private[services] def findClaimTopicsAndManageExistingClaims(topics: Set[TaskTopic]): zio.Task[Unit] = {
+  private[services] def findClaimTopicsAndManageExistingClaims(topics: Set[TaskTopic]): ZIO[Client, Throwable, Unit] = {
     for {
       _ <- ZStream.fromIterable(topics)
         .foreach(topic => manageExistingClaims(topic))
@@ -352,7 +354,7 @@ case class ClaimBasedTaskPlannerService(claimReader: ClaimReader,
   /**
    * Handles existing claims and files new ones in case there is demand to file more
    */
-  override def planTasks(tasks: Seq[Task]): zio.Task[Unit] = {
+  override def planTasks(tasks: Seq[Task]): ZIO[Client, Throwable, Unit] = {
     for {
       // find all topics to handle and take measures based on existing claims
       _ <- ZIO.logDebug(s"""Planning open tasks:\n ${tasks.mkString("\n")}""")

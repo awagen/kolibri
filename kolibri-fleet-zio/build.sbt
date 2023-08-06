@@ -10,7 +10,7 @@ val zioJsonVersion = "0.5.0"
 val zioCacheVersion = "0.2.3"
 val zioConfigVersion = "4.0.0-RC14"
 val zioLoggingVersion = "2.1.12"
-val zioHttpVersion = "3.0.0-RC1"
+val zioHttpVersion = "3.0.0-RC2"
 val zioMetricsConnectorsVersion = "2.0.8"
 val mockitoVersion = "3.2.10.0"
 

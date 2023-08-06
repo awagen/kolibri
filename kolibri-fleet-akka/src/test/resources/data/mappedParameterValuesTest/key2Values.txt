@@ -1,3 +1,0 @@
-key2Value1
-key2Value2
-key2Value3

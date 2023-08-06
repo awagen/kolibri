@@ -5,8 +5,10 @@
     <thead>
     <tr>
       <th>Job Name</th>
+      <th>BatchNr</th>
+      <th>LastUpdate</th>
+      <th>Status</th>
       <th>Node</th>
-      <th>Batch ID</th>
       <th>Elements Processed</th>
       <th>Total Elements</th>
       <th>Progress</th>
@@ -14,15 +16,17 @@
     </thead>
     <tbody>
     <!-- list all running jobs -->
-    <tr v-for="job in runningBatchStates">
-      <td>{{job.jobId}}</td>
-      <td>{{job.node}}</td>
-      <td>{{job.batchId}}</td>
-      <td>{{job.totalProcessed}}</td>
-      <td>{{job.totalToProcess}}</td>
+    <tr v-for="batch in runningBatchStates">
+      <td>{{batch.jobId}}</td>
+      <td>{{batch.batchNr}}</td>
+      <td>{{batch.lastUpdate}}</td>
+      <td>{{batch.processingStatus}}</td>
+      <td>{{batch.processingNode}}</td>
+      <td>{{batch.numItemsProcessed}}</td>
+      <td>{{batch.numItemsTotal}}</td>
       <td>
         <div class="bar bar-sm">
-          <div class="bar-item" role="progressbar" :style="{'width': job.progress + '%'}" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"></div>
+          <div class="bar-item" role="progressbar" :style="{'width': batch.progress + '%'}" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"></div>
         </div>
       </td>
     </tr>
@@ -47,10 +51,21 @@ export default {
       return axios
           .get(props.batchRetrievalUrl)
           .then(response => {
-            runningBatchStates.value =  response.data
-            runningBatchStates.value.forEach(function (item, index) {
-              item["progress"] = Math.round((item["totalProcessed"] / item["totalToProcess"]) * 100)
-            });
+            let result = response.data.data.map(batch => {
+              let numItemsProcessed = batch.processingInfo.numItemsProcessed
+              let numItemsTotal = batch.processingInfo.numItemsTotal
+              return {
+                "jobId": batch.stateId.jobId,
+                "batchNr": batch.stateId.batchNr,
+                "lastUpdate": batch.processingInfo.lastUpdate,
+                "numItemsProcessed": numItemsProcessed,
+                "numItemsTotal": numItemsTotal,
+                "processingNode":  batch.processingInfo.processingNode,
+                "processingStatus": batch.processingInfo.processingStatus,
+                "progress": Math.round(( numItemsProcessed / numItemsTotal) * 100).toFixed(2)
+              }
+            })
+            runningBatchStates.value = result
           }).catch(_ => {
             runningBatchStates.value = []
           })

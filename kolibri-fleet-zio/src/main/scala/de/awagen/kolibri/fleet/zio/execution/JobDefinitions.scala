@@ -19,13 +19,11 @@ package de.awagen.kolibri.fleet.zio.execution
 
 import de.awagen.kolibri.datatypes.collections.generators.{ByFunctionNrLimitedIndexedGenerator, IndexedGenerator}
 import de.awagen.kolibri.datatypes.tagging.{TaggedWithType, Tags}
-import de.awagen.kolibri.datatypes.types.ClassTyped
 import de.awagen.kolibri.datatypes.types.Types.WithCount
 import de.awagen.kolibri.datatypes.values.DataPoint
 import de.awagen.kolibri.datatypes.values.aggregation.immutable.Aggregators.Aggregator
 import de.awagen.kolibri.definitions.directives.ResourceDirectives.ResourceDirective
 import de.awagen.kolibri.definitions.domain.jobdefinitions.Batch
-import de.awagen.kolibri.definitions.processing.ProcessingMessages.ProcessingMessage
 import de.awagen.kolibri.definitions.processing.execution.functions.Execution
 import de.awagen.kolibri.fleet.zio.execution.ZIOTasks.SimpleWaitTask
 import de.awagen.kolibri.storage.io.writer.Writers.Writer
@@ -41,6 +39,8 @@ object JobDefinitions {
       override def copyDirectory(dirPath: String, toDirPath: String): Unit = ()
 
       override def moveDirectory(dirPath: String, toDirPath: String): Unit = ()
+
+      override def deleteDirectory(dirPath: String): Unit = ()
     }
   }
 
@@ -50,7 +50,7 @@ object JobDefinitions {
    * The aggregator always takes a ProcessingMessage, which provides means to selectively tag
    * results and - depending on the chosen aggregator - allows aggregating via distinct tag (or group of tags)
    */
-  case class BatchAggregationInfo[V, W](successKey: ClassTyped[ProcessingMessage[V]],
+  case class BatchAggregationInfo[V, W](successKey: String,
                                         batchAggregatorSupplier: () => Aggregator[TaggedWithType with DataPoint[V], W],
                                         writer: Writer[W, Tags.Tag, Any] = doNothingWriter[W])
 

@@ -17,10 +17,12 @@
 
 package de.awagen.kolibri.fleet.zio.execution
 
-import de.awagen.kolibri.datatypes.immutable.stores.TypedMapStore
+import de.awagen.kolibri.datatypes.mutable.stores.BaseWeaklyTypedMap
 import de.awagen.kolibri.fleet.zio.execution.ZIOTasks.SimpleWaitTask
 import zio._
 import zio.test._
+
+import scala.collection.mutable
 
 
 object ZIOSimpleTaskExecutionSpec extends ZIOSpecDefault {
@@ -30,7 +32,8 @@ object ZIOSimpleTaskExecutionSpec extends ZIOSpecDefault {
     test("correctly execute tasks") {
       // given
       val task: ZIOTask[Unit] = SimpleWaitTask(50)
-      val taskExecution: ZIOSimpleTaskExecution[Unit] = ZIOSimpleTaskExecution(TypedMapStore.apply(Map.empty), Seq(task))
+      val map = BaseWeaklyTypedMap(mutable.Map.empty)
+      val taskExecution: ZIOSimpleTaskExecution[Unit] = ZIOSimpleTaskExecution(map, Seq(task))
       // when, then
       for {
         result <- taskExecution.processAllTasks

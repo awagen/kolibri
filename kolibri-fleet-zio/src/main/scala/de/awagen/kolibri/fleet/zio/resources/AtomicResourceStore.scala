@@ -20,9 +20,12 @@ package de.awagen.kolibri.fleet.zio.resources
 import de.awagen.kolibri.datatypes.AtomicMapPromiseStore
 import de.awagen.kolibri.definitions.directives.Resource
 import de.awagen.kolibri.definitions.directives.ResourceDirectives.ResourceDirective
+import org.slf4j.{Logger, LoggerFactory}
 
 
 case class AtomicResourceStore() extends AtomicMapPromiseStore[Resource[Any], Any, ResourceDirective[Any]] {
+
+  private val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
   /**
    * Function to generate value for a passed key. Note that ensuring thread-safety and only single executions
@@ -32,7 +35,10 @@ case class AtomicResourceStore() extends AtomicMapPromiseStore[Resource[Any], An
    * @param key key value
    * @return generated value
    */
-  override def calculateValue(key: ResourceDirective[Any]): Any = key.getResource
+  override def calculateValue(key: ResourceDirective[Any]): Any = {
+    logger.info(s"Calculating resource: ${key.resource.identifier}")
+    key.getResource
+  }
 
 
   override def retrievalObjectToKeyFunc: ResourceDirective[Any] => Resource[Any] = x => x.resource

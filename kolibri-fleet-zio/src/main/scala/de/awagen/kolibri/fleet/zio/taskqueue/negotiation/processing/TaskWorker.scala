@@ -17,10 +17,9 @@
 
 package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.processing
 
-import de.awagen.kolibri.datatypes.immutable.stores.TypedMapStore
+import de.awagen.kolibri.datatypes.mutable.stores.{BaseWeaklyTypedMap, WeaklyTypedMap}
 import de.awagen.kolibri.datatypes.tagging.Tags.StringTag
 import de.awagen.kolibri.datatypes.tagging.{TaggedWithType, Tags}
-import de.awagen.kolibri.datatypes.types.{ClassTyped, NamedClassTyped}
 import de.awagen.kolibri.datatypes.types.Types.WithCount
 import de.awagen.kolibri.datatypes.values.DataPoint
 import de.awagen.kolibri.datatypes.values.aggregation.immutable.Aggregators._
@@ -31,7 +30,8 @@ import de.awagen.kolibri.definitions.processing.failure.TaskFailType
 import de.awagen.kolibri.definitions.processing.failure.TaskFailType.FailedByException
 import de.awagen.kolibri.fleet.zio.config.AppProperties.config.maxParallelItemsPerBatch
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobBatch
-import de.awagen.kolibri.fleet.zio.execution.{Failed, ZIOSimpleTaskExecution}
+import de.awagen.kolibri.fleet.zio.execution.{ExecutionState, Failed, ZIOSimpleTaskExecution}
+import de.awagen.kolibri.fleet.zio.metrics.Metrics
 import de.awagen.kolibri.fleet.zio.resources.NodeResourceProvider
 import de.awagen.kolibri.storage.io.writer.Writers
 import zio.stream.ZStream
@@ -46,9 +46,6 @@ import scala.reflect.runtime.universe._
  * state so far and the Fiber executing it. This allows picking intermediate states / info about processing
  * state from aggregator and interruption of the processing, e.g in case the job was marked to be stopped
  * on the current instance (or all).
- *
- * TODO: might wanna make it a Cancellable, e.g include some atomic reference to some "processing"-flag,
- * which can be used as killswitch (e.g setting to false)
  */
 object TaskWorker extends Worker {
 
@@ -73,21 +70,21 @@ object TaskWorker extends Worker {
   override def work[T: TypeTag, V: TypeTag, W <: WithCount](jobBatch: JobBatch[T, V, W])(implicit tag: TypeTag[W]): Task[(Ref[Aggregator[TaggedWithType with DataPoint[V], W]], Fiber.Runtime[Throwable, Unit])] = {
     val aggregator: Aggregator[TaggedWithType with DataPoint[V], W] = jobBatch.job.aggregationInfo.batchAggregatorSupplier()
     val batchResultWriter: Writers.Writer[W, Tags.Tag, Any] = jobBatch.job.aggregationInfo.writer
-    val successKey: ClassTyped[ProcessingMessage[V]] = jobBatch.job.aggregationInfo.successKey
-    for {
-      _ <- prepareGlobalResources(jobBatch.job.resourceSetup)
-      aggregatorRef <- Ref.make(aggregator)
-      computeResultFiber <- ZStream.fromIterable(jobBatch.job.batches.get(jobBatch.batchNr).get.data)
+    val successKey: String = jobBatch.job.aggregationInfo.successKey
+
+    val resultComputeEffect: ZStream[Any, Throwable, Either[Throwable, (WeaklyTypedMap[String], Seq[ExecutionState])]] = for {
+      computeResult <- ZStream.fromIterable(jobBatch.job.batches.get(jobBatch.batchNr).get.data)
         .mapZIOParUnordered(maxParallelItemsPerBatch)(dataPoint =>
           for {
             _ <- ZIO.logDebug(s"trying to process data point: $dataPoint")
-            dataKey <- ZIO.succeed(NamedClassTyped[T](INITIAL_DATA_KEY))
             mapStore <- ZIO.attempt({
-              TypedMapStore(Map(dataKey -> dataPoint))
+              val map = BaseWeaklyTypedMap.empty
+              map.put(INITIAL_DATA_KEY, dataPoint)
+              map
             })
             _ <- ZIO.logDebug(s"value map: $mapStore")
-            _ <- ZIO.logDebug(s"value under data key: ${mapStore.get(dataKey)}")
-            _ <- ZIO.when(mapStore.get(dataKey).isEmpty)(
+            _ <- ZIO.logDebug(s"value under data key: ${mapStore.get[T](INITIAL_DATA_KEY)}")
+            _ <- ZIO.when(mapStore.get[T](INITIAL_DATA_KEY).isEmpty)(
               ZIO.logWarning(s"There is a type mismatch of data point and data key, processing the element '$dataPoint' will not work")
             )
             result <- ZIOSimpleTaskExecution(
@@ -100,7 +97,17 @@ object TaskWorker extends Worker {
               .processAllTasks.either
           } yield result
         )
-        .mapZIO(element =>
+    } yield computeResult
+
+    val computeAndAggregateEffect = for {
+      aggregatorRef <- Ref.make(aggregator)
+      // effect for actual processing of items
+      computeResultFiber <- resultComputeEffect
+        .mapZIO(element => {
+          ZIO.succeed(element) @@ Metrics.CalculationsWithMetrics.countFlowElements("requestResultsQueue", in = false)
+        })
+        // aggregation step
+        .mapZIOParUnordered(8)(element =>
           for {
             // aggregate update step
             _ <- element match {
@@ -116,18 +123,18 @@ object TaskWorker extends Worker {
                     _ <- ZIO.ifZIO(ZIO.succeed(failedTask.nonEmpty))(
                       // if any of the tasks failed, we aggregate it is part of the failure aggregation
                       onTrue = {
-                        ZIO.logWarning(s"Aggregating fail item: ${failedTask.get.taskFailType}") *>
+                        ZIO.logDebug(s"Aggregating fail item: ${failedTask.get.taskFailType}") *>
                           aggregatorRef.update(x => x.add(BadCorn(failedTask.get.taskFailType)))
                       },
                       // if nothing failed, we just normally consume the result
                       onFalse = {
-                        val computedValueOpt: Option[ProcessingMessage[V]] = v._1.get(successKey)
+                        val computedValueOpt: Option[ProcessingMessage[V]] = v._1.get[ProcessingMessage[V]](successKey)
                         val aggregationEffect: UIO[Unit] = computedValueOpt match {
                           case Some(value) => aggregatorRef.update(x => x.add(value)) *>
                             ZIO.logDebug(s"Aggregating success: ${v._1.get(successKey)}")
                           case None =>
                             ZIO.logWarning(s"no fail key, but missing success key '$successKey'") *>
-                              aggregatorRef.update(x => x.add(ProcessingMessages.BadCorn(TaskFailType.MissingResultKey(successKey))))
+                              aggregatorRef.update(x => x.add(ProcessingMessages.BadCorn(TaskFailType.FailedByException(new RuntimeException(s"Missing result key: $successKey")))))
                         }
                         aggregationEffect
                       }
@@ -152,6 +159,28 @@ object TaskWorker extends Worker {
         )
         .fork
     } yield (aggregatorRef, computeResultFiber)
+
+    // if this fails, we cannot continue properly, thus we can return the aggregator with the proper fail type and a finished Fiber.Runtime
+    val resourceSetupEffect = prepareGlobalResources(jobBatch.job.resourceSetup).either
+
+    // two-step effect: setting up global resources, if successful compute and aggregate results
+    for {
+      resourceSetupResult <- resourceSetupEffect
+      result <- resourceSetupResult match {
+        case Left(throwable) =>
+          ZIO.logWarning(s"""Loading global resources for batch failed, terminating further batch execution for job '${jobBatch.job.jobName}' and batch '${jobBatch.batchNr}'\nMsg: ${throwable.getMessage}\nTrace:${throwable.getStackTrace.mkString("\n")}""") *>
+            (for {
+              aggregatorRef <- Ref.make(aggregator)
+              // create a fiber and terminate it so we can pass it within the expected return type that will
+              // indicate finish state for the batch
+              fiber <- ZIO.never.fork
+              _ <- fiber.interrupt
+            } yield (aggregatorRef, fiber))
+        case Right(()) =>
+          computeAndAggregateEffect
+      }
+    } yield result
+
   }
 
 }

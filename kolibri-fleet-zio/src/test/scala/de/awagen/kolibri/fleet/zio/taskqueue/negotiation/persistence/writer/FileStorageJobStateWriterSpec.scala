@@ -21,7 +21,9 @@ import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer.File
 import de.awagen.kolibri.fleet.zio.testutils.TestObjects.{fileWriterMock, jobStateWriter}
 import org.mockito.Mockito.{times, verify}
 import org.mockito.{ArgumentCaptor, ArgumentMatchers}
-import zio.Scope
+import org.scalatestplus.mockito.MockitoSugar.mock
+import zio.{Scope, ZLayer}
+import zio.http.Client
 import zio.test._
 
 object FileStorageJobStateWriterSpec extends ZIOSpecDefault {
@@ -61,9 +63,10 @@ object FileStorageJobStateWriterSpec extends ZIOSpecDefault {
     },
 
     test("store job definition and batches") {
+      val clientMock = mock[Client]
       val writerMock = fileWriterMock
       val stateWriter = jobStateWriter(writerMock)
-      for {
+      (for {
         _ <- stateWriter.storeJobDefinitionAndBatches(testJobDefinitionJson, s"waitingJob_${System.currentTimeMillis()}")
       } yield assert({
         // verify the writing of the job definition
@@ -83,6 +86,7 @@ object FileStorageJobStateWriterSpec extends ZIOSpecDefault {
       })(Assertion.assertion("all true")(seq => {
         seq.map(x => x.split("/").last.toInt) == Range(0, 10, 1)
       }))
+        ).provide(ZLayer.succeed(clientMock))
     }
   )
 }

@@ -23,7 +23,7 @@ import de.awagen.kolibri.datatypes.values.DataPoint
 import de.awagen.kolibri.datatypes.values.aggregation.immutable.Aggregators
 import de.awagen.kolibri.definitions.directives.Resource
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions
-import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.BatchAggregationInfo
+import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.{BatchAggregationInfo, JobDefinition}
 import de.awagen.kolibri.fleet.zio.execution.ZIOTasks.SimpleWaitTask
 import de.awagen.kolibri.fleet.zio.execution.aggregation.Aggregators.countingAggregator
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.directives.JobDirectives
@@ -34,7 +34,7 @@ import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.JobStates.{JobSta
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ProcessingStatus.ProcessingStatus
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state._
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.BatchProcessingStates
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.utils.DataTypeUtils
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.utils.{DataTypeUtils, DateUtils}
 import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, LocalDirectoryReader, LocalResourceFileReader}
 import de.awagen.kolibri.storage.io.writer.Writers.{FileWriter, Writer}
 import org.mockito.ArgumentMatchers
@@ -73,7 +73,8 @@ object TestObjects {
   )
 
   def jobStateWriter(writer: FileWriter[String, Unit]): JobStateWriter = FileStorageJobStateWriter(
-    writer
+    writer,
+    jobStateReader(baseResourceFolder)
   )
 
   def claimReader: FileStorageClaimReader = FileStorageClaimReader(
@@ -124,7 +125,8 @@ object TestObjects {
                                                                            addedBatchesHistoryInitState: Seq[ProcessId] = Seq.empty[ProcessId],
                                                                            processIdToAggregatorMappingInitState: Map[ProcessId, Ref[Aggregators.Aggregator[U, V]]] = Map.empty[ProcessId, Ref[Aggregators.Aggregator[U, V]]],
                                                                            processIdToFiberMappingInitState: Map[ProcessId, Fiber.Runtime[Throwable, Unit]] = Map.empty[ProcessId, Fiber.Runtime[Throwable, Unit]],
-                                                                           resourceToJobIdMapping: Map[Resource[Any], Set[String]] = Map.empty[Resource[Any], Set[String]]
+                                                                           resourceToJobIdMapping: Map[Resource[Any], Set[String]] = Map.empty[Resource[Any], Set[String]],
+                                                                           jobIdToJobDefMapping: Map[String, JobDefinition[_, _, _ <: WithCount]] = Map.empty[String, JobDefinition[_, _, _ <: WithCount]],
                                                                           ): Task[BaseWorkHandlerService[_ <: TaggedWithType with DataPoint[Any], _ <: WithCount]] = for {
     queue <- Queue.bounded[JobDefinitions.JobBatch[_, _, _ <: WithCount]](jobBatchQueueSize)
     _ <- DataTypeUtils.addElementsToQueue(initialQueueContent, queue)
@@ -132,6 +134,7 @@ object TestObjects {
     processIdToAggregatorMappingRef <- Ref.make(processIdToAggregatorMappingInitState)
     processIdToFiberMappingRef <- Ref.make(processIdToFiberMappingInitState)
     resourceToJobIdMappingRef <- Ref.make(resourceToJobIdMapping)
+    jobIdToJobDefRef <- Ref.make(jobIdToJobDefMapping)
     workHandler <- ZIO.attempt({
       BaseWorkHandlerService(
         claimReader,
@@ -141,7 +144,8 @@ object TestObjects {
         addedBatchesHistory,
         processIdToAggregatorMappingRef,
         processIdToFiberMappingRef,
-        resourceToJobIdMappingRef
+        resourceToJobIdMappingRef,
+        jobIdToJobDefRef
       )
     })
   } yield workHandler
@@ -187,7 +191,7 @@ object TestObjects {
       100,
       0,
       "abc234",
-      ProcessingStateUtils.timeInMillisToFormattedTime(1703845333850L)
+      DateUtils.timeInMillisToFormattedTime(1703845333850L)
     )
   )
 
@@ -201,7 +205,7 @@ object TestObjects {
       100,
       0,
       "abc234",
-      ProcessingStateUtils.timeInMillisToFormattedTime(1703845333850L)
+      DateUtils.timeInMillisToFormattedTime(1703845333850L)
     )
   )
 

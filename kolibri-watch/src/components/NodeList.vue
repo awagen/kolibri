@@ -4,21 +4,25 @@
   <table class="table">
     <thead>
     <tr>
-      <th>Host</th>
-      <th>Port</th>
-      <th>CPUs</th>
-      <th>Load</th>
-      <th>Heap Usage</th>
+      <th>LastUpdate</th>
+      <th>Node</th>
+      <th>CpuCores</th>
+      <th>CpuLoad</th>
+      <th>HeapUsed (MB)</th>
+      <th>HeapMax (MB)</th>
+      <th>NonHeapUsed (MB)</th>
     </tr>
     </thead>
     <tbody>
     <!-- list all running nodes -->
     <tr v-for="node in this.$store.state.serviceState.runningNodes">
-      <td>{{node.host}}</td>
-      <td>{{node.port}}</td>
-      <td>{{node.countCPUs}}</td>
-      <td>{{node.avgLoad}}</td>
-      <td>{{node.heapUsage}}</td>
+      <td>{{node.lastUpdate}}</td>
+      <td>{{node.nodeHash}}</td>
+      <td>{{node.cpuCores}}</td>
+      <td>{{node.cpuLoad}}</td>
+      <td>{{node.heapUsed}}</td>
+      <td>{{node.heapMax}}</td>
+      <td>{{node.nonHeapUsed}}</td>
     </tr>
     </tbody>
   </table>

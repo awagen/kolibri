@@ -21,10 +21,50 @@ object BatchProcessingStates {
 
   sealed trait BatchProcessingStatus
 
-  case object Open extends BatchProcessingStatus
+  /**
+   * Status indicating no processing of the batch has started yet
+   */
+  case object Open extends BatchProcessingStatus {
 
-  case class InProgress(nodeHash: String) extends BatchProcessingStatus
+    override def toString: String = "OPEN"
 
-  case object Done extends BatchProcessingStatus
+  }
+
+  /**
+   * Status indicating batch is in progress on the given node
+   */
+  case class InProgress(nodeHash: String) extends BatchProcessingStatus {
+
+    override def toString: String = s"INPROGRESS_$nodeHash"
+
+  }
+
+  /**
+   * Status for successful completion of the batch
+   */
+  case object Done extends BatchProcessingStatus {
+
+    override def toString: String = "DONE"
+
+  }
+
+  /**
+   * In case the main batch processing failed (as opposed to post-processing actions).
+   */
+  case class Failed(reason: String) extends BatchProcessingStatus {
+
+    override def toString: String = s"FAILED_$reason"
+
+  }
+
+  /**
+   * State in case the processing itself was fine but defined post-actions
+   * (additional post-processing tasks after the main batch processing) failed.
+   */
+  case object DoneWithFailedPostActions extends BatchProcessingStatus {
+
+    override def toString: String = "DONE_WITH_FAILED_POST_ACTIONS"
+
+  }
 
 }

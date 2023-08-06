@@ -36,7 +36,7 @@ object TaskFailType {
 
   sealed case class FailedByException(e: Throwable) extends TaskFailType {
     override def toString: String = {
-      s"FailedByException(${e.getClass.getName})"
+      s"FailedByException(${e.getClass.getName}(${e.getMessage}))"
     }
   }
 

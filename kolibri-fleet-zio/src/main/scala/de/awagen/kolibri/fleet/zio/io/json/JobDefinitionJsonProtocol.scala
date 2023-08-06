@@ -24,28 +24,30 @@ import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.types.FieldDefinitions._
 import de.awagen.kolibri.datatypes.types.JsonStructDefs._
 import de.awagen.kolibri.datatypes.types.Types.WithCount
-import de.awagen.kolibri.datatypes.types.{NamedClassTyped, WithStructDef}
+import de.awagen.kolibri.datatypes.types.WithStructDef
 import de.awagen.kolibri.datatypes.values.aggregation.immutable.Aggregators.TagKeyMetricAggregationPerClassAggregator
 import de.awagen.kolibri.definitions.directives.ResourceDirectives.ResourceDirective
 import de.awagen.kolibri.definitions.io.json.ParameterValuesJsonProtocol
 import de.awagen.kolibri.definitions.io.json.ResourceDirectiveJsonProtocol.GenericResourceDirectiveFormatStruct
-import de.awagen.kolibri.definitions.processing.ProcessingMessages.ProcessingMessage
 import de.awagen.kolibri.definitions.processing.execution.functions.Execution
 import de.awagen.kolibri.definitions.processing.modifiers.ParameterValues.ParameterValuesImplicits.ParameterValueSeqToRequestBuilderModifier
 import de.awagen.kolibri.definitions.processing.modifiers.ParameterValues.ValueSeqGenDefinition
 import de.awagen.kolibri.definitions.processing.modifiers.RequestTemplateBuilderModifiers.RequestTemplateBuilderModifier
 import de.awagen.kolibri.definitions.usecase.searchopt.jobdefinitions.parts.BatchGenerators.batchByGeneratorAtIndex
-import de.awagen.kolibri.fleet.zio.config.AppConfig
 import de.awagen.kolibri.fleet.zio.config.AppConfig.JsonFormats.executionFormat
 import de.awagen.kolibri.fleet.zio.config.AppConfig.JsonFormats.parameterValueJsonProtocol.ValueSeqGenDefinitionFormat
 import de.awagen.kolibri.fleet.zio.config.AppConfig.JsonFormats.resourceDirectiveJsonProtocol.GenericResourceDirectiveFormat
+import de.awagen.kolibri.fleet.zio.config.{AppConfig, AppProperties}
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.{BatchAggregationInfo, JobDefinition, simpleWaitJob}
 import de.awagen.kolibri.fleet.zio.execution.JobMessagesImplicits._
-import de.awagen.kolibri.fleet.zio.execution.ZIOTasks.SimpleWaitTask
 import de.awagen.kolibri.fleet.zio.execution.aggregation.Aggregators.countingAggregator
 import de.awagen.kolibri.fleet.zio.execution.{JobDefinitions, ZIOTask}
 import de.awagen.kolibri.fleet.zio.io.json.TaskJsonProtocol._
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.utils.DateUtils
 import spray.json.{DefaultJsonProtocol, JsValue, JsonFormat, enrichAny}
+import zio.ZIO
+import zio.http.Client
+import zio.stream.ZStream
 
 import scala.collection.immutable.Seq
 import scala.util.Random
@@ -202,8 +204,8 @@ object JobDefinitionJsonProtocol extends DefaultJsonProtocol {
   // the TypeTaggedMap not retrieving the key properly due do missing TypeTag.
   // Thus either explicitly provide formats defining the input type OR
   // switch to a less type-restrictive map, such as WeaklyTypedMap[String]
-  implicit object JobDefinitionFormat extends JsonFormat[JobDefinition[_, _, _ <: WithCount]] with WithStructDef {
-    override def read(json: JsValue): JobDefinition[_, _, _ <: WithCount] = json match {
+  implicit object JobDefinitionFormat extends JsonFormat[ZIO[Client, Throwable, JobDefinition[_, _, _ <: WithCount]]] with WithStructDef {
+    override def read(json: JsValue): ZIO[Client, Throwable, JobDefinition[_, _, _ <: WithCount]] = json match {
       case spray.json.JsObject(fields) => fields(TYPE_KEY).convertTo[String] match {
         case JUST_WAIT_TYPE =>
           val defFields: Map[String, JsValue] = fields(DEF_KEY).asJsObject.fields
@@ -211,16 +213,17 @@ object JobDefinitionJsonProtocol extends DefaultJsonProtocol {
           val nrBatches = defFields(NR_BATCHES_KEY).convertTo[Int]
           val durationInMillis = defFields(DURATION_IN_MILLIS_KEY).convertTo[Long]
           val batchAggregationInfo: BatchAggregationInfo[Unit, JobDefinitions.ValueWithCount[Int]] = BatchAggregationInfo(
-            SimpleWaitTask.successKey,
+            "DONE_WAITING",
             () => countingAggregator(0, 0)
           )
-          simpleWaitJob(
-            jobName,
-            nrBatches,
-            durationInMillis,
-            1,
-            batchAggregationInfo
-          )
+          ZIO.attempt(
+            simpleWaitJob(
+              jobName,
+              nrBatches,
+              durationInMillis,
+              1,
+              batchAggregationInfo
+            ))
         case SEARCH_EVALUATION_TYPE =>
           val defFields = fields(DEF_KEY)
           val searchEvaluationJobDef = AppConfig.JsonFormats.searchEvaluationJsonProtocol.SearchEvaluationFormat.read(defFields)
@@ -238,40 +241,52 @@ object JobDefinitionJsonProtocol extends DefaultJsonProtocol {
           val modifiers: Seq[IndexedGenerator[RequestTemplateBuilderModifier]] = requestParameters.map(x => x.toState).map(x => x.toSeqGenerator).map(x => x.mapGen(y => y.toModifier))
           val batchByIndex = defFields(BATCH_BY_INDEX_KEY).convertTo[Int]
           val modifierBatches = batchByGeneratorAtIndex(batchByIndex = batchByIndex).apply(modifiers)
-          val nestedTaskSequence = defFields(TASK_SEQUENCE_KEY).convertTo[Seq[Seq[ZIOTask[_]]]]
-          val taskSequence = nestedTaskSequence.flatten
+          val nestedTaskSequenceEffect = defFields(TASK_SEQUENCE_KEY).convertTo[Seq[ZIO[Client, Throwable, Seq[ZIOTask[_]]]]]
           val metricRowResultKey = defFields(METRIC_ROW_RESULT_KEY).convertTo[String]
           val wrapUpActions = defFields.get(WRAP_UP_ACTIONS_KEY).map(x => x.convertTo[Seq[Execution[Any]]]).getOrElse(Seq.empty)
           // For now we assume that result is of type MetricRow
           val aggregationInfo = BatchAggregationInfo[MetricRow, MetricAggregation[Tag]](
-            successKey = NamedClassTyped[ProcessingMessage[MetricRow]](metricRowResultKey),
+            successKey = metricRowResultKey,
             batchAggregatorSupplier = () => new TagKeyMetricAggregationPerClassAggregator(
               aggregationState = MetricAggregation.empty[Tag](identity),
               ignoreIdDiff = false
             ),
-            writer = AppConfig.persistenceModule.persistenceDIModule.immutableMetricAggregationWriter(
-              subFolder = s"${jobName}_$currentTimeInMillis",
-              x => {
-                val randomAdd: String = Random.alphanumeric.take(5).mkString
-                s"${x.toString()}-$randomAdd"
-              }
+            writer = {
+              val currentDay = DateUtils.timeInMillisToFormattedDate(currentTimeInMillis)
+              AppConfig.persistenceModule.persistenceDIModule.immutableMetricAggregationWriter(
+                subFolder = s"${currentDay}/${jobName}",
+                x => {
+                  val randomAdd: String = Random.alphanumeric.take(5).mkString
+                  s"${x.toString()}-${AppProperties.config.node_hash}-$randomAdd"
+                }
+              )
+            }
+          )
+          for {
+            taskSequence <- ZStream.fromIterable(nestedTaskSequenceEffect)
+              .runFoldZIO(Seq.empty[ZIOTask[_]])((oldSeq, newSeqEffect) => {
+                for {
+                  newSeq <- newSeqEffect
+                } yield oldSeq ++ newSeq
+              })
+            jobDef <- ZIO.succeed(
+              JobDefinition(
+                jobName = jobName,
+                resourceSetup = resourceDirectives,
+                batches = modifierBatches,
+                taskSequence = taskSequence,
+                aggregationInfo = aggregationInfo,
+                wrapUpActions = wrapUpActions
+              )
+                // NOTE: casting it here does not help against the above loss of type tag, the info gets lost due to generic type of the format
+                .asInstanceOf[JobDefinition[RequestTemplateBuilderModifier, MetricRow, MetricAggregation[Tag]]]
             )
-          )
-          JobDefinition(
-            jobName = jobName,
-            resourceSetup = resourceDirectives,
-            batches = modifierBatches,
-            taskSequence = taskSequence,
-            aggregationInfo = aggregationInfo,
-            wrapUpActions = wrapUpActions
-          )
-            // NOTE: casting it here does not help against the above loss of type tag, the info gets lost due to generic type of the format
-            .asInstanceOf[JobDefinition[RequestTemplateBuilderModifier, MetricRow, MetricAggregation[Tag]]]
+          } yield jobDef
       }
     }
 
     // TODO
-    override def write(obj: JobDefinition[_, _, _ <: WithCount]): JsValue = """{}""".toJson
+    override def write(obj: ZIO[Client, Throwable, JobDefinition[_, _, _ <: WithCount]]): JsValue = """{}""".toJson
 
     override def structDef: StructDef[_] = jobDefStructDef
   }

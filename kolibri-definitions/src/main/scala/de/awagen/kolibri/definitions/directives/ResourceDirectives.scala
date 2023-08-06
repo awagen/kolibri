@@ -24,6 +24,7 @@ import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableSuppli
 import de.awagen.kolibri.definitions.directives.ExpirePolicy.ExpirePolicy
 import de.awagen.kolibri.definitions.directives.ResourceType.ResourceType
 import de.awagen.kolibri.definitions.usecase.searchopt.provider.JudgementProvider
+import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.mutable
 
@@ -80,8 +81,18 @@ object ResourceDirectives {
     def getResource: T
   }
 
+  object GenericResourceDirective {
+
+    private val logger: Logger = LoggerFactory.getLogger(this.getClass)
+
+  }
+
   case class GenericResourceDirective[+T](resource: Resource[T], supplier: SerializableSupplier[T], expirePolicy: ExpirePolicy = ExpirePolicy.ON_JOB_END) extends ResourceDirective[T] {
-    override def getResource: T = supplier.apply()
+
+    override def getResource: T = {
+      GenericResourceDirective.logger.info(s"Get resource called onb resource '${resource.identifier}' of type '${resource.resourceType}''")
+      supplier.apply()
+    }
   }
 
   def getDirective[T](supplier: SerializableSupplier[T], resource: Resource[T]): ResourceDirective[T] = {

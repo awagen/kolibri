@@ -17,8 +17,8 @@
 
 package de.awagen.kolibri.fleet.zio.execution
 
-import de.awagen.kolibri.datatypes.immutable.stores.TypeTaggedMap
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
+import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.definitions.processing.failure.TaskFailType.TaskFailType
 
 sealed trait ExecutionState
@@ -34,7 +34,7 @@ trait ZIOTaskExecution[+T] extends KolibriSerializable {
 
   def wasSuccessful(executionStates: Seq[ExecutionState]): Boolean
 
-  def initData: TypeTaggedMap
+  def initData: WeaklyTypedMap[String]
 
   def tasks: Seq[ZIOTask[_]]
 
@@ -42,7 +42,7 @@ trait ZIOTaskExecution[+T] extends KolibriSerializable {
    * Execute full sequence of tasks till either all succeeded or
    * some task failed
    */
-  def processAllTasks: zio.Task[(TypeTaggedMap, Seq[ExecutionState])]
+  def processAllTasks: zio.Task[(WeaklyTypedMap[String], Seq[ExecutionState])]
 
 
 }

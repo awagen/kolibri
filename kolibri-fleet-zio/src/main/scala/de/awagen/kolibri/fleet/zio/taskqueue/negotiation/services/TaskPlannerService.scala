@@ -18,9 +18,11 @@
 package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services
 
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.TaskStates.Task
+import zio.ZIO
+import zio.http.Client
 
 trait TaskPlannerService {
 
-  def planTasks(tasks: Seq[Task]): zio.Task[Unit]
+  def planTasks(tasks: Seq[Task]): ZIO[Client, Throwable, Unit]
 
 }

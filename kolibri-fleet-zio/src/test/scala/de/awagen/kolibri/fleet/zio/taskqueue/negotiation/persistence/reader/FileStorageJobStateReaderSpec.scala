@@ -22,7 +22,9 @@ import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.directives.JobDirective
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.processing.actions.JobActions
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.BatchProcessingStates
 import de.awagen.kolibri.fleet.zio.testutils.TestObjects
-import zio.Scope
+import org.scalatestplus.mockito.MockitoSugar.mock
+import zio.{Scope, ZLayer}
+import zio.http.Client
 import zio.test._
 
 
@@ -37,11 +39,12 @@ object FileStorageJobStateReaderSpec extends ZIOSpecDefault {
      */
     test("read job state") {
       // given
+      val clientMock = mock[Client]
       val reader = TestObjects.jobStateReader(TestObjects.baseResourceFolder)
       val jobKey = "testJob1_3434839787"
       // when, then
-      for {
-        openJobsSnapshot <- reader.fetchOpenJobState
+      (for {
+        openJobsSnapshot <- reader.fetchJobState(true)
       } yield assert(openJobsSnapshot.jobStateSnapshots.keySet)(Assertion.equalTo(Set(jobKey))) &&
         assert(openJobsSnapshot.jobStateSnapshots(jobKey).jobId)(Assertion.equalTo(jobKey)) &&
         assert(openJobsSnapshot.jobStateSnapshots(jobKey).timePlacedInMillis)(Assertion.equalTo(3434839787L)) &&
@@ -56,6 +59,7 @@ object FileStorageJobStateReaderSpec extends ZIOSpecDefault {
             (2, BatchProcessingStates.InProgress("other1"))
           )).toMap
         ))
+      ).provide(ZLayer.succeed(clientMock))
     }
 
   )

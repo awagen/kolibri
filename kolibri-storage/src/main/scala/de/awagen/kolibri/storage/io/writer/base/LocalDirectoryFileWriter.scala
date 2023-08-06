@@ -85,7 +85,7 @@ case class LocalDirectoryFileWriter(directory: String) extends FileWriter[String
    * NOTE: the normal delete function above only works on files and empty directories.
    * deleteDirectory instead recursively deletes folders
    */
-  private[this] def deleteDirectory(dirPath: String): Unit = {
+  override def deleteDirectory(dirPath: String): Unit = {
     val fullDirPath = s"$normedDirectory/$dirPath"
     FileUtils.deleteDirectory(new File(fullDirPath))
   }

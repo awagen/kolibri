@@ -22,6 +22,8 @@ import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobDefinition
 import de.awagen.kolibri.fleet.zio.io.json.JobDefinitionJsonProtocol.JobDefinitionFormat
 import de.awagen.kolibri.fleet.zio.testclasses.UnitTestSpec
 import spray.json._
+import zio.ZIO
+import zio.http.Client
 
 class JobDefinitionJsonProtocolSpec extends UnitTestSpec {
 
@@ -185,11 +187,11 @@ class JobDefinitionJsonProtocolSpec extends UnitTestSpec {
 
   "JobDefinitionJsonProtocol" must {
     "correctly parse task sequence job definition" in {
-      requestingTaskSequenceJobDefinitionJson.parseJson.convertTo[JobDefinition[_, _, _ <: WithCount]]
+      requestingTaskSequenceJobDefinitionJson.parseJson.convertTo[ZIO[Client, Throwable, JobDefinition[_, _, _ <: WithCount]]]
     }
 
     "correctly parse just-wait job definition" in {
-      justWaitJobDefinitionJson.parseJson.convertTo[JobDefinition[_, _, _ <: WithCount]]
+      justWaitJobDefinitionJson.parseJson.convertTo[ZIO[Client, Throwable, JobDefinition[_, _, _ <: WithCount]]]
     }
 
 

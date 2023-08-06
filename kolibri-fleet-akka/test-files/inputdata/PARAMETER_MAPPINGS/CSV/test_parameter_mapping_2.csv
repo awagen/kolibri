@@ -1,9 +1,0 @@
-#identifier=sec
-#description=Example parameter values
-#delimiter=;
-q1;sec1
-q2;sec2
-q3;sec1
-q4;sec2
-q5;sec3
-q6;sec1

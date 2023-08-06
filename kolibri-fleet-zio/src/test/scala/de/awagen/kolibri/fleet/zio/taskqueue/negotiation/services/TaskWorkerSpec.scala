@@ -21,10 +21,9 @@ import de.awagen.kolibri.datatypes.collections.generators.ByFunctionNrLimitedInd
 import de.awagen.kolibri.datatypes.metrics.aggregation.immutable.MetricAggregation
 import de.awagen.kolibri.datatypes.stores.immutable.MetricRow
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
-import de.awagen.kolibri.datatypes.types.{JsonTypeCast, NamedClassTyped}
+import de.awagen.kolibri.datatypes.types.JsonTypeCast
 import de.awagen.kolibri.datatypes.values.aggregation.immutable.Aggregators.TagKeyMetricAggregationPerClassAggregator
 import de.awagen.kolibri.definitions.domain.jobdefinitions.Batch
-import de.awagen.kolibri.definitions.processing.ProcessingMessages.ProcessingMessage
 import de.awagen.kolibri.definitions.processing.modifiers.RequestTemplateBuilderModifiers._
 import de.awagen.kolibri.definitions.usecase.searchopt.parse.JsonSelectors._
 import de.awagen.kolibri.definitions.usecase.searchopt.parse.ParsingConfig
@@ -45,7 +44,7 @@ object TaskWorkerSpec extends ZIOSpecDefault {
 
     // aggregation info assuming plain result
     val batchAggregationInfo = BatchAggregationInfo(
-      NamedClassTyped[ProcessingMessage[Unit]]("DONE_WAITING"),
+      "DONE_WAITING",
       () => countingAggregator(0, 0)
     )
 

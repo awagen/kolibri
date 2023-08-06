@@ -17,13 +17,15 @@
 
 package de.awagen.kolibri.fleet.zio
 
-import de.awagen.kolibri.fleet.zio.config.AppProperties
-import de.awagen.kolibri.fleet.zio.config.AppProperties.config.http_server_port
+import de.awagen.kolibri.fleet.zio.config.AppProperties.config.{appBlockingPoolThreads, appNonBlockingPoolThreads, http_server_port}
 import de.awagen.kolibri.fleet.zio.config.di.ZioDIConfig
+import de.awagen.kolibri.fleet.zio.config.{AppProperties, HttpConfig}
 import de.awagen.kolibri.fleet.zio.metrics.Metrics.MetricTypes.taskManageCycleInvokeCount
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.{JobStateReader, WorkStateReader}
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer.NodeStateWriter
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer.{JobStateWriter, NodeStateWriter}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services.{TaskOverviewService, TaskPlannerService, WorkHandlerService}
+import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, Reader}
+import de.awagen.kolibri.storage.io.writer.Writers.Writer
 import zio._
 import zio.http._
 import zio.logging.backend.SLF4J
@@ -31,16 +33,22 @@ import zio.metrics.connectors.{MetricsConfig, prometheus}
 import zio.metrics.jvm.DefaultJvmMetrics
 import zio.stream.ZStream
 
+import java.util.concurrent.Executors
+
 object App extends ZIOAppDefault {
 
-  override val bootstrap: ZLayer[Any, Any, Unit] =
-    Runtime.removeDefaultLoggers >>> SLF4J.slf4j
+  val blockingExecutor = Executor.fromJavaExecutor(Executors.newFixedThreadPool(appBlockingPoolThreads))
+  val nonBlockingExecutor = Executor.fromJavaExecutor(Executors.newFixedThreadPool(appNonBlockingPoolThreads))
+
+  override val bootstrap: ZLayer[Any, Nothing, Unit] = {
+    Runtime.removeDefaultLoggers >>> SLF4J.slf4j >>> Runtime.setBlockingExecutor(blockingExecutor) >>> Runtime.setExecutor(nonBlockingExecutor)
+  }
 
   // TODO: one problem here is if the workers fail in initial stages of a task
   //  (such as resource creation where no result type is yet generated),
   // then it seems no update follows and the tasks are revoked from their
   // current nodes and put to open again, which leads to a loop --> FIX!!
-  val planTasksEffect: ZIO[JobStateReader with TaskPlannerService with WorkStateReader with TaskOverviewService, Throwable, Unit] = {
+  val planTasksEffect: ZIO[JobStateReader with TaskPlannerService with WorkStateReader with TaskOverviewService with Client, Throwable, Unit] = {
     (for {
       taskOverviewService <- ZIO.service[TaskOverviewService]
       workStateReader <- ZIO.service[WorkStateReader]
@@ -48,7 +56,7 @@ object App extends ZIOAppDefault {
       jobStateReader <- ZIO.service[JobStateReader]
 
       // fetch current job state
-      openJobsState <- jobStateReader.fetchOpenJobState
+      openJobsState <- jobStateReader.fetchJobState(true)
 
       // getting next tasks to do from the distinct task topics
       jobToDoneTasks <- taskOverviewService.getJobToDoneTasks(openJobsState)
@@ -80,20 +88,20 @@ object App extends ZIOAppDefault {
   /**
    * Effect taking care of claim and work management
    */
-  val taskWorkerApp: ZIO[JobStateReader with WorkStateReader with TaskPlannerService with TaskOverviewService with WorkHandlerService, Throwable, Unit] = {
+  val taskWorkerApp: ZIO[JobStateReader with WorkStateReader with TaskPlannerService with TaskOverviewService with WorkHandlerService with Client, Throwable, Unit] = {
     for {
       jobStateReader <- ZIO.service[JobStateReader]
       workHandlerService <- ZIO.service[WorkHandlerService]
 
       // fetch current job state and update processing state for batches
-      openJobsState1 <- jobStateReader.fetchOpenJobState
+      openJobsState1 <- jobStateReader.fetchJobState(true)
       _ <- workHandlerService.manageBatches(openJobsState1)
 
       // plan tasks, e.g file claims (if claim-based), move tasks from open to in-progress (as state PLANNED)
       _ <- planTasksEffect
 
       // fetch current job state and update processing state for batches
-      openJobsState2 <- jobStateReader.fetchOpenJobState
+      openJobsState2 <- jobStateReader.fetchJobState(true)
       _ <- workHandlerService.manageBatches(openJobsState2)
     } yield ()
   }
@@ -105,8 +113,10 @@ object App extends ZIOAppDefault {
     } yield ()
   }
 
-  val combinedLayer =
-    ZioDIConfig.writerLayer >+>
+  val combinedLayer = {
+    ZLayer.succeed(HttpConfig.clientConfig) >+>
+      HttpConfig.liveHttpClientLayer >+>
+      ZioDIConfig.writerLayer >+>
       ZioDIConfig.readerLayer >+>
       ZioDIConfig.overviewReaderLayer >+>
       ZioDIConfig.nodeStateReaderLayer >+>
@@ -128,24 +138,34 @@ object App extends ZIOAppDefault {
       prometheus.prometheusLayer >+>
       // Default JVM Metrics
       DefaultJvmMetrics.live.unit
+  }
 
 
   override val run: ZIO[Any, Throwable, Any] = {
-    val fixed1 = Schedule.fixed(20 seconds)
-    val fixed2 = Schedule.fixed(10 seconds)
-    (for {
+    val taskHandleSchedule = Schedule.fixed(20 seconds)
+    val nodeStateUpdateSchedule = Schedule.fixed(10 seconds)
+    val effect = for {
       _ <- ZIO.logInfo("Application started!")
-      _ <- (taskWorkerApp @@ taskManageCycleInvokeCount).repeat(fixed1).fork
-      _ <- nodeStateUpdateEffect.repeat(fixed2).fork
-      jobStateCache <- ServerEndpoints.openJobStateCache
+      _ <- (taskWorkerApp @@ taskManageCycleInvokeCount).repeat(taskHandleSchedule).fork
+      _ <- nodeStateUpdateEffect.repeat(nodeStateUpdateSchedule).fork
+      openJobStateCache <- ServerEndpoints.openJobStateCache
+      doneJobStateCache <- ServerEndpoints.doneJobStateCache
+      dataOverviewReader <- ZIO.service[DataOverviewReader]
+      contentReader <- ZIO.service[Reader[String, Seq[String]]]
+      writer <- ZIO.service[Writer[String, String, _]]
+      jobStateWriter <- ZIO.service[JobStateWriter]
       _ <- Server.serve(
         ServerEndpoints.jobPostingEndpoints ++
-          ServerEndpoints.statusEndpoints(jobStateCache) ++
+          ServerEndpoints.statusEndpoints(openJobStateCache, doneJobStateCache, jobStateWriter) ++
+          ServerEndpoints.batchStatusEndpoints(openJobStateCache) ++
           ServerEndpoints.prometheusEndpoint ++
-          ServerEndpoints.nodeStateEndpoint
+          ServerEndpoints.nodeStateEndpoint ++
+          ServerEndpoints.directiveEndpoints ++
+          JobDefsServerEndpoints.jobDefEndpoints ++
+          JobTemplatesServerEndpoints.templateEndpoints(dataOverviewReader, contentReader, writer)
       )
       _ <- ZIO.logInfo("Application is about to exit!")
-    } yield ())
-      .provide(Server.defaultWithPort(http_server_port) >+> combinedLayer)
+    } yield ()
+    effect.provide(Server.defaultWithPort(http_server_port) >+> combinedLayer)
   }
 }

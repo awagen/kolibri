@@ -20,12 +20,15 @@ package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state
 import de.awagen.kolibri.datatypes.types.Types.WithCount
 import de.awagen.kolibri.fleet.zio.config.AppProperties
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobDefinition
+import de.awagen.kolibri.fleet.zio.io.json.ProcessingStateJsonProtocol.processIdFormat
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.directives.JobDirectives.JobDirective
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.processing.actions.JobActions
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.processing.actions.JobActions.JobAction
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.rules.Rules.JobDirectiveRules
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.BatchProcessingStates
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.BatchProcessingStates.BatchProcessingStatus
+import spray.json.DefaultJsonProtocol.{IntJsonFormat, jsonFormat3}
+import spray.json.RootJsonFormat
 
 
 object JobStates {
@@ -146,5 +149,10 @@ object JobStates {
     }
 
   }
+
+  case class BatchSnapshot(processId: ProcessId, totalElementCount: Int, processedElementCount: Int)
+
+  implicit val batchStateSnapshotFormat: RootJsonFormat[BatchSnapshot] = jsonFormat3(BatchSnapshot)
+
 
 }

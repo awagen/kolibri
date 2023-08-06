@@ -94,6 +94,9 @@ object Modules {
 
         override def moveDirectory(dirPath: String, toDirPath: String): Unit =
           mutableMetricAggregationWriter.moveDirectory(dirPath, toDirPath)
+
+        override def deleteDirectory(dirPath: String): Unit =
+          mutableMetricAggregationWriter.deleteDirectory(dirPath)
       }
 
   }

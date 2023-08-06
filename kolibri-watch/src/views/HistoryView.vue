@@ -1,5 +1,5 @@
 <template>
-  <JobList :data="this.$store.state.serviceState.jobHistory" :show-kill-button="false" header="COMPLETED JOBS"/>
+  <JobList :data="this.$store.state.serviceState.jobHistory" :show-start-stop-options="false" :is-history-view="true" header="COMPLETED JOBS"/>
 </template>
 
 <script>
