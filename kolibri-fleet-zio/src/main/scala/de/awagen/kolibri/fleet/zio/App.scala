@@ -114,7 +114,8 @@ object App extends ZIOAppDefault {
   }
 
   val combinedLayer = {
-    HttpConfig.liveHttpClientLayer >+>
+    ZLayer.succeed(HttpConfig.clientConfig) >+>
+      HttpConfig.liveHttpClientLayer >+>
       ZioDIConfig.writerLayer >+>
       ZioDIConfig.readerLayer >+>
       ZioDIConfig.overviewReaderLayer >+>

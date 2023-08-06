@@ -61,24 +61,12 @@ object AppProperties {
 
     val http_server_port: Int = HTTP_SERVER_PORT.value.toInt
 
-    val batchStateUpdateInitialDelayInSeconds = baseConfig.getInt("kolibri.job.batchStateUpdateInitialDelayInSeconds")
-    val batchStateUpdateIntervalInSeconds = baseConfig.getInt("kolibri.job.batchStateUpdateIntervalInSeconds")
-    val jobProcessingCheckResourcesInterval: FiniteDuration = FiniteDuration(baseConfig.getInt("kolibri.job.processingCheckResourcesIntervalInMillis"),
-      MILLISECONDS)
-    val runningTasksPerJobMaxCount: Int = baseConfig.getInt("kolibri.job.runningTasksPerJobMaxCount")
-    val runningTasksPerJobDefaultCount: Int = baseConfig.getInt("kolibri.job.runningTasksPerJobDefaultCount")
-
     val allowedTimePerElementInMillis: Int = baseConfig.getInt("kolibri.job.allowedTimePerElementInMillis")
     val allowedTimePerBatchInSeconds: Int = baseConfig.getInt("kolibri.job.allowedTimePerBatchInSeconds")
     val allowedTimePerJobInSeconds: Int = baseConfig.getInt("kolibri.job.allowedTimePerJobInSeconds")
 
     // max time allowed for resource directive to be processed
     val maxResourceDirectiveLoadTimeInMinutes: Int = baseConfig.getInt("kolibri.job.resources.directives.maxLoadTimeInMinutes")
-    // some properties determining amount of additional judgement information is stored
-    // in judgement provider
-    val topKJudgementsPerQueryStorageSize: Int = baseConfig.getInt("kolibri.job.resources.judgements.topKJudgementsPerQueryStorageSize")
-
-    val waitForSynchronousTaskComplete: FiniteDuration = FiniteDuration(baseConfig.getInt("kolibri.job.tasks.waitForSynchronousTaskCompleteInMs"), MILLISECONDS)
 
     val formatTypes: Seq[String] = baseConfig.getString("kolibri.format.metricDocumentFormatTypes").split(",")
       .map(x => x.trim.toLowerCase).filter(x => x.nonEmpty).toSeq
@@ -89,14 +77,6 @@ object AppProperties {
     }.filter(Objects.nonNull)
 
     val metricDocumentFormatsMap: Map[String, MetricDocumentFormat] = metricDocumentFormats.map(x => (x.identifier.toLowerCase, x)).toMap
-
-    val internalJobStatusRequestTimeout: FiniteDuration = getFiniteDuration(config = baseConfig,
-      key = "kolibri.internal.jobStatusRequestTimeoutInSeconds", SECONDS)
-
-    val analyzeTimeout: FiniteDuration = getFiniteDuration(config = baseConfig,
-      key = "kolibri.internal.analyzeTimeoutInSeconds", SECONDS)
-
-    val maxNrBatchRetries: Int = baseConfig.getInt("kolibri.execution.maxNrBatchRetries")
 
     def safeGetString(path: String): Option[String] = {
       if (baseConfig.hasPath(path)) Some(baseConfig.getString(path))
@@ -122,14 +102,12 @@ object AppProperties {
     val localResourceReadBasePath: Option[String] = safeGetString("kolibri.persistence.local.resources.readBasePath")
 
     val jobTemplatesPath: Option[String] = safeGetString("kolibri.persistence.templates.jobTemplatesPath")
-    val inputDataPath: Option[String] = safeGetString("kolibri.persistence.inputs.dataPath")
     val outputResultsPath: Option[String] = safeGetString("kolibri.persistence.outputs.resultsPath")
 
     val persistenceMode: String = baseConfig.getString("kolibri.persistence.mode")
     val persistenceModuleClass: Option[String] = safeGetString("kolibri.persistence.moduleClass")
 
     val directoryPathSeparator: String = baseConfig.getString("kolibri.persistence.directoryPathSeparator")
-    val csvColumnSeparator: String = baseConfig.getString("kolibri.persistence.csvColumnSeparator")
 
     val judgementSourceType: String = baseConfig.getString("kolibri.format.judgements.sourceType")
     val judgementQueryAndProductDelimiter: String = baseConfig.getString("kolibri.format.judgements.judgementKeyQueryAndProductDelimiter")
@@ -156,7 +134,6 @@ object AppProperties {
       .map(x => x.trim).filter(x => x.nonEmpty)
     val allowedRequestTargetPorts: Seq[String] = baseConfig.getString("kolibri.request.target.allowedPorts").split(",")
       .map(x => x.trim).filter(x => x.nonEmpty)
-    val allowedRequestTargetContextPaths: Seq[String] = baseConfig.getString("kolibri.request.target.allowedContextPaths").split(",")
 
     val appBlockingPoolThreads: Int = baseConfig.getInt("kolibri.blockingPoolThreads")
     val appNonBlockingPoolThreads: Int = baseConfig.getInt("kolibri.nonBlockingPoolThreads")
@@ -164,6 +141,8 @@ object AppProperties {
     val connectionPoolSizeMin: Int = baseConfig.getInt("kolibri.request.connectionPoolSizeMin")
     val connectionPoolSizeMax: Int = baseConfig.getInt("kolibri.request.connectionPoolSizeMax")
     val connectionTTLInSeconds: Int = baseConfig.getInt("kolibri.request.connectionTTLInSeconds")
+    val connectionTimeoutInSeconds: Int = baseConfig.getInt("kolibri.request.connectionTimeoutInSeconds")
+    val connectionPoolType: String = safeGetString("kolibri.request.connectionPoolType").map(typeStr => typeStr.toUpperCase).getOrElse("FIXED")
 
     // --- jobs folder relative to readers / writers base folder
     // base folder where jobs are stored

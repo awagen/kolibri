@@ -231,7 +231,7 @@ object TaskJsonProtocolSpec extends ZIOSpecDefault {
           task.failKey == "mergeTwoRowsFailKey"
       }))
     }
-    
+
   )
 
 }

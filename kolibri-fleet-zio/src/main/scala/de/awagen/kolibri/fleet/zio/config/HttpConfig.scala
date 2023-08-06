@@ -21,8 +21,10 @@ import de.awagen.kolibri.fleet.zio.config.AppProperties.config._
 import zio.http.ZClient.{Config, customized}
 import zio.http.netty.NettyConfig
 import zio.http.netty.client.NettyClientDriver
-import zio.http.{Client, DnsResolver, ZClient}
+import zio.http.{Client, ClientSSLConfig, DnsResolver, ZClient}
 import zio.{Trace, ZLayer, durationInt}
+
+import java.util.concurrent.TimeUnit
 
 object HttpConfig {
 
@@ -33,8 +35,14 @@ object HttpConfig {
   }
 
   private lazy val configLayer = ZLayer.succeed({
-    //    Config.default.withDynamicConnectionPool(connectionPoolSizeMin, connectionPoolSizeMax, zio.Duration(connectionTTLInSeconds, TimeUnit.SECONDS))
-    Config.default.withFixedConnectionPool(connectionPoolSizeMin).connectionTimeout(3 seconds)
+    AppProperties.config.connectionPoolType match {
+      case "DYNAMIC" =>
+        Config.default.withDynamicConnectionPool(connectionPoolSizeMin, connectionPoolSizeMax, zio.Duration(connectionTTLInSeconds, TimeUnit.SECONDS))
+      case "FIXED" =>
+        Config.default.withFixedConnectionPool(connectionPoolSizeMin).connectionTimeout(connectionTimeoutInSeconds seconds)
+      case otherType =>
+        throw new RuntimeException(s"Unknown connection pool type '$otherType', set to either 'FIXED' or 'DYNAMIC'")
+    }
   })
 
   private lazy val nettyConfigLayer = ZLayer.succeed(NettyConfig.default.maxThreads(AppProperties.config.nettyHttpClientThreadsMax))
@@ -43,5 +51,8 @@ object HttpConfig {
     implicit val trace: Trace = Trace.empty
     (configLayer ++ nettyConfigLayer ++ DnsResolver.default) >>> Client.live // liveHttpClientLayerWithEnv
   }
+
+  val sslConfig = ClientSSLConfig.Default
+  val clientConfig = ZClient.Config.default.ssl(sslConfig)
 
 }
