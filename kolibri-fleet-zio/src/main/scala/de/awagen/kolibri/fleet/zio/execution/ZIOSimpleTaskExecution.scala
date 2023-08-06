@@ -66,7 +66,5 @@ case class ZIOSimpleTaskExecution[+T](initData: WeaklyTypedMap[String],
               } yield result
           })
       })
-      // test whether this has any effect on thread utilization
-      .onExecutor(App.nonBlockingExecutor)
   }
 }

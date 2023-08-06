@@ -16,7 +16,7 @@
   "gnetId": null,
   "graphTooltip": 0,
   "id": 1,
-  "iteration": 1689246171298,
+  "iteration": 1691264951368,
   "links": [],
   "panels": [
     {
@@ -41,7 +41,7 @@
       "datasource": "${DATASOURCE}",
       "fieldConfig": {
         "defaults": {
-          "unit": "rpm"
+          "unit": "reqps"
         },
         "overrides": []
       },
@@ -82,7 +82,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "sum by (method, contextPath, responseCode)(increase(countClientRequests[1m]))",
+          "expr": "sum by (method, contextPath, responseCode)(rate(countClientRequests[2m]))",
           "hide": false,
           "instant": false,
           "interval": "",
@@ -95,7 +95,7 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "Requests/min",
+      "title": "Requests/sec",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -111,7 +111,7 @@
       },
       "yaxes": [
         {
-          "format": "rpm",
+          "format": "reqps",
           "label": null,
           "logBase": 1,
           "max": null,
@@ -182,7 +182,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "sum by (host, contextPath, method, responseCode)(increase(externalRequestTimer_sum[1m]) / increase(externalRequestTimer_count[1m]))",
+          "expr": "sum by (host, contextPath, method, responseCode)(increase(externalRequestTimer_sum[2m]) / increase(externalRequestTimer_count[2m]))",
           "hide": true,
           "interval": "",
           "legendFormat": "avg|{{method}}|{{host}}|{{contextPath}}|{{responseCode}}",
@@ -190,7 +190,7 @@
         },
         {
           "exemplar": true,
-          "expr": "histogram_quantile(0.99, sum(rate(externalRequestTimer_bucket[1m])) by (le, contextPath, method, responseCode))",
+          "expr": "histogram_quantile(0.99, sum(rate(externalRequestTimer_bucket[2m])) by (le, contextPath, method, responseCode))",
           "hide": false,
           "interval": "",
           "legendFormat": "p99|{{method}}|{{contextPath}}|{{responseCode}}",
@@ -198,7 +198,7 @@
         },
         {
           "exemplar": true,
-          "expr": "histogram_quantile(0.95, sum(rate(externalRequestTimer_bucket[1m])) by (le, host, contextPath, method))",
+          "expr": "histogram_quantile(0.95, sum(rate(externalRequestTimer_bucket[2m])) by (le, host, contextPath, method))",
           "hide": true,
           "interval": "",
           "legendFormat": "p95|{{method}}|{{host}}|{{contextPath}}",
@@ -206,7 +206,7 @@
         },
         {
           "exemplar": true,
-          "expr": "histogram_quantile(0.90, sum(rate(externalRequestTimer_bucket[1m])) by (le, host, contextPath, method))",
+          "expr": "histogram_quantile(0.90, sum(rate(externalRequestTimer_bucket[2m])) by (le, host, contextPath, method))",
           "hide": true,
           "interval": "",
           "legendFormat": "p90|{{method}}|{{host}}|{{contextPath}}",
@@ -214,7 +214,7 @@
         },
         {
           "exemplar": true,
-          "expr": "histogram_quantile(0.50, sum(rate(externalRequestTimer_bucket[1m])) by (le, contextPath, method))",
+          "expr": "histogram_quantile(0.50, sum(rate(externalRequestTimer_bucket[2m])) by (le, contextPath, method))",
           "hide": false,
           "interval": "",
           "legendFormat": "p50|{{method}}|{{contextPath}}",
@@ -351,7 +351,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "avg by (instance) (rate(process_cpu_seconds_total[1m]))",
+          "expr": "avg by (instance) (rate(process_cpu_seconds_total[2m]))",
           "hide": false,
           "interval": "",
           "legendFormat": "Load-{{instance}}",
@@ -499,5 +499,5 @@
   "timezone": "",
   "title": "Kolibri Dashboard",
   "uid": "ZC6XIIjVk",
-  "version": 8
+  "version": 10
 }

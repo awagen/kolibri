@@ -122,7 +122,7 @@ object TaskWorker extends Worker {
                     _ <- ZIO.ifZIO(ZIO.succeed(failedTask.nonEmpty))(
                       // if any of the tasks failed, we aggregate it is part of the failure aggregation
                       onTrue = {
-                        ZIO.logWarning(s"Aggregating fail item: ${failedTask.get.taskFailType}") *>
+                        ZIO.logDebug(s"Aggregating fail item: ${failedTask.get.taskFailType}") *>
                           aggregatorRef.update(x => x.add(BadCorn(failedTask.get.taskFailType)))
                       },
                       // if nothing failed, we just normally consume the result
