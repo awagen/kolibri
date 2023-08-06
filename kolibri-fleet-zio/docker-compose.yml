@@ -29,7 +29,7 @@ services:
     user: "1000:1000"
 
   kolibri-zio-1:
-    image: kolibri-fleet-zio:0.1.5
+    image: awagen/kolibri-fleet-zio:0.2.0
     cpu_count: 10
     mem_limit: 6144m
     mem_reservation: 4096m
@@ -84,7 +84,7 @@ services:
       - ${HOME}/.aws/credentials:/home/kolibri/.aws/credentials:ro
 
 #  kolibri-zio-2:
-#    image: kolibri-fleet-zio:0.1.5
+#    image: awagen/kolibri-fleet-zio:0.2.0
 #    ports:
 #      - "8002:8002"
 #    user: "1000:1000"
