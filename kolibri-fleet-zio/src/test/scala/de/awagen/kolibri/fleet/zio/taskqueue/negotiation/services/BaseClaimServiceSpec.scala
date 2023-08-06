@@ -21,7 +21,9 @@ import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.Clai
 import de.awagen.kolibri.fleet.zio.testutils.TestObjects
 import de.awagen.kolibri.fleet.zio.testutils.TestObjects.{SnapshotSample1, claimService, fileWriterMock}
 import org.mockito.Mockito.{spy, when}
-import zio.{Scope, ZIO}
+import org.scalatestplus.mockito.MockitoSugar.mock
+import zio.http.Client
+import zio.{Scope, ZIO, ZLayer}
 import zio.test._
 
 object BaseClaimServiceSpec extends ZIOSpecDefault {
@@ -30,14 +32,16 @@ object BaseClaimServiceSpec extends ZIOSpecDefault {
 
     test("manageClaims") {
       // given
+      val clientMock = mock[Client]
       val writerMock = fileWriterMock
       val jobStateReaderSpy = spy(TestObjects.jobStateReader(TestObjects.baseResourceFolder))
       when(jobStateReaderSpy.fetchJobState(true)).thenReturn(ZIO.succeed(SnapshotSample1.openJobsSnapshot))
       val claimH = claimService(writerMock, jobStateReaderSpy)
       // when, then
-      for {
+      (for {
         _ <- claimH.manageExistingClaims(TaskTopics.JobTaskProcessingTask)
       } yield assert(true)(Assertion.assertion("true")(_ => true))
+        ).provide(ZLayer.succeed(clientMock))
     }
   )
 

@@ -34,7 +34,6 @@ import de.awagen.kolibri.fleet.zio.execution.{Failed, ZIOSimpleTaskExecution}
 import de.awagen.kolibri.fleet.zio.metrics.Metrics
 import de.awagen.kolibri.fleet.zio.resources.NodeResourceProvider
 import de.awagen.kolibri.storage.io.writer.Writers
-import zio.profiling.causal.CausalProfiler
 import zio.stream.ZStream
 import zio.{Fiber, Ref, Task, UIO, ZIO}
 
@@ -97,7 +96,6 @@ object TaskWorker extends Worker {
               // stream from stopping. The distinct cases can then separately be
               // aggregated
               .processAllTasks.either
-            _ <- CausalProfiler.progressPoint("Result computed")
           } yield result
         )
         .mapZIO(element => {

@@ -25,12 +25,13 @@ import de.awagen.kolibri.fleet.zio.execution.TaskFactory.{CalculateMetricsTask, 
 import de.awagen.kolibri.fleet.zio.execution.ZIOTask
 import de.awagen.kolibri.fleet.zio.io.json.TaskJsonProtocol._
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.requests.RequestMode
-import de.awagen.kolibri.fleet.zio.testclasses.UnitTestSpec
+import org.scalatestplus.mockito.MockitoSugar.mock
 import spray.json._
-import zio.ZIO
 import zio.http.Client
+import zio.test._
+import zio.{Scope, ZIO, ZLayer}
 
-class TaskJsonProtocolSpec extends UnitTestSpec {
+object TaskJsonProtocolSpec extends ZIOSpecDefault {
 
   val REQUEST_MODE_PLACEHOLDER = "##REQUEST_MODE_PLACEHOLDER"
 
@@ -171,55 +172,66 @@ class TaskJsonProtocolSpec extends UnitTestSpec {
   val connection3 = Connections.Connection("test-service-3", 81, useHttps = false, None)
 
 
-  "TaskJsonProtocol" must {
+  override def spec: Spec[TestEnvironment with Scope, Any] = suite("TaskJsonProtocolSpec")(
 
-    "correctly parse sequence of request and parse tasks" in {
-      // given, when
-      val taskDefRequestAll: Seq[RequestJsonAndParseValuesTask] = requestAndParseTaskJson.replace(REQUEST_MODE_PLACEHOLDER, RequestMode.REQUEST_ALL_CONNECTIONS.toString).parseJson.convertTo[ZIO[Client, Throwable, Seq[ZIOTask[WeaklyTypedMap[String]]]]]
-        .asInstanceOf[Seq[RequestJsonAndParseValuesTask]]
-      val taskDefDistribute: Seq[RequestJsonAndParseValuesTask] = requestAndParseTaskJson.replace(REQUEST_MODE_PLACEHOLDER, RequestMode.DISTRIBUTE_LOAD.toString).parseJson.convertTo[ZIO[Client, Throwable, Seq[ZIOTask[WeaklyTypedMap[String]]]]]
-        .asInstanceOf[Seq[RequestJsonAndParseValuesTask]]
-      // then
-      taskDefRequestAll.size mustBe 3
-      taskDefDistribute.size mustBe 1
-      taskDefRequestAll.head.connectionSupplier() mustBe connection1
-      taskDefRequestAll(1).connectionSupplier() mustBe connection2
-      taskDefRequestAll(2).connectionSupplier() mustBe connection3
-      Set(connection1, connection2, connection3).contains(taskDefDistribute.head.connectionSupplier())
-    }
+    test("correctly parse sequence of request and parse tasks") {
+      val clientMock = mock[Client]
+      val taskDefRequestAllEffect = requestAndParseTaskJson.replace(REQUEST_MODE_PLACEHOLDER, RequestMode.REQUEST_ALL_CONNECTIONS.toString).parseJson.convertTo[ZIO[Client, Throwable, Seq[ZIOTask[WeaklyTypedMap[String]]]]]
+      val taskDefDistributeEffect = requestAndParseTaskJson.replace(REQUEST_MODE_PLACEHOLDER, RequestMode.DISTRIBUTE_LOAD.toString).parseJson.convertTo[ZIO[Client, Throwable, Seq[ZIOTask[WeaklyTypedMap[String]]]]]
+      (for {
+        taskRequestAll <- taskDefRequestAllEffect
+        taskRequestDistribute <- taskDefDistributeEffect
+      } yield zio.test.assert((taskRequestAll.asInstanceOf[Seq[RequestJsonAndParseValuesTask]], taskRequestDistribute.asInstanceOf[Seq[RequestJsonAndParseValuesTask]]))(Assertion.assertion("")(values => {
+        val taskDefRequestAll = values._1
+        val taskDefDistribute = values._2
+        taskDefRequestAll.size == 3 &&
+          taskDefDistribute.size == 1 &&
+          taskDefRequestAll.head.connectionSupplier() == connection1 &&
+          taskDefRequestAll(1).connectionSupplier() == connection2 &&
+          taskDefRequestAll(2).connectionSupplier() == connection3 &&
+          Set(connection1, connection2, connection3).contains(taskDefDistribute.head.connectionSupplier())
+      }))
+        ).provide(ZLayer.succeed(clientMock))
+    },
 
-    "correctly parse metrics calculation task" in {
-      // given, when
-      val task = calculateMetricsTaskJson.parseJson.convertTo[ZIO[Any, Throwable, ZIOTask[MetricRow]]]
-        .asInstanceOf[CalculateMetricsTask]
-      val calculations = task.calculations.asInstanceOf[Seq[JudgementsFromResourceIRMetricsCalculations]]
+    test("correctly parse metrics calculation task") {
+      val clientMock = mock[Client]
+      val taskEffect = calculateMetricsTaskJson.parseJson.convertTo[ZIO[Any, Throwable, ZIOTask[MetricRow]]]
       val expectedMetricNames = Set("DCG_10", "NDCG_10", "PRECISION_k=4&t=0.1", "RECALL_k=4&t=0.1", "ERR_10")
-      // then
-      calculations.size mustBe 1
-      calculations.head.names mustBe expectedMetricNames
-      task.metricNameToAggregationTypeMapping.keySet mustBe expectedMetricNames
-    }
+      (for {
+        task <- taskEffect
+      } yield zio.test.assert(task.asInstanceOf[CalculateMetricsTask])(Assertion.assertion("")(task => {
+        val calculationSeq = task.calculations.asInstanceOf[Seq[JudgementsFromResourceIRMetricsCalculations]]
+        calculationSeq.size == 1 &&
+          calculationSeq.head.names == expectedMetricNames &&
+          task.metricNameToAggregationTypeMapping.keySet == expectedMetricNames
+      }))
+        ).provide(ZLayer.succeed(clientMock))
+    },
 
-    "correctly parse two map input calculation" in {
+    test("correctly parse two map input calculation") {
+      val taskEffect = twoMapInputTask.parseJson.convertTo[ZIO[Any, Throwable, ZIOTask[MetricRow]]]
+      for {
+        task <- taskEffect.map(x => x.asInstanceOf[TwoMapInputCalculation])
+      } yield zio.test.assert(task)(Assertion.assertion("")(task => {
+        task.calculations.size == 1 &&
+          task.calculations.flatMap(x => x.names).toSet == Set("jaccard")
+      }))
+    },
+
+    test("correctly parse merge-two-metric-rows task") {
       // given, when
-      val task = twoMapInputTask.parseJson.convertTo[ZIO[Any, Throwable, ZIOTask[MetricRow]]]
-        .asInstanceOf[TwoMapInputCalculation]
-      // then
-      task.calculations.size mustBe 1
-      task.calculations.flatMap(x => x.names).toSet mustBe Set("jaccard")
+      val taskEffect = mergeTwoRowsTask.parseJson.convertTo[ZIO[Any, Throwable, ZIOTask[MetricRow]]]
+      for {
+        task <- taskEffect.map(x => x.asInstanceOf[MergeTwoMetricRows])
+      } yield zio.test.assert(task)(Assertion.assertion("")(task => {
+        task.key1 == "inputKey1" &&
+          task.key2 == "inputKey2" &&
+          task.successKey == "mergeTwoRowsSuccessKey" &&
+          task.failKey == "mergeTwoRowsFailKey"
+      }))
     }
-
-    "correctly parse merge-two-metric-rows task" in {
-      // given, when
-      val task = mergeTwoRowsTask.parseJson.convertTo[ZIO[Any, Throwable, ZIOTask[MetricRow]]]
-        .asInstanceOf[MergeTwoMetricRows]
-      // then
-      task.key1 mustBe "inputKey1"
-      task.key2 mustBe "inputKey2"
-      task.successKey mustBe "mergeTwoRowsSuccessKey"
-      task.failKey mustBe "mergeTwoRowsFailKey"
-    }
-
-  }
+    
+  )
 
 }

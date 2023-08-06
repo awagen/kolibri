@@ -177,8 +177,9 @@ object TaskFactory {
                   map
                 })
               } yield result)
-                .catchAllCause(_ => {
-                  val errorResult = ProcessingMessages.BadCorn(TaskFailType.FailedByException(new RuntimeException("request and parsing failed")))
+                .catchAllCause(cause => {
+                  val msg = cause.dieOption.map(t => t.getMessage).getOrElse("")
+                  val errorResult = ProcessingMessages.BadCorn(TaskFailType.FailedByException(new RuntimeException(s"request and parsing failed. Msg = '$msg'")))
                   errorResult.takeOverTags(requestTemplatePM)
                   ZIO.attempt({
                     map.put(failKey, errorResult)

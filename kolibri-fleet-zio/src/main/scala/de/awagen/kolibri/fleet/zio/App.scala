@@ -17,25 +17,20 @@
 
 package de.awagen.kolibri.fleet.zio
 
-import de.awagen.kolibri.fleet.zio.config.{AppProperties, HttpConfig}
-import de.awagen.kolibri.fleet.zio.config.AppProperties.config.{appBlockingPoolThreads, appNonBlockingPoolThreads, connectionPoolSizeMin, http_server_port}
+import de.awagen.kolibri.fleet.zio.config.AppProperties.config.{appBlockingPoolThreads, appNonBlockingPoolThreads, http_server_port}
 import de.awagen.kolibri.fleet.zio.config.di.ZioDIConfig
+import de.awagen.kolibri.fleet.zio.config.{AppProperties, HttpConfig}
 import de.awagen.kolibri.fleet.zio.metrics.Metrics.MetricTypes.taskManageCycleInvokeCount
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader.{JobStateReader, WorkStateReader}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer.{JobStateWriter, NodeStateWriter}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services.{TaskOverviewService, TaskPlannerService, WorkHandlerService}
 import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, Reader}
 import de.awagen.kolibri.storage.io.writer.Writers.Writer
-import zio.http.ZClient.{Config, customized}
 import zio._
 import zio.http._
-import zio.http.netty.client.NettyClientDriver
-import zio.http.netty.{EventLoopGroups, NettyConfig}
 import zio.logging.backend.SLF4J
 import zio.metrics.connectors.{MetricsConfig, prometheus}
 import zio.metrics.jvm.DefaultJvmMetrics
-import zio.profiling.sampling._
-import zio.profiling.causal._
 import zio.stream.ZStream
 
 import java.util.concurrent.Executors
@@ -148,7 +143,7 @@ object App extends ZIOAppDefault {
   override val run: ZIO[Any, Throwable, Any] = {
     val taskHandleSchedule = Schedule.fixed(20 seconds)
     val nodeStateUpdateSchedule = Schedule.fixed(10 seconds)
-    val effect = (for {
+    val effect = for {
       _ <- ZIO.logInfo("Application started!")
       _ <- (taskWorkerApp @@ taskManageCycleInvokeCount).repeat(taskHandleSchedule).fork
       _ <- nodeStateUpdateEffect.repeat(nodeStateUpdateSchedule).fork
@@ -169,23 +164,7 @@ object App extends ZIOAppDefault {
           JobTemplatesServerEndpoints.templateEndpoints(dataOverviewReader, contentReader, writer)
       )
       _ <- ZIO.logInfo("Application is about to exit!")
-    } yield ())
-    //.provide(Server.defaultWithPort(http_server_port) >+> combinedLayer)
-    //    (for {
-    //      profileResult <- CausalProfiler(iterations = 100)
-    //        .profile(effect.forever)
-    //      _ <- ZIO.logInfo(s"Writing Profile effect")
-    //      writer <- ZIO.service[Writer[String, String, _]]
-    //      _ <- ZIO.attempt(writer.write(profileResult.render, "profile_1.coz"))
-    //    }
-    //    yield profileResult)
-    //      .provide(Server.defaultWithPort(http_server_port) >+> combinedLayer)
-    //    (for {
-    //      profile <- SamplingProfiler().profile(effect)
-    //      _ <- ZIO.logInfo(s"Writing Profile effect")
-    //      writer <- ZIO.service[Writer[String, String, _]]
-    //      _ <- ZIO.attempt(writer.write(profile.stackCollapse.mkString("\n"), "profile.folded"))
-    //    } yield profile).provide(Server.defaultWithPort(http_server_port) >+> combinedLayer)
+    } yield ()
     effect.provide(Server.defaultWithPort(http_server_port) >+> combinedLayer)
   }
 }
