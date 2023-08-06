@@ -17,7 +17,7 @@
 
 package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.processing
 
-import de.awagen.kolibri.datatypes.mutable.stores.BaseWeaklyTypedMap
+import de.awagen.kolibri.datatypes.mutable.stores.{BaseWeaklyTypedMap, WeaklyTypedMap}
 import de.awagen.kolibri.datatypes.tagging.Tags.StringTag
 import de.awagen.kolibri.datatypes.tagging.{TaggedWithType, Tags}
 import de.awagen.kolibri.datatypes.types.Types.WithCount
@@ -30,7 +30,7 @@ import de.awagen.kolibri.definitions.processing.failure.TaskFailType
 import de.awagen.kolibri.definitions.processing.failure.TaskFailType.FailedByException
 import de.awagen.kolibri.fleet.zio.config.AppProperties.config.maxParallelItemsPerBatch
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobBatch
-import de.awagen.kolibri.fleet.zio.execution.{Failed, ZIOSimpleTaskExecution}
+import de.awagen.kolibri.fleet.zio.execution.{ExecutionState, Failed, ZIOSimpleTaskExecution}
 import de.awagen.kolibri.fleet.zio.metrics.Metrics
 import de.awagen.kolibri.fleet.zio.resources.NodeResourceProvider
 import de.awagen.kolibri.storage.io.writer.Writers
@@ -71,10 +71,9 @@ object TaskWorker extends Worker {
     val aggregator: Aggregator[TaggedWithType with DataPoint[V], W] = jobBatch.job.aggregationInfo.batchAggregatorSupplier()
     val batchResultWriter: Writers.Writer[W, Tags.Tag, Any] = jobBatch.job.aggregationInfo.writer
     val successKey: String = jobBatch.job.aggregationInfo.successKey
-    for {
-      _ <- prepareGlobalResources(jobBatch.job.resourceSetup)
-      aggregatorRef <- Ref.make(aggregator)
-      computeResultFiber <- ZStream.fromIterable(jobBatch.job.batches.get(jobBatch.batchNr).get.data)
+
+    val resultComputeEffect: ZStream[Any, Throwable, Either[Throwable, (WeaklyTypedMap[String], Seq[ExecutionState])]] = for {
+      computeResult <- ZStream.fromIterable(jobBatch.job.batches.get(jobBatch.batchNr).get.data)
         .mapZIOParUnordered(maxParallelItemsPerBatch)(dataPoint =>
           for {
             _ <- ZIO.logDebug(s"trying to process data point: $dataPoint")
@@ -98,12 +97,16 @@ object TaskWorker extends Worker {
               .processAllTasks.either
           } yield result
         )
-        .mapZIO(element => {
-          ZIO.succeed(element) @@ Metrics.CalculationsWithMetrics.countFlowElements("requestResultsQueue", in = true)
-        })
+    } yield computeResult
+
+    val computeAndAggregateEffect = for {
+      aggregatorRef <- Ref.make(aggregator)
+      // effect for actual processing of items
+      computeResultFiber <- resultComputeEffect
         .mapZIO(element => {
           ZIO.succeed(element) @@ Metrics.CalculationsWithMetrics.countFlowElements("requestResultsQueue", in = false)
         })
+        // aggregation step
         .mapZIOParUnordered(8)(element =>
           for {
             // aggregate update step
@@ -156,6 +159,28 @@ object TaskWorker extends Worker {
         )
         .fork
     } yield (aggregatorRef, computeResultFiber)
+
+    // if this fails, we cannot continue properly, thus we can return the aggregator with the proper fail type and a finished Fiber.Runtime
+    val resourceSetupEffect = prepareGlobalResources(jobBatch.job.resourceSetup).either
+
+    // two-step effect: setting up global resources, if successful compute and aggregate results
+    for {
+      resourceSetupResult <- resourceSetupEffect
+      result <- resourceSetupResult match {
+        case Left(throwable) =>
+          ZIO.logWarning(s"""Loading global resources for batch failed, terminating further batch execution for job '${jobBatch.job.jobName}' and batch '${jobBatch.batchNr}'\nMsg: ${throwable.getMessage}\nTrace:${throwable.getStackTrace.mkString("\n")}""") *>
+            (for {
+              aggregatorRef <- Ref.make(aggregator)
+              // create a fiber and terminate it so we can pass it within the expected return type that will
+              // indicate finish state for the batch
+              fiber <- ZIO.never.fork
+              _ <- fiber.interrupt
+            } yield (aggregatorRef, fiber))
+        case Right(()) =>
+          computeAndAggregateEffect
+      }
+    } yield result
+
   }
 
 }
