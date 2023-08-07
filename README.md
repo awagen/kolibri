@@ -27,7 +27,7 @@ using the ZIO framework as processing engine, and based on storage-based definit
 while all connected nodes then negotiate who executes what in a claim-based mechanism.
 For the last state including the akka-mode, refer to the release tag ```v0.1.5-fleet``` (the tag ```v0.1.5``` represents
 the code base when the akk-based execution mode was still within the kolibri-base project before the split into 
-```kolibri-definitinos``` and ```kolibri-fleet-akka```, while the same tag with ```-fleet``` suffix represents the 
+```kolibri-definitions``` and ```kolibri-fleet-akka```, while the same tag with ```-fleet``` suffix represents the 
 same functionality but split into above-mentioned sub-projects).
 From tag ```v2.0.0``` on the kolibri-fleet-akka subproject is removed and the documentation on the official doc-website 
 will move to a legacy-subfolder.
@@ -61,8 +61,7 @@ Currently two types of persistence can be used out of the box: local file storag
 
 Note that the current state reflects the transition from the old akka-based mode to the new claim-based mechanism
 using the ZIO framework for the service implementation.
-Thus the integration into kolibri-watch is pending, yet expected to be available in a few days.
-The same holds for an example board for grafana such as in the example below for the akka-based project.
+
 
 ## Kolibri Watch
 Vue project providing a UI for Kolibri.
