@@ -49,6 +49,9 @@ then mark it as ready for being processed. All connected nodes will then negotia
 task. The nodes themselves to not communicate in any way except via state of the persistence.
 That is, every node writes a node health file, claims for tasks it selected for execution, and a processing state
 in case a claim was successful and processing has started.
+
+![Kolibri Overview](docs_material/kolibri_overview.png?raw=true "Kolibri Overview")
+
 Should a node go down, there will not be any updates anymore to the health status or the processing status.
 All other connected nodes check for timeout on both types of updates and if exceeded claim the right to clean up
 the state. This leads to resetting of tasks of the problematic node to open state (thus claimable by other nodes)
