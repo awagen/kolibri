@@ -30,7 +30,7 @@ services:
 
   kolibri-zio-1:
     image: awagen/kolibri-fleet-zio:0.2.0
-    cpu_count: 10
+    cpu_count: 12
     mem_limit: 6144m
     mem_reservation: 4096m
     ports:
@@ -45,9 +45,6 @@ services:
       PROFILE: prod
       NODE_HASH: "abc1"
       HTTP_SERVER_PORT: 8001
-      RUNNING_TASK_PER_JOB_MAX_COUNT: 20
-      RUNNING_TASK_PER_JOB_DEFAULT_COUNT: 3
-      MAX_NR_BATCH_RETRIES: 2
       PERSISTENCE_MODE: 'CLASS'
       PERSISTENCE_MODULE_CLASS: 'de.awagen.kolibri.fleet.zio.config.di.modules.persistence.LocalPersistenceModule'
       AWS_PROFILE: 'developer'
@@ -78,13 +75,16 @@ services:
       MAX_NR_JOBS_CLAIMED: 5
       NETTY_HTTP_CLIENT_THREADS_MAX: 4
       BLOCKING_POOL_THREADS: 4
-      NON_BLOCKING_POOL_THREADS: 2
+      NON_BLOCKING_POOL_THREADS: 4
     volumes:
       - ./tmp_data:/app/test-files
       - ${HOME}/.aws/credentials:/home/kolibri/.aws/credentials:ro
 
 #  kolibri-zio-2:
 #    image: awagen/kolibri-fleet-zio:0.2.0
+#    cpu_count: 12
+#    mem_limit: 6144m
+#    mem_reservation: 4096m
 #    ports:
 #      - "8002:8002"
 #    user: "1000:1000"
@@ -96,9 +96,6 @@ services:
 #      PROFILE: prod
 #      NODE_HASH: "abc2"
 #      HTTP_SERVER_PORT: 8002
-#      RUNNING_TASK_PER_JOB_MAX_COUNT: 20
-#      RUNNING_TASK_PER_JOB_DEFAULT_COUNT: 3
-#      MAX_NR_BATCH_RETRIES: 2
 #      PERSISTENCE_MODE: 'CLASS'
 #      PERSISTENCE_MODULE_CLASS: 'de.awagen.kolibri.fleet.zio.config.di.modules.persistence.LocalPersistenceModule'
 #      AWS_PROFILE: 'developer'
@@ -125,6 +122,11 @@ services:
 #      CONNECTION_POOL_SIZE_MIN: 10
 #      CONNECTION_POOL_SIZE_MAX: 100
 #      CONNECTION_TTL_IN_SECONDS: 1200
+#      MAX_NR_JOBS_PROCESSING: 5
+#      MAX_NR_JOBS_CLAIMED: 5
+#      NETTY_HTTP_CLIENT_THREADS_MAX: 4
+#      BLOCKING_POOL_THREADS: 4
+#      NON_BLOCKING_POOL_THREADS: 4
 #    volumes:
 #      - ./tmp_data:/app/test-files
 #      - ${HOME}/.aws/credentials:/home/kolibri/.aws/credentials:ro
@@ -168,39 +170,39 @@ services:
     ports:
       - "80:80"
 
-#  search-service-2:
-#    image: awagen/response-juggler:0.1.1
-#    user: "1000:1000"
-#    cpu_count: 2
-#    mem_reservation: 512m
-#    mem_limit: 512m
-#    environment:
-#      PORT: 81
-#      NUM_CONNECTIONS: 400
-#      RESPONSE_MAIN_TEMPLATE: "searchresponse.json"
-#      RESPONSE_PARTIAL_IDENT_DOCS: "{{DOCS}}"
-#      RESPONSE_PARTIAL_CONTENT_DOCS: "doc_bool_flag.json"
-#      RESPONSE_PARTIAL_SAMPLER_TYPE_DOCS: "LIST"
-#      RESPONSE_PARTIAL_SAMPLER_MIN_NUM_DOCS: 5
-#      RESPONSE_PARTIAL_SAMPLER_MAX_NUM_DOCS: 20
-#      RESPONSE_FIELD_IDENT_PID: "{{PID}}"
-#      RESPONSE_FIELD_SAMPLER_TYPE_PID: "SINGLE"
-#      RESPONSE_FIELD_SAMPLER_ELEMENT_CAST_PID: "STRING"
-#      RESPONSE_FIELD_SAMPLER_SELECTION_PID: "p0,p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12,p13,p14,p15,p16,p17,p18,p19"
-#      RESPONSE_FIELD_IDENT_BOOL: "{{BOOL}}"
-#      RESPONSE_FIELD_SAMPLER_TYPE_BOOL: "SINGLE"
-#      RESPONSE_FIELD_SAMPLER_ELEMENT_CAST_BOOL: "BOOL"
-#      RESPONSE_FIELD_SAMPLER_SELECTION_BOOL: "True,False"
-#      RESPONSE_FIELD_IDENT_NUM_FOUND: "{{NUM_FOUND}}"
-#      RESPONSE_FIELD_SAMPLER_TYPE_NUM_FOUND: "SINGLE"
-#      RESPONSE_FIELD_SAMPLER_ELEMENT_CAST_NUM_FOUND: "INT"
-#      RESPONSE_FIELD_SAMPLER_SELECTION_NUM_FOUND: "1,5,6,8,10,12,100,50,200"
-#      RESPONSE_FIELD_IDENT_STRING_VAL1: "{{STRING_VAL1}}"
-#      RESPONSE_FIELD_SAMPLER_TYPE_STRING_VAL1: "SINGLE"
-#      RESPONSE_FIELD_SAMPLER_ELEMENT_CAST_STRING_VAL1: "STRING"
-#      RESPONSE_FIELD_SAMPLER_SELECTION_STRING_VAL1: "p0,p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12,p13,p14,p15,p16,p17,p18,p19"
-#    ports:
-#      - "81:81"
+  search-service-2:
+    image: awagen/response-juggler:0.1.1
+    user: "1000:1000"
+    cpu_count: 2
+    mem_reservation: 512m
+    mem_limit: 512m
+    environment:
+      PORT: 81
+      NUM_CONNECTIONS: 400
+      RESPONSE_MAIN_TEMPLATE: "searchresponse.json"
+      RESPONSE_PARTIAL_IDENT_DOCS: "{{DOCS}}"
+      RESPONSE_PARTIAL_CONTENT_DOCS: "doc_bool_flag.json"
+      RESPONSE_PARTIAL_SAMPLER_TYPE_DOCS: "LIST"
+      RESPONSE_PARTIAL_SAMPLER_MIN_NUM_DOCS: 5
+      RESPONSE_PARTIAL_SAMPLER_MAX_NUM_DOCS: 20
+      RESPONSE_FIELD_IDENT_PID: "{{PID}}"
+      RESPONSE_FIELD_SAMPLER_TYPE_PID: "SINGLE"
+      RESPONSE_FIELD_SAMPLER_ELEMENT_CAST_PID: "STRING"
+      RESPONSE_FIELD_SAMPLER_SELECTION_PID: "p0,p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12,p13,p14,p15,p16,p17,p18,p19"
+      RESPONSE_FIELD_IDENT_BOOL: "{{BOOL}}"
+      RESPONSE_FIELD_SAMPLER_TYPE_BOOL: "SINGLE"
+      RESPONSE_FIELD_SAMPLER_ELEMENT_CAST_BOOL: "BOOL"
+      RESPONSE_FIELD_SAMPLER_SELECTION_BOOL: "True,False"
+      RESPONSE_FIELD_IDENT_NUM_FOUND: "{{NUM_FOUND}}"
+      RESPONSE_FIELD_SAMPLER_TYPE_NUM_FOUND: "SINGLE"
+      RESPONSE_FIELD_SAMPLER_ELEMENT_CAST_NUM_FOUND: "INT"
+      RESPONSE_FIELD_SAMPLER_SELECTION_NUM_FOUND: "1,5,6,8,10,12,100,50,200"
+      RESPONSE_FIELD_IDENT_STRING_VAL1: "{{STRING_VAL1}}"
+      RESPONSE_FIELD_SAMPLER_TYPE_STRING_VAL1: "SINGLE"
+      RESPONSE_FIELD_SAMPLER_ELEMENT_CAST_STRING_VAL1: "STRING"
+      RESPONSE_FIELD_SAMPLER_SELECTION_STRING_VAL1: "p0,p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12,p13,p14,p15,p16,p17,p18,p19"
+    ports:
+      - "81:81"
 
 #  kolibri-watch:
 #    image: awagen/kolibri-watch:0.1.0
