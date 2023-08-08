@@ -74,8 +74,6 @@ object TaskFactory {
    * Fields are extracted from the response according to the
    * ParsingConfig.
    */
-  // TODO: define without passing client? Rather, change task type allowing generic environment needed (here would only be Client)
-  // and then will only need to be provided when actually running the task, not on definition
   case class RequestJsonAndParseValuesTask(parsingConfig: ParsingConfig,
                                            taggingConfig: RequestAndParsingResultTaggerConfig,
                                            connectionSupplier: () => Connection,

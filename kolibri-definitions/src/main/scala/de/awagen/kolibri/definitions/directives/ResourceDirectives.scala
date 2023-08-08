@@ -90,7 +90,7 @@ object ResourceDirectives {
   case class GenericResourceDirective[+T](resource: Resource[T], supplier: SerializableSupplier[T], expirePolicy: ExpirePolicy = ExpirePolicy.ON_JOB_END) extends ResourceDirective[T] {
 
     override def getResource: T = {
-      GenericResourceDirective.logger.info(s"Get resource called onb resource '${resource.identifier}' of type '${resource.resourceType}''")
+      GenericResourceDirective.logger.info(s"Get resource '${resource.identifier}' of type '${resource.resourceType}''")
       supplier.apply()
     }
   }
