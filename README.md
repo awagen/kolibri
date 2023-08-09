@@ -35,9 +35,9 @@ The new mode opens nice, lean ways of quickly trying out stuff without the need 
 between deployed nodes or nodes connected from anywhere (such as your local machine or those of your colleagues), 
 the only thing that matters is that those nodes have access to the persistence configured (such as an S3 bucket).
 
-Note that the official documentation (<https://awagen.github.io/kolibri>) has not yet been adjusted but 
-will be shortly. You will find the legacy-documentation of the akka-based project for now under
-<https://awagen.github.io/kolibri/kolibri-base/>.
+Note that the updated official documentation can be found on <https://awagen.github.io/kolibri>.
+You will find the legacy-documentation of the akka-based project for now under
+<https://awagen.github.io/kolibri/kolibri_archive/>.
 
 Let's have a look at kolibri-fleet-zio.
 
@@ -62,8 +62,6 @@ system during processing, obviously the nodes also need access to those systems.
 
 Currently two types of persistence can be used out of the box: local file storage and AWS S3 buckets.
 
-Note that the current state reflects the transition from the old akka-based mode to the new claim-based mechanism
-using the ZIO framework for the service implementation.
 
 
 ## Kolibri Watch
