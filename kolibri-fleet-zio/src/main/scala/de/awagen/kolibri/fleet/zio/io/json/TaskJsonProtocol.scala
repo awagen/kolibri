@@ -161,6 +161,22 @@ object TaskJsonProtocol extends DefaultJsonProtocol {
             ),
             required = true,
             description = "Type of the job."
+          ),
+          FieldDef(
+            StringConstantStructDef(SUCCESS_KEY_NAME_KEY),
+            RegexStructDef(".+".r),
+            required = false,
+            description = "The success key name to store computed result under if compute is successful. Note that in case" +
+              " of RequestMode REQUEST_ALL_CONNECTIONS this will be used as prefix and '-[index]' is appended, where [index] stands for 1-based increasing index." +
+              " If not set, default will be used."
+          ),
+          FieldDef(
+            StringConstantStructDef(FAIL_KEY_NAME_KEY),
+            RegexStructDef(".+".r),
+            required = false,
+            description = "The fail key name to store computed TaskFailType under if compute is NOT successful. Note that in case" +
+              " of RequestMode REQUEST_ALL_CONNECTIONS this will be used as prefix and '-[index]' is appended, where [index] stands for 1-based increasing index." +
+              "  If not set, default will be used."
           )
         ),
         Seq(
@@ -213,22 +229,6 @@ object TaskJsonProtocol extends DefaultJsonProtocol {
                 StringChoiceStructDef(Seq(HttpMethod.GET.toString, HttpMethod.PUT.toString, HttpMethod.POST.toString)),
                 required = false,
                 description = "The http method to be used. If not set, GET will be used."
-              ),
-              FieldDef(
-                StringConstantStructDef(SUCCESS_KEY_NAME_KEY),
-                RegexStructDef(".+".r),
-                required = false,
-                description = "The success key name to store computed result under if compute is successful. Note that in case" +
-                  " of RequestMode REQUEST_ALL_CONNECTIONS this will be used as prefix and '-[index]' is appended, where [index] stands for 1-based increasing index." +
-                  " If not set, default will be used."
-              ),
-              FieldDef(
-                StringConstantStructDef(FAIL_KEY_NAME_KEY),
-                RegexStructDef(".+".r),
-                required = false,
-                description = "The fail key name to store computed TaskFailType under if compute is NOT successful. Note that in case" +
-                  " of RequestMode REQUEST_ALL_CONNECTIONS this will be used as prefix and '-[index]' is appended, where [index] stands for 1-based increasing index." +
-                  "  If not set, default will be used."
               )
             )
           ))
@@ -421,8 +421,7 @@ object TaskJsonProtocol extends DefaultJsonProtocol {
                 required = true,
                 description = "The key under which the second input argument (of type ProcessingMessage[MetricRow])" +
                   " is stored."
-              ),
-
+              )
             )
           ))
         )
@@ -457,6 +456,20 @@ object TaskJsonProtocol extends DefaultJsonProtocol {
           ),
           required = true,
           description = "Type of the job"
+        ),
+        FieldDef(
+          StringConstantStructDef(SUCCESS_KEY_NAME_KEY),
+          RegexStructDef(".+".r),
+          required = false,
+          description = "The success key name to store computed result under if compute is successful." +
+            " If not set, default will be used."
+        ),
+        FieldDef(
+          StringConstantStructDef(FAIL_KEY_NAME_KEY),
+          RegexStructDef(".+".r),
+          required = false,
+          description = "The fail key name to store computed TaskFailType under if compute is NOT successful." +
+            "  If not set, default will be used."
         )
       ),
       Seq(
