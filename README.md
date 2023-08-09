@@ -9,7 +9,7 @@ The repository combines the distinct Kolibri projects.
 Provides basic data structures used throughout Kolibri to simplify data
 processing.
 
-Documentation: <https://awagen.github.io/kolibri/kolibri-datatypes/>
+Documentation: <https://awagen.github.io/kolibri_archive/kolibri-datatypes/>
 
 ## Kolibri Definitions
 Contains functionality of composing ```what``` to execute, irrespective of the particular execution mechanism.
@@ -71,7 +71,7 @@ and single batches in particular including resource consumption on the nodes.
 Jobs can also be killed via UI.
 Future iterations will also include result / analysis visualizations.
 
-Documentation: <https://awagen.github.io/kolibri/kolibri-watch/>
+Documentation: <https://awagen.github.io/kolibri_archive/kolibri-watch/>
 
 Status overview of cluster:
 ![KolibriWatch Status](images/Status.png?raw=true "KolibriWatch Status")
