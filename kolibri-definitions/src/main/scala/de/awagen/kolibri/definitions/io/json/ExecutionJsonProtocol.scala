@@ -72,9 +72,11 @@ object ExecutionJsonProtocol extends DefaultJsonProtocol {
                 AGGREGATE_FROM_DIR_BY_REGEX_TYPE,
                 AGGREGATE_FILES_TYPE,
                 AGGREGATE_GROUPS_TYPE,
-                ANALYZE_BEST_WORST_REGEX_TYPE,
-                ANALYZE_BEST_WORST_FILES_TYPE,
-                ANALYZE_QUERY_METRIC_VARIANCE_TYPE
+                // NOTE: commented out for now to keep the options clean for now. Might add back later when bound to
+                // useful frontend display
+//                ANALYZE_BEST_WORST_REGEX_TYPE,
+//                ANALYZE_BEST_WORST_FILES_TYPE,
+//                ANALYZE_QUERY_METRIC_VARIANCE_TYPE
               )
             ),
             required = true

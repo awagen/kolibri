@@ -19,7 +19,10 @@ package de.awagen.kolibri.fleet.zio
 
 import de.awagen.kolibri.datatypes.types.Types.WithCount
 import de.awagen.kolibri.definitions.io.json.ResourceJsonProtocol.AnyResourceFormat
+import de.awagen.kolibri.definitions.processing.execution.functions.Execution
+import de.awagen.kolibri.definitions.processing.failure.TaskFailType.TaskFailType
 import de.awagen.kolibri.fleet.zio.ServerEndpoints.ResponseContentProtocol.responseContentFormat
+import de.awagen.kolibri.fleet.zio.config.AppConfig.JsonFormats.executionFormat
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobDefinition
 import de.awagen.kolibri.fleet.zio.io.json.JobDefinitionJsonProtocol.JobDefinitionFormat
 import de.awagen.kolibri.fleet.zio.io.json.JobDirectivesJsonProtocol.JobDirectivesFormat
@@ -250,6 +253,26 @@ object ServerEndpoints {
     implicit def responseContentFormat[T: JsonFormat]: RootJsonFormat[ResponseContent[T]] = jsonFormat2(ResponseContent.apply[T])
   }
 
+  val taskPostingEndpoints = Http.collectZIO[Request] {
+    case req@Method.POST -> Root / "task" =>
+      val computeEffect: Task[Either[TaskFailType, Any]] = for {
+        jobString <- req.body.asString
+        task <- ZIO.attempt(jobString.parseJson.convertTo[Execution[Any]])
+        taskResult <- ZIO.attemptBlocking[Either[TaskFailType, Any]](task.execute)
+      } yield taskResult
+      (for {
+        result <- computeEffect
+        response <- ZIO.attempt(result match {
+          case Left(e: TaskFailType) =>
+            Response.text(ResponseContent("", s"Task failed due to: ${e.toString}").toJson.toString())
+          case Right(_) =>
+            Response.text(ResponseContent("Task completed", "").toJson.toString())
+        })
+      } yield response).catchAll(throwable =>
+        ZIO.logWarning(s"Error on posting task:\n$throwable")
+          *> ZIO.succeed(Response.text(s"Failed posting task"))
+      ) @@ countAPIRequests("POST", "/task")
+  } @@ cors(corsConfig)
 
   val jobPostingEndpoints = Http.collectZIO[Request] {
     case req@Method.POST -> Root / "job" =>

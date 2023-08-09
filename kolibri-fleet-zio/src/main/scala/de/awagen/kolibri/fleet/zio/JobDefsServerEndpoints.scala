@@ -19,6 +19,7 @@ package de.awagen.kolibri.fleet.zio
 
 import de.awagen.kolibri.datatypes.io.json.JsonStructDefsJsonProtocol.JsonStructDefsFormat
 import de.awagen.kolibri.datatypes.types.JsonStructDefs.StructDef
+import de.awagen.kolibri.definitions.io.json.ExecutionJsonProtocol.ExecutionFormat
 import de.awagen.kolibri.fleet.zio.ServerEndpoints.ResponseContentProtocol.responseContentFormat
 import de.awagen.kolibri.fleet.zio.ServerEndpoints.{ResponseContent, corsConfig}
 import de.awagen.kolibri.fleet.zio.io.json.JobDefinitionJsonProtocol
@@ -32,7 +33,9 @@ import zio.http._
 object JobDefsServerEndpoints {
 
   val ID_JOB_DEF = "jobDefinition"
+  val TASK_DEF = "task"
   val JOB_POST_PATH = "job"
+  val TASK_POST_PATH = "task"
 
   case class EndpointDef(id: String,
                          name: String,
@@ -48,13 +51,22 @@ object JobDefsServerEndpoints {
       JobDefinitionJsonProtocol.jobDefStructDef,
       "Endpoint for composition of needed processing."
     )
+
+    val taskPostEndpoint = EndpointDef(
+      TASK_DEF,
+      "Configure single-step tasks such as aggregations or other analysis tasks",
+      TASK_POST_PATH,
+      ExecutionFormat.structDef,
+      "Endpoint for composition of single tasks, such as aggregations or other analysis"
+    )
   }
 
   implicit val endpointAndStructDefFormat: RootJsonFormat[EndpointDef] = jsonFormat5(EndpointDef)
 
   def jobDefEndpoints = Http.collectZIO[Request] {
     case Method.GET -> Root / "jobs" / "structs" =>
-      ZIO.succeed(Response.json(ResponseContent(Seq(Endpoints.taskSequencePostEndpoint), "").toJson.toString())) @@ countAPIRequests("GET", "/jobs/structs")
+      ZIO.succeed(
+        Response.json(ResponseContent(Seq(Endpoints.taskSequencePostEndpoint, Endpoints.taskPostEndpoint), "").toJson.toString())) @@ countAPIRequests("GET", "/jobs/structs")
   } @@ cors(corsConfig)
 
 }

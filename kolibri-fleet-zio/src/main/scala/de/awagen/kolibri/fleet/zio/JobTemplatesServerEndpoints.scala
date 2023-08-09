@@ -18,8 +18,11 @@
 package de.awagen.kolibri.fleet.zio
 
 import de.awagen.kolibri.datatypes.types.Types.WithCount
+import de.awagen.kolibri.definitions.processing.execution.functions.Execution
+import de.awagen.kolibri.fleet.zio.JobDefsServerEndpoints.{ID_JOB_DEF, TASK_DEF}
 import de.awagen.kolibri.fleet.zio.ServerEndpoints.ResponseContentProtocol.responseContentFormat
 import de.awagen.kolibri.fleet.zio.ServerEndpoints.{ResponseContent, corsConfig}
+import de.awagen.kolibri.fleet.zio.config.AppConfig.JsonFormats.executionFormat
 import de.awagen.kolibri.fleet.zio.config.AppProperties
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobDefinition
 import de.awagen.kolibri.fleet.zio.io.json.JobDefinitionJsonProtocol.JobDefinitionFormat
@@ -150,7 +153,13 @@ object JobTemplatesServerEndpoints {
         // parse body and try to convert it to JobDefinition. If conversion fails, its not a valid format.
         jsonStr <- for {
           bodyStr <- req.body.asString(Charset.forName("UTF-8"))
-          _ <- bodyStr.parseJson.convertTo[ZIO[Client, Throwable, JobDefinition[_, _, _ <: WithCount]]]
+          _ <- ZIO.whenCase(templateType)({
+            case ID_JOB_DEF =>
+              bodyStr.parseJson.convertTo[ZIO[Client, Throwable, JobDefinition[_, _, _ <: WithCount]]] *> ZIO.succeed(())
+            case TASK_DEF =>
+              ZIO.attempt(bodyStr.parseJson.convertTo[Execution[Any]]) *> ZIO.succeed(())
+            case _ => ZIO.fail(new RuntimeException("Can not parse job/task definition"))
+          })
         } yield bodyStr
         fullTemplateName <- ZIO.attempt({
           templateId.stripPrefix("/").stripSuffix("/").trim match {
@@ -186,7 +195,7 @@ object JobTemplatesServerEndpoints {
       computeEffect.catchAll(throwable => {
         ZIO.logError(s"Error reading registered jobs:\n${throwable.getStackTrace.mkString("\n")}") *>
           ZIO.succeed(Response.json(ResponseContent("", "failed persisting job template").toJson.toString()).withStatus(Status.InternalServerError))
-      }) @@ countAPIRequests("POST", "/jobs/templates/[templateType]/[templateId]")
+      }) @@ countAPIRequests("POST", s"/jobs/templates/$templateType/[templateId]")
   } @@ cors(corsConfig)
 
 }

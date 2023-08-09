@@ -154,6 +154,7 @@ object App extends ZIOAppDefault {
       jobStateWriter <- ZIO.service[JobStateWriter]
       _ <- Server.serve(
         ServerEndpoints.jobPostingEndpoints ++
+          ServerEndpoints.taskPostingEndpoints ++
           ServerEndpoints.statusEndpoints(openJobStateCache, doneJobStateCache, jobStateWriter) ++
           ServerEndpoints.batchStatusEndpoints(openJobStateCache) ++
           ServerEndpoints.prometheusEndpoint ++
