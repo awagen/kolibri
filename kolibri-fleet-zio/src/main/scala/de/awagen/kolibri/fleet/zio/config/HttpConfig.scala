@@ -37,7 +37,7 @@ object HttpConfig {
   private lazy val configLayer = ZLayer.succeed({
     AppProperties.config.connectionPoolType match {
       case "DYNAMIC" =>
-        Config.default.withDynamicConnectionPool(connectionPoolSizeMin, connectionPoolSizeMax, zio.Duration(connectionTTLInSeconds, TimeUnit.SECONDS))
+        Config.default.withDynamicConnectionPool(connectionPoolSizeMin, connectionPoolSizeMax, zio.Duration(connectionTTLInSeconds, TimeUnit.SECONDS)).connectionTimeout(connectionTimeoutInSeconds seconds)
       case "FIXED" =>
         Config.default.withFixedConnectionPool(connectionPoolSizeMin).connectionTimeout(connectionTimeoutInSeconds seconds)
       case otherType =>
