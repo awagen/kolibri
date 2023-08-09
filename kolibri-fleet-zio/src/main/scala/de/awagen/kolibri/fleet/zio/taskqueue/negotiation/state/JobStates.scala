@@ -44,6 +44,8 @@ object JobStates {
 
   /**
    * Snapshot of current state of a single job.
+   *
+   * jobId - format: [jobName]_[timePlacedInMillis]
    */
   case class JobStateSnapshot(jobId: String,
                               timePlacedInMillis: Long,

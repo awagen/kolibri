@@ -44,10 +44,6 @@ object App extends ZIOAppDefault {
     Runtime.removeDefaultLoggers >>> SLF4J.slf4j >>> Runtime.setBlockingExecutor(blockingExecutor) >>> Runtime.setExecutor(nonBlockingExecutor)
   }
 
-  // TODO: one problem here is if the workers fail in initial stages of a task
-  //  (such as resource creation where no result type is yet generated),
-  // then it seems no update follows and the tasks are revoked from their
-  // current nodes and put to open again, which leads to a loop --> FIX!!
   val planTasksEffect: ZIO[JobStateReader with TaskPlannerService with WorkStateReader with TaskOverviewService with Client, Throwable, Unit] = {
     (for {
       taskOverviewService <- ZIO.service[TaskOverviewService]
@@ -57,6 +53,8 @@ object App extends ZIOAppDefault {
 
       // fetch current job state
       openJobsState <- jobStateReader.fetchJobState(true)
+      // fetch job ids that are to be ignored on this node
+      ignoreJobIdsOnThisNode <- ZIO.succeed(openJobsState.jobsToBeIgnoredOnThisNode.map(x => x.jobId))
 
       // getting next tasks to do from the distinct task topics
       jobToDoneTasks <- taskOverviewService.getJobToDoneTasks(openJobsState)
@@ -67,7 +65,7 @@ object App extends ZIOAppDefault {
       processingStates <- workStateReader.getInProgressStateForAllNodes(openJobsState.jobStateSnapshots.keySet)
         .map(x => x.values.flatMap(y => y.values).flatten.toSet)
       taskResetTasks <- ZStream.fromIterable(processingStates.map(x => x.processingInfo.processingNode))
-        .flatMap(nodeHash => ZStream.fromIterableZIO(taskOverviewService.getTaskResetTasks(processingStates, nodeHash)))
+        .flatMap(nodeHash => ZStream.fromIterableZIO(taskOverviewService.getTaskResetTasks(processingStates, nodeHash, ignoreJobIdsOnThisNode.toSet)))
         .runCollect
 
       // tasks for cleanup of orphaned node health states

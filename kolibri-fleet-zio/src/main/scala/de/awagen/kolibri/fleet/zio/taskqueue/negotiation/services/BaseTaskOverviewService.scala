@@ -57,7 +57,8 @@ case class BaseTaskOverviewService(jobStateReader: JobStateReader,
    */
   override def getBatchProcessingTasks(openJobsSnapshot: OpenJobsSnapshot, maxNrTasks: Int = AppProperties.config.maxNrJobsClaimed): zio.Task[Seq[Task]] = {
     for {
-      nNextOpenBatches <- ZIO.attempt(openJobsSnapshot.getNextNOpenBatches(maxNrTasks, Map.empty))
+      ignoreJobIdsOnThisNode <- ZIO.succeed(openJobsSnapshot.jobsToBeIgnoredOnThisNode.map(x => x.jobId))
+      nNextOpenBatches <- ZIO.attempt(openJobsSnapshot.getNextNOpenBatches(maxNrTasks, Map.empty).filter(x => !ignoreJobIdsOnThisNode.contains(x._1.jobName)))
       nNextOpenProcessIds <- ZIO.attempt(nNextOpenBatches.flatMap(defWithBatches => {
         defWithBatches._2.map(batchNr => ProcessId(defWithBatches._1.jobName, batchNr))
       }))
@@ -67,12 +68,13 @@ case class BaseTaskOverviewService(jobStateReader: JobStateReader,
     } yield fileBatchClaimResults
   }
 
-  override def getTaskResetTasks(processingStates: Set[ProcessingState], nodeHash: String): zio.Task[Seq[Task]] = {
+  override def getTaskResetTasks(processingStates: Set[ProcessingState], nodeHash: String, ignoredJobIds: Set[String]): zio.Task[Seq[Task]] = {
     for {
       // current time to filter out those in-progress states that were not updated for too long
       currentTimeInMillis <- ZIO.succeed(System.currentTimeMillis())
       // filtering for in-progress states with overdue updates
       overdueProcessingStates <- ZStream.fromIterable(processingStates)
+        .filter(x => !ignoredJobIds.contains(x.stateId.jobId))
         .filter(state => {
           val timeUpdated: Long = DateUtils.timeStringToTimeInMillis(state.processingInfo.lastUpdate)
           val timeHasElapsed: Boolean = (currentTimeInMillis - timeUpdated) / 1000.0 > AppProperties.config.maxTimeBetweenProgressUpdatesInSeconds
@@ -92,9 +94,11 @@ case class BaseTaskOverviewService(jobStateReader: JobStateReader,
   override def getJobToDoneTasks(openJobsSnapshot: OpenJobsSnapshot): zio.Task[Seq[Task]] = {
     for {
       // extract all jobIds that are in open state but that have no open or in-progress batches anymore
+      ignoreJobIdsOnThisNode <- ZIO.succeed(openJobsSnapshot.jobsToBeIgnoredOnThisNode.map(x => x.jobId))
       jobIdsWithoutUnfinishedBusiness <- ZIO.attempt({
         openJobsSnapshot.jobStateSnapshots.values.filter(x => {
-          !x.batchesToState.values.exists(state => state != BatchProcessingStates.Done)
+          !x.batchesToState.values.exists(state => state != BatchProcessingStates.Done) &&
+            !ignoreJobIdsOnThisNode.contains(x.jobId)
         }).map(x => x.jobId).toSet
       })
       // file claims

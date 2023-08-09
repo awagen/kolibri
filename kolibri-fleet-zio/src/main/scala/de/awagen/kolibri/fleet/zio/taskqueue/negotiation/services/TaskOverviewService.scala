@@ -25,7 +25,7 @@ trait TaskOverviewService {
 
   def getJobToDoneTasks(openJobsSnapshot: OpenJobsSnapshot): zio.Task[Seq[Task]]
 
-  def getTaskResetTasks(processingStates: Set[ProcessingState], nodeHash: String): zio.Task[Seq[Task]]
+  def getTaskResetTasks(processingStates: Set[ProcessingState], nodeHash: String, ignoredJobIds: Set[String]): zio.Task[Seq[Task]]
 
   def getBatchProcessingTasks(openJobsSnapshot: OpenJobsSnapshot, maxNrTasks: Int): zio.Task[Seq[Task]]
 

@@ -286,7 +286,7 @@ case class ClaimBasedTaskPlannerService(claimReader: ClaimReader,
             case Limit(value) => value
           })
           tasksToClaim <- ZIO.succeed(topicAndTasks._2.take(limit))
-          _ <- ZIO.logInfo(s"""Claiming tasks (Limit: $limit):\n${tasksToClaim.mkString("\n")}""")
+          _ <- ZIO.when(tasksToClaim.nonEmpty)(ZIO.logInfo(s"""Claiming tasks (Limit: $limit):\n${tasksToClaim.mkString("\n")}"""))
           _ <- ZStream.fromIterable(tasksToClaim).foreach(task => fileClaim(task))
         } yield ()
 
