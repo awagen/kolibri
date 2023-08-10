@@ -407,6 +407,7 @@ object TaskFactory {
 
     override def failKey: String = failKeyName
 
+    // TODO: define prefixes per metric origin for merging the metrics
     override def task(map: WeaklyTypedMap[String]): Task[WeaklyTypedMap[String]] = {
       val mergeEffect = for {
         row1 <- ZIO.attempt(map.get[ProcessingMessage[MetricRow]](key1).get)
@@ -421,7 +422,7 @@ object TaskFactory {
           processingMessageResult.takeOverTags(row2)
         })
         updatedMap <- ZIO.attempt({
-          map.put(successKey, ProcessingMessages.Corn(mergedRow))
+          map.put(successKey, processingMessageResult)
           map
         })
       } yield updatedMap
