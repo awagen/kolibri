@@ -23,6 +23,7 @@ import de.awagen.kolibri.definitions.processing.execution.functions.Execution
 import de.awagen.kolibri.definitions.processing.failure.TaskFailType.TaskFailType
 import de.awagen.kolibri.fleet.zio.ServerEndpoints.ResponseContentProtocol.responseContentFormat
 import de.awagen.kolibri.fleet.zio.config.AppConfig.JsonFormats.executionFormat
+import de.awagen.kolibri.fleet.zio.config.HttpConfig.corsConfig
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobDefinition
 import de.awagen.kolibri.fleet.zio.io.json.JobDefinitionJsonProtocol.JobDefinitionFormat
 import de.awagen.kolibri.fleet.zio.io.json.JobDirectivesJsonProtocol.JobDirectivesFormat
@@ -37,10 +38,8 @@ import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.NodeUtilizationSt
 import spray.json.DefaultJsonProtocol._
 import spray.json._
 import zio.cache.{Cache, Lookup}
-import zio.http.Header.{AccessControlAllowMethods, AccessControlAllowOrigin}
 import zio.http.HttpAppMiddleware.cors
 import zio.http._
-import zio.http.internal.middlewares.Cors.CorsConfig
 import zio.metrics.connectors.prometheus.PrometheusPublisher
 import zio.stream.ZStream
 import zio.{Task, ZIO, durationInt}
@@ -51,11 +50,6 @@ import java.nio.charset.Charset
 object ServerEndpoints {
 
   val JOB_STATE_CACHE_KEY = "JOB_STATE"
-
-  val corsConfig: CorsConfig = CorsConfig(
-    allowedOrigin = _ => Some(AccessControlAllowOrigin.All),
-    allowedMethods = AccessControlAllowMethods(Method.GET, Method.POST, Method.PUT, Method.DELETE)
-  )
 
   private def jobStateRetrieval(jobStateReader: JobStateReader, isOpenJob: Boolean)(key: String): ZIO[Client, Throwable, OpenJobsSnapshot] = {
     key match {

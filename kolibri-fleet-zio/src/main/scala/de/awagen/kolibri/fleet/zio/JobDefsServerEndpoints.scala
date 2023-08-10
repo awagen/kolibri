@@ -21,7 +21,8 @@ import de.awagen.kolibri.datatypes.io.json.JsonStructDefsJsonProtocol.JsonStruct
 import de.awagen.kolibri.datatypes.types.JsonStructDefs.StructDef
 import de.awagen.kolibri.definitions.io.json.ExecutionJsonProtocol.ExecutionFormat
 import de.awagen.kolibri.fleet.zio.ServerEndpoints.ResponseContentProtocol.responseContentFormat
-import de.awagen.kolibri.fleet.zio.ServerEndpoints.{ResponseContent, corsConfig}
+import de.awagen.kolibri.fleet.zio.ServerEndpoints.{ResponseContent}
+import de.awagen.kolibri.fleet.zio.config.HttpConfig.corsConfig
 import de.awagen.kolibri.fleet.zio.io.json.JobDefinitionJsonProtocol
 import de.awagen.kolibri.fleet.zio.metrics.Metrics.CalculationsWithMetrics.countAPIRequests
 import spray.json.DefaultJsonProtocol.{StringJsonFormat, immSeqFormat, jsonFormat5}
