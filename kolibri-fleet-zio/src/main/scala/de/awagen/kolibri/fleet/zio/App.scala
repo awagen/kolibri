@@ -161,7 +161,9 @@ object App extends ZIOAppDefault {
           ServerEndpoints.nodeStateEndpoint ++
           ServerEndpoints.directiveEndpoints ++
           JobDefsServerEndpoints.jobDefEndpoints ++
-          JobTemplatesServerEndpoints.templateEndpoints(dataOverviewReader, contentReader, writer)
+          JobTemplatesServerEndpoints.templateEndpoints(dataOverviewReader, contentReader, writer) ++
+          DataEndpoints.dataEndpoints
+
       )
       _ <- ZIO.logInfo("Application is about to exit!")
     } yield ()
