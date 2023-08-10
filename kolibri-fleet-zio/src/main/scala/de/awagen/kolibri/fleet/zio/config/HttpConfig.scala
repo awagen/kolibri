@@ -45,7 +45,11 @@ object HttpConfig {
     }
   })
 
-  private lazy val nettyConfigLayer = ZLayer.succeed(NettyConfig.default.maxThreads(AppProperties.config.nettyHttpClientThreadsMax))
+  private lazy val nettyConfigLayer = AppProperties.config.nettyHttpClientThreadsMax match {
+    case e if e > 0 =>
+      ZLayer.succeed(NettyConfig.default.maxThreads(AppProperties.config.nettyHttpClientThreadsMax))
+    case _ => ZLayer.succeed(NettyConfig.default)
+  }
 
   lazy val liveHttpClientLayer: ZLayer[Any, Throwable, Client] = {
     implicit val trace: Trace = Trace.empty
