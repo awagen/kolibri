@@ -36,6 +36,6 @@ trait Worker {
    * The aggregator will not have all data before the fiber.status is done.
    * By returning the fiber here we are also able to interrupt it in case it is not needed anymore.
    */
-  def work[T: TypeTag, V: TypeTag, W <: WithCount](jobBatch: JobBatch[T, V, W])(implicit tag: TypeTag[W]): Task[(Ref[Aggregator[TaggedWithType with DataPoint[V], W]], Fiber.Runtime[Throwable, Unit])]
+  def work[T: TypeTag, V: TypeTag, W <: WithCount](jobBatch: JobBatch[T, V, W])(implicit tag: TypeTag[W]): Task[(Ref[Aggregator[TaggedWithType with DataPoint[V], W]], Fiber.Runtime[Any, Any])]
 
 }
