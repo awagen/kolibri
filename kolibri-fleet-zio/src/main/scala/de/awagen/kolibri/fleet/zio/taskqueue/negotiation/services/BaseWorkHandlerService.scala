@@ -61,7 +61,7 @@ object BaseWorkHandlerService {
    *                              node and moving the batch back to "open", for all nodes to claim
    */
   private def compareRunningBatchesWithSnapshotAndInterruptIfIndicated(processingIds: Seq[ProcessId],
-                                                                       processToFiberMapping: Map[ProcessId, Fiber.Runtime[Throwable, Unit]]): Task[Chunk[(ProcessId, Exit[Throwable, Unit])]] = {
+                                                                       processToFiberMapping: Map[ProcessId, Fiber.Runtime[Any, Any]]): Task[Chunk[(ProcessId, Exit[Any, Any])]] = {
     for {
       runningBatchesWithoutInProgressFile <- ZIO.attempt(processToFiberMapping.keys.filter(batch => !processingIds.contains(batch)).toSeq)
       fiberInterruptResults <- interruptRunningProcessIds(runningBatchesWithoutInProgressFile, processToFiberMapping)
@@ -77,7 +77,7 @@ object BaseWorkHandlerService {
    * excplicitly or similar).
    */
   private[services] def interruptRunningProcessIds(processIds: Seq[ProcessId],
-                                                   processToFiberMapping: Map[ProcessId, Fiber.Runtime[Throwable, Unit]]): UIO[Chunk[(ProcessId, Exit[Throwable, Unit])]] = {
+                                                   processToFiberMapping: Map[ProcessId, Fiber.Runtime[Any, Any]]): UIO[Chunk[(ProcessId, Exit[Any, Any])]] = {
     for {
       _ <- ZIO.logDebug(s"Trying to interrupt running processes: $processIds")
       fiberInterruptResults <- ZStream.fromIterable(processIds)
@@ -107,7 +107,7 @@ object BaseWorkHandlerService {
   /**
    * Check the fiber runtimes corresponding to the tasks in progress and return those with status DONE
    */
-  private def getCompletedBatches(processFiberMapping: Map[ProcessId, Fiber.Runtime[Throwable, Unit]]): Task[Chunk[ProcessId]] = for {
+  private def getCompletedBatches(processFiberMapping: Map[ProcessId, Fiber.Runtime[Any, Any]]): Task[Chunk[ProcessId]] = for {
     completedProcesses <- ZStream.fromIterable(processFiberMapping.toSeq)
       .mapZIO(tuple => for {
         status <- tuple._2.status
@@ -149,7 +149,7 @@ case class BaseWorkHandlerService[U <: TaggedWithType with DataPoint[Any], V <: 
                                                                                            queue: Queue[JobBatch[_, _, _ <: WithCount]],
                                                                                            addedBatchesHistoryRef: Ref[Seq[ProcessId]],
                                                                                            processIdToAggregatorRef: Ref[Map[ProcessId, Ref[Aggregator[U, V]]]],
-                                                                                           processIdToFiberRef: Ref[Map[ProcessId, Fiber.Runtime[Throwable, Unit]]],
+                                                                                           processIdToFiberRef: Ref[Map[ProcessId, Fiber.Runtime[Any, Any]]],
                                                                                            resourceToJobIdsRef: Ref[Map[Resource[Any], Set[String]]],
                                                                                            jobIdToJobDefRef: Ref[Map[String, JobDefinition[_, _, _ <: WithCount]]]) extends WorkHandlerService {
 
@@ -162,7 +162,7 @@ case class BaseWorkHandlerService[U <: TaggedWithType with DataPoint[Any], V <: 
    *                              is running on
    */
   private def cleanUpProcessesWithMissingProcessingStates(currentOpenJobIds: Set[String],
-                                                          processToFiberMapping: Map[ProcessId, Fiber.Runtime[Throwable, Unit]]): Task[Unit] = {
+                                                          processToFiberMapping: Map[ProcessId, Fiber.Runtime[Any, Any]]): Task[Unit] = {
     for {
       // get all process states for the current jobs
       existingProcessStatesForJobs <- workStateReader.getInProgressStateForCurrentNode(currentOpenJobIds)

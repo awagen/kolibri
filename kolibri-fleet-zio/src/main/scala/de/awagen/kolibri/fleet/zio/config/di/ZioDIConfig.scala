@@ -117,7 +117,7 @@ object ZioDIConfig {
       queue <- Queue.bounded[JobDefinitions.JobBatch[_, _, _ <: WithCount]](AppProperties.config.maxNrJobsClaimed)
       addedBatchesHistory <- Ref.make(Seq.empty[ProcessId])
       processIdToAggregatorMappingRef <- Ref.make(Map.empty[ProcessId, Ref[Aggregators.Aggregator[TaggedWithType with DataPoint[Any], WithCount]]])
-      processIdToFiberMappingRef <- Ref.make(Map.empty[ProcessId, Fiber.Runtime[Throwable, Unit]])
+      processIdToFiberMappingRef <- Ref.make(Map.empty[ProcessId, Fiber.Runtime[Any, Any]])
       resourceToJobIdMappingRef <- Ref.make(Map.empty[Resource[Any], Set[String]])
       jobIdToJobDefinitionRef <- Ref.make(Map.empty[String, JobDefinition[_, _, _ <: WithCount]])
     } yield BaseWorkHandlerService(
