@@ -46,7 +46,7 @@ class Response {
 /**
  * Retrieve mapping of dates (string formatted as yyyy-mm-dd) to jobIds (array) for which results are available.
  */
-function retrieveAvailableResultDateIds() {
+function retrieveAvailableResultDateIdToJobIdsMapping() {
     const url = resultDateIdsUrl
     return axios
         .get(url)
@@ -517,5 +517,6 @@ export {
     retrieveAnalysisTopFlop, retrieveAnalysisVariance, retrieveRequestSamplesForData,
     retrieveAllAvailableIRMetrics, changeReducedToFullMetricsJsonList,
     retrieveJobInformation, retrieveAllAvailableTemplateInfos,
-    postAgainstEndpoint
+    postAgainstEndpoint,
+    retrieveAvailableResultDateIdToJobIdsMapping, retrieveAvailableResultFilesForDataAndJob, retrieveResultFileContent
 }

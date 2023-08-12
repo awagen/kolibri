@@ -5,36 +5,64 @@
     <!-- file selector -->
     <form class="form-horizontal col-6 column">
       <div class="form-group">
+
+        <!-- select date -->
         <div class="col-3 col-sm-12">
-          <label class="form-label" for="template-type-1">Select Execution / Experiment</label>
+          <label class="form-label" for="template-date-1">Select Date</label>
         </div>
         <div class="col-9 col-sm-12">
-          <select v-model="this.$store.state.resultState.currentlySelectedExecutionID"
-              @change="experimentSelectEvent($event)" class="form-select k-value-selector" id="template-type-1">
+          <select v-model="this.$store.state.resultState.currentlySelectedDateId"
+              @change="dateSelectEvent($event)" class="form-select k-value-selector" id="template-date-1">
             <option>Choose an option</option>
-            <option v-for="executionId in this.$store.state.resultState.availableResultExecutionIDs">{{
-                executionId
+            <option v-for="dateId in Object.keys(this.$store.state.resultState.availableDatesToJobIdsMapping)">{{
+                dateId
               }}
             </option>
           </select>
         </div>
+
+
         <div class="k-form-separator"></div>
-        <!-- select the needed template based on above selection -->
+        <!-- select the available jobId for the selected date -->
         <div class="col-3 col-sm-12">
-          <label class="form-label" for="template-name-1">Select Result</label>
+          <label class="form-label" for="template-jobid-1">Select JobId</label>
         </div>
         <div class="col-9 col-sm-12">
-          <select v-model="this.$store.state.resultState.currentlySelectedResultId"
-                  @change="resultSelectEvent($event, this.$store.state.resultState.currentlySelectedExecutionID)"
+          <select v-model="this.$store.state.resultState.currentlySelectedJobId"
+                  @change="jobIdSelectEvent($event)"
                   class="form-select k-field k-value-selector"
                   id="template-name-1">
             <option>Choose an option</option>
-            <option v-for="resultId in this.$store.state.resultState.availableResultsForSelectedExecutionID">{{
+            <option v-for="resultId in this.$store.state.resultState.availableDatesToJobIdsMapping[this.$store.state.resultState.currentlySelectedDateId]">{{
                 resultId
               }}
             </option>
           </select>
         </div>
+
+
+        <div class="k-form-separator"></div>
+        <!-- select the available result file for the selected dateId and jobId -->
+        <div class="col-3 col-sm-12">
+          <label class="form-label" for="template-resultfile-1">Select ResultFile</label>
+        </div>
+        <div class="col-9 col-sm-12">
+          <select v-model="this.$store.state.resultState.currentlySelectedResultId"
+                  @change="resultIdSelectEvent($event)"
+                  class="form-select k-field k-value-selector"
+                  id="template-resultfile-1">
+            <option>Choose an option</option>
+            <option v-for="resultId in this.$store.state.resultState.availableResultFilesForCurrentDateAndJobId">{{
+                resultId
+              }}
+            </option>
+          </select>
+        </div>
+
+
+
+
+
 
         <div class="k-form-separator"></div>
         <!-- select the metric name based on above selection -->
@@ -154,15 +182,20 @@ export default {
     }
   },
   methods: {
-    experimentSelectEvent(event) {
-      this.$store.commit("updateAvailableResultsForExecutionID", event.target.value)
+    dateSelectEvent(event) {
+      this.$store.commit("updateSelectedResultsDate", event.target.value)
     },
 
-    resultSelectEvent(event, executionId) {
-      let resultID = event.target.value
-      let payload = {"executionId": executionId, "resultId": resultID}
-      this.$store.commit("updateSingleResultState", payload)
-      this.$store.commit("updateSelectedResultId", resultID)
+    jobIdSelectEvent(event) {
+      this.$store.commit("updateSelectedJobId", event.target.value)
+    },
+
+    resultIdSelectEvent(event) {
+      this.$store.commit("updateSelectedResult", event.target.value)
+    },
+
+    experimentSelectEvent(event) {
+      this.$store.commit("updateAvailableResultsForExecutionID", event.target.value)
     },
 
     metricSelectEvent(event) {
