@@ -17,13 +17,13 @@
 
 package de.awagen.kolibri.fleet.zio.execution
 
-import de.awagen.kolibri.datatypes.metrics.aggregation.immutable.MetricAggregation
+import de.awagen.kolibri.datatypes.metrics.aggregation.mutable.MetricAggregation
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.datatypes.stores.immutable.MetricRow
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.types.SerializableCallable._
 import de.awagen.kolibri.datatypes.types.Types.WithCount
-import de.awagen.kolibri.datatypes.values.aggregation.immutable.Aggregators.TagKeyMetricAggregationPerClassAggregator
+import de.awagen.kolibri.datatypes.values.aggregation.mutable.Aggregators.TagKeyMetricAggregationPerClassAggregator
 import de.awagen.kolibri.definitions.http.client.request.RequestTemplate
 import de.awagen.kolibri.definitions.processing.JobMessages.{QueryBasedSearchEvaluationDefinition, SearchEvaluationDefinition}
 import de.awagen.kolibri.definitions.processing.ProcessingMessages.ProcessingMessage
@@ -101,10 +101,10 @@ object JobMessagesImplicits {
             BatchAggregationInfo[MetricRow, MetricAggregation[Tag]](
               successKey = metricRowResultKey,
               batchAggregatorSupplier = () => new TagKeyMetricAggregationPerClassAggregator(
-                aggregationState = MetricAggregation.empty[Tag](identity),
+                keyMapFunction = identity,
                 ignoreIdDiff = false
               ),
-              writer = AppConfig.persistenceModule.persistenceDIModule.immutableMetricAggregationWriter(
+              writer = AppConfig.persistenceModule.persistenceDIModule.metricAggregationWriter(
                 subFolder = eval.jobName,
                 x => {
                   val randomAdd: String = Random.alphanumeric.take(5).mkString

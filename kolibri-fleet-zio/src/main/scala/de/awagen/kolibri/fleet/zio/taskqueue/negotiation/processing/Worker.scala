@@ -20,11 +20,9 @@ package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.processing
 import de.awagen.kolibri.datatypes.tagging.TaggedWithType
 import de.awagen.kolibri.datatypes.types.Types.WithCount
 import de.awagen.kolibri.datatypes.values.DataPoint
-import de.awagen.kolibri.datatypes.values.aggregation.immutable.Aggregators.Aggregator
+import de.awagen.kolibri.datatypes.values.aggregation.mutable.Aggregators.Aggregator
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobBatch
-import zio.{Fiber, Ref, Task}
-
-import scala.reflect.runtime.universe._
+import zio.{Fiber, Task}
 
 /**
  * Instances of Worker take care of the actual computations.
@@ -36,6 +34,6 @@ trait Worker {
    * The aggregator will not have all data before the fiber.status is done.
    * By returning the fiber here we are also able to interrupt it in case it is not needed anymore.
    */
-  def work[T: TypeTag, V: TypeTag, W <: WithCount](jobBatch: JobBatch[T, V, W])(implicit tag: TypeTag[W]): Task[(Ref[Aggregator[TaggedWithType with DataPoint[V], W]], Fiber.Runtime[Any, Any])]
+  def work[T, V, W <: WithCount](jobBatch: JobBatch[T, V, W]): Task[(Aggregator[TaggedWithType with DataPoint[V], W], Fiber.Runtime[Any, Any])]
 
 }

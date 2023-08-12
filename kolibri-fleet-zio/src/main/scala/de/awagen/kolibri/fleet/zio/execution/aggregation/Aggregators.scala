@@ -30,6 +30,21 @@ object Aggregators {
 
   private[this] val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
+  class MutableCountingAggregator(var value: Int, var count: Int) extends de.awagen.kolibri.datatypes.values.aggregation.mutable.Aggregators.Aggregator[TaggedWithType with DataPoint[Unit], ValueWithCount[Int]] {
+
+    override def add(sample: TaggedWithType with DataPoint[Unit]): Unit = {
+      value = value + 1
+      count = count + 1
+    }
+
+    override def aggregation: ValueWithCount[Int] = ValueWithCount(value, count)
+
+    override def addAggregate(aggregatedValue: ValueWithCount[Int]): Unit = {
+      value = value + aggregatedValue.value
+      count = aggregatedValue.count
+    }
+  }
+
   def countingAggregator(value: Int, count: Int): Aggregator[TaggedWithType with DataPoint[Unit], ValueWithCount[Int]] = new Aggregator[TaggedWithType with DataPoint[Unit], ValueWithCount[Int]] {
     override def add(sample: TaggedWithType with DataPoint[Unit]): Aggregator[TaggedWithType with DataPoint[Unit], ValueWithCount[Int]] = {
       logger.debug(s"adding sample to aggregator: $sample")
