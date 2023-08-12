@@ -155,6 +155,6 @@ services:
   kolibri-watch:
     image: awagen/kolibri-watch:0.2.2
     environment:
-      KOLIBRI_BASE_URL: "http://localhost:8000"
+      KOLIBRI_BASE_URL: "http://localhost:8001"
     ports:
       - "82:80"
