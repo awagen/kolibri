@@ -20,12 +20,12 @@ package de.awagen.kolibri.fleet.zio.testutils
 import de.awagen.kolibri.datatypes.tagging.TaggedWithType
 import de.awagen.kolibri.datatypes.types.Types.WithCount
 import de.awagen.kolibri.datatypes.values.DataPoint
-import de.awagen.kolibri.datatypes.values.aggregation.immutable.Aggregators
+import de.awagen.kolibri.datatypes.values.aggregation.mutable.Aggregators
 import de.awagen.kolibri.definitions.directives.Resource
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.{BatchAggregationInfo, JobDefinition}
 import de.awagen.kolibri.fleet.zio.execution.ZIOTasks.SimpleWaitTask
-import de.awagen.kolibri.fleet.zio.execution.aggregation.Aggregators.{MutableCountingAggregator, countingAggregator}
+import de.awagen.kolibri.fleet.zio.execution.aggregation.Aggregators.MutableCountingAggregator
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.directives.JobDirectives
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader._
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer._
