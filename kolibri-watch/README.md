@@ -21,32 +21,14 @@ Prepares resources to be served in dist folder.
 vue client is executed should have highest prio and not be overwritten
 
 ## Example state commits for result retrieval and analysis result retrieval
-- Getting executionIds for which results exist: 
-```store.commit("updateAvailableResultExecutionIDs")```
-- Getting single resultIds for an executionId
-```store.commit("updateAvailableResultsForExecutionID", "testJob1")```
-- Retrieve full result data for resultId for given executionId:
-```store.commit("updateSingleResultState", {"executionId": "testJob1", "resultId": "(ALL1)"})```
-- Retrieve tops and flops queries (improving / worsening) for given executionId and current parameter settings and 
-settings to compare against:
-```
-store.commit("updateAnalysisTopFlop", {
-    "executionId": "testJob1",
-    "currentParams": {"a1": ["0.45"], "k1": ["v1", "v2"], "k2": ["v3"], "o": ["479.0"]},
-    "compareParams": [{"a1": ["0.32"],"k1": ["v1", "v2"],"k2": ["v3"],"o": ["1760.0"]},{"a1": ["0.45"],"k1": ["v1", "v2"],"k2": ["v3"],"o": ["384.0"]},{"a1": ["0.45"],"k1": ["v1", "v2"],"k2": ["v3"],"o": ["1325.0"]}],
-    "metricName": "NDCG_10",
-    "queryParamName": "q",
-    "n_best": 10,
-    "n_worst": 10})
-```
-- Retrieve per-query variance over all parameter variations, ordered decreasing by variance:
-```
-store.commit("updateAnalysisVariance", {
-    "executionId": "testJob1",
-    "metricName": "NDCG_10",
-    "queryParamName": "q"})
-```
-
+- Getting mapping of dateId (format 'yyyy-mm-dd') to Array of jobIds for which results exist: 
+```store.commit("updateResultDateToJobIdsMapping")```
+- Setting the dateId needed for loading results
+```store.commit("updateSelectedResultsDate", dateId)```
+- Setting the jobId needed for loading results
+```store.commit("updateSelectedJobId", jobId)```
+- Retrieve full result data for resultId ((assuming dateId and jobId are set according to the above):
+```store.commit("updateSelectedResult", resultId)```
 
 ## Setting up vitest ui
 As test ui, the official vitest ui can be used (https://vitest.dev/guide/ui.html).
