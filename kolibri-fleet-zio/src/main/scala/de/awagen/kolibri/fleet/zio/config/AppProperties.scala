@@ -175,6 +175,7 @@ object AppProperties {
     val pulledTaskHistorySize: Int = baseConfig.getInt("kolibri.job.tasks.maxNrJobsHistory")
 
     val maxParallelItemsPerBatch: Int = baseConfig.getInt("kolibri.execution.maxParallelItemsPerBatch")
+    val resultQueueSize: Int = baseConfig.getInt("kolibri.execution.resultQueueSize")
 
     val maxRetriesPerBatchTask: Int = baseConfig.getInt("kolibri.execution.maxBatchTaskRetries")
 

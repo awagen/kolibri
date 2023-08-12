@@ -28,6 +28,7 @@ import de.awagen.kolibri.definitions.processing.ProcessingMessages
 import de.awagen.kolibri.definitions.processing.ProcessingMessages._
 import de.awagen.kolibri.definitions.processing.failure.TaskFailType
 import de.awagen.kolibri.definitions.processing.failure.TaskFailType.FailedByException
+import de.awagen.kolibri.fleet.zio.config.AppProperties
 import de.awagen.kolibri.fleet.zio.config.AppProperties.config.maxParallelItemsPerBatch
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobBatch
 import de.awagen.kolibri.fleet.zio.execution.{ExecutionState, Failed, ZIOSimpleTaskExecution}
@@ -36,7 +37,7 @@ import de.awagen.kolibri.fleet.zio.resources.NodeResourceProvider
 import de.awagen.kolibri.storage.io.writer.Writers
 import zio.Fiber.Status
 import zio.stream.ZStream
-import zio.{Fiber, Queue, Task, ZIO}
+import zio.{Fiber, Queue, Task, UIO, ZIO}
 
 import scala.concurrent.ExecutionContext
 
@@ -183,9 +184,18 @@ object TaskWorker extends Worker {
     // if this fails, we cannot continue properly, thus we can return the aggregator with the proper fail type and a finished Fiber.Runtime
     val resourceSetupEffect = prepareGlobalResources(jobBatch.job.resourceSetup).either
 
+    def getResultQueueEffect[A]: UIO[Queue[TaggedWithType with DataPoint[A]]] = {
+      AppProperties.config.resultQueueSize match {
+        case size if size <= 0 =>
+          Queue.unbounded[TaggedWithType with DataPoint[A]]
+        case size =>
+          Queue.bounded(size)
+      }
+    }
+
     // two-step effect: setting up global resources, if successful compute and aggregate results
     val combinedEffect: ZIO[Any, Nothing, (Aggregator[TaggedWithType with DataPoint[V], W], Fiber.Runtime[Any, Any])] = for {
-      resultQueue <- Queue.unbounded[TaggedWithType with DataPoint[V]]
+      resultQueue <- getResultQueueEffect[V]
       resourceSetupResult <- resourceSetupEffect
       result <- resourceSetupResult match {
         case Left(throwable) =>
