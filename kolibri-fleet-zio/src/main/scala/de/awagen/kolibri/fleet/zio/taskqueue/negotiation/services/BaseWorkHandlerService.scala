@@ -20,7 +20,7 @@ package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services
 import de.awagen.kolibri.datatypes.tagging.TaggedWithType
 import de.awagen.kolibri.datatypes.types.Types.WithCount
 import de.awagen.kolibri.datatypes.values.DataPoint
-import de.awagen.kolibri.datatypes.values.aggregation.immutable.Aggregators.Aggregator
+import de.awagen.kolibri.datatypes.values.aggregation.mutable.Aggregators.Aggregator
 import de.awagen.kolibri.definitions.directives.Resource
 import de.awagen.kolibri.definitions.io.json.ResourceJsonProtocol.AnyResourceFormat
 import de.awagen.kolibri.fleet.zio.config.AppProperties
@@ -148,7 +148,7 @@ case class BaseWorkHandlerService[U <: TaggedWithType with DataPoint[Any], V <: 
                                                                                            workStateWriter: WorkStateWriter,
                                                                                            queue: Queue[JobBatch[_, _, _ <: WithCount]],
                                                                                            addedBatchesHistoryRef: Ref[Seq[ProcessId]],
-                                                                                           processIdToAggregatorRef: Ref[Map[ProcessId, Ref[Aggregator[U, V]]]],
+                                                                                           processIdToAggregatorRef: Ref[Map[ProcessId, Aggregator[U, V]]],
                                                                                            processIdToFiberRef: Ref[Map[ProcessId, Fiber.Runtime[Any, Any]]],
                                                                                            resourceToJobIdsRef: Ref[Map[Resource[Any], Set[String]]],
                                                                                            jobIdToJobDefRef: Ref[Map[String, JobDefinition[_, _, _ <: WithCount]]]) extends WorkHandlerService {
@@ -337,7 +337,7 @@ case class BaseWorkHandlerService[U <: TaggedWithType with DataPoint[Any], V <: 
               .forEachZIO(aggAndFiber => {
                 for {
                   _ <- processIdToAggregatorRef.update(oldMap =>
-                    oldMap + (ProcessId(job.job.jobName, job.batchNr) -> aggAndFiber._1.asInstanceOf[Ref[Aggregator[U, V]]])
+                    oldMap + (ProcessId(job.job.jobName, job.batchNr) -> aggAndFiber._1.asInstanceOf[Aggregator[U, V]])
                   )
                   _ <- processIdToFiberRef.update(oldMap =>
                     oldMap + (ProcessId(job.job.jobName, job.batchNr) -> aggAndFiber._2))
@@ -470,7 +470,7 @@ case class BaseWorkHandlerService[U <: TaggedWithType with DataPoint[Any], V <: 
       processIdToFiberMapping <- processIdToFiberRef.get
       _ <- ZStream.fromIterable(processIdToAggregatorMapping.keys)
         .foreach(processId => for {
-          processAggregationState <- processIdToAggregatorMapping(processId).get
+          processAggregationState <- ZIO.attempt(processIdToAggregatorMapping(processId))
           processFiberStatus <- processIdToFiberMapping(processId).status
           processingStateOpt <- workStateReader.processIdToProcessState(processId, AppProperties.config.node_hash)
           _ <- ZIO.ifZIO(ZIO.succeed(processingStateOpt.nonEmpty))(
