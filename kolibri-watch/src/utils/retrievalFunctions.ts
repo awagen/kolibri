@@ -5,6 +5,7 @@ import {
     templateContentUrl, dataFileInfoAllUrl,
     resultExecutionIdsOverviewUrl, resultExecutionIdsSingleResultsOverviewUrl,
     resultExecutionIdGetDataByIdUrl,
+    resultDateIdsUrl,  resultDateIdAndJobIdToResultFiledUrl, resultContentRetrievalUrl,
     resultAnalysisTopFlowUrl, resultAnalysisVarianceUrl, parameterValuesSampleRequestUrl,
     irMetricsAllUrl, irMetricsReducedToFullJsonListUrl, kolibriSearchEvalJobDefinitionUrl,
     templateAllTypeToInfoMapUrl,
@@ -39,6 +40,54 @@ class Response {
         return this.successResponse(response.data)
     }
 
+}
+
+
+/**
+ * Retrieve mapping of dates (string formatted as yyyy-mm-dd) to jobIds (array) for which results are available.
+ */
+function retrieveAvailableResultDateIds() {
+    const url = resultDateIdsUrl
+    return axios
+        .get(url)
+        .then(response => {
+            return response.data.data
+        }).catch(_ => {
+            return {}
+        })
+}
+
+/**
+ * Retrieve list of result files corresponding to the passed date and job
+ * @param date - date in yyyy-mm-dd format
+ * @param job - name of job for which available result files shall be retrieved
+ */
+function retrieveAvailableResultFilesForDataAndJob(date, job) {
+    const url = resultDateIdAndJobIdToResultFiledUrl.replace("#DATE_ID", date).replace("#JOB_ID", job)
+    return axios
+        .get(url)
+        .then(response => {
+            return response.data.data
+        }).catch(_ => {
+            return []
+        })
+}
+
+/**
+ *
+ * @param date - date in yyyy-mm-dd format
+ * @param job - name of job for which available result files shall be retrieved
+ * @param file - the file for the specified date and job to retrieve the content of (json content)
+ */
+function retrieveResultFileContent(date, job, file) {
+    const url = resultContentRetrievalUrl.replace("#DATE_ID", date).replace("#JOB_ID", job).replace("#FILE", file)
+    return axios
+        .get(url)
+        .then(response => {
+            return response.data.data
+        }).catch(_ => {
+            return {}
+        })
 }
 
 
