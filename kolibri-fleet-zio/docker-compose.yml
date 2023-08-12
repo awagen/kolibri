@@ -205,7 +205,7 @@ services:
       - "81:81"
 
 #  kolibri-watch:
-#    image: awagen/kolibri-watch:0.1.0
+#    image: awagen/kolibri-watch:0.2.0
 #    environment:
 #      KOLIBRI_BASE_URL: "http://localhost:8000"
 #    ports:
