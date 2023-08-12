@@ -29,7 +29,7 @@ services:
     user: "1000:1000"
 
   kolibri-zio-1:
-    image: kolibri-fleet-zio:0.2.2
+    image: awagen/kolibri-fleet-zio:0.2.2
     cpu_count: 12
     mem_limit: 6144m
     mem_reservation: 4096m
@@ -152,9 +152,9 @@ services:
     ports:
       - "81:81"
 
-#  kolibri-watch:
-#    image: awagen/kolibri-watch:0.2.2
-#    environment:
-#      KOLIBRI_BASE_URL: "http://localhost:8000"
-#    ports:
-#      - "82:80"
+  kolibri-watch:
+    image: awagen/kolibri-watch:0.2.2
+    environment:
+      KOLIBRI_BASE_URL: "http://localhost:8000"
+    ports:
+      - "82:80"
