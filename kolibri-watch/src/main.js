@@ -20,7 +20,9 @@ import {
     retrieveAllAvailableIRMetrics,
     changeReducedToFullMetricsJsonList,
     retrieveJobInformation,
-    retrieveAllAvailableTemplateInfos
+    retrieveAllAvailableTemplateInfos,
+    retrieveAvailableResultDateIdToJobIdsMapping,
+    retrieveAvailableResultFilesForDataAndJob, retrieveResultFileContent
 } from './utils/retrievalFunctions'
 
 // we could just reference style sheets relatively from assets folder, but we keep one central scss file instead
@@ -83,12 +85,20 @@ export function createAppStore() {
                 },
 
                 resultState: {
+                    currentlySelectedDateId: "",
+                    currentlySelectedJobId: "",
+                    currentlySelectedResultId: "",
+                    // mapping of date (in format yyyy-mm-dd) to jobIds for which results are available
+                    availableDatesToJobIdsMapping: {},
+                    availableResultFilesForCurrentDateAndJobId: [],
+
+
+
                     // available execution ids (e.g corresponding to jobIds)
                     availableResultExecutionIDs: [],
                     currentlySelectedExecutionID: "",
                     // single result identifier for the currently selected executionId
                     availableResultsForSelectedExecutionID: [],
-                    currentlySelectedResultId: "",
                     // for selected execution and result file name, represents the selected
                     // result
                     fullResultForExecutionIDAndResultID: {},
@@ -255,30 +265,45 @@ export function createAppStore() {
                     })
             },
 
-            /**
-             * Given execution and resultId, load the corresponding result state
-             * @param state
-             * @param executionId
-             * @param resultId
-             */
-            updateSingleResultState(state, {executionId, resultId}) {
-                retrieveSingleResultById(executionId, resultId)
-                    .then(response => {
-                        // first reset downstream selections
-                        state.resultState.selectedMetricName = ""
-                        // now setting selections
-                        state.resultState.fullResultForExecutionIDAndResultID = response
-                        state.resultState.availableMetricNames = response.data.flatMap(x => x.datasets.map(ds => ds.name))
-                        let metricNameToDataTypeMap = {}
-                        response.data.forEach(x => x.datasets.forEach(entry => {
-                            metricNameToDataTypeMap[entry.name] = x.entryType
-                        }))
-                        state.resultState.metricNameToDataType = metricNameToDataTypeMap
-                    })
+            updateResultDateToJobIdsMapping(state) {
+                retrieveAvailableResultDateIdToJobIdsMapping().then(response => {
+                    state.resultState.availableDatesToJobIdsMapping = response
+                })
             },
 
-            updateSelectedResultId(state, resultId) {
-              state.resultState.currentlySelectedResultId = resultId
+            updateSelectedResultsDate(state, dateId) {
+                state.resultState.currentlySelectedDateId = dateId
+            },
+
+            updateSelectedJobId(state, jobId) {
+                state.resultState.currentlySelectedJobId = jobId
+                // update available result files
+                retrieveAvailableResultFilesForDataAndJob(state.resultState.currentlySelectedDateId, state.resultState.currentlySelectedJobId).then(response => {
+                    state.resultState.availableResultFilesForCurrentDateAndJobId = response
+                })
+            },
+
+            /**
+             * Given resultId, load the corresponding result state (assuming dateId and jobId were previously selected)
+             * @param state
+             * @param resultId
+             */
+            updateSelectedResult(state, resultId) {
+                state.resultState.currentlySelectedResultId = resultId
+                // update current result file content
+                retrieveResultFileContent(state.resultState.currentlySelectedDateId, state.resultState.currentlySelectedJobId, state.resultState.currentlySelectedResultId).then(response => {
+                    // console.log(response)
+                    // first reset downstream selections
+                    state.resultState.selectedMetricName = ""
+                    // now setting selections
+                    state.resultState.fullResultForExecutionIDAndResultID = response
+                    state.resultState.availableMetricNames = response.data.flatMap(x => x.datasets.map(ds => ds.name))
+                    let metricNameToDataTypeMap = {}
+                    response.data.forEach(x => x.datasets.forEach(entry => {
+                        metricNameToDataTypeMap[entry.name] = x.entryType
+                    }))
+                    state.resultState.metricNameToDataType = metricNameToDataTypeMap
+                })
             },
 
             /**
@@ -620,6 +645,9 @@ store.commit("updateAllAvailableTemplateInfos")
 // store.commit("updateAvailableIRMetrics")
 // // load job definition for search evaluation
 store.commit("retrieveJobDefinitions")
+
+// update state of available results
+store.commit("updateResultDateToJobIdsMapping")
 
 // regular scheduling
 window.setInterval(() => {

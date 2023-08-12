@@ -18,14 +18,14 @@
 package de.awagen.kolibri.fleet.zio.io.json
 
 import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
-import de.awagen.kolibri.datatypes.metrics.aggregation.immutable.MetricAggregation
+import de.awagen.kolibri.datatypes.metrics.aggregation.mutable.MetricAggregation
 import de.awagen.kolibri.datatypes.stores.immutable.MetricRow
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.types.FieldDefinitions._
 import de.awagen.kolibri.datatypes.types.JsonStructDefs._
 import de.awagen.kolibri.datatypes.types.Types.WithCount
 import de.awagen.kolibri.datatypes.types.WithStructDef
-import de.awagen.kolibri.datatypes.values.aggregation.immutable.Aggregators.TagKeyMetricAggregationPerClassAggregator
+import de.awagen.kolibri.datatypes.values.aggregation.mutable.Aggregators.TagKeyMetricAggregationPerClassAggregator
 import de.awagen.kolibri.definitions.directives.ResourceDirectives.ResourceDirective
 import de.awagen.kolibri.definitions.io.json.ParameterValuesJsonProtocol
 import de.awagen.kolibri.definitions.io.json.ResourceDirectiveJsonProtocol.GenericResourceDirectiveFormatStruct
@@ -40,7 +40,7 @@ import de.awagen.kolibri.fleet.zio.config.AppConfig.JsonFormats.resourceDirectiv
 import de.awagen.kolibri.fleet.zio.config.{AppConfig, AppProperties}
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.{BatchAggregationInfo, JobDefinition, simpleWaitJob}
 import de.awagen.kolibri.fleet.zio.execution.JobMessagesImplicits._
-import de.awagen.kolibri.fleet.zio.execution.aggregation.Aggregators.countingAggregator
+import de.awagen.kolibri.fleet.zio.execution.aggregation.Aggregators.MutableCountingAggregator
 import de.awagen.kolibri.fleet.zio.execution.{JobDefinitions, ZIOTask}
 import de.awagen.kolibri.fleet.zio.io.json.TaskJsonProtocol._
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.utils.DateUtils
@@ -214,7 +214,7 @@ object JobDefinitionJsonProtocol extends DefaultJsonProtocol {
           val durationInMillis = defFields(DURATION_IN_MILLIS_KEY).convertTo[Long]
           val batchAggregationInfo: BatchAggregationInfo[Unit, JobDefinitions.ValueWithCount[Int]] = BatchAggregationInfo(
             "DONE_WAITING",
-            () => countingAggregator(0, 0)
+            () => new MutableCountingAggregator(0, 0)
           )
           ZIO.attempt(
             simpleWaitJob(
@@ -248,12 +248,12 @@ object JobDefinitionJsonProtocol extends DefaultJsonProtocol {
           val aggregationInfo = BatchAggregationInfo[MetricRow, MetricAggregation[Tag]](
             successKey = metricRowResultKey,
             batchAggregatorSupplier = () => new TagKeyMetricAggregationPerClassAggregator(
-              aggregationState = MetricAggregation.empty[Tag](identity),
+              identity,
               ignoreIdDiff = false
             ),
             writer = {
               val currentDay = DateUtils.timeInMillisToFormattedDate(currentTimeInMillis)
-              AppConfig.persistenceModule.persistenceDIModule.immutableMetricAggregationWriter(
+              AppConfig.persistenceModule.persistenceDIModule.metricAggregationWriter(
                 subFolder = s"${currentDay}/${jobName}",
                 x => {
                   val randomAdd: String = Random.alphanumeric.take(5).mkString

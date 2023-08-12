@@ -20,12 +20,12 @@ package de.awagen.kolibri.fleet.zio.testutils
 import de.awagen.kolibri.datatypes.tagging.TaggedWithType
 import de.awagen.kolibri.datatypes.types.Types.WithCount
 import de.awagen.kolibri.datatypes.values.DataPoint
-import de.awagen.kolibri.datatypes.values.aggregation.immutable.Aggregators
+import de.awagen.kolibri.datatypes.values.aggregation.mutable.Aggregators
 import de.awagen.kolibri.definitions.directives.Resource
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.{BatchAggregationInfo, JobDefinition}
 import de.awagen.kolibri.fleet.zio.execution.ZIOTasks.SimpleWaitTask
-import de.awagen.kolibri.fleet.zio.execution.aggregation.Aggregators.countingAggregator
+import de.awagen.kolibri.fleet.zio.execution.aggregation.Aggregators.MutableCountingAggregator
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.directives.JobDirectives
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader._
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer._
@@ -123,8 +123,8 @@ object TestObjects {
                                                                            jobBatchQueueSize: Int = 5,
                                                                            initialQueueContent: Seq[JobDefinitions.JobBatch[_, _, _ <: WithCount]] = Seq.empty,
                                                                            addedBatchesHistoryInitState: Seq[ProcessId] = Seq.empty[ProcessId],
-                                                                           processIdToAggregatorMappingInitState: Map[ProcessId, Ref[Aggregators.Aggregator[U, V]]] = Map.empty[ProcessId, Ref[Aggregators.Aggregator[U, V]]],
-                                                                           processIdToFiberMappingInitState: Map[ProcessId, Fiber.Runtime[Throwable, Unit]] = Map.empty[ProcessId, Fiber.Runtime[Throwable, Unit]],
+                                                                           processIdToAggregatorMappingInitState: Map[ProcessId, Aggregators.Aggregator[U, V]] = Map.empty[ProcessId, Aggregators.Aggregator[U, V]],
+                                                                           processIdToFiberMappingInitState: Map[ProcessId, Fiber.Runtime[Any, Any]] = Map.empty[ProcessId, Fiber.Runtime[Any, Any]],
                                                                            resourceToJobIdMapping: Map[Resource[Any], Set[String]] = Map.empty[Resource[Any], Set[String]],
                                                                            jobIdToJobDefMapping: Map[String, JobDefinition[_, _, _ <: WithCount]] = Map.empty[String, JobDefinition[_, _, _ <: WithCount]],
                                                                           ): Task[BaseWorkHandlerService[_ <: TaggedWithType with DataPoint[Any], _ <: WithCount]] = for {
@@ -154,7 +154,7 @@ object TestObjects {
 
     def batchAggregationInfo: BatchAggregationInfo[Unit, JobDefinitions.ValueWithCount[Int]] = BatchAggregationInfo(
       SimpleWaitTask.successKey,
-      () => countingAggregator(0, 0)
+      () => new MutableCountingAggregator(0, 0)
     )
 
     def jobDef: JobDefinitions.JobDefinition[Int, Unit, JobDefinitions.ValueWithCount[Int]] = {

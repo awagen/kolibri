@@ -21,9 +21,10 @@ import de.awagen.kolibri.datatypes.types.Types.WithCount
 import de.awagen.kolibri.definitions.processing.execution.functions.Execution
 import de.awagen.kolibri.fleet.zio.JobDefsServerEndpoints.{ID_JOB_DEF, TASK_DEF}
 import de.awagen.kolibri.fleet.zio.ServerEndpoints.ResponseContentProtocol.responseContentFormat
-import de.awagen.kolibri.fleet.zio.ServerEndpoints.{ResponseContent, corsConfig}
+import de.awagen.kolibri.fleet.zio.ServerEndpoints.{ResponseContent}
 import de.awagen.kolibri.fleet.zio.config.AppConfig.JsonFormats.executionFormat
 import de.awagen.kolibri.fleet.zio.config.AppProperties
+import de.awagen.kolibri.fleet.zio.config.HttpConfig.corsConfig
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobDefinition
 import de.awagen.kolibri.fleet.zio.io.json.JobDefinitionJsonProtocol.JobDefinitionFormat
 import de.awagen.kolibri.fleet.zio.metrics.Metrics.CalculationsWithMetrics.countAPIRequests
@@ -85,8 +86,8 @@ object JobTemplatesServerEndpoints {
                 val content: String = safeContentRead(contentReader, relativePath, "{}", logOnFail = true)
                 TemplateInfo(templateType, template, content.parseJson)
               }).runCollect
-            } yield (templateType, jobTemplates)
-          })
+          } yield (templateType, jobTemplates)
+        })
         .runCollect.map(x => x.toMap)
     } yield results
   }

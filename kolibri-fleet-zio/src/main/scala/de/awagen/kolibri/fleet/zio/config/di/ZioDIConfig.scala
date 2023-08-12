@@ -20,7 +20,7 @@ package de.awagen.kolibri.fleet.zio.config.di
 import de.awagen.kolibri.datatypes.tagging.TaggedWithType
 import de.awagen.kolibri.datatypes.types.Types.WithCount
 import de.awagen.kolibri.datatypes.values.DataPoint
-import de.awagen.kolibri.datatypes.values.aggregation.immutable.Aggregators
+import de.awagen.kolibri.datatypes.values.aggregation.mutable.Aggregators
 import de.awagen.kolibri.definitions.directives.Resource
 import de.awagen.kolibri.fleet.zio.config.{AppConfig, AppProperties}
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions
@@ -116,8 +116,8 @@ object ZioDIConfig {
       workStateWriter <- ZIO.service[WorkStateWriter]
       queue <- Queue.bounded[JobDefinitions.JobBatch[_, _, _ <: WithCount]](AppProperties.config.maxNrJobsClaimed)
       addedBatchesHistory <- Ref.make(Seq.empty[ProcessId])
-      processIdToAggregatorMappingRef <- Ref.make(Map.empty[ProcessId, Ref[Aggregators.Aggregator[TaggedWithType with DataPoint[Any], WithCount]]])
-      processIdToFiberMappingRef <- Ref.make(Map.empty[ProcessId, Fiber.Runtime[Throwable, Unit]])
+      processIdToAggregatorMappingRef <- Ref.make(Map.empty[ProcessId, Aggregators.Aggregator[TaggedWithType with DataPoint[Any], WithCount]])
+      processIdToFiberMappingRef <- Ref.make(Map.empty[ProcessId, Fiber.Runtime[Any, Any]])
       resourceToJobIdMappingRef <- Ref.make(Map.empty[Resource[Any], Set[String]])
       jobIdToJobDefinitionRef <- Ref.make(Map.empty[String, JobDefinition[_, _, _ <: WithCount]])
     } yield BaseWorkHandlerService(

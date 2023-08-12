@@ -89,12 +89,6 @@ export default {
       this.$store.commit("updateAvailableResultsForExecutionID", event.target.value)
     },
 
-    resultSelectEvent(event, executionId) {
-      let resultID = event.target.value
-      let payload = {"executionId": executionId, "resultId": resultID}
-      this.$store.commit("updateSingleResultState", payload)
-    },
-
     updateTopFlopAndVarianceSelectEvent(event, executionId) {
       this.updateAnalysisTopFlop(executionId)
       this.updateAnalysisVariance(executionId)

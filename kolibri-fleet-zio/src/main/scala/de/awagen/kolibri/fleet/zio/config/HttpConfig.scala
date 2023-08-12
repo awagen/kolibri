@@ -18,10 +18,12 @@
 package de.awagen.kolibri.fleet.zio.config
 
 import de.awagen.kolibri.fleet.zio.config.AppProperties.config._
+import zio.http.Header.{AccessControlAllowMethods, AccessControlAllowOrigin}
 import zio.http.ZClient.{Config, customized}
+import zio.http.internal.middlewares.Cors.CorsConfig
 import zio.http.netty.NettyConfig
 import zio.http.netty.client.NettyClientDriver
-import zio.http.{Client, ClientSSLConfig, DnsResolver, ZClient}
+import zio.http.{Client, ClientSSLConfig, DnsResolver, Method, ZClient}
 import zio.{Trace, ZLayer, durationInt}
 
 import java.util.concurrent.TimeUnit
@@ -45,7 +47,11 @@ object HttpConfig {
     }
   })
 
-  private lazy val nettyConfigLayer = ZLayer.succeed(NettyConfig.default.maxThreads(AppProperties.config.nettyHttpClientThreadsMax))
+  private lazy val nettyConfigLayer = AppProperties.config.nettyHttpClientThreadsMax match {
+    case e if e > 0 =>
+      ZLayer.succeed(NettyConfig.default.maxThreads(AppProperties.config.nettyHttpClientThreadsMax))
+    case _ => ZLayer.succeed(NettyConfig.default)
+  }
 
   lazy val liveHttpClientLayer: ZLayer[Any, Throwable, Client] = {
     implicit val trace: Trace = Trace.empty
@@ -54,5 +60,10 @@ object HttpConfig {
 
   val sslConfig = ClientSSLConfig.Default
   val clientConfig = ZClient.Config.default.ssl(sslConfig)
+
+  val corsConfig: CorsConfig = CorsConfig(
+    allowedOrigin = _ => Some(AccessControlAllowOrigin.All),
+    allowedMethods = AccessControlAllowMethods(Method.GET, Method.POST, Method.PUT, Method.DELETE)
+  )
 
 }

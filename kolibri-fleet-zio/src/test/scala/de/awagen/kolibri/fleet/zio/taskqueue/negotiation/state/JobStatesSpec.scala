@@ -20,7 +20,7 @@ package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.BatchAggregationInfo
 import de.awagen.kolibri.fleet.zio.execution.ZIOTasks.SimpleWaitTask
-import de.awagen.kolibri.fleet.zio.execution.aggregation.Aggregators
+import de.awagen.kolibri.fleet.zio.execution.aggregation.Aggregators.MutableCountingAggregator
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.directives.JobDirectives
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.JobStates.{JobStateSnapshot, OpenJobsSnapshot}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.JobStatesSpec.TestData.jobStateSnapshot
@@ -44,7 +44,7 @@ object JobStatesSpec {
         1,
         BatchAggregationInfo(
           SimpleWaitTask.successKey,
-          () => Aggregators.countingAggregator(0, 0)
+          () => new MutableCountingAggregator(0, 0)
         )
       ),
       Set(JobDirectives.Process),

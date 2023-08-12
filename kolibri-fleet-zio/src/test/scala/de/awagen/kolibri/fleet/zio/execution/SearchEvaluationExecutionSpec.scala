@@ -17,7 +17,7 @@
 
 package de.awagen.kolibri.fleet.zio.execution
 
-import de.awagen.kolibri.datatypes.metrics.aggregation.immutable.MetricAggregation
+import de.awagen.kolibri.datatypes.metrics.aggregation.mutable.MetricAggregation
 import de.awagen.kolibri.datatypes.tagging.Tags
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobBatch
 import de.awagen.kolibri.fleet.zio.execution.JobMessagesImplicits._
@@ -69,10 +69,9 @@ object SearchEvaluationExecutionSpec extends ZIOSpecDefault {
         jobDef <- TaskTestObjects.searchEvaluationDefinition.toJobDef.provide(ZLayer.succeed(clientMock))
         aggregatorRefAndFiber <- TaskWorker.work(JobBatch(jobDef, 0))
         _ <- aggregatorRefAndFiber._2.join
-        aggregatorValue <- aggregatorRefAndFiber._1.get
       }
       // then
-      yield assert(aggregatorValue)(Assertion.assertion("correct aggregation")(aggregator => {
+      yield assert(aggregatorRefAndFiber._1)(Assertion.assertion("correct aggregation")(aggregator => {
         aggregator.aggregation.isInstanceOf[MetricAggregation[Tags.Tag]]
       }))
     }

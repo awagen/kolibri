@@ -19,10 +19,10 @@ package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services
 
 import de.awagen.kolibri.datatypes.tagging.TaggedWithType
 import de.awagen.kolibri.datatypes.values.DataPoint
-import de.awagen.kolibri.datatypes.values.aggregation.immutable.Aggregators.Aggregator
+import de.awagen.kolibri.datatypes.values.aggregation.mutable.Aggregators.Aggregator
 import de.awagen.kolibri.fleet.zio.config.AppProperties
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.{JobBatch, ValueWithCount}
-import de.awagen.kolibri.fleet.zio.execution.aggregation.Aggregators.countingAggregator
+import de.awagen.kolibri.fleet.zio.execution.aggregation.Aggregators.{MutableCountingAggregator, countingAggregator}
 import de.awagen.kolibri.fleet.zio.io.json.ProcessingStateJsonProtocol.processingStateFormat
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state._
 import de.awagen.kolibri.fleet.zio.testutils.TestObjects
@@ -31,7 +31,7 @@ import org.mockito.Mockito.{times, verify}
 import org.mockito.{ArgumentCaptor, ArgumentMatchers}
 import spray.json._
 import zio.test._
-import zio.{Ref, Scope, ZIO}
+import zio.{Scope, ZIO}
 
 object BaseWorkHandlerServiceSpec extends ZIOSpecDefault {
 
@@ -46,13 +46,10 @@ object BaseWorkHandlerServiceSpec extends ZIOSpecDefault {
       // only add processId1 and processId3 to history state, since processId2 refers to batch still in
       // planned state and thus still needs to be added to the queue for processing
       val addedBatchesHistoryInitState = Seq(processId1, processId3)
-      val aggregatorState1: Aggregator[TaggedWithType with DataPoint[Unit], ValueWithCount[Int]] = countingAggregator(0, 0)
-      val aggregatorState2: Aggregator[TaggedWithType with DataPoint[Unit], ValueWithCount[Int]] = countingAggregator(0, 0)
-      val aggregatorState3: Aggregator[TaggedWithType with DataPoint[Unit], ValueWithCount[Int]] = countingAggregator(0, 0)
+      val aggregatorState1: Aggregator[TaggedWithType with DataPoint[Unit], ValueWithCount[Int]] = new MutableCountingAggregator(0, 0)
+      val aggregatorState2: Aggregator[TaggedWithType with DataPoint[Unit], ValueWithCount[Int]] = new MutableCountingAggregator(0, 0)
+      val aggregatorState3: Aggregator[TaggedWithType with DataPoint[Unit], ValueWithCount[Int]] = new MutableCountingAggregator(0, 0)
       for {
-        aggregatorRef1 <- Ref.make(aggregatorState1)
-        aggregatorRef2 <- Ref.make(aggregatorState2)
-        aggregatorRef3 <- Ref.make(aggregatorState3)
         fiber1 <- ZIO.attemptBlockingInterrupt({
           Thread.sleep(10000)
         })
@@ -78,7 +75,7 @@ object BaseWorkHandlerServiceSpec extends ZIOSpecDefault {
             )
           ),
           addedBatchesHistoryInitState = addedBatchesHistoryInitState,
-          processIdToAggregatorMappingInitState = Map(processId1 -> aggregatorRef1, processId2 -> aggregatorRef2, processId3 -> aggregatorRef3),
+          processIdToAggregatorMappingInitState = Map(processId1 -> aggregatorState1, processId2 -> aggregatorState2, processId3 -> aggregatorState3),
           processIdToFiberMappingInitState = processToFiberMapping
         )
         _ <- handler.manageBatches(SnapshotSample1.openJobsSnapshot)
@@ -138,11 +135,10 @@ object BaseWorkHandlerServiceSpec extends ZIOSpecDefault {
       val batchNr = 0
       val processId = ProcessId(jobId, batchNr)
       val addedBatchesHistoryInitState = Seq(processId)
-      val aggregatorState: Aggregator[TaggedWithType with DataPoint[Unit], ValueWithCount[Int]] = countingAggregator(0, 0)
+      val aggregatorState: Aggregator[TaggedWithType with DataPoint[Unit], ValueWithCount[Int]] = new MutableCountingAggregator(0, 0)
       val expectedProcessingState = TestObjects.processingState1
       // when, then
       for {
-        aggregatorRef <- Ref.make(aggregatorState)
         fiber <- ZIO.attemptBlocking({
           Thread.sleep(1)
         }).fork
@@ -151,7 +147,7 @@ object BaseWorkHandlerServiceSpec extends ZIOSpecDefault {
         handler <- workHandler(
           writer,
           addedBatchesHistoryInitState = addedBatchesHistoryInitState,
-          processIdToAggregatorMappingInitState = Map(processId -> aggregatorRef),
+          processIdToAggregatorMappingInitState = Map(processId -> aggregatorState),
           processIdToFiberMappingInitState = Map(processId -> fiber)
         )
         _ <- handler.updateProcessStates

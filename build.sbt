@@ -1,6 +1,6 @@
 ThisBuild / scalaVersion := "2.13.2"
 
-ThisBuild / version := "0.2.1"
+ThisBuild / version := "0.2.2"
 
 // Scala Compiler Options
 ThisBuild / scalacOptions ++= Seq(

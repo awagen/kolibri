@@ -29,7 +29,7 @@ services:
     user: "1000:1000"
 
   kolibri-zio-1:
-    image: awagen/kolibri-fleet-zio:0.2.1
+    image: kolibri-fleet-zio:0.2.2
     cpu_count: 12
     mem_limit: 6144m
     mem_reservation: 4096m
@@ -73,64 +73,12 @@ services:
       CONNECTION_TTL_IN_SECONDS: 1200
       MAX_NR_JOBS_PROCESSING: 5
       MAX_NR_JOBS_CLAIMED: 5
-      NETTY_HTTP_CLIENT_THREADS_MAX: 4
-      BLOCKING_POOL_THREADS: 4
-      NON_BLOCKING_POOL_THREADS: 4
+      NETTY_HTTP_CLIENT_THREADS_MAX: -1
+      BLOCKING_POOL_THREADS: -1
+      NON_BLOCKING_POOL_THREADS: -1
     volumes:
       - ./tmp_data:/app/test-files
       - ${HOME}/.aws/credentials:/home/kolibri/.aws/credentials:ro
-
-#  kolibri-zio-2:
-#    image: awagen/kolibri-fleet-zio:0.2.1
-#    cpu_count: 12
-#    mem_limit: 6144m
-#    mem_reservation: 4096m
-#    ports:
-#      - "8002:8002"
-#    user: "1000:1000"
-#    environment:
-#      JVM_OPTS: >
-#        -XX:+UseG1GC
-#        -Xms1024m
-#        -Xmx2048m
-#      PROFILE: prod
-#      NODE_HASH: "abc2"
-#      HTTP_SERVER_PORT: 8002
-#      PERSISTENCE_MODE: 'CLASS'
-#      PERSISTENCE_MODULE_CLASS: 'de.awagen.kolibri.fleet.zio.config.di.modules.persistence.LocalPersistenceModule'
-#      AWS_PROFILE: 'developer'
-#      AWS_S3_BUCKET: 'kolibri-dev'
-#      AWS_S3_PATH: 'kolibri_fleet_zio_test'
-#      AWS_S3_REGION: 'EU_CENTRAL_1'
-#      # the file path in the job definitions are to be given relative to the path (or bucket path) defined
-#      # for the respective configuration of persistence
-#      LOCAL_STORAGE_WRITE_BASE_PATH: '/app/test-files'
-#      LOCAL_STORAGE_READ_BASE_PATH: '/app/test-files'
-#      # JOB_TEMPLATES_PATH must be relative to the base path or bucket path, depending on the persistence selected
-#      JOB_TEMPLATES_PATH: 'templates/jobs'
-#      OUTPUT_RESULTS_PATH: 'test-results'
-#      JUDGEMENT_FILE_SOURCE_TYPE: 'CSV'
-#      # if judgement file format set to 'JSON_LINES', need to set 'DOUBLE' in case judgements are numeric in the json,
-#      # if the numeric value is represented as string, use 'STRING'. This purely refers to how the json value is interpreted,
-#      # later this will be cast to double either way
-#      JUDGEMENT_FILE_JSON_LINES_JUDGEMENT_VALUE_TYPE_CAST: 'STRING'
-#      ALLOWED_TIME_PER_ELEMENT_IN_MILLIS: 4000
-#      ALLOWED_TIME_PER_BATCH_IN_SECONDS: 3600
-#      ALLOWED_TIME_PER_JOB_IN_SECONDS: 36000
-#      MAX_RESOURCE_DIRECTIVES_LOAD_TIME_IN_MINUTES: 10
-#      MAX_PARALLEL_ITEMS_PER_BATCH: 32
-#      CONNECTION_POOL_SIZE_MIN: 10
-#      CONNECTION_POOL_SIZE_MAX: 100
-#      CONNECTION_TTL_IN_SECONDS: 1200
-#      MAX_NR_JOBS_PROCESSING: 5
-#      MAX_NR_JOBS_CLAIMED: 5
-#      NETTY_HTTP_CLIENT_THREADS_MAX: 4
-#      BLOCKING_POOL_THREADS: 4
-#      NON_BLOCKING_POOL_THREADS: 4
-#    volumes:
-#      - ./tmp_data:/app/test-files
-#      - ${HOME}/.aws/credentials:/home/kolibri/.aws/credentials:ro
-
 
   # NOTE: starting response-juggler requires cloning https://github.com/awagen/response-juggler and building
   # the image locally via 'docker build -t response-juggler:0.1.0 .'. It will respond to each request with a random
@@ -205,7 +153,7 @@ services:
       - "81:81"
 
 #  kolibri-watch:
-#    image: awagen/kolibri-watch:0.2.0
+#    image: awagen/kolibri-watch:0.2.2
 #    environment:
 #      KOLIBRI_BASE_URL: "http://localhost:8000"
 #    ports:

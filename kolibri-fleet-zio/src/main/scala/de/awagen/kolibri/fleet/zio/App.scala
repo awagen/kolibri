@@ -37,11 +37,11 @@ import java.util.concurrent.Executors
 
 object App extends ZIOAppDefault {
 
-  val blockingExecutor = Executor.fromJavaExecutor(Executors.newFixedThreadPool(appBlockingPoolThreads))
-  val nonBlockingExecutor = Executor.fromJavaExecutor(Executors.newFixedThreadPool(appNonBlockingPoolThreads))
-
   override val bootstrap: ZLayer[Any, Nothing, Unit] = {
-    Runtime.removeDefaultLoggers >>> SLF4J.slf4j >>> Runtime.setBlockingExecutor(blockingExecutor) >>> Runtime.setExecutor(nonBlockingExecutor)
+    var layer = Runtime.removeDefaultLoggers >>> SLF4J.slf4j
+    if (appBlockingPoolThreads > 0) layer = layer >>> Runtime.setBlockingExecutor(Executor.fromJavaExecutor(Executors.newFixedThreadPool(appBlockingPoolThreads)))
+    if (appNonBlockingPoolThreads > 0) layer = layer >>> Runtime.setExecutor(Executor.fromJavaExecutor(Executors.newFixedThreadPool(appNonBlockingPoolThreads)))
+    layer.asInstanceOf[ZLayer[Any, Nothing, Unit]]
   }
 
   val planTasksEffect: ZIO[JobStateReader with TaskPlannerService with WorkStateReader with TaskOverviewService with Client, Throwable, Unit] = {
@@ -161,7 +161,9 @@ object App extends ZIOAppDefault {
           ServerEndpoints.nodeStateEndpoint ++
           ServerEndpoints.directiveEndpoints ++
           JobDefsServerEndpoints.jobDefEndpoints ++
-          JobTemplatesServerEndpoints.templateEndpoints(dataOverviewReader, contentReader, writer)
+          JobTemplatesServerEndpoints.templateEndpoints(dataOverviewReader, contentReader, writer) ++
+          DataEndpoints.dataEndpoints
+
       )
       _ <- ZIO.logInfo("Application is about to exit!")
     } yield ()
