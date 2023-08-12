@@ -79,7 +79,7 @@ For more settings (such as minimal coverage criteria for build to succeed), see 
 ## Build jar, build docker image, startup local
 
 - build jar (from root folder; find it in target folder of kolibri-fleet-zio sub-folder afterwards): ```./scripts/buildKolibriFleetZIOJar.sh```
-- build docker image for local usage (kolibri-fleet-zio sub-folder): ```docker build . -t kolibri-fleet-zio:0.2.1```
+- build docker image for local usage (kolibri-fleet-zio sub-folder): ```docker build . -t kolibri-fleet-zio:0.2.2```
 - startup via docker-compose (kolibri-fleet-zio sub-folder): ```docker-compose up```
 - to consider when starting up prometheus / response-juggler as defined in the docker-compose file (otherwise just comment out):
   - for prometheus to start up, create folder named ```data``` in prometheus folder before executing docker-compose up.
