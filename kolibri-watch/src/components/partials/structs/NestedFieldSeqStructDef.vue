@@ -1,11 +1,14 @@
 <template>
 
   <!-- NOTE: key needed to cause rerender on change of
-   conditional fields -->
-  <template :key="childKeyValue + '-' + field.value.valueFormat.elementId"
-    v-for="(field, index) in [...toRefs(state.usedFields), ...toRefs(state.selectedConditionalFields)]">
+   conditional fields; on unconditional fields placing
+   key attribute can lead to loosing focus when typing,
+   causing annoying behavior that gaining focus again is
+   needed after every single character (e.g by clicking in the input
+   field). Avoiding this by making key attribute setting conditional.-->
+  <template :key="(index > state.usedFields.length) ? childKeyValue + '-' + field.value.valueFormat.elementId : null" v-for="(field, index) in [...toRefs(state.usedFields), ...toRefs(state.selectedConditionalFields)]">
 
-    <div class="form-group k-input-group">
+      <div class="form-group k-input-group">
 
       <template v-if="(field.value.valueFormat instanceof SingleValueInputDef)">
         <div class="col-3 col-sm-12">
