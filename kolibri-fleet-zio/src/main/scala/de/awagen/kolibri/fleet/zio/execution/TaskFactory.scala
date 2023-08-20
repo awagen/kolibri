@@ -216,7 +216,8 @@ object TaskFactory {
                                   excludeParamsFromMetricRow: Seq[String],
                                   tagger: ProcessingMessage[MetricRow] => ProcessingMessage[MetricRow] = identity,
                                   successKeyName: String = "metricsRow",
-                                  failKeyName: String = "metricsCalculationFail") extends ZIOTask[MetricRow] {
+                                  failKeyName: String = "metricsCalculationFail",
+                                  parsedValueToContextKeys: Seq[String] = Seq.empty) extends ZIOTask[MetricRow] {
     override def prerequisiteKeys: Seq[String] = Seq(requestAndParseSuccessKey)
 
     override def successKey: String = successKeyName
@@ -257,7 +258,12 @@ object TaskFactory {
         _ <- ZIO.logDebug(s"single results: $singleResults")
         metricRow <- metricValuesToMetricRow(singleResults, metricRowParams)
         _ <- ZIO.logDebug(s"computed metric values for aggregation tags '$currentTags': '$metricRow'")
-        processingMessageResult <- ZIO.attempt(tagger.apply(ProcessingMessages.Corn(metricRow).withTags(TagType.AGGREGATION, currentTags)))
+        // if any parsed values are marked to be carried over as contextInfo values, pick them and add them to the metricRow below
+        contextInfo <- ZIO.attempt({
+          parsedValueToContextKeys.map(key => (key, parsedFields.data.get[Any](key))).filter(x => x._2.nonEmpty).map(x => (x._1, x._2.get)).toMap
+        })
+        _ <- ZIO.logDebug(s"Context info is: $contextInfo")
+        processingMessageResult <- ZIO.attempt(tagger.apply(ProcessingMessages.Corn(metricRow.addContextInfo(contextInfo)).withTags(TagType.AGGREGATION, currentTags)))
       } yield processingMessageResult
       computeResult
         .tap(result => ZIO.logDebug(s"calculated metrics: ${result.data}"))

@@ -34,7 +34,7 @@ import de.awagen.kolibri.datatypes.values.RunningValues.RunningValue
 import de.awagen.kolibri.datatypes.values.aggregation.immutable.AggregateValue
 import de.awagen.kolibri.datatypes.values.{MetricValue, RunningValues}
 import org.slf4j.LoggerFactory
-import spray.json.DefaultJsonProtocol.{DoubleJsonFormat, IntJsonFormat, StringJsonFormat, immSeqFormat, jsonFormat3, jsonFormat5, jsonFormat7, mapFormat}
+import spray.json.DefaultJsonProtocol.{DoubleJsonFormat, IntJsonFormat, StringJsonFormat, immSeqFormat, jsonFormat3, jsonFormat4, jsonFormat5, jsonFormat7, jsonFormat8, mapFormat}
 import spray.json.{RootJsonFormat, _}
 
 import java.sql.Timestamp
@@ -78,7 +78,6 @@ object JsonMetricDocumentFormat {
     private[this] var failSamplesSeq: Seq[Int] = Seq.empty
     private[this] var weightedFailSamplesSeq: Seq[Double] = Seq.empty
     private[this] var failReasonsSeq: Seq[Map[ComputeFailReason, Int]] = Seq.empty
-
 
     def addSample(dataSample: Any,
                   successSamples: Int,
@@ -165,15 +164,17 @@ object JsonMetricDocumentFormat {
    */
   case class Document(name: String,
                       timestamp: Timestamp,
-                      data: Seq[Entries])
+                      data: Seq[Entries],
+                      contextInfos: Seq[Map[String, Any]])
 
   implicit val entriesFormat: JsonFormat[Entries] = jsonDocEntriesFormat
-  val jsonDocumentFormat: RootJsonFormat[Document] = jsonFormat3(Document)
+  val jsonDocumentFormat: RootJsonFormat[Document] = jsonFormat4(Document)
 
   case class DocumentBuilder(name: String) {
 
     private[this] var timestamp: Timestamp = _
     private[this] var data: Seq[Entries] = Seq.empty
+    private[this] var contextInfos: Seq[Map[String, Any]] = Seq.empty
 
     def withTimeStamp(timestamp: Timestamp): Unit = {
       this.timestamp = timestamp
@@ -183,10 +184,15 @@ object JsonMetricDocumentFormat {
       data = data :+ entries
     }
 
+    def addContextInfo(info: Map[String, Any]): Unit = {
+      contextInfos = contextInfos :+ info
+    }
+
     def build: Document = Document(
       name,
       timestamp,
-      data
+      data,
+      contextInfos
     )
 
   }
@@ -272,6 +278,9 @@ class JsonMetricDocumentFormat() extends MetricDocumentFormat {
 
     // now build all entries and add to the documentBuilder
     val documentBuilder = DocumentBuilder(ma.id.toString)
+    // add context info in correct order
+    ma.rows.values.map(x => x.contextInfo).foreach(info => documentBuilder.addContextInfo(info))
+    // add all entries
     aggregationTypeToEntriesBuilderMap.values.foreach(entriesBuilder => {
       documentBuilder.addEntry(entriesBuilder.build)
     })
@@ -309,6 +318,8 @@ class JsonMetricDocumentFormat() extends MetricDocumentFormat {
     aggregationType match {
       case AggregationType.DOUBLE_AVG =>
         RunningValues.doubleAvgRunningValue(weightedSuccessCount, successCount, value.asInstanceOf[Double])
+      case AggregationType.SEQUENCE_KEEP_FIRST =>
+        RunningValues.sequenceKeepFirstAggregation(weightedSuccessCount, successCount, value.asInstanceOf[Seq[Any]])
       case AggregationType.MAP_WEIGHTED_SUM_VALUE =>
         RunningValues.mapValueWeightedSumRunningValue(weightedSuccessCount, successCount, value.asInstanceOf[Map[String, Double]])
       case AggregationType.MAP_UNWEIGHTED_SUM_VALUE =>
@@ -343,10 +354,11 @@ class JsonMetricDocumentFormat() extends MetricDocumentFormat {
       // check correct indices in all entries
       doc.data.indices.foreach(index => {
         val entries = doc.data(index)
+        val contextInfo = doc.contextInfos(index)
         val entryType: AggregationType = entries.entryType
         if (Objects.isNull(metricRow)) {
-          val resultCountStore = new ResultCountStore(entries.successCount, entries.failCount)
-          metricRow = MetricRow(resultCountStore, params, Map.empty)
+          val resultCountStore = ResultCountStore(entries.successCount, entries.failCount)
+          metricRow = MetricRow(resultCountStore, params, Map.empty, contextInfo)
         }
         val valueIndex = entries.labels.indexOf(params)
         if (valueIndex >= 0) {

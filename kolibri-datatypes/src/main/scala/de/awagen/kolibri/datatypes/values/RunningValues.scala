@@ -137,6 +137,14 @@ object RunningValues {
     RunningValue(weightedCount, count, value, weightMultiplyFunction, doubleAvgAdd, () => 0.0,
       AggregationType.DOUBLE_AVG)
 
+  def sequenceKeepFirstAggregation(weightedCount: Double, count: Int, value: Seq[Any]): RunningValue[Seq[Any]] = {
+    RunningValue(weightedCount, count, value, weightMultiplyFunction, (first, second) => (first.value.asInstanceOf[Seq[Any]], second.value.asInstanceOf[Seq[Any]]) match {
+      case (a, b) if a.isEmpty => b
+      case (a, _)  => a
+    }, () => Seq.empty,
+      AggregationType.SEQUENCE_KEEP_FIRST)
+  }
+
 
   def calcErrorRunningValue(count: Int, value: Map[ComputeFailReason, Int]): RunningValue[Map[ComputeFailReason, Int]] =
     RunningValue(count, count, value, failMapKeepWeightFon, errorMapAdd, () => Map.empty,

@@ -32,6 +32,11 @@ class JsonMetricDocumentFormatSpec extends UnitTestSpec {
   val plainMetricDocJson: String =
     """
       |{
+      |  "contextInfos": [
+      |    {},
+      |    {},
+      |    {}
+      |  ],
       |  "data": [
       |    {
       |      "datasets": [
@@ -207,6 +212,9 @@ class JsonMetricDocumentFormatSpec extends UnitTestSpec {
   val nestedMetricDocJson: String =
     """
       |{
+      |  "contextInfos": [
+      |    {}
+      |  ],
       |  "data": [
       |    {
       |      "datasets": [

@@ -35,7 +35,7 @@ case class BaseMetricDocumentWriter(writer: Writer[String, String, Any],
   def keyToResourceName(key: Tag): String = keyToFilenameFunc.apply(key)
 
   override def write(data: MetricDocument[Tag], targetIdentifier: Tag): Either[Exception, Any] = {
-    if (data.id != targetIdentifier) Left(new RuntimeException(s"tragetIdentifier '$targetIdentifier' does not match" +
+    if (data.id != targetIdentifier) Left(new RuntimeException(s"targetIdentifier '$targetIdentifier' does not match" +
       s"tag '${data.id}' in document '$data'"))
     else {
       val writeResults: Seq[Either[Exception, Any]] = formats.map(format => {
