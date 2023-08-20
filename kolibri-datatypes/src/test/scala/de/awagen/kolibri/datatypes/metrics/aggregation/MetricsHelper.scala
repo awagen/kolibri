@@ -47,4 +47,14 @@ object MetricsHelper {
   val metricRecord3: MetricRow = MetricRow.empty.addFullMetricsSampleAndIncreaseSampleCount(metricsSuccess4)
   val metricRecord4: MetricRow = MetricRow.empty.addFullMetricsSampleAndIncreaseSampleCount(metricsSuccess5)
 
+  val metricRecordWParams1: MetricRow = MetricRow.emptyForParams(Map("p1" -> Seq("v1"), "p2" -> Seq("0.4")))
+    .addFullMetricsSampleAndIncreaseSampleCount(MetricValue.createDoubleAvgSuccessSample("metrics1", 0.6, 1.0))
+  val metricRecordWParams2: MetricRow = MetricRow.emptyForParams(Map("p1" -> Seq("v2"), "p2" -> Seq("0.3")))
+    .addFullMetricsSampleAndIncreaseSampleCount(MetricValue.createDoubleAvgSuccessSample("metrics1", 0.6, 1.0))
+  val metricRecordWParams3: MetricRow = MetricRow.emptyForParams(Map("p1" -> Seq("v3"), "p2" -> Seq("0.0")))
+    .addFullMetricsSampleAndIncreaseSampleCount(MetricValue.createDoubleAvgSuccessSample("metrics1", 0.6, 1.0))
+  val metricRecordWParams4: MetricRow = MetricRow.emptyForParams(Map("p1" -> Seq("v4")))
+    .addFullMetricsSampleAndIncreaseSampleCount(MetricValue.createDoubleAvgSuccessSample("metrics1", 0.3, 1.0))
+  val metricRecordWParams5: MetricRow = MetricRow.emptyForParams(Map("p1" -> Seq("v5")))
+    .addFullMetricsSampleAndIncreaseSampleCount(MetricValue.createDoubleAvgSuccessSample("metrics1", 0.4, 1.0))
 }
