@@ -206,7 +206,7 @@ case class CSVParameterBasedMetricDocumentFormat(columnSeparator: String) extend
   private[writer] def readRow(headers: Seq[String], paramNamesToColumnIndexMap: Map[String, Int], row: String, metricNameAggregationTypeMap: Map[String, AggregationType]): MetricRow = {
     var colStrValues: Seq[String] = getColumnsFromLine(row)
     assert(headers.size == colStrValues.size, s"header key size '${headers.size}' does not match size of column values '${colStrValues.size}'")
-    val contextInfo = colStrValues.last.toJson.convertTo[Map[String, Any]]
+    val contextInfo = colStrValues.last.parseJson.convertTo[Map[String, Any]]
     colStrValues = colStrValues.slice(0, colStrValues.size - 1)
     val paramsMap: Map[String, Seq[String]] = paramMapFromParamToColumnMap(paramNamesToColumnIndexMap, colStrValues)
     // calculate the values and put in MetricRow

@@ -19,7 +19,6 @@ package de.awagen.kolibri.datatypes.metrics.aggregation.writer
 import de.awagen.kolibri.datatypes.metrics.aggregation.writer.CSVParameterBasedMetricDocumentFormat._
 import de.awagen.kolibri.datatypes.metrics.aggregation.writer.MetricFormatTestHelper._
 import de.awagen.kolibri.datatypes.reason.ComputeFailReason
-import de.awagen.kolibri.datatypes.stores
 import de.awagen.kolibri.datatypes.stores.immutable.MetricRow
 import de.awagen.kolibri.datatypes.stores.mutable.MetricDocument
 import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}
@@ -48,25 +47,25 @@ class CSVParameterBasedMetricDocumentFormatSpec extends UnitTestSpec {
       val row2: String = writer.formatRow(metricRecord2, parameterTag2.value.keySet.toSeq.sorted, metricRecord2.metrics.keySet.toSeq.sorted)
       val row3: String = writer.formatRow(metricRecord3, parameterTag3.value.keySet.toSeq.sorted, metricRecord3.metrics.keySet.toSeq.sorted)
 
-      val expectedHeader1 = "p1\tp2\tfail-count-metrics1\tweighted-fail-count-metrics1\tfailReasons-metrics1\tsuccess-count-metrics1\tweighted-success-count-metrics1\tvalue-metrics1\tfail-count-metrics2\tweighted-fail-count-metrics2\tfailReasons-metrics2\tsuccess-count-metrics2\tweighted-success-count-metrics2\tvalue-metrics2"
-      val expectedHeader2 = "p1\tp2\tfail-count-metrics3\tweighted-fail-count-metrics3\tfailReasons-metrics3\tsuccess-count-metrics3\tweighted-success-count-metrics3\tvalue-metrics3"
-      val expectedHeader3 = "p1\tp3\tfail-count-metrics4\tweighted-fail-count-metrics4\tfailReasons-metrics4\tsuccess-count-metrics4\tweighted-success-count-metrics4\tvalue-metrics4"
+      val expectedHeader1 = "p1\tp2\tfail-count-metrics1\tweighted-fail-count-metrics1\tfailReasons-metrics1\tsuccess-count-metrics1\tweighted-success-count-metrics1\tvalue-metrics1\tfail-count-metrics2\tweighted-fail-count-metrics2\tfailReasons-metrics2\tsuccess-count-metrics2\tweighted-success-count-metrics2\tvalue-metrics2\tcontextInfo"
+      val expectedHeader2 = "p1\tp2\tfail-count-metrics3\tweighted-fail-count-metrics3\tfailReasons-metrics3\tsuccess-count-metrics3\tweighted-success-count-metrics3\tvalue-metrics3\tcontextInfo"
+      val expectedHeader3 = "p1\tp3\tfail-count-metrics4\tweighted-fail-count-metrics4\tfailReasons-metrics4\tsuccess-count-metrics4\tweighted-success-count-metrics4\tvalue-metrics4\tcontextInfo"
       // then
       header1 mustBe expectedHeader1
-      row1 mustBe "v1_1\tv1_2\t0\t0.0000\t\t1\t1.0000\t0.2000\t0\t0.0000\t\t1\t1.0000\t0.4000"
+      row1 mustBe "v1_1\tv1_2\t0\t0.0000\t\t1\t1.0000\t0.2000\t0\t0.0000\t\t1\t1.0000\t0.4000\t{}"
       header2 mustBe expectedHeader2
-      row2 mustBe "v2_1\tv2_2\t0\t0.0000\t\t1\t1.0000\t0.1000"
+      row2 mustBe "v2_1\tv2_2\t0\t0.0000\t\t1\t1.0000\t0.1000\t{}"
       header3 mustBe expectedHeader3
-      row3 mustBe "v3_1\tv3_2\t0\t0.0000\t\t1\t1.0000\t0.3000"
+      row3 mustBe "v3_1\tv3_2\t0\t0.0000\t\t1\t1.0000\t0.3000\t{}"
     }
 
     "correctly give formatted representation of the aggregation for full document" in {
       //given
       val typeHeader = "# K_METRIC_AGGREGATOR_MAPPING metrics1 DOUBLE_AVG\n# K_METRIC_AGGREGATOR_MAPPING metrics2 DOUBLE_AVG\n# K_METRIC_AGGREGATOR_MAPPING metrics3 DOUBLE_AVG\n# K_METRIC_AGGREGATOR_MAPPING metrics4 DOUBLE_AVG"
-      val expectedHeader1 = "p1\tp2\tp3\tfail-count-metrics1\tweighted-fail-count-metrics1\tfailReasons-metrics1\tsuccess-count-metrics1\tweighted-success-count-metrics1\tvalue-metrics1\tfail-count-metrics2\tweighted-fail-count-metrics2\tfailReasons-metrics2\tsuccess-count-metrics2\tweighted-success-count-metrics2\tvalue-metrics2\tfail-count-metrics3\tweighted-fail-count-metrics3\tfailReasons-metrics3\tsuccess-count-metrics3\tweighted-success-count-metrics3\tvalue-metrics3\tfail-count-metrics4\tweighted-fail-count-metrics4\tfailReasons-metrics4\tsuccess-count-metrics4\tweighted-success-count-metrics4\tvalue-metrics4"
-      val expectedRow1 = "v1_1\tv1_2\t\t0\t0.0000\t\t1\t1.0000\t0.2000\t0\t0.0000\t\t1\t1.0000\t0.4000\t0\t0.0000\t\t0\t0.0000\t0.0000\t0\t0.0000\t\t0\t0.0000\t0.0000"
-      val expectedRow2 = "v2_1\tv2_2\t\t0\t0.0000\t\t0\t0.0000\t0.0000\t0\t0.0000\t\t0\t0.0000\t0.0000\t0\t0.0000\t\t1\t1.0000\t0.1000\t0\t0.0000\t\t0\t0.0000\t0.0000"
-      val expectedRow3 = "v3_1\t\tv3_2\t0\t0.0000\t\t0\t0.0000\t0.0000\t0\t0.0000\t\t0\t0.0000\t0.0000\t0\t0.0000\t\t0\t0.0000\t0.0000\t0\t0.0000\t\t1\t1.0000\t0.3000"
+      val expectedHeader1 = "p1\tp2\tp3\tfail-count-metrics1\tweighted-fail-count-metrics1\tfailReasons-metrics1\tsuccess-count-metrics1\tweighted-success-count-metrics1\tvalue-metrics1\tfail-count-metrics2\tweighted-fail-count-metrics2\tfailReasons-metrics2\tsuccess-count-metrics2\tweighted-success-count-metrics2\tvalue-metrics2\tfail-count-metrics3\tweighted-fail-count-metrics3\tfailReasons-metrics3\tsuccess-count-metrics3\tweighted-success-count-metrics3\tvalue-metrics3\tfail-count-metrics4\tweighted-fail-count-metrics4\tfailReasons-metrics4\tsuccess-count-metrics4\tweighted-success-count-metrics4\tvalue-metrics4\tcontextInfo"
+      val expectedRow1 = "v1_1\tv1_2\t\t0\t0.0000\t\t1\t1.0000\t0.2000\t0\t0.0000\t\t1\t1.0000\t0.4000\t0\t0.0000\t\t0\t0.0000\t0.0000\t0\t0.0000\t\t0\t0.0000\t0.0000\t{}"
+      val expectedRow2 = "v2_1\tv2_2\t\t0\t0.0000\t\t0\t0.0000\t0.0000\t0\t0.0000\t\t0\t0.0000\t0.0000\t0\t0.0000\t\t1\t1.0000\t0.1000\t0\t0.0000\t\t0\t0.0000\t0.0000\t{}"
+      val expectedRow3 = "v3_1\t\tv3_2\t0\t0.0000\t\t0\t0.0000\t0.0000\t0\t0.0000\t\t0\t0.0000\t0.0000\t0\t0.0000\t\t0\t0.0000\t0.0000\t0\t0.0000\t\t1\t1.0000\t0.3000\t{}"
       val expectedDocString = Seq(typeHeader, expectedHeader1, expectedRow1, expectedRow2, expectedRow3).mkString("\n")
       // when
       val actual = writer.metricDocumentToString(doc)
@@ -76,8 +75,8 @@ class CSVParameterBasedMetricDocumentFormatSpec extends UnitTestSpec {
     "correctly give formatted representation of histogram aggregation" in {
       // given
       val typeHeader = "# K_METRIC_AGGREGATOR_MAPPING histogram1 NESTED_MAP_UNWEIGHTED_SUM_VALUE"
-      val expectedHeader1 = "p1\tp2\tfail-count-histogram1\tweighted-fail-count-histogram1\tfailReasons-histogram1\tsuccess-count-histogram1\tweighted-success-count-histogram1\tvalue-histogram1"
-      val expectedRow1 = "v1_1\tv1_2\t0\t0.0000\t\t1\t1.0000\t{\"key1\":{\"1\":1.0,\"2\":2.0},\"key2\":{\"3\":1.0}}"
+      val expectedHeader1 = "p1\tp2\tfail-count-histogram1\tweighted-fail-count-histogram1\tfailReasons-histogram1\tsuccess-count-histogram1\tweighted-success-count-histogram1\tvalue-histogram1\tcontextInfo"
+      val expectedRow1 = "v1_1\tv1_2\t0\t0.0000\t\t1\t1.0000\t{\"key1\":{\"1\":1.0,\"2\":2.0},\"key2\":{\"3\":1.0}}\t{}"
       val expectedDocString = Seq(typeHeader, expectedHeader1, expectedRow1).mkString("\n")
       // when
       val actualFormat = writer.metricDocumentToString(histogramDoc1)
@@ -128,7 +127,8 @@ class CSVParameterBasedMetricDocumentFormatSpec extends UnitTestSpec {
       s"${FAIL_REASONS_COLUMN_PREFIX}M2",
       s"${VALUE_COLUMN_PREFIX}M2",
       s"${SUCCESS_COUNT_COLUMN_PREFIX}M2",
-      s"${WEIGHTED_SUCCESS_COUNT_COLUMN_PREFIX}M2"
+      s"${WEIGHTED_SUCCESS_COUNT_COLUMN_PREFIX}M2",
+      "contextInfo"
     )
 
     val testParamsMap: Map[String, Seq[String]] = Map("p1" -> Seq("p1_v1"), "p2" -> Seq("p2_v1", "p2_v2"))
@@ -146,7 +146,8 @@ class CSVParameterBasedMetricDocumentFormatSpec extends UnitTestSpec {
       "",
       "0.68",
       "4",
-      "4.0"
+      "4.0",
+      "{}"
     )
     val testColumns1: Seq[String] = Seq(
       "p1_v2",
@@ -162,7 +163,8 @@ class CSVParameterBasedMetricDocumentFormatSpec extends UnitTestSpec {
       "",
       "0.10",
       "4",
-      "4.0"
+      "4.0",
+      "{}"
     )
 
     "correctly pick the right indices for category for metric name" in {
@@ -174,7 +176,7 @@ class CSVParameterBasedMetricDocumentFormatSpec extends UnitTestSpec {
       // given, when
       val nameToTypeMapping = Map("M1" -> AggregationType.DOUBLE_AVG, "M2" -> AggregationType.DOUBLE_AVG)
       val metricRow: MetricRow = writer.metricRowFromHeadersAndColumns(testHeaders, testParamsMap, testColumns,
-        nameToTypeMapping)
+        nameToTypeMapping, Map.empty)
       val row1: MetricValue[Double] = metricRow.metrics("M1").asInstanceOf[MetricValue[Double]]
       val row2: MetricValue[Double] = metricRow.metrics("M2").asInstanceOf[MetricValue[Double]]
       // then
