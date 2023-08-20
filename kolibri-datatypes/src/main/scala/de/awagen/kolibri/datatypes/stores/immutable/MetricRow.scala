@@ -72,7 +72,10 @@ object MetricRow {
   * @param metrics - Map with key = metric name and value = MetricValue[Any], describing the actual value that might
   *                be generated from many samples and error types along with the error counts
   */
-case class MetricRow(countStore: ResultCountStore, params: Map[String, Seq[String]], metrics: Map[String, MetricValue[Any]]) extends MetricRecord[String, Any] with WithCount {
+case class MetricRow(countStore: ResultCountStore,
+                     params: Map[String, Seq[String]],
+                     metrics: Map[String, MetricValue[Any]],
+                     contextInfo: Map[String, Any] = Map.empty) extends MetricRecord[String, Any] with WithCount {
 
   def count: Int = countStore.fails + countStore.successes
 
@@ -83,7 +86,7 @@ case class MetricRow(countStore: ResultCountStore, params: Map[String, Seq[Strin
     val map: Map[String, MetricValue[Any]] = metrics.map(x => {
       (x._1, MetricValue(x._2.name, BiRunningValue(x._2.biValue.value1, x._2.biValue.value2.weighted(weight))))
     })
-    MetricRow(ResultCountStore(countStore.successes, countStore.fails), params, map)
+    MetricRow(ResultCountStore(countStore.successes, countStore.fails), params, map, contextInfo)
   }
 
   def successCountForMetric(metricName: String): Int = {
@@ -109,7 +112,7 @@ case class MetricRow(countStore: ResultCountStore, params: Map[String, Seq[Strin
   override def addMetricDontChangeCountStore[T >: Any](addMetric: MetricValue[T]): MetricRow = {
     val currentMetricState: MetricValue[Any] = metrics.getOrElse(addMetric.name, addMetric.emptyCopy())
     val updatedMetricState = MetricValue[Any](addMetric.name, currentMetricState.biValue.add(addMetric.biValue))
-    MetricRow(countStore, params, metrics + (addMetric.name -> updatedMetricState))
+    MetricRow(countStore, params, metrics + (addMetric.name -> updatedMetricState), contextInfo)
   }
 
   override def addFullMetricsSampleAndIncreaseSampleCount[T >: Any](newMetrics: MetricValue[T]*): MetricRow = {
@@ -126,4 +129,5 @@ case class MetricRow(countStore: ResultCountStore, params: Map[String, Seq[Strin
     else result.incrementFailCount()
   }
 
+  override def addContextInfo(info: Map[String, Any]): MetricRow = this.copy(contextInfo = info)
 }

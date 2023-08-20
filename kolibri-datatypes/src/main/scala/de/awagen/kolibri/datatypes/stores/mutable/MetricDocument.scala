@@ -50,7 +50,7 @@ case class MetricDocument[+A <: AnyRef](id: A, rows: mutable.Map[ParamMap, Metri
   def add(row: MetricRow): Unit = {
     rows(row.params) = rows.getOrElse(
       row.params,
-      MetricRow(MetricRow.ResultCountStore(0, 0), row.params, Map.empty)
+      MetricRow(MetricRow.ResultCountStore(0, 0), row.params, Map.empty, row.contextInfo)
     )
       .addRecordAndIncreaseSampleCount(row)
     metricNames = metricNames ++ row.metricNames

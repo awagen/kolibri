@@ -20,7 +20,6 @@ package de.awagen.kolibri.fleet.zio.execution
 import de.awagen.kolibri.datatypes.mutable.stores.WeaklyTypedMap
 import de.awagen.kolibri.definitions.processing.ProcessingMessages.ProcessingMessage
 import de.awagen.kolibri.definitions.processing.failure.TaskFailType.TaskFailType
-import de.awagen.kolibri.fleet.zio.App
 import zio.ZIO
 import zio.stream.ZStream
 

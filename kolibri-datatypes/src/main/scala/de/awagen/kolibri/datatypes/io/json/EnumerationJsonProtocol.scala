@@ -36,6 +36,7 @@ object EnumerationJsonProtocol extends DefaultJsonProtocol {
     override def structDef: JsonStructDefs.StructDef[_] = {
       StringChoiceStructDef(Seq(
         AggregationType.DOUBLE_AVG.toString,
+        AggregationType.SEQUENCE_KEEP_FIRST.toString,
         AggregationType.MAP_UNWEIGHTED_SUM_VALUE.toString,
         AggregationType.MAP_WEIGHTED_SUM_VALUE.toString,
         AggregationType.NESTED_MAP_UNWEIGHTED_SUM_VALUE.toString,

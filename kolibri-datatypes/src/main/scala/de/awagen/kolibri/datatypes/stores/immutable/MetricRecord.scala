@@ -29,6 +29,8 @@ trait MetricRecord[A, +B] {
 
   def addRecordAndIncreaseSampleCount[C >: B](record: MetricRecord[A, C]): MetricRecord[A, B]
 
+  def addContextInfo(info: Map[String, Any]): MetricRecord[A, B]
+
   def metricNames: Seq[A]
 
   def metricValues: Seq[MetricValue[B]]

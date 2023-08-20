@@ -71,6 +71,7 @@ object MetricValueFunctions {
 
     def byName(name: String): Val[_] = name.toUpperCase match {
       case "DOUBLE_AVG" => DOUBLE_AVG
+      case "SEQUENCE_KEEP_FIRST" => SEQUENCE_KEEP_FIRST
       case "MAP_UNWEIGHTED_SUM_VALUE" => MAP_UNWEIGHTED_SUM_VALUE
       case "MAP_WEIGHTED_SUM_VALUE" => MAP_WEIGHTED_SUM_VALUE
       case "NESTED_MAP_UNWEIGHTED_SUM_VALUE" => NESTED_MAP_UNWEIGHTED_SUM_VALUE
@@ -79,6 +80,7 @@ object MetricValueFunctions {
     }
 
     val DOUBLE_AVG: Val[Double] = Val(() => RunningValues.doubleAvgRunningValue(0.0, 0, 0.0))
+    val SEQUENCE_KEEP_FIRST: Val[Seq[Any]] = Val(() => RunningValues.sequenceKeepFirstAggregation(0.0, 0, Seq.empty))
     val MAP_AVG_VALUE: Val[Map[String, Double]] = Val(() => RunningValues.mapValueUnweightedSumRunningValue(0.0, 0, Map.empty[String, Double]))
     val MAP_UNWEIGHTED_SUM_VALUE: Val[Map[String, Double]] = Val(() => RunningValues.mapValueUnweightedSumRunningValue(0.0, 0, Map.empty[String, Double]))
     val MAP_WEIGHTED_SUM_VALUE: Val[Map[String, Double]] = Val(() => RunningValues.mapValueWeightedSumRunningValue(0.0, 0, Map.empty[String, Double]))

@@ -28,7 +28,7 @@ import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType.A
 import de.awagen.kolibri.datatypes.values.RunningValues.RunningValue
 import de.awagen.kolibri.datatypes.values.{BiRunningValue, MetricValue}
 import org.slf4j.{Logger, LoggerFactory}
-import spray.json.DefaultJsonProtocol.{DoubleJsonFormat, StringJsonFormat, mapFormat}
+import spray.json.DefaultJsonProtocol.{DoubleJsonFormat, StringJsonFormat, immSeqFormat, mapFormat}
 import spray.json._
 
 import java.util.Objects
@@ -43,6 +43,7 @@ object CSVParameterBasedMetricDocumentFormat {
   val VALUE_COLUMN_PREFIX = "value-"
   val INVALID_ID = "invalidID"
   val MULTI_VALUE_SEPARATOR = "&"
+  val CONTEXT_INFO_FIELD = "contextInfo"
 }
 
 case class CSVParameterBasedMetricDocumentFormat(columnSeparator: String) extends MetricDocumentFormat {
@@ -79,6 +80,8 @@ case class CSVParameterBasedMetricDocumentFormat(columnSeparator: String) extend
           s"$VALUE_COLUMN_PREFIX$x"
         )
       })
+    // add context info column header (column to contain the context info mapping in case some exists for a given row)
+    header = header :+ CONTEXT_INFO_FIELD
     header.mkString(columnSeparator)
   }
 
@@ -96,7 +99,8 @@ case class CSVParameterBasedMetricDocumentFormat(columnSeparator: String) extend
         !value.startsWith(WEIGHTED_FAIL_COUNT_COLUMN_PREFIX) &&
         !value.startsWith(SUCCESS_COUNT_COLUMN_PREFIX) &&
         !value.startsWith(WEIGHTED_SUCCESS_COUNT_COLUMN_PREFIX) &&
-        !value.startsWith(VALUE_COLUMN_PREFIX)
+        !value.startsWith(VALUE_COLUMN_PREFIX) &&
+        !value.startsWith(CONTEXT_INFO_FIELD)
     }).map(validIndex => {
       (headers(validIndex), validIndex)
     }).toMap
@@ -121,6 +125,8 @@ case class CSVParameterBasedMetricDocumentFormat(columnSeparator: String) extend
     aggregationType match {
       case AggregationType.DOUBLE_AVG =>
         value.toDouble
+      case AggregationType.SEQUENCE_KEEP_FIRST =>
+        value.stripMargin.parseJson.convertTo[Seq[Any]]
       case AggregationType.MAP_UNWEIGHTED_SUM_VALUE =>
         value.stripMargin.parseJson.convertTo[Map[String, Double]]
       case AggregationType.MAP_WEIGHTED_SUM_VALUE =>
@@ -132,7 +138,11 @@ case class CSVParameterBasedMetricDocumentFormat(columnSeparator: String) extend
     }
   }
 
-  private[writer] def metricRowFromHeadersAndColumns(headers: Seq[String], paramsMap: Map[String, Seq[String]], columns: Seq[String], metricNameAggregationTypeMap: Map[String, AggregationType]): MetricRow = {
+  private[writer] def metricRowFromHeadersAndColumns(headers: Seq[String],
+                                                     paramsMap: Map[String, Seq[String]],
+                                                     columns: Seq[String],
+                                                     metricNameAggregationTypeMap: Map[String, AggregationType],
+                                                     contextInfo: Map[String, Any]): MetricRow = {
     // map holding the match of metric name to the indices of the column
     val successCountColumnIndexForMetricMap: Map[String, Int] = metricNameToColumnMapForCategoryFromHeaders(SUCCESS_COUNT_COLUMN_PREFIX, headers)
     val weightedSuccessCountColumnIndexForMetricMap: Map[String, Int] = metricNameToColumnMapForCategoryFromHeaders(WEIGHTED_SUCCESS_COUNT_COLUMN_PREFIX, headers)
@@ -186,7 +196,7 @@ case class CSVParameterBasedMetricDocumentFormat(columnSeparator: String) extend
 
       metricRow = metricRow.addMetricDontChangeCountStore(newValue)
     })
-    metricRow
+    metricRow.addContextInfo(contextInfo)
   }
 
   private[writer] def getColumnsFromLine(headerLine: String): Seq[String] = {
@@ -194,11 +204,13 @@ case class CSVParameterBasedMetricDocumentFormat(columnSeparator: String) extend
   }
 
   private[writer] def readRow(headers: Seq[String], paramNamesToColumnIndexMap: Map[String, Int], row: String, metricNameAggregationTypeMap: Map[String, AggregationType]): MetricRow = {
-    val colStrValues: Seq[String] = getColumnsFromLine(row)
+    var colStrValues: Seq[String] = getColumnsFromLine(row)
     assert(headers.size == colStrValues.size, s"header key size '${headers.size}' does not match size of column values '${colStrValues.size}'")
+    val contextInfo = colStrValues.last.toJson.convertTo[Map[String, Any]]
+    colStrValues = colStrValues.slice(0, colStrValues.size - 1)
     val paramsMap: Map[String, Seq[String]] = paramMapFromParamToColumnMap(paramNamesToColumnIndexMap, colStrValues)
     // calculate the values and put in MetricRow
-    metricRowFromHeadersAndColumns(headers, paramsMap, colStrValues, metricNameAggregationTypeMap)
+    metricRowFromHeadersAndColumns(headers, paramsMap, colStrValues, metricNameAggregationTypeMap, contextInfo)
   }
 
   private[writer] def readRow(headers: Seq[String], row: String, metricNameAggregationTypeMap: Map[String, AggregationType]): MetricRow = {
@@ -257,6 +269,8 @@ case class CSVParameterBasedMetricDocumentFormat(columnSeparator: String) extend
         valueStringFormat
       )
     })
+    // add meta info, if defined
+    data = data :+ row.contextInfo.toJson.toString()
     data.mkString(columnSeparator)
   }
 

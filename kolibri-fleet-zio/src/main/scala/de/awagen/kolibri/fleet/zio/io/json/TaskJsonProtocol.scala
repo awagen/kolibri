@@ -65,6 +65,8 @@ object TaskJsonProtocol extends DefaultJsonProtocol {
   private[json] val SUCCESS_KEY_NAME_KEY = "successKeyName"
   private[json] val FAIL_KEY_NAME_KEY = "failKeyName"
   private[json] val REQUEST_MODE_KEY = "requestMode"
+  private[json] val PARSED_VALUES_TO_CONTEXT_KEYS_KEY = "parsedValueToContextKeys"
+
 
   private[json] val INPUT_KEY_1 = "input1"
   private[json] val INPUT_KEY_2 = "input2"
@@ -250,6 +252,7 @@ object TaskJsonProtocol extends DefaultJsonProtocol {
           val tagger: ProcessingMessage[MetricRow] => ProcessingMessage[MetricRow] = identity
           val successKeyName = fields.get(SUCCESS_KEY_NAME_KEY).map(x => x.convertTo[String]).getOrElse("metricsRow")
           val failKeyName = fields.get(FAIL_KEY_NAME_KEY).map(x => x.convertTo[String]).getOrElse("metricsCalculationFail")
+          val parsedValuesToContextKeys = fields.get(PARSED_VALUES_TO_CONTEXT_KEYS_KEY).map(x => x.convertTo[Seq[String]]).getOrElse(Seq.empty)
           ZIO.attempt({
             TaskFactory.CalculateMetricsTask(
               requestAndParseSuccessKey = parsedDataKey,
@@ -259,7 +262,8 @@ object TaskJsonProtocol extends DefaultJsonProtocol {
               excludeParamsFromMetricRow = excludeParamsFromMetricRow,
               tagger = tagger,
               successKeyName = successKeyName,
-              failKeyName = failKeyName
+              failKeyName = failKeyName,
+              parsedValueToContextKeys = parsedValuesToContextKeys
             )
           })
         case MAP_COMPARISON_TASK_TYPE =>
@@ -340,6 +344,14 @@ object TaskJsonProtocol extends DefaultJsonProtocol {
                 description = "The key under which the ProcessingMessage[WeaklyTypedMap[String]] object" +
                   " is stored. The contained WeaklyTypedMap[String] object contains the fields used" +
                   " within the computations, e.g parsed fields or similar."
+              ),
+              FieldDef(
+                StringConstantStructDef(PARSED_VALUES_TO_CONTEXT_KEYS_KEY),
+                StringSeqStructDef,
+                required = false,
+                description = "Keys of the parsed values in the WeaklyTypedMap[String] object that serves as input for this task for which the key-value pairs shall be taken over into the contextInfo object." +
+                  "This allows storing additional information that is not a normal metric, yet can contain information such as images for the product sequence allowing" +
+                  "to visualize the result sequence or similar."
               ),
               FieldDef(
                 StringConstantStructDef(CALCULATIONS_KEY),

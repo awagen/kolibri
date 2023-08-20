@@ -47,7 +47,7 @@ case class MetricDocument[+A <: AnyRef](id: A, rows: Map[ParamMap, MetricRow]) {
   def add(row: MetricRow): MetricDocument[A] = {
     val newMap = rows + (row.params -> rows.getOrElse(
       row.params,
-      MetricRow(MetricRow.ResultCountStore(0, 0), row.params, Map.empty)
+      MetricRow(MetricRow.ResultCountStore(0, 0), row.params, Map.empty, row.contextInfo)
     ).addRecordAndIncreaseSampleCount(row))
     MetricDocument(id, newMap)
   }
