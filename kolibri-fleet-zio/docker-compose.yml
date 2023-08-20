@@ -4,7 +4,7 @@ services:
 
   prometheus:
     image: prom/prometheus:v2.28.1
-    cpu_count: 2
+    # cpu_count: 1
     mem_limit: 512m
     mem_reservation: 512m
     ports:
@@ -18,7 +18,7 @@ services:
 
   grafana:
     image: grafana/grafana:8.0.5
-    cpu_count: 2
+    # cpu_count: 1
     mem_limit: 256m
     mem_reservation: 256m
     volumes:
@@ -30,7 +30,7 @@ services:
 
   kolibri-zio-1:
     image: awagen/kolibri-fleet-zio:0.2.2
-    cpu_count: 12
+    # cpu_count: 4
     mem_limit: 6144m
     mem_reservation: 4096m
     ports:
@@ -85,9 +85,9 @@ services:
   # sampling of the comma-separated PID_SAMPLEs, each result containing between MIN_PRODUCTS and MAX_PRODUCTS.
   # If another response structure needed, this can easily be adjusted within the response-juggler
   search-service-1:
-    image: awagen/response-juggler:0.1.1
+    image: awagen/response-juggler:0.1.2
     user: "1000:1000"
-    cpu_count: 2
+    # cpu_count: 1
     mem_reservation: 512m
     mem_limit: 512m
     environment:
@@ -95,10 +95,18 @@ services:
       NUM_CONNECTIONS: 400
       RESPONSE_MAIN_TEMPLATE: "searchresponse.json"
       RESPONSE_PARTIAL_IDENT_DOCS: "{{DOCS}}"
-      RESPONSE_PARTIAL_CONTENT_DOCS: "doc_bool_flag.json"
+      RESPONSE_PARTIAL_CONTENT_DOCS: "doc_w_image_and_desc.json"
       RESPONSE_PARTIAL_SAMPLER_TYPE_DOCS: "LIST"
       RESPONSE_PARTIAL_SAMPLER_MIN_NUM_DOCS: 5
       RESPONSE_PARTIAL_SAMPLER_MAX_NUM_DOCS: 20
+      RESPONSE_FIELD_IDENT_DESCRIPTION: "{{DESCRIPTION}}"
+      RESPONSE_FIELD_SAMPLER_TYPE_DESCRIPTION: "SINGLE"
+      RESPONSE_FIELD_SAMPLER_ELEMENT_CAST_DESCRIPTION: "STRING"
+      RESPONSE_FIELD_SAMPLER_SELECTION_DESCRIPTION: "Awesome looking jeans,What a great TV that is,Great Great Product,Hot as the Summer,Cold as the Winter"
+      RESPONSE_FIELD_IDENT_IMAGE: "{{IMAGE}}"
+      RESPONSE_FIELD_SAMPLER_TYPE_IMAGE: "SINGLE"
+      RESPONSE_FIELD_SAMPLER_ELEMENT_CAST_IMAGE: "STRING"
+      RESPONSE_FIELD_SAMPLER_SELECTION_IMAGE: "https://i.otto.de/i/otto/3cae2f65-543c-5ec1-be6c-3f88f4341ffe?$$tile_portrait$$&fmt=webp,https://i.otto.de/i/otto/f03260dc-4735-500e-b2f4-8ecef542f012?$$tile_portrait$$&fmt=webp,https://i.otto.de/i/otto/9b2465fe-a566-5705-bcfb-3ee250d9a1e1?$$tile_portrait$$&fmt=webp,https://i.otto.de/i/otto/6afeaec1-815c-530d-ab72-460bdc7e384e?$$tile_portrait$$&fmt=webp,https://i.otto.de/i/otto/a4bc5211-42a4-5e73-8a7e-e2ee391b37ab?$$tile_portrait$$&fmt=webp,https://i.otto.de/i/otto/cba8352a-4302-56f1-aeac-f290367103cc?$$tile_portrait$$&fmt=webp"
       RESPONSE_FIELD_IDENT_PID: "{{PID}}"
       RESPONSE_FIELD_SAMPLER_TYPE_PID: "SINGLE"
       RESPONSE_FIELD_SAMPLER_ELEMENT_CAST_PID: "STRING"
@@ -119,32 +127,48 @@ services:
       - "80:80"
 
   search-service-2:
-    image: awagen/response-juggler:0.1.1
+    image: awagen/response-juggler:0.1.2
     user: "1000:1000"
-    cpu_count: 2
+    # cpu_count: 1
     mem_reservation: 512m
     mem_limit: 512m
     environment:
       PORT: 81
       NUM_CONNECTIONS: 400
+      # base template
       RESPONSE_MAIN_TEMPLATE: "searchresponse.json"
+      # config for doc sampling
       RESPONSE_PARTIAL_IDENT_DOCS: "{{DOCS}}"
-      RESPONSE_PARTIAL_CONTENT_DOCS: "doc_bool_flag.json"
+      RESPONSE_PARTIAL_CONTENT_DOCS: "doc_w_image_and_desc.json"
       RESPONSE_PARTIAL_SAMPLER_TYPE_DOCS: "LIST"
       RESPONSE_PARTIAL_SAMPLER_MIN_NUM_DOCS: 5
       RESPONSE_PARTIAL_SAMPLER_MAX_NUM_DOCS: 20
+      # config for description sampling
+      RESPONSE_FIELD_IDENT_DESCRIPTION: "{{DESCRIPTION}}"
+      RESPONSE_FIELD_SAMPLER_TYPE_DESCRIPTION: "SINGLE"
+      RESPONSE_FIELD_SAMPLER_ELEMENT_CAST_DESCRIPTION: "STRING"
+      RESPONSE_FIELD_SAMPLER_SELECTION_DESCRIPTION: "Awesome looking jeans,What a great TV that is,Great Great Product,Hot as the Summer,Cold as the Winter"
+      # config for image sampling
+      RESPONSE_FIELD_IDENT_IMAGE: "{{IMAGE}}"
+      RESPONSE_FIELD_SAMPLER_TYPE_IMAGE: "SINGLE"
+      RESPONSE_FIELD_SAMPLER_ELEMENT_CAST_IMAGE: "STRING"
+      RESPONSE_FIELD_SAMPLER_SELECTION_IMAGE: "https://i.otto.de/i/otto/3cae2f65-543c-5ec1-be6c-3f88f4341ffe?$$tile_portrait$$&fmt=webp,https://i.otto.de/i/otto/f03260dc-4735-500e-b2f4-8ecef542f012?$$tile_portrait$$&fmt=webp,https://i.otto.de/i/otto/9b2465fe-a566-5705-bcfb-3ee250d9a1e1?$$tile_portrait$$&fmt=webp,https://i.otto.de/i/otto/6afeaec1-815c-530d-ab72-460bdc7e384e?$$tile_portrait$$&fmt=webp,https://i.otto.de/i/otto/a4bc5211-42a4-5e73-8a7e-e2ee391b37ab?$$tile_portrait$$&fmt=webp,https://i.otto.de/i/otto/cba8352a-4302-56f1-aeac-f290367103cc?$$tile_portrait$$&fmt=webp"
+      # config for product id sampling
       RESPONSE_FIELD_IDENT_PID: "{{PID}}"
       RESPONSE_FIELD_SAMPLER_TYPE_PID: "SINGLE"
       RESPONSE_FIELD_SAMPLER_ELEMENT_CAST_PID: "STRING"
       RESPONSE_FIELD_SAMPLER_SELECTION_PID: "p0,p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12,p13,p14,p15,p16,p17,p18,p19"
+      # config for bool attribute sampling
       RESPONSE_FIELD_IDENT_BOOL: "{{BOOL}}"
       RESPONSE_FIELD_SAMPLER_TYPE_BOOL: "SINGLE"
       RESPONSE_FIELD_SAMPLER_ELEMENT_CAST_BOOL: "BOOL"
       RESPONSE_FIELD_SAMPLER_SELECTION_BOOL: "True,False"
+      # config for numFound sampling
       RESPONSE_FIELD_IDENT_NUM_FOUND: "{{NUM_FOUND}}"
       RESPONSE_FIELD_SAMPLER_TYPE_NUM_FOUND: "SINGLE"
       RESPONSE_FIELD_SAMPLER_ELEMENT_CAST_NUM_FOUND: "INT"
       RESPONSE_FIELD_SAMPLER_SELECTION_NUM_FOUND: "1,5,6,8,10,12,100,50,200"
+      # config for STRING_VAL1 sampling
       RESPONSE_FIELD_IDENT_STRING_VAL1: "{{STRING_VAL1}}"
       RESPONSE_FIELD_SAMPLER_TYPE_STRING_VAL1: "SINGLE"
       RESPONSE_FIELD_SAMPLER_ELEMENT_CAST_STRING_VAL1: "STRING"
