@@ -18,10 +18,11 @@
 package de.awagen.kolibri.fleet.zio
 
 import de.awagen.kolibri.datatypes.stores.mutable.PriorityStores.{BasePriorityStore, PriorityStore}
+import de.awagen.kolibri.definitions.processing.execution.functions.AggregationFunctions
 import de.awagen.kolibri.fleet.zio.DataEndpoints.ResultFileAttributes.{VALUE_PREFIX, evaluationColumnNames}
 import de.awagen.kolibri.fleet.zio.ServerEndpoints.ResponseContent
 import de.awagen.kolibri.fleet.zio.ServerEndpoints.ResponseContentProtocol.responseContentFormat
-import de.awagen.kolibri.fleet.zio.config.AppProperties
+import de.awagen.kolibri.fleet.zio.config.{AppConfig, AppProperties, Directories}
 import de.awagen.kolibri.fleet.zio.config.HttpConfig.corsConfig
 import de.awagen.kolibri.fleet.zio.metrics.Metrics.CalculationsWithMetrics.countAPIRequests
 import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, Reader}
@@ -218,6 +219,25 @@ object DataEndpoints {
         ZIO.logWarning(s"Error on requesting result folders:\n$throwable")
           *> ZIO.succeed(Response.text(s"Failed requesting result folders"))
       ) @@ countAPIRequests("GET", "/results/folders")
+    case Method.GET -> Root / "results" / "summarize" / date / job =>
+      (for {
+        _ <- ZIO.logInfo(s"Trying to summarize results for date '$date' and job '$job'")
+        _ <- ZIO.attemptBlocking({
+          AggregationFunctions.SummarizeJob(
+            jobResultsFolder = s"${AppProperties.config.outputResultsPath.get}/$date/$job",
+            overviewReader = AppConfig.persistenceModule.persistenceDIModule.dataOverviewReader(_ => true),
+            fileReader = AppConfig.persistenceModule.persistenceDIModule.reader,
+            writer = AppConfig.persistenceModule.persistenceDIModule.writer,
+            // TODO: dont hard-code, make selectable.
+            criterionMetricName = "NDCG_10",
+            summarySubfolder = "summary"
+          ).execute
+        })
+        response <- ZIO.attempt(Response.json(ResponseContent[String]("", "").toJson.toString))
+      } yield response).catchAll(throwable =>
+        ZIO.logWarning(s"""Error on summarizing job results:\nmsg: ${throwable.getMessage}\ntrace: ${throwable.getStackTrace.mkString("\n")}""")
+          *> ZIO.succeed(Response.text(s"Failed summarizing job results"))
+      ) @@ countAPIRequests("GET", "/results/summarize/[date]/[job]")
     case e@Method.GET -> Root / "results" / date / job / "content" =>
       (for {
         reader <- ZIO.service[Reader[String, Seq[String]]]
@@ -236,7 +256,6 @@ object DataEndpoints {
         ZIO.logWarning(s"Error on requesting result folder content:\n$throwable")
           *> ZIO.succeed(Response.text(s"Failed requesting result folder content"))
       ) @@ countAPIRequests("GET", "/results/[date]/[job]")
-
   } @@ cors(corsConfig)
 
 }

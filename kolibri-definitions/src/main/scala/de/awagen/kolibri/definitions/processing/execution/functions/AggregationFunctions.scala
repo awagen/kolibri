@@ -17,16 +17,20 @@
 
 package de.awagen.kolibri.definitions.processing.execution.functions
 
+import de.awagen.kolibri.datatypes.metrics.MetricSummary
+import de.awagen.kolibri.datatypes.metrics.MetricSummary.metricSummaryFormat
 import de.awagen.kolibri.definitions.processing.failure.TaskFailType
 import de.awagen.kolibri.definitions.processing.failure.TaskFailType.TaskFailType
 import de.awagen.kolibri.definitions.provider.WeightProviders.WeightProvider
-import de.awagen.kolibri.datatypes.metrics.aggregation.writer.MetricDocumentFormat
+import de.awagen.kolibri.datatypes.metrics.aggregation.writer.{JsonMetricDocumentFormat, MetricDocumentFormat}
 import de.awagen.kolibri.datatypes.stores.mutable.MetricDocument
 import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
 import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, Reader}
 import de.awagen.kolibri.storage.io.writer.Writers.Writer
 import org.slf4j.{Logger, LoggerFactory}
+import spray.json.DefaultJsonProtocol.{JsValueFormat, StringJsonFormat, mapFormat}
+import spray.json.enrichAny
 
 import scala.util.matching.Regex
 
@@ -62,6 +66,48 @@ object AggregationFunctions {
       aggregator.execute
     }
   }
+
+
+  /**
+   * Summarize results in job result folder and write summary to summary folder.
+   * @param jobResultsFolder - folder where results for the job are located (relative to base folder)
+   * @param overviewReader - reader of directory content
+   * @param fileReader - file reader
+   * @param writer - file writer
+   * @param criterionMetricName - the metric name of the metric used to compare variants (parameter settings)
+   * @param summarySubfolder - the folder where the summary is persisted.
+   */
+  case class SummarizeJob(jobResultsFolder: String,
+                          overviewReader: DataOverviewReader,
+                          fileReader: Reader[String, Seq[String]],
+                          writer: Writer[String, String, _],
+                          criterionMetricName: String,
+                          summarySubfolder: String = "summary") extends Execution[Unit] {
+    override def execute: Either[TaskFailType, Unit] = {
+      logger.info(s"Looking for result files in folder: $jobResultsFolder")
+      val resultFiles = overviewReader.listResources(jobResultsFolder, fileName => fileName.endsWith(".json"))
+      logger.info(s"Found files: $resultFiles")
+      var tagToResultMap: Seq[MetricDocument[Tag]] = Seq.empty
+      resultFiles.foreach(file => {
+        try {
+          logger.info(s"Trying to add file for summary: $file")
+          val doc: MetricDocument[Tag] = FileUtils.fileToMetricDocument(file, fileReader, new JsonMetricDocumentFormat())
+          tagToResultMap = tagToResultMap :+ doc
+        }
+        catch {
+          case e: Exception =>
+            logger.warn(s"""Failed adding file to summary: $file\nmsg: ${e.getMessage}\ntrace: ${e.getStackTrace.mkString("\n")}""")
+        }
+      })
+      val tagToMetricSummary: Map[Tag, MetricSummary] = MetricSummary.summarize(tagToResultMap.map(x => (x.id, x.rows.values.toSeq)), criterionMetricName)
+      val metricSummaryJsonString = tagToMetricSummary.map(x => (x._1.toString, metricSummaryFormat.write(x._2))).toJson.toString()
+      // write to file
+      writer.write(metricSummaryJsonString, s"$jobResultsFolder/$summarySubfolder/summary.json")
+      Right(())
+    }
+  }
+
+
 
   /**
    * Similar to AggregateFromDirectoryByRegex above, but takes specific filenames (full paths) to aggregate instead of regex

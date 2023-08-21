@@ -17,14 +17,14 @@
 
 package de.awagen.kolibri.definitions.processing.execution.functions
 
-import de.awagen.kolibri.definitions.processing.failure.TaskFailType
-import de.awagen.kolibri.definitions.processing.failure.TaskFailType.TaskFailType
 import de.awagen.kolibri.datatypes.metrics.aggregation.writer.CSVParameterBasedMetricDocumentFormat
-import de.awagen.kolibri.datatypes.stores.mutable.PriorityStores._
 import de.awagen.kolibri.datatypes.stores.immutable.MetricRow
 import de.awagen.kolibri.datatypes.stores.mutable.MetricDocument
+import de.awagen.kolibri.datatypes.stores.mutable.PriorityStores._
 import de.awagen.kolibri.datatypes.tagging.Tags._
 import de.awagen.kolibri.datatypes.values.MetricValue
+import de.awagen.kolibri.definitions.processing.failure.TaskFailType
+import de.awagen.kolibri.definitions.processing.failure.TaskFailType.TaskFailType
 import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, Reader}
 import de.awagen.kolibri.storage.io.writer.Writers.Writer
 
