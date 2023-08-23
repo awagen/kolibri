@@ -53,7 +53,7 @@ case class GcpGSDirectoryReader(bucketName: String,
   override def listResources(subDir: String, baseFilenameFilter: String => Boolean): Seq[String] = {
     var prefix = s"$dirPathNormalized${subDir.stripPrefix(delimiter).stripSuffix(delimiter)}$delimiter"
     if (prefix == delimiter) prefix = ""
-    logger.info(s"looking for resources in bucket '$bucketName' and prefix '$prefix'")
+    logger.debug(s"looking for resources in bucket '$bucketName' and prefix '$prefix'")
     val blobs: Page[Blob] = storage.list(
       bucketName,
       // prefix determines the path prefix of the "filename"
@@ -66,7 +66,7 @@ case class GcpGSDirectoryReader(bucketName: String,
       .map(x => x.getName)
       .filter(x => fileFilter.apply(x))
       .filter(x => baseFilenameFilter.apply(x))
-    logger.info(s"found files in bucket '$bucketName' and prefix '$prefix': ${foundFiles.mkString(",")}")
+    logger.debug(s"found files in bucket '$bucketName' and prefix '$prefix': ${foundFiles.mkString(",")}")
     foundFiles
   }
 }

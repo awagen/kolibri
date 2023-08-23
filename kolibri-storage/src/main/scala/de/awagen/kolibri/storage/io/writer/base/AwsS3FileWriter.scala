@@ -141,7 +141,7 @@ case class AwsS3FileWriter(bucketName: String,
       val fromDirPrefix = s"$dirPathNormalized$dirPath".stripSuffix(delimiter)
       val fromDirTopLevelFolder = fromDirPrefix.split(delimiter).last.stripSuffix(delimiter)
       val containedFiles = listFilesWithPrefix(dirPath)
-      val newDirPrefix = s"$dirPathNormalized${toDirPath.stripSuffix(delimiter)}/$fromDirTopLevelFolder"
+      val newDirPrefix = s"$dirPathNormalized${toDirPath.stripSuffix(delimiter)}${delimiter}$fromDirTopLevelFolder"
       containedFiles.foreach(file => {
         val newFile = file.replace(fromDirPrefix, newDirPrefix)
         logger.debug(s"trying to copy '$file' to '$newFile' for bucket '$bucketName'")

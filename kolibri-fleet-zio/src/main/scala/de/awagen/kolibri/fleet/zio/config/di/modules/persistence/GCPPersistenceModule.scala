@@ -62,7 +62,7 @@ class GCPPersistenceModule extends PersistenceDIModule with tagging.Tag[GCP_MODU
                                        tagToDataIdentifierFunc: Tags.Tag => String): Writers.Writer[MetricAggregation[Tags.Tag], Tags.Tag, Any] = Writer.gcpCsvMetricAggregationWriter(
     formats = AppProperties.config.metricDocumentFormats,
     bucketName = AppProperties.config.gcpGSBucket.get,
-    directory = AppProperties.config.gcpGSBucketPath.get,
+    directory = s"${AppProperties.config.gcpGSBucketPath.get.trim.stripSuffix("/")}/${AppProperties.config.outputResultsPath.get}",
     projectId = AppProperties.config.gcpGSProjectID.get,
     subFolder = subFolder,
     tagToFilenameFunc = tagToDataIdentifierFunc

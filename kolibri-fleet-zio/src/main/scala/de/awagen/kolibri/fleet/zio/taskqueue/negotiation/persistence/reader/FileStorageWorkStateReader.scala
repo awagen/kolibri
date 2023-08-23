@@ -94,9 +94,10 @@ case class FileStorageWorkStateReader(filterToOverviewReader: (String => Boolean
    */
   override def processIdToProcessState(processId: ProcessId, nodeHash: String): Task[Option[ProcessingState]] = {
     for {
+      inProgressFilePath <- ZIO.succeed(Directories.InProgressTasks.getInProgressFilePathForJob(processId.jobId,
+        processId.batchNr, nodeHash))
+      _ <- ZIO.logDebug(s"Trying to read in-progress state file: $inProgressFilePath")
       processFileContentOpt <- ZIO.attemptBlockingIO({
-        val inProgressFilePath = Directories.InProgressTasks.getInProgressFilePathForJob(processId.jobId,
-          processId.batchNr, nodeHash)
         Some(reader.read(inProgressFilePath).mkString("\n"))
       }).catchAll(ex =>
         ZIO.logDebug(s"Could not read in-progress file for processId '$processId':\n$ex")
