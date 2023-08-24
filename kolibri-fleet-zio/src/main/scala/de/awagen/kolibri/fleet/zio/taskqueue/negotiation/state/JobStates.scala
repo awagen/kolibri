@@ -129,7 +129,8 @@ object JobStates {
      * we can pass a mapping of batches per job to ignore.
      */
     def getNextNOpenBatches(n: Int,
-                            ignoreBatchesPerJobNameMap: Map[String, Set[Int]]): Seq[(JobDefinition[_, _, _], Seq[Int])] = {
+                            ignoreBatchesPerJobNameMap: Map[String, Set[Int]],
+                            ignoreJobIds: Set[String] = Set.empty): Seq[(JobDefinition[_, _, _], Seq[Int])] = {
       val selectedBatches: Seq[(String, Int)] = jobsForThisNodeSortedByPriority
         .flatMap(x => {
           x.batchesToState
@@ -137,7 +138,8 @@ object JobStates {
             // only pick batches in open state and only those not marked to be ignored since they were already claimed
             .filter(y => {
               y._2 == BatchProcessingStates.Open &&
-                ignoreBatchesPerJobNameMap.get(x.jobId).forall(ignoreBatches => !ignoreBatches.contains(y._1))
+                (!ignoreJobIds.contains(x.jobId) &&
+                  ignoreBatchesPerJobNameMap.get(x.jobId).forall(ignoreBatches => !ignoreBatches.contains(y._1)))
             })
             .map(z => (x.jobId, z._1))
         })

@@ -151,7 +151,8 @@ object TaskWorker extends Worker {
     def aggregateFromQueueAndWriteResultOnExitEffect(queue: Queue[TaggedWithType with DataPoint[V]],
                            aggregator: Aggregator[TaggedWithType with DataPoint[V], W],
                            producerRuntime: Fiber.Runtime[_, _]): ZIO[Any, Nothing, Aggregator[TaggedWithType with DataPoint[V], W]] = {
-      (for {
+      for {
+        aggregator <- for {
         _ <- ZIO.iterate(true)(x => x)(_ => {
           for {
             queueIsEmpty <- queue.isEmpty
@@ -169,15 +170,13 @@ object TaskWorker extends Worker {
             })
           } yield continue.get
         })
-      } yield aggregator)
-        .onExit(
-          _ => for {
-            _ <- ZIO.logDebug(s"final aggregation state: ${aggregator.aggregation}")
-            _ <- ZIO.attemptBlockingIO({
+      } yield aggregator
+        // if aggregator terminates successfully, we write the result
+        _ <- ZIO.logDebug(s"final aggregation state: ${aggregator.aggregation}")
+        _ <- ZIO.attemptBlockingIO({
               batchResultWriter.write(aggregator.aggregation, StringTag(jobBatch.job.jobName))
-            }).either
-          } yield ()
-        )
+        }).either
+      } yield aggregator
     }
 
 

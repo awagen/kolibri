@@ -65,7 +65,9 @@ object App extends ZIOAppDefault {
       processingStates <- workStateReader.getInProgressStateForAllNodes(openJobsState.jobStateSnapshots.keySet)
         .map(x => x.values.flatMap(y => y.values).flatten.toSet)
       taskResetTasks <- ZStream.fromIterable(processingStates.map(x => x.processingInfo.processingNode))
-        .flatMap(nodeHash => ZStream.fromIterableZIO(taskOverviewService.getTaskResetTasks(processingStates, nodeHash, ignoreJobIdsOnThisNode.toSet)))
+        // we set the jobs to be ignored here to empty, since even if we dont want to process a job, we still want
+        // to reset a state if processing is overdue
+        .flatMap(nodeHash => ZStream.fromIterableZIO(taskOverviewService.getTaskResetTasks(processingStates, nodeHash, Set.empty)))
         .runCollect
 
       // tasks for cleanup of orphaned node health states

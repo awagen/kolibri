@@ -102,11 +102,11 @@ case class ClaimBasedTaskPlannerService(claimReader: ClaimReader,
       case TaskTopics.JobTaskProcessingTask =>
         fileBatchProcessingClaims(Seq(ProcessId(claim.jobId, claim.batchNr)))
       case TaskTopics.JobTaskResetTask(nodeHash) =>
-        fileBatchResetClaim(ProcessId(claim.jobId, claim.batchNr), nodeHash).map(_ => ())
+        fileBatchResetClaim(ProcessId(claim.jobId, claim.batchNr), nodeHash).as()
       case TaskTopics.NodeHealthRemovalTask(nodeHash) =>
-        fileNodeHealthRemovalClaim(ProcessId(claim.jobId, claim.batchNr), nodeHash).map(_ => ())
+        fileNodeHealthRemovalClaim(ProcessId(claim.jobId, claim.batchNr), nodeHash).as()
       case TaskTopics.JobWrapUpTask =>
-        fileJobToDoneClaim(claim.jobId).map(_ => ())
+        fileJobToDoneClaim(claim.jobId).as()
     }
   }
 
@@ -307,10 +307,14 @@ case class ClaimBasedTaskPlannerService(claimReader: ClaimReader,
     for {
       ignoreJobIdsOnThisNode <- ZIO.succeed(openJobsSnapshot.jobsToBeIgnoredOnThisNode.map(x => x.jobId))
       // extract all (jobId, batchNr) tuples of claims currently filed for the node
-      claimsByCurrentNode <- claimReader.getClaimsByCurrentNodeForTopicAndJobIds(taskTopic, openJobsSnapshot.jobStateSnapshots.values.map(x => x.jobId).toSet ++ Set(DUMMY_JOB))
+      claimsByCurrentNode <- claimReader.getClaimsByCurrentNodeForTopicAndJobIds(
+        taskTopic,
+        openJobsSnapshot.jobStateSnapshots.values.map(x => x.jobId).toSet ++ Set(DUMMY_JOB)
+      )
       //verify each claim
-      // remove the claims that are not needed anymore (only for this particular node)
-      claimsToBeRemoved <- ZIO.succeed(claimsByCurrentNode.filter(x => ignoreJobIdsOnThisNode.contains(x.jobId)))
+      // remove the claims that are not needed anymore (only for this particular node); we only remove the actual processing claims
+      // since we still want to handle cleanup and so on
+      claimsToBeRemoved <- ZIO.succeed(claimsByCurrentNode.filter(x => x.taskTopic == TaskTopics.JobTaskProcessingTask && ignoreJobIdsOnThisNode.contains(x.jobId)))
       _ <- claimUpdater.removeClaims(claimsToBeRemoved, _ => true)
     } yield claimsByCurrentNode -- claimsToBeRemoved
   }
@@ -361,9 +365,7 @@ case class ClaimBasedTaskPlannerService(claimReader: ClaimReader,
       allTaskTopics <- ZIO.succeed(tasks.map(x => x.taskTopic))
       allTaskTopicIds <- ZStream.fromIterable(allTaskTopics).map(x => x.id).runCollect
       allJobIds <- jobStateReader.getOpenJobIds
-      existingClaimsForTopics <- ZStream.fromIterableZIO(
-        claimReader.getAllClaims(allJobIds)
-      )
+      existingClaimsForTopics <- ZStream.fromIterableZIO(claimReader.getAllClaims(allJobIds))
         .filter(x => allTaskTopicIds.contains(x.taskTopic.id))
         // setting time claimed to 0 for purpose of comparison
         .map(x => x.copy(timeClaimedInMillis = 0))
