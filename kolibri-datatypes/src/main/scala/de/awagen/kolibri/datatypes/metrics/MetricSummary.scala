@@ -18,17 +18,121 @@
 package de.awagen.kolibri.datatypes.metrics
 
 import de.awagen.kolibri.datatypes.metrics.MetricSummary.BestAndWorstConfigs
+import de.awagen.kolibri.datatypes.metrics.MetricSummary.ParameterEffectEstimations.{calculateMaxMedianShiftForEachParameter, calculateMaxSingleResultShift}
 import de.awagen.kolibri.datatypes.stores.immutable.MetricRow
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.utils.{FuncUtils, MathUtils}
+import de.awagen.kolibri.datatypes.values.MetricValue
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics
-import spray.json.DefaultJsonProtocol.{DoubleJsonFormat, StringJsonFormat, immSeqFormat, jsonFormat2, lazyFormat, mapFormat, rootFormat, tuple2Format}
-import spray.json.RootJsonFormat
+import spray.json.DefaultJsonProtocol.{DoubleJsonFormat, StringJsonFormat, immSeqFormat, jsonFormat2, mapFormat, tuple2Format}
+import spray.json.{DefaultJsonProtocol, RootJsonFormat}
 
 
 object MetricSummary {
 
   case class BestAndWorstConfigs(best: (Map[String, Seq[String]], Double), worst: (Map[String, Seq[String]], Double))
+
+  object ParameterEffectEstimations extends DefaultJsonProtocol {
+
+    /**
+     * Given seq of metric rows, and a criterion metric name, calculate for all parameters a numeric value giving
+     * an estimate how much leverage changes in the value can have.
+     * Note: its a relatively weak heuristic, such as changes in max/min median for distributions for distinct values
+     * of the respective parameter.
+     *
+     * @param metrics    - the metric rows to take into account. The descriptive stats are formed for each constant distinct value
+     *                   of the respective parameter.
+     * @param metricName - the name of the metric used as criterion to evaluate the shift of distribution for distinct values of the respective
+     *                   parameter values (per single parameter, over all parameter changes)
+     * @return
+     */
+    def calculateMaxMedianShiftForEachParameter(metrics: Seq[MetricRow],
+                                                metricName: String): Map[String, Double] = {
+      val parameterNames = metrics.head.params.keySet.toSeq
+      parameterNames.map(paramName => {
+        val paramStats: Map[Seq[String], DescriptiveStatistics] = calculateMetricStatsPerFixedParameter(metrics, metricName, paramName)
+        val statsDiff: Double = maxStatDifference(paramStats.values.toSeq, x => x.getPercentile(50))
+        (paramName, statsDiff)
+      }).toMap
+    }
+
+    private[metrics] def metricRowToSettingIdentifierWithoutPassedParameter(metricRow: MetricRow, leaveOutParameterName: String): Seq[String] = {
+      metricRow.params.removed(leaveOutParameterName).keySet.toSeq.sorted.flatMap(param => metricRow.params(param))
+    }
+
+    /**
+     * Uses a bit more exhaustive approach to interpreting whether and how much of effect changing a single parameter
+     * has. For this we group by all other parameters being the same, yielding a list of results where only
+     * the parameter in question varies. The score will be the maximal difference, e.g max(seq) - min(seq)
+     * (NOTE: need to filter out results where no successful sample was added, meaning the metric value will remain 0.0)
+     * @param metrics - all rows of interest, reflecting all metric rows in the MetricDocument of interest (e.g the result assigned to a single tag / group; a single result file)
+     * @param metricName - the name of the metric to be used as criterion for the evaluation
+     * @return - The mapping of parameter name to the max difference in metric caused over all groups of results where the other parameters are kept constant and only one being varied.
+     */
+    def calculateMaxSingleResultShift(metrics: Seq[MetricRow],
+                                      metricName: String): Map[String, Double] = {
+      val parameterNames = metrics.head.params.keySet.toSeq
+      parameterNames.map(paramName => {
+        // if ignoring the passed parameter, give for all settings of the other parameters all metric results.
+        // Thus the Seq[MetricRow] assigned for these settings only differ by different values for the parameter of interest.
+        // We will max all of those parameter sequences to the max difference of metric values over their Seq[MetricRow].
+        // To arrive at a final score for the parameter, we just take the max over all parameter settings.
+        val valuesForParameterGroup: Map[Seq[String], Seq[MetricRow]] = metrics.groupMap(x => metricRowToSettingIdentifierWithoutPassedParameter(x, metricName))(identity[MetricRow])
+        val maxDiffPerRow: Seq[Double] = valuesForParameterGroup.values.map(x => {
+          val allValidValues = x.map(x => x.metrics.getOrElse(metricName, MetricValue.createDoubleAvgSuccessSample(metricName, -1.0, 1.0)))
+            .map(x => x.biValue.value2.value.asInstanceOf[Double])
+            .filter(v => v >= 0.0)
+          val minVal = allValidValues.min
+          val maxVal = allValidValues.max
+          maxVal - minVal
+        }).toSeq
+        (paramName, maxDiffPerRow.max)
+      }).toMap
+    }
+
+    /**
+     * Calculate for a single parameter and metric for every fixed value of the parameter descriptive stats
+     * for the values of the metric. Changes in stats by varying the parameter values can show that the parameter
+     * actually has an effect on the metric.
+     *
+     * @param metrics    - the mapping of the parameter settings to the actual metric results
+     * @param metricName - the metric name to use for interpreting the effect of a single parameter
+     * @return - mapping of parameter name to the variance value
+     *
+     *         for usage of apache commons math lib: https://commons.apache.org/proper/commons-math/userguide/stat.html
+     */
+    private[metrics] def calculateMetricStatsPerFixedParameter(metrics: Seq[MetricRow],
+                                                               metricName: String,
+                                                               paramName: String): Map[Seq[String], DescriptiveStatistics] = {
+      val singleParamValueToMetricValuesMap: Map[Seq[String], Seq[Double]] = metrics.map(row => {
+        val parameters = row.params
+        val valueOpt: Option[Double] = row.metrics.get(metricName).map(value => value.biValue.value2.value.asInstanceOf[Double])
+        (parameters.get(paramName), valueOpt)
+      })
+        .filter(x => x._2.nonEmpty && x._1.nonEmpty)
+        .map(x => (x._1.get, x._2.get))
+        .groupMap(x => x._1)(x => x._2)
+      // for all values for the given parameter, calculate the descriptive stats
+      singleParamValueToMetricValuesMap.map(x => {
+        val stats = new DescriptiveStatistics()
+        x._2.foreach(value => stats.addValue(value))
+        (x._1, stats)
+      })
+    }
+
+    /**
+     * Given a sequence of descriptive stats for the respective metric values and a function for extracting double value,
+     * return the max difference.
+     *
+     * @param stats     - sequence of descriptive stats of the single metric of interest
+     * @param valueFunc - function picking the comparison value from the DescriptiveStatistics objects
+     */
+    private[metrics] def maxStatDifference(stats: Seq[DescriptiveStatistics], valueFunc: DescriptiveStatistics => Double = x => x.getPercentile(50)): Double = {
+      val medianValues: Seq[Double] = stats.map(x => valueFunc(x))
+      medianValues.max - medianValues.min
+    }
+
+  }
 
 
   /**
@@ -40,76 +144,18 @@ object MetricSummary {
    */
   def summarize(results: Seq[(Tag, Seq[MetricRow])], criterionMetricName: String): Map[Tag, MetricSummary] = {
     results.map(result => {
-      val bestAndWorst = calculateBestAndWorstConfigs(result._2, criterionMetricName)
-      val parameterEffectEstimate = calculateParameterEffectEstimate(result._2, criterionMetricName)
-      (result._1, MetricSummary(bestAndWorst, parameterEffectEstimate))
+      val bestAndWorst = calculateBestAndWorstConfigs(
+        metrics = result._2,
+        metricName = criterionMetricName,
+        differenceThreshold = 0.01,
+        numParamsWeight = 1000.0,
+        paramUnitSumWeight = 1.0
+      )
+      val medianShiftEffectEstimate = calculateMaxMedianShiftForEachParameter(result._2, criterionMetricName)
+      val maxSingleResultShift = calculateMaxSingleResultShift(result._2, criterionMetricName)
+      (result._1, MetricSummary(bestAndWorst, Map("maxMedianShift" -> medianShiftEffectEstimate, "maxSingleResultShift" -> maxSingleResultShift)))
     }).toMap
   }
-
-  /**
-   * Calculate for a single parameter and metric for every fixed value of the parameter descriptive stats
-   * for the values of the metric. Changes in stats by varying the parameter values can show that the parameter
-   * actually has an effect on the metric.
-   *
-   * @param metrics    - the mapping of the parameter settings to the actual metric results
-   * @param metricName - the metric name to use for interpreting the effect of a single parameter
-   * @return - mapping of parameter name to the variance value
-   *
-   *         for usage of apache commons math lib: https://commons.apache.org/proper/commons-math/userguide/stat.html
-   */
-  private[metrics] def calculateMetricStatsPerFixedParameter(metrics: Seq[MetricRow],
-                                                             metricName: String,
-                                                             paramName: String): Map[Seq[String], DescriptiveStatistics] = {
-    val singleParamValueToMetricValuesMap: Map[Seq[String], Seq[Double]] = metrics.map(row => {
-      val parameters = row.params
-      val valueOpt: Option[Double] = row.metrics.get(metricName).map(value => value.biValue.value2.value.asInstanceOf[Double])
-      (parameters.get(paramName), valueOpt)
-    })
-      .filter(x => x._2.nonEmpty && x._1.nonEmpty)
-      .map(x => (x._1.get, x._2.get))
-      .groupMap(x => x._1)(x => x._2)
-    // for all values for the given parameter, calculate the descriptive stats
-    singleParamValueToMetricValuesMap.map(x => {
-      val stats = new DescriptiveStatistics()
-      x._2.foreach(value => stats.addValue(value))
-      (x._1, stats)
-    })
-  }
-
-  /**
-   * Given a sequence of descriptive stats for the respective metric values and a function for extracting double value,
-   * return the max difference.
-   *
-   * @param stats     - sequence of descriptive stats of the single metric of interest
-   * @param valueFunc - function picking the comparison value from the DescriptiveStatistics objects
-   */
-  private[metrics] def maxStatDifference(stats: Seq[DescriptiveStatistics], valueFunc: DescriptiveStatistics => Double = x => x.getPercentile(50)): Double = {
-    val medianValues: Seq[Double] = stats.map(x => valueFunc(x))
-    medianValues.max - medianValues.min
-  }
-
-  /**
-   * Given seq of metric rows, and a criterion metric name, calculate for all parameters a numeric value giving
-   * an estimate how much leverage changes in the value can have.
-   * Note: its a relatively weak heuristic, such as changes in max/min median for distributions for distinct values
-   * of the respective parameter.
-   *
-   * @param metrics    - the metric rows to take into account. The descriptive stats are formed for each constant distinct value
-   *                   of the respective parameter.
-   * @param metricName - the name of the metric used as criterion to evaluate the shift of distribution for distinct values of the respective
-   *                   parameter values (per single parameter, over all parameter changes)
-   * @return
-   */
-  def calculateParameterEffectEstimate(metrics: Seq[MetricRow],
-                                       metricName: String): Map[String, Double] = {
-    val parameterNames = metrics.head.params.keySet.toSeq
-    parameterNames.map(paramName => {
-      val paramStats: Map[Seq[String], DescriptiveStatistics] = calculateMetricStatsPerFixedParameter(metrics, metricName, paramName)
-      val statsDiff: Double = maxStatDifference(paramStats.values.toSeq, x => x.getPercentile(50))
-      (paramName, statsDiff)
-    }).toMap
-  }
-
 
   /**
    * Given seq of tuples of parameter settings and metric value, group the parameter settings that cause similar values
@@ -215,4 +261,4 @@ object MetricSummary {
 
 // TODO: we might wanna extend this with a split of all configurations into value-buckets where each bucket
 // gets a representative configuration assigned (e.g best, worst and 3 intervals inbetween or the like)
-case class MetricSummary(bestAndWorstConfigs: BestAndWorstConfigs, parameterEffectEstimate: Map[String, Double])
+case class MetricSummary(bestAndWorstConfigs: BestAndWorstConfigs, parameterEffectEstimate: Map[String, Map[String, Double]])

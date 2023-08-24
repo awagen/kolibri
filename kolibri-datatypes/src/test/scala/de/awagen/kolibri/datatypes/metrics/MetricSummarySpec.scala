@@ -37,7 +37,10 @@ class MetricSummarySpec extends UnitTestSpec {
 
   val expectedSummaryValue: MetricSummary = MetricSummary(
     BestAndWorstConfigs((Map("p1" -> Seq("v3"), "p2" -> Seq("0.0")), 0.6), (Map("p1" -> Seq("v4")), 0.3)),
-    Map("p1" -> 0.3, "p2" -> 0.0)
+    Map(
+      "maxMedianShift" -> Map("p1" -> 0.3, "p2" -> 0.0),
+      "maxSingleResultShift" -> Map("p1" -> 0.0, "p2" -> 0.0)
+    )
   )
 
   val expectedSummaryValueJson: JsValue =
@@ -48,8 +51,14 @@ class MetricSummarySpec extends UnitTestSpec {
       |     "worst": [{"p1": ["v4"]}, 0.3]
       |  },
       |  "parameterEffectEstimate": {
-      |    "p1": 0.3,
-      |    "p2": 0.0
+      |    "maxMedianShift": {
+      |     "p1": 0.3,
+      |     "p2": 0.0
+      |    },
+      |    "maxSingleResultShift": {
+      |     "p1": 0.0,
+      |     "p2": 0.0
+      |    }
       |  }
       |}
       |""".stripMargin.parseJson
@@ -66,7 +75,7 @@ class MetricSummarySpec extends UnitTestSpec {
 
     "correctly calculate effect estimate" in {
       // given, when
-      val estimate = MetricSummary.calculateParameterEffectEstimate(rows, "metrics1")
+      val estimate = MetricSummary.ParameterEffectEstimations.calculateMaxMedianShiftForEachParameter(rows, "metrics1")
       // then
       MathUtils.equalWithPrecision(estimate("p1"), 0.3, 0.00001) mustBe true
       MathUtils.equalWithPrecision(estimate("p2"), 0.0, 0.00001) mustBe true
