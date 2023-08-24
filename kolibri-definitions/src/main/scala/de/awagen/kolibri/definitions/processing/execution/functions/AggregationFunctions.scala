@@ -17,19 +17,17 @@
 
 package de.awagen.kolibri.definitions.processing.execution.functions
 
-import de.awagen.kolibri.datatypes.metrics.MetricSummary
-import de.awagen.kolibri.datatypes.metrics.MetricSummary.metricSummaryFormat
-import de.awagen.kolibri.definitions.processing.failure.TaskFailType
-import de.awagen.kolibri.definitions.processing.failure.TaskFailType.TaskFailType
-import de.awagen.kolibri.definitions.provider.WeightProviders.WeightProvider
+import de.awagen.kolibri.datatypes.metrics.MetricSummaries._
 import de.awagen.kolibri.datatypes.metrics.aggregation.writer.{JsonMetricDocumentFormat, MetricDocumentFormat}
 import de.awagen.kolibri.datatypes.stores.mutable.MetricDocument
 import de.awagen.kolibri.datatypes.tagging.Tags.{StringTag, Tag}
 import de.awagen.kolibri.datatypes.types.SerializableCallable.SerializableFunction1
+import de.awagen.kolibri.definitions.processing.failure.TaskFailType
+import de.awagen.kolibri.definitions.processing.failure.TaskFailType.TaskFailType
+import de.awagen.kolibri.definitions.provider.WeightProviders.WeightProvider
 import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, Reader}
 import de.awagen.kolibri.storage.io.writer.Writers.Writer
 import org.slf4j.{Logger, LoggerFactory}
-import spray.json.DefaultJsonProtocol.{JsValueFormat, StringJsonFormat, mapFormat}
 import spray.json.enrichAny
 
 import scala.util.matching.Regex
@@ -99,8 +97,8 @@ object AggregationFunctions {
             logger.warn(s"""Failed adding file to summary: $file\nmsg: ${e.getMessage}\ntrace: ${e.getStackTrace.mkString("\n")}""")
         }
       })
-      val tagToMetricSummary: Map[Tag, MetricSummary] = MetricSummary.summarize(tagToResultMap.map(x => (x.id, x.rows.values.toSeq)), criterionMetricName)
-      val metricSummaryJsonString = tagToMetricSummary.map(x => (x._1.toString, metricSummaryFormat.write(x._2))).toJson.toString()
+      val runSummary: RunSummary = summarize(tagToResultMap.map(x => (x.id, x.rows.values.toSeq)), criterionMetricName)
+      val metricSummaryJsonString = runSummary.toJson.toString()
       // write to file
       writer.write(metricSummaryJsonString, s"$jobResultsFolder/$summarySubfolder/summary_${criterionMetricName}.json")
       Right(())

@@ -17,22 +17,17 @@
 
 package de.awagen.kolibri.datatypes.metrics
 
-import de.awagen.kolibri.datatypes.metrics.MetricSummary.BestAndWorstConfigs
-import de.awagen.kolibri.datatypes.metrics.MetricSummary.ParameterEffectEstimations.{calculateMaxMedianShiftForEachParameter, calculateMaxSingleResultShift}
+import de.awagen.kolibri.datatypes.metrics.MetricSummaries.ParameterEffectEstimations.{calculateMaxMedianShiftForEachParameter, calculateMaxSingleResultShift}
 import de.awagen.kolibri.datatypes.stores.immutable.MetricRow
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.utils.{FuncUtils, MathUtils}
 import de.awagen.kolibri.datatypes.values.MetricValue
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics
-import spray.json.DefaultJsonProtocol.{DoubleJsonFormat, StringJsonFormat, immSeqFormat, jsonFormat2, jsonFormat3, mapFormat, tuple2Format}
-import spray.json.{DefaultJsonProtocol, RootJsonFormat}
+import spray.json.{DefaultJsonProtocol, JsonFormat}
 
+object MetricSummaries extends DefaultJsonProtocol {
 
-object MetricSummary {
-
-  case class BestAndWorstConfigs(best: (Map[String, Seq[String]], Double), worst: (Map[String, Seq[String]], Double))
-
-  object ParameterEffectEstimations extends DefaultJsonProtocol {
+  object ParameterEffectEstimations {
 
     /**
      * Given seq of metric rows, and a criterion metric name, calculate for all parameters a numeric value giving
@@ -142,8 +137,8 @@ object MetricSummary {
    * - how much the distinct parameters change the results
    * - what good and bad configurations are, picking a representative parameter setting for good / bad configs in case there are multiple similar
    */
-  def summarize(results: Seq[(Tag, Seq[MetricRow])], criterionMetricName: String): Map[Tag, MetricSummary] = {
-    results.map(result => {
+  def summarize(results: Seq[(Tag, Seq[MetricRow])], criterionMetricName: String): RunSummary = {
+    val tagToSummaryMap = results.map(result => {
       val bestAndWorst = calculateBestAndWorstConfigs(
         metrics = result._2,
         metricName = criterionMetricName,
@@ -153,8 +148,9 @@ object MetricSummary {
       )
       val medianShiftEffectEstimate = calculateMaxMedianShiftForEachParameter(result._2, criterionMetricName)
       val maxSingleResultShift = calculateMaxSingleResultShift(result._2, criterionMetricName)
-      (result._1, MetricSummary(criterionMetricName, bestAndWorst, Map("maxMedianShift" -> medianShiftEffectEstimate, "maxSingleResultShift" -> maxSingleResultShift)))
+      (result._1.toString, MetricSummary(bestAndWorst, Map("maxMedianShift" -> medianShiftEffectEstimate, "maxSingleResultShift" -> maxSingleResultShift)))
     }).toMap
+    RunSummary(criterionMetricName, tagToSummaryMap)
   }
 
   /**
@@ -254,11 +250,18 @@ object MetricSummary {
     paramsGreaterZero * numParamsWeight + paramUnitValues * paramUnitSumWeight
   }
 
-  implicit val bestAndWorstConfigsFormat: RootJsonFormat[BestAndWorstConfigs] = jsonFormat2(BestAndWorstConfigs)
-  implicit val metricSummaryFormat: RootJsonFormat[MetricSummary] = jsonFormat3(MetricSummary.apply)
+  case class BestAndWorstConfigs(best: (Map[String, Seq[String]], Double), worst: (Map[String, Seq[String]], Double))
+  implicit val bestAndWorstConfigsFormat: JsonFormat[BestAndWorstConfigs] = jsonFormat2(BestAndWorstConfigs)
+
+  // TODO: we might wanna extend this with a split of all configurations into value-buckets where each bucket
+  // gets a representative configuration assigned (e.g best, worst and 3 intervals inbetween or the like)
+  case class MetricSummary(bestAndWorstConfigs: BestAndWorstConfigs, parameterEffectEstimate: Map[String, Map[String, Double]])
+
+  implicit val metricSummaryFormat: JsonFormat[MetricSummary] = jsonFormat2(MetricSummary.apply)
+
+  case class RunSummary(metric: String, results: Map[String, MetricSummary])
+
+  implicit val runSummaryFormat: JsonFormat[RunSummary] = jsonFormat2(RunSummary)
 
 }
 
-// TODO: we might wanna extend this with a split of all configurations into value-buckets where each bucket
-// gets a representative configuration assigned (e.g best, worst and 3 intervals inbetween or the like)
-case class MetricSummary(metric: String, bestAndWorstConfigs: BestAndWorstConfigs, parameterEffectEstimate: Map[String, Map[String, Double]])

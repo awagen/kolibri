@@ -17,7 +17,7 @@
 
 package de.awagen.kolibri.datatypes.metrics
 
-import de.awagen.kolibri.datatypes.metrics.MetricSummary.BestAndWorstConfigs
+import de.awagen.kolibri.datatypes.metrics.MetricSummaries._
 import de.awagen.kolibri.datatypes.metrics.aggregation.MetricsHelper._
 import de.awagen.kolibri.datatypes.stores.immutable.MetricRow
 import de.awagen.kolibri.datatypes.tagging.Tags.StringTag
@@ -25,7 +25,7 @@ import de.awagen.kolibri.datatypes.testclasses.UnitTestSpec
 import de.awagen.kolibri.datatypes.utils.MathUtils
 import spray.json._
 
-class MetricSummarySpec extends UnitTestSpec {
+class MetricSummariesSpec extends UnitTestSpec {
 
   val rows: Seq[MetricRow] = Seq(
     metricRecordWParams1,
@@ -36,7 +36,6 @@ class MetricSummarySpec extends UnitTestSpec {
   )
 
   val expectedSummaryValue: MetricSummary = MetricSummary(
-    "metrics1",
     BestAndWorstConfigs((Map("p1" -> Seq("v3"), "p2" -> Seq("0.0")), 0.6), (Map("p1" -> Seq("v4")), 0.3)),
     Map(
       "maxMedianShift" -> Map("p1" -> 0.3, "p2" -> 0.0),
@@ -47,7 +46,6 @@ class MetricSummarySpec extends UnitTestSpec {
   val expectedSummaryValueJson: JsValue =
     """
       |{
-      |  "metric": "metrics1",
       |  "bestAndWorstConfigs": {
       |     "best": [{"p1": ["v3"], "p2": ["0.0"]}, 0.6],
       |     "worst": [{"p1": ["v4"]}, 0.3]
@@ -69,7 +67,7 @@ class MetricSummarySpec extends UnitTestSpec {
 
     "correctly determine best and worst config" in {
       // given, when
-      val bestAndWorst = MetricSummary.calculateBestAndWorstConfigs(rows, "metrics1")
+      val bestAndWorst = MetricSummaries.calculateBestAndWorstConfigs(rows, "metrics1")
       // then
       bestAndWorst.best mustBe (Map("p1" -> Seq("v3"), "p2" -> Seq("0.0")), 0.6)
       bestAndWorst.worst mustBe (Map("p1" -> Seq("v4")), 0.3)
@@ -77,7 +75,7 @@ class MetricSummarySpec extends UnitTestSpec {
 
     "correctly calculate effect estimate" in {
       // given, when
-      val estimate = MetricSummary.ParameterEffectEstimations.calculateMaxMedianShiftForEachParameter(rows, "metrics1")
+      val estimate = MetricSummaries.ParameterEffectEstimations.calculateMaxMedianShiftForEachParameter(rows, "metrics1")
       // then
       MathUtils.equalWithPrecision(estimate("p1"), 0.3, 0.00001) mustBe true
       MathUtils.equalWithPrecision(estimate("p2"), 0.0, 0.00001) mustBe true
@@ -85,9 +83,9 @@ class MetricSummarySpec extends UnitTestSpec {
 
     "correctly calculate summary" in {
       // given, when
-      val summary = MetricSummary.summarize(Seq((StringTag("t1"), rows)), "metrics1")
+      val summary = MetricSummaries.summarize(Seq((StringTag("t1"), rows)), "metrics1")
       // then
-      summary mustBe Map(StringTag("t1") -> expectedSummaryValue)
+      summary mustBe RunSummary("metrics1", Map(StringTag("t1").toString -> expectedSummaryValue))
     }
 
     "correctly write json" in {
