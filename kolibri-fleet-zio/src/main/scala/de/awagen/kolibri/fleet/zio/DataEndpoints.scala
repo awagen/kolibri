@@ -27,6 +27,7 @@ import de.awagen.kolibri.fleet.zio.config.HttpConfig.corsConfig
 import de.awagen.kolibri.fleet.zio.config.{AppConfig, AppProperties}
 import de.awagen.kolibri.fleet.zio.metrics.Metrics.CalculationsWithMetrics.countAPIRequests
 import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, Reader}
+import de.awagen.kolibri.storage.io.writer.Writers.Writer
 import spray.json.DefaultJsonProtocol.{JsValueFormat, StringJsonFormat, immSeqFormat, jsonFormat3, jsonFormat4, mapFormat}
 import spray.json._
 import zio.http.HttpAppMiddleware.cors
@@ -234,19 +235,38 @@ object DataEndpoints {
       (for {
         submittedBody <- req.body.asString(Charset.forName("UTF-8"))
         parsedCmd <- ZIO.attempt(submittedBody.parseJson.convertTo[SummarizeCommand])
-        _ <- ZIO.logInfo(s"Trying to summarize results, cmd = '$submittedBody'")
-        _ <- ZIO.attemptBlocking({
-          AggregationFunctions.SummarizeJob(
-            jobResultsFolder = s"${AppProperties.config.outputResultsPath.get}/${parsedCmd.dateId}/${parsedCmd.jobId}",
-            overviewReader = AppConfig.persistenceModule.persistenceDIModule.dataOverviewReader(_ => true),
-            fileReader = AppConfig.persistenceModule.persistenceDIModule.reader,
-            writer = AppConfig.persistenceModule.persistenceDIModule.writer,
-            criterionMetricName = parsedCmd.criterionMetricName,
-            summarySubfolder = "summary"
-          ).execute
+        _ <- ZIO.logInfo(s"Received request to summarize results, cmd = '$submittedBody'")
+        overviewReader <- ZIO.service[DataOverviewReader]
+        existingSummaryFiles <- ZIO.attempt(overviewReader
+          .listResources(
+            s"${AppProperties.config.outputResultsPath.get}/${parsedCmd.dateId}/${parsedCmd.jobId}/summary/",
+            _ => true).map(x => x.split("/").last)
+        )
+        _ <- ZIO.logInfo(s"Available summary files: $existingSummaryFiles")
+        response <- ZIO.whenCase(existingSummaryFiles.contains(s"summary_${parsedCmd.criterionMetricName}.lock"))({
+          case false =>
+            for {
+              _ <- ZIO.logInfo(s"Trying to generate summarize results, cmd = '$submittedBody'")
+              fileWriter <- ZIO.service[Writer[String, String, _]]
+              lockFilePath <- ZIO.succeed(s"${AppProperties.config.outputResultsPath.get}/${parsedCmd.dateId}/${parsedCmd.jobId}/summary/summary_${parsedCmd.criterionMetricName}.lock")
+              _ <- ZIO.fromEither(fileWriter.write("", lockFilePath))
+              _ <- ZIO.attemptBlocking({
+                AggregationFunctions.SummarizeJob(
+                  jobResultsFolder = s"${AppProperties.config.outputResultsPath.get}/${parsedCmd.dateId}/${parsedCmd.jobId}",
+                  overviewReader = AppConfig.persistenceModule.persistenceDIModule.dataOverviewReader(_ => true),
+                  fileReader = AppConfig.persistenceModule.persistenceDIModule.reader,
+                  writer = AppConfig.persistenceModule.persistenceDIModule.writer,
+                  criterionMetricName = parsedCmd.criterionMetricName,
+                  summarySubfolder = "summary"
+                ).execute
+              })
+              response <- ZIO.attempt(Response.json(ResponseContent[String]("Accepted summary creation request", "").toJson.toString))
+            } yield response
+          case true =>
+            ZIO.logInfo(s"Lock file exists, will not re-compute summary, cmd = '$submittedBody'") *>
+              ZIO.attempt(Response.json(ResponseContent[String]("", "Lock file is set for summary, thus not processing summary request").toJson.toString))
         })
-        response <- ZIO.attempt(Response.json(ResponseContent[String]("", "").toJson.toString))
-      } yield response).catchAll(throwable =>
+      } yield response.get).catchAll(throwable =>
         ZIO.logWarning(s"""Error on summarizing job results:\nmsg: ${throwable.getMessage}\ntrace: ${throwable.getStackTrace.mkString("\n")}""")
           *> ZIO.succeed(Response.text(s"Failed summarizing job results"))
       ) @@ countAPIRequests("POST", "/results/summarize")
