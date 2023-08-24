@@ -24,7 +24,7 @@ import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.utils.{FuncUtils, MathUtils}
 import de.awagen.kolibri.datatypes.values.MetricValue
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics
-import spray.json.DefaultJsonProtocol.{DoubleJsonFormat, StringJsonFormat, immSeqFormat, jsonFormat2, mapFormat, tuple2Format}
+import spray.json.DefaultJsonProtocol.{DoubleJsonFormat, StringJsonFormat, immSeqFormat, jsonFormat2, jsonFormat3, mapFormat, tuple2Format}
 import spray.json.{DefaultJsonProtocol, RootJsonFormat}
 
 
@@ -153,7 +153,7 @@ object MetricSummary {
       )
       val medianShiftEffectEstimate = calculateMaxMedianShiftForEachParameter(result._2, criterionMetricName)
       val maxSingleResultShift = calculateMaxSingleResultShift(result._2, criterionMetricName)
-      (result._1, MetricSummary(bestAndWorst, Map("maxMedianShift" -> medianShiftEffectEstimate, "maxSingleResultShift" -> maxSingleResultShift)))
+      (result._1, MetricSummary(criterionMetricName, bestAndWorst, Map("maxMedianShift" -> medianShiftEffectEstimate, "maxSingleResultShift" -> maxSingleResultShift)))
     }).toMap
   }
 
@@ -255,10 +255,10 @@ object MetricSummary {
   }
 
   implicit val bestAndWorstConfigsFormat: RootJsonFormat[BestAndWorstConfigs] = jsonFormat2(BestAndWorstConfigs)
-  implicit val metricSummaryFormat: RootJsonFormat[MetricSummary] = jsonFormat2(MetricSummary.apply)
+  implicit val metricSummaryFormat: RootJsonFormat[MetricSummary] = jsonFormat3(MetricSummary.apply)
 
 }
 
 // TODO: we might wanna extend this with a split of all configurations into value-buckets where each bucket
 // gets a representative configuration assigned (e.g best, worst and 3 intervals inbetween or the like)
-case class MetricSummary(bestAndWorstConfigs: BestAndWorstConfigs, parameterEffectEstimate: Map[String, Map[String, Double]])
+case class MetricSummary(metric: String, bestAndWorstConfigs: BestAndWorstConfigs, parameterEffectEstimate: Map[String, Map[String, Double]])

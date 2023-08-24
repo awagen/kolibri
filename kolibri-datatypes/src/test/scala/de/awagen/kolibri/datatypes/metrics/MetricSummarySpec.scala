@@ -36,6 +36,7 @@ class MetricSummarySpec extends UnitTestSpec {
   )
 
   val expectedSummaryValue: MetricSummary = MetricSummary(
+    "metrics1",
     BestAndWorstConfigs((Map("p1" -> Seq("v3"), "p2" -> Seq("0.0")), 0.6), (Map("p1" -> Seq("v4")), 0.3)),
     Map(
       "maxMedianShift" -> Map("p1" -> 0.3, "p2" -> 0.0),
@@ -46,6 +47,7 @@ class MetricSummarySpec extends UnitTestSpec {
   val expectedSummaryValueJson: JsValue =
     """
       |{
+      |  "metric": "metrics1",
       |  "bestAndWorstConfigs": {
       |     "best": [{"p1": ["v3"], "p2": ["0.0"]}, 0.6],
       |     "worst": [{"p1": ["v4"]}, 0.3]
