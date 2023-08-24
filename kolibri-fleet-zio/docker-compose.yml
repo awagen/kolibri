@@ -5,7 +5,7 @@ services:
   prometheus:
     image: prom/prometheus:v2.28.1
     # cpu_count: 1
-    mem_limit: 512m
+    # mem_limit: 512m
     mem_reservation: 512m
     ports:
       - "9000:9090"
@@ -19,7 +19,7 @@ services:
   grafana:
     image: grafana/grafana:8.0.5
     # cpu_count: 1
-    mem_limit: 256m
+    # mem_limit: 256m
     mem_reservation: 256m
     volumes:
       - ./grafana:/var/lib/grafana
@@ -31,7 +31,7 @@ services:
   kolibri-zio-1:
     image: awagen/kolibri-fleet-zio:0.2.2
     # cpu_count: 4
-    mem_limit: 6144m
+    # mem_limit: 6144m
     mem_reservation: 4096m
     ports:
       - "8001:8001"
@@ -39,7 +39,6 @@ services:
     environment:
       JVM_OPTS: >
         -XX:+UseParallelGC
-        -XX:ParallelGCThreads=2
         -Xms4096m
         -Xmx4096m
       PROFILE: prod
@@ -47,10 +46,16 @@ services:
       HTTP_SERVER_PORT: 8001
       PERSISTENCE_MODE: 'CLASS'
       PERSISTENCE_MODULE_CLASS: 'de.awagen.kolibri.fleet.zio.config.di.modules.persistence.LocalPersistenceModule'
-      AWS_PROFILE: 'developer'
-      AWS_S3_BUCKET: 'kolibri-dev'
-      AWS_S3_PATH: 'kolibri_fleet_zio_test'
-      AWS_S3_REGION: 'EU_CENTRAL_1'
+      # AWS_PROFILE: 'developer'
+      # AWS_S3_BUCKET: 'kolibri-dev'
+      # AWS_S3_PATH: 'kolibri_fleet_zio_test'
+      # AWS_S3_REGION: 'EU_CENTRAL_1'
+      # GCP settings
+      # PERSISTENCE_MODE: 'GCP'
+      # GOOGLE_APPLICATION_CREDENTIALS: '/home/kolibri/gcp/kolibri-credentials.json'
+      # GCP_GS_BUCKET: '[your-bucket-name]'
+      # GCP_GS_PATH: '[your-bucket-base-path]'
+      # GCP_GS_PROJECT_ID: '[your-project-id]'
       # the file path in the job definitions are to be given relative to the path (or bucket path) defined
       # for the respective configuration of persistence
       LOCAL_STORAGE_WRITE_BASE_PATH: '/app/test-files'
@@ -63,22 +68,32 @@ services:
       # if the numeric value is represented as string, use 'STRING'. This purely refers to how the json value is interpreted,
       # later this will be cast to double either way
       JUDGEMENT_FILE_JSON_LINES_JUDGEMENT_VALUE_TYPE_CAST: 'STRING'
-      ALLOWED_TIME_PER_ELEMENT_IN_MILLIS: 4000
-      ALLOWED_TIME_PER_BATCH_IN_SECONDS: 3600
-      ALLOWED_TIME_PER_JOB_IN_SECONDS: 36000
       MAX_RESOURCE_DIRECTIVES_LOAD_TIME_IN_MINUTES: 10
       MAX_PARALLEL_ITEMS_PER_BATCH: 16
       CONNECTION_POOL_SIZE_MIN: 100
       CONNECTION_POOL_SIZE_MAX: 100
       CONNECTION_TTL_IN_SECONDS: 1200
+      # How many batches are to be processed at max at the same time?
       MAX_NR_JOBS_PROCESSING: 5
+      # How many batches are at most claimed for processing at any given time? If this is higher than
+      # MAX_NR_JOBS_PROCESSING, will result in a range of queued batches
       MAX_NR_JOBS_CLAIMED: 5
+      # Optional thread settings. For each: if set to -1, defaults are applied
       NETTY_HTTP_CLIENT_THREADS_MAX: -1
       BLOCKING_POOL_THREADS: -1
       NON_BLOCKING_POOL_THREADS: -1
+      # The processing produces elements in a result queue that are then consumed into an aggregator.
+      # This can either be set to unlimited capacity (-1) or any value > 0 to limit the capacity, thus
+      # back-pressuring on the producer
+      RESULT_QUEUE_SIZE: -1
     volumes:
       - ./tmp_data:/app/test-files
+      # mount only needed in case you want to use PERSISTENCE_MODE 'AWS' (adjust the mounted folder from local
+      # to folder where credentials are located)
       - ${HOME}/.aws/credentials:/home/kolibri/.aws/credentials:ro
+      # mount only needed in case you want to use PERSISTENCE_MODE 'GCP' (adjust the mounted folder from local
+      # to folder where credentials are located)
+      - ${HOME}/Clouds/gcp:/home/kolibri/gcp:ro
 
   # NOTE: starting response-juggler requires cloning https://github.com/awagen/response-juggler and building
   # the image locally via 'docker build -t response-juggler:0.1.0 .'. It will respond to each request with a random
@@ -89,7 +104,7 @@ services:
     user: "1000:1000"
     # cpu_count: 1
     mem_reservation: 512m
-    mem_limit: 512m
+    # mem_limit: 512m
     environment:
       PORT: 80
       NUM_CONNECTIONS: 400
@@ -131,7 +146,7 @@ services:
     user: "1000:1000"
     # cpu_count: 1
     mem_reservation: 512m
-    mem_limit: 512m
+    #mem_limit: 512m
     environment:
       PORT: 81
       NUM_CONNECTIONS: 400

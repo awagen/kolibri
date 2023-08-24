@@ -24,7 +24,6 @@ import de.awagen.kolibri.storage.io.reader.ReaderUtils.normalizeBucketPath
 import de.awagen.kolibri.storage.io.writer.Writers.FileWriter
 import org.slf4j.{Logger, LoggerFactory}
 
-import scala.jdk.CollectionConverters
 import scala.jdk.CollectionConverters.IteratorHasAsScala
 
 /**
