@@ -20,13 +20,14 @@ package de.awagen.kolibri.fleet.zio
 import de.awagen.kolibri.datatypes.stores.mutable.PriorityStores.{BasePriorityStore, PriorityStore}
 import de.awagen.kolibri.definitions.processing.execution.functions.AggregationFunctions
 import de.awagen.kolibri.fleet.zio.DataEndpoints.ResultFileAttributes.{VALUE_PREFIX, evaluationColumnNames}
+import de.awagen.kolibri.fleet.zio.DataEndpoints.ResultFileType.{CSV, ResultFileType}
 import de.awagen.kolibri.fleet.zio.ServerEndpoints.ResponseContent
 import de.awagen.kolibri.fleet.zio.ServerEndpoints.ResponseContentProtocol.responseContentFormat
-import de.awagen.kolibri.fleet.zio.config.{AppConfig, AppProperties, Directories}
 import de.awagen.kolibri.fleet.zio.config.HttpConfig.corsConfig
+import de.awagen.kolibri.fleet.zio.config.{AppConfig, AppProperties}
 import de.awagen.kolibri.fleet.zio.metrics.Metrics.CalculationsWithMetrics.countAPIRequests
 import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, Reader}
-import spray.json.DefaultJsonProtocol.{JsValueFormat, StringJsonFormat, immSeqFormat, jsonFormat4, mapFormat}
+import spray.json.DefaultJsonProtocol.{JsValueFormat, StringJsonFormat, immSeqFormat, jsonFormat3, jsonFormat4, mapFormat}
 import spray.json._
 import zio.http.HttpAppMiddleware.cors
 import zio.http._
@@ -34,6 +35,7 @@ import zio.stream.ZStream
 import zio.{IO, Task, ZIO}
 
 import java.io.IOException
+import java.nio.charset.Charset
 
 object DataEndpoints {
 
@@ -47,15 +49,16 @@ object DataEndpoints {
       }
     }
 
+    sealed case class ResultFileType(fileEnding: String)
+
+    val CSV = ResultFileType(".csv")
+
+    val JSON = ResultFileType(".json")
+
+    val ANY = ResultFileType("")
+
   }
 
-  sealed case class ResultFileType(fileEnding: String)
-
-  private val CSV = ResultFileType(".csv")
-
-  private val JSON = ResultFileType(".json")
-
-  private val ANY = ResultFileType("")
 
   object ResultFileAttributes {
 
@@ -210,6 +213,12 @@ object DataEndpoints {
     } yield result
   }
 
+  case class SummarizeCommand(dateId: String,
+                              jobId: String,
+                              criterionMetricName: String)
+
+  implicit val summarizeCommandFormat = jsonFormat3(SummarizeCommand)
+
   def dataEndpoints = Http.collectZIO[Request] {
     case Method.GET -> Root / "results" / "folders" =>
       (for {
@@ -219,17 +228,20 @@ object DataEndpoints {
         ZIO.logWarning(s"Error on requesting result folders:\n$throwable")
           *> ZIO.succeed(Response.text(s"Failed requesting result folders"))
       ) @@ countAPIRequests("GET", "/results/folders")
-    case Method.GET -> Root / "results" / "summarize" / date / job =>
+    // endpoint for posting a summarize request. Will generate a summary of all results in the respective path
+    // and write the result json into the summary folder within the respective job results folder
+    case req@Method.POST -> Root / "results" / "summary" =>
       (for {
-        _ <- ZIO.logInfo(s"Trying to summarize results for date '$date' and job '$job'")
+        submittedBody <- req.body.asString(Charset.forName("UTF-8"))
+        parsedCmd <- ZIO.attempt(submittedBody.parseJson.convertTo[SummarizeCommand])
+        _ <- ZIO.logInfo(s"Trying to summarize results, cmd = '$submittedBody'")
         _ <- ZIO.attemptBlocking({
           AggregationFunctions.SummarizeJob(
-            jobResultsFolder = s"${AppProperties.config.outputResultsPath.get}/$date/$job",
+            jobResultsFolder = s"${AppProperties.config.outputResultsPath.get}/${parsedCmd.dateId}/${parsedCmd.jobId}",
             overviewReader = AppConfig.persistenceModule.persistenceDIModule.dataOverviewReader(_ => true),
             fileReader = AppConfig.persistenceModule.persistenceDIModule.reader,
             writer = AppConfig.persistenceModule.persistenceDIModule.writer,
-            // TODO: dont hard-code, make selectable.
-            criterionMetricName = "NDCG_10",
+            criterionMetricName = parsedCmd.criterionMetricName,
             summarySubfolder = "summary"
           ).execute
         })
@@ -237,7 +249,29 @@ object DataEndpoints {
       } yield response).catchAll(throwable =>
         ZIO.logWarning(s"""Error on summarizing job results:\nmsg: ${throwable.getMessage}\ntrace: ${throwable.getStackTrace.mkString("\n")}""")
           *> ZIO.succeed(Response.text(s"Failed summarizing job results"))
-      ) @@ countAPIRequests("GET", "/results/summarize/[date]/[job]")
+      ) @@ countAPIRequests("POST", "/results/summarize")
+    // retrieve the content of a specific summary
+    case e@Method.GET -> Root / "results" / "summary" / dateId / jobId / "content" =>
+      (for {
+        summaryName <- ZIO.attempt(e.url.queryParams.get("file").map(x => x.head).getOrElse(""))
+        filePath <- ZIO.succeed(s"${AppProperties.config.outputResultsPath.get}/$dateId/$jobId/summary/$summaryName")
+        content <- readJsonFromPath(AppConfig.persistenceModule.persistenceDIModule.reader, filePath)
+        response <- ZIO.attempt(Response.json(ResponseContent(content, "").toJson.toString))
+      } yield response)
+        .catchAll(throwable =>
+          ZIO.logWarning(s"""Error on requesting summary file content:\nmsg: ${throwable.getMessage}\ntrace: ${throwable.getStackTrace.mkString("\n")}""")
+            *> ZIO.succeed(Response.text(s"""Failed requesting summary file content, dateId = '$dateId', jobId = '$jobId', summaryName = '${e.url.queryParams.get("file").map(x => x.head).getOrElse("")}'"""))
+        ) @@ countAPIRequests("GET", "/results/summary/[date]/[job]?file=[fileName]")
+    // get overview of available summaries for dateId and jobId
+    case Method.GET -> Root / "results" / "summary" / dateId / jobId =>
+      (for {
+        overviewReader <- ZIO.service[DataOverviewReader]
+        files <- getFilesForFolder(overviewReader, s"${AppProperties.config.outputResultsPath.get}/$dateId/$jobId/summary", ResultFileType.JSON)
+        response <- ZIO.attempt(Response.json(ResponseContent[Seq[String]](files, "").toJson.toString))
+      } yield response).catchAll(throwable =>
+        ZIO.logWarning(s"Error on requesting list of summary files for dateId '$dateId' and jobId '$jobId':\n$throwable")
+          *> ZIO.succeed(Response.text(s"Failed requesting list of summary files for dateId '$dateId' and jobId '$jobId'"))
+      ) @@ countAPIRequests("GET", "/results/summary/[date]/[job]")
     case e@Method.GET -> Root / "results" / date / job / "content" =>
       (for {
         reader <- ZIO.service[Reader[String, Seq[String]]]
@@ -250,7 +284,7 @@ object DataEndpoints {
     case Method.GET -> Root / "results" / date / job =>
       (for {
         overviewReader <- ZIO.service[DataOverviewReader]
-        files <- getResultFilesForDateAndJob(overviewReader, date, job, JSON)
+        files <- getResultFilesForDateAndJob(overviewReader, date, job, ResultFileType.JSON)
         response <- ZIO.attempt(Response.json(ResponseContent[Seq[String]](files, "").toJson.toString))
       } yield response).catchAll(throwable =>
         ZIO.logWarning(s"Error on requesting result folder content:\n$throwable")

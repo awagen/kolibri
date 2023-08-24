@@ -102,7 +102,7 @@ object AggregationFunctions {
       val tagToMetricSummary: Map[Tag, MetricSummary] = MetricSummary.summarize(tagToResultMap.map(x => (x.id, x.rows.values.toSeq)), criterionMetricName)
       val metricSummaryJsonString = tagToMetricSummary.map(x => (x._1.toString, metricSummaryFormat.write(x._2))).toJson.toString()
       // write to file
-      writer.write(metricSummaryJsonString, s"$jobResultsFolder/$summarySubfolder/summary.json")
+      writer.write(metricSummaryJsonString, s"$jobResultsFolder/$summarySubfolder/summary_${criterionMetricName}.json")
       Right(())
     }
   }
