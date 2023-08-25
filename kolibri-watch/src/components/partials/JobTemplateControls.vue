@@ -51,7 +51,6 @@ import {postAgainstEndpoint, saveTemplate} from "../../utils/retrievalFunctions"
 import ResponseModal from "../partials/ResponseModal.vue";
 import {ref} from "vue";
 import {useStore} from "vuex";
-import {templateExecuteUrl} from "@/utils/globalConstants";
 
 export default {
 
@@ -149,9 +148,6 @@ export default {
      * Retrieve the target file name to store to from input field
      * and then store for the currently selected job the current
      * edit state.
-     * TOOD: do server side template validation against input definition
-     * for that particular job and display successful store / error
-     * messages
      */
     async function getSelectionsAndSaveTemplate() {
       let fileNameId = "template-edit-saveto-filename-" + props.pageId

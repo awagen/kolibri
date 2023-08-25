@@ -42,6 +42,7 @@
     <div class="row-container columns">
 
       <form class="form-horizontal col-8 column">
+
         <h3 class="k-title">
           Job: {{ selectedJobShortDescription }}
         </h3>
@@ -52,6 +53,7 @@
           {{ selectedJobDescription }}
         </h3>
 
+        <!-- Displaying the input form based on structural definition -->
         <template v-if="currentJobNestedStruct !== undefined">
           <NestedFieldSeqStructDef
               :key="componentKeyValue"
@@ -70,18 +72,8 @@
       </form>
 
       <!-- json overview container -->
-      <template v-if="currentJobNestedStructJson !== undefined">
-        <form class="form-horizontal col-4 column">
-          <h3 class="k-title">
-            JSON
-          </h3>
+      <DisplayJson class="col-4" title="JSON" :current-json="currentJobNestedStructJson"></DisplayJson>
 
-          <div class="k-json-container col-12 col-sm-12">
-            <pre id="template-content-display-1" v-html="currentJobNestedStructJson"/>
-          </div>
-
-        </form>
-      </template>
     </div>
   </template>
 </template>
@@ -89,9 +81,9 @@
 <script>
 
 import NestedFieldSeqStructDef from "../components/partials/structs/NestedFieldSeqStructDef.vue";
-import {useStore} from "vuex";
-import {ref, watch, computed} from "vue";
+import {watch} from "vue";
 import JobTemplateControls from "../components/partials/JobTemplateControls.vue";
+import DisplayJson from "@/components/partials/DisplayJson.vue";
 
 export default {
 
@@ -101,7 +93,7 @@ export default {
       required: false
     }
   },
-  components: {JobTemplateControls, NestedFieldSeqStructDef},
+  components: {DisplayJson, JobTemplateControls, NestedFieldSeqStructDef},
 
   data() {
     return {
@@ -197,44 +189,8 @@ export default {
   margin: 3em;
 }
 
-pre#template-content-display-1 {
-  margin-top: 2em;
-}
-
 .form-horizontal {
   padding: .4rem 0;
-}
-
-/* need some deep selectors here since otherwise code loaded in v-html directive doesnt get styled */
-::v-deep(pre) {
-  padding-left: 2em;
-  padding-top: 0;
-  margin: 5px;
-  text-align: left;
-}
-
-::v-deep(.string) {
-  color: green;
-}
-
-::v-deep(.number) {
-  color: darkorange;
-}
-
-::v-deep(.boolean) {
-  color: black;
-}
-
-::v-deep(.null) {
-  color: magenta;
-}
-
-::v-deep(.key) {
-  color: #9c9c9c;
-}
-
-.k-json-container {
-  overflow: scroll;
 }
 
 .k-value-selector {
