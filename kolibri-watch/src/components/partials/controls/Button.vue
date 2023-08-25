@@ -1,8 +1,7 @@
 <template>
 
-  <button type='button'
-          @click="this.$emit(emittedEventName)"
-          :class="'k-form k-full btn btn-action ' + buttonClass"
+  <button @click.prevent="this.$emit(emittedEventName, emittedEventArguments)"
+          :class="'btn btn-primary ' + shapeClass() + ' ' + buttonClass"
           :id="buttonId">
     {{ title }}
   </button>
@@ -21,18 +20,33 @@ export default {
       description: "Name of event to be emitted to parent on click. Note that the" +
           " parent needs to know how to handle that event"
     },
+    emittedEventArguments: {
+      type: Object,
+      required: false,
+      default: {},
+      description: "In case of click of the button, we can specify here which additional arguments" +
+          " shall be send."
+    },
     buttonClass: {
       type: String,
       required: true,
       description: "Class added to the button classes. Make sure every button class " +
           "comes with the proper styling.",
       validator(value) {
-        return ["save", "execute"].includes(value)
+        return ["save", "execute", "start", "kill"].includes(value)
+      }
+    },
+    buttonShape: {
+      type: String,
+      required: true,
+      validator(value) {
+        return ["circle", "rectangle"].includes(value)
       }
     },
     buttonId: {
       type: String,
-      required: true
+      required: false,
+      default: ""
     },
     title: {
       type: String,
@@ -43,9 +57,22 @@ export default {
 
   setup(props, context) {
 
-    function emit() {
-      context.emit(props.emittedEventName)
+    let shapeToClassMapping = {
+      "circle": "s-circle",
+      "rectangle": "k-full"
     }
+
+    function shapeClass() {
+      if (Object.keys(shapeToClassMapping).includes(props.buttonShape)) {
+        return shapeToClassMapping[props.buttonShape]
+      }
+      else return "k-full"
+    }
+
+    return {
+      shapeClass
+    }
+
   }
 
 }
@@ -56,19 +83,17 @@ export default {
 
 <style scoped>
 
-.k-form.btn {
-  padding: 0;
-  margin: 0;
-  display: block;
+button.k-full {
+  width: 98%;
+  margin-left: 1em;
+  margin-right: 1em;
   background-color: #9999;
   color: black;
   border-width: 0;
 }
 
-.k-full.btn {
-  width: 98%;
-  margin-left: 1em;
-  margin-right: 1em;
+button.k-full:hover {
+  color: lightgrey;
 }
 
 button.save {
@@ -77,6 +102,26 @@ button.save {
 
 button.execute {
   background-color: orange !important;
+}
+
+button.kill {
+  background-color: #340000;
+  color: #9C9C9C;
+  border: none;
+}
+
+button.kill:hover {
+  background-color: darkslategray;
+}
+
+button.start {
+  background-color: darkgreen;
+  color: #9C9C9C;
+  border: none;
+}
+
+button.start:hover {
+  background-color: darkslategray;
 }
 
 

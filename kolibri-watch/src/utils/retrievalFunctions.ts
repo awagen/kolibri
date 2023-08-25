@@ -42,6 +42,36 @@ class Response {
 
 }
 
+/**
+ * Generic call function
+ * @param url
+ * @param method
+ * @param data
+ * @param responseCallback
+ */
+function axiosCall(url: string,
+                   method: string,
+                   data: object,
+                   responseCallback: (resp: Response) => any) {
+    let options: object = {
+        method: method,
+        url: url
+    }
+    if (data != undefined) {
+        options["data"] = data
+    }
+    return axios.request(options)
+        .then(response => {
+            let resp = Response.fromAxiosResponse(response)
+            responseCallback(resp)
+            return resp
+        }).catch(e => {
+            let resp = Response.failResponse(e.msg)
+            responseCallback(resp)
+            return resp
+        })
+}
+
 
 /**
  * Retrieve mapping of dates (string formatted as yyyy-mm-dd) to jobIds (array) for which results are available.
@@ -518,5 +548,6 @@ export {
     retrieveAllAvailableIRMetrics, changeReducedToFullMetricsJsonList,
     retrieveJobInformation, retrieveAllAvailableTemplateInfos,
     postAgainstEndpoint,
-    retrieveAvailableResultDateIdToJobIdsMapping, retrieveAvailableResultFilesForDataAndJob, retrieveResultFileContent
+    retrieveAvailableResultDateIdToJobIdsMapping, retrieveAvailableResultFilesForDataAndJob, retrieveResultFileContent,
+    axiosCall
 }

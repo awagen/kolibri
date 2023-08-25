@@ -26,25 +26,62 @@
         </div>
       </td>
       <td v-if="showStartStopOptions && jobHasStarted(job)">
-        <button @click="stopJob(job.jobId)" class="btn btn-primary s-circle kill">Stop</button>
+        <Button
+          emitted-event-name="stopJob"
+          :emitted-event-arguments="{jobId: job.jobId}"
+          @stop-job="stopJob"
+          button-class="kill"
+          button-shape="circle"
+          title="Stop"
+        />
       </td>
       <td v-if="showStartStopOptions && !jobHasStarted(job)">
-        <button @click="startJob(job.jobId)" class="btn btn-primary s-circle start">Start</button>
+        <Button
+            emitted-event-name="startJob"
+            :emitted-event-arguments="{jobId: job.jobId}"
+            @start-job="startJob"
+            button-class="start"
+            button-shape="circle"
+            title="Start"
+        />
       </td>
       <td>
-        <button @click="deleteOpenJob(job.jobId, !isHistoryView)" class="btn btn-primary s-circle kill">Delete</button>
+        <Button
+            emitted-event-name="deleteOpenJob"
+            :emitted-event-arguments="{jobId: job.jobId, isOpenJob: !isHistoryView}"
+            @delete-open-job="deleteOpenJob"
+            button-class="kill"
+            button-shape="circle"
+            title="Delete"
+        />
       </td>
     </tr>
     </tbody>
   </table>
+
+  <!-- Modal to indicate whether actions were successful or failed -->
+  <ResponseModal
+      :show="showModal"
+      :mode="mode"
+      @responseModalClosed="responseModalClosedHandler"
+      @responseModalOpened="responseModalOpenedHandler"
+      :modal-title="modalTitle"
+      :main-content="mainContent"
+      :footer-content="footerContent"
+      :fade-out-ok='true'
+  />
+
 </template>
 
 <script>
 import {onBeforeUnmount, onMounted, ref} from "vue";
-import axios from "axios";
 import {jobDeleteUrl, startJobUrl, stopJobUrl} from '../utils/globalConstants'
+import Button from "@/components/partials/controls/Button.vue";
+import ResponseModal from "@/components/partials/ResponseModal.vue";
+import {axiosCall} from "@/utils/retrievalFunctions";
 
 export default {
+  components: {ResponseModal, Button},
   props: [
     'header',
     'data',
@@ -53,6 +90,46 @@ export default {
   ],
 
   setup(props) {
+
+    // response-modal-related attributes
+    let showModal = ref(false)
+    let modalTitle = ref("")
+    let mainContent = ref("")
+    let footerContent = ref("")
+    let mode = ref("k-success")
+
+    // start: response-modal-related control functions
+    function responseModalClosedHandler() {
+      showModal.value = false
+    }
+
+    function responseModalOpenedHandler() {
+      showModal.value = true
+    }
+
+    function prepareOKResponseShow() {
+      modalTitle.value = ""
+      mainContent.value = ""
+      mode.value = "k-success"
+    }
+
+    function prepareOKResponseShowAndShow() {
+      prepareOKResponseShow()
+      showModal.value = true
+    }
+
+    function prepareErrorResponseShow(title, description) {
+      modalTitle.value = title
+      mainContent.value = description
+      mode.value = "k-fail"
+    }
+
+    function prepareErrorResponseShowAndShow(title, description) {
+      prepareErrorResponseShow(title, description)
+      showModal.value = true
+    }
+    // end: response-modal-related control functions
+
 
     function jobHasStarted(job) {
       let processDirectives = job.directives.map(dir => dir.type.trim())
@@ -73,28 +150,30 @@ export default {
      * job folder such that no node will pick up any batch of the job.
      * Batches already running will not be terminated as of now (might change later)
      */
-    function stopJob(jobId) {
-      console.debug("executing killJob")
-      return axios
-          .delete(stopJobUrl.replace("#JOB_ID", jobId))
-          .then(response => {
-            console.debug("killJob response: " + JSON.stringify(response.data))
-          }).catch(e => {
-            console.debug("exception on stopJob call: ")
-            console.debug(e)
-          })
+    function stopJob({jobId}) {
+      let url = stopJobUrl.replace("#JOB_ID", jobId)
+      axiosCall(
+          url,
+          "DELETE",
+          undefined,
+          resp => {
+            if (resp.success) prepareOKResponseShowAndShow()
+            else prepareErrorResponseShowAndShow("Stop Job Fail", resp.msg)
+          }
+      )
     }
 
-    function deleteOpenJob(jobId, isOpenJob) {
-      console.debug(`Deleting open job with id ${jobId}`)
-      return axios
-          .delete(jobDeleteUrl.replace("#JOB_ID", jobId) + "?isOpenJob=" + isOpenJob)
-          .then(response => {
-            console.debug("delete job response: " + JSON.stringify(response.data))
-          }).catch(e => {
-            console.debug("exception on job delete call: ")
-            console.debug(e)
-          })
+    function deleteOpenJob({jobId, isOpenJob}) {
+      let url = jobDeleteUrl.replace("#JOB_ID", jobId) + "?isOpenJob=" + isOpenJob
+      axiosCall(
+          url,
+          "DELETE",
+          undefined,
+          resp => {
+            if (resp.success) prepareOKResponseShowAndShow()
+            else prepareErrorResponseShowAndShow("Delete Job Fail", resp.msg)
+          }
+      )
     }
 
     /**
@@ -104,16 +183,17 @@ export default {
      * signal start of processing to all connected nodes. More fine-grained control of
      * set directives via UI will be added shortly
      */
-    function startJob(jobId) {
-      console.debug("executing startJob")
-      return axios
-          .post(startJobUrl.replace("#JOB_ID", jobId), [{"type": "PROCESS"}])
-          .then(response => {
-            console.debug("startJob response: " + response.data)
-          }).catch(e => {
-            console.debug("exception on startJob call: ")
-            console.debug(e)
-          })
+    function startJob({jobId}) {
+      let url = startJobUrl.replace("#JOB_ID", jobId)
+      axiosCall(
+          url,
+          "POST",
+          [{"type": "PROCESS"}],
+          resp => {
+            if (resp.success) prepareOKResponseShowAndShow()
+            else prepareErrorResponseShowAndShow("Start Job Fail", resp.msg)
+          }
+      )
     }
 
     onMounted(() => {
@@ -122,6 +202,13 @@ export default {
     })
 
     return {
+      showModal,
+      responseModalClosedHandler,
+      responseModalOpenedHandler,
+      modalTitle,
+      mainContent,
+      footerContent,
+      mode,
       stopJob,
       startJob,
       deleteOpenJob,
@@ -153,25 +240,6 @@ td, th {
   border-bottom: none !important;
 }
 
-.btn.kill {
-  background-color: #340000;
-  color: #9C9C9C;
-  border: none;
-}
-
-.btn.kill:hover {
-  background-color: #5c0003;
-}
-
-.btn.start {
-  background-color: darkgreen;
-  color: #9C9C9C;
-  border: none;
-}
-
-.btn.kill:hover {
-  background-color: darkslategray;
-}
 
 .runningJobHeader {
   padding-top: 1em;
