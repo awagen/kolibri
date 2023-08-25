@@ -15,6 +15,7 @@
         button-class="save"
         :button-id="'save-template-' + pageId"
         title="SAVE TEMPLATE"
+        button-shape="rectangle"
       >
       </Button>
 
@@ -27,6 +28,7 @@
           button-class="execute"
           :button-id="'run-template-' + pageId"
           title="RUN TEMPLATE"
+          button-shape="rectangle"
       >
       </Button>
     </div>
@@ -45,13 +47,13 @@
 
   <!-- Modal to indicate whether actions were successful or failed -->
   <ResponseModal
-    :show="showModal"
-    :mode="mode"
-    @responseModalClosed="responseModalClosedHandler"
-    @responseModalOpened="responseModalOpenedHandler"
-    :modal-title="modalTitle"
-    :main-content="mainContent"
-    :footer-content="footerContent"
+    :show="modalObj.showModal"
+    :mode="modalObj.mode"
+    @responseModalClosed="modalObj.hide()"
+    @responseModalOpened="modalObj.show()"
+    :modal-title="modalObj.modalTitle"
+    :main-content="modalObj.mainContent"
+    :footer-content="modalObj.footerContent"
     :fade-out-ok='true'
   >
   </ResponseModal>
@@ -61,10 +63,11 @@
 <script>
 import {postAgainstEndpoint, saveTemplate} from "@/utils/retrievalFunctions";
 import ResponseModal from "../partials/ResponseModal.vue";
-import {ref} from "vue";
+import {reactive, ref} from "vue";
 import {useStore} from "vuex";
 import Input from "@/components/partials/controls/Input.vue";
 import Button from "@/components/partials/controls/Button.vue";
+import {Modal} from "@/utils/modalObjects";
 
 export default {
 
@@ -86,41 +89,7 @@ export default {
   setup(props, context) {
     const store = useStore()
 
-    let showModal = ref(false)
-    let modalTitle = ref("")
-    let mainContent = ref("")
-    let footerContent = ref("")
-    let mode = ref("k-success")
-
-    function responseModalClosedHandler() {
-      showModal.value = false
-    }
-
-    function responseModalOpenedHandler() {
-      showModal.value = true
-    }
-
-    function prepareOKResponseShow() {
-      modalTitle.value = ""
-      mainContent.value = ""
-      mode.value = "k-success"
-    }
-
-    function prepareOKResponseShowAndShow() {
-      prepareOKResponseShow()
-      showModal.value = true
-    }
-
-    function prepareErrorResponseShow(title, description) {
-      modalTitle.value = title
-      mainContent.value = description
-      mode.value = "k-fail"
-    }
-
-    function prepareErrorResponseShowAndShow(title, description) {
-      prepareErrorResponseShow(title, description)
-      showModal.value = true
-    }
+    let modalObj = reactive(new Modal())
 
     function getJobName(){
       if (props.pageId === "freeEdit") {
@@ -168,16 +137,16 @@ export default {
       let relativeFileName = document.getElementById(fileNameId).value
       let jobName = getJobName()
       if (relativeFileName === "") {
-        prepareErrorResponseShowAndShow("Persist Fail", "empty relative file name, not sending for storage")
+        modalObj.prepareErrorResponseShowAndShow("Persist Fail", "empty relative file name, not sending for storage")
         return
       }
       let templateContent = getTemplateContent(jobName)
       let saveResult = await saveTemplate(jobName, relativeFileName, templateContent)
       if (saveResult.success) {
-        prepareOKResponseShowAndShow()
+        modalObj.prepareOKResponseShowAndShow()
       }
       else {
-        prepareErrorResponseShowAndShow("Persist Fail", saveResult.msg)
+        modalObj.prepareErrorResponseShowAndShow("Persist Fail", saveResult.msg)
       }
     }
 
@@ -186,32 +155,26 @@ export default {
       let templateContent = getTemplateContent(jobName)
       let jobEndpoint = getJobEndpoint(jobName)
       if (jobEndpoint == null || jobEndpoint.trim() === '') {
-        prepareErrorResponseShowAndShow("Job Posting Fail", `job endpoint '${jobEndpoint}' not valid`)
+        modalObj.prepareErrorResponseShowAndShow("Job Posting Fail", `job endpoint '${jobEndpoint}' not valid`)
         return;
       }
       if (templateContent == null || Object.keys(templateContent).length === 0) {
-        prepareErrorResponseShowAndShow("Job Posting Fail", `template content '${templateContent}' not valid`)
+        modalObj.prepareErrorResponseShowAndShow("Job Posting Fail", `template content '${templateContent}' not valid`)
         return;
       }
       let postResult = await postAgainstEndpoint(jobEndpoint, templateContent)
       if (postResult.success) {
-        prepareOKResponseShowAndShow()
+        modalObj.prepareOKResponseShowAndShow()
       }
       else {
-        prepareErrorResponseShowAndShow("Job Posting Fail", postResult.msg)
+        modalObj.prepareErrorResponseShowAndShow("Job Posting Fail", postResult.msg)
       }
     }
 
     return {
-      showModal,
       getSelectionsAndSaveTemplate,
       getSelectionAndExecuteJob,
-      responseModalClosedHandler,
-      responseModalOpenedHandler,
-      modalTitle,
-      mainContent,
-      footerContent,
-      mode
+      modalObj
     }
   }
 

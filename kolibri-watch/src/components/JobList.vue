@@ -61,24 +61,25 @@
 
   <!-- Modal to indicate whether actions were successful or failed -->
   <ResponseModal
-      :show="showModal"
-      :mode="mode"
-      @responseModalClosed="responseModalClosedHandler"
-      @responseModalOpened="responseModalOpenedHandler"
-      :modal-title="modalTitle"
-      :main-content="mainContent"
-      :footer-content="footerContent"
+      @responseModalClosed="modalObj.hide()"
+      @responseModalOpened="modalObj.show()"
+      :show="modalObj.showModal"
+      :mode="modalObj.mode"
+      :modal-title="modalObj.modalTitle"
+      :main-content="modalObj.mainContent"
+      :footer-content="modalObj.footerContent"
       :fade-out-ok='true'
   />
 
 </template>
 
 <script>
-import {onBeforeUnmount, onMounted, ref} from "vue";
+import {onBeforeUnmount, onMounted, reactive, ref} from "vue";
 import {jobDeleteUrl, startJobUrl, stopJobUrl} from '../utils/globalConstants'
 import Button from "@/components/partials/controls/Button.vue";
 import ResponseModal from "@/components/partials/ResponseModal.vue";
 import {axiosCall} from "@/utils/retrievalFunctions";
+import {Modal} from "@/utils/modalObjects";
 
 export default {
   components: {ResponseModal, Button},
@@ -91,45 +92,7 @@ export default {
 
   setup(props) {
 
-    // response-modal-related attributes
-    let showModal = ref(false)
-    let modalTitle = ref("")
-    let mainContent = ref("")
-    let footerContent = ref("")
-    let mode = ref("k-success")
-
-    // start: response-modal-related control functions
-    function responseModalClosedHandler() {
-      showModal.value = false
-    }
-
-    function responseModalOpenedHandler() {
-      showModal.value = true
-    }
-
-    function prepareOKResponseShow() {
-      modalTitle.value = ""
-      mainContent.value = ""
-      mode.value = "k-success"
-    }
-
-    function prepareOKResponseShowAndShow() {
-      prepareOKResponseShow()
-      showModal.value = true
-    }
-
-    function prepareErrorResponseShow(title, description) {
-      modalTitle.value = title
-      mainContent.value = description
-      mode.value = "k-fail"
-    }
-
-    function prepareErrorResponseShowAndShow(title, description) {
-      prepareErrorResponseShow(title, description)
-      showModal.value = true
-    }
-    // end: response-modal-related control functions
-
+    let modalObj = reactive(new Modal())
 
     function jobHasStarted(job) {
       let processDirectives = job.directives.map(dir => dir.type.trim())
@@ -157,8 +120,8 @@ export default {
           "DELETE",
           undefined,
           resp => {
-            if (resp.success) prepareOKResponseShowAndShow()
-            else prepareErrorResponseShowAndShow("Stop Job Fail", resp.msg)
+            if (resp.success) modalObj.prepareOKResponseShowAndShow()
+            else modalObj.prepareErrorResponseShowAndShow("Stop Job Fail", resp.msg)
           }
       )
     }
@@ -170,8 +133,8 @@ export default {
           "DELETE",
           undefined,
           resp => {
-            if (resp.success) prepareOKResponseShowAndShow()
-            else prepareErrorResponseShowAndShow("Delete Job Fail", resp.msg)
+            if (resp.success) modalObj.prepareOKResponseShowAndShow()
+            else modalObj.prepareErrorResponseShowAndShow("Delete Job Fail", resp.msg)
           }
       )
     }
@@ -190,8 +153,8 @@ export default {
           "POST",
           [{"type": "PROCESS"}],
           resp => {
-            if (resp.success) prepareOKResponseShowAndShow()
-            else prepareErrorResponseShowAndShow("Start Job Fail", resp.msg)
+            if (resp.success) modalObj.prepareOKResponseShowAndShow()
+            else modalObj.prepareErrorResponseShowAndShow("Start Job Fail", resp.msg)
           }
       )
     }
@@ -202,17 +165,11 @@ export default {
     })
 
     return {
-      showModal,
-      responseModalClosedHandler,
-      responseModalOpenedHandler,
-      modalTitle,
-      mainContent,
-      footerContent,
-      mode,
       stopJob,
       startJob,
       deleteOpenJob,
-      jobHasStarted
+      jobHasStarted,
+      modalObj
     }
   }
 

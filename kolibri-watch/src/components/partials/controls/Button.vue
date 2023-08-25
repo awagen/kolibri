@@ -110,7 +110,7 @@ button.kill {
   border: none;
 }
 
-button.kill:hover {
+button.kill:hover,button.kill:focus {
   background-color: darkslategray;
 }
 
@@ -120,7 +120,7 @@ button.start {
   border: none;
 }
 
-button.start:hover {
+button.start:hover,button.start:focus {
   background-color: darkslategray;
 }
 

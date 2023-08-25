@@ -31,7 +31,7 @@ export default  {
       default: ""
     },
     currentJson: {
-      type: Object,
+      type: String,
       required: false,
       default: objectToJsonStringAndSyntaxHighlight({})
     },
