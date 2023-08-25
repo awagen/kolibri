@@ -3,35 +3,47 @@
   <!-- Display options to save the template and to sent it to the
   endpoint specified for the selected job -->
   <div class="form-separator"></div>
+
   <div class="form-group k-action-buttons">
+
     <!-- template save button -->
     <div class="form-separator"></div>
     <div class="col-6 col-sm-12">
-      <button type='button' @click="getSelectionsAndSaveTemplate" class="k-form k-full btn btn-action save"
-              :id="'save-template-' + pageId">
-        SAVE TEMPLATE
-      </button>
+      <Button
+        emitted-event-name="saveTemplate"
+        @save-template="getSelectionsAndSaveTemplate"
+        button-class="save"
+        :button-id="'save-template-' + pageId"
+        title="SAVE TEMPLATE"
+      >
+      </Button>
+
     </div>
+    <!-- template run button -->
     <div class="col-6 col-sm-12">
-      <button type='button' @click="getSelectionAndExecuteJob" class="k-form k-full btn btn-action execute"
-              :id="'run-template-' + pageId">
-        RUN TEMPLATE
-      </button>
+      <Button
+          emitted-event-name="runTemplate"
+          @run-template="getSelectionAndExecuteJob"
+          button-class="execute"
+          :button-id="'run-template-' + pageId"
+          title="RUN TEMPLATE"
+      >
+      </Button>
     </div>
   </div>
 
   <!-- Define the new file name to store the edit to -->
   <div class="form-separator"></div>
   <div class="form-group k-file-input">
-    <div class="col-3 col-sm-12">
-      <label class="form-label" :for="'template-edit-saveto-filename-' + pageId">New template filename</label>
-    </div>
-    <div class="col-9 col-sm-12">
-      <input class="form-input k-value-selector template-name" type="text" :id="'template-edit-saveto-filename-' + pageId"
-             placeholder="New template filename">
-    </div>
+    <!-- Input field definition -->
+    <Input
+        :input-id="'template-edit-saveto-filename-' + pageId"
+        label="New template filename"
+        placeHolder="New template filename"
+    ></Input>
   </div>
 
+  <!-- Modal to indicate whether actions were successful or failed -->
   <ResponseModal
     :show="showModal"
     :mode="mode"
@@ -47,10 +59,12 @@
 </template>
 
 <script>
-import {postAgainstEndpoint, saveTemplate} from "../../utils/retrievalFunctions";
+import {postAgainstEndpoint, saveTemplate} from "@/utils/retrievalFunctions";
 import ResponseModal from "../partials/ResponseModal.vue";
 import {ref} from "vue";
 import {useStore} from "vuex";
+import Input from "@/components/partials/controls/Input.vue";
+import Button from "@/components/partials/controls/Button.vue";
 
 export default {
 
@@ -65,7 +79,7 @@ export default {
       }
     }
   },
-  components: {ResponseModal},
+  components: {Button, Input, ResponseModal},
   methods: {
   },
   computed: {},
@@ -205,34 +219,6 @@ export default {
 </script>
 
 <style scoped>
-
-.k-form.btn {
-  padding: 0;
-  margin: 0;
-  display: block;
-  background-color: #9999;
-  color: black;
-  border-width: 0;
-}
-
-.k-full.btn {
-  width: 98%;
-  margin-left: 1em;
-  margin-right: 1em;
-}
-
-input.template-name {
-  padding-right: 1em;
-  width: 98%;
-}
-
-button.save {
-  background-color: darkgreen !important;
-}
-
-button.execute {
-  background-color: orange !important;
-}
 
 .k-action-buttons {
   margin: 1em;
