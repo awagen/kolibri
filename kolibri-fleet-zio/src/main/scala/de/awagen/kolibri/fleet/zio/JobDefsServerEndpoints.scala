@@ -20,8 +20,9 @@ package de.awagen.kolibri.fleet.zio
 import de.awagen.kolibri.datatypes.io.json.JsonStructDefsJsonProtocol.JsonStructDefsFormat
 import de.awagen.kolibri.datatypes.types.JsonStructDefs.StructDef
 import de.awagen.kolibri.definitions.io.json.ExecutionJsonProtocol.ExecutionFormat
+import de.awagen.kolibri.fleet.zio.DataEndpoints.summarizeCommandStructDef
 import de.awagen.kolibri.fleet.zio.ServerEndpoints.ResponseContentProtocol.responseContentFormat
-import de.awagen.kolibri.fleet.zio.ServerEndpoints.{ResponseContent}
+import de.awagen.kolibri.fleet.zio.ServerEndpoints.ResponseContent
 import de.awagen.kolibri.fleet.zio.config.HttpConfig.corsConfig
 import de.awagen.kolibri.fleet.zio.io.json.JobDefinitionJsonProtocol
 import de.awagen.kolibri.fleet.zio.metrics.Metrics.CalculationsWithMetrics.countAPIRequests
@@ -34,9 +35,12 @@ import zio.http._
 object JobDefsServerEndpoints {
 
   val ID_JOB_DEF = "jobDefinition"
-  val TASK_DEF = "task"
+  val ID_TASK_DEF = "task"
+  val ID_JOB_SUMMARY_DEF = "jobSummary"
+
   val JOB_POST_PATH = "job"
   val TASK_POST_PATH = "task"
+  val JOB_SUMMARY_POST_PATH = "results/summary"
 
   case class EndpointDef(id: String,
                          name: String,
@@ -54,11 +58,20 @@ object JobDefsServerEndpoints {
     )
 
     val taskPostEndpoint = EndpointDef(
-      TASK_DEF,
+      ID_TASK_DEF,
       "Configure single-step tasks such as aggregations or other analysis tasks",
       TASK_POST_PATH,
       ExecutionFormat.structDef,
       "Endpoint for composition of single tasks, such as aggregations or other analysis"
+    )
+
+
+    val resultSummaryPostEndpoint: EndpointDef = EndpointDef(
+      ID_JOB_SUMMARY_DEF,
+      "Generate summaries for completed jobs.",
+      JOB_SUMMARY_POST_PATH,
+      summarizeCommandStructDef,
+      "Endpoint to generate summary of completed job."
     )
   }
 
@@ -67,7 +80,7 @@ object JobDefsServerEndpoints {
   def jobDefEndpoints = Http.collectZIO[Request] {
     case Method.GET -> Root / "jobs" / "structs" =>
       ZIO.succeed(
-        Response.json(ResponseContent(Seq(Endpoints.taskSequencePostEndpoint, Endpoints.taskPostEndpoint), "").toJson.toString())) @@ countAPIRequests("GET", "/jobs/structs")
+        Response.json(ResponseContent(Seq(Endpoints.taskSequencePostEndpoint, Endpoints.taskPostEndpoint, Endpoints.resultSummaryPostEndpoint), "").toJson.toString())) @@ countAPIRequests("GET", "/jobs/structs")
   } @@ cors(corsConfig)
 
 }

@@ -62,8 +62,7 @@
               :fields="currentJobNestedStruct.fields"
               :is-root="true"
               :init-with-value="selectedJobTemplate"
-          >
-          </NestedFieldSeqStructDef>
+          />
         </template>
 
         <!-- Input controls -->

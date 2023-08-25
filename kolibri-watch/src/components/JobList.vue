@@ -74,8 +74,8 @@
 </template>
 
 <script>
-import {onBeforeUnmount, onMounted, reactive, ref} from "vue";
-import {jobDeleteUrl, startJobUrl, stopJobUrl} from '../utils/globalConstants'
+import {onBeforeUnmount, onMounted, reactive} from "vue";
+import {jobDeleteUrl, startJobUrl, stopJobUrl} from '@/utils/globalConstants'
 import Button from "@/components/partials/controls/Button.vue";
 import ResponseModal from "@/components/partials/ResponseModal.vue";
 import {axiosCall} from "@/utils/retrievalFunctions";
@@ -111,7 +111,6 @@ export default {
     /**
      * NOTE: right now kill-job just means removing all job level directives out of the
      * job folder such that no node will pick up any batch of the job.
-     * Batches already running will not be terminated as of now (might change later)
      */
     function stopJob({jobId}) {
       let url = stopJobUrl.replace("#JOB_ID", jobId)
@@ -144,7 +143,7 @@ export default {
      * for the job (into the job's folder). This triggers all nodes to pick up the batches.
      * Right now this does not mean fine-grained control, e.g the directive written will
      * signal start of processing to all connected nodes. More fine-grained control of
-     * set directives via UI will be added shortly
+     * set directives via UI planned to be added shortly
      */
     function startJob({jobId}) {
       let url = startJobUrl.replace("#JOB_ID", jobId)
