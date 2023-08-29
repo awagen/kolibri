@@ -11,48 +11,49 @@
     <i :class="['icon', menuDropDownActive ? 'icon-arrow-down' : 'icon-arrow-up']" @click.prevent="toggleMenuDropdown"></i>
   </div>
   <!-- dropdown content -->
-  <div :id="getDropdownElementId()" :class="['dropdown', menuDropDownActive && 'active']">
+  <div class="dropdownContainer">
+    <div :id="getDropdownElementId()" :class="['dropdown', menuDropDownActive && 'active']">
 
-    <ul class="menu">
-      <li class="divider" data-content="Sorting Measure"/>
-      <!-- Sort measure selection -->
-      <template v-for="(element, index) in resultSummary.measureNames">
-        <li class="menu-item">
-          <label class="form-radio form-inline">
-            <input type="radio"
-                   :name="resultSummary.metricName + '-sortCriterion'"
-                   :value="element"
-                   :checked="(sortByMeasureIndex === index) ? '' : null"
-                   @change="setSortByMeasureIndex(index)"
-            />
-            <i class="form-icon"></i>
-            {{ element }}
-          </label>
-        </li>
-      </template>
+      <ul class="menu">
+        <li class="divider" data-content="Sorting Measure"/>
+        <!-- Sort measure selection -->
+        <template v-for="(element, index) in resultSummary.measureNames">
+          <li class="menu-item">
+            <label class="form-radio form-inline">
+              <input type="radio"
+                     :name="resultSummary.metricName + '-sortCriterion'"
+                     :value="element"
+                     :checked="(sortByMeasureIndex === index) ? '' : null"
+                     @change="setSortByMeasureIndex(index)"
+              />
+              <i class="form-icon"></i>
+              {{ element }}
+            </label>
+          </li>
+        </template>
 
-      <li class="divider" data-content="Displayed Measure"/>
-      <template v-for="(element, index) in resultSummary.measureNames">
-        <li class="menu-item">
-          <label class="form-checkbox form-inline">
-            <input :id="[getDisplayedMeasureSelectionId() + '-' + index]"
-                   :class="[getDisplayedMeasureSelectionId()]"
-                   :checked="displayedMeasures.includes(element)"
-                   type="checkbox"
-                   :name="resultSummary.metricName + '-displayCriterion-' + index"
-                   :value="element"
-                   @change="handleMeasureDisplaySelectionChange()"
-            />
-            <i class="form-icon"></i>
-            {{ element }}
-          </label>
-        </li>
-      </template>
+        <li class="divider" data-content="Displayed Measure"/>
+        <template v-for="(element, index) in resultSummary.measureNames">
+          <li class="menu-item">
+            <label class="form-checkbox form-inline">
+              <input :id="[getDisplayedMeasureSelectionId() + '-' + index]"
+                     :class="[getDisplayedMeasureSelectionId()]"
+                     :checked="displayedMeasures.includes(element)"
+                     type="checkbox"
+                     :name="resultSummary.metricName + '-displayCriterion-' + index"
+                     :value="element"
+                     @change="handleMeasureDisplaySelectionChange()"
+              />
+              <i class="form-icon"></i>
+              {{ element }}
+            </label>
+          </li>
+        </template>
 
-    </ul>
+      </ul>
 
+    </div>
   </div>
-
 
   <div class="k-table-wrapper">
     <table class="table">
@@ -261,8 +262,13 @@ ul.menu {
   text-align: left;
 }
 
+.dropdownContainer {
+  position: relative;
+}
+
 .dropdown {
   position: absolute;
+  z-index: 10;
 }
 
 .k-tableControls {
@@ -272,17 +278,19 @@ ul.menu {
 .k-table-wrapper {
   display: inline-block;
   height: auto;
-  max-height: 60em;
-  overflow: auto;
+  max-height: 80em;
   width: 100%;
+  overflow-y: auto;
 }
 
 /* keeps the header at the top while scrolling */
 table thead {
-  position: -webkit-sticky;
+  /* position: -webkit-sticky; */
   position: sticky;
   top: 0;
   background-color: #25333C;
+  /* need to set z-index, otherwise data scrolls transparently through it */
+  z-index: 5;
 }
 
 table {
