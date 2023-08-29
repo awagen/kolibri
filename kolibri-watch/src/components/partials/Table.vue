@@ -35,10 +35,11 @@
       <template v-for="(element, index) in resultSummary.measureNames">
         <li class="menu-item">
           <label class="form-checkbox form-inline">
-            <input :class="['displayMeasureSelection']"
+            <input :id="[getDisplayedMeasureSelectionId() + '-' + index]"
+                   :class="[getDisplayedMeasureSelectionId()]"
                    :checked="displayedMeasures.includes(element)"
                    type="checkbox"
-                   :name="resultSummary.metricName + '-displayCriterion'"
+                   :name="resultSummary.metricName + '-displayCriterion-' + index"
                    :value="element"
                    @change="handleMeasureDisplaySelectionChange()"
             />
@@ -60,20 +61,20 @@
         <th class="firstColumn">
           <span class="columnTitle">ID</span>
           <i v-if="resultSummary.sortedById && resultSummary.idSortDecreasing" class="icon icon-arrow-down"
-             @click.prevent="handleIDSortEvent({decreasing: false})"></i>
+             @click.prevent="handleIDSortEvent({resultIndex: index, decreasing: false})"></i>
           <i v-if="resultSummary.sortedById && !resultSummary.idSortDecreasing" class="icon icon-arrow-up"
-             @click.prevent="handleIDSortEvent({decreasing: true})"></i>
+             @click.prevent="handleIDSortEvent({resultIndex: index, decreasing: true})"></i>
           <i v-if="!resultSummary.sortedById" class="icon icon-minus"
-             @click.prevent="handleIDSortEvent({decreasing: true})"></i>
+             @click.prevent="handleIDSortEvent({resultIndex: index, decreasing: true})"></i>
         </th>
         <th v-for="(headerColumn, headerColumnIndex) in resultSummary.columnNames">
           <span class="columnTitle">{{ headerColumn }}</span>
           <i v-if="resultSummary.sortedByColumn[headerColumnIndex] && resultSummary.columnSortDecreasing[headerColumnIndex]" class="icon icon-arrow-down"
-             @click.prevent="handleSortEvent({measureIndex: sortByMeasureIndex, columnIndex: headerColumnIndex, decreasing: false})"></i>
+             @click.prevent="handleSortEvent({resultIndex: index, measureIndex: sortByMeasureIndex, columnIndex: headerColumnIndex, decreasing: false})"></i>
           <i v-if="resultSummary.sortedByColumn[headerColumnIndex] && !resultSummary.columnSortDecreasing[headerColumnIndex]" class="icon icon-arrow-up"
-             @click.prevent="handleSortEvent({measureIndex: sortByMeasureIndex, columnIndex: headerColumnIndex, decreasing: true})"></i>
+             @click.prevent="handleSortEvent({resultIndex: index, measureIndex: sortByMeasureIndex, columnIndex: headerColumnIndex, decreasing: true})"></i>
           <i v-if="!resultSummary.sortedByColumn[headerColumnIndex]" class="icon icon-minus"
-             @click.prevent="handleSortEvent({measureIndex: sortByMeasureIndex, columnIndex: headerColumnIndex, decreasing: true})"></i>
+             @click.prevent="handleSortEvent({resultIndex: index, measureIndex: sortByMeasureIndex, columnIndex: headerColumnIndex, decreasing: true})"></i>
         </th>
       </tr>
       </thead>
@@ -118,11 +119,15 @@ export default {
   props: {
     resultSummary: {
       type: ResultSummary,
-      required: false
+      required: true
     },
     header: {
       type: String,
       required: false
+    },
+    index: {
+      type: String,
+      required: true
     }
   },
   setup(props, context) {
@@ -134,12 +139,16 @@ export default {
 
     document.addEventListener("click", closeDropdownIfClickOutsideOfControlElements)
 
+    function getDisplayedMeasureSelectionClass(){
+      return 'displayMeasureSelection-' + props.index
+    }
+
     /**
      * TODO: if we display multiple summaries on a page, need to add index to id
      * @returns {string}
      */
     function getDropdownControlsElementId(){
-      return props.resultSummary.metricName + '-summaryControls'
+      return props.resultSummary.metricName + '-summaryControls-' + props.index
     }
 
     /**
@@ -147,7 +156,7 @@ export default {
      * @returns {string}
      */
     function getDropdownElementId(){
-      return props.resultSummary.metricName + '-summaryMenu'
+      return props.resultSummary.metricName + '-summaryMenu'  + props.index
     }
 
     /**
@@ -174,7 +183,7 @@ export default {
     }
 
     function handleMeasureDisplaySelectionChange(){
-      let measureSelection = Array.from(document.getElementsByClassName("displayMeasureSelection"))
+      let measureSelection = Array.from(document.getElementsByClassName(getDisplayedMeasureSelectionClass()))
            .filter(el => el.checked)
            .map(el => el.getAttribute("value"))
       displayedMeasures.value = measureSelection
@@ -213,12 +222,12 @@ export default {
       return "hsl(" + h + ", 100%, 50%)";
     }
 
-    function handleSortEvent({measureIndex, columnIndex, decreasing}) {
-      context.emit("sortData", {measureIndex, columnIndex, decreasing})
+    function handleSortEvent({resultIndex, measureIndex, columnIndex, decreasing}) {
+      context.emit("sortData", {resultIndex, measureIndex, columnIndex, decreasing})
     }
 
-    function handleIDSortEvent({decreasing}) {
-      context.emit("idSort", {decreasing})
+    function handleIDSortEvent({resultIndex, decreasing}) {
+      context.emit("idSort", {resultIndex, decreasing})
     }
 
     return {
@@ -234,7 +243,8 @@ export default {
       displayedMeasures,
       displayedMeasuresIndices,
       getDropdownControlsElementId,
-      getDropdownElementId
+      getDropdownElementId,
+      getDisplayedMeasureSelectionId: getDisplayedMeasureSelectionClass
     }
 
   },

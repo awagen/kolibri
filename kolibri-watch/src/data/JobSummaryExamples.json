@@ -36,13 +36,13 @@
       },
       "parameterEffectEstimate": {
         "maxMedianShift": {
-          "a": 0.010989218694689717,
+          "a": 0.40,
           "k1": 0.0,
           "q": 0.0
         },
         "maxSingleResultShift": {
           "a": 0.0,
-          "k1": 0.0,
+          "k1": 0.3,
           "q": 0.0
         }
       }
@@ -82,14 +82,14 @@
       },
       "parameterEffectEstimate": {
         "maxMedianShift": {
-          "a": 0.013185810116988939,
+          "a": 0.7,
           "k1": 0.0,
           "q": 0.0
         },
         "maxSingleResultShift": {
           "a": 0.0,
           "k1": 0.0,
-          "q": 0.0
+          "q": 0.1
         }
       }
     },
@@ -128,14 +128,14 @@
       },
       "parameterEffectEstimate": {
         "maxMedianShift": {
-          "a": 0.017541324375722422,
-          "k1": 0.0,
-          "q": 0.0
+          "a": 0.01,
+          "k1": 0.3,
+          "q": 0.2
         },
         "maxSingleResultShift": {
           "a": 0.0,
-          "k1": 0.0,
-          "q": 0.0
+          "k1": 0.5,
+          "q": 0.6
         }
       }
     },
@@ -174,14 +174,14 @@
       },
       "parameterEffectEstimate": {
         "maxMedianShift": {
-          "a": 0.010819159543958845,
-          "k1": 0.0,
-          "q": 0.0
+          "a": 0.0,
+          "k1": 0.75,
+          "q": 1.0
         },
         "maxSingleResultShift": {
           "a": 0.0,
-          "k1": 0.0,
-          "q": 0.0
+          "k1": 0.5,
+          "q": 0.9
         }
       }
     },
@@ -266,14 +266,14 @@
       },
       "parameterEffectEstimate": {
         "maxMedianShift": {
-          "a": 0.011021517749487786,
-          "k1": 0.0,
-          "q": 0.0
+          "a": 0.01102,
+          "k1": 1.0,
+          "q": 0.1
         },
         "maxSingleResultShift": {
-          "a": 0.0,
-          "k1": 0.0,
-          "q": 0.0
+          "a": 0.2,
+          "k1": 0.3,
+          "q": 0.6
         }
       }
     },
@@ -313,13 +313,13 @@
       "parameterEffectEstimate": {
         "maxMedianShift": {
           "a": 0.013206512220618305,
-          "k1": 0.0,
-          "q": 0.0
+          "k1": 0.09,
+          "q": 0.8
         },
         "maxSingleResultShift": {
-          "a": 0.0,
-          "k1": 0.0,
-          "q": 0.0
+          "a": 0.1,
+          "k1": 0.2,
+          "q": 0.3
         }
       }
     },
@@ -358,14 +358,14 @@
       },
       "parameterEffectEstimate": {
         "maxMedianShift": {
-          "a": 0.01400813986844962,
-          "k1": 0.0,
-          "q": 0.0
+          "a": 0.9,
+          "k1": 0.8,
+          "q": 0.7
         },
         "maxSingleResultShift": {
-          "a": 0.0,
-          "k1": 0.0,
-          "q": 0.0
+          "a": 0.4,
+          "k1": 0.5,
+          "q": 0.6
         }
       }
     },

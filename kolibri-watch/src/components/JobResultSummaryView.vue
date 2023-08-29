@@ -2,15 +2,61 @@
 
   <div class="row-container columns">
 
-    <form class="form-horizontal col-6 column">
+    <form class="form-horizontal k-left col-6 column">
 
       <div class="col-12 col-sm-12">
 
         <!-- Fill with some tabular overview -->
         <Table @sort-data="handleSortDataEvent"
                @id-sort="handleIdSort"
-               :result-summary="resultSummaryObj"
-               :header="'Summary: ' + resultSummaryObj.metricName"
+               :result-summary="resultSummaryObjArr[0]"
+               :header="resultSummaryObjArr[0].metricName"
+               index="0"
+        />
+
+      </div>
+
+    </form>
+
+    <form class="form-horizontal col-6 column">
+
+      <div class="col-12 col-sm-12">
+
+        <Table @sort-data="handleSortDataEvent"
+               @id-sort="handleIdSort"
+               :result-summary="resultSummaryObjArr[1]"
+               :header="resultSummaryObjArr[1].metricName"
+               index="1"
+        />
+
+      </div>
+
+    </form>
+
+    <form class="form-horizontal k-left col-6 column">
+
+      <div class="col-12 col-sm-12">
+
+        <Table @sort-data="handleSortDataEvent"
+               @id-sort="handleIdSort"
+               :result-summary="resultSummaryObjArr[2]"
+               :header="resultSummaryObjArr[2].metricName"
+               index="2"
+        />
+
+      </div>
+
+    </form>
+
+    <form class="form-horizontal col-6 column">
+
+      <div class="col-12 col-sm-12">
+
+        <Table @sort-data="handleSortDataEvent"
+               @id-sort="handleIdSort"
+               :result-summary="resultSummaryObjArr[3]"
+               :header="resultSummaryObjArr[3].metricName"
+               index="3"
         />
 
       </div>
@@ -33,83 +79,17 @@ import {ref} from "vue";
 
 export default {
   components: {Table},
-  methods: {
-
-    /**
-     * Extract value rows for given tag with values sorted according to the sequence given by the sorted parameter names
-     * @param tag
-     * @returns {{maxSingleResultShift: *, maxMedianShift: *}}
-     */
-    rowForTag(tag) {
-      let sortedParameterNames = this.sortedParameterNames
-      let maxMedianShift = json["results"][tag]["parameterEffectEstimate"]["maxMedianShift"]
-      let maxSingleResultShift = json["results"][tag]["parameterEffectEstimate"]["maxSingleResultShift"]
-
-      // rows, order by sorted parameters
-      let maxMedianShiftSequence = sortedParameterNames.map(name => maxMedianShift[name])
-          .map(numb => numb.toFixed(4))
-      let maxSingleResultShiftSequence = sortedParameterNames.map(name => maxSingleResultShift[name])
-          .map(numb => numb.toFixed(4))
-
-      return {
-        "maxMedianShift": maxMedianShiftSequence,
-        "maxSingleResultShift": maxSingleResultShiftSequence
-      }
-    },
-  },
-  computed: {
-
-    metricName(){
-      return json["metric"]
-    },
-
-    tags() {
-      return Object.keys(json["results"])
-    },
-
-    sortedParameterNames(){
-      let parameterNames = Object.keys(json["results"][this.tags[0]]["parameterEffectEstimate"]["maxMedianShift"])
-      parameterNames.sort().reverse()
-      console.info("Sorted Parameter Names:")
-      console.log(parameterNames)
-      return parameterNames
-    },
-
-    columnHeaders() {
-      return ["tag", ...this.sortedParameterNames]
-    },
-
-    /**
-     * Now bake tag values together with their respective row such that we have
-     * an array of arrays, each being one row to display.
-     *
-     * Right now we have the measures "maxMedianShift" and "maxSingleResultShift".
-     * The former calculates the median of the value distribution for all distinct values
-     * of the respective parameter, and computes maxValue - minValue.
-     * For maxSingleResultShift, all results with same other parameters but single parameter
-     * varied are compared, and maxValue - minValue is computed.
-     * [
-     * [tag1, measure1-1, measure1-2, measure1-3],
-     * [tag2, measure1-1, measure1-2, measure1-3]
-     * ]
-     * @returns {*}
-     */
-    dataRows(){
-      let measure = 'maxMedianShift'
-      let tags = this.tags
-      tags.sort().reverse()
-      // these still contain two lines per tag value
-      let dataRowsForTags = tags.map(tag => this.rowForTag(tag))
-      return dataRowsForTags.map(function(el, ind){
-        return [tags[ind], ...el[measure]]
-      })
-    },
-
-  },
+  methods: {},
+  computed: {},
 
   setup(props) {
 
-    let resultSummaryObj = ref(resultJsonToObj(json))
+    let resultSummaryObjArr = ref([
+        resultJsonToObj(json),
+        resultJsonToObj(json),
+        resultJsonToObj(json),
+        resultJsonToObj(json)
+    ])
 
     /**
      * Filling the json result into data object where
@@ -144,15 +124,15 @@ export default {
       )
     }
 
-    function handleSortDataEvent({measureIndex, columnIndex, decreasing}) {
-      resultSummaryObj.value.sortByMeasureAndColumnByIndices(measureIndex, columnIndex, decreasing)
+    function handleSortDataEvent({resultIndex, measureIndex, columnIndex, decreasing}) {
+      resultSummaryObjArr.value[resultIndex].sortByMeasureAndColumnByIndices(measureIndex, columnIndex, decreasing)
     }
 
-    function handleIdSort({decreasing}) {
-      resultSummaryObj.value.idSort(decreasing)
+    function handleIdSort({resultIndex, decreasing}) {
+      resultSummaryObjArr.value[resultIndex].idSort(decreasing)
     }
 
-    return {resultSummaryObj, handleSortDataEvent, handleIdSort}
+    return {resultSummaryObjArr, handleSortDataEvent, handleIdSort}
   }
 
 }
@@ -164,6 +144,14 @@ export default {
 
 .row-container {
   margin: 3em;
+}
+
+.form-horizontal.k-left {
+  border-right: .05rem solid black;
+}
+
+.form-horizontal {
+  border-top: .05rem solid black;
 }
 
 
