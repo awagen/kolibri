@@ -7,10 +7,10 @@
       <div class="col-12 col-sm-12">
 
         <!-- Fill with some tabular overview -->
-        <Table
-            :column-headers="columnHeaders"
-            :data="dataRows"
-            :header="'Summary: ' + metricName"
+        <Table @sort-data="handleSortDataEvent"
+               @id-sort="handleIdSort"
+               :result-summary="resultSummaryObj"
+               :header="'Summary: ' + resultSummaryObj.metricName"
         />
 
       </div>
@@ -109,7 +109,6 @@ export default {
 
   setup(props) {
 
-    // console.log(json)
     let resultSummaryObj = ref(resultJsonToObj(json))
 
     /**
@@ -136,14 +135,24 @@ export default {
         })
         return new RowsWithId(id, valueRowsForId)
       })
+      let metricName = json["metric"]
       return new ResultSummary(
+          metricName,
           parameterNames,
           effectMeasureNames,
           rowsWithIdArray
       )
     }
 
-    return {}
+    function handleSortDataEvent({measureIndex, columnIndex, decreasing}) {
+      resultSummaryObj.value.sortByMeasureAndColumnByIndices(measureIndex, columnIndex, decreasing)
+    }
+
+    function handleIdSort({decreasing}) {
+      resultSummaryObj.value.idSort(decreasing)
+    }
+
+    return {resultSummaryObj, handleSortDataEvent, handleIdSort}
   }
 
 }

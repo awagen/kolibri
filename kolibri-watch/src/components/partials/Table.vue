@@ -1,40 +1,55 @@
 <template>
 
+  <!-- TODO: need controls for selection of the current sort criterion for the values
+   and possibility to hide the additional data points  and to display a legend in case
+   multiple data values are selected -->
+
   <h4 class="tableHeader">{{ header }}</h4>
   <div class="k-table-wrapper">
     <table class="table">
       <thead>
       <tr>
-<!--        <th>nr</th>-->
-        <th :class="headerColumnIndex === 0 && 'firstColumn'" v-for="(headerColumn, headerColumnIndex) in columnHeaders">
+        <th class="firstColumn">
+          <span class="columnTitle">ID</span>
+          <i v-if="resultSummary.sortedById && resultSummary.idSortDecreasing" class="icon icon-arrow-down"
+             @click.prevent="handleIDSortEvent({decreasing: false})"></i>
+          <i v-if="resultSummary.sortedById && !resultSummary.idSortDecreasing" class="icon icon-arrow-up"
+             @click.prevent="handleIDSortEvent({decreasing: true})"></i>
+          <i v-if="!resultSummary.sortedById" class="icon icon-minus"
+             @click.prevent="handleIDSortEvent({decreasing: true})"></i>
+        </th>
+        <th v-for="(headerColumn, headerColumnIndex) in resultSummary.columnNames">
           <span class="columnTitle">{{ headerColumn }}</span>
-          <i v-if="columnSortDecreasing[headerColumnIndex]" class="icon icon-arrow-down" @click.prevent="invertSort(headerColumnIndex)"></i>
-          <i v-if="!columnSortDecreasing[headerColumnIndex]" class="icon icon-arrow-up" @click.prevent="invertSort(headerColumnIndex)"></i>
+          <i v-if="resultSummary.sortedByColumn[headerColumnIndex] && resultSummary.columnSortDecreasing[headerColumnIndex]" class="icon icon-arrow-down"
+             @click.prevent="handleSortEvent({measureIndex: 1, columnIndex: headerColumnIndex, decreasing: false})"></i>
+          <i v-if="resultSummary.sortedByColumn[headerColumnIndex] && !resultSummary.columnSortDecreasing[headerColumnIndex]" class="icon icon-arrow-up"
+             @click.prevent="handleSortEvent({measureIndex: 1, columnIndex: headerColumnIndex, decreasing: true})"></i>
+          <i v-if="!resultSummary.sortedByColumn[headerColumnIndex]" class="icon icon-minus"
+             @click.prevent="handleSortEvent({measureIndex: 1, columnIndex: headerColumnIndex, decreasing: true})"></i>
         </th>
       </tr>
       </thead>
       <tbody>
-      <!-- TODO: the current format has a value array as row. Since we have different criteria of evaluation,
-       we actually need an array of arrays of values and the sequence of related evaluation criteria and then
-       offer a sorting according to the selected measure -->
-      <tr v-for="(row, rowIndex) in currentData">
-<!--        <td>{{index}}</td>-->
-        <!-- pickHex([0, 255, 0], [255,0,0], 0.80 ) -->
-        <td :class="[ rowIndex % 2 === 0 ? 'rowEven' : 'rowUneven', columnIndex === 0 && 'firstColumn' ]"
-            v-for="(column, columnIndex) in row">
-          <div v-if="columnIndex > 0" class="bar bar-sm">
-            <!-- TODO: for now make the color weight the actual value divided by the biggest difference there is / biggest value
-             and limit the colors between [0.5 , 1.0]-->
-            <div class="bar-item" role="progressbar" :style="{'width': 40 + '%', 'background': heatMapColorForValue(1.0)}" aria-valuenow="95" aria-valuemin="0" aria-valuemax="100"></div>
-          </div>
-          {{ column }}
-          <template v-if="columnIndex > 0">
-            <div class="bar bar-sm">
-              <div class="bar-item" role="progressbar" :style="{'width': 40 + '%', 'background': heatMapColorForValue(0.0)}" aria-valuenow="95" aria-valuemin="0" aria-valuemax="100"></div>
-            </div>
-            {{ column }}
-          </template>
+      <tr v-for="(rowsWithId, rowIndex) in resultSummary.values">
+
+        <td :class="[ rowIndex % 2 === 0 ? 'rowEven' : 'rowUneven', 'firstColumn' ]">
+          {{ rowsWithId.id }}
         </td>
+
+        <td :class="[ rowIndex % 2 === 0 ? 'rowEven' : 'rowUneven']"
+            v-for="(_, columnIndex) in rowsWithId.rows[0]">
+
+          <template v-for="(subRow, subRowIndex) in rowsWithId.rows">
+            <div class="bar bar-sm">
+              <div class="bar-item" role="progressbar"
+                   :style="{'width': measureToScaledValue(subRow[columnIndex], resultSummary.maxMeasureValue) * 100 + '%', 'background': heatMapColorForValue(measureToScaledValue(subRow[columnIndex], resultSummary.maxMeasureValue))}" :aria-valuenow="(measureToScaledValue(subRow[columnIndex], resultSummary.maxMeasureValue)) * 100"
+                   aria-valuemin="0" aria-valuemax="100"></div>
+            </div>
+            <div>{{ subRow[columnIndex] }}</div>
+          </template>
+
+        </td>
+
       </tr>
       </tbody>
     </table>
@@ -44,79 +59,64 @@
 <script>
 
 
-import {ref} from "vue";
-import {numberAwareComparison} from "@/utils/dataFunctions";
+import {ResultSummary} from "@/utils/resultSummaryObjects";
 
 export default {
-  // methods: {math},
-  /**
-   * columnHeaders: Assumes array of header names
-   * data: Assumes array of arrays, where each single array holds the column values
-   * corresponding to the header for the respective array-index
-   */
   props: {
-    columnHeaders: {
-      type: Array,
-      required: true,
-      default: []
-    },
-    data: {
-      type: Array[Array],
-      required: true,
-      default: []
+    resultSummary: {
+      type: ResultSummary,
+      required: false
     },
     header: {
       type: String,
-      required: false,
-      default: ""
+      required: false
     }
   },
-  setup(props){
+  setup(props, context) {
 
 
-    let columnSortDecreasing = ref(props.columnHeaders.map(_ => true))
-
-    let currentData = ref(props.data.map(_ => _))
-
-    function sortData(index, decreasing) {
-      // sort the actual data according to sort direction
-      let sortedArr = [...currentData.value].sort(function(seq1, seq2) {
-        return numberAwareComparison(seq1[index], seq2[index])
-      })
-      if (decreasing) sortedArr.reverse()
-      return sortedArr
+    /**
+     * Given a value and a max value, scale to fraction of scaled value and limit to 1.0
+     *
+     * @param measure
+     * @param maxValue
+     * @returns {number}
+     */
+    function measureToScaledFraction(measure, maxValue) {
+      return Math.max(0.0, Math.min(1.0, measure / maxValue))
     }
 
     /**
-     * Based on current sort order, change direction of sorting.
-     * @param index
+     * Pass value within [0, 1]. Returns hsl color value that fades from red to green as the value increases.
+     * @param value
+     * @returns {string}
      */
-    function invertSort(index) {
-      // change the arrow direction
-      let decreasing = !columnSortDecreasing.value[index]
-      columnSortDecreasing.value[index] = decreasing
-      currentData.value = sortData(index, decreasing)
-    }
-
-    /* value within [0, 1] */
-    function heatMapColorForValue(value){
-      // effectively restricting to colors between green and redand turning it around such that smaller values are
+    function heatMapColorForValue(value) {
+      // effectively restricting to colors between green and red and turning it around such that smaller values are
       // towards red, bigger towards green
       let adjustedValue = -(value * 0.5 + 0.5)
       let h = (1.0 - adjustedValue) * 240
       return "hsl(" + h + ", 100%, 50%)";
     }
 
-    return {
-      columnSortDecreasing, heatMapColorForValue, invertSort, currentData
+    function handleSortEvent({measureIndex, columnIndex, decreasing}) {
+      context.emit("sortData", {measureIndex, columnIndex, decreasing})
     }
 
-  }
+    function handleIDSortEvent({decreasing}) {
+      context.emit("idSort", {decreasing})
+    }
+
+    return {
+      handleSortEvent, handleIDSortEvent, heatMapColorForValue, measureToScaledValue: measureToScaledFraction
+    }
+
+  },
+  emits: ["sortData", "idSort"]
 
 }
 
 </script>
-
 
 
 <style scoped>
@@ -124,9 +124,9 @@ export default {
 .k-table-wrapper {
   display: inline-block;
   height: auto;
-  max-height:60em;
+  max-height: 60em;
   overflow: auto;
-  width:100%;
+  width: 100%;
 }
 
 /* keeps the header at the top while scrolling */
@@ -141,7 +141,7 @@ table {
   border-collapse: collapse;
   width: 100%;
   /* set column width based on width of cells in first row */
-  table-layout: fixed ;
+  table-layout: fixed;
 
   font-size: medium;
   color: #9C9C9C;
