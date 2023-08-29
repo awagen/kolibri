@@ -50,4 +50,20 @@ function selectedDataToParameterValuesJson(selectedData){
     })
 }
 
-export {filteredResultsReduced, selectedDataToParameterValuesJson}
+/**
+ * Sorting two values. If the values can be parsed to float,
+ * they will be sorted accordingly, otherwise according to their type.
+ *
+ * Note: by default gives an increasing sorting
+ *
+ * @param value1
+ * @param value2
+ */
+function numberAwareComparison(value1: any, value2: any) {
+    if (!isNaN(parseFloat(value1)) && !isNaN(parseFloat(value2))) {
+        return parseFloat(value1) - parseFloat(value2)
+    }
+    return value1 < value2 ? -1 : 1
+}
+
+export {filteredResultsReduced, selectedDataToParameterValuesJson, numberAwareComparison}
