@@ -1,10 +1,58 @@
 <template>
 
-  <!-- TODO: need controls for selection of the current sort criterion for the values
-   and possibility to hide the additional data points  and to display a legend in case
-   multiple data values are selected -->
-
   <h4 class="tableHeader">{{ header }}</h4>
+
+  <!-- Selection menu to refine whats displayed, what the sorting criterion is and the like
+       NOTE: put in separate component
+  -->
+  <!-- Dropdown activate / deactivate -->
+  <div :id="getDropdownControlsElementId()">
+    <span class="k-tableControls">Controls</span>
+    <i :class="['icon', menuDropDownActive ? 'icon-arrow-down' : 'icon-arrow-up']" @click.prevent="toggleMenuDropdown"></i>
+  </div>
+  <!-- dropdown content -->
+  <div :id="getDropdownElementId()" :class="['dropdown', menuDropDownActive && 'active']">
+
+    <ul class="menu">
+      <li class="divider" data-content="Sorting Measure"/>
+      <!-- Sort measure selection -->
+      <template v-for="(element, index) in resultSummary.measureNames">
+        <li class="menu-item">
+          <label class="form-radio form-inline">
+            <input type="radio"
+                   :name="resultSummary.metricName + '-sortCriterion'"
+                   :value="element"
+                   :checked="(sortByMeasureIndex === index) ? '' : null"
+                   @change="setSortByMeasureIndex(index)"
+            />
+            <i class="form-icon"></i>
+            {{ element }}
+          </label>
+        </li>
+      </template>
+
+      <li class="divider" data-content="Displayed Measure"/>
+      <template v-for="(element, index) in resultSummary.measureNames">
+        <li class="menu-item">
+          <label class="form-checkbox form-inline">
+            <input :class="['displayMeasureSelection']"
+                   :checked="displayedMeasures.includes(element)"
+                   type="checkbox"
+                   :name="resultSummary.metricName + '-displayCriterion'"
+                   :value="element"
+                   @change="handleMeasureDisplaySelectionChange()"
+            />
+            <i class="form-icon"></i>
+            {{ element }}
+          </label>
+        </li>
+      </template>
+
+    </ul>
+
+  </div>
+
+
   <div class="k-table-wrapper">
     <table class="table">
       <thead>
@@ -21,11 +69,11 @@
         <th v-for="(headerColumn, headerColumnIndex) in resultSummary.columnNames">
           <span class="columnTitle">{{ headerColumn }}</span>
           <i v-if="resultSummary.sortedByColumn[headerColumnIndex] && resultSummary.columnSortDecreasing[headerColumnIndex]" class="icon icon-arrow-down"
-             @click.prevent="handleSortEvent({measureIndex: 1, columnIndex: headerColumnIndex, decreasing: false})"></i>
+             @click.prevent="handleSortEvent({measureIndex: sortByMeasureIndex, columnIndex: headerColumnIndex, decreasing: false})"></i>
           <i v-if="resultSummary.sortedByColumn[headerColumnIndex] && !resultSummary.columnSortDecreasing[headerColumnIndex]" class="icon icon-arrow-up"
-             @click.prevent="handleSortEvent({measureIndex: 1, columnIndex: headerColumnIndex, decreasing: true})"></i>
+             @click.prevent="handleSortEvent({measureIndex: sortByMeasureIndex, columnIndex: headerColumnIndex, decreasing: true})"></i>
           <i v-if="!resultSummary.sortedByColumn[headerColumnIndex]" class="icon icon-minus"
-             @click.prevent="handleSortEvent({measureIndex: 1, columnIndex: headerColumnIndex, decreasing: true})"></i>
+             @click.prevent="handleSortEvent({measureIndex: sortByMeasureIndex, columnIndex: headerColumnIndex, decreasing: true})"></i>
         </th>
       </tr>
       </thead>
@@ -40,12 +88,15 @@
             v-for="(_, columnIndex) in rowsWithId.rows[0]">
 
           <template v-for="(subRow, subRowIndex) in rowsWithId.rows">
-            <div class="bar bar-sm">
-              <div class="bar-item" role="progressbar"
-                   :style="{'width': measureToScaledValue(subRow[columnIndex], resultSummary.maxMeasureValue) * 100 + '%', 'background': heatMapColorForValue(measureToScaledValue(subRow[columnIndex], resultSummary.maxMeasureValue))}" :aria-valuenow="(measureToScaledValue(subRow[columnIndex], resultSummary.maxMeasureValue)) * 100"
-                   aria-valuemin="0" aria-valuemax="100"></div>
-            </div>
-            <div>{{ subRow[columnIndex] }}</div>
+            <!-- Only selecting those rows that match the selected measures -->
+            <template v-if="displayedMeasuresIndices.includes(subRowIndex)">
+              <div class="bar bar-sm">
+                <div class="bar-item" role="progressbar"
+                     :style="{'width': measureToScaledFraction(subRow[columnIndex], resultSummary.maxMeasureValue) * 100 + '%', 'background': heatMapColorForValue(measureToScaledFraction(subRow[columnIndex], resultSummary.maxMeasureValue))}" :aria-valuenow="(measureToScaledFraction(subRow[columnIndex], resultSummary.maxMeasureValue)) * 100"
+                     aria-valuemin="0" aria-valuemax="100"></div>
+              </div>
+              <div>{{ subRow[columnIndex] }}</div>
+            </template>
           </template>
 
         </td>
@@ -60,6 +111,8 @@
 
 
 import {ResultSummary} from "@/utils/resultSummaryObjects";
+import {ref} from "vue";
+import {range} from "lodash";
 
 export default {
   props: {
@@ -73,6 +126,67 @@ export default {
     }
   },
   setup(props, context) {
+
+    let sortByMeasureIndex = ref(0)
+    let menuDropDownActive = ref(false)
+    let displayedMeasures = ref(props.resultSummary.measureNames.map(_ => _))
+    let displayedMeasuresIndices = ref(range(0, props.resultSummary.measureNames.length, 1))
+
+    document.addEventListener("click", closeDropdownIfClickOutsideOfControlElements)
+
+    /**
+     * TODO: if we display multiple summaries on a page, need to add index to id
+     * @returns {string}
+     */
+    function getDropdownControlsElementId(){
+      return props.resultSummary.metricName + '-summaryControls'
+    }
+
+    /**
+     * TODO: if we display multiple summaries on a page, need to add index to id
+     * @returns {string}
+     */
+    function getDropdownElementId(){
+      return props.resultSummary.metricName + '-summaryMenu'
+    }
+
+    /**
+     * Close control menu in case
+     * @param event
+     */
+    function closeDropdownIfClickOutsideOfControlElements(event) {
+      let dropdown = document.getElementById(getDropdownElementId())
+      let dropdownControls = document.getElementById(getDropdownControlsElementId())
+      if (!dropdown.contains(event.target) && !dropdownControls.contains(event.target)) {
+        if (menuDropDownActive.value) toggleMenuDropdown()
+      }
+    }
+
+    /**
+     * Toggles display of dropdown
+     */
+    function toggleMenuDropdown(){
+      menuDropDownActive.value = !menuDropDownActive.value
+    }
+
+    function selectedMeasureIndices() {
+      return displayedMeasures.value.map(measure => props.resultSummary.measureNames.indexOf(measure))
+    }
+
+    function handleMeasureDisplaySelectionChange(){
+      let measureSelection = Array.from(document.getElementsByClassName("displayMeasureSelection"))
+           .filter(el => el.checked)
+           .map(el => el.getAttribute("value"))
+      displayedMeasures.value = measureSelection
+      displayedMeasuresIndices.value = selectedMeasureIndices()
+      console.debug(`measure selection: ${measureSelection}`)
+    }
+
+    function setSortByMeasureIndex(index) {
+      if (index < props.resultSummary.measureNames.length) {
+        sortByMeasureIndex.value = index
+      }
+    }
 
 
     /**
@@ -108,7 +222,19 @@ export default {
     }
 
     return {
-      handleSortEvent, handleIDSortEvent, heatMapColorForValue, measureToScaledValue: measureToScaledFraction
+      handleSortEvent,
+      handleIDSortEvent,
+      heatMapColorForValue,
+      measureToScaledFraction,
+      sortByMeasureIndex,
+      setSortByMeasureIndex,
+      menuDropDownActive,
+      toggleMenuDropdown,
+      handleMeasureDisplaySelectionChange,
+      displayedMeasures,
+      displayedMeasuresIndices,
+      getDropdownControlsElementId,
+      getDropdownElementId
     }
 
   },
@@ -120,6 +246,18 @@ export default {
 
 
 <style scoped>
+
+ul.menu {
+  text-align: left;
+}
+
+.dropdown {
+  position: absolute;
+}
+
+.k-tableControls {
+  margin-right: 1em;
+}
 
 .k-table-wrapper {
   display: inline-block;
