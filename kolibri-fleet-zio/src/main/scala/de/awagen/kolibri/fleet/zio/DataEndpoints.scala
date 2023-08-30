@@ -35,7 +35,7 @@ import spray.json._
 import zio.http.HttpAppMiddleware.cors
 import zio.http._
 import zio.stream.ZStream
-import zio.{IO, Task, ZIO}
+import zio.{Chunk, IO, Task, ZIO}
 
 import java.io.IOException
 import java.nio.charset.Charset
@@ -182,6 +182,41 @@ object DataEndpoints {
   }
 
   /**
+   * Retrieve mapping of dateId to List of jobIds for which
+   * a result summary exists
+   * @return
+   */
+  private[this] def getDateToJobIdMappingForExistingSummaries: ZIO[DataOverviewReader, Serializable, Map[String, Chunk[String]]] = {
+    for {
+      overviewReader <- ZIO.service[DataOverviewReader]
+      resultPath <- ZIO.fromOption(AppProperties.config.outputResultsPath.map(x => x.stripSuffix("/")))
+      dateFolders <- getSubFolders(overviewReader, resultPath)
+      _ <- ZIO.logDebug(s"Date folders: ${dateFolders}")
+      jobResultFoldersPerDate <- ZStream.fromIterable(dateFolders)
+        .mapZIO(dateFolder => {
+          for {
+            jobFoldersForDate <- getSubFolders(overviewReader, s"$resultPath/$dateFolder")
+            _ <- ZIO.logDebug(s"""Sub-folders for date '$dateFolder': ${jobFoldersForDate.mkString(",")}""")
+            // look into each job folder whether there is a 'summary' folder with 'summary.json' in it
+            dateJobSummaryFolderTuples <- ZStream.fromIterable(jobFoldersForDate)
+              .mapZIO(jobFolder => {
+                val relativeJobFolderPath = s"$resultPath/$dateFolder/$jobFolder"
+                for {
+                  jobSubFolders <- getSubFolders(overviewReader, relativeJobFolderPath)
+                  _ <- ZIO.logDebug(s"""Files / folders for date '$dateFolder', job '$jobFolder': ${jobSubFolders.mkString(",")}""")
+                  jobFoldersWithSummaryFolder <- ZIO.attempt(jobSubFolders.filter(subFolder => subFolder.stripSuffix("/").stripPrefix("/") == "summary"))
+                  filteredSubFolders <- ZIO.attempt({
+                    jobFoldersWithSummaryFolder.map(summaryFolder => overviewReader.listResources(s"$relativeJobFolderPath/$summaryFolder", x => x.endsWith("summary.json")))
+                  })
+                } yield (dateFolder, jobFolder, filteredSubFolders)
+              })
+              .runCollect
+          } yield dateJobSummaryFolderTuples
+        }).runCollect
+    } yield jobResultFoldersPerDate.flatten.filter(x => x._3.nonEmpty).groupMap(x => x._1)(x => x._2)
+  }
+
+  /**
    * Provide mapping of dateIds to jobIds Map(dateId1 -> Seq(jobId1, ...)...)
    * for which results exist
    * @return
@@ -271,8 +306,17 @@ object DataEndpoints {
         response <- ZIO.attempt(Response.json(ResponseContent[Map[String, Seq[String]]](dateToResultFolderMapping, "").toJson.toString))
       } yield response).catchAll(throwable =>
         ZIO.logWarning(s"Error on requesting result folders:\n$throwable")
-          *> ZIO.succeed(Response.text(s"Failed requesting result folders"))
+          *> ZIO.succeed(Response.json(ResponseContent[Map[String, Seq[String]]](Map.empty, s"Failed requesting result folders").toJson.toString).withStatus(Status.InternalServerError))
       ) @@ countAPIRequests("GET", "/results/folders")
+    case req@Method.GET -> Root / "results" / "summary" / "overview" =>
+      (for {
+        _ <- ZIO.logDebug("Collecting overview data for result summaries")
+        data <- getDateToJobIdMappingForExistingSummaries
+        result <- ZIO.attempt(Response.json(ResponseContent[Map[String, Seq[String]]](data, "").toJson.toString))
+      } yield result).catchAll(throwable =>
+        ZIO.logWarning(s"Error on requesting dateId / jobId combinations with summary files:\n$throwable")
+          *> ZIO.succeed(Response.json(ResponseContent[Map[String, Seq[String]]](Map.empty, s"Failed requesting dateId / jobId combinations with summary files").toJson.toString).withStatus(Status.InternalServerError))
+      ) @@ countAPIRequests("GET", "/results/summary/overview")
     // endpoint for posting a summarize request. Will generate a summary of all results in the respective path
     // and write the result json into the summary folder within the respective job results folder
     case req@Method.POST -> Root / "results" / "summary" =>

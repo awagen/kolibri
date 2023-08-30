@@ -369,12 +369,38 @@ Example response:
 }
 ```
 
-- `/results/summary/[dateId]/[jobId]` (GET): retrieve available summary files for a date and job
+- `/results/summary/overview` (GET): retrieve mapping of dateIds to list of jobIds for which a summary exists
+`curl "localhost:8001/results/summary/overview`
 
+Example response:
+```json
+{
+  "data": {
+    "2023-08-25": [
+      "taskSequenceTestJob2"
+    ],
+    "2023-07-14": [
+      "taskSequenceTestJob"
+    ],
+    "2023-08-23": [
+      "taskSequenceTestJob2",
+      "taskSequenceTes4Job2"
+    ],
+    "2023-08-24": [
+      "test1",
+      "testA",
+      "taskSequenceTestJob2"
+    ]
+  },
+  "errorMessage": ""
+}
+```
+
+
+- `/results/summary/[dateId]/[jobId]` (GET): retrieve available summary files for a date and job
 ```
 curl "localhost:8001/results/summary/2023-08-24/taskSequenceTestJob2"
 ```
-
 Example response:
 
 ```json
@@ -387,11 +413,9 @@ Example response:
 ```
 
 - `/results/summary/[dateId]/[jobId]/content?file=[summary-file].json` (GET): retrieve content of specific summary file
-
 ```
 curl "localhost:8001/results/summary/2023-08-24/taskSequenceTestJob2/content?file=summary.json"
 ```
-
 Example response:
 
 ```json
