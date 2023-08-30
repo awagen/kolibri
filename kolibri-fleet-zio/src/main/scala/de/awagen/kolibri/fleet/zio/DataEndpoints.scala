@@ -30,7 +30,7 @@ import de.awagen.kolibri.fleet.zio.config.{AppConfig, AppProperties}
 import de.awagen.kolibri.fleet.zio.metrics.Metrics.CalculationsWithMetrics.countAPIRequests
 import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, Reader}
 import de.awagen.kolibri.storage.io.writer.Writers.Writer
-import spray.json.DefaultJsonProtocol.{JsValueFormat, StringJsonFormat, immSeqFormat, jsonFormat3, jsonFormat4, mapFormat}
+import spray.json.DefaultJsonProtocol.{JsValueFormat, StringJsonFormat, immSeqFormat, jsonFormat2, jsonFormat3, jsonFormat4, mapFormat}
 import spray.json._
 import zio.http.HttpAppMiddleware.cors
 import zio.http._
@@ -217,12 +217,10 @@ object DataEndpoints {
   }
 
   case class SummarizeCommand(dateId: String,
-                              jobId: String,
-                              criterionMetricName: String)
+                              jobId: String)
 
   private val DATE_ID_KEY = "dateId"
   private val JOB_ID_KEY = "jobId"
-  private val CRITERION_METRIC_NAME_KEY = "criterionMetricName"
 
   // NOTE: could already pick the data available and make the selectors below restricted (e.g dateId and then the correct
   // jobIds
@@ -240,19 +238,13 @@ object DataEndpoints {
           StringStructDef,
           required = true,
           description = "jobId for result selection."
-        ),
-        FieldDef(
-          StringConstantStructDef(CRITERION_METRIC_NAME_KEY),
-          StringStructDef,
-          required = true,
-          description = "Metric name to use as summary criterion."
         )
       ),
       Seq.empty
     )
 
 
-  implicit val summarizeCommandFormat = jsonFormat3(SummarizeCommand)
+  implicit val summarizeCommandFormat = jsonFormat2(SummarizeCommand)
 
   def dataEndpoints = Http.collectZIO[Request] {
     case Method.GET -> Root / "results" / "folders" =>
@@ -266,23 +258,25 @@ object DataEndpoints {
     // endpoint for posting a summarize request. Will generate a summary of all results in the respective path
     // and write the result json into the summary folder within the respective job results folder
     case req@Method.POST -> Root / "results" / "summary" =>
+      val summaryLockFilename = "summary.lock"
       (for {
         submittedBody <- req.body.asString(Charset.forName("UTF-8"))
         parsedCmd <- ZIO.attempt(submittedBody.parseJson.convertTo[SummarizeCommand])
         _ <- ZIO.logInfo(s"Received request to summarize results, cmd = '$submittedBody'")
         overviewReader <- ZIO.service[DataOverviewReader]
+        summaryBaseFolder <- ZIO.succeed(s"${AppProperties.config.outputResultsPath.get}/${parsedCmd.dateId}/${parsedCmd.jobId}/summary/")
         existingSummaryFiles <- ZIO.attempt(overviewReader
           .listResources(
-            s"${AppProperties.config.outputResultsPath.get}/${parsedCmd.dateId}/${parsedCmd.jobId}/summary/",
+            summaryBaseFolder,
             _ => true).map(x => x.split("/").last)
         )
         _ <- ZIO.logInfo(s"Available summary files: $existingSummaryFiles")
-        response <- ZIO.whenCase(existingSummaryFiles.contains(s"summary_${parsedCmd.criterionMetricName}.lock"))({
+        response <- ZIO.whenCase(existingSummaryFiles.contains(summaryLockFilename))({
           case false =>
             for {
               _ <- ZIO.logInfo(s"Trying to generate summarize results, cmd = '$submittedBody'")
               fileWriter <- ZIO.service[Writer[String, String, _]]
-              lockFilePath <- ZIO.succeed(s"${AppProperties.config.outputResultsPath.get}/${parsedCmd.dateId}/${parsedCmd.jobId}/summary/summary_${parsedCmd.criterionMetricName}.lock")
+              lockFilePath <- ZIO.succeed(s"$summaryBaseFolder$summaryLockFilename")
               _ <- ZIO.fromEither(fileWriter.write("", lockFilePath))
               _ <- ZIO.attemptBlocking({
                 AggregationFunctions.SummarizeJob(
@@ -290,7 +284,6 @@ object DataEndpoints {
                   overviewReader = AppConfig.persistenceModule.persistenceDIModule.dataOverviewReader(_ => true),
                   fileReader = AppConfig.persistenceModule.persistenceDIModule.reader,
                   writer = AppConfig.persistenceModule.persistenceDIModule.writer,
-                  criterionMetricName = parsedCmd.criterionMetricName,
                   summarySubfolder = "summary"
                 ).execute
               })

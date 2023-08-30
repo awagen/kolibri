@@ -34,8 +34,8 @@ const routes = [
         component: ResultView
     },
     {
-        path: "/testSummary",
-        name: "TestSummary",
+        path: "/resultSummary",
+        name: "ResultSummary",
         component: JobResultSummaryView
     },
     {

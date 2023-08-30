@@ -22,6 +22,7 @@ import de.awagen.kolibri.datatypes.stores.immutable.MetricRow
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.utils.{FuncUtils, MathUtils}
 import de.awagen.kolibri.datatypes.values.MetricValue
+import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics
 import spray.json.{DefaultJsonProtocol, JsonFormat}
 
@@ -127,6 +128,16 @@ object MetricSummaries extends DefaultJsonProtocol {
       medianValues.max - medianValues.min
     }
 
+  }
+
+  /**
+   * Pick all metrics that are of type double and generate the summary for all metrics
+   */
+  def getMetricNameToSummaryMapping(results: Seq[(Tag, Seq[MetricRow])]): Map[String, RunSummary] = {
+    val allMetricNames = results.head._2.head.metricNames
+    val allDoubleMetrics = allMetricNames
+      .filter(x => results.head._2.head.metrics(x).biValue.value2.aggregationType == AggregationType.DOUBLE_AVG)
+    allDoubleMetrics.map(metricName => (metricName, summarize(results, metricName))).toMap
   }
 
 

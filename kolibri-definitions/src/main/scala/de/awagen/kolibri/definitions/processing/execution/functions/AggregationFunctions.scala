@@ -72,14 +72,12 @@ object AggregationFunctions {
    * @param overviewReader - reader of directory content
    * @param fileReader - file reader
    * @param writer - file writer
-   * @param criterionMetricName - the metric name of the metric used to compare variants (parameter settings)
    * @param summarySubfolder - the folder where the summary is persisted.
    */
   case class SummarizeJob(jobResultsFolder: String,
                           overviewReader: DataOverviewReader,
                           fileReader: Reader[String, Seq[String]],
                           writer: Writer[String, String, _],
-                          criterionMetricName: String,
                           summarySubfolder: String = "summary") extends Execution[Unit] {
     override def execute: Either[TaskFailType, Unit] = {
       logger.info(s"Looking for result files in folder: $jobResultsFolder")
@@ -97,10 +95,10 @@ object AggregationFunctions {
             logger.warn(s"""Failed adding file to summary: $file\nmsg: ${e.getMessage}\ntrace: ${e.getStackTrace.mkString("\n")}""")
         }
       })
-      val runSummary: RunSummary = summarize(tagToResultMap.map(x => (x.id, x.rows.values.toSeq)), criterionMetricName)
-      val metricSummaryJsonString = runSummary.toJson.toString()
+      val runSummaryMapping: Map[String, RunSummary] = getMetricNameToSummaryMapping(tagToResultMap.map(x => (x.id, x.rows.values.toSeq)))
+      val metricSummaryJsonString = runSummaryMapping.toJson.toString()
       // write to file
-      writer.write(metricSummaryJsonString, s"$jobResultsFolder/$summarySubfolder/summary_${criterionMetricName}.json")
+      writer.write(metricSummaryJsonString, s"$jobResultsFolder/$summarySubfolder/summary.json")
       Right(())
     }
   }
