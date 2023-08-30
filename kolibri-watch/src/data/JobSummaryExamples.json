@@ -1,463 +1,1860 @@
 {
-  "metric": "NDCG_10",
-  "results": {
-    "((q=q7))": {
-      "bestAndWorstConfigs": {
-        "best": [
-          {
-            "a": [
-              "a5"
-            ],
-            "k1": [
-              "v1",
-              "v2"
-            ],
-            "q": [
-              "q7"
-            ]
-          },
-          0.6855983189912663
-        ],
-        "worst": [
-          {
-            "a": [
-              "a9"
-            ],
-            "k1": [
-              "v1",
-              "v2"
-            ],
-            "q": [
-              "q7"
-            ]
-          },
-          0.6750531211165659
-        ]
-      },
-      "parameterEffectEstimate": {
-        "maxMedianShift": {
-          "a": 0.40,
-          "k1": 0.0,
-          "q": 0.0
+  "NDCG_10": {
+    "metric": "NDCG_10",
+    "results": {
+      "((q=q7))": {
+        "bestAndWorstConfigs": {
+          "best": [
+            {
+              "a": [
+                "a5"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q7"
+              ]
+            },
+            0.6855983189912663
+          ],
+          "worst": [
+            {
+              "a": [
+                "a9"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q7"
+              ]
+            },
+            0.6750531211165659
+          ]
         },
-        "maxSingleResultShift": {
-          "a": 0.0,
-          "k1": 0.3,
-          "q": 0.0
+        "parameterEffectEstimate": {
+          "maxMedianShift": {
+            "a": 0.40,
+            "k1": 0.0,
+            "q": 0.0
+          },
+          "maxSingleResultShift": {
+            "a": 0.0,
+            "k1": 0.3,
+            "q": 0.0
+          }
+        }
+      },
+      "((q=q1))": {
+        "bestAndWorstConfigs": {
+          "best": [
+            {
+              "a": [
+                "a1"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q1"
+              ]
+            },
+            0.6779543908079728
+          ],
+          "worst": [
+            {
+              "a": [
+                "a7"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q1"
+              ]
+            },
+            0.6673867087869434
+          ]
+        },
+        "parameterEffectEstimate": {
+          "maxMedianShift": {
+            "a": 0.7,
+            "k1": 0.0,
+            "q": 0.0
+          },
+          "maxSingleResultShift": {
+            "a": 0.0,
+            "k1": 0.0,
+            "q": 0.1
+          }
+        }
+      },
+      "((q=q8))": {
+        "bestAndWorstConfigs": {
+          "best": [
+            {
+              "a": [
+                "a7"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q8"
+              ]
+            },
+            0.6728646200189348
+          ],
+          "worst": [
+            {
+              "a": [
+                "a4"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q8"
+              ]
+            },
+            0.6622830079624596
+          ]
+        },
+        "parameterEffectEstimate": {
+          "maxMedianShift": {
+            "a": 0.01,
+            "k1": 0.3,
+            "q": 0.2
+          },
+          "maxSingleResultShift": {
+            "a": 0.0,
+            "k1": 0.5,
+            "q": 0.6
+          }
+        }
+      },
+      "((q=q10))": {
+        "bestAndWorstConfigs": {
+          "best": [
+            {
+              "a": [
+                "a4"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q10"
+              ]
+            },
+            0.6876636420598735
+          ],
+          "worst": [
+            {
+              "a": [
+                "a5"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q10"
+              ]
+            },
+            0.6768444825159147
+          ]
+        },
+        "parameterEffectEstimate": {
+          "maxMedianShift": {
+            "a": 0.0,
+            "k1": 0.75,
+            "q": 1.0
+          },
+          "maxSingleResultShift": {
+            "a": 0.0,
+            "k1": 0.5,
+            "q": 0.9
+          }
+        }
+      },
+      "((q=q3))": {
+        "bestAndWorstConfigs": {
+          "best": [
+            {
+              "a": [
+                "a10"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q3"
+              ]
+            },
+            0.70330263096681
+          ],
+          "worst": [
+            {
+              "a": [
+                "a6"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q3"
+              ]
+            },
+            0.6932150559196751
+          ]
+        },
+        "parameterEffectEstimate": {
+          "maxMedianShift": {
+            "a": 0.010087575047134867,
+            "k1": 0.0,
+            "q": 0.0
+          },
+          "maxSingleResultShift": {
+            "a": 0.0,
+            "k1": 0.0,
+            "q": 0.0
+          }
+        }
+      },
+      "((q=q9))": {
+        "bestAndWorstConfigs": {
+          "best": [
+            {
+              "a": [
+                "a3"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q9"
+              ]
+            },
+            0.7322057892429067
+          ],
+          "worst": [
+            {
+              "a": [
+                "a10"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q9"
+              ]
+            },
+            0.7211842714934189
+          ]
+        },
+        "parameterEffectEstimate": {
+          "maxMedianShift": {
+            "a": 0.01102,
+            "k1": 1.0,
+            "q": 0.1
+          },
+          "maxSingleResultShift": {
+            "a": 0.2,
+            "k1": 0.3,
+            "q": 0.6
+          }
+        }
+      },
+      "((q=q4))": {
+        "bestAndWorstConfigs": {
+          "best": [
+            {
+              "a": [
+                "a6"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q4"
+              ]
+            },
+            0.6533867258914473
+          ],
+          "worst": [
+            {
+              "a": [
+                "a1"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q4"
+              ]
+            },
+            0.6432054161998944
+          ]
+        },
+        "parameterEffectEstimate": {
+          "maxMedianShift": {
+            "a": 0.013206512220618305,
+            "k1": 0.09,
+            "q": 0.8
+          },
+          "maxSingleResultShift": {
+            "a": 0.1,
+            "k1": 0.2,
+            "q": 0.3
+          }
+        }
+      },
+      "((q=q6))": {
+        "bestAndWorstConfigs": {
+          "best": [
+            {
+              "a": [
+                "a10"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q6"
+              ]
+            },
+            0.6589173727055805
+          ],
+          "worst": [
+            {
+              "a": [
+                "a1"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q6"
+              ]
+            },
+            0.6449092328371309
+          ]
+        },
+        "parameterEffectEstimate": {
+          "maxMedianShift": {
+            "a": 0.9,
+            "k1": 0.8,
+            "q": 0.7
+          },
+          "maxSingleResultShift": {
+            "a": 0.4,
+            "k1": 0.5,
+            "q": 0.6
+          }
+        }
+      },
+      "((q=q2))": {
+        "bestAndWorstConfigs": {
+          "best": [
+            {
+              "a": [
+                "a9"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q2"
+              ]
+            },
+            0.6243645948746191
+          ],
+          "worst": [
+            {
+              "a": [
+                "a1"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q2"
+              ]
+            },
+            0.6126035952414102
+          ]
+        },
+        "parameterEffectEstimate": {
+          "maxMedianShift": {
+            "a": 0.01176099963320898,
+            "k1": 0.0,
+            "q": 0.0
+          },
+          "maxSingleResultShift": {
+            "a": 0.0,
+            "k1": 0.0,
+            "q": 0.0
+          }
+        }
+      },
+      "((q=q5))": {
+        "bestAndWorstConfigs": {
+          "best": [
+            {
+              "a": [
+                "a5"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q5"
+              ]
+            },
+            0.6439163905223448
+          ],
+          "worst": [
+            {
+              "a": [
+                "a5"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q5"
+              ]
+            },
+            0.6439163905223448
+          ]
+        },
+        "parameterEffectEstimate": {
+          "maxMedianShift": {
+            "a": 0.007013323687080963,
+            "k1": 0.0,
+            "q": 0.0
+          },
+          "maxSingleResultShift": {
+            "a": 0.0,
+            "k1": 0.0,
+            "q": 0.0
+          }
         }
       }
-    },
-    "((q=q1))": {
-      "bestAndWorstConfigs": {
-        "best": [
-          {
-            "a": [
-              "a1"
-            ],
-            "k1": [
-              "v1",
-              "v2"
-            ],
-            "q": [
-              "q1"
-            ]
-          },
-          0.6779543908079728
-        ],
-        "worst": [
-          {
-            "a": [
-              "a7"
-            ],
-            "k1": [
-              "v1",
-              "v2"
-            ],
-            "q": [
-              "q1"
-            ]
-          },
-          0.6673867087869434
-        ]
-      },
-      "parameterEffectEstimate": {
-        "maxMedianShift": {
-          "a": 0.7,
-          "k1": 0.0,
-          "q": 0.0
+    }
+  },
+  "PRECISION_k=4&t=0.1": {
+    "metric": "PRECISION_k=4&t=0.1",
+    "results": {
+      "((q=q7))": {
+        "bestAndWorstConfigs": {
+          "best": [
+            {
+              "a": [
+                "a5"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q7"
+              ]
+            },
+            0.6855983189912663
+          ],
+          "worst": [
+            {
+              "a": [
+                "a9"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q7"
+              ]
+            },
+            0.6750531211165659
+          ]
         },
-        "maxSingleResultShift": {
-          "a": 0.0,
-          "k1": 0.0,
-          "q": 0.1
+        "parameterEffectEstimate": {
+          "maxMedianShift": {
+            "a": 0.40,
+            "k1": 0.0,
+            "q": 0.0
+          },
+          "maxSingleResultShift": {
+            "a": 0.0,
+            "k1": 0.3,
+            "q": 0.0
+          }
+        }
+      },
+      "((q=q1))": {
+        "bestAndWorstConfigs": {
+          "best": [
+            {
+              "a": [
+                "a1"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q1"
+              ]
+            },
+            0.6779543908079728
+          ],
+          "worst": [
+            {
+              "a": [
+                "a7"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q1"
+              ]
+            },
+            0.6673867087869434
+          ]
+        },
+        "parameterEffectEstimate": {
+          "maxMedianShift": {
+            "a": 0.7,
+            "k1": 0.0,
+            "q": 0.0
+          },
+          "maxSingleResultShift": {
+            "a": 0.0,
+            "k1": 0.0,
+            "q": 0.1
+          }
+        }
+      },
+      "((q=q8))": {
+        "bestAndWorstConfigs": {
+          "best": [
+            {
+              "a": [
+                "a7"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q8"
+              ]
+            },
+            0.6728646200189348
+          ],
+          "worst": [
+            {
+              "a": [
+                "a4"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q8"
+              ]
+            },
+            0.6622830079624596
+          ]
+        },
+        "parameterEffectEstimate": {
+          "maxMedianShift": {
+            "a": 0.01,
+            "k1": 0.3,
+            "q": 0.2
+          },
+          "maxSingleResultShift": {
+            "a": 0.0,
+            "k1": 0.5,
+            "q": 0.6
+          }
+        }
+      },
+      "((q=q10))": {
+        "bestAndWorstConfigs": {
+          "best": [
+            {
+              "a": [
+                "a4"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q10"
+              ]
+            },
+            0.6876636420598735
+          ],
+          "worst": [
+            {
+              "a": [
+                "a5"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q10"
+              ]
+            },
+            0.6768444825159147
+          ]
+        },
+        "parameterEffectEstimate": {
+          "maxMedianShift": {
+            "a": 0.0,
+            "k1": 0.75,
+            "q": 1.0
+          },
+          "maxSingleResultShift": {
+            "a": 0.0,
+            "k1": 0.5,
+            "q": 0.9
+          }
+        }
+      },
+      "((q=q3))": {
+        "bestAndWorstConfigs": {
+          "best": [
+            {
+              "a": [
+                "a10"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q3"
+              ]
+            },
+            0.70330263096681
+          ],
+          "worst": [
+            {
+              "a": [
+                "a6"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q3"
+              ]
+            },
+            0.6932150559196751
+          ]
+        },
+        "parameterEffectEstimate": {
+          "maxMedianShift": {
+            "a": 0.010087575047134867,
+            "k1": 0.0,
+            "q": 0.0
+          },
+          "maxSingleResultShift": {
+            "a": 0.0,
+            "k1": 0.0,
+            "q": 0.0
+          }
+        }
+      },
+      "((q=q9))": {
+        "bestAndWorstConfigs": {
+          "best": [
+            {
+              "a": [
+                "a3"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q9"
+              ]
+            },
+            0.7322057892429067
+          ],
+          "worst": [
+            {
+              "a": [
+                "a10"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q9"
+              ]
+            },
+            0.7211842714934189
+          ]
+        },
+        "parameterEffectEstimate": {
+          "maxMedianShift": {
+            "a": 0.01102,
+            "k1": 1.0,
+            "q": 0.1
+          },
+          "maxSingleResultShift": {
+            "a": 0.2,
+            "k1": 0.3,
+            "q": 0.6
+          }
+        }
+      },
+      "((q=q4))": {
+        "bestAndWorstConfigs": {
+          "best": [
+            {
+              "a": [
+                "a6"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q4"
+              ]
+            },
+            0.6533867258914473
+          ],
+          "worst": [
+            {
+              "a": [
+                "a1"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q4"
+              ]
+            },
+            0.6432054161998944
+          ]
+        },
+        "parameterEffectEstimate": {
+          "maxMedianShift": {
+            "a": 0.013206512220618305,
+            "k1": 0.09,
+            "q": 0.8
+          },
+          "maxSingleResultShift": {
+            "a": 0.1,
+            "k1": 0.2,
+            "q": 0.3
+          }
+        }
+      },
+      "((q=q6))": {
+        "bestAndWorstConfigs": {
+          "best": [
+            {
+              "a": [
+                "a10"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q6"
+              ]
+            },
+            0.6589173727055805
+          ],
+          "worst": [
+            {
+              "a": [
+                "a1"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q6"
+              ]
+            },
+            0.6449092328371309
+          ]
+        },
+        "parameterEffectEstimate": {
+          "maxMedianShift": {
+            "a": 0.9,
+            "k1": 0.8,
+            "q": 0.7
+          },
+          "maxSingleResultShift": {
+            "a": 0.4,
+            "k1": 0.5,
+            "q": 0.6
+          }
+        }
+      },
+      "((q=q2))": {
+        "bestAndWorstConfigs": {
+          "best": [
+            {
+              "a": [
+                "a9"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q2"
+              ]
+            },
+            0.6243645948746191
+          ],
+          "worst": [
+            {
+              "a": [
+                "a1"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q2"
+              ]
+            },
+            0.6126035952414102
+          ]
+        },
+        "parameterEffectEstimate": {
+          "maxMedianShift": {
+            "a": 0.01176099963320898,
+            "k1": 0.0,
+            "q": 0.0
+          },
+          "maxSingleResultShift": {
+            "a": 0.0,
+            "k1": 0.0,
+            "q": 0.0
+          }
+        }
+      },
+      "((q=q5))": {
+        "bestAndWorstConfigs": {
+          "best": [
+            {
+              "a": [
+                "a5"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q5"
+              ]
+            },
+            0.6439163905223448
+          ],
+          "worst": [
+            {
+              "a": [
+                "a5"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q5"
+              ]
+            },
+            0.6439163905223448
+          ]
+        },
+        "parameterEffectEstimate": {
+          "maxMedianShift": {
+            "a": 0.007013323687080963,
+            "k1": 0.0,
+            "q": 0.0
+          },
+          "maxSingleResultShift": {
+            "a": 0.0,
+            "k1": 0.0,
+            "q": 0.0
+          }
         }
       }
-    },
-    "((q=q8))": {
-      "bestAndWorstConfigs": {
-        "best": [
-          {
-            "a": [
-              "a7"
-            ],
-            "k1": [
-              "v1",
-              "v2"
-            ],
-            "q": [
-              "q8"
-            ]
-          },
-          0.6728646200189348
-        ],
-        "worst": [
-          {
-            "a": [
-              "a4"
-            ],
-            "k1": [
-              "v1",
-              "v2"
-            ],
-            "q": [
-              "q8"
-            ]
-          },
-          0.6622830079624596
-        ]
-      },
-      "parameterEffectEstimate": {
-        "maxMedianShift": {
-          "a": 0.01,
-          "k1": 0.3,
-          "q": 0.2
+    }
+  },
+  "RECALL_k=4&t=0.1": {
+    "metric": "RECALL_k=4&t=0.1",
+    "results": {
+      "((q=q7))": {
+        "bestAndWorstConfigs": {
+          "best": [
+            {
+              "a": [
+                "a5"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q7"
+              ]
+            },
+            0.6855983189912663
+          ],
+          "worst": [
+            {
+              "a": [
+                "a9"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q7"
+              ]
+            },
+            0.6750531211165659
+          ]
         },
-        "maxSingleResultShift": {
-          "a": 0.0,
-          "k1": 0.5,
-          "q": 0.6
+        "parameterEffectEstimate": {
+          "maxMedianShift": {
+            "a": 0.40,
+            "k1": 0.0,
+            "q": 0.0
+          },
+          "maxSingleResultShift": {
+            "a": 0.0,
+            "k1": 0.3,
+            "q": 0.0
+          }
+        }
+      },
+      "((q=q1))": {
+        "bestAndWorstConfigs": {
+          "best": [
+            {
+              "a": [
+                "a1"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q1"
+              ]
+            },
+            0.6779543908079728
+          ],
+          "worst": [
+            {
+              "a": [
+                "a7"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q1"
+              ]
+            },
+            0.6673867087869434
+          ]
+        },
+        "parameterEffectEstimate": {
+          "maxMedianShift": {
+            "a": 0.7,
+            "k1": 0.0,
+            "q": 0.0
+          },
+          "maxSingleResultShift": {
+            "a": 0.0,
+            "k1": 0.0,
+            "q": 0.1
+          }
+        }
+      },
+      "((q=q8))": {
+        "bestAndWorstConfigs": {
+          "best": [
+            {
+              "a": [
+                "a7"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q8"
+              ]
+            },
+            0.6728646200189348
+          ],
+          "worst": [
+            {
+              "a": [
+                "a4"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q8"
+              ]
+            },
+            0.6622830079624596
+          ]
+        },
+        "parameterEffectEstimate": {
+          "maxMedianShift": {
+            "a": 0.01,
+            "k1": 0.3,
+            "q": 0.2
+          },
+          "maxSingleResultShift": {
+            "a": 0.0,
+            "k1": 0.5,
+            "q": 0.6
+          }
+        }
+      },
+      "((q=q10))": {
+        "bestAndWorstConfigs": {
+          "best": [
+            {
+              "a": [
+                "a4"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q10"
+              ]
+            },
+            0.6876636420598735
+          ],
+          "worst": [
+            {
+              "a": [
+                "a5"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q10"
+              ]
+            },
+            0.6768444825159147
+          ]
+        },
+        "parameterEffectEstimate": {
+          "maxMedianShift": {
+            "a": 0.0,
+            "k1": 0.75,
+            "q": 1.0
+          },
+          "maxSingleResultShift": {
+            "a": 0.0,
+            "k1": 0.5,
+            "q": 0.9
+          }
+        }
+      },
+      "((q=q3))": {
+        "bestAndWorstConfigs": {
+          "best": [
+            {
+              "a": [
+                "a10"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q3"
+              ]
+            },
+            0.70330263096681
+          ],
+          "worst": [
+            {
+              "a": [
+                "a6"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q3"
+              ]
+            },
+            0.6932150559196751
+          ]
+        },
+        "parameterEffectEstimate": {
+          "maxMedianShift": {
+            "a": 0.010087575047134867,
+            "k1": 0.0,
+            "q": 0.0
+          },
+          "maxSingleResultShift": {
+            "a": 0.0,
+            "k1": 0.0,
+            "q": 0.0
+          }
+        }
+      },
+      "((q=q9))": {
+        "bestAndWorstConfigs": {
+          "best": [
+            {
+              "a": [
+                "a3"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q9"
+              ]
+            },
+            0.7322057892429067
+          ],
+          "worst": [
+            {
+              "a": [
+                "a10"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q9"
+              ]
+            },
+            0.7211842714934189
+          ]
+        },
+        "parameterEffectEstimate": {
+          "maxMedianShift": {
+            "a": 0.01102,
+            "k1": 1.0,
+            "q": 0.1
+          },
+          "maxSingleResultShift": {
+            "a": 0.2,
+            "k1": 0.3,
+            "q": 0.6
+          }
+        }
+      },
+      "((q=q4))": {
+        "bestAndWorstConfigs": {
+          "best": [
+            {
+              "a": [
+                "a6"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q4"
+              ]
+            },
+            0.6533867258914473
+          ],
+          "worst": [
+            {
+              "a": [
+                "a1"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q4"
+              ]
+            },
+            0.6432054161998944
+          ]
+        },
+        "parameterEffectEstimate": {
+          "maxMedianShift": {
+            "a": 0.013206512220618305,
+            "k1": 0.09,
+            "q": 0.8
+          },
+          "maxSingleResultShift": {
+            "a": 0.1,
+            "k1": 0.2,
+            "q": 0.3
+          }
+        }
+      },
+      "((q=q6))": {
+        "bestAndWorstConfigs": {
+          "best": [
+            {
+              "a": [
+                "a10"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q6"
+              ]
+            },
+            0.6589173727055805
+          ],
+          "worst": [
+            {
+              "a": [
+                "a1"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q6"
+              ]
+            },
+            0.6449092328371309
+          ]
+        },
+        "parameterEffectEstimate": {
+          "maxMedianShift": {
+            "a": 0.9,
+            "k1": 0.8,
+            "q": 0.7
+          },
+          "maxSingleResultShift": {
+            "a": 0.4,
+            "k1": 0.5,
+            "q": 0.6
+          }
+        }
+      },
+      "((q=q2))": {
+        "bestAndWorstConfigs": {
+          "best": [
+            {
+              "a": [
+                "a9"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q2"
+              ]
+            },
+            0.6243645948746191
+          ],
+          "worst": [
+            {
+              "a": [
+                "a1"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q2"
+              ]
+            },
+            0.6126035952414102
+          ]
+        },
+        "parameterEffectEstimate": {
+          "maxMedianShift": {
+            "a": 0.01176099963320898,
+            "k1": 0.0,
+            "q": 0.0
+          },
+          "maxSingleResultShift": {
+            "a": 0.0,
+            "k1": 0.0,
+            "q": 0.0
+          }
+        }
+      },
+      "((q=q5))": {
+        "bestAndWorstConfigs": {
+          "best": [
+            {
+              "a": [
+                "a5"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q5"
+              ]
+            },
+            0.6439163905223448
+          ],
+          "worst": [
+            {
+              "a": [
+                "a5"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q5"
+              ]
+            },
+            0.6439163905223448
+          ]
+        },
+        "parameterEffectEstimate": {
+          "maxMedianShift": {
+            "a": 0.007013323687080963,
+            "k1": 0.0,
+            "q": 0.0
+          },
+          "maxSingleResultShift": {
+            "a": 0.0,
+            "k1": 0.0,
+            "q": 0.0
+          }
         }
       }
-    },
-    "((q=q10))": {
-      "bestAndWorstConfigs": {
-        "best": [
-          {
-            "a": [
-              "a4"
-            ],
-            "k1": [
-              "v1",
-              "v2"
-            ],
-            "q": [
-              "q10"
-            ]
-          },
-          0.6876636420598735
-        ],
-        "worst": [
-          {
-            "a": [
-              "a5"
-            ],
-            "k1": [
-              "v1",
-              "v2"
-            ],
-            "q": [
-              "q10"
-            ]
-          },
-          0.6768444825159147
-        ]
-      },
-      "parameterEffectEstimate": {
-        "maxMedianShift": {
-          "a": 0.0,
-          "k1": 0.75,
-          "q": 1.0
+    }
+  },
+  "NDCG_4": {
+    "metric": "NDCG_4",
+    "results": {
+      "((q=q7))": {
+        "bestAndWorstConfigs": {
+          "best": [
+            {
+              "a": [
+                "a5"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q7"
+              ]
+            },
+            0.6855983189912663
+          ],
+          "worst": [
+            {
+              "a": [
+                "a9"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q7"
+              ]
+            },
+            0.6750531211165659
+          ]
         },
-        "maxSingleResultShift": {
-          "a": 0.0,
-          "k1": 0.5,
-          "q": 0.9
+        "parameterEffectEstimate": {
+          "maxMedianShift": {
+            "a": 0.40,
+            "k1": 0.0,
+            "q": 0.0
+          },
+          "maxSingleResultShift": {
+            "a": 0.0,
+            "k1": 0.3,
+            "q": 0.0
+          }
         }
-      }
-    },
-    "((q=q3))": {
-      "bestAndWorstConfigs": {
-        "best": [
-          {
-            "a": [
-              "a10"
-            ],
-            "k1": [
-              "v1",
-              "v2"
-            ],
-            "q": [
-              "q3"
-            ]
-          },
-          0.70330263096681
-        ],
-        "worst": [
-          {
-            "a": [
-              "a6"
-            ],
-            "k1": [
-              "v1",
-              "v2"
-            ],
-            "q": [
-              "q3"
-            ]
-          },
-          0.6932150559196751
-        ]
       },
-      "parameterEffectEstimate": {
-        "maxMedianShift": {
-          "a": 0.010087575047134867,
-          "k1": 0.0,
-          "q": 0.0
+      "((q=q1))": {
+        "bestAndWorstConfigs": {
+          "best": [
+            {
+              "a": [
+                "a1"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q1"
+              ]
+            },
+            0.6779543908079728
+          ],
+          "worst": [
+            {
+              "a": [
+                "a7"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q1"
+              ]
+            },
+            0.6673867087869434
+          ]
         },
-        "maxSingleResultShift": {
-          "a": 0.0,
-          "k1": 0.0,
-          "q": 0.0
+        "parameterEffectEstimate": {
+          "maxMedianShift": {
+            "a": 0.7,
+            "k1": 0.0,
+            "q": 0.0
+          },
+          "maxSingleResultShift": {
+            "a": 0.0,
+            "k1": 0.0,
+            "q": 0.1
+          }
         }
-      }
-    },
-    "((q=q9))": {
-      "bestAndWorstConfigs": {
-        "best": [
-          {
-            "a": [
-              "a3"
-            ],
-            "k1": [
-              "v1",
-              "v2"
-            ],
-            "q": [
-              "q9"
-            ]
-          },
-          0.7322057892429067
-        ],
-        "worst": [
-          {
-            "a": [
-              "a10"
-            ],
-            "k1": [
-              "v1",
-              "v2"
-            ],
-            "q": [
-              "q9"
-            ]
-          },
-          0.7211842714934189
-        ]
       },
-      "parameterEffectEstimate": {
-        "maxMedianShift": {
-          "a": 0.01102,
-          "k1": 1.0,
-          "q": 0.1
+      "((q=q8))": {
+        "bestAndWorstConfigs": {
+          "best": [
+            {
+              "a": [
+                "a7"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q8"
+              ]
+            },
+            0.6728646200189348
+          ],
+          "worst": [
+            {
+              "a": [
+                "a4"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q8"
+              ]
+            },
+            0.6622830079624596
+          ]
         },
-        "maxSingleResultShift": {
-          "a": 0.2,
-          "k1": 0.3,
-          "q": 0.6
+        "parameterEffectEstimate": {
+          "maxMedianShift": {
+            "a": 0.01,
+            "k1": 0.3,
+            "q": 0.2
+          },
+          "maxSingleResultShift": {
+            "a": 0.0,
+            "k1": 0.5,
+            "q": 0.6
+          }
         }
-      }
-    },
-    "((q=q4))": {
-      "bestAndWorstConfigs": {
-        "best": [
-          {
-            "a": [
-              "a6"
-            ],
-            "k1": [
-              "v1",
-              "v2"
-            ],
-            "q": [
-              "q4"
-            ]
-          },
-          0.6533867258914473
-        ],
-        "worst": [
-          {
-            "a": [
-              "a1"
-            ],
-            "k1": [
-              "v1",
-              "v2"
-            ],
-            "q": [
-              "q4"
-            ]
-          },
-          0.6432054161998944
-        ]
       },
-      "parameterEffectEstimate": {
-        "maxMedianShift": {
-          "a": 0.013206512220618305,
-          "k1": 0.09,
-          "q": 0.8
+      "((q=q10))": {
+        "bestAndWorstConfigs": {
+          "best": [
+            {
+              "a": [
+                "a4"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q10"
+              ]
+            },
+            0.6876636420598735
+          ],
+          "worst": [
+            {
+              "a": [
+                "a5"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q10"
+              ]
+            },
+            0.6768444825159147
+          ]
         },
-        "maxSingleResultShift": {
-          "a": 0.1,
-          "k1": 0.2,
-          "q": 0.3
+        "parameterEffectEstimate": {
+          "maxMedianShift": {
+            "a": 0.0,
+            "k1": 0.75,
+            "q": 1.0
+          },
+          "maxSingleResultShift": {
+            "a": 0.0,
+            "k1": 0.5,
+            "q": 0.9
+          }
         }
-      }
-    },
-    "((q=q6))": {
-      "bestAndWorstConfigs": {
-        "best": [
-          {
-            "a": [
-              "a10"
-            ],
-            "k1": [
-              "v1",
-              "v2"
-            ],
-            "q": [
-              "q6"
-            ]
-          },
-          0.6589173727055805
-        ],
-        "worst": [
-          {
-            "a": [
-              "a1"
-            ],
-            "k1": [
-              "v1",
-              "v2"
-            ],
-            "q": [
-              "q6"
-            ]
-          },
-          0.6449092328371309
-        ]
       },
-      "parameterEffectEstimate": {
-        "maxMedianShift": {
-          "a": 0.9,
-          "k1": 0.8,
-          "q": 0.7
+      "((q=q3))": {
+        "bestAndWorstConfigs": {
+          "best": [
+            {
+              "a": [
+                "a10"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q3"
+              ]
+            },
+            0.70330263096681
+          ],
+          "worst": [
+            {
+              "a": [
+                "a6"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q3"
+              ]
+            },
+            0.6932150559196751
+          ]
         },
-        "maxSingleResultShift": {
-          "a": 0.4,
-          "k1": 0.5,
-          "q": 0.6
+        "parameterEffectEstimate": {
+          "maxMedianShift": {
+            "a": 0.010087575047134867,
+            "k1": 0.0,
+            "q": 0.0
+          },
+          "maxSingleResultShift": {
+            "a": 0.0,
+            "k1": 0.0,
+            "q": 0.0
+          }
         }
-      }
-    },
-    "((q=q2))": {
-      "bestAndWorstConfigs": {
-        "best": [
-          {
-            "a": [
-              "a9"
-            ],
-            "k1": [
-              "v1",
-              "v2"
-            ],
-            "q": [
-              "q2"
-            ]
-          },
-          0.6243645948746191
-        ],
-        "worst": [
-          {
-            "a": [
-              "a1"
-            ],
-            "k1": [
-              "v1",
-              "v2"
-            ],
-            "q": [
-              "q2"
-            ]
-          },
-          0.6126035952414102
-        ]
       },
-      "parameterEffectEstimate": {
-        "maxMedianShift": {
-          "a": 0.01176099963320898,
-          "k1": 0.0,
-          "q": 0.0
+      "((q=q9))": {
+        "bestAndWorstConfigs": {
+          "best": [
+            {
+              "a": [
+                "a3"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q9"
+              ]
+            },
+            0.7322057892429067
+          ],
+          "worst": [
+            {
+              "a": [
+                "a10"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q9"
+              ]
+            },
+            0.7211842714934189
+          ]
         },
-        "maxSingleResultShift": {
-          "a": 0.0,
-          "k1": 0.0,
-          "q": 0.0
+        "parameterEffectEstimate": {
+          "maxMedianShift": {
+            "a": 0.01102,
+            "k1": 1.0,
+            "q": 0.1
+          },
+          "maxSingleResultShift": {
+            "a": 0.2,
+            "k1": 0.3,
+            "q": 0.6
+          }
         }
-      }
-    },
-    "((q=q5))": {
-      "bestAndWorstConfigs": {
-        "best": [
-          {
-            "a": [
-              "a5"
-            ],
-            "k1": [
-              "v1",
-              "v2"
-            ],
-            "q": [
-              "q5"
-            ]
-          },
-          0.6439163905223448
-        ],
-        "worst": [
-          {
-            "a": [
-              "a5"
-            ],
-            "k1": [
-              "v1",
-              "v2"
-            ],
-            "q": [
-              "q5"
-            ]
-          },
-          0.6439163905223448
-        ]
       },
-      "parameterEffectEstimate": {
-        "maxMedianShift": {
-          "a": 0.007013323687080963,
-          "k1": 0.0,
-          "q": 0.0
+      "((q=q4))": {
+        "bestAndWorstConfigs": {
+          "best": [
+            {
+              "a": [
+                "a6"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q4"
+              ]
+            },
+            0.6533867258914473
+          ],
+          "worst": [
+            {
+              "a": [
+                "a1"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q4"
+              ]
+            },
+            0.6432054161998944
+          ]
         },
-        "maxSingleResultShift": {
-          "a": 0.0,
-          "k1": 0.0,
-          "q": 0.0
+        "parameterEffectEstimate": {
+          "maxMedianShift": {
+            "a": 0.013206512220618305,
+            "k1": 0.09,
+            "q": 0.8
+          },
+          "maxSingleResultShift": {
+            "a": 0.1,
+            "k1": 0.2,
+            "q": 0.3
+          }
+        }
+      },
+      "((q=q6))": {
+        "bestAndWorstConfigs": {
+          "best": [
+            {
+              "a": [
+                "a10"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q6"
+              ]
+            },
+            0.6589173727055805
+          ],
+          "worst": [
+            {
+              "a": [
+                "a1"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q6"
+              ]
+            },
+            0.6449092328371309
+          ]
+        },
+        "parameterEffectEstimate": {
+          "maxMedianShift": {
+            "a": 0.9,
+            "k1": 0.8,
+            "q": 0.7
+          },
+          "maxSingleResultShift": {
+            "a": 0.4,
+            "k1": 0.5,
+            "q": 0.6
+          }
+        }
+      },
+      "((q=q2))": {
+        "bestAndWorstConfigs": {
+          "best": [
+            {
+              "a": [
+                "a9"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q2"
+              ]
+            },
+            0.6243645948746191
+          ],
+          "worst": [
+            {
+              "a": [
+                "a1"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q2"
+              ]
+            },
+            0.6126035952414102
+          ]
+        },
+        "parameterEffectEstimate": {
+          "maxMedianShift": {
+            "a": 0.01176099963320898,
+            "k1": 0.0,
+            "q": 0.0
+          },
+          "maxSingleResultShift": {
+            "a": 0.0,
+            "k1": 0.0,
+            "q": 0.0
+          }
+        }
+      },
+      "((q=q5))": {
+        "bestAndWorstConfigs": {
+          "best": [
+            {
+              "a": [
+                "a5"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q5"
+              ]
+            },
+            0.6439163905223448
+          ],
+          "worst": [
+            {
+              "a": [
+                "a5"
+              ],
+              "k1": [
+                "v1",
+                "v2"
+              ],
+              "q": [
+                "q5"
+              ]
+            },
+            0.6439163905223448
+          ]
+        },
+        "parameterEffectEstimate": {
+          "maxMedianShift": {
+            "a": 0.007013323687080963,
+            "k1": 0.0,
+            "q": 0.0
+          },
+          "maxSingleResultShift": {
+            "a": 0.0,
+            "k1": 0.0,
+            "q": 0.0
+          }
         }
       }
     }

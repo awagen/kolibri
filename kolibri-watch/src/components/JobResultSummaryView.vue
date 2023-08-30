@@ -2,61 +2,16 @@
 
   <div class="row-container columns">
 
-    <form class="form-horizontal k-left col-6 column">
+    <form v-for="(summary, summaryIndex) in resultSummaryObjArr" :class="['form-horizontal', (summaryIndex % 2 === 0) && 'k-left', 'col-6 column']">
 
       <div class="col-12 col-sm-12">
 
         <!-- Fill with some tabular overview -->
         <Table @sort-data="handleSortDataEvent"
                @id-sort="handleIdSort"
-               :result-summary="resultSummaryObjArr[0]"
-               :header="resultSummaryObjArr[0].metricName"
-               index="0"
-        />
-
-      </div>
-
-    </form>
-
-    <form class="form-horizontal col-6 column">
-
-      <div class="col-12 col-sm-12">
-
-        <Table @sort-data="handleSortDataEvent"
-               @id-sort="handleIdSort"
-               :result-summary="resultSummaryObjArr[1]"
-               :header="resultSummaryObjArr[1].metricName"
-               index="1"
-        />
-
-      </div>
-
-    </form>
-
-    <form class="form-horizontal k-left col-6 column">
-
-      <div class="col-12 col-sm-12">
-
-        <Table @sort-data="handleSortDataEvent"
-               @id-sort="handleIdSort"
-               :result-summary="resultSummaryObjArr[2]"
-               :header="resultSummaryObjArr[2].metricName"
-               index="2"
-        />
-
-      </div>
-
-    </form>
-
-    <form class="form-horizontal col-6 column">
-
-      <div class="col-12 col-sm-12">
-
-        <Table @sort-data="handleSortDataEvent"
-               @id-sort="handleIdSort"
-               :result-summary="resultSummaryObjArr[3]"
-               :header="resultSummaryObjArr[3].metricName"
-               index="3"
+               :result-summary="summary"
+               :header="summary.metricName"
+               :index="summaryIndex"
         />
 
       </div>
@@ -84,12 +39,11 @@ export default {
 
   setup(props) {
 
-    let resultSummaryObjArr = ref([
-        resultJsonToObj(json),
-        resultJsonToObj(json),
-        resultJsonToObj(json),
-        resultJsonToObj(json)
-    ])
+    let resultSummaryObjArr = ref(
+        Object.keys(json).map(metricName => {
+          return resultJsonToObj(json[metricName])
+        })
+    )
 
     /**
      * Filling the json result into data object where
@@ -147,11 +101,11 @@ export default {
 }
 
 .form-horizontal.k-left {
-  border-right: .05rem solid black;
+  border-right: .05rem solid #353535;
 }
 
 .form-horizontal {
-  border-top: .05rem solid black;
+  border-top: .05rem solid #353535;
 }
 
 

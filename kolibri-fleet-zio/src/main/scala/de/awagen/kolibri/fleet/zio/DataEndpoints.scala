@@ -19,7 +19,7 @@ package de.awagen.kolibri.fleet.zio
 
 import de.awagen.kolibri.datatypes.stores.mutable.PriorityStores.{BasePriorityStore, PriorityStore}
 import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
-import de.awagen.kolibri.datatypes.types.JsonStructDefs.{NestedFieldSeqStructDef, StringConstantStructDef, StringStructDef, StructDef}
+import de.awagen.kolibri.datatypes.types.JsonStructDefs.{ConditionalFields, NestedFieldSeqStructDef, StringChoiceStructDef, StringConstantStructDef, StringStructDef, StructDef}
 import de.awagen.kolibri.definitions.processing.execution.functions.AggregationFunctions
 import de.awagen.kolibri.fleet.zio.DataEndpoints.ResultFileAttributes.{VALUE_PREFIX, evaluationColumnNames}
 import de.awagen.kolibri.fleet.zio.DataEndpoints.ResultFileType.{CSV, ResultFileType}
@@ -181,6 +181,11 @@ object DataEndpoints {
     ZIO.attemptBlockingIO(reader.read(path).mkString("\n").parseJson)
   }
 
+  /**
+   * Provide mapping of dateIds to jobIds Map(dateId1 -> Seq(jobId1, ...)...)
+   * for which results exist
+   * @return
+   */
   private[this] def getDateToResultFolderMapping: ZIO[DataOverviewReader, Serializable, Map[String, Seq[String]]] = {
     for {
       overviewReader <- ZIO.service[DataOverviewReader]
@@ -222,26 +227,39 @@ object DataEndpoints {
   private val DATE_ID_KEY = "dateId"
   private val JOB_ID_KEY = "jobId"
 
-  // NOTE: could already pick the data available and make the selectors below restricted (e.g dateId and then the correct
-  // jobIds
-  val summarizeCommandStructDef: StructDef[_] =
-    NestedFieldSeqStructDef(
-      Seq(
-        FieldDef(
-          StringConstantStructDef(DATE_ID_KEY),
-          StringStructDef,
-          required = true,
-          description = "dateId for result selection."
+  val summarizeCommandStructDefEffect: ZIO[DataOverviewReader, Throwable, NestedFieldSeqStructDef] =
+    (for {
+    dateIdToResultFolderMapping <- getDateToResultFolderMapping
+    structDef <- ZIO.attempt({
+      NestedFieldSeqStructDef(
+        Seq(
+          FieldDef(
+            StringConstantStructDef(DATE_ID_KEY),
+            StringChoiceStructDef(
+              dateIdToResultFolderMapping.keys.toSeq.sorted.reverse
+            ),
+            required = true,
+            description = "dateId for result selection."
+          ),
         ),
-        FieldDef(
-          StringConstantStructDef(JOB_ID_KEY),
-          StringStructDef,
-          required = true,
-          description = "jobId for result selection."
+        Seq(
+          ConditionalFields(
+            DATE_ID_KEY,
+            dateIdToResultFolderMapping.map(entry => {
+              val fieldDef = FieldDef(
+                StringConstantStructDef(JOB_ID_KEY),
+                StringChoiceStructDef(entry._2.sorted.reverse),
+                required = true,
+                description = "jobId for result selection."
+              )
+              (entry._1, Seq(fieldDef))
+            })
+          )
         )
-      ),
-      Seq.empty
-    )
+      )
+    })
+  } yield structDef).mapError(serializable => new RuntimeException(s"$serializable"))
+
 
 
   implicit val summarizeCommandFormat = jsonFormat2(SummarizeCommand)

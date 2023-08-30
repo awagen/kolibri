@@ -127,7 +127,7 @@ export default {
       required: false
     },
     index: {
-      type: String,
+      type: Number,
       required: true
     }
   },

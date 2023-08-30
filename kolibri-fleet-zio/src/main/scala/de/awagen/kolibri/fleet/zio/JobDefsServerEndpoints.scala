@@ -20,7 +20,7 @@ package de.awagen.kolibri.fleet.zio
 import de.awagen.kolibri.datatypes.io.json.JsonStructDefsJsonProtocol.JsonStructDefsFormat
 import de.awagen.kolibri.datatypes.types.JsonStructDefs.StructDef
 import de.awagen.kolibri.definitions.io.json.ExecutionJsonProtocol.ExecutionFormat
-import de.awagen.kolibri.fleet.zio.DataEndpoints.summarizeCommandStructDef
+import de.awagen.kolibri.fleet.zio.DataEndpoints.summarizeCommandStructDefEffect
 import de.awagen.kolibri.fleet.zio.ServerEndpoints.ResponseContentProtocol.responseContentFormat
 import de.awagen.kolibri.fleet.zio.ServerEndpoints.ResponseContent
 import de.awagen.kolibri.fleet.zio.config.HttpConfig.corsConfig
@@ -49,6 +49,7 @@ object JobDefsServerEndpoints {
                          description: String = "")
 
   object Endpoints {
+
     val taskSequencePostEndpoint: EndpointDef = EndpointDef(
       ID_JOB_DEF,
       "Configure distinct types of evaluations.",
@@ -65,22 +66,26 @@ object JobDefsServerEndpoints {
       "Endpoint for composition of single tasks, such as aggregations or other analysis"
     )
 
-
-    val resultSummaryPostEndpoint: EndpointDef = EndpointDef(
-      ID_JOB_SUMMARY_DEF,
-      "Generate summaries for completed jobs.",
-      JOB_SUMMARY_POST_PATH,
-      summarizeCommandStructDef,
-      "Endpoint to generate summary of completed job."
-    )
   }
 
   implicit val endpointAndStructDefFormat: RootJsonFormat[EndpointDef] = jsonFormat5(EndpointDef)
 
   def jobDefEndpoints = Http.collectZIO[Request] {
     case Method.GET -> Root / "jobs" / "structs" =>
-      ZIO.succeed(
-        Response.json(ResponseContent(Seq(Endpoints.taskSequencePostEndpoint, Endpoints.taskPostEndpoint, Endpoints.resultSummaryPostEndpoint), "").toJson.toString())) @@ countAPIRequests("GET", "/jobs/structs")
+      (for {
+        summarizeCommandStructDef <- summarizeCommandStructDefEffect
+        resultSummaryPostEndpoint <- ZIO.succeed(EndpointDef(
+          ID_JOB_SUMMARY_DEF,
+          "Generate summaries for completed jobs.",
+          JOB_SUMMARY_POST_PATH,
+          summarizeCommandStructDef,
+          "Endpoint to generate summary of completed job."
+        ))
+        result <- ZIO.attempt(Response.json(ResponseContent(Seq(Endpoints.taskSequencePostEndpoint, Endpoints.taskPostEndpoint, resultSummaryPostEndpoint), "").toJson.toString()))
+      } yield result).catchAll(throwable =>
+        ZIO.logWarning(s"""Error on retrieving job structs:\nmsg: ${throwable.getMessage}\ntrace: ${throwable.getStackTrace.mkString("\n")}""")
+          *> ZIO.succeed(Response.text(s"Failed retrieving job structs"))
+      ) @@ countAPIRequests("GET", "/jobs/structs")
   } @@ cors(corsConfig)
 
 }

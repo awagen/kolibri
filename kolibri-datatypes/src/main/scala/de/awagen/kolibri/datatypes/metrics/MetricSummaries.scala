@@ -76,10 +76,12 @@ object MetricSummaries extends DefaultJsonProtocol {
         val valuesForParameterGroup: Map[Seq[String], Seq[MetricRow]] = metrics.groupMap(x => metricRowToSettingIdentifierWithoutPassedParameter(x, metricName))(identity[MetricRow])
         val maxDiffPerRow: Seq[Double] = valuesForParameterGroup.values.map(x => {
           val allValidValues = x.map(x => x.metrics.getOrElse(metricName, MetricValue.createDoubleAvgSuccessSample(metricName, -1.0, 1.0)))
+            // only pick those values for which there is at least one non-fail sample
+            .filter(x => x.biValue.value2.numSamples > 0)
             .map(x => x.biValue.value2.value.asInstanceOf[Double])
             .filter(v => v >= 0.0)
-          val minVal = allValidValues.min
-          val maxVal = allValidValues.max
+          val minVal = if (allValidValues.nonEmpty) allValidValues.min else 0.0
+          val maxVal = if (allValidValues.nonEmpty) allValidValues.max else 0.0
           maxVal - minVal
         }).toSeq
         (paramName, maxDiffPerRow.max)
@@ -102,7 +104,10 @@ object MetricSummaries extends DefaultJsonProtocol {
                                                                paramName: String): Map[Seq[String], DescriptiveStatistics] = {
       val singleParamValueToMetricValuesMap: Map[Seq[String], Seq[Double]] = metrics.map(row => {
         val parameters = row.params
-        val valueOpt: Option[Double] = row.metrics.get(metricName).map(value => value.biValue.value2.value.asInstanceOf[Double])
+        val valueOpt: Option[Double] = row.metrics.get(metricName)
+          // only use those values for which there is at least one (successful / non-fail) sample
+          .filter(value => value.biValue.value2.numSamples > 0)
+          .map(value => value.biValue.value2.value.asInstanceOf[Double])
         (parameters.get(paramName), valueOpt)
       })
         .filter(x => x._2.nonEmpty && x._1.nonEmpty)
@@ -125,7 +130,7 @@ object MetricSummaries extends DefaultJsonProtocol {
      */
     private[metrics] def maxStatDifference(stats: Seq[DescriptiveStatistics], valueFunc: DescriptiveStatistics => Double = x => x.getPercentile(50)): Double = {
       val medianValues: Seq[Double] = stats.map(x => valueFunc(x))
-      medianValues.max - medianValues.min
+      if (medianValues.nonEmpty) medianValues.max - medianValues.min else 0.0
     }
 
   }
@@ -133,11 +138,14 @@ object MetricSummaries extends DefaultJsonProtocol {
   /**
    * Pick all metrics that are of type double and generate the summary for all metrics
    */
-  def getMetricNameToSummaryMapping(results: Seq[(Tag, Seq[MetricRow])]): Map[String, RunSummary] = {
+  def getMetricNameToSummaryMapping(results: Seq[(Tag, Seq[MetricRow])],
+                                    differenceThreshold: Double = 0.01,
+                                    numParamsWeight: Double = 1000.0,
+                                    paramUnitSumWeight: Double = 1.0): Map[String, RunSummary] = {
     val allMetricNames = results.head._2.head.metricNames
     val allDoubleMetrics = allMetricNames
       .filter(x => results.head._2.head.metrics(x).biValue.value2.aggregationType == AggregationType.DOUBLE_AVG)
-    allDoubleMetrics.map(metricName => (metricName, summarize(results, metricName))).toMap
+    allDoubleMetrics.map(metricName => (metricName, summarize(results, metricName, differenceThreshold, numParamsWeight, paramUnitSumWeight))).toMap
   }
 
 
@@ -148,14 +156,18 @@ object MetricSummaries extends DefaultJsonProtocol {
    * - how much the distinct parameters change the results
    * - what good and bad configurations are, picking a representative parameter setting for good / bad configs in case there are multiple similar
    */
-  def summarize(results: Seq[(Tag, Seq[MetricRow])], criterionMetricName: String): RunSummary = {
+  def summarize(results: Seq[(Tag, Seq[MetricRow])],
+                criterionMetricName: String,
+                differenceThreshold: Double = 0.01,
+                numParamsWeight: Double = 1000.0,
+                paramUnitSumWeight: Double = 1.0): RunSummary = {
     val tagToSummaryMap = results.map(result => {
       val bestAndWorst = calculateBestAndWorstConfigs(
         metrics = result._2,
         metricName = criterionMetricName,
-        differenceThreshold = 0.01,
-        numParamsWeight = 1000.0,
-        paramUnitSumWeight = 1.0
+        differenceThreshold = differenceThreshold,
+        numParamsWeight = numParamsWeight,
+        paramUnitSumWeight = paramUnitSumWeight
       )
       val medianShiftEffectEstimate = calculateMaxMedianShiftForEachParameter(result._2, criterionMetricName)
       val maxSingleResultShift = calculateMaxSingleResultShift(result._2, criterionMetricName)
@@ -221,7 +233,8 @@ object MetricSummaries extends DefaultJsonProtocol {
                                    numParamsWeight: Double = 1000.0,
                                    paramUnitSumWeight: Double = 1.0): BestAndWorstConfigs = {
     val paramsToMetricValueTuplesSorted: Seq[(Map[String, Seq[String]], Double)] = metrics.map(x => (x.params, x.metrics.get(metricName)))
-      .filter(x => x._2.nonEmpty)
+      // value exists and has at least one non-fail sample
+      .filter(x => x._2.nonEmpty && x._2.get.biValue.value2.numSamples > 0)
       .map(x => (x._1, x._2.get.biValue.value2.value.asInstanceOf[Double]))
       // sortBy on double would give lower values first, thus reversed below
       .sortBy(x => x._2)

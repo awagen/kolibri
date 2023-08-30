@@ -6,9 +6,10 @@
    causing annoying behavior that gaining focus again is
    needed after every single character (e.g by clicking in the input
    field). Avoiding this by making key attribute setting conditional.-->
-  <template :key="(index > state.usedFields.length) ? childKeyValue + '-' + field.value.valueFormat.elementId : null" v-for="(field, index) in [...toRefs(state.usedFields), ...toRefs(state.selectedConditionalFields)]">
+  <template :key="(index >= state.usedFields.length) ? childKeyValue + '-' + field.value.valueFormat.elementId : null"
+            v-for="(field, index) in [...toRefs(state.usedFields), ...toRefs(state.selectedConditionalFields)]">
 
-      <div class="form-group k-input-group">
+    <div class="form-group k-input-group">
 
       <template v-if="(field.value.valueFormat instanceof SingleValueInputDef)">
         <div class="col-3 col-sm-12">
@@ -193,8 +194,7 @@ export default {
       if (!unconditionalField) {
         // conditional field, we can just update its value without taking possible conditionals into account
         state.currentValues[attributes.name] = attributes.value
-      }
-      else {
+      } else {
         // in this case it's a conditional field, so we got to take into account the affected conditional fields
         let updateValue = {}
         updateValue[attributes.name] = attributes.value
@@ -218,7 +218,14 @@ export default {
         // we only recreate the rendered part in this particular case where the changed attribute is a
         // unconditional one and the value is a string (which qualifies it to change conditional values. We need
         // to recreate children with the updated values in this case to ensure correct display of input elements)
-        if (_.isString(attributes.value) && state.usedConditionalFields.length > 0 && !props.isRoot) {
+        console.debug(
+            `attributeIsString: ${_.isString(attributes.value)},
+         existsUsedUnCondFields: ${state.usedConditionalFields.length > 0},
+         props.isRoot: ${props.isRoot}`
+        )
+        // this previously had the extra condition '&& !props.isRoot', yet this prohibited conditional fields updating
+        // on root level. Test if removing the condition causes any issues
+        if (_.isString(attributes.value) && state.usedConditionalFields.length > 0) {
           increaseChildKeyCounter()
         }
 
