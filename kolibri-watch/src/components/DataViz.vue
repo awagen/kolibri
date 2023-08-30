@@ -128,19 +128,24 @@
         </div>
       </div>
     </form>
+    <!-- this form element here is only to fill the width such that nothing else floats besides the controls -->
+    <form class="form-horizontal col-6 column"/>
 
+    <!-- the actual rendering of the graphs -->
     <template :key="displayKey + '-' + index" v-for="(value, index) in this.$store.state.resultState.selectedData">
-      <form class="form-horizontal col-12 column">
+      <form class="form-horizontal col-6 column">
         <div class="form-group">
-          <div class="col-12 col-sm-12">
 
-            <!-- if there is a graph before, offer to merge them -->
-            <div v-if="index > 0 && haveSameType(index, index - 1)" class="k-merge-button-container">
-              <button type="button" @click.prevent="collapseData(index, index - 1)"
-                      class="btn btn-action k-merge-button s-circle">
-                <i class="icon icon-resize-vert"></i>
-              </button>
-            </div>
+          <!-- if there is a graph before, offer to merge them (if of same type) -->
+          <div class="col-1 col-sm-1 k-merge-button-container">
+            <button v-if="index > 0 && haveSameType(index, index - 1)" type="button" @click.prevent="collapseData(index, index - 1)"
+                    class="btn btn-action k-merge-button s-circle">
+              <i class="icon icon-resize-horiz"></i>
+            </button>
+          </div>
+
+
+          <div class="col-12 col-sm-12">
 
             <div class="k-delete-button">
               <a @click.prevent="deleteInputElement(index)" href="#" class="k-delete btn btn-clear"
@@ -163,7 +168,6 @@
 </template>
 
 <script>
-import Plotly from 'plotly.js-dist-min'
 import ChartJsGraph from "../components/partials/ChartJsGraph.vue";
 import {Chart, registerables} from "chart.js";
 import {Colors} from "chart.js"
@@ -611,12 +615,18 @@ button.k-merge-button {
   background-color: #588274;
   border-width: 0;
   color: white;
+  vertical-align: middle;
 }
 
 .k-merge-button-container {
   text-align: center;
-  margin-top: 2em;
+  margin-top: 15em;
   margin-bottom: 2em;
+
+  /* placing the button vertical roughly central to the left of the graph that can be merged */
+  position: absolute;
+  overflow: visible;
+  margin-left: -2em;
 }
 
 
