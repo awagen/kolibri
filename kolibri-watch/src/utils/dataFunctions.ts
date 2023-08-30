@@ -50,6 +50,10 @@ function selectedDataToParameterValuesJson(selectedData){
     })
 }
 
+function isNumeric(value: any): boolean {
+    return !isNaN(parseFloat(value))
+}
+
 /**
  * Sorting two values. If the values can be parsed to float,
  * they will be sorted accordingly, otherwise according to their type.
@@ -60,10 +64,15 @@ function selectedDataToParameterValuesJson(selectedData){
  * @param value2
  */
 function numberAwareComparison(value1: any, value2: any) {
-    if (!isNaN(parseFloat(value1)) && !isNaN(parseFloat(value2))) {
+    if (isNumeric(value1) && isNumeric(value2)) {
         return parseFloat(value1) - parseFloat(value2)
     }
     return value1 < value2 ? -1 : 1
 }
 
-export {filteredResultsReduced, selectedDataToParameterValuesJson, numberAwareComparison}
+function numberAwareFormat(value: any, decimals: number = 4): string {
+    if (isNumeric(value)) return value.toFixed(decimals)
+    else return `${value}`
+}
+
+export {filteredResultsReduced, selectedDataToParameterValuesJson, numberAwareComparison, numberAwareFormat, isNumeric}

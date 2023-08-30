@@ -62,20 +62,20 @@
         <th class="firstColumn">
           <span class="columnTitle">ID</span>
           <i v-if="resultSummary.sortedById && resultSummary.idSortDecreasing" class="icon icon-arrow-down"
-             @click.prevent="handleIDSortEvent({resultIndex: index, decreasing: false})"></i>
+             @click.prevent="handleIDSortEvent({summaryType: summaryType, resultIndex: index, decreasing: false})"></i>
           <i v-if="resultSummary.sortedById && !resultSummary.idSortDecreasing" class="icon icon-arrow-up"
-             @click.prevent="handleIDSortEvent({resultIndex: index, decreasing: true})"></i>
+             @click.prevent="handleIDSortEvent({summaryType: summaryType, resultIndex: index, decreasing: true})"></i>
           <i v-if="!resultSummary.sortedById" class="icon icon-minus"
-             @click.prevent="handleIDSortEvent({resultIndex: index, decreasing: true})"></i>
+             @click.prevent="handleIDSortEvent({summaryType: summaryType, resultIndex: index, decreasing: true})"></i>
         </th>
         <th v-for="(headerColumn, headerColumnIndex) in resultSummary.columnNames">
           <span class="columnTitle">{{ headerColumn }}</span>
           <i v-if="resultSummary.sortedByColumn[headerColumnIndex] && resultSummary.columnSortDecreasing[headerColumnIndex]" class="icon icon-arrow-down"
-             @click.prevent="handleSortEvent({resultIndex: index, measureIndex: sortByMeasureIndex, columnIndex: headerColumnIndex, decreasing: false})"></i>
+             @click.prevent="handleSortEvent({summaryType: summaryType, resultIndex: index, measureIndex: sortByMeasureIndex, columnIndex: headerColumnIndex, decreasing: false})"></i>
           <i v-if="resultSummary.sortedByColumn[headerColumnIndex] && !resultSummary.columnSortDecreasing[headerColumnIndex]" class="icon icon-arrow-up"
-             @click.prevent="handleSortEvent({resultIndex: index, measureIndex: sortByMeasureIndex, columnIndex: headerColumnIndex, decreasing: true})"></i>
+             @click.prevent="handleSortEvent({summaryType: summaryType, resultIndex: index, measureIndex: sortByMeasureIndex, columnIndex: headerColumnIndex, decreasing: true})"></i>
           <i v-if="!resultSummary.sortedByColumn[headerColumnIndex]" class="icon icon-minus"
-             @click.prevent="handleSortEvent({resultIndex: index, measureIndex: sortByMeasureIndex, columnIndex: headerColumnIndex, decreasing: true})"></i>
+             @click.prevent="handleSortEvent({summaryType: summaryType, resultIndex: index, measureIndex: sortByMeasureIndex, columnIndex: headerColumnIndex, decreasing: true})"></i>
         </th>
       </tr>
       </thead>
@@ -92,7 +92,7 @@
           <template v-for="(subRow, subRowIndex) in rowsWithId.rows">
             <!-- Only selecting those rows that match the selected measures -->
             <template v-if="displayedMeasuresIndices.includes(subRowIndex)">
-              <div class="bar bar-sm">
+              <div v-if="summaryType === 'effect' || isNumeric(subRow[columnIndex])" class="bar bar-sm">
                 <div class="bar-item" role="progressbar"
                      :style="{'width': measureToScaledFraction(subRow[columnIndex], resultSummary.maxMeasureValue) * 100 + '%', 'background': heatMapColorForValue(measureToScaledFraction(subRow[columnIndex], resultSummary.maxMeasureValue))}" :aria-valuenow="(measureToScaledFraction(subRow[columnIndex], resultSummary.maxMeasureValue)) * 100"
                      aria-valuemin="0" aria-valuemax="100"></div>
@@ -115,8 +115,10 @@
 import {ResultSummary} from "@/utils/resultSummaryObjects";
 import {ref} from "vue";
 import {range} from "lodash";
+import {isNumeric} from "@/utils/dataFunctions";
 
 export default {
+  methods: {isNumeric},
   props: {
     resultSummary: {
       type: ResultSummary,
@@ -129,6 +131,14 @@ export default {
     index: {
       type: Number,
       required: true
+    },
+    summaryType: {
+      type: String,
+      required: true,
+      validator(value) {
+        return ["effect", "bestWorst"].includes(value)
+      }
+
     }
   },
   setup(props, context) {
@@ -149,7 +159,7 @@ export default {
      * @returns {string}
      */
     function getDropdownControlsElementId(){
-      return props.resultSummary.metricName + '-summaryControls-' + props.index
+      return props.resultSummary.metricName + '-summaryControls-' + props.summaryType + "-" + props.index
     }
 
     /**
@@ -157,7 +167,7 @@ export default {
      * @returns {string}
      */
     function getDropdownElementId(){
-      return props.resultSummary.metricName + '-summaryMenu'  + props.index
+      return props.resultSummary.metricName + '-summaryMenu-' + props.summaryType + "-" + props.index
     }
 
     /**
@@ -223,12 +233,12 @@ export default {
       return "hsl(" + h + ", 100%, 50%)";
     }
 
-    function handleSortEvent({resultIndex, measureIndex, columnIndex, decreasing}) {
-      context.emit("sortData", {resultIndex, measureIndex, columnIndex, decreasing})
+    function handleSortEvent({summaryType, resultIndex, measureIndex, columnIndex, decreasing}) {
+      context.emit("sortData", {summaryType, resultIndex, measureIndex, columnIndex, decreasing})
     }
 
-    function handleIDSortEvent({resultIndex, decreasing}) {
-      context.emit("idSort", {resultIndex, decreasing})
+    function handleIDSortEvent({summaryType, resultIndex, decreasing}) {
+      context.emit("idSort", {summaryType, resultIndex, decreasing})
     }
 
     return {
@@ -280,6 +290,7 @@ ul.menu {
   height: auto;
   max-height: 80em;
   width: 100%;
+  overflow-x: auto;
   overflow-y: auto;
 }
 
