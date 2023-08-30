@@ -9,7 +9,7 @@ import {
     resultAnalysisTopFlowUrl, resultAnalysisVarianceUrl, parameterValuesSampleRequestUrl,
     irMetricsAllUrl, irMetricsReducedToFullJsonListUrl, kolibriSearchEvalJobDefinitionUrl,
     templateAllTypeToInfoMapUrl,
-    kolibriBaseUrl
+    kolibriBaseUrl, dateIdToJobIdsWithSummaryUrl
 } from '../utils/globalConstants'
 import _ from "lodash";
 
@@ -70,6 +70,15 @@ function axiosCall(url: string,
             responseCallback(resp)
             return resp
         })
+}
+
+function retrieveDateIdToJobIdWithSummaryMapping() {
+    return axiosCall(
+        dateIdToJobIdsWithSummaryUrl,
+        "GET",
+        undefined,
+        _ => _
+        )
 }
 
 
@@ -549,5 +558,5 @@ export {
     retrieveJobInformation, retrieveAllAvailableTemplateInfos,
     postAgainstEndpoint,
     retrieveAvailableResultDateIdToJobIdsMapping, retrieveAvailableResultFilesForDataAndJob, retrieveResultFileContent,
-    axiosCall
+    axiosCall, retrieveDateIdToJobIdWithSummaryMapping
 }

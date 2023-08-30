@@ -154,18 +154,10 @@ export default {
       return 'displayMeasureSelection-' + props.index
     }
 
-    /**
-     * TODO: if we display multiple summaries on a page, need to add index to id
-     * @returns {string}
-     */
     function getDropdownControlsElementId(){
       return props.resultSummary.metricName + '-summaryControls-' + props.summaryType + "-" + props.index
     }
 
-    /**
-     * TODO: if we display multiple summaries on a page, need to add index to id
-     * @returns {string}
-     */
     function getDropdownElementId(){
       return props.resultSummary.metricName + '-summaryMenu-' + props.summaryType + "-" + props.index
     }

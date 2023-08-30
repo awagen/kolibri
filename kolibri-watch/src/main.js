@@ -22,7 +22,7 @@ import {
     retrieveJobInformation,
     retrieveAllAvailableTemplateInfos,
     retrieveAvailableResultDateIdToJobIdsMapping,
-    retrieveAvailableResultFilesForDataAndJob, retrieveResultFileContent
+    retrieveAvailableResultFilesForDataAndJob, retrieveResultFileContent, retrieveDateIdToJobIdWithSummaryMapping
 } from './utils/retrievalFunctions'
 
 // we could just reference style sheets relatively from assets folder, but we keep one central scss file instead
@@ -92,7 +92,7 @@ export function createAppStore() {
                     availableDatesToJobIdsMapping: {},
                     availableResultFilesForCurrentDateAndJobId: [],
 
-
+                    availableDateIdToJobIdsWithResultsMapping: {},
 
                     // available execution ids (e.g corresponding to jobIds)
                     availableResultExecutionIDs: [],
@@ -579,6 +579,17 @@ export function createAppStore() {
                     })
             },
 
+            updateDateIdToJobIdsWithSummaryMapping(state) {
+                retrieveDateIdToJobIdWithSummaryMapping().then(response => {
+                    let mapping = response.data.data
+                    let result = {}
+                    for (const [key, value] of Object.entries(mapping)) {
+                        result[key] = [...[...value].sort()].reverse()
+                    }
+                    state.resultState.availableDateIdToJobIdsWithResultsMapping = result
+                })
+            },
+
             addIRMetricToSelected(state, metricType) {
                 let existingMetricIds = state.metricState.selectedIRMetrics.map(x => x.kId)
                 let addCandidates = state.metricState.availableIRMetrics
@@ -648,6 +659,9 @@ store.commit("retrieveJobDefinitions")
 
 // update state of available results
 store.commit("updateResultDateToJobIdsMapping")
+
+// update the mapping of dateId to list of jobIds with existing summaries
+store.commit("updateDateIdToJobIdsWithSummaryMapping")
 
 // regular scheduling
 window.setInterval(() => {
