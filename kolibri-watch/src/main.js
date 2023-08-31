@@ -242,6 +242,17 @@ export function createAppStore() {
             },
 
             /* Start: result summary selection / sort section */
+            updateDateIdToJobIdsWithSummaryMapping(state) {
+                retrieveDateIdToJobIdWithSummaryMapping().then(response => {
+                    let mapping = response.data.data
+                    let result = {}
+                    for (const [key, value] of Object.entries(mapping)) {
+                        result[key] = [...[...value].sort()].reverse()
+                    }
+                    state.resultSummaryState.availableDateIdToJobIdsWithResultsMapping = result
+                })
+            },
+
             updateSelectedResultSummaryData(state, {dateId, jobId}) {
                 console.info(`Load data for dateId '${dateId}', jobId '${jobId}'`)
                 let url = jobResultSummaryRetrievalUrl
@@ -646,17 +657,6 @@ export function createAppStore() {
                         state.metricState.selectedIRMetricsJson = response
                         state.metricState.selectedIRMetricsFormattedJsonString = objectToJsonStringAndSyntaxHighlight(response)
                     })
-            },
-
-            updateDateIdToJobIdsWithSummaryMapping(state) {
-                retrieveDateIdToJobIdWithSummaryMapping().then(response => {
-                    let mapping = response.data.data
-                    let result = {}
-                    for (const [key, value] of Object.entries(mapping)) {
-                        result[key] = [...[...value].sort()].reverse()
-                    }
-                    state.resultSummaryState.availableDateIdToJobIdsWithResultsMapping = result
-                })
             },
 
             addIRMetricToSelected(state, metricType) {

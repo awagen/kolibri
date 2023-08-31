@@ -2,6 +2,9 @@
 
   <div class="viewContainer" @click="closeDropdownIfClickOutsideOfControlElements">
 
+    <!-- Button to reload global state relevant for the selection -->
+    <GlobalStateRefreshButton :emitted-event-names="['updateDateIdToJobIdsWithSummaryMapping']"/>
+
     <!-- Dropdown activate / deactivate -->
     <div class="dropdownControl" :id="getDropdownControlsElementId()">
       <span class="k-tableControls">Load Data</span>
@@ -133,9 +136,10 @@ import Table from "@/components/partials/Table.vue";
 import {ref} from "vue";
 import Button from "@/components/partials/controls/Button.vue";
 import {useStore} from "vuex";
+import GlobalStateRefreshButton from "@/components/partials/controls/GlobalStateRefreshButton.vue";
 
 export default {
-  components: {Button, Table},
+  components: {GlobalStateRefreshButton, Button, Table},
   methods: {},
   computed: {
 
