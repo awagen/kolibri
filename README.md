@@ -25,7 +25,9 @@ Kolibri is the tool for relevancy explorations of search systems and batch proce
     right levers of result quality and representative parameter configurations for the group of "close to best" and "close to worst".
   - visualization of metric behavior on parameter changes
 
+
 **What you get - Batch Processing**
+
 Kolibri implements a storage based task queue mechanism that does not require setup of any queue or database.
 It further provides a Task-sequence based composition of jobs, that can be used for arbitrary use-cases.
 While relavancy explorations (see above) are the main use-case for the development of the UI and out-of-the-box
