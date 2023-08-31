@@ -1,7 +1,36 @@
 [![Scala CI](https://github.com/awagen/kolibri/actions/workflows/scala.yml/badge.svg?event=push)](https://github.com/awagen/kolibri/actions/workflows/scala.yml)
 
 # Kolibri
-The repository combines the distinct Kolibri projects.
+Kolibri is the tool for relevancy explorations of search systems and batch processing.
+
+**What you get - Relevancy Explorations**
+- Not dependent on any target system client: as long as you can request the target system and get a json back,
+  you are good.
+- UI-supported composition of experiments
+  - parameter permutations with full flexibility over altering url parameters, headers, bodies and effectively reduce the permutations
+    in a grid search by mapping specific conditional lists of parameter values to other parameter values
+    (such as mapping a specific query value to a list of filter values that is specific for that specific query).
+  - metrics (such as well-known information retrieval (IR) metrics such as DCG, NDCG, ERR, Precision, Recall as well 
+    as histograms of fields, jaccard comparison of results for distinct search systems and more)
+  - judgement lists
+  - batching (by any parameter)
+  - tagging allows any granularity of generated results. Default is on a parameter level (such as query).
+- UI-supported aggregation 
+  - aggregate from folders by regex or by defining specific results to aggregate
+  - use group-definitions to aggregate by group
+  - use weight definitions to allow for a relative grading of sample-importance (such as weighting down queries that
+    have a lower frequency)
+- UI-supported creation and visualization of summaries
+  - provides both an estimation of the effect the variation of the single parameters have on each calculated metric to quickly focus on the 
+    right levers of result quality and representative parameter configurations for the group of "close to best" and "close to worst".
+  - visualization of metric behavior on parameter changes
+
+**What you get - Batch Processing**
+Kolibri implements a storage based task queue mechanism that does not require setup of any queue or database.
+It further provides a Task-sequence based composition of jobs, that can be used for arbitrary use-cases.
+While relavancy explorations (see above) are the main use-case for the development of the UI and out-of-the-box
+job definitions, it can be used as a general batch processor.
+
 
 ![Alt text](images/kolibri.svg?raw=true "Kolibri")
 
