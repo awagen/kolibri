@@ -2,6 +2,11 @@
 
 # Kolibri
 Kolibri is the tool for relevancy explorations of search systems and batch processing.
+It implements a task queue that only needs the status information in a storage (currently local, AWS s3, GCP gcs are implemented).
+The nodes that are used for submitting new jobs, picking status information (such as requested by kolibri-watch UI) just need to be 
+able to connect to the defined storage (and request target systems in case this is part of the executed job). Who does what is then negotiated based on this data.
+Thus whether you run it on your local, connect from your local to the cloud storage, connect with several colleagues to cloud storage from local,
+deploy instances in the cloud or mix all of those does not matter.
 
 **What you get - Relevancy Explorations**
 - Not dependent on any target system client: as long as you can request the target system and get a json back,
