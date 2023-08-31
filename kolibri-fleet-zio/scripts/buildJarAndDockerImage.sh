@@ -3,4 +3,4 @@
 cd ..
 ./scripts/buildKolibriFleetZIOJar.sh || exit 1
 cd "$OLDPWD"
-docker build . -t kolibri-fleet-zio:0.2.2
+docker build . -t kolibri-fleet-zio:0.2.3
