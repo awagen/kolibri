@@ -17,16 +17,16 @@
 
 package de.awagen.kolibri.definitions.io.json
 
-import de.awagen.kolibri.definitions.format.RegexUtils
-import de.awagen.kolibri.definitions.processing.execution.functions.AggregationFunctions.{AggregateFilesWeighted, AggregateFromDirectoryByRegexWeighted, DoNothing, MultiExecution}
-import de.awagen.kolibri.definitions.processing.execution.functions.AnalyzeFunctions.{GetImprovingAndLoosing, GetImprovingAndLoosingFromDirPerRegex, GetValueVarianceFromDirPerRegex}
-import de.awagen.kolibri.definitions.processing.execution.functions.Execution
-import de.awagen.kolibri.definitions.provider.WeightProviders.WeightProvider
 import de.awagen.kolibri.datatypes.metrics.aggregation.writer.MetricDocumentFormat
 import de.awagen.kolibri.datatypes.types.FieldDefinitions.FieldDef
 import de.awagen.kolibri.datatypes.types.JsonStructDefs._
 import de.awagen.kolibri.datatypes.types.SerializableCallable.{SerializableFunction1, SerializableSupplier}
 import de.awagen.kolibri.datatypes.types.{JsonStructDefs, WithStructDef}
+import de.awagen.kolibri.definitions.format.RegexUtils
+import de.awagen.kolibri.definitions.processing.execution.functions.AggregationFunctions._
+import de.awagen.kolibri.definitions.processing.execution.functions.AnalyzeFunctions.{GetImprovingAndLoosing, GetImprovingAndLoosingFromDirPerRegex, GetValueVarianceFromDirPerRegex}
+import de.awagen.kolibri.definitions.processing.execution.functions.Execution
+import de.awagen.kolibri.definitions.provider.WeightProviders.WeightProvider
 import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, Reader}
 import de.awagen.kolibri.storage.io.writer.Writers.Writer
 import spray.json.{DefaultJsonProtocol, JsValue, JsonFormat, RootJsonFormat, enrichAny}

@@ -59,8 +59,8 @@ val additionalResolvers = Seq(
 val additionalDependencies = Seq(
   "org.slf4j" % "slf4j-api" % sl4jApiVersion,
   //scala test framework (scalactic is recommended but not required)(http://www.scalatest.org/install)
-  "org.scalactic" %% "scalactic" % scalaTestVersion % "test,it",
-  "org.scalatest" %% "scalatest" % scalaTestVersion % "test,it",
+  "org.scalactic" %% "scalactic" % scalaTestVersion % Test,
+  "org.scalatest" %% "scalatest" % scalaTestVersion % Test,
   "io.spray" %%  "spray-json" % sprayVersion,
   "ch.qos.logback" % "logback-classic" % logbackVersion,
   "com.chuusai" %% "shapeless" % shapelessVersion,

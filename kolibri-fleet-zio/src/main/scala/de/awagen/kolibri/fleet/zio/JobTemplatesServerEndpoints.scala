@@ -19,9 +19,10 @@ package de.awagen.kolibri.fleet.zio
 
 import de.awagen.kolibri.datatypes.types.Types.WithCount
 import de.awagen.kolibri.definitions.processing.execution.functions.Execution
-import de.awagen.kolibri.fleet.zio.JobDefsServerEndpoints.{ID_JOB_DEF, TASK_DEF}
+import de.awagen.kolibri.fleet.zio.DataEndpoints.SummarizeCommand
+import de.awagen.kolibri.fleet.zio.JobDefsServerEndpoints.{ID_JOB_DEF, ID_JOB_SUMMARY_DEF, ID_TASK_DEF}
 import de.awagen.kolibri.fleet.zio.ServerEndpoints.ResponseContentProtocol.responseContentFormat
-import de.awagen.kolibri.fleet.zio.ServerEndpoints.{ResponseContent}
+import de.awagen.kolibri.fleet.zio.ServerEndpoints.ResponseContent
 import de.awagen.kolibri.fleet.zio.config.AppConfig.JsonFormats.executionFormat
 import de.awagen.kolibri.fleet.zio.config.AppProperties
 import de.awagen.kolibri.fleet.zio.config.HttpConfig.corsConfig
@@ -157,8 +158,10 @@ object JobTemplatesServerEndpoints {
           _ <- ZIO.whenCase(templateType)({
             case ID_JOB_DEF =>
               bodyStr.parseJson.convertTo[ZIO[Client, Throwable, JobDefinition[_, _, _ <: WithCount]]] *> ZIO.succeed(())
-            case TASK_DEF =>
+            case ID_TASK_DEF =>
               ZIO.attempt(bodyStr.parseJson.convertTo[Execution[Any]]) *> ZIO.succeed(())
+            case ID_JOB_SUMMARY_DEF =>
+              ZIO.attempt(bodyStr.parseJson.convertTo[SummarizeCommand]) *> ZIO.succeed(())
             case _ => ZIO.fail(new RuntimeException("Can not parse job/task definition"))
           })
         } yield bodyStr

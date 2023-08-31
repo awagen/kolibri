@@ -15,7 +15,7 @@
  */
 
 
-package de.awagen.kolibri.fleet.zio.utils
+package de.awagen.kolibri.datatypes.utils
 
 object FuncUtils {
 

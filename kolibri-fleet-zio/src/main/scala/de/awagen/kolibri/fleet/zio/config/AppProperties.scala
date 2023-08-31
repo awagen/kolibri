@@ -61,9 +61,9 @@ object AppProperties {
 
     val http_server_port: Int = HTTP_SERVER_PORT.value.toInt
 
-    val allowedTimePerElementInMillis: Int = baseConfig.getInt("kolibri.job.allowedTimePerElementInMillis")
-    val allowedTimePerBatchInSeconds: Int = baseConfig.getInt("kolibri.job.allowedTimePerBatchInSeconds")
-    val allowedTimePerJobInSeconds: Int = baseConfig.getInt("kolibri.job.allowedTimePerJobInSeconds")
+    val allowedTimePerElementInMillis: Int = 10000
+    val allowedTimePerBatchInSeconds: Int = 7200
+    val allowedTimePerJobInSeconds: Int = 86400
 
     // max time allowed for resource directive to be processed
     val maxResourceDirectiveLoadTimeInMinutes: Int = baseConfig.getInt("kolibri.job.resources.directives.maxLoadTimeInMinutes")

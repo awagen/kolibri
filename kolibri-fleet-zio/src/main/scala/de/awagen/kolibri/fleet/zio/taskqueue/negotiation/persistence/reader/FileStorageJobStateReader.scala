@@ -18,6 +18,7 @@
 package de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.reader
 
 import de.awagen.kolibri.datatypes.types.Types.WithCount
+import de.awagen.kolibri.datatypes.utils.FuncUtils
 import de.awagen.kolibri.fleet.zio.config.AppProperties.config
 import de.awagen.kolibri.fleet.zio.config.Directories
 import de.awagen.kolibri.fleet.zio.config.Directories.JobTopLevel.jobNameToJobDefinitionFile
@@ -32,7 +33,6 @@ import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.JobStates.{JobSta
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.BatchProcessingStates
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.BatchProcessingStates.BatchProcessingStatus
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.status.JobDefinitionLoadStates.{InvalidJobDefinition, JobDefinitionLoadStatus, Loaded}
-import de.awagen.kolibri.fleet.zio.utils.FuncUtils
 import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, Reader}
 import org.slf4j.{Logger, LoggerFactory}
 import spray.json._

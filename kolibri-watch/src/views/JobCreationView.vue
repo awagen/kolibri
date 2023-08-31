@@ -1,34 +1,46 @@
 <template>
 
-  <div class="row-container columns">
-    <ul class="tab tab-block">
-      <li class="tab-item" v-bind:class="{'active':(isActiveInputDefView)}">
-        <a href="#" @click.prevent="this.selectDisplay('inputDefinition')">
-          <span class="choice-title">Form</span>
-        </a>
-      </li>
-      <li class="tab-item" v-bind:class="{'active':(isActiveTemplateView)}">
-        <a href="#" @click.prevent="this.selectDisplay('template')">
-          <span class="choice-title">Raw</span>
-        </a>
-      </li>
-<!--      <li class="tab-item" v-bind:class="{'active':(isActiveCreationView)}">-->
-<!--        <a href="#" @click.prevent="this.selectDisplay('creation')">-->
-<!--          <span class="choice-title">Parameter Composer</span>-->
-<!--        </a>-->
-<!--      </li>-->
-    </ul>
-  </div>
+  <div class="viewContainer">
 
-  <template v-if="this.isActiveInputDefView">
-    <InputJobMsgView/>
-  </template>
-  <template v-if="this.isActiveTemplateView">
-    <JobDefinitionByTemplates/>
-  </template>
-<!--  <template v-if="this.isActiveCreationView">-->
-<!--    <DataCreation/>-->
-<!--  </template>-->
+    <!-- Button to reload global state relevant for the selection -->
+    <GlobalStateRefreshButton
+        :emitted-event-names="[
+            'updateAvailableTemplateTypes',
+            'updateAllAvailableTemplateInfos',
+            'retrieveJobDefinitions'
+            ]"
+    />
+
+    <div class="row-container columns">
+      <ul class="tab tab-block">
+        <li class="tab-item" v-bind:class="{'active':(isActiveInputDefView)}">
+          <a href="#" @click.prevent="this.selectDisplay('inputDefinition')">
+            <span class="choice-title">Form</span>
+          </a>
+        </li>
+        <li class="tab-item" v-bind:class="{'active':(isActiveTemplateView)}">
+          <a href="#" @click.prevent="this.selectDisplay('template')">
+            <span class="choice-title">Raw</span>
+          </a>
+        </li>
+        <!--      <li class="tab-item" v-bind:class="{'active':(isActiveCreationView)}">-->
+        <!--        <a href="#" @click.prevent="this.selectDisplay('creation')">-->
+        <!--          <span class="choice-title">Parameter Composer</span>-->
+        <!--        </a>-->
+        <!--      </li>-->
+      </ul>
+    </div>
+
+    <template v-if="this.isActiveInputDefView">
+      <InputJobMsgView/>
+    </template>
+    <template v-if="this.isActiveTemplateView">
+      <JobDefinitionByTemplates/>
+    </template>
+    <!--  <template v-if="this.isActiveCreationView">-->
+    <!--    <DataCreation/>-->
+    <!--  </template>-->
+  </div>
 
 </template>
 
@@ -36,27 +48,28 @@
 import JobDefinitionByTemplates from "../components/JobDefinitionByTemplates.vue";
 import DataCreation from "../components/DataCreation.vue";
 import InputJobMsgView from "./InputJobMsgView.vue";
+import GlobalStateRefreshButton from "@/components/partials/controls/GlobalStateRefreshButton.vue";
 
 export default {
 
   components: {
+    GlobalStateRefreshButton,
     InputJobMsgView,
     JobDefinitionByTemplates,
     DataCreation
   },
   methods: {
     selectDisplay(type) {
-      if (type === "inputDefinition"){
+      if (type === "inputDefinition") {
         this.isActiveInputDefView = true
         this.isActiveTemplateView = false
         this.isActiveCreationView = false
       }
-      if (type === "template"){
+      if (type === "template") {
         this.isActiveInputDefView = false
         this.isActiveTemplateView = true
         this.isActiveCreationView = false
-      }
-      else if (type === "creation"){
+      } else if (type === "creation") {
         this.isActiveInputDefView = false
         this.isActiveTemplateView = false
         this.isActiveCreationView = true

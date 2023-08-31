@@ -22,17 +22,24 @@ import {
     retrieveJobInformation,
     retrieveAllAvailableTemplateInfos,
     retrieveAvailableResultDateIdToJobIdsMapping,
-    retrieveAvailableResultFilesForDataAndJob, retrieveResultFileContent
+    retrieveAvailableResultFilesForDataAndJob,
+    retrieveResultFileContent,
+    retrieveDateIdToJobIdWithSummaryMapping,
+    axiosCall
 } from './utils/retrievalFunctions'
 
 // we could just reference style sheets relatively from assets folder, but we keep one central scss file instead
 // as central place, mixing sheets and overwriting styles
 import './assets/css/styles.scss';
-import {kolibriStateRefreshInterval} from "./utils/globalConstants";
+import {jobResultSummaryRetrievalUrl, kolibriStateRefreshInterval} from "./utils/globalConstants";
 import {objectToJsonStringAndSyntaxHighlight, stringifyObj} from "./utils/formatFunctions";
 import {selectedDataToParameterValuesJson} from "./utils/dataFunctions";
 import {idForMetric} from "./utils/metricFunctions";
 import {objToInputDef} from "./utils/inputDefConversions";
+import {
+    resultJsonToEffectEstimateResultSummary,
+    resultJsonToWinnerLooserConfigResultSummary
+} from "@/utils/resultSummaryObjects";
 
 
 export function createAppStore() {
@@ -92,8 +99,6 @@ export function createAppStore() {
                     availableDatesToJobIdsMapping: {},
                     availableResultFilesForCurrentDateAndJobId: [],
 
-
-
                     // available execution ids (e.g corresponding to jobIds)
                     availableResultExecutionIDs: [],
                     currentlySelectedExecutionID: "",
@@ -112,6 +117,17 @@ export function createAppStore() {
                     availableHistogramLabelNames: [],
                     availableHistogramValues: [],
                     selectedData: []
+                },
+
+                resultSummaryState: {
+
+                    availableDateIdToJobIdsWithResultsMapping: {},
+                    selectedDateIDValue: "",
+                    selectedJobIDValue: "",
+                    selectedParameterEffectResultSummaryObjArr: [],
+                    selectedResultWinnerLooserObjArr: []
+
+
                 },
 
                 analysisState: {
@@ -224,6 +240,70 @@ export function createAppStore() {
                     })
                 })
             },
+
+            /* Start: result summary selection / sort section */
+            updateDateIdToJobIdsWithSummaryMapping(state) {
+                retrieveDateIdToJobIdWithSummaryMapping().then(response => {
+                    let mapping = response.data.data
+                    let result = {}
+                    for (const [key, value] of Object.entries(mapping)) {
+                        result[key] = [...[...value].sort()].reverse()
+                    }
+                    state.resultSummaryState.availableDateIdToJobIdsWithResultsMapping = result
+                })
+            },
+
+            updateSelectedResultSummaryData(state, {dateId, jobId}) {
+                console.info(`Load data for dateId '${dateId}', jobId '${jobId}'`)
+                let url = jobResultSummaryRetrievalUrl
+                    .replace("#DATE_ID", dateId)
+                    .replace("#JOB_ID", jobId) + "?file=summary.json"
+                axiosCall(
+                    url,
+                    "GET",
+                    undefined,
+                    resp => {
+                        let json = resp.data.data
+                        state.resultSummaryState.selectedParameterEffectResultSummaryObjArr = Object.keys(json).map(metricName => {
+                            return resultJsonToEffectEstimateResultSummary(json[metricName])
+                        })
+                        state.resultSummaryState.selectedResultWinnerLooserObjArr = Object.keys(json).map(metricName => {
+                            return resultJsonToWinnerLooserConfigResultSummary(json[metricName])
+                        })
+                    }
+                )
+            },
+
+            sortSelectedResultSummaryDataByData(state, {
+                summaryType,
+                resultIndex,
+                measureIndex,
+                columnIndex,
+                decreasing
+            }) {
+                if (summaryType === "effect") {
+                    state.resultSummaryState.selectedParameterEffectResultSummaryObjArr[resultIndex].sortByMeasureAndColumnByIndices(measureIndex, columnIndex, decreasing)
+                }
+                if (summaryType === "bestWorst") {
+                    state.resultSummaryState.selectedResultWinnerLooserObjArr[resultIndex].sortByMeasureAndColumnByIndices(measureIndex, columnIndex, decreasing)
+                }
+            },
+
+            sortSelectedResultSummaryDataById(state, {summaryType, resultIndex, decreasing}) {
+                if (summaryType === "effect") state.resultSummaryState.selectedParameterEffectResultSummaryObjArr[resultIndex].idSort(decreasing)
+                if (summaryType === "bestWorst") state.resultSummaryState.selectedResultWinnerLooserObjArr[resultIndex].idSort(decreasing)
+            },
+
+            setSelectedResultSummaryDateID(state, dateId) {
+              state.resultSummaryState.selectedDateIDValue = dateId
+            },
+
+            setSelectedResultSummaryJobID(state, jobId) {
+                state.resultSummaryState.selectedJobIDValue = jobId
+            },
+            /* End: result summary selection / sort section */
+
+
 
             updateSelectedJobName(state, jobName) {
                 state.jobInputDefState.selectedJobName = jobName
@@ -648,6 +728,9 @@ store.commit("retrieveJobDefinitions")
 
 // update state of available results
 store.commit("updateResultDateToJobIdsMapping")
+
+// update the mapping of dateId to list of jobIds with existing summaries
+store.commit("updateDateIdToJobIdsWithSummaryMapping")
 
 // regular scheduling
 window.setInterval(() => {

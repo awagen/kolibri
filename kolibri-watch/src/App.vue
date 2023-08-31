@@ -10,7 +10,8 @@
       <img id="menu-logo" alt="Kolibri logo" src="./assets/images/kolibri.svg"/>
     </section>
     <section class="navbar-section">
-      <router-link class="btn btn-link" to="/analyze">ANALYZE (ALPHA)</router-link>
+      <router-link class="btn btn-link" to="/resultSummary">RESULT SUMMARY (Beta)</router-link>
+      <router-link class="btn btn-link" to="/analyze">ANALYZE (Beta)</router-link>
 <!--      <router-link class="btn btn-link" to="/result">RESULT</router-link>-->
     </section>
   </header>

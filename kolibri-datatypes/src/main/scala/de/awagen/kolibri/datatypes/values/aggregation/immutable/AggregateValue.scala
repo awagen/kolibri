@@ -19,8 +19,11 @@ package de.awagen.kolibri.datatypes.values.aggregation.immutable
 
 import de.awagen.kolibri.datatypes.io.KolibriSerializable
 import de.awagen.kolibri.datatypes.values.DataPoint
+import de.awagen.kolibri.datatypes.values.MetricValueFunctions.AggregationType.AggregationType
 
 trait AggregateValue[+A] extends KolibriSerializable {
+
+  def aggregationType: AggregationType
 
   def numSamples: Int
 

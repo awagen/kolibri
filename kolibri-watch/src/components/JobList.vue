@@ -26,25 +26,63 @@
         </div>
       </td>
       <td v-if="showStartStopOptions && jobHasStarted(job)">
-        <button @click="stopJob(job.jobId)" class="btn btn-primary s-circle kill">Stop</button>
+        <Button
+          emitted-event-name="stopJob"
+          :emitted-event-arguments="{jobId: job.jobId}"
+          @stop-job="stopJob"
+          button-class="kill"
+          button-shape="circle"
+          title="Stop"
+        />
       </td>
       <td v-if="showStartStopOptions && !jobHasStarted(job)">
-        <button @click="startJob(job.jobId)" class="btn btn-primary s-circle start">Start</button>
+        <Button
+            emitted-event-name="startJob"
+            :emitted-event-arguments="{jobId: job.jobId}"
+            @start-job="startJob"
+            button-class="start"
+            button-shape="circle"
+            title="Start"
+        />
       </td>
       <td>
-        <button @click="deleteOpenJob(job.jobId, !isHistoryView)" class="btn btn-primary s-circle kill">Delete</button>
+        <Button
+            emitted-event-name="deleteOpenJob"
+            :emitted-event-arguments="{jobId: job.jobId, isOpenJob: !isHistoryView}"
+            @delete-open-job="deleteOpenJob"
+            button-class="kill"
+            button-shape="circle"
+            title="Delete"
+        />
       </td>
     </tr>
     </tbody>
   </table>
+
+  <!-- Modal to indicate whether actions were successful or failed -->
+  <ResponseModal
+      @responseModalClosed="modalObj.hide()"
+      @responseModalOpened="modalObj.show()"
+      :show="modalObj.showModal"
+      :mode="modalObj.mode"
+      :modal-title="modalObj.modalTitle"
+      :main-content="modalObj.mainContent"
+      :footer-content="modalObj.footerContent"
+      :fade-out-ok='true'
+  />
+
 </template>
 
 <script>
-import {onBeforeUnmount, onMounted, ref} from "vue";
-import axios from "axios";
-import {jobDeleteUrl, startJobUrl, stopJobUrl} from '../utils/globalConstants'
+import {onBeforeUnmount, onMounted, reactive} from "vue";
+import {jobDeleteUrl, startJobUrl, stopJobUrl} from '@/utils/globalConstants'
+import Button from "@/components/partials/controls/Button.vue";
+import ResponseModal from "@/components/partials/ResponseModal.vue";
+import {axiosCall} from "@/utils/retrievalFunctions";
+import {Modal} from "@/utils/modalObjects";
 
 export default {
+  components: {ResponseModal, Button},
   props: [
     'header',
     'data',
@@ -53,6 +91,8 @@ export default {
   ],
 
   setup(props) {
+
+    let modalObj = reactive(new Modal())
 
     function jobHasStarted(job) {
       let processDirectives = job.directives.map(dir => dir.type.trim())
@@ -71,30 +111,31 @@ export default {
     /**
      * NOTE: right now kill-job just means removing all job level directives out of the
      * job folder such that no node will pick up any batch of the job.
-     * Batches already running will not be terminated as of now (might change later)
      */
-    function stopJob(jobId) {
-      console.debug("executing killJob")
-      return axios
-          .delete(stopJobUrl.replace("#JOB_ID", jobId))
-          .then(response => {
-            console.debug("killJob response: " + JSON.stringify(response.data))
-          }).catch(e => {
-            console.debug("exception on stopJob call: ")
-            console.debug(e)
-          })
+    function stopJob({jobId}) {
+      let url = stopJobUrl.replace("#JOB_ID", jobId)
+      axiosCall(
+          url,
+          "DELETE",
+          undefined,
+          resp => {
+            if (resp.success) modalObj.prepareOKResponseShowAndShow()
+            else modalObj.prepareErrorResponseShowAndShow("Stop Job Fail", resp.msg)
+          }
+      )
     }
 
-    function deleteOpenJob(jobId, isOpenJob) {
-      console.debug(`Deleting open job with id ${jobId}`)
-      return axios
-          .delete(jobDeleteUrl.replace("#JOB_ID", jobId) + "?isOpenJob=" + isOpenJob)
-          .then(response => {
-            console.debug("delete job response: " + JSON.stringify(response.data))
-          }).catch(e => {
-            console.debug("exception on job delete call: ")
-            console.debug(e)
-          })
+    function deleteOpenJob({jobId, isOpenJob}) {
+      let url = jobDeleteUrl.replace("#JOB_ID", jobId) + "?isOpenJob=" + isOpenJob
+      axiosCall(
+          url,
+          "DELETE",
+          undefined,
+          resp => {
+            if (resp.success) modalObj.prepareOKResponseShowAndShow()
+            else modalObj.prepareErrorResponseShowAndShow("Delete Job Fail", resp.msg)
+          }
+      )
     }
 
     /**
@@ -102,18 +143,19 @@ export default {
      * for the job (into the job's folder). This triggers all nodes to pick up the batches.
      * Right now this does not mean fine-grained control, e.g the directive written will
      * signal start of processing to all connected nodes. More fine-grained control of
-     * set directives via UI will be added shortly
+     * set directives via UI planned to be added shortly
      */
-    function startJob(jobId) {
-      console.debug("executing startJob")
-      return axios
-          .post(startJobUrl.replace("#JOB_ID", jobId), [{"type": "PROCESS"}])
-          .then(response => {
-            console.debug("startJob response: " + response.data)
-          }).catch(e => {
-            console.debug("exception on startJob call: ")
-            console.debug(e)
-          })
+    function startJob({jobId}) {
+      let url = startJobUrl.replace("#JOB_ID", jobId)
+      axiosCall(
+          url,
+          "POST",
+          [{"type": "PROCESS"}],
+          resp => {
+            if (resp.success) modalObj.prepareOKResponseShowAndShow()
+            else modalObj.prepareErrorResponseShowAndShow("Start Job Fail", resp.msg)
+          }
+      )
     }
 
     onMounted(() => {
@@ -125,7 +167,8 @@ export default {
       stopJob,
       startJob,
       deleteOpenJob,
-      jobHasStarted
+      jobHasStarted,
+      modalObj
     }
   }
 
@@ -153,25 +196,6 @@ td, th {
   border-bottom: none !important;
 }
 
-.btn.kill {
-  background-color: #340000;
-  color: #9C9C9C;
-  border: none;
-}
-
-.btn.kill:hover {
-  background-color: #5c0003;
-}
-
-.btn.start {
-  background-color: darkgreen;
-  color: #9C9C9C;
-  border: none;
-}
-
-.btn.kill:hover {
-  background-color: darkslategray;
-}
 
 .runningJobHeader {
   padding-top: 1em;

@@ -50,4 +50,44 @@ function selectedDataToParameterValuesJson(selectedData){
     })
 }
 
-export {filteredResultsReduced, selectedDataToParameterValuesJson}
+function isNumeric(value: any): boolean {
+    return !isNaN(parseFloat(value))
+}
+
+/**
+ * Sorting two values. If the values can be parsed to float,
+ * they will be sorted accordingly, otherwise according to their type.
+ *
+ * Note: by default gives an increasing sorting
+ *
+ * @param value1
+ * @param value2
+ */
+function numberAwareComparison(value1: any, value2: any) {
+    if (isNumeric(value1) && isNumeric(value2)) {
+        return parseFloat(value1) - parseFloat(value2)
+    }
+    return value1 < value2 ? -1 : 1
+}
+
+function numberAwareFormat(value: any, decimals: number = 4): string {
+    if (isNumeric(value)) return value.toFixed(decimals)
+    else return `${value}`
+}
+
+/**
+ * Format an array of values. If numerical, limit all to 4 decimal digits, otherwise leave as they are.
+ * Then append all with delimiter as joining element. default delimiter: " &"
+ * @param array
+ * @param delimiter
+ */
+function formatValueArray(array, delimiter = " & ") {
+    return array.map(value => {
+        return numberAwareFormat(value, 4)
+    }).join(delimiter)
+}
+
+export {
+    filteredResultsReduced, selectedDataToParameterValuesJson, numberAwareComparison, numberAwareFormat,
+    isNumeric, formatValueArray
+}

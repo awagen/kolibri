@@ -26,6 +26,14 @@ export const irMetricsReducedToFullJsonListUrl = `${kolibriBaseUrl}/${import.met
 // urls to retrieve some result information
 export const resultDateIdsUrl = `${kolibriBaseUrl}/${import.meta.env.VITE_KOLIBRI_RESULT_DATE_IDS_PATH}`
 
+
+export const dateIdToJobIdsWithSummaryUrl = `${kolibriBaseUrl}/${import.meta.env.VITE_KOLIBRI_RESULT_SUMMARY_OVERVIEW_PATH}`
+
+export const jobResultSummaryRetrievalUrl = `${kolibriBaseUrl}/${import.meta.env.VITE_KOLIBRI_RESULT_SUMMARY_RETRIEVAL_PATH}`
+
+
+
+
 export const resultDateIdAndJobIdToResultFiledUrl = `${kolibriBaseUrl}/${import.meta.env.VITE_KOLIBRI_RESULT_DATEID_AND_JOBID_TO_RESULTFILE_PATH}`
 
 export const resultContentRetrievalUrl = `${kolibriBaseUrl}/${import.meta.env.VITE_KOLIBRI_RESULT_CONTENT_RETRIEVAL_URL}`

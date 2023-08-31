@@ -58,7 +58,7 @@ case class BaseTaskOverviewService(jobStateReader: JobStateReader,
   override def getBatchProcessingTasks(openJobsSnapshot: OpenJobsSnapshot, maxNrTasks: Int = AppProperties.config.maxNrJobsClaimed): zio.Task[Seq[Task]] = {
     for {
       ignoreJobIdsOnThisNode <- ZIO.succeed(openJobsSnapshot.jobsToBeIgnoredOnThisNode.map(x => x.jobId))
-      nNextOpenBatches <- ZIO.attempt(openJobsSnapshot.getNextNOpenBatches(maxNrTasks, Map.empty).filter(x => !ignoreJobIdsOnThisNode.contains(x._1.jobName)))
+      nNextOpenBatches <- ZIO.attempt(openJobsSnapshot.getNextNOpenBatches(maxNrTasks, Map.empty, ignoreJobIdsOnThisNode.toSet))
       nNextOpenProcessIds <- ZIO.attempt(nNextOpenBatches.flatMap(defWithBatches => {
         defWithBatches._2.map(batchNr => ProcessId(defWithBatches._1.jobName, batchNr))
       }))
