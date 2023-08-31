@@ -75,4 +75,19 @@ function numberAwareFormat(value: any, decimals: number = 4): string {
     else return `${value}`
 }
 
-export {filteredResultsReduced, selectedDataToParameterValuesJson, numberAwareComparison, numberAwareFormat, isNumeric}
+/**
+ * Format an array of values. If numerical, limit all to 4 decimal digits, otherwise leave as they are.
+ * Then append all with delimiter as joining element. default delimiter: " &"
+ * @param array
+ * @param delimiter
+ */
+function formatValueArray(array, delimiter = " & ") {
+    return array.map(value => {
+        return numberAwareFormat(value, 4)
+    }).join(delimiter)
+}
+
+export {
+    filteredResultsReduced, selectedDataToParameterValuesJson, numberAwareComparison, numberAwareFormat,
+    isNumeric, formatValueArray
+}

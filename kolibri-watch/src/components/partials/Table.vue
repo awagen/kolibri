@@ -1,111 +1,118 @@
 <template>
 
-  <h4 class="tableHeader">{{ header }}</h4>
+  <div class="tableContainer" @click="closeDropdownIfClickOutsideOfControlElements">
 
-  <!-- Selection menu to refine whats displayed, what the sorting criterion is and the like
-       NOTE: put in separate component
-  -->
-  <!-- Dropdown activate / deactivate -->
-  <div :id="getDropdownControlsElementId()">
-    <span class="k-tableControls">Controls</span>
-    <i :class="['icon', menuDropDownActive ? 'icon-arrow-down' : 'icon-arrow-up']" @click.prevent="toggleMenuDropdown"></i>
-  </div>
-  <!-- dropdown content -->
-  <div class="dropdownContainer">
-    <div :id="getDropdownElementId()" :class="['dropdown', menuDropDownActive && 'active']">
+    <h4 class="tableHeader">{{ header }}</h4>
 
-      <ul class="menu">
-        <li class="divider" data-content="Sorting Measure"/>
-        <!-- Sort measure selection -->
-        <template v-for="(element, index) in resultSummary.measureNames">
-          <li class="menu-item">
-            <label class="form-radio form-inline">
-              <input type="radio"
-                     :name="resultSummary.metricName + '-sortCriterion'"
-                     :value="element"
-                     :checked="(sortByMeasureIndex === index) ? '' : null"
-                     @change="setSortByMeasureIndex(index)"
-              />
-              <i class="form-icon"></i>
-              {{ element }}
-            </label>
-          </li>
-        </template>
-
-        <li class="divider" data-content="Displayed Measure"/>
-        <template v-for="(element, index) in resultSummary.measureNames">
-          <li class="menu-item">
-            <label class="form-checkbox form-inline">
-              <input :id="[getDisplayedMeasureSelectionId() + '-' + index]"
-                     :class="[getDisplayedMeasureSelectionId()]"
-                     :checked="displayedMeasures.includes(element)"
-                     type="checkbox"
-                     :name="resultSummary.metricName + '-displayCriterion-' + index"
-                     :value="element"
-                     @change="handleMeasureDisplaySelectionChange()"
-              />
-              <i class="form-icon"></i>
-              {{ element }}
-            </label>
-          </li>
-        </template>
-
-      </ul>
-
+    <!-- Selection menu to refine whats displayed, what the sorting criterion is and the like
+         NOTE: put in separate component
+    -->
+    <!-- Dropdown activate / deactivate -->
+    <div :id="getDropdownControlsElementId()">
+      <span class="k-tableControls">Controls</span>
+      <i :class="['icon', menuDropDownActive ? 'icon-arrow-down' : 'icon-arrow-up']"
+         @click.prevent="toggleMenuDropdown"></i>
     </div>
-  </div>
+    <!-- dropdown content -->
+    <div class="dropdownContainer">
+      <div :id="getDropdownElementId()" :class="['dropdown', menuDropDownActive && 'active']">
 
-  <div class="k-table-wrapper">
-    <table class="table">
-      <thead>
-      <tr>
-        <th class="firstColumn">
-          <span class="columnTitle">ID</span>
-          <i v-if="resultSummary.sortedById && resultSummary.idSortDecreasing" class="icon icon-arrow-down"
-             @click.prevent="handleIDSortEvent({summaryType: summaryType, resultIndex: index, decreasing: false})"></i>
-          <i v-if="resultSummary.sortedById && !resultSummary.idSortDecreasing" class="icon icon-arrow-up"
-             @click.prevent="handleIDSortEvent({summaryType: summaryType, resultIndex: index, decreasing: true})"></i>
-          <i v-if="!resultSummary.sortedById" class="icon icon-minus"
-             @click.prevent="handleIDSortEvent({summaryType: summaryType, resultIndex: index, decreasing: true})"></i>
-        </th>
-        <th v-for="(headerColumn, headerColumnIndex) in resultSummary.columnNames">
-          <span class="columnTitle">{{ headerColumn }}</span>
-          <i v-if="resultSummary.sortedByColumn[headerColumnIndex] && resultSummary.columnSortDecreasing[headerColumnIndex]" class="icon icon-arrow-down"
-             @click.prevent="handleSortEvent({summaryType: summaryType, resultIndex: index, measureIndex: sortByMeasureIndex, columnIndex: headerColumnIndex, decreasing: false})"></i>
-          <i v-if="resultSummary.sortedByColumn[headerColumnIndex] && !resultSummary.columnSortDecreasing[headerColumnIndex]" class="icon icon-arrow-up"
-             @click.prevent="handleSortEvent({summaryType: summaryType, resultIndex: index, measureIndex: sortByMeasureIndex, columnIndex: headerColumnIndex, decreasing: true})"></i>
-          <i v-if="!resultSummary.sortedByColumn[headerColumnIndex]" class="icon icon-minus"
-             @click.prevent="handleSortEvent({summaryType: summaryType, resultIndex: index, measureIndex: sortByMeasureIndex, columnIndex: headerColumnIndex, decreasing: true})"></i>
-        </th>
-      </tr>
-      </thead>
-      <tbody>
-      <tr v-for="(rowsWithId, rowIndex) in resultSummary.values">
-
-        <td :class="[ rowIndex % 2 === 0 ? 'rowEven' : 'rowUneven', 'firstColumn' ]">
-          {{ rowsWithId.id }}
-        </td>
-
-        <td :class="[ rowIndex % 2 === 0 ? 'rowEven' : 'rowUneven']"
-            v-for="(_, columnIndex) in rowsWithId.rows[0]">
-
-          <template v-for="(subRow, subRowIndex) in rowsWithId.rows">
-            <!-- Only selecting those rows that match the selected measures -->
-            <template v-if="displayedMeasuresIndices.includes(subRowIndex)">
-              <div v-if="summaryType === 'effect' || isNumeric(subRow[columnIndex])" class="bar bar-sm">
-                <div class="bar-item" role="progressbar"
-                     :style="{'width': measureToScaledFraction(subRow[columnIndex], resultSummary.maxMeasureValue) * 100 + '%', 'background': heatMapColorForValue(measureToScaledFraction(subRow[columnIndex], resultSummary.maxMeasureValue))}" :aria-valuenow="(measureToScaledFraction(subRow[columnIndex], resultSummary.maxMeasureValue)) * 100"
-                     aria-valuemin="0" aria-valuemax="100"></div>
-              </div>
-              <div>{{ subRow[columnIndex] }}</div>
-            </template>
+        <ul class="menu">
+          <li class="divider" data-content="Sorting Measure"/>
+          <!-- Sort measure selection -->
+          <template v-for="(element, index) in resultSummary.measureNames">
+            <li class="menu-item">
+              <label class="form-radio form-inline">
+                <input type="radio"
+                       :name="resultSummary.metricName + '-sortCriterion'"
+                       :value="element"
+                       :checked="(sortByMeasureIndex === index) ? '' : null"
+                       @change="setSortByMeasureIndex(index)"
+                />
+                <i class="form-icon"></i>
+                {{ element }}
+              </label>
+            </li>
           </template>
 
-        </td>
+          <li class="divider" data-content="Displayed Measure"/>
+          <template v-for="(element, index) in resultSummary.measureNames">
+            <li class="menu-item">
+              <label class="form-checkbox form-inline">
+                <input :id="[getDisplayedMeasureSelectionId() + '-' + index]"
+                       :class="[getDisplayedMeasureSelectionId()]"
+                       :checked="displayedMeasures.includes(element)"
+                       type="checkbox"
+                       :name="resultSummary.metricName + '-displayCriterion-' + index"
+                       :value="element"
+                       @change="handleMeasureDisplaySelectionChange()"
+                />
+                <i class="form-icon"></i>
+                {{ element }}
+              </label>
+            </li>
+          </template>
 
-      </tr>
-      </tbody>
-    </table>
+        </ul>
+
+      </div>
+    </div>
+
+    <div class="k-table-wrapper">
+      <table class="table">
+        <thead>
+        <tr>
+          <th class="firstColumn">
+            <span class="columnTitle">ID</span>
+            <i v-if="resultSummary.sortedById && resultSummary.idSortDecreasing" class="icon icon-arrow-down"
+               @click.prevent="handleIDSortEvent({summaryType: summaryType, resultIndex: index, decreasing: false})"></i>
+            <i v-if="resultSummary.sortedById && !resultSummary.idSortDecreasing" class="icon icon-arrow-up"
+               @click.prevent="handleIDSortEvent({summaryType: summaryType, resultIndex: index, decreasing: true})"></i>
+            <i v-if="!resultSummary.sortedById" class="icon icon-minus"
+               @click.prevent="handleIDSortEvent({summaryType: summaryType, resultIndex: index, decreasing: true})"></i>
+          </th>
+          <th v-for="(headerColumn, headerColumnIndex) in resultSummary.columnNames">
+            <span class="columnTitle">{{ headerColumn }}</span>
+            <i v-if="resultSummary.sortedByColumn[headerColumnIndex] && resultSummary.columnSortDecreasing[headerColumnIndex]"
+               class="icon icon-arrow-down"
+               @click.prevent="handleSortEvent({summaryType: summaryType, resultIndex: index, measureIndex: sortByMeasureIndex, columnIndex: headerColumnIndex, decreasing: false})"></i>
+            <i v-if="resultSummary.sortedByColumn[headerColumnIndex] && !resultSummary.columnSortDecreasing[headerColumnIndex]"
+               class="icon icon-arrow-up"
+               @click.prevent="handleSortEvent({summaryType: summaryType, resultIndex: index, measureIndex: sortByMeasureIndex, columnIndex: headerColumnIndex, decreasing: true})"></i>
+            <i v-if="!resultSummary.sortedByColumn[headerColumnIndex]" class="icon icon-minus"
+               @click.prevent="handleSortEvent({summaryType: summaryType, resultIndex: index, measureIndex: sortByMeasureIndex, columnIndex: headerColumnIndex, decreasing: true})"></i>
+          </th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr v-for="(rowsWithId, rowIndex) in resultSummary.values">
+
+          <td :class="[ rowIndex % 2 === 0 ? 'rowEven' : 'rowUneven', 'firstColumn' ]">
+            {{ rowsWithId.id }}
+          </td>
+
+          <td :class="[ rowIndex % 2 === 0 ? 'rowEven' : 'rowUneven']"
+              v-for="(_, columnIndex) in rowsWithId.rows[0]">
+
+            <template v-for="(subRow, subRowIndex) in rowsWithId.rows">
+              <!-- Only selecting those rows that match the selected measures -->
+              <template v-if="displayedMeasuresIndices.includes(subRowIndex)">
+                <div v-if="summaryType === 'effect' || isNumeric(subRow[columnIndex])" class="bar bar-sm">
+                  <div class="bar-item" role="progressbar"
+                       :style="{'width': measureToScaledFraction(subRow[columnIndex], resultSummary.maxMeasureValue) * 100 + '%', 'background': heatMapColorForValue(measureToScaledFraction(subRow[columnIndex], resultSummary.maxMeasureValue))}"
+                       :aria-valuenow="(measureToScaledFraction(subRow[columnIndex], resultSummary.maxMeasureValue)) * 100"
+                       aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+                <div>{{ subRow[columnIndex] }}</div>
+              </template>
+            </template>
+
+          </td>
+
+        </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </template>
 
@@ -148,17 +155,15 @@ export default {
     let displayedMeasures = ref(props.resultSummary.measureNames.map(_ => _))
     let displayedMeasuresIndices = ref(range(0, props.resultSummary.measureNames.length, 1))
 
-    document.addEventListener("click", closeDropdownIfClickOutsideOfControlElements)
-
-    function getDisplayedMeasureSelectionClass(){
+    function getDisplayedMeasureSelectionClass() {
       return 'displayMeasureSelection-' + props.index
     }
 
-    function getDropdownControlsElementId(){
+    function getDropdownControlsElementId() {
       return props.resultSummary.metricName + '-summaryControls-' + props.summaryType + "-" + props.index
     }
 
-    function getDropdownElementId(){
+    function getDropdownElementId() {
       return props.resultSummary.metricName + '-summaryMenu-' + props.summaryType + "-" + props.index
     }
 
@@ -177,7 +182,7 @@ export default {
     /**
      * Toggles display of dropdown
      */
-    function toggleMenuDropdown(){
+    function toggleMenuDropdown() {
       menuDropDownActive.value = !menuDropDownActive.value
     }
 
@@ -185,10 +190,10 @@ export default {
       return displayedMeasures.value.map(measure => props.resultSummary.measureNames.indexOf(measure))
     }
 
-    function handleMeasureDisplaySelectionChange(){
+    function handleMeasureDisplaySelectionChange() {
       let measureSelection = Array.from(document.getElementsByClassName(getDisplayedMeasureSelectionClass()))
-           .filter(el => el.checked)
-           .map(el => el.getAttribute("value"))
+          .filter(el => el.checked)
+          .map(el => el.getAttribute("value"))
       displayedMeasures.value = measureSelection
       displayedMeasuresIndices.value = selectedMeasureIndices()
       console.debug(`measure selection: ${measureSelection}`)
@@ -247,7 +252,8 @@ export default {
       displayedMeasuresIndices,
       getDropdownControlsElementId,
       getDropdownElementId,
-      getDisplayedMeasureSelectionId: getDisplayedMeasureSelectionClass
+      getDisplayedMeasureSelectionId: getDisplayedMeasureSelectionClass,
+      closeDropdownIfClickOutsideOfControlElements
     }
 
   },
