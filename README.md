@@ -105,7 +105,6 @@ Vue project providing a UI for Kolibri.
 The UI allows to start batch executions based on templates and watch the process for jobs overall
 and single batches in particular including resource consumption on the nodes.
 Jobs can also be killed via UI.
-Future iterations will also include result / analysis visualizations.
 
 Documentation: <https://awagen.github.io/kolibri_archive/kolibri-watch/>
 
@@ -138,6 +137,28 @@ To start any processing, we still need to place a processing directive, which ca
 besides the listed job. Note that processing can be stopped via ```Stop``` button when it is marked to be processed.
 Further, the ```Delete``` option removes the whole job definition, effectively stopping any execution on it.
 Note that there will be some delay between ```Stop / Delete``` and the node actually stopping the processing.
+
+### Experiment Result Visualization
+Kolibri-Watch allows visualization of experiment summary results.
+This includes :
+
+- overviews of representational configuration examples for the `best` setting group as well as
+the `worst` settings group.
+
+![KolibriWatch WinnerLooser](images/KolibriUIWinnerLooserConfigs.png?raw=true "KolibriWatch WinnerLooser Configs")
+
+- estimation of effect of single parameter variations for the different result files. Currently this contains 
+`maxMedianShift` (for each setting of the parameter of interest calculate median and calculate the difference between min and max observed) 
+and `maxSingleResultShift` (here observe different settings of the parameter of interest by comparing pairs where all other parameters
+are kept constant and only the parameter of interest varies. Calculate the difference max - min and take the max over all). 
+
+![KolibriWatch ParameterEffect](images/KolibriUIParameterEffect.png?raw=true "KolibriWatch Parameter Effect")
+
+
+### Kolibri Grafana Dashboard
+
+![KolibriWatch GrafanaBoard](images/KolibriGrafanaBoard.png?raw=true "KolibriWatch GrafanaBoard")
+
 
   
 ## Subproject Handling
