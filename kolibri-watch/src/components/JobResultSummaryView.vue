@@ -1,10 +1,80 @@
 <template>
 
-  <h2>Winner / Looser Configs</h2>
+  <!-- Dropdown activate / deactivate -->
+  <div class="dropdownControl" :id="getDropdownControlsElementId()">
+    <span class="k-tableControls">Load Data</span>
+    <i :class="['icon', menuDropDownActive ? 'icon-arrow-down' : 'icon-arrow-up']"
+       @click.prevent="toggleMenuDropdown"></i>
+  </div>
+  <!-- dropdown content -->
+  <div class="dropdownContainer">
+    <div :id="getDropdownElementId()" :class="['dropdown', menuDropDownActive && 'active']">
+
+      <ul class="menu">
+        <li class="divider" data-content="DateID Selection"/>
+        <!-- DateId selection -->
+        <template v-for="(dateId, dateIndex) in [...[...Object.keys(dateIdToJobIdsWithResultSummariesMapping)].sort()].reverse()">
+          <li class="menu-item">
+            <label class="form-radio form-inline">
+              <input type="radio"
+                     :name="'dateId-select-' + dateIndex"
+                     :value="dateId"
+                     :checked="(selectedDateIDValue === dateId) ? '' : null"
+                     @change="setSelectedDateId(dateId)"
+              />
+              <i class="form-icon"></i>
+              {{ dateId }}
+            </label>
+          </li>
+        </template>
+
+        <li class="divider" data-content="JobId Selection"/>
+        <!-- JobId selection -->
+        <template v-for="(jobId, jobIndex) in dateIdToJobIdsWithResultSummariesMapping[selectedDateIDValue]">
+          <li class="menu-item">
+            <label class="form-radio form-inline">
+              <input type="radio"
+                     :name="'jobId-select-' + jobIndex"
+                     :value="jobId"
+                     :checked="(selectedJobIdValue === jobId) ? '' : null"
+                     @change="setSelectedJobId(jobId)"
+              />
+              <i class="form-icon"></i>
+              {{ jobId }}
+            </label>
+          </li>
+        </template>
+
+        <li class="divider" data-content="Action"/>
+        <!-- summary load button -->
+        <template v-if="selectedJobIdValue !== '' && selectedDateIDValue !== ''">
+          <li class="menu-item">
+
+            <!-- change to button -->
+            <Button
+                class="k-dropdown-button"
+                emitted-event-name="loadSummaryData"
+                :emitted-event-arguments="{dateId: selectedDateIDValue, jobId: selectedJobIdValue}"
+                @load-summary-data="loadSummaryData"
+                button-class="start"
+                button-shape="rectangle"
+                title="Load Data"
+            />
+
+          </li>
+        </template>
+
+      </ul>
+    </div>
+  </div>
+
+
+  <h2 v-if="resultWinnerLooserObjArr.length > 0">Winner / Looser Configs</h2>
 
   <div class="row-container columns">
 
-    <form v-for="(summary, summaryIndex) in resultWinnerLooserObjArr" :class="['form-horizontal', (summaryIndex % 2 === 0) && 'k-left', 'col-6 column']">
+    <form v-for="(summary, summaryIndex) in resultWinnerLooserObjArr"
+          :class="['form-horizontal', (summaryIndex % 2 === 0) && 'k-left', 'col-6 column']">
 
       <div class="col-12 col-sm-12">
 
@@ -24,14 +94,12 @@
   </div>
 
 
-
-
-
-  <h2>Parameter Effect</h2>
+  <h2 v-if="parameterEffectResultSummaryObjArr.length > 0">Parameter Effect</h2>
 
   <div class="row-container columns">
 
-    <form v-for="(summary, summaryIndex) in parameterEffectResultSummaryObjArr" :class="['form-horizontal', (summaryIndex % 2 === 0) && 'k-left', 'col-6 column']">
+    <form v-for="(summary, summaryIndex) in parameterEffectResultSummaryObjArr"
+          :class="['form-horizontal', (summaryIndex % 2 === 0) && 'k-left', 'col-6 column']">
 
       <div class="col-12 col-sm-12">
 
@@ -58,31 +126,90 @@
 
 import Table from "@/components/partials/Table.vue";
 
-import json from "../data/JobSummaryExamples.json";
 import {ResultSummary, RowsWithId} from "@/utils/resultSummaryObjects";
 import {ref} from "vue";
 import {numberAwareFormat} from "@/utils/dataFunctions";
+import Button from "@/components/partials/controls/Button.vue";
+import {jobResultSummaryRetrievalUrl} from "@/utils/globalConstants";
+import {axiosCall} from "@/utils/retrievalFunctions";
 
 export default {
-  components: {Table},
+  components: {Button, Table},
   methods: {},
-  computed: {},
+  computed: {
 
-  setup(props) {
+    dateIdToJobIdsWithResultSummariesMapping() {
+      return this.$store.state.resultState.availableDateIdToJobIdsWithResultsMapping
+    }
 
-    let parameterEffectResultSummaryObjArr = ref(
-        Object.keys(json).map(metricName => {
-          return resultJsonToEffectEstimateResultSummary(json[metricName])
-        })
-    )
+  },
 
-    let resultWinnerLooserObjArr = ref(
-        Object.keys(json).map(metricName => {
-          return resultJsonToWinnerLooserConfigResultSummary(json[metricName])
-        })
-    )
+  setup(props, context) {
 
-    console.debug(resultWinnerLooserObjArr.value)
+    let menuDropDownActive = ref(false)
+    let selectedDateIDValue = ref("")
+    let selectedJobIdValue = ref("")
+
+    let parameterEffectResultSummaryObjArr = ref([])
+    let resultWinnerLooserObjArr = ref([])
+
+    document.addEventListener("click", closeDropdownIfClickOutsideOfControlElements)
+
+    function loadSummaryData({dateId, jobId}) {
+      console.info(`Load data for dateId '${dateId}', jobId '${jobId}'`)
+      let url = jobResultSummaryRetrievalUrl
+          .replace("#DATE_ID", dateId)
+          .replace("#JOB_ID", jobId) + "?file=summary.json"
+      axiosCall(
+        url,
+        "GET",
+        undefined,
+        resp => {
+          let json = resp.data.data
+          parameterEffectResultSummaryObjArr.value = Object.keys(json).map(metricName => {
+            return resultJsonToEffectEstimateResultSummary(json[metricName])
+          })
+          resultWinnerLooserObjArr.value = Object.keys(json).map(metricName => {
+            return resultJsonToWinnerLooserConfigResultSummary(json[metricName])
+          })
+        }
+      )
+    }
+
+    function setSelectedDateId(value) {
+      selectedDateIDValue.value = value
+    }
+
+    function setSelectedJobId(value) {
+      selectedJobIdValue.value = value
+    }
+
+    /**
+     * Toggles display of dropdown
+     */
+    function toggleMenuDropdown() {
+      menuDropDownActive.value = !menuDropDownActive.value
+    }
+
+    /**
+     * Close control menu in case
+     * @param event
+     */
+    function closeDropdownIfClickOutsideOfControlElements(event) {
+      let dropdown = document.getElementById(getDropdownElementId())
+      let dropdownControls = document.getElementById(getDropdownControlsElementId())
+      if (!dropdown.contains(event.target) && !dropdownControls.contains(event.target)) {
+        if (menuDropDownActive.value) toggleMenuDropdown()
+      }
+    }
+
+    function getDropdownControlsElementId() {
+      return 'jobResultSummary-dataLoadCDropdownControl'
+    }
+
+    function getDropdownElementId() {
+      return 'jobResultSummary-dataLoadDropdown'
+    }
 
     /**
      * Format an array of values. If numerical, limit all to 4 decimal digits, otherwise leave as they are.
@@ -182,8 +309,12 @@ export default {
       if (summaryType === "bestWorst") resultWinnerLooserObjArr.value[resultIndex].idSort(decreasing)
     }
 
-    return {parameterEffectResultSummaryObjArr, handleSortDataEvent, handleIdSort,
-      resultWinnerLooserObjArr}
+    return {
+      parameterEffectResultSummaryObjArr, handleSortDataEvent, handleIdSort,
+      resultWinnerLooserObjArr, menuDropDownActive, toggleMenuDropdown, getDropdownControlsElementId,
+      getDropdownElementId, selectedDateIDValue, setSelectedDateId,
+      selectedJobIdValue, setSelectedJobId, loadSummaryData
+    }
   }
 
 }
@@ -203,6 +334,35 @@ export default {
 
 .form-horizontal {
   border-top: .05rem solid #353535;
+}
+
+.k-tableControls {
+  margin-right: 1em;
+  margin-bottom: 5em;
+}
+
+ul.menu {
+  text-align: left;
+}
+
+.dropdownContainer {
+  position: relative;
+}
+
+.dropdown {
+  position: absolute;
+  z-index: 10;
+}
+
+.btn.k-dropdown-button {
+  width: 8em;
+  padding-bottom: 2em;
+}
+
+.dropdownControl {
+  margin-bottom: 2em;
+  font-size: x-large;
+  font-weight: bolder;
 }
 
 
