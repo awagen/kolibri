@@ -11,9 +11,9 @@ services:
       - "9000:9090"
     user: "1000:1000"
     volumes:
-      - ./prometheus:/etc/prometheus
+      - ./kolibri-fleet-zio/prometheus:/etc/prometheus
       # /prometheus is the default data dir
-      - ./prometheus/data:/prometheus/data
+      - ./kolibri-fleet-zio/prometheus/data:/prometheus/data
     command: --web.enable-lifecycle  --config.file=/etc/prometheus/prometheus.yml
 
   grafana:
@@ -22,7 +22,7 @@ services:
     # mem_limit: 256m
     mem_reservation: 256m
     volumes:
-      - ./grafana:/var/lib/grafana
+      - ./kolibri-fleet-zio/grafana:/var/lib/grafana
     ports:
       - "3000:3000"
     # user setting needed to be set to owner/group of the volume (above grafana folder on host machine)
@@ -87,7 +87,7 @@ services:
       # back-pressuring on the producer
       RESULT_QUEUE_SIZE: -1
     volumes:
-      - ./tmp_data:/app/test-files
+      - ./kolibri-fleet-zio/tmp_data:/app/test-files
       # mount only needed in case you want to use PERSISTENCE_MODE 'AWS' (adjust the mounted folder from local
       # to folder where credentials are located)
       - ${HOME}/.aws/credentials:/home/kolibri/.aws/credentials:ro
