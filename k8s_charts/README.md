@@ -1,3 +1,6 @@
+> <span style="color:orange">Refers to the old variant up to kolibri-base:0.1.5 or kolibri-fleet-akka:0.1.5. For later versions refer to kolibri-fleet-zio. Description of deployment will be similar, yet we do not need distinct charts for the server and the worker nodes. They are all the same in the new variant, thus do not have a defined role.</span>
+
+
 ## Kustomize Charts
 
 The example files in base and overlay subfolders contain the yaml definitions needed for deployment of the 

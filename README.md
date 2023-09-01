@@ -96,7 +96,7 @@ be understood as state of currently available nodes, irrespective of where they 
 They only need access to the used persistence (read and write). In case the defined jobs require access to any
 system during processing, obviously the nodes also need access to those systems.
 
-Currently two types of persistence can be used out of the box: local file storage and AWS S3 buckets.
+Currently three types of persistence can be used out of the box: local file storage, AWS S3 buckets and GCP gcs.
 
 
 
