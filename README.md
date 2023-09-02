@@ -155,6 +155,15 @@ are kept constant and only the parameter of interest varies. Calculate the diffe
 ![KolibriWatch ParameterEffect](images/KolibriUIParameterEffect.png?raw=true "KolibriWatch Parameter Effect")
 
 
+- Further, it is possible to create charts for single results on demand. For now line charts and histogram charts are
+provided. This is planned to be extended shortly.
+The `<>` symbol between chars appears if charts can be merged into each other, displaying both in the same
+window. Merging works for an arbitrary number of charts.
+
+![KolibriWatch SingleResult](images/KolibriUISingleResult.png?raw=true "KolibriWatch Single Result")
+
+
+
 ### Kolibri Grafana Dashboard
 
 ![KolibriWatch GrafanaBoard](images/KolibriGrafanaBoard.png?raw=true "KolibriWatch GrafanaBoard")
