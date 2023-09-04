@@ -682,7 +682,7 @@
               }
             ]
           },
-          "unit": "rpm"
+          "unit": "rps"
         },
         "overrides": []
       },
@@ -706,7 +706,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "increase(jvm_gc_collection_seconds_count{gc=\"G1 Young Generation\"}[1m])",
+          "expr": "rate(jvm_gc_collection_seconds_count{gc=\"G1 Young Generation\"}[1m])",
           "interval": "1m",
           "legendFormat": "{{gc}}--{{instance}}",
           "refId": "A"
@@ -764,7 +764,7 @@
               }
             ]
           },
-          "unit": "rpm"
+          "unit": "rps"
         },
         "overrides": []
       },
@@ -788,7 +788,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "increase(jvm_gc_collection_seconds_count{gc=\"G1 Old Generation\"}[1m])",
+          "expr": "rate(jvm_gc_collection_seconds_count{gc=\"G1 Old Generation\"}[1m])",
           "interval": "1m",
           "legendFormat": "{{gc}}--{{instance}}",
           "refId": "A"
@@ -917,5 +917,5 @@
   "timezone": "",
   "title": "Kolibri Dashboard",
   "uid": "Fp4LAdjVk",
-  "version": 8
+  "version": 9
 }

@@ -32,12 +32,13 @@ import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.mutable
 import scala.reflect.runtime.universe._
+import scala.util.Random
 
 object Aggregators {
 
   private val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
-  abstract class Aggregator[-U: TypeTag, V: TypeTag] extends KolibriSerializable {
+  abstract class Aggregator[-U, V] extends KolibriSerializable {
 
     def add(sample: U): Unit
 
@@ -139,6 +140,34 @@ object Aggregators {
       x
     },
     keyMapFunction) {}
+
+
+  class MultiAggregator[-U, V](aggregatorSupplier: () => Aggregator[U, V], numAggregators: Int) extends Aggregator[U, V] {
+
+    private val aggregators: Seq[Aggregator[U, V]] = Range(0, numAggregators).map(_ => aggregatorSupplier())
+
+    private def pickRandomAggregator: Aggregator[U, V] = {
+      val random = new Random()
+      aggregators(random.between(0, aggregators.length))
+    }
+
+    override def add(sample: U): Unit = {
+      pickRandomAggregator.add(sample)
+    }
+
+    override def aggregation: V = {
+      val fullAggregation = aggregators.fold(aggregatorSupplier())((aggOld, newAgg) => {
+        aggOld.addAggregate(newAgg.aggregation)
+        aggOld
+      })
+      fullAggregation.aggregation
+    }
+
+    override def addAggregate(aggregatedValue: V): Unit = {
+      pickRandomAggregator.addAggregate(aggregatedValue)
+    }
+  }
+
 
   /**
    * In case of a mapping function that alters original tags, ignoreIdDiff would need to be true to avoid conflicts.

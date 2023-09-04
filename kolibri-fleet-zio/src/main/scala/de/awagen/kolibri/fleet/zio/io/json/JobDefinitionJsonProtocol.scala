@@ -25,7 +25,7 @@ import de.awagen.kolibri.datatypes.types.FieldDefinitions._
 import de.awagen.kolibri.datatypes.types.JsonStructDefs._
 import de.awagen.kolibri.datatypes.types.Types.WithCount
 import de.awagen.kolibri.datatypes.types.WithStructDef
-import de.awagen.kolibri.datatypes.values.aggregation.mutable.Aggregators.TagKeyMetricAggregationPerClassAggregator
+import de.awagen.kolibri.datatypes.values.aggregation.mutable.Aggregators.{MultiAggregator, TagKeyMetricAggregationPerClassAggregator}
 import de.awagen.kolibri.definitions.directives.ResourceDirectives.ResourceDirective
 import de.awagen.kolibri.definitions.io.json.ParameterValuesJsonProtocol
 import de.awagen.kolibri.definitions.io.json.ResourceDirectiveJsonProtocol.GenericResourceDirectiveFormatStruct
@@ -37,6 +37,7 @@ import de.awagen.kolibri.definitions.usecase.searchopt.jobdefinitions.parts.Batc
 import de.awagen.kolibri.fleet.zio.config.AppConfig.JsonFormats.executionFormat
 import de.awagen.kolibri.fleet.zio.config.AppConfig.JsonFormats.parameterValueJsonProtocol.ValueSeqGenDefinitionFormat
 import de.awagen.kolibri.fleet.zio.config.AppConfig.JsonFormats.resourceDirectiveJsonProtocol.GenericResourceDirectiveFormat
+import de.awagen.kolibri.fleet.zio.config.AppProperties.config.numAggregatorsPerBatch
 import de.awagen.kolibri.fleet.zio.config.{AppConfig, AppProperties}
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.{BatchAggregationInfo, JobDefinition, simpleWaitJob}
 import de.awagen.kolibri.fleet.zio.execution.JobMessagesImplicits._
@@ -247,10 +248,11 @@ object JobDefinitionJsonProtocol extends DefaultJsonProtocol {
           // For now we assume that result is of type MetricRow
           val aggregationInfo = BatchAggregationInfo[MetricRow, MetricAggregation[Tag]](
             successKey = metricRowResultKey,
-            batchAggregatorSupplier = () => new TagKeyMetricAggregationPerClassAggregator(
-              identity,
-              ignoreIdDiff = false
-            ),
+            batchAggregatorSupplier = () => new MultiAggregator(() =>
+              new TagKeyMetricAggregationPerClassAggregator(
+                identity,
+                ignoreIdDiff = false
+              ), numAggregatorsPerBatch),
             writer = {
               val currentDay = DateUtils.timeInMillisToFormattedDate(currentTimeInMillis)
               AppConfig.persistenceModule.persistenceDIModule.metricAggregationWriter(

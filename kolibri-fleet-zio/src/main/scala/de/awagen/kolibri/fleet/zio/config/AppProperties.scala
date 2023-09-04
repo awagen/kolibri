@@ -182,6 +182,7 @@ object AppProperties {
     val maxTimeBetweenProgressUpdatesInSeconds: Int = baseConfig.getInt("kolibri.execution.maxTimeBetweenUpdatesInSeconds")
     val maxTimeBetweenHealthUpdatesInSeconds: Int = baseConfig.getInt("kolibri.health.maxTimeBetweenHealthUpdatesInSeconds")
 
+    val numAggregatorsPerBatch: Int = baseConfig.getInt("kolibri.aggregation.numAggregatorsPerBatch")
   }
 
 }

@@ -23,7 +23,7 @@ import de.awagen.kolibri.datatypes.stores.immutable.MetricRow
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
 import de.awagen.kolibri.datatypes.types.SerializableCallable._
 import de.awagen.kolibri.datatypes.types.Types.WithCount
-import de.awagen.kolibri.datatypes.values.aggregation.mutable.Aggregators.TagKeyMetricAggregationPerClassAggregator
+import de.awagen.kolibri.datatypes.values.aggregation.mutable.Aggregators.{MultiAggregator, TagKeyMetricAggregationPerClassAggregator}
 import de.awagen.kolibri.definitions.http.client.request.RequestTemplate
 import de.awagen.kolibri.definitions.processing.JobMessages.{QueryBasedSearchEvaluationDefinition, SearchEvaluationDefinition}
 import de.awagen.kolibri.definitions.processing.ProcessingMessages.ProcessingMessage
@@ -32,6 +32,7 @@ import de.awagen.kolibri.definitions.processing.tagging.TaggingConfigurations.Re
 import de.awagen.kolibri.definitions.usecase.searchopt.jobdefinitions.parts.BatchGenerators.batchByGeneratorAtIndex
 import de.awagen.kolibri.definitions.usecase.searchopt.jobdefinitions.parts.ReservedStorageKeys.REQUEST_TEMPLATE_STORAGE_KEY
 import de.awagen.kolibri.fleet.zio.config.AppConfig
+import de.awagen.kolibri.fleet.zio.config.AppProperties.config.numAggregatorsPerBatch
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.BatchAggregationInfo
 import de.awagen.kolibri.fleet.zio.execution.TaskFactory._
 import zio.ZIO
@@ -100,10 +101,11 @@ object JobMessagesImplicits {
             taskSequence,
             BatchAggregationInfo[MetricRow, MetricAggregation[Tag]](
               successKey = metricRowResultKey,
-              batchAggregatorSupplier = () => new TagKeyMetricAggregationPerClassAggregator(
-                keyMapFunction = identity,
-                ignoreIdDiff = false
-              ),
+              batchAggregatorSupplier = () => new MultiAggregator(
+                () => new TagKeyMetricAggregationPerClassAggregator(
+                  keyMapFunction = identity,
+                  ignoreIdDiff = false
+                ), numAggregatorsPerBatch),
               writer = AppConfig.persistenceModule.persistenceDIModule.metricAggregationWriter(
                 subFolder = eval.jobName,
                 x => {
@@ -116,7 +118,6 @@ object JobMessagesImplicits {
           )
         })
       } yield jobDef
-
 
 
     }
