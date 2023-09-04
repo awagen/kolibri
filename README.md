@@ -98,6 +98,19 @@ system during processing, obviously the nodes also need access to those systems.
 
 Currently three types of persistence can be used out of the box: local file storage, AWS S3 buckets and GCP gcs.
 
+#### Notes on throughput
+To tune the throughput, check the curves for in/out task-queue element flow
+(see grafana board below). If you see fast production of in-flow elements,
+and slower consumption (out-flow elements), then you might want to 
+increase the setting of the env variable `NUM_AGGREGATORS_PER_BATCH`.
+In case you see a slow producer, you might want to increase the setting
+for `NON_BLOCKING_POOL_THREADS` (in general you should assign more of the
+available threads to the async pool compared to the blocking pool).
+You might also play with `MAX_PARALLEL_ITEMS_PER_BATCH` and
+`CONNECTION_POOL_SIZE_MIN/MAX`.
+If you see that at times the app overwhelms the requested target application,
+you can restrict the maximal throughput via `MAX_BATCH_THROUGHPUT_PER_SECOND`.
+
 
 
 ## Kolibri Watch
