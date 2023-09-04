@@ -29,7 +29,7 @@ import de.awagen.kolibri.definitions.processing.ProcessingMessages._
 import de.awagen.kolibri.definitions.processing.failure.TaskFailType
 import de.awagen.kolibri.definitions.processing.failure.TaskFailType.FailedByException
 import de.awagen.kolibri.fleet.zio.config.AppProperties
-import de.awagen.kolibri.fleet.zio.config.AppProperties.config.maxParallelItemsPerBatch
+import de.awagen.kolibri.fleet.zio.config.AppProperties.config.{maxBatchThroughputPerSecond, maxParallelItemsPerBatch}
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.JobBatch
 import de.awagen.kolibri.fleet.zio.execution.{ExecutionState, Failed, ZIOSimpleTaskExecution}
 import de.awagen.kolibri.fleet.zio.metrics.Metrics
@@ -73,8 +73,17 @@ object TaskWorker extends Worker {
     val batchResultWriter: Writers.Writer[W, Tags.Tag, Any] = jobBatch.job.aggregationInfo.writer
     val successKey: String = jobBatch.job.aggregationInfo.successKey
 
+    val inputElementStream: ZStream[Any, Nothing, T] = maxBatchThroughputPerSecond match {
+      case e if e > 0 =>
+        ZStream.fromIterable(jobBatch.job.batches.get(jobBatch.batchNr).get.data)
+          .rechunk(1)
+          .throttleShape(maxBatchThroughputPerSecond, 1 second)(_ => 1)
+      case _ =>
+        ZStream.fromIterable(jobBatch.job.batches.get(jobBatch.batchNr).get.data)
+    }
+
     val resultComputeEffect: ZStream[Any, Throwable, Either[Throwable, (WeaklyTypedMap[String], Seq[ExecutionState])]] = for {
-      computeResult <- ZStream.fromIterable(jobBatch.job.batches.get(jobBatch.batchNr).get.data)
+      computeResult <- inputElementStream
         .mapZIOParUnordered(maxParallelItemsPerBatch)(dataPoint =>
           for {
             _ <- ZIO.logDebug(s"trying to process data point: $dataPoint")

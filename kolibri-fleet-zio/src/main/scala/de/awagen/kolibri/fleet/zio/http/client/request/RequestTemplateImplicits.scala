@@ -60,18 +60,15 @@ object RequestTemplateImplicits {
         _ <- ZIO.logDebug(s"request: $request")
         response <- {
           (httpClient.request(request).tapError(throwable => {
-            ZIO.logError(s"""msg: ${throwable.getMessage}\ntrace: ${throwable.getStackTrace.mkString("\n")}""")
+            ZIO.logError(s"""msg: ${throwable.getMessage}""")
           }) @@ externalRequestTimer(request.method.name, host, request.url.path.toString()).trackDuration)
             .tapBoth(
               throwable => {
-                ZIO.logError(s"""msg: ${throwable.getMessage}\ntrace: ${throwable.getStackTrace.mkString("\n")}""") @@ countExternalRequests(request.method.name, host, request.url.path.toString(), Status.InternalServerError.code)
+                ZIO.logError(s"""msg: ${throwable.getMessage}""") @@ countExternalRequests(request.method.name, host, request.url.path.toString(), Status.InternalServerError.code)
               },
               msg => {
                 ZIO.logDebug(s"Successful request response: $msg")
               })
-            //            .onError(cause => {
-            //              (ZIO.logError(s"error when requesting\nmsg: '${cause.failureOption.map(x => x.getMessage).getOrElse("")}'\ncause: ${cause.trace.prettyPrint}") @@ countExternalRequests(request.method.name, host, request.url.path.toString(), Status.InternalServerError.code)) *> ZIO.succeed(())
-            //            })
             .flatMap(response => {
               ZIO.succeed(response) @@ countExternalRequests(request.method.name, host, request.url.path.toString(), Option.apply(response).map(x => x.status.code).getOrElse(-1))
             })

@@ -44,10 +44,10 @@ services:
       # NOTE: you will need to adjust those limits to your setup
       resources:
         limits:
-          cpus: '10'
+          cpus: '12'
           memory: 4gb
         reservations:
-          cpus: '10'
+          cpus: '12'
           memory: 4gb
     ports:
       - "8001:8001"
@@ -95,18 +95,25 @@ services:
       MAX_NR_JOBS_PROCESSING: 5
       # How many batches are at most claimed for processing at any given time? If this is higher than
       # MAX_NR_JOBS_PROCESSING, will result in a range of queued batches
-      MAX_NR_JOBS_CLAIMED: 5
+      MAX_NR_JOBS_CLAIMED: 8
       # Optional thread settings. For each: if set to -1, defaults are applied
       NETTY_HTTP_CLIENT_THREADS_MAX: -1
       # we need a fraction of threads for the blocking thread pool for stuff like file system IO
       # yet the majority of computation is async, thus we assign majority of available threads
       # (assuming 1 thread, 1 core).
-      BLOCKING_POOL_THREADS: 2
+      BLOCKING_POOL_THREADS: 4
       NON_BLOCKING_POOL_THREADS: 8
       # The processing produces elements in a result queue that are then consumed into an aggregator.
       # This can either be set to unlimited capacity (-1) or any value > 0 to limit the capacity, thus
       # back-pressuring on the producer
       RESULT_QUEUE_SIZE: -1
+      # Allows definition of number of single aggregators per batch. The end result is the aggregation of
+      # all results of all aggregators. This setting allows to increase throughput by speeding up the
+      # processed elements consumer.
+      NUM_AGGREGATORS_PER_BATCH: 100
+      # allows limiting the maximal throughput of elements for the batch by limiting the emission of elements
+      # of the input element stream. Default: -1 (unlimited).
+      MAX_BATCH_THROUGHPUT_PER_SECOND: -1
     volumes:
       - ./kolibri-fleet-zio/tmp_data:/app/test-files
       # mount only needed in case you want to use PERSISTENCE_MODE 'AWS' (adjust the mounted folder from local
