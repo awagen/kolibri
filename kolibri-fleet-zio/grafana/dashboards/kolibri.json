@@ -16,7 +16,7 @@
   "gnetId": null,
   "graphTooltip": 0,
   "id": 1,
-  "iteration": 1693814521410,
+  "iteration": 1693828288491,
   "links": [],
   "panels": [
     {
@@ -516,7 +516,7 @@
           "refId": "D"
         }
       ],
-      "title": "CPU Load (%)",
+      "title": "CPU Load (Cores)",
       "type": "timeseries"
     },
     {
@@ -917,5 +917,5 @@
   "timezone": "",
   "title": "Kolibri Dashboard",
   "uid": "Fp4LAdjVk",
-  "version": 9
+  "version": 10
 }

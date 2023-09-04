@@ -166,7 +166,11 @@ window. Merging works for an arbitrary number of charts.
 
 ### Kolibri Grafana Dashboard
 
-![KolibriWatch GrafanaBoard](images/KolibriGrafanaBoard.png?raw=true "KolibriWatch GrafanaBoard")
+![KolibriWatch GrafanaBoard1](images/KolibriGrafana1.png?raw=true "KolibriWatch GrafanaBoard1")
+
+![KolibriWatch GrafanaBoard2](images/KolibriGrafana2.png?raw=true "KolibriWatch GrafanaBoard2")
+
+![KolibriWatch GrafanaBoard3](images/KolibriGrafana3.png?raw=true "KolibriWatch GrafanaBoard3")
 
 
   
