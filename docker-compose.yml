@@ -4,9 +4,14 @@ services:
 
   prometheus:
     image: prom/prometheus:v2.28.1
-    # cpu_count: 1
-    # mem_limit: 512m
-    mem_reservation: 512m
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512m
+        reservations:
+          cpus: '1'
+          memory: 512m
     ports:
       - "9000:9090"
     user: "1000:1000"
@@ -18,9 +23,14 @@ services:
 
   grafana:
     image: grafana/grafana:8.0.5
-    # cpu_count: 1
-    # mem_limit: 256m
-    mem_reservation: 256m
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512m
+        reservations:
+          cpus: '1'
+          memory: 512m
     volumes:
       - ./kolibri-fleet-zio/grafana:/var/lib/grafana
     ports:
@@ -30,17 +40,23 @@ services:
 
   kolibri-zio-1:
     image: awagen/kolibri-fleet-zio:0.2.3
-    # cpu_count: 4
-    # mem_limit: 6144m
-    mem_reservation: 4096m
+    deploy:
+      # NOTE: you will need to adjust those limits to your setup
+      resources:
+        limits:
+          cpus: '10'
+          memory: 4gb
+        reservations:
+          cpus: '10'
+          memory: 4gb
     ports:
       - "8001:8001"
     user: "1000:1000"
     environment:
       JVM_OPTS: >
-        -XX:+UseParallelGC
-        -Xms4096m
-        -Xmx4096m
+        -XX:+UseG1GC
+        -Xms3072m
+        -Xmx3072m
       PROFILE: prod
       NODE_HASH: "abc1"
       HTTP_SERVER_PORT: 8001
@@ -69,10 +85,12 @@ services:
       # later this will be cast to double either way
       JUDGEMENT_FILE_JSON_LINES_JUDGEMENT_VALUE_TYPE_CAST: 'STRING'
       MAX_RESOURCE_DIRECTIVES_LOAD_TIME_IN_MINUTES: 10
-      MAX_PARALLEL_ITEMS_PER_BATCH: 16
-      CONNECTION_POOL_SIZE_MIN: 100
-      CONNECTION_POOL_SIZE_MAX: 100
+      MAX_PARALLEL_ITEMS_PER_BATCH: 100
+      CONNECTION_POOL_SIZE_MIN: 400
+      CONNECTION_POOL_SIZE_MAX: 400
       CONNECTION_TTL_IN_SECONDS: 1200
+      CONNECTION_TIMEOUT_IN_SECONDS: 10
+      CONNECTION_POOL_TYPE: 'FIXED'
       # How many batches are to be processed at max at the same time?
       MAX_NR_JOBS_PROCESSING: 5
       # How many batches are at most claimed for processing at any given time? If this is higher than
@@ -80,8 +98,11 @@ services:
       MAX_NR_JOBS_CLAIMED: 5
       # Optional thread settings. For each: if set to -1, defaults are applied
       NETTY_HTTP_CLIENT_THREADS_MAX: -1
-      BLOCKING_POOL_THREADS: -1
-      NON_BLOCKING_POOL_THREADS: -1
+      # we need a fraction of threads for the blocking thread pool for stuff like file system IO
+      # yet the majority of computation is async, thus we assign majority of available threads
+      # (assuming 1 thread, 1 core).
+      BLOCKING_POOL_THREADS: 2
+      NON_BLOCKING_POOL_THREADS: 8
       # The processing produces elements in a result queue that are then consumed into an aggregator.
       # This can either be set to unlimited capacity (-1) or any value > 0 to limit the capacity, thus
       # back-pressuring on the producer
@@ -101,10 +122,15 @@ services:
   # If another response structure needed, this can easily be adjusted within the response-juggler
   search-service-1:
     image: awagen/response-juggler:0.1.2
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 512m
+        reservations:
+          cpus: '4'
+          memory: 512m
     user: "1000:1000"
-    # cpu_count: 1
-    mem_reservation: 512m
-    # mem_limit: 512m
     environment:
       PORT: 80
       NUM_CONNECTIONS: 400
@@ -143,10 +169,15 @@ services:
 
   search-service-2:
     image: awagen/response-juggler:0.1.2
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 512m
+        reservations:
+          cpus: '4'
+          memory: 512m
     user: "1000:1000"
-    # cpu_count: 1
-    mem_reservation: 512m
-    #mem_limit: 512m
     environment:
       PORT: 81
       NUM_CONNECTIONS: 400
