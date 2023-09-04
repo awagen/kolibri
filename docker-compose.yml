@@ -39,7 +39,7 @@ services:
     user: "1000:1000"
 
   kolibri-zio-1:
-    image: awagen/kolibri-fleet-zio:0.2.3
+    image: awagen/kolibri-fleet-zio:0.2.4
     deploy:
       # NOTE: you will need to adjust those limits to your setup
       resources:
@@ -230,7 +230,7 @@ services:
       - "81:81"
 
   kolibri-watch:
-    image: awagen/kolibri-watch:0.2.3
+    image: awagen/kolibri-watch:0.2.4
     environment:
       KOLIBRI_BASE_URL: "http://localhost:8001"
     ports:
