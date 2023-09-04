@@ -32,7 +32,7 @@ import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.persistence.writer.Work
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.processing.TaskWorker
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.services.BaseWorkHandlerService._
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.JobStates.OpenJobsSnapshot
-import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ProcessingStatus.ProcessingStatus
+import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state.ProcessingStatus.{ProcessingStatus, QUEUED}
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.state._
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.utils.{DataTypeUtils, DateUtils}
 import spray.json.DefaultJsonProtocol.immSetFormat
@@ -120,13 +120,14 @@ object BaseWorkHandlerService {
   } yield completedProcesses
 
   /**
-   * adding tasks to history. The history is just a safe-guard against adding single batches multiple times in
-   * case state updating failed for some reason and thus the status of planned tasks fail to be updated.
+   * adding tasks to record of processIds, e.g as history to safe-guard against adding single batches multiple times in
+   * case state updating failed for some reason and thus the status of planned tasks fail to be updated or to
+   * keep record of currently queued batches
    */
-  private def addTasksToHistory(tasks: Seq[ProcessId], historyRef: Ref[Seq[ProcessId]]): ZIO[Any, Nothing, Unit] = {
+  private def addTasksToSeqRef(tasks: Seq[ProcessId], ref: Ref[Seq[ProcessId]]): ZIO[Any, Nothing, Unit] = {
     ZStream.fromIterable(tasks)
       .foreach(task => {
-        historyRef.update(
+        ref.update(
           history => (history :+ task).takeRight(AppProperties.config.pulledTaskHistorySize)
         )
       })
@@ -149,7 +150,10 @@ case class BaseWorkHandlerService[U <: TaggedWithType with DataPoint[Any], V <: 
                                                                                            workStateReader: WorkStateReader,
                                                                                            workStateWriter: WorkStateWriter,
                                                                                            queue: Queue[JobBatch[_, _, _ <: WithCount]],
+                                                                                           // batches so far added for processing
                                                                                            addedBatchesHistoryRef: Ref[Seq[ProcessId]],
+                                                                                           // batches currently queued such that a status update is possible even though the batches are waiting in queue
+                                                                                           currentlyQueuedBatchesRef: Ref[Seq[ProcessId]],
                                                                                            processIdToAggregatorRef: Ref[Map[ProcessId, Aggregator[U, V]]],
                                                                                            processIdToFiberRef: Ref[Map[ProcessId, Fiber.Runtime[Any, Any]]],
                                                                                            resourceToJobIdsRef: Ref[Map[Resource[Any], Set[String]]],
@@ -329,9 +333,12 @@ case class BaseWorkHandlerService[U <: TaggedWithType with DataPoint[Any], V <: 
     (for {
       // pick job from queue and start processing
       job <- queue.poll.flatMap(x => ZIO.fromOption(x))
+      processId <- ZIO.succeed(ProcessId(job.job.jobName, job.batchNr))
+      // remove the picked task from the list of queued batches
+      _ <- currentlyQueuedBatchesRef.update(seq => seq.filter(x => x != processId))
       // add mapping of resource to job names of jobs utilizing the resource
       _ <- addResourceJobMapping(job.job.jobName, job.job.resourceSetup.map(x => x.resource))
-      processingStateForJobOpt <- workStateReader.processIdToProcessState(ProcessId(job.job.jobName, job.batchNr),
+      processingStateForJobOpt <- workStateReader.processIdToProcessState(processId,
         AppProperties.config.node_hash)
       res <- ZIO.ifZIO(ZIO.succeed(processingStateForJobOpt.nonEmpty))(
         onTrue = {
@@ -411,7 +418,9 @@ case class BaseWorkHandlerService[U <: TaggedWithType with DataPoint[Any], V <: 
       // for planned tasks try to change processing status to queued and add to queue
       addedToQueue <- movePlannedJobsToQueued(plannedTasksForNode)
       // add the tasks added to queue to history record
-      _ <- addTasksToHistory(addedToQueue.filter(x => x.isRight).map(x => x.toOption.get), addedBatchesHistoryRef)
+      _ <- addTasksToSeqRef(addedToQueue.filter(x => x.isRight).map(x => x.toOption.get), addedBatchesHistoryRef)
+      // add tasks to record of currently queued tasks
+      _ <- addTasksToSeqRef(addedToQueue.filter(x => x.isRight).map(x => x.toOption.get), currentlyQueuedBatchesRef)
 
       // fill empty slots for processing with tasks from queue, see processNextBatch
       nrOpenProcessSlots <- getNrOpenProcessSlots
@@ -469,39 +478,54 @@ case class BaseWorkHandlerService[U <: TaggedWithType with DataPoint[Any], V <: 
   }
 
   /**
+   * Check if processing state entry exists and if so, update, otherwise issue warning (call wont fail if state does not
+   * exist).
+   */
+  private[this] def updateExistingProcessingState(processId: ProcessId, processingStateUpdateFunc: ProcessingState => ProcessingState): Task[Unit] = {
+    for {
+      processingStateOpt <- workStateReader.processIdToProcessState(processId, AppProperties.config.node_hash)
+      _ <- ZIO.ifZIO(ZIO.succeed(processingStateOpt.nonEmpty))(
+        onTrue = {
+          for {
+            updatedProcessingState <- ZIO.attempt(processingStateUpdateFunc(processingStateOpt.get))
+            _ <- persistProcessingStateUpdate(
+              Seq(updatedProcessingState),
+              updatedProcessingState.processingInfo.processingStatus
+            )
+          } yield ()
+        },
+        onFalse = {
+          ZIO.logWarning(s"In-Progress state for processId '$processId' could not be updated due to" +
+            s" missing in-progress state")
+        })
+    } yield ()
+  }
+
+  /**
    * Query the batch state from the current state of aggregators to update both the update timestamp
    * and the numbers of elements processed in the persisted in-progress files.
    *
    * Note: state update will only be persisted if the in-progress state info still exists.
    * If the entry is not found, the update will not do anything, since the task is up for being
    * removed from processing due to mismatch to the in-progress state by the cleanup methods.
-   *
-   * TODO: we need to update the queued elements here as well, otherwise the claims will be re-setted
    */
   override def updateProcessStates: Task[Unit] = {
     for {
       processIdToAggregatorMapping <- processIdToAggregatorRef.get
       processIdToFiberMapping <- processIdToFiberRef.get
+      // update the queued batches
+      currentlyQueuedTasks <- currentlyQueuedBatchesRef.get
+      _ <- ZStream.fromIterable(currentlyQueuedTasks)
+        .foreach(processId => updateExistingProcessingState(processId, processingState => processingState.copy(processingInfo = processingState.processingInfo.copy(processingStatus = QUEUED))))
+      // update batches in progress
       _ <- ZStream.fromIterable(processIdToAggregatorMapping.keys)
         .foreach(processId => for {
           processAggregationState <- ZIO.attempt(processIdToAggregatorMapping(processId))
           processFiberStatus <- processIdToFiberMapping(processId).status
-          processingStateOpt <- workStateReader.processIdToProcessState(processId, AppProperties.config.node_hash)
-          _ <- ZIO.ifZIO(ZIO.succeed(processingStateOpt.nonEmpty))(
-            onTrue = {
-              for {
-                processingState <- ZIO.attempt(processingStateOpt.get)
-                updatedProcessingState <- ZIO.attempt(processingState.copy(processingInfo = processingState.processingInfo.copy(numItemsProcessed = processAggregationState.aggregation.count)))
-                _ <- persistProcessingStateUpdate(
-                  Seq(updatedProcessingState),
-                  if (processFiberStatus == Fiber.Status.Done) ProcessingStatus.DONE else processingState.processingInfo.processingStatus
-                )
-              } yield ()
-            },
-            onFalse = {
-              ZIO.logWarning(s"In-Progress state for processId '$processId' could not be updated due to" +
-                s" missing in-progress state")
-            })
+          _ <- updateExistingProcessingState(processId, processingState => {
+            val processingStatus = if (processFiberStatus == Fiber.Status.Done) ProcessingStatus.DONE else processingState.processingInfo.processingStatus
+            processingState.copy(processingInfo = processingState.processingInfo.copy(processingStatus = processingStatus, numItemsProcessed = processAggregationState.aggregation.count))
+          })
         } yield ())
     } yield ()
   }

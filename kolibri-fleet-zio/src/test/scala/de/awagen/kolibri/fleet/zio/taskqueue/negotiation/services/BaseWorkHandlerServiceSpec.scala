@@ -75,6 +75,7 @@ object BaseWorkHandlerServiceSpec extends ZIOSpecDefault {
             )
           ),
           addedBatchesHistoryInitState = addedBatchesHistoryInitState,
+          currentlyAddedBatchesInitState = Seq.empty,
           processIdToAggregatorMappingInitState = Map(processId1 -> aggregatorState1, processId2 -> aggregatorState2, processId3 -> aggregatorState3),
           processIdToFiberMappingInitState = processToFiberMapping
         )

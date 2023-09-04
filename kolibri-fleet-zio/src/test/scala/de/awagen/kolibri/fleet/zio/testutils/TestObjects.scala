@@ -123,6 +123,7 @@ object TestObjects {
                                                                            jobBatchQueueSize: Int = 5,
                                                                            initialQueueContent: Seq[JobDefinitions.JobBatch[_, _, _ <: WithCount]] = Seq.empty,
                                                                            addedBatchesHistoryInitState: Seq[ProcessId] = Seq.empty[ProcessId],
+                                                                           currentlyAddedBatchesInitState: Seq[ProcessId] = Seq.empty[ProcessId],
                                                                            processIdToAggregatorMappingInitState: Map[ProcessId, Aggregators.Aggregator[U, V]] = Map.empty[ProcessId, Aggregators.Aggregator[U, V]],
                                                                            processIdToFiberMappingInitState: Map[ProcessId, Fiber.Runtime[Any, Any]] = Map.empty[ProcessId, Fiber.Runtime[Any, Any]],
                                                                            resourceToJobIdMapping: Map[Resource[Any], Set[String]] = Map.empty[Resource[Any], Set[String]],
@@ -131,6 +132,7 @@ object TestObjects {
     queue <- Queue.bounded[JobDefinitions.JobBatch[_, _, _ <: WithCount]](jobBatchQueueSize)
     _ <- DataTypeUtils.addElementsToQueue(initialQueueContent, queue)
     addedBatchesHistory <- Ref.make(addedBatchesHistoryInitState)
+    currentlyQueuedBatchesRef <- Ref.make(currentlyAddedBatchesInitState)
     processIdToAggregatorMappingRef <- Ref.make(processIdToAggregatorMappingInitState)
     processIdToFiberMappingRef <- Ref.make(processIdToFiberMappingInitState)
     resourceToJobIdMappingRef <- Ref.make(resourceToJobIdMapping)
@@ -142,6 +144,7 @@ object TestObjects {
         workStateWriter(writer),
         queue,
         addedBatchesHistory,
+        currentlyQueuedBatchesRef,
         processIdToAggregatorMappingRef,
         processIdToFiberMappingRef,
         resourceToJobIdMappingRef,

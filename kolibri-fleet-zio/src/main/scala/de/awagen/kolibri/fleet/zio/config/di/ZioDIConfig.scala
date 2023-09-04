@@ -116,6 +116,7 @@ object ZioDIConfig {
       workStateWriter <- ZIO.service[WorkStateWriter]
       queue <- Queue.bounded[JobDefinitions.JobBatch[_, _, _ <: WithCount]](AppProperties.config.maxNrJobsClaimed)
       addedBatchesHistory <- Ref.make(Seq.empty[ProcessId])
+      currentlyQueuedBatchesRef <- Ref.make(Seq.empty[ProcessId])
       processIdToAggregatorMappingRef <- Ref.make(Map.empty[ProcessId, Aggregators.Aggregator[TaggedWithType with DataPoint[Any], WithCount]])
       processIdToFiberMappingRef <- Ref.make(Map.empty[ProcessId, Fiber.Runtime[Any, Any]])
       resourceToJobIdMappingRef <- Ref.make(Map.empty[Resource[Any], Set[String]])
@@ -126,6 +127,7 @@ object ZioDIConfig {
       workStateWriter,
       queue,
       addedBatchesHistory,
+      currentlyQueuedBatchesRef,
       processIdToAggregatorMappingRef,
       processIdToFiberMappingRef,
       resourceToJobIdMappingRef,

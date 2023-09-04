@@ -173,7 +173,6 @@ object TaskWorker extends Worker {
                         } yield ()
                     } yield ()) *> ZIO.succeed(true))
               })
-              _ <- ZIO.sleep(10 millis)
             } yield continue.get
           })
         } yield ()
@@ -200,10 +199,10 @@ object TaskWorker extends Worker {
 
     // two-step effect: setting up global resources, if successful compute and aggregate results
     val combinedEffect: ZIO[Any, Nothing, (Aggregator[TaggedWithType with DataPoint[V], W], Fiber.Runtime[Any, Any])] = {
-      val queueSizeUpdateSchedule = Schedule.fixed(10 seconds)
+       val queueSizeUpdateSchedule = Schedule.fixed(10 seconds)
       for {
         resultQueue <- getResultQueueEffect[V]
-        _ <- (resultQueue.size.map(x => x.doubleValue) @@ Metrics.CalculationsWithMetrics.gaugeProcessingQueueSize(jobBatch.job.jobName, jobBatch.batchNr)).repeat(queueSizeUpdateSchedule).fork
+         _ <- (resultQueue.size.map(x => x.doubleValue) @@ Metrics.CalculationsWithMetrics.gaugeProcessingQueueSize(jobBatch.job.jobName, jobBatch.batchNr)).repeat(queueSizeUpdateSchedule).fork
         resourceSetupResult <- resourceSetupEffect
         result <- resourceSetupResult match {
           case Left(throwable) =>
