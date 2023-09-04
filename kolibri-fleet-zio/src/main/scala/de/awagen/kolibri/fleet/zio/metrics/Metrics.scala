@@ -19,6 +19,7 @@ package de.awagen.kolibri.fleet.zio.metrics
 
 import de.awagen.kolibri.fleet.zio.config.AppProperties
 import zio.metrics.MetricKeyType.Counter
+import zio.metrics.MetricState.Gauge
 import zio.{Chunk, Task, ZIO}
 import zio.metrics._
 
@@ -137,6 +138,27 @@ object Metrics {
         ManagementFactory.getMemoryMXBean.getNonHeapMemoryUsage.getMax
       }).map(_ / (1024.0 * 1024.0))
     }
+
+    /**
+     * Counter for elements flowing through processing queue.
+     */
+    def countProcessingQueueFlowElements(in: Boolean): Metric[Counter, Any, MetricState.Counter] =
+      Metric.counterInt("countProcessingQueueFlowElements").fromConst(1)
+        .tagged(
+          MetricLabel("in", in.toString),
+          MetricLabel("node", AppProperties.config.node_hash)
+        )
+
+    /**
+     * Gauge for processing queue size
+     */
+    def gaugeProcessingQueueSize(jobId: String, batchNr: Int): Metric[MetricKeyType.Gauge, Double, Gauge] =
+      Metric.gauge("gaugeProcessingQueueSize")
+        .tagged(
+          MetricLabel("jobId", jobId),
+          MetricLabel("batchNr", batchNr.toString),
+          MetricLabel("node", AppProperties.config.node_hash)
+        )
 
     /**
      * Counter for elements flowing through certain stage.

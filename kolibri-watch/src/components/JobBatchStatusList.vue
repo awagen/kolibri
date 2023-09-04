@@ -65,6 +65,10 @@ export default {
                 "progress": Math.round(( numItemsProcessed / numItemsTotal) * 100).toFixed(2)
               }
             })
+            // sort on batchNr
+            result = result.sort(function(a, b) {
+              return a.batchNr - b.batchNr
+            })
             runningBatchStates.value = result
           }).catch(_ => {
             runningBatchStates.value = []

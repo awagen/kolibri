@@ -37,7 +37,7 @@ import de.awagen.kolibri.fleet.zio.resources.NodeResourceProvider
 import de.awagen.kolibri.storage.io.writer.Writers
 import zio.Fiber.Status
 import zio.stream.ZStream
-import zio.{Fiber, Queue, Task, UIO, ZIO}
+import zio.{Fiber, Queue, Schedule, Task, UIO, ZIO, durationInt}
 
 import scala.concurrent.ExecutionContext
 
@@ -100,7 +100,7 @@ object TaskWorker extends Worker {
         )
     } yield computeResult
 
-    def computeAndFillResultQueueEffect(queue: Queue[TaggedWithType with DataPoint[V]]) = for {
+    def computeAndFillResultQueueEffect(queue: Queue[TaggedWithType with DataPoint[V]]): ZIO[Any, Throwable, Unit] = for {
       // effect for actual processing of items
       computeResultFiber <- resultComputeEffect
         .mapZIO(element => {
@@ -113,7 +113,7 @@ object TaskWorker extends Worker {
             _ <- element match {
               case Left(e) => ZIO.succeed({
                 val failType = FailedByException(e)
-                queue.offer(BadCorn(failType))
+                queue.offer(BadCorn(failType)) @@ Metrics.CalculationsWithMetrics.countProcessingQueueFlowElements(true)
               })
               case Right(v) =>
                 ZIO.logDebug(s"task processing succeeded, map: ${v._1}") *>
@@ -124,18 +124,18 @@ object TaskWorker extends Worker {
                       // if any of the tasks failed, we aggregate it is part of the failure aggregation
                       onTrue = {
                         ZIO.logDebug(s"Aggregating fail item: ${failedTask.get.taskFailType}") *>
-                          queue.offer(BadCorn(failedTask.get.taskFailType))
+                          queue.offer(BadCorn(failedTask.get.taskFailType)) @@ Metrics.CalculationsWithMetrics.countProcessingQueueFlowElements(true)
                       },
                       // if nothing failed, we just normally consume the result
                       onFalse = {
                         val computedValueOpt: Option[ProcessingMessage[V]] = v._1.get[ProcessingMessage[V]](successKey)
                         computedValueOpt match {
                           case Some(value) =>
-                            queue.offer(value) *>
+                            (queue.offer(value) @@ Metrics.CalculationsWithMetrics.countProcessingQueueFlowElements(true)) *>
                               ZIO.logDebug(s"Aggregating success: ${v._1.get(successKey)}")
                           case None =>
                             ZIO.logWarning(s"no fail key, but missing success key '$successKey'") *>
-                              queue.offer(ProcessingMessages.BadCorn(TaskFailType.FailedByException(new RuntimeException(s"Missing result key: $successKey"))))
+                              (queue.offer(ProcessingMessages.BadCorn(TaskFailType.FailedByException(new RuntimeException(s"Missing result key: $successKey")))) @@ Metrics.CalculationsWithMetrics.countProcessingQueueFlowElements(true))
                         }
                       }
                     )
@@ -144,37 +144,43 @@ object TaskWorker extends Worker {
             }
           } yield ())
         .runDrain
-        .fork
     } yield computeResultFiber
 
 
     def aggregateFromQueueAndWriteResultOnExitEffect(queue: Queue[TaggedWithType with DataPoint[V]],
-                           aggregator: Aggregator[TaggedWithType with DataPoint[V], W],
-                           producerRuntime: Fiber.Runtime[_, _]): ZIO[Any, Nothing, Aggregator[TaggedWithType with DataPoint[V], W]] = {
+                                                     aggregator: Aggregator[TaggedWithType with DataPoint[V], W],
+                                                     producerRuntime: Fiber.Runtime[_, _]): ZIO[Any, Nothing, Aggregator[TaggedWithType with DataPoint[V], W]] = {
       for {
-        aggregator <- for {
-        _ <- ZIO.iterate(true)(x => x)(_ => {
-          for {
-            queueIsEmpty <- queue.isEmpty
-            producerFinished <- producerRuntime.status.map(status => status == Status.Done)
-            continue <- ZIO.whenCase(queueIsEmpty && producerFinished)({
-              case true =>
-                ZIO.logDebug("Queue is empty and producer finished, stopping consume effect") *>
-                  ZIO.succeed(false)
-              case false =>
-                ZIO.logDebug("Consume effect continued, aggregating elements") *>
-                  ((for {
-                    queueHasElement <- queue.isEmpty.map(x => !x)
-                    _ <- ZIO.when(queueHasElement)(queue.take.map(element => aggregator.add(element)))
-                  } yield ()) *> ZIO.succeed(true))
-            })
-          } yield continue.get
-        })
-      } yield aggregator
+        _ <- for {
+          _ <- ZIO.iterate(true)(x => x)(_ => {
+            for {
+              queueIsEmpty <- queue.isEmpty
+              producerFinished <- producerRuntime.status.map(status => status == Status.Done)
+              continue <- ZIO.whenCase(queueIsEmpty && producerFinished)({
+                case true =>
+                  ZIO.logDebug("Queue is empty and producer finished, stopping consume effect") *>
+                    ZIO.succeed(false)
+                case false =>
+                  ZIO.logDebug("Consume effect continued, aggregating elements") *>
+                    ((for {
+                      _ <- for {
+                          // takeAll does not block and if queue empty returns empty list
+                          queueElements <- queue.takeAll
+                          _ <- ZStream.fromIterable(queueElements)
+                            .foreach(element => {
+                              ZIO.succeed(aggregator.add(element)) @@ Metrics.CalculationsWithMetrics.countProcessingQueueFlowElements(false)
+                            })
+                        } yield ()
+                    } yield ()) *> ZIO.succeed(true))
+              })
+              _ <- ZIO.sleep(10 millis)
+            } yield continue.get
+          })
+        } yield ()
         // if aggregator terminates successfully, we write the result
         _ <- ZIO.logDebug(s"final aggregation state: ${aggregator.aggregation}")
         _ <- ZIO.attemptBlockingIO({
-              batchResultWriter.write(aggregator.aggregation, StringTag(jobBatch.job.jobName))
+          batchResultWriter.write(aggregator.aggregation, StringTag(jobBatch.job.jobName))
         }).either
       } yield aggregator
     }
@@ -193,27 +199,30 @@ object TaskWorker extends Worker {
     }
 
     // two-step effect: setting up global resources, if successful compute and aggregate results
-    val combinedEffect: ZIO[Any, Nothing, (Aggregator[TaggedWithType with DataPoint[V], W], Fiber.Runtime[Any, Any])] = for {
-      resultQueue <- getResultQueueEffect[V]
-      resourceSetupResult <- resourceSetupEffect
-      result <- resourceSetupResult match {
-        case Left(throwable) =>
-          ZIO.logWarning(s"""Loading global resources for batch failed, terminating further batch execution for job '${jobBatch.job.jobName}' and batch '${jobBatch.batchNr}'\nMsg: ${throwable.getMessage}\nTrace:${throwable.getStackTrace.mkString("\n")}""") *>
-            (for {
-              // create a fiber and terminate it so we can pass it within the expected return type that will
-              // indicate finish state for the batch
-              fiber <- ZIO.never.fork
-              _ <- fiber.interrupt
-            } yield (aggregator, fiber))
-        case Right(()) =>
-          for {
-            producerEffect <- computeAndFillResultQueueEffect(resultQueue)
-            consumerEffect <- aggregateFromQueueAndWriteResultOnExitEffect(resultQueue, aggregator, producerEffect).fork
-          } yield (aggregator, consumerEffect)
-      }
-    } yield result
-    combinedEffect
-
+    val combinedEffect: ZIO[Any, Nothing, (Aggregator[TaggedWithType with DataPoint[V], W], Fiber.Runtime[Any, Any])] = {
+      val queueSizeUpdateSchedule = Schedule.fixed(10 seconds)
+      for {
+        resultQueue <- getResultQueueEffect[V]
+        _ <- (resultQueue.size.map(x => x.doubleValue) @@ Metrics.CalculationsWithMetrics.gaugeProcessingQueueSize(jobBatch.job.jobName, jobBatch.batchNr)).repeat(queueSizeUpdateSchedule).fork
+        resourceSetupResult <- resourceSetupEffect
+        result <- resourceSetupResult match {
+          case Left(throwable) =>
+            ZIO.logWarning(s"""Loading global resources for batch failed, terminating further batch execution for job '${jobBatch.job.jobName}' and batch '${jobBatch.batchNr}'\nMsg: ${throwable.getMessage}\nTrace:${throwable.getStackTrace.mkString("\n")}""") *>
+              (for {
+                // create a fiber and terminate it so we can pass it within the expected return type that will
+                // indicate finish state for the batch
+                fiber <- ZIO.never.fork
+                _ <- fiber.interrupt
+              } yield (aggregator, fiber))
+          case Right(()) =>
+            for {
+              producerEffect <- computeAndFillResultQueueEffect(resultQueue).fork
+              consumerEffect <- aggregateFromQueueAndWriteResultOnExitEffect(resultQueue, aggregator, producerEffect).fork
+            } yield (aggregator, consumerEffect)
+        }
+      } yield result
+    }
+      combinedEffect
   }
 
 }

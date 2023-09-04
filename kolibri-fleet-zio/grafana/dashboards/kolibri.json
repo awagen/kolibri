@@ -14,9 +14,9 @@
   },
   "editable": true,
   "gnetId": null,
-  "graphTooltip": 1,
+  "graphTooltip": 0,
   "id": 1,
-  "iteration": 1692212991470,
+  "iteration": 1693814521410,
   "links": [],
   "panels": [
     {
@@ -28,6 +28,165 @@
         "x": 0,
         "y": 0
       },
+      "id": 42,
+      "panels": [],
+      "title": "Processing Queue",
+      "type": "row"
+    },
+    {
+      "datasource": null,
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 1
+      },
+      "id": 44,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "text": {},
+        "textMode": "auto"
+      },
+      "pluginVersion": "8.0.5",
+      "targets": [
+        {
+          "exemplar": true,
+          "expr": "sum(gaugeProcessingQueueSize)",
+          "instant": false,
+          "interval": "",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "title": "Total Processing Queue Size",
+      "type": "stat"
+    },
+    {
+      "datasource": null,
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 1
+      },
+      "id": 46,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "targets": [
+        {
+          "exemplar": true,
+          "expr": "increase(countProcessingQueueFlowElements{in=\"true\"}[1m])",
+          "interval": "",
+          "legendFormat": "in-{{instance}}",
+          "refId": "A"
+        },
+        {
+          "exemplar": true,
+          "expr": "increase(countProcessingQueueFlowElements{in=\"false\"}[1m])",
+          "hide": false,
+          "interval": "",
+          "legendFormat": "out-{{instance}}",
+          "refId": "B"
+        }
+      ],
+      "title": "In/Out Task-Queue Flow",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "datasource": null,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 9
+      },
       "id": 4,
       "panels": [],
       "title": "Requests",
@@ -35,23 +194,18 @@
     },
     {
       "aliasColors": {},
-      "bars": false,
+      "bars": true,
       "dashLength": 10,
       "dashes": false,
       "datasource": "${DATASOURCE}",
-      "fieldConfig": {
-        "defaults": {
-          "unit": "reqps"
-        },
-        "overrides": []
-      },
+      "description": "",
       "fill": 1,
       "fillGradient": 0,
       "gridPos": {
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 1
+        "y": 10
       },
       "hiddenSeries": false,
       "id": 21,
@@ -64,7 +218,7 @@
         "total": false,
         "values": false
       },
-      "lines": true,
+      "lines": false,
       "linewidth": 1,
       "nullPointMode": "null",
       "options": {
@@ -82,7 +236,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "sum by (method, contextPath, responseCode)(rate(countClientRequests[2m]))",
+          "expr": "sum by (method, contextPath, responseCode)(irate(countClientRequests[1m]))",
           "hide": false,
           "instant": false,
           "interval": "",
@@ -111,6 +265,7 @@
       },
       "yaxes": [
         {
+          "$$hashKey": "object:71",
           "format": "reqps",
           "label": null,
           "logBase": 1,
@@ -119,6 +274,7 @@
           "show": true
         },
         {
+          "$$hashKey": "object:72",
           "format": "short",
           "label": null,
           "logBase": 1,
@@ -151,7 +307,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 1
+        "y": 10
       },
       "hiddenSeries": false,
       "id": 23,
@@ -182,7 +338,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "sum by (host, contextPath, method, responseCode)(increase(externalRequestTimer_sum[2m]) / increase(externalRequestTimer_count[2m]))",
+          "expr": "sum by (host, contextPath, method, responseCode)(increase(externalRequestTimer_sum[1m]) / increase(externalRequestTimer_count[1m]))",
           "hide": true,
           "interval": "",
           "legendFormat": "avg|{{method}}|{{host}}|{{contextPath}}|{{responseCode}}",
@@ -190,23 +346,23 @@
         },
         {
           "exemplar": true,
-          "expr": "histogram_quantile(0.99, sum(rate(externalRequestTimer_bucket[2m])) by (le, contextPath, method, responseCode))",
+          "expr": "histogram_quantile(0.99, sum(rate(externalRequestTimer_bucket[1m])) by (le, contextPath, method, responseCode))",
           "hide": false,
           "interval": "",
-          "legendFormat": "p99|{{method}}|{{contextPath}}|{{responseCode}}",
+          "legendFormat": "p99|{{host}}|{{method}}|{{contextPath}}|{{responseCode}}",
           "refId": "B"
         },
         {
           "exemplar": true,
-          "expr": "histogram_quantile(0.95, sum(rate(externalRequestTimer_bucket[2m])) by (le, host, contextPath, method))",
-          "hide": true,
+          "expr": "histogram_quantile(0.95, sum(rate(externalRequestTimer_bucket[1m])) by (le, contextPath, method))",
+          "hide": false,
           "interval": "",
-          "legendFormat": "p95|{{method}}|{{host}}|{{contextPath}}",
+          "legendFormat": "p95||{{method}}|{{contextPath}}",
           "refId": "C"
         },
         {
           "exemplar": true,
-          "expr": "histogram_quantile(0.90, sum(rate(externalRequestTimer_bucket[2m])) by (le, host, contextPath, method))",
+          "expr": "histogram_quantile(0.90, sum(rate(externalRequestTimer_bucket[1m])) by (le, host, contextPath, method))",
           "hide": true,
           "interval": "",
           "legendFormat": "p90|{{method}}|{{host}}|{{contextPath}}",
@@ -214,7 +370,7 @@
         },
         {
           "exemplar": true,
-          "expr": "histogram_quantile(0.50, sum(rate(externalRequestTimer_bucket[2m])) by (le, contextPath, method))",
+          "expr": "histogram_quantile(0.50, sum(rate(externalRequestTimer_bucket[1m])) by (le, contextPath, method))",
           "hide": false,
           "interval": "",
           "legendFormat": "p50|{{method}}|{{contextPath}}",
@@ -241,6 +397,7 @@
       },
       "yaxes": [
         {
+          "$$hashKey": "object:124",
           "format": "ms",
           "label": null,
           "logBase": 1,
@@ -249,6 +406,7 @@
           "show": true
         },
         {
+          "$$hashKey": "object:125",
           "format": "short",
           "label": null,
           "logBase": 1,
@@ -269,7 +427,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 9
+        "y": 18
       },
       "id": 2,
       "panels": [],
@@ -335,7 +493,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 10
+        "y": 19
       },
       "id": 31,
       "options": {
@@ -351,7 +509,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "avg by (instance) (rate(process_cpu_seconds_total[2m]))",
+          "expr": "avg by (instance) (rate(process_cpu_seconds_total[1m]))",
           "hide": false,
           "interval": "",
           "legendFormat": "Load-{{instance}}",
@@ -418,7 +576,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 10
+        "y": 19
       },
       "id": 33,
       "options": {
@@ -468,7 +626,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 18
+        "y": 27
       },
       "id": 35,
       "panels": [],
@@ -486,8 +644,8 @@
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 0,
+            "drawStyle": "bars",
+            "fillOpacity": 100,
             "gradientMode": "none",
             "hideFrom": {
               "legend": false,
@@ -523,7 +681,8 @@
                 "value": 80
               }
             ]
-          }
+          },
+          "unit": "rpm"
         },
         "overrides": []
       },
@@ -531,7 +690,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 19
+        "y": 28
       },
       "id": 37,
       "options": {
@@ -547,13 +706,13 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "rate(jvm_gc_collection_seconds_count[1m])",
-          "interval": "",
-          "legendFormat": "",
+          "expr": "increase(jvm_gc_collection_seconds_count{gc=\"G1 Young Generation\"}[1m])",
+          "interval": "1m",
+          "legendFormat": "{{gc}}--{{instance}}",
           "refId": "A"
         }
       ],
-      "title": "GC / sec",
+      "title": "G1 Young Generation Events",
       "type": "timeseries"
     },
     {
@@ -567,8 +726,8 @@
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 0,
+            "drawStyle": "bars",
+            "fillOpacity": 100,
             "gradientMode": "none",
             "hideFrom": {
               "legend": false,
@@ -604,7 +763,8 @@
                 "value": 80
               }
             ]
-          }
+          },
+          "unit": "rpm"
         },
         "overrides": []
       },
@@ -612,9 +772,9 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 19
+        "y": 28
       },
-      "id": 39,
+      "id": 38,
       "options": {
         "legend": {
           "calcs": [],
@@ -628,13 +788,13 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "rate(jvm_gc_collection_seconds_sum[1m]) / rate(jvm_gc_collection_seconds_count[1m])",
-          "interval": "",
-          "legendFormat": "",
+          "expr": "increase(jvm_gc_collection_seconds_count{gc=\"G1 Old Generation\"}[1m])",
+          "interval": "1m",
+          "legendFormat": "{{gc}}--{{instance}}",
           "refId": "A"
         }
       ],
-      "title": "Avg seconds / GC",
+      "title": "G1 Old Generation Events",
       "type": "timeseries"
     },
     {
@@ -648,8 +808,8 @@
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 0,
+            "drawStyle": "bars",
+            "fillOpacity": 100,
             "gradientMode": "none",
             "hideFrom": {
               "legend": false,
@@ -685,7 +845,8 @@
                 "value": 80
               }
             ]
-          }
+          },
+          "unit": "percentunit"
         },
         "overrides": []
       },
@@ -693,9 +854,9 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 27
+        "y": 36
       },
-      "id": 41,
+      "id": 40,
       "options": {
         "legend": {
           "calcs": [],
@@ -710,12 +871,12 @@
         {
           "exemplar": true,
           "expr": "rate(jvm_gc_collection_seconds_sum[1m])",
-          "interval": "",
-          "legendFormat": "",
+          "interval": "1m",
+          "legendFormat": "{{instance}}-{{gc}}",
           "refId": "A"
         }
       ],
-      "title": "Fraction of second spent on GC",
+      "title": "GC Seconds",
       "type": "timeseries"
     }
   ],
@@ -755,6 +916,6 @@
   "timepicker": {},
   "timezone": "",
   "title": "Kolibri Dashboard",
-  "uid": "ZC6XIIjVk",
-  "version": 14
+  "uid": "Fp4LAdjVk",
+  "version": 8
 }
