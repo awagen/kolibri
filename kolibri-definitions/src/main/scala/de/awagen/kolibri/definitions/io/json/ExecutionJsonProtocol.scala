@@ -29,6 +29,7 @@ import de.awagen.kolibri.definitions.processing.execution.functions.Execution
 import de.awagen.kolibri.definitions.provider.WeightProviders.WeightProvider
 import de.awagen.kolibri.storage.io.reader.{DataOverviewReader, Reader}
 import de.awagen.kolibri.storage.io.writer.Writers.Writer
+import org.slf4j.LoggerFactory
 import spray.json.{DefaultJsonProtocol, JsValue, JsonFormat, RootJsonFormat, enrichAny}
 
 import scala.util.matching.Regex
@@ -279,6 +280,8 @@ object ExecutionJsonProtocol extends DefaultJsonProtocol {
                              regexToDataOverviewReader: SerializableFunction1[Regex, DataOverviewReader],
                              weightFormat: JsonFormat[WeightProvider[String]],
                              supplierJsonProtocol: SupplierJsonProtocol) extends RootJsonFormat[Execution[Any]] with DefaultJsonProtocol {
+    private[this] val logger = LoggerFactory.getLogger(ExecutionFormat.getClass)
+
     implicit val wf: JsonFormat[WeightProvider[String]] = weightFormat
     implicit val mappingSupplierFormat: JsonFormat[SerializableSupplier[Map[String, Double]]] = supplierJsonProtocol.MapStringDoubleFormat
     implicit val stringSeqMappingFormat: JsonFormat[() => Map[String, Seq[String]]] = supplierJsonProtocol.StringSeqMappingFormat
@@ -322,12 +325,18 @@ object ExecutionJsonProtocol extends DefaultJsonProtocol {
           val writeSubDir: String = fields(WRITE_SUBDIR_KEY).convertTo[String]
           val weightProvider: WeightProvider[String] = fields(WEIGHT_PROVIDER_KEY).convertTo[WeightProvider[String]]
           val executions: Seq[Execution[Any]] = groupNameToIdentifierMap.map(x => {
+            val uniqueGroupTags: Seq[String] = x._2.distinct
+            val fileRegex = (".*/(" + uniqueGroupTags.map(x => x.replace("(", "\\(").replace(")", "\\)")).mkString("|") + ").*\\.csv").r
+            logger.info(s"Looking for files with matching regex '$fileRegex' in folder '$readSubDir'")
+            logger.debug(s"All files in subfolder '$readSubDir': ${regexToDataOverviewReader(".*".r).listResources(readSubDir, _ => true).mkString(",")}")
+            val filesToAggregate = regexToDataOverviewReader(fileRegex).listResources(readSubDir, _ => true)
+            logger.info(s"Found files for group '${x._1}', matching regex '${filesToAggregate.mkString(",")}'")
             AggregateFilesWeighted(
               reader,
               writer,
               metricDocumentFormatsMap,
               writeSubDir,
-              x._2.map(x => s"${readSubDir.stripSuffix("/")}/$x"),
+              filesToAggregate,
               weightProvider,
               x._1
             )
