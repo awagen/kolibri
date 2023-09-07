@@ -23,7 +23,7 @@ import zio.http.ZClient.{Config, customized}
 import zio.http.internal.middlewares.Cors.CorsConfig
 import zio.http.netty.NettyConfig
 import zio.http.netty.client.NettyClientDriver
-import zio.http.{Client, ClientSSLConfig, DnsResolver, Method, ZClient}
+import zio.http.{Client, ClientSSLConfig, DnsResolver, Header, Method, ZClient}
 import zio.{Trace, ZLayer, durationInt}
 
 import java.util.concurrent.TimeUnit
@@ -63,7 +63,8 @@ object HttpConfig {
 
   val corsConfig: CorsConfig = CorsConfig(
     allowedOrigin = _ => Some(AccessControlAllowOrigin.All),
-    allowedMethods = AccessControlAllowMethods(Method.GET, Method.POST, Method.PUT, Method.DELETE)
+    allowedMethods = AccessControlAllowMethods(Method.GET, Method.POST, Method.PUT, Method.DELETE, Method.OPTIONS),
+    allowedHeaders = Header.AccessControlAllowHeaders.All
   )
 
 }

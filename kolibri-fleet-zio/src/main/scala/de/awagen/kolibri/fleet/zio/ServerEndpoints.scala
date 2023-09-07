@@ -287,18 +287,18 @@ object ServerEndpoints {
         jobFolderExists <- ZIO.attempt(existingJobNames.contains(jobDef.jobName))
         response <- ZIO.ifZIO(ZIO.succeed(jobFolderExists))(
           onFalse = jobStateWriter.storeJobDefinitionAndBatches(jobString, newJobSubFolder)
-            *> ZIO.succeed(Response.text(ResponseContent(jobString, "").toJson.toString())),
+            *> ZIO.succeed(Response.json(ResponseContent(jobString, "").toJson.toString())),
           onTrue = {
             val errorMsg = s"Job folder for job ${jobDef.jobName} already exists," +
               s" skipping job information persistence step"
             ZIO.logInfo(errorMsg) *> ZIO.succeed(
-              Response.text(ResponseContent("", errorMsg).toJson.toString()).withStatus(Status.BadRequest)
+              Response.json(ResponseContent("", errorMsg).toJson.toString()).withStatus(Status.BadRequest)
             )
           }
         )
       } yield response).catchAll(throwable =>
         ZIO.logWarning(s"Error on posting job:\n$throwable")
-          *> ZIO.succeed(Response.text(s"Failed posting job"))
+          *> ZIO.succeed(Response.json(ResponseContent(s"Failed posting job, msg: '${throwable.getMessage}'", "").toJson.toString()))
       ) @@ countAPIRequests("POST", "/job")
   } @@ cors(corsConfig)
 

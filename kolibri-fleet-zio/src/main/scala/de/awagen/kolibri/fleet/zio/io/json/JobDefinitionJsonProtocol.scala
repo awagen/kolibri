@@ -17,7 +17,6 @@
 
 package de.awagen.kolibri.fleet.zio.io.json
 
-import de.awagen.kolibri.datatypes.collections.generators.IndexedGenerator
 import de.awagen.kolibri.datatypes.metrics.aggregation.mutable.MetricAggregation
 import de.awagen.kolibri.datatypes.stores.immutable.MetricRow
 import de.awagen.kolibri.datatypes.tagging.Tags.Tag
@@ -41,8 +40,8 @@ import de.awagen.kolibri.fleet.zio.config.AppProperties.config.numAggregatorsPer
 import de.awagen.kolibri.fleet.zio.config.{AppConfig, AppProperties}
 import de.awagen.kolibri.fleet.zio.execution.JobDefinitions.{BatchAggregationInfo, JobDefinition, simpleWaitJob}
 import de.awagen.kolibri.fleet.zio.execution.JobMessagesImplicits._
+import de.awagen.kolibri.fleet.zio.execution.ZIOTask
 import de.awagen.kolibri.fleet.zio.execution.aggregation.Aggregators.MutableCountingAggregator
-import de.awagen.kolibri.fleet.zio.execution.{JobDefinitions, ZIOTask}
 import de.awagen.kolibri.fleet.zio.io.json.TaskJsonProtocol._
 import de.awagen.kolibri.fleet.zio.taskqueue.negotiation.utils.DateUtils
 import spray.json.{DefaultJsonProtocol, JsValue, JsonFormat, enrichAny}
@@ -201,77 +200,82 @@ object JobDefinitionJsonProtocol extends DefaultJsonProtocol {
       )
     )
 
-  // TODO: apparently having a generic format without defining the input element type will lead to
-  // the TypeTaggedMap not retrieving the key properly due do missing TypeTag.
-  // Thus either explicitly provide formats defining the input type OR
-  // switch to a less type-restrictive map, such as WeaklyTypedMap[String]
   implicit object JobDefinitionFormat extends JsonFormat[ZIO[Client, Throwable, JobDefinition[_, _, _ <: WithCount]]] with WithStructDef {
     override def read(json: JsValue): ZIO[Client, Throwable, JobDefinition[_, _, _ <: WithCount]] = json match {
       case spray.json.JsObject(fields) => fields(TYPE_KEY).convertTo[String] match {
         case JUST_WAIT_TYPE =>
-          val defFields: Map[String, JsValue] = fields(DEF_KEY).asJsObject.fields
-          val jobName = defFields(JOB_NAME_KEY).convertTo[String]
-          val nrBatches = defFields(NR_BATCHES_KEY).convertTo[Int]
-          val durationInMillis = defFields(DURATION_IN_MILLIS_KEY).convertTo[Long]
-          val batchAggregationInfo: BatchAggregationInfo[Unit, JobDefinitions.ValueWithCount[Int]] = BatchAggregationInfo(
-            "DONE_WAITING",
-            () => new MutableCountingAggregator(0, 0)
-          )
-          ZIO.attempt(
-            simpleWaitJob(
-              jobName,
-              nrBatches,
-              durationInMillis,
-              1,
-              batchAggregationInfo
-            ))
-        case SEARCH_EVALUATION_TYPE =>
-          val defFields = fields(DEF_KEY)
-          val searchEvaluationJobDef = AppConfig.JsonFormats.searchEvaluationJsonProtocol.SearchEvaluationFormat.read(defFields)
-          searchEvaluationJobDef.toJobDef
-        case QUERY_BASED_SEARCH_EVALUATION_TYPE =>
-          val defFields = fields(DEF_KEY)
-          val searchEvaluationJobDef = AppConfig.JsonFormats.queryBasedSearchEvaluationJsonProtocol.QueryBasedSearchEvaluationFormat.read(defFields)
-          searchEvaluationJobDef.toJobDef
-        case REQUESTING_TASK_SEQUENCE_TYPE =>
-          val defFields: Map[String, JsValue] = fields(DEF_KEY).asJsObject.fields
-          val jobName = defFields(JOB_NAME_KEY).convertTo[String]
-          val currentTimeInMillis = System.currentTimeMillis()
-          val resourceDirectives = defFields(RESOURCE_DIRECTIVES_KEY).convertTo[Seq[ResourceDirective[_]]]
-          val requestParameters = defFields(REQUEST_PARAMETERS_KEY).convertTo[Seq[ValueSeqGenDefinition[_]]]
-          val modifiers: Seq[IndexedGenerator[RequestTemplateBuilderModifier]] = requestParameters.map(x => x.toState).map(x => x.toSeqGenerator).map(x => x.mapGen(y => y.toModifier))
-          val batchByIndex = defFields(BATCH_BY_INDEX_KEY).convertTo[Int]
-          val modifierBatches = batchByGeneratorAtIndex(batchByIndex = batchByIndex).apply(modifiers)
-          val nestedTaskSequenceEffect = defFields(TASK_SEQUENCE_KEY).convertTo[Seq[ZIO[Client, Throwable, Seq[ZIOTask[_]]]]]
-          val metricRowResultKey = defFields(METRIC_ROW_RESULT_KEY).convertTo[String]
-          val wrapUpActions = defFields.get(WRAP_UP_ACTIONS_KEY).map(x => x.convertTo[Seq[Execution[Any]]]).getOrElse(Seq.empty)
-          // For now we assume that result is of type MetricRow
-          val aggregationInfo = BatchAggregationInfo[MetricRow, MetricAggregation[Tag]](
-            successKey = metricRowResultKey,
-            batchAggregatorSupplier = () => new MultiAggregator(() =>
-              new TagKeyMetricAggregationPerClassAggregator(
-                identity,
-                ignoreIdDiff = false
-              ), numAggregatorsPerBatch),
-            writer = {
-              val currentDay = DateUtils.timeInMillisToFormattedDate(currentTimeInMillis)
-              AppConfig.persistenceModule.persistenceDIModule.metricAggregationWriter(
-                subFolder = s"${currentDay}/${jobName}",
-                x => {
-                  val randomAdd: String = Random.alphanumeric.take(5).mkString
-                  s"${x.toString()}-${AppProperties.config.node_hash}-$randomAdd"
-                }
-              )
-            }
-          )
           for {
+            defFields <- ZIO.attempt(fields(DEF_KEY).asJsObject.fields)
+            jobName <- ZIO.attempt(defFields(JOB_NAME_KEY).convertTo[String])
+            nrBatches <- ZIO.attempt(defFields(NR_BATCHES_KEY).convertTo[Int])
+            durationInMillis <- ZIO.attempt(defFields(DURATION_IN_MILLIS_KEY).convertTo[Long])
+            batchAggregationInfo <- ZIO.attempt({
+              BatchAggregationInfo(
+                "DONE_WAITING",
+                () => new MutableCountingAggregator(0, 0)
+              )
+            })
+            jobDef <- ZIO.attempt(
+              simpleWaitJob(
+                jobName,
+                nrBatches,
+                durationInMillis,
+                1,
+                batchAggregationInfo
+              ))
+          } yield jobDef
+        case SEARCH_EVALUATION_TYPE =>
+          for {
+            defFields <- ZIO.attempt(fields(DEF_KEY))
+            searchEvaluationJobDef <- ZIO.attempt(AppConfig.JsonFormats.searchEvaluationJsonProtocol.SearchEvaluationFormat.read(defFields))
+            jobDef <- searchEvaluationJobDef.toJobDef
+          } yield jobDef
+
+        case QUERY_BASED_SEARCH_EVALUATION_TYPE =>
+          for {
+            defFields <- ZIO.attempt(fields(DEF_KEY))
+            searchEvaluationJobDef <- ZIO.attempt(AppConfig.JsonFormats.queryBasedSearchEvaluationJsonProtocol.QueryBasedSearchEvaluationFormat.read(defFields))
+            jobDef <- searchEvaluationJobDef.toJobDef
+          } yield jobDef
+        case REQUESTING_TASK_SEQUENCE_TYPE =>
+          for {
+            defFields <- ZIO.attempt(fields(DEF_KEY).asJsObject.fields)
+            jobName <- ZIO.attempt(defFields(JOB_NAME_KEY).convertTo[String])
+            currentTimeInMillis <- ZIO.attempt(System.currentTimeMillis())
+            resourceDirectives <- ZIO.attempt(defFields(RESOURCE_DIRECTIVES_KEY).convertTo[Seq[ResourceDirective[_]]])
+            requestParameters <- ZIO.attempt(defFields(REQUEST_PARAMETERS_KEY).convertTo[Seq[ValueSeqGenDefinition[_]]])
+            modifiers <- ZIO.attempt(requestParameters.map(x => x.toState).map(x => x.toSeqGenerator).map(x => x.mapGen(y => y.toModifier)))
+            batchByIndex <- ZIO.attempt(defFields(BATCH_BY_INDEX_KEY).convertTo[Int])
+            modifierBatches <- ZIO.attempt(batchByGeneratorAtIndex(batchByIndex = batchByIndex).apply(modifiers))
+            nestedTaskSequenceEffect <- ZIO.attempt(defFields(TASK_SEQUENCE_KEY).convertTo[Seq[ZIO[Client, Throwable, Seq[ZIOTask[_]]]]])
+            metricRowResultKey <- ZIO.attempt(defFields(METRIC_ROW_RESULT_KEY).convertTo[String])
+            wrapUpActions <- ZIO.attempt(defFields.get(WRAP_UP_ACTIONS_KEY).map(x => x.convertTo[Seq[Execution[Any]]]).getOrElse(Seq.empty))
+            // For now we assume that result is of type MetricRow
+            aggregationInfo <- ZIO.attempt(BatchAggregationInfo[MetricRow, MetricAggregation[Tag]](
+              successKey = metricRowResultKey,
+              batchAggregatorSupplier = () => new MultiAggregator(() =>
+                new TagKeyMetricAggregationPerClassAggregator(
+                  identity,
+                  ignoreIdDiff = false
+                ), numAggregatorsPerBatch),
+              writer = {
+                val currentDay = DateUtils.timeInMillisToFormattedDate(currentTimeInMillis)
+                AppConfig.persistenceModule.persistenceDIModule.metricAggregationWriter(
+                  subFolder = s"${currentDay}/${jobName}",
+                  x => {
+                    val randomAdd: String = Random.alphanumeric.take(5).mkString
+                    s"${x.toString()}-${AppProperties.config.node_hash}-$randomAdd"
+                  }
+                )
+              }
+            ))
             taskSequence <- ZStream.fromIterable(nestedTaskSequenceEffect)
               .runFoldZIO(Seq.empty[ZIOTask[_]])((oldSeq, newSeqEffect) => {
                 for {
                   newSeq <- newSeqEffect
                 } yield oldSeq ++ newSeq
               })
-            jobDef <- ZIO.succeed(
+            jobDef <- ZIO.attempt(
               JobDefinition(
                 jobName = jobName,
                 resourceSetup = resourceDirectives,

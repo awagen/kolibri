@@ -146,6 +146,7 @@ object JobTemplatesServerEndpoints {
       ) @@ countAPIRequests("GET", "/jobs/templates/[templateType]/[templateId]")
     case req@Method.POST -> Root / "jobs" / "templates" / templateType / templateId =>
       val computeEffect = for {
+        _ <- ZIO.logInfo(s"Submitted json for templateType '$templateType' and templateId '$templateId'")
         // validate name and type for template
         _ <- ZIO.attempt({
           if (templateId.trim.isEmpty || templateType.startsWith("..") || templateId.startsWith("..")) {
@@ -157,14 +158,17 @@ object JobTemplatesServerEndpoints {
           bodyStr <- req.body.asString(Charset.forName("UTF-8"))
           _ <- ZIO.whenCase(templateType)({
             case ID_JOB_DEF =>
-              bodyStr.parseJson.convertTo[ZIO[Client, Throwable, JobDefinition[_, _, _ <: WithCount]]] *> ZIO.succeed(())
+              ZIO.logDebug(s"Passed Body: $bodyStr") *>
+                bodyStr.parseJson.convertTo[ZIO[Client, Throwable, JobDefinition[_, _, _ <: WithCount]]]
             case ID_TASK_DEF =>
-              ZIO.attempt(bodyStr.parseJson.convertTo[Execution[Any]]) *> ZIO.succeed(())
+              ZIO.attempt(bodyStr.parseJson.convertTo[Execution[Any]])
             case ID_JOB_SUMMARY_DEF =>
-              ZIO.attempt(bodyStr.parseJson.convertTo[SummarizeCommand]) *> ZIO.succeed(())
+              ZIO.attempt(bodyStr.parseJson.convertTo[SummarizeCommand])
             case _ => ZIO.fail(new RuntimeException("Can not parse job/task definition"))
-          })
+          }).tapBoth(throwable => ZIO.logInfo(s"Failed parsing passed json with msg: ${throwable.getMessage}"),
+            _ => ZIO.logInfo("Successfully parsed incoming template"))
         } yield bodyStr
+        _ <- ZIO.logDebug(s"Json string is valid: $jsonStr")
         fullTemplateName <- ZIO.attempt({
           templateId.stripPrefix("/").stripSuffix("/").trim match {
             case n if n.endsWith(".json") => n
@@ -197,8 +201,8 @@ object JobTemplatesServerEndpoints {
         } yield writeResult.get
       } yield response
       computeEffect.catchAll(throwable => {
-        ZIO.logError(s"Error reading registered jobs:\n${throwable.getStackTrace.mkString("\n")}") *>
-          ZIO.succeed(Response.json(ResponseContent("", "failed persisting job template").toJson.toString()).withStatus(Status.InternalServerError))
+        ZIO.logError(s"Error trying to persist job template:\nmsg: ${throwable.getMessage}\nTrace: ${throwable.getStackTrace.mkString("\n")}") *>
+          ZIO.succeed(Response.json(ResponseContent("", s"failed persisting job template: ${throwable.getMessage}").toJson.toString()).withStatus(Status.InternalServerError))
       }) @@ countAPIRequests("POST", s"/jobs/templates/$templateType/[templateId]")
   } @@ cors(corsConfig)
 
