@@ -410,7 +410,7 @@ object JsonStructDefs {
      * @return
      */
     override def castValueIsValid(el: Any): Boolean = {
-      val allValues = el.asInstanceOf[Map[String, _]]
+      val allValues = el.asInstanceOf[Map[String, Any]]
       // determine fields belonging to current conditional value states and add to fields to be checked
       val conditionalValues: Either[String, Seq[FieldDef]] = retrieveConditionalFields(allValues)
       if (conditionalValues.isLeft) {
@@ -419,9 +419,16 @@ object JsonStructDefs {
       }
       else {
         // check all fields for occurrence
-        (conditionalValues.getOrElse(Seq.empty) ++ fields).forall(fieldDef => {
-          allValues.find(x => fieldDef.nameFormat.castValueIsValid(x._1))
-            .exists(field => fieldDef.valueFormat.castValueIsValid(field._2))
+        val allExpectedFields = conditionalValues.getOrElse(Seq.empty) ++ fields
+        allExpectedFields.forall(fieldDef => {
+          // check validity of names and values
+          // if a key is missing and it is also marked as not required, that is also valid
+          val keyValueOpt: Option[(String, Any)] = allValues.find(x => fieldDef.nameFormat.castValueIsValid(x._1))
+          keyValueOpt match {
+            case Some(tuple) => fieldDef.valueFormat.castValueIsValid(tuple._2)
+            case None if !fieldDef.required => true
+            case None => false
+          }
         })
       }
     }
@@ -442,11 +449,18 @@ object JsonStructDefs {
       val conditionalFields = conditionalFieldsOrError.getOrElse(Seq.empty)
 
       // retrieve unconditional single fields
-      (conditionalFields ++ fields).map(standaloneField => {
+      val allExpectedFields = conditionalFields ++ fields
+      // calculate the cast results for all expected fields
+      allExpectedFields.map(standaloneField => {
         allFields.find(x => standaloneField.nameFormat.castValueIsValid(x._1))
           .map(x => (x._1, standaloneField.valueFormat.cast(x._2)))
-          .get
-      }).toMap
+      })
+        // remove those for which no field exists but that is also optional
+        .zipWithIndex.filter({
+          y => !(y._1.isEmpty && !allExpectedFields(y._2).required)
+        })
+        .map(x => x._1.get)
+        .toMap
     }
   }
 
