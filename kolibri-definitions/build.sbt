@@ -64,7 +64,6 @@ val additionalDependencies = Seq(
   "io.spray" %%  "spray-json" % sprayVersion,
   "ch.qos.logback" % "logback-classic" % logbackVersion,
   "com.chuusai" %% "shapeless" % shapelessVersion,
-  "org.slf4j" % "slf4j-api" % sl4jApiVersion,
   "com.softwaremill.macwire" %% "macros" % macwireVersion,
   "com.softwaremill.macwire" %% "util" % macwireVersion,
   "org.scalamock" %% "scalamock" % scalaMockVersion % Test,
