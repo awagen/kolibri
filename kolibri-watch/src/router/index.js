@@ -6,6 +6,7 @@ import AnalyzeView from "../views/AnalyzeView.vue";
 import ResultView from "../views/ResultView.vue";
 import NotFoundView from "../views/NotFoundView.vue";
 import JobResultSummaryView from "@/components/JobResultSummaryView.vue";
+import ProductTilesView from "@/components/ProductTilesView.vue";
 
 const routes = [
     {
@@ -37,6 +38,11 @@ const routes = [
         path: "/resultSummary",
         name: "ResultSummary",
         component: JobResultSummaryView
+    },
+    {
+        path: "/tmpExp",
+        name: "TmpExp",
+        component: ProductTilesView
     },
     {
         path: '/:catchAll(.*)',

@@ -12,6 +12,7 @@
     <section class="navbar-section">
       <router-link class="btn btn-link" to="/resultSummary">RESULT SUMMARY (Beta)</router-link>
       <router-link class="btn btn-link" to="/analyze">ANALYZE (Beta)</router-link>
+      <router-link class="btn btn-link" to="/tmpExp">EXP (Tmp)</router-link>
 <!--      <router-link class="btn btn-link" to="/result">RESULT</router-link>-->
     </section>
   </header>
